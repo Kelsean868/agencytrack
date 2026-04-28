@@ -1,0 +1,46 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencies
+node_modules
+functions/node_modules
+
+# Build outputs
+dist
+dist-ssr
+.firebase
+
+# Environment — NEVER COMMIT
+.env.local
+.env.*.local
+*.local
+
+# MCP config — personal, each dev has their own
+.mcp.json
+
+# Repomix — generated file, too large for project
+repomix-output.xml
+
+# Firebase debug logs
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# Editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
