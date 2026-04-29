@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { LogOut, Users, TrendingUp, FileCheck, AlertCircle, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency } from '../../utils/formatters';
+import WizardForm from '../wizard/WizardForm';
 
 function StatCard({ icon: Icon, label, value, sub, accent = false }) {
   return (
@@ -21,6 +22,7 @@ function StatCard({ icon: Icon, label, value, sub, accent = false }) {
 
 export default function ManagerDashboard() {
   const { userProfile, role } = useAuth();
+  const [showWizard, setShowWizard] = useState(false);
 
   // Mock data — replaced with real Firestore queries in Phase 3
   const stats = useMemo(() => ({
@@ -40,6 +42,10 @@ export default function ManagerDashboard() {
   };
 
   const toggleDark = () => document.documentElement.classList.toggle('dark');
+
+  if (showWizard) {
+    return <WizardForm onClose={() => setShowWizard(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-surface px-4 py-6 max-w-3xl mx-auto">
@@ -107,6 +113,10 @@ export default function ManagerDashboard() {
         />
         <StatCard icon={TrendingUp} label="Team API Goal" value={`${Math.round((stats.teamYTDAPI / stats.teamAPIGoal) * 100)}%`} sub="YTD progress" />
       </div>
+
+      <button className="btn-primary w-full mb-3" onClick={() => setShowWizard(true)}>
+        Submit Weekly Report
+      </button>
 
       {/* Placeholder for Master Sheet — Phase 4 */}
       <button className="btn-primary w-full" disabled>

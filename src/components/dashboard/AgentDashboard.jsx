@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { LogOut, Phone, Calendar, FileText, TrendingUp, Users, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency, formatPercent } from '../../utils/formatters';
+import WizardForm from '../wizard/WizardForm';
 
 // --- Progress Ring ---
 function ProgressRing({ percent, size = 120, stroke = 10, color = 'var(--color-primary)' }) {
@@ -42,8 +43,9 @@ function KPICard({ icon: Icon, label, value, sub }) {
 // --- Main ---
 export default function AgentDashboard() {
   const { userProfile, role } = useAuth();
+  const [showWizard, setShowWizard] = useState(false);
 
-  // Mock data — replaced with real Firestore queries in Phase 3
+  // Mock data — replaced with real Firestore queries in Phase 4
   const metrics = useMemo(() => ({
     ytdAPI: 48500,
     ytdAPIGoal: 120000,
@@ -64,6 +66,10 @@ export default function AgentDashboard() {
   };
 
   const toggleDark = () => document.documentElement.classList.toggle('dark');
+
+  if (showWizard) {
+    return <WizardForm onClose={() => setShowWizard(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-surface px-4 py-6 max-w-2xl mx-auto">
@@ -129,9 +135,11 @@ export default function AgentDashboard() {
         <KPICard icon={Users} label="New Clients" value={metrics.weekNewClients} />
       </div>
 
-      {/* Submit Week Button — placeholder until Wizard is built in Phase 3 */}
-      <button className="btn-primary w-full" disabled>
-        Submit Weekly Report (Phase 3)
+      <button
+        className="btn-primary w-full"
+        onClick={() => setShowWizard(true)}
+      >
+        Submit Weekly Report
       </button>
 
     </div>

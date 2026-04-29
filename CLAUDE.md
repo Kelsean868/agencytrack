@@ -119,3 +119,7 @@ Phase 1 — Firebase + Auth setup
 All Firebase env vars use `VITE_` prefix.
 Never hardcode Firebase config — always use import.meta.env.VITE_*
 Never commit .env.local
+
+## Critical Instruction for Claude Code
+Always write files directly to disk. Never use worktrees or branches. 
+Work only on main. After writing files, always run npm run dev to verify zero errors.
