@@ -59,7 +59,9 @@ Agents submit weekly activity reports. Managers review and track team compliance
 
 ---
 
-## Phase 4 — Manager Views + Wizard Step 9
+## Phase 4 — Manager Views + Wizard Step 9 ✅ COMPLETE
+
+**Phase 4 Status: ✅ COMPLETE — 30 April 2026**
 
 ### Accepted Commits
 - `ff9609e` — feat: phase 4 manager views + wizard step 9
@@ -72,6 +74,8 @@ Agents submit weekly activity reports. Managers review and track team compliance
 - fix: CompliancePanel graceful empty state when users collection is empty
 - fix: PersistencyPanel graceful empty state message
 - fix: WizardForm silent skip on auto-save for submitted reports
+- fix: wizard re-submit guard with inline error message
+- fix: CORS on Cloud Functions + claims bootstrap
 - seed: super admin user doc created at tenants/tatillife_south/users/4GeeZbhZBwdtGOLoJoggf4MQo142
 - seed: tatillife_south confirmed as canonical tenantId
 - polish: agent name display — full fallback chain (agentName → displayName → userName → users lookup → Agent + last6 UID)
@@ -82,7 +86,11 @@ Agents submit weekly activity reports. Managers review and track team compliance
 - `e0af086` — polish: agent name display fixed in MeetingMode
 - `dc10bd6` — fix: meeting mode agent name resolved correctly (submissionService now writes agentName; ManagerDashboard enriches submissions before passing to MeetingMode)
 - `1bf19bb` — feat: full KPI set + dual meeting mode (group + 1on1) — MasterSheet 23-col sticky table; extractFields.js shared utility; MeetingMode Group/1-on-1 toggle with coaching ratios + self-eval bars
-- **Phase 4 COMPLETE — all features verified working**
+- `eea9eb7` — docs: close phase 4 — update CLAUDE.md and APP_MANUAL.md
+
+### Deferred to Phase 5.5 (post Phase 5)
+- Branch Overview slide in Group Meeting Mode (all agents, grouped by unit, unit subtotals, branch total, click agent to jump to their slide)
+- Drill-down cards in 1-on-1 Mode (tap stat card → slide-up drawer showing field breakdown without disrupting navigation flow)
 
 ### What Was Built
 
@@ -99,12 +107,13 @@ Agents submit weekly activity reports. Managers review and track team compliance
 - Overview tab: existing content unchanged
 - `selectedWeek` state lifted here, shared to MasterSheet and CompliancePanel as props
 - `meetingActive` state triggers MeetingMode overlay
-- "Start Meeting" button: fetches submissions for selectedWeek, opens MeetingMode
+- "Start Meeting" button: fetches submissions for selectedWeek, enriches with agentName from users collection, opens MeetingMode
 
 #### MasterSheet
 - File: `src/components/manager/MasterSheet.jsx`
 - Props: `{ selectedWeek, setSelectedWeek }`
-- Columns: Agent, Status, Dials, Tel Contacts, F2F Attempts, FFI, CI, Apps Sold, API (TTD), Closing %
+- 23 columns: Agent (sticky), Status (sticky), Prospect.Touches, Persons Reached, Tel Attempts, F2F Att., Contacts Made, Qual.App., FFI Sched., FFI Done, Solutions, New CI, Old CI, Total CI, Sales, Lives, API (TTD), Delivered, Service, New Names, Next Wk API, Next Wk Apps, Closing %
+- Sticky first 2 columns (`border-separate border-spacing-0` + `sticky left-0`/`left-[160px]`)
 - API column: green ≥80% of targetAPI, amber 50–79%, red <50%
 - Closing ratio: appsSold / ciConducted × 100; shows "—" if denominator is 0
 - Controls: week dropdown (last 8 Sundays), agent name search (client-side), Export CSV button
@@ -140,16 +149,45 @@ Agents submit weekly activity reports. Managers review and track team compliance
 - Navigation: arrow buttons (56px), keyboard ArrowLeft/ArrowRight/Escape, Tailwind dot indicators, slide counter
 
 #### New Utilities and Services
+- `src/utils/extractFields.js` — `extractFields()`, `computeRatios()`, `RATIO_THRESHOLDS`, `RATIO_LABELS`, `RATIO_KEY_ORDER`, `ratioColorClass()`, `formatRatioValue()`
 - `src/utils/dateHelpers.js` — `getMostRecentSunday()`, `getLastNSundays(n)`
 - `src/services/managerService.js` — `getWeeklySubmissions(weekStarting)`, `getTenantUsers()`
 - `src/services/persistencyService.js` — `getMonthlyPersistency(year, month)`, `savePersistencyBatch(entries, enteredBy)`
 
 ---
 
-## Upcoming — Phase 5
-- Notifications (in-app + email via Firebase Cloud Functions)
-- Career Portal (agent level progression 1–7)
-- Gamification layer (Leaderboard, BadgeGrid) — separate from official Tatil Life career levels
+## Phase 5 — Notifications + Career Portal + Gamification 🔄 IN PROGRESS
+
+### Planned Scope
+
+- In-app notification system (bell icon, unread count, notification drawer)
+- Email notifications via Cloud Functions (deadline reminders, submission confirmations)
+- Deadline enforcement — Friday 5pm cutoff, escalation to branch manager
+- Career Portal — agent profile page showing:
+  - Current Tatil Life career level (1–7) with level name + badge
+  - Progress checklist toward next level (API, Apps, Persistency, Years)
+  - "What unlocks at next level" preview panel
+  - MDRT status badge
+- Gamification — separate from official career levels:
+  - Achievement badges (First submission, 4-week streak, MDRT pace, etc.)
+  - Leaderboard (unit + branch)
+- Goal/target system — manager sets weekly targets per agent, agent sees their targets on their dashboard
+
+### Career Level Targets (Tatil Life — from PRD)
+| Level | Title | Min API (TTD) | Min Apps | Min Persistency | Min Years |
+|-------|-------|--------------|----------|-----------------|-----------|
+| 1 | Salesperson | $200,000 | 42 | 90% | 0 |
+| 2 | — | $250,000 | 42 | 90% | 2 |
+| 3 | — | $350,000 | 48 | 90% | 3 |
+| 4 | — | $450,000 | 48 | 90% | 4 |
+| 5 | Senior Advisor | $600,000 | 52 | 90% | 5 |
+| 6 | Elite Advisor | $800,000 | 52 | 90% | 6 |
+| 7 | Legend | Chairman's choice | — | — | 10 |
+
+### Accepted Commits
+*(to be filled as commits are made)*
+
+---
 
 ## Upcoming — Phase 6
 - Deploy polish + performance

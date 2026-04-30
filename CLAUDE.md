@@ -30,7 +30,7 @@ src/
   context/     ← AuthContext, TenantContext, NotificationContext
   hooks/       ← useAuth, useSubmissions, useAgentMetrics, usePersistency
   services/    ← firebaseService, authService, submissionService, exportService
-  utils/       ← calculations, validators, formatters, constants, dateHelpers
+  utils/       ← calculations, validators, formatters, constants, dateHelpers, extractFields
   components/
     auth/         ← LoginScreen
     onboarding/   ← WelcomeScreen
@@ -91,10 +91,11 @@ Step 9:  targetDials, targetTelContacts, targetF2FAttempts, targetFFI, targetCI,
 ```
 
 **Schema variants (use extractFields() to normalise):**
+- Nested schema: detected by `d.step1 !== undefined` (aspirational future format)
 - Current flat schema: detected by `d.referralCalls !== undefined`
-- Old flat schema: detected by `d.dials !== undefined`
-- Nested schema: aspirational future format (`d.step1`, `d.step2`, etc.)
-`extractFields(doc)` is defined in `MasterSheet.jsx` and should be the single source of truth for reading submission KPI fields in manager views.
+- Legacy flat schema: detected by `d.dials !== undefined`
+
+`extractFields(doc)` lives in `src/utils/extractFields.js` — the single source of truth for reading submission KPI fields in all manager views. Never re-implement locally.
 
 ### Persistency Document Shape
 ```
@@ -103,7 +104,7 @@ Step 9:  targetDials, targetTelContacts, targetF2FAttempts, targetFFI, targetCI,
   year, month,           // month = 1–12
   persistency,           // parseFloat, 0–100
   enteredBy,             // uid of manager
-  enteredAt              // Firestore Timestamp
+  enteredAt             // Firestore Timestamp
 }
 ```
 
@@ -127,33 +128,60 @@ Minimum 44px touch targets (mobile agents in field).
 Dark mode toggle in header (CSS class swap on `<html>`).
 
 ## Current Build Phase
-**Phase 4 — Manager Views + Wizard Step 9**
+**Phase 5 — Notifications + Career Portal + Gamification**
 
 ## Build Phase Status
 | Phase | Scope | Status |
 |-------|-------|--------|
 | P1 | Firebase + Auth setup | ✅ COMPLETE |
 | P2 | Login + Auth flow + Agent Dashboard | ✅ COMPLETE |
-| P3 | 9-step Weekly Wizard with auto-save | ✅ COMPLETE (8 steps built; Step 9 added in P4) |
-| P4 | Manager Views + Meeting Mode + Persistency | 🔄 IN PROGRESS |
-| P5 | Notifications + Career Portal + Gamification | ⏳ PENDING |
+| P3 | 9-step Weekly Wizard with auto-save | ✅ COMPLETE |
+| P4 | Manager Views + Meeting Mode + Persistency | ✅ COMPLETE |
+| P5 | Notifications + Career Portal + Gamification | 🔄 IN PROGRESS |
 | P6 | Deploy + Polish | ⏳ PENDING |
 
 ## Phase 4 — Component Checklist
-- [ ] Step9Goals.jsx — Next Week Goals wizard step
-- [ ] WizardForm.jsx — updated to 9 steps, includes step9 in submission payload
-- [ ] ManagerDashboard.jsx — tab bar: Overview | Master Sheet | Compliance | Persistency
-- [ ] MasterSheet.jsx — all agents × selected week, conditional formatting, CSV export
-- [ ] CompliancePanel.jsx — Submitted / Pending / Missing columns for selected week
-- [ ] PersistencyPanel.jsx — manager enters % per agent per month
-- [ ] MeetingMode.jsx — fullscreen projector view, agent-by-agent, keyboard nav
-- [ ] dateHelpers.js — add `getLastNSundays(n)` utility if missing
+- ✅ Step9Goals.jsx — Next Week Goals wizard step
+- ✅ WizardForm.jsx — updated to 9 steps, includes step9 in submission payload
+- ✅ ManagerDashboard.jsx — tab bar: Overview | Master Sheet | Compliance | Persistency
+- ✅ MasterSheet.jsx — all agents × selected week, conditional formatting, CSV export
+- ✅ CompliancePanel.jsx — Submitted / Pending / Missing columns for selected week
+- ✅ PersistencyPanel.jsx — manager enters % per agent per month
+- ✅ MeetingMode.jsx — fullscreen projector view, agent-by-agent, keyboard nav
+- ✅ dateHelpers.js — `getLastNSundays(n)` utility added
 
 ### Phase 4 Key Decisions
 - `selectedWeek` state is LIFTED to ManagerDashboard — shared by MasterSheet and CompliancePanel via props so both always show the same week
 - MeetingMode renders as a fixed overlay (z-50) triggered by "Start Meeting" button in ManagerDashboard header
-- Outlier flag in MeetingMode: any field > 3× unit average for that week. Visible ONLY in MeetingMode — never on agent's own view
+- Outlier flag in MeetingMode: any field > 3× unit average for that week. Visible ONLY in 1-on-1 mode — never in Group mode or on agent's own view
 - Persistency Firestore path: `/tenants/{tenantId}/persistency/{agentId}_{YYYY_MM}`
+
+### Phase 4 — COMPLETE. What was built and verified:
+- **Step9Goals.jsx** — Next Week Goals wizard step (targetDials, telContacts, F2F, FFI, CI, Apps, API, goalNotes)
+- **ManagerDashboard.jsx** — tab bar: Overview | Master Sheet | Compliance | Persistency. Start Meeting button triggers MeetingMode overlay. `selectedWeek` state lifted here, shared by MasterSheet + CompliancePanel.
+- **MasterSheet.jsx** — 23-column scrollable table, sticky Agent/Status columns, conditional API colour, dual schema support via `extractFields()`
+- **CompliancePanel.jsx** — Submitted / Draft / Missing columns, graceful empty state when users collection is empty
+- **PersistencyPanel.jsx** — manager enters % per agent per month, batch save
+- **MeetingMode.jsx** — fullscreen overlay, Group mode + 1-on-1 mode toggle. Group: 9-stat grid per agent. 1-on-1: adds 8 coaching ratio cards + self-evaluation bars. Keyboard nav (←/→/Esc). Outlier flag in 1-on-1 only.
+- **extractFields.js** — single source of truth for reading all submission field variants (flat current, flat legacy, nested future)
+- **computeRatios() + RATIO_THRESHOLDS + RATIO_LABELS** — coaching ratio engine
+- **Firestore rules** — UID bypass for super_admin, manager cross-agent reads, agent blocked from updating submitted docs
+- **Custom claims** — set via Admin SDK script, role: super_admin, tenantId: tatillife_south
+- **Seed scripts** — seed-super-admin-user.cjs, seed-agent-names.cjs
+
+### Phase 4 — Deferred to Phase 5.5 (post Phase 5)
+- Branch Overview slide in Group Meeting Mode (all agents, grouped by unit, unit subtotals, branch total, click agent to jump to their slide)
+- Drill-down cards in 1-on-1 Mode (tap stat card → slide-up drawer showing field breakdown without disrupting navigation flow)
+
+## utils/extractFields.js — Key Reference
+Single source of truth for reading submission data. Import in any manager component that reads submission KPI fields:
+```js
+import { extractFields, computeRatios, RATIO_THRESHOLDS, RATIO_LABELS } from '../../utils/extractFields';
+```
+Schema detection order:
+1. `d.step1 !== undefined` → nested schema (future)
+2. `d.referralCalls !== undefined` → flat schema (current)
+3. `d.dials !== undefined` → legacy flat schema (old)
 
 ## Wizard — 9 Steps
 | Step | Name | Key Fields |
@@ -189,6 +217,8 @@ Never commit .env.local
 - `functions/set-super-admin.cjs` — one-time Admin SDK script (sets super_admin claims)
 - `functions/seed-super-admin-user.cjs` — one-time seed script (creates super_admin user doc)
 - `functions/seed-agent-names.cjs` — one-time seed script (back-fills agentName onto existing submissions)
+
+All four are confirmed in `.gitignore`.
 
 ## What NOT to Build (Out of Scope)
 - CRM features (leads, contacts, client portfolio)
