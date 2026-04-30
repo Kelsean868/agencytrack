@@ -2,123 +2,141 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDateLabel } from '../../utils/validators';
+import {
+  extractFields,
+  computeRatios,
+  RATIO_KEY_ORDER,
+  RATIO_LABELS,
+  ratioColorClass,
+  formatRatioValue,
+} from '../../utils/extractFields';
 
-// Mirrors extractFields() in MasterSheet — keeps both views consistent.
-function extractFields(d) {
-  if (d.step1 !== undefined || d.step2 !== undefined) {
-    return {
-      dials: parseFloat(d.step1?.dials || 0),
-      telContacts: parseFloat(d.step2?.telContacts || 0),
-      f2fAttempts: parseFloat(d.step3?.f2fAttempts || 0),
-      ffi:
-        parseFloat(d.step3?.ffiConductedNew || 0) +
-        parseFloat(d.step3?.ffiConductedOld || 0),
-      ci:
-        parseFloat(d.step4?.ciConductedNew || 0) +
-        parseFloat(d.step4?.ciConductedOld || 0),
-      apps:
-        parseFloat(d.step4?.appsSoldNew || 0) +
-        parseFloat(d.step4?.appsSoldOld || 0),
-      api:
-        parseFloat(d.step4?.apiNew || 0) +
-        parseFloat(d.step4?.apiOld || 0),
-    };
-  }
-
-  const callSum =
-    (d.referralCalls || 0) +
-    (d.followUpCalls || 0) +
-    (d.coldCalls || 0) +
-    (d.seminarTradeshowCalls || 0) +
-    (d.serviceCalls || 0);
-
-  return {
-    dials: parseFloat(d.dials || d.totalDials || callSum || 0),
-    telContacts: parseFloat(d.telContacts || d.telephoneContacts || d.qualifiedApproaches || 0),
-    f2fAttempts: parseFloat(d.f2fAttempts || d.f2fContacts || 0),
-    ffi: parseFloat(d.ffiConducted || d.ffisScheduled || 0),
-    ci: parseFloat(d.ciConducted || d.closingInterviews || 0),
-    apps: parseFloat(d.applicationsSold || d.appsSold || 0),
-    api: parseFloat(d.apiSold || d.api || d.annualPremium || 0),
-  };
-}
-
-function resolveAgentName(sub) {
+function resolveName(sub) {
   if (sub.agentName)   return sub.agentName;
   if (sub.displayName) return sub.displayName;
   if (sub.userName)    return sub.userName;
   const uid = sub.agentId ?? sub.userId ?? '';
-  return uid ? `Agent ${uid.slice(-6)}` : 'Unknown Agent';
-}
-
-function computeUnitAverages(agentSlides) {
-  const keys = ['dials', 'telContacts', 'f2fAttempts', 'ffi', 'appsSold', 'apiSold'];
-  const avgs = {};
-  keys.forEach((k) => {
-    const values = agentSlides.map((s) => s[k]).filter((v) => typeof v === 'number');
-    avgs[k] = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
-  });
-  return avgs;
+  return uid ? `Agent ${uid.slice(-6)}` : 'Unknown';
 }
 
 function StatusBadge({ status }) {
-  const styles = {
-    submitted: 'bg-success/25 text-success',
-    draft: 'bg-warning/25 text-warning',
-    missing: 'bg-danger/25 text-danger',
-  };
+  const cls = status === 'submitted'
+    ? 'bg-success/25 text-success'
+    : 'bg-warning/25 text-warning';
   return (
-    <span className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${styles[status] ?? styles.missing}`}>
-      {status === 'submitted' ? 'Submitted' : status === 'draft' ? 'Draft' : 'Missing'}
+    <span className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${cls}`}>
+      {status === 'submitted' ? 'Submitted' : 'Draft'}
     </span>
+  );
+}
+
+function StatCard({ label, value, accent }) {
+  return (
+    <div className="flex flex-col items-center gap-1 rounded-xl p-4 bg-white/5">
+      <p className="text-[0.68rem] uppercase tracking-widest text-white/50 text-center">{label}</p>
+      <p className={`text-2xl font-bold ${accent ? 'text-primary' : 'text-white'}`}>{value}</p>
+    </div>
+  );
+}
+
+function RatioCard({ ratioKey, value }) {
+  const info = RATIO_LABELS[ratioKey];
+  return (
+    <div className="rounded-xl p-3 bg-white/5 flex flex-col gap-1">
+      <p className="text-[0.62rem] uppercase tracking-widest text-white/40">{info.label}</p>
+      <p className={`text-xl font-bold ${ratioColorClass(ratioKey, value)}`}>
+        {formatRatioValue(ratioKey, value)}
+      </p>
+      <p className="text-[0.58rem] text-white/30 leading-tight">{info.desc}</p>
+    </div>
+  );
+}
+
+function RatingBar({ label, value }) {
+  const pct = value > 0 ? (value / 10) * 100 : 0;
+  const barCls = value >= 7 ? 'bg-success' : value >= 4 ? 'bg-warning' : value > 0 ? 'bg-danger' : 'bg-white/20';
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-between items-baseline">
+        <p className="text-xs text-white/50">{label}</p>
+        <p className="text-sm font-semibold text-white">{value > 0 ? `${value}/10` : '—'}</p>
+      </div>
+      <div className="h-1.5 rounded-full bg-white/10">
+        <div className={`h-1.5 rounded-full transition-all ${barCls}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
   );
 }
 
 export default function MeetingMode({ submissions, selectedWeek, onClose }) {
   const [slide, setSlide] = useState(0);
+  const [mode, setMode]   = useState('group'); // 'group' | 'one-on-1'
 
   const agentSlides = useMemo(() => {
     return [...submissions]
-      .sort((a, b) => resolveAgentName(a).localeCompare(resolveAgentName(b)))
+      .sort((a, b) => resolveName(a).localeCompare(resolveName(b)))
       .map((sub) => {
-        const fields = extractFields(sub);
-        const ci = fields.ci;
-        const apps = fields.apps;
+        const f = extractFields(sub);
+        const ratios = computeRatios(f);
         return {
-          agentId: sub.agentId ?? sub.userId,
-          name: resolveAgentName(sub),
-          status: sub.status ?? 'draft',
-          dials: fields.dials,
-          telContacts: fields.telContacts,
-          f2fAttempts: fields.f2fAttempts,
-          ffi: fields.ffi,
-          appsSold: apps,
-          apiSold: fields.api,
-          closingRatio: ci > 0 ? Math.round((apps / ci) * 100) : null,
+          name:                  resolveName(sub),
+          status:                sub.status ?? 'draft',
+          prospectingTouches:    f.prospectingTouches,
+          totalTelAttempts:      f.totalTelAttempts,
+          f2fAttempts:           f.f2fAttempts,
+          qualifiedApproaches:   f.qualifiedApproaches,
+          ffiConducted:          f.ffiConducted,
+          solutionPresentations: f.solutionPresentations,
+          ciConducted:           f.ciConducted,
+          applicationsSold:      f.applicationsSold,
+          livesSold:             f.livesSold,
+          apiSold:               f.apiSold,
+          ratios,
+          planningEffectiveness: f.planningEffectiveness,
+          timeManagement:        f.timeManagement,
+          salesPerformance:      f.salesPerformance,
+          prospectingEffort:     f.prospectingEffort,
+          overallRating:         f.overallRating,
+          evaluationNotes:       f.evaluationNotes,
         };
       });
   }, [submissions]);
 
-  const unitAvgs = useMemo(() => computeUnitAverages(agentSlides), [agentSlides]);
+  const unitAvgs = useMemo(() => {
+    const keys = ['prospectingTouches', 'totalTelAttempts', 'f2fAttempts', 'qualifiedApproaches', 'ffiConducted', 'applicationsSold', 'apiSold'];
+    const avgs = {};
+    keys.forEach((k) => {
+      const vals = agentSlides.map((s) => s[k]).filter((v) => typeof v === 'number');
+      avgs[k] = vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+    });
+    return avgs;
+  }, [agentSlides]);
 
   const totalSlides = agentSlides.length + 2; // summary + agents + closing
   const isFirst = slide === 0;
   const isLast  = slide === totalSlides - 1;
 
-  const totalAPI   = useMemo(() => agentSlides.reduce((sum, s) => sum + s.apiSold,  0), [agentSlides]);
-  const totalApps  = useMemo(() => agentSlides.reduce((sum, s) => sum + s.appsSold, 0), [agentSlides]);
+  const totalAPI = useMemo(
+    () => agentSlides.reduce((s, a) => s + a.apiSold, 0),
+    [agentSlides]
+  );
+  const totalApps = useMemo(
+    () => agentSlides.reduce((s, a) => s + a.applicationsSold, 0),
+    [agentSlides]
+  );
   const avgClosing = useMemo(() => {
-    const ratios = agentSlides.map((s) => s.closingRatio).filter((v) => v !== null);
-    return ratios.length > 0 ? Math.round(ratios.reduce((a, b) => a + b, 0) / ratios.length) : null;
+    const vals = agentSlides.map((a) => a.ratios.closingRatio).filter((v) => v !== null);
+    return vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
   }, [agentSlides]);
   const submittedCount = useMemo(
-    () => agentSlides.filter((s) => s.status === 'submitted').length,
+    () => agentSlides.filter((a) => a.status === 'submitted').length,
     [agentSlides]
   );
 
-  const go = useCallback((dir) => {
-    setSlide((s) => Math.min(Math.max(s + dir, 0), totalSlides - 1));
-  }, [totalSlides]);
+  const go = useCallback(
+    (dir) => setSlide((s) => Math.min(Math.max(s + dir, 0), totalSlides - 1)),
+    [totalSlides]
+  );
 
   useEffect(() => {
     const handler = (e) => {
@@ -130,39 +148,60 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     return () => window.removeEventListener('keydown', handler);
   }, [go, onClose]);
 
-  const isOutlier = (agentSlide) => {
-    const keys = ['dials', 'telContacts', 'f2fAttempts', 'ffi', 'appsSold', 'apiSold'];
-    return keys.some((k) => unitAvgs[k] > 0 && agentSlide[k] > unitAvgs[k] * 3);
-  };
+  const isOutlier = useCallback(
+    (agent) => {
+      const keys = ['prospectingTouches', 'totalTelAttempts', 'f2fAttempts', 'qualifiedApproaches', 'ffiConducted', 'applicationsSold', 'apiSold'];
+      return keys.some((k) => unitAvgs[k] > 0 && agent[k] > unitAvgs[k] * 3);
+    },
+    [unitAvgs]
+  );
+
+  const agentStats = (agent) => [
+    { label: 'Prospect. Touches', value: agent.prospectingTouches },
+    { label: 'Tel Attempts',      value: agent.totalTelAttempts },
+    { label: 'F2F Attempts',      value: agent.f2fAttempts },
+    { label: 'Qual. Approaches',  value: agent.qualifiedApproaches },
+    { label: 'FFI Conducted',     value: agent.ffiConducted },
+    { label: 'Solutions',         value: agent.solutionPresentations },
+    { label: 'Total CI',          value: agent.ciConducted },
+    { label: 'Apps Sold',         value: agent.applicationsSold },
+    { label: 'API (TTD)',         value: formatCurrency(agent.apiSold), accent: true },
+  ];
+
+  const ratingBars = (agent) => [
+    { label: 'Planning',     value: agent.planningEffectiveness },
+    { label: 'Time Mgmt',    value: agent.timeManagement },
+    { label: 'Sales Perf.',  value: agent.salesPerformance },
+    { label: 'Prospecting',  value: agent.prospectingEffort },
+    { label: 'Overall',      value: agent.overallRating },
+  ];
 
   const renderSlide = () => {
     // Summary slide
     if (slide === 0) {
       return (
         <div className="flex flex-col items-center justify-center flex-1 gap-10 px-8 text-center">
-          <h2 className="text-2xl font-semibold" style={{ color: '#01696f' }}>
+          <h2 className="text-2xl font-semibold text-primary">
             Week of {formatDateLabel(selectedWeek)}
           </h2>
           <div className="grid grid-cols-2 gap-10 w-full max-w-2xl">
-            <div>
-              <p className="text-sm uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Total API</p>
-              <p className="font-bold" style={{ fontSize: '2.5rem', color: '#01696f' }}>
-                {formatCurrency(totalAPI)}
-              </p>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs uppercase tracking-widest text-white/50">Total API</p>
+              <p className="text-5xl font-bold text-primary">{formatCurrency(totalAPI)}</p>
             </div>
-            <div>
-              <p className="text-sm uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Apps Sold</p>
-              <p className="font-bold text-white" style={{ fontSize: '2.5rem' }}>{totalApps}</p>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs uppercase tracking-widest text-white/50">Apps Sold</p>
+              <p className="text-5xl font-bold text-white">{totalApps}</p>
             </div>
-            <div>
-              <p className="text-sm uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Avg Closing</p>
-              <p className="font-bold text-white" style={{ fontSize: '2.5rem' }}>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs uppercase tracking-widest text-white/50">Avg Closing</p>
+              <p className="text-5xl font-bold text-white">
                 {avgClosing !== null ? `${avgClosing}%` : '—'}
               </p>
             </div>
-            <div>
-              <p className="text-sm uppercase tracking-widest mb-2" style={{ color: 'rgba(255,255,255,0.5)' }}>Submission</p>
-              <p className="font-bold text-white" style={{ fontSize: '2.5rem' }}>
+            <div className="flex flex-col items-center gap-2">
+              <p className="text-xs uppercase tracking-widest text-white/50">Submissions</p>
+              <p className="text-5xl font-bold text-white">
                 {submittedCount}/{agentSlides.length}
               </p>
             </div>
@@ -175,80 +214,83 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     if (isLast) {
       return (
         <div className="flex flex-col items-center justify-center flex-1 gap-6 text-center px-8">
-          <p className="text-sm uppercase tracking-widest" style={{ color: '#01696f' }}>Meeting Complete</p>
-          <p className="text-white font-bold" style={{ fontSize: '2rem' }}>
+          <p className="text-xs uppercase tracking-widest text-primary">Meeting Complete</p>
+          <p className="text-4xl font-bold text-white">
             {agentSlides.length} agent{agentSlides.length !== 1 ? 's' : ''} reviewed
           </p>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '1rem' }}>
-            Week of {formatDateLabel(selectedWeek)}
-          </p>
+          <p className="text-white/50">Week of {formatDateLabel(selectedWeek)}</p>
         </div>
       );
     }
 
     // Agent slide
     const agent = agentSlides[slide - 1];
-    const outlier = isOutlier(agent);
-    const ratio = agent.closingRatio;
-
-    const stats = [
-      { label: 'Dials',       value: agent.dials },
-      { label: 'Tel Contacts', value: agent.telContacts },
-      { label: 'F2F',         value: agent.f2fAttempts },
-      { label: 'FFI',         value: agent.ffi },
-      { label: 'Apps Sold',   value: agent.appsSold },
-      { label: 'API',         value: formatCurrency(agent.apiSold), accent: true },
-    ];
 
     return (
-      <div className="flex flex-col items-center justify-center flex-1 gap-6 px-8 w-full max-w-3xl mx-auto">
-        <div className="flex items-center gap-3">
-          <h2
-            className="font-display font-bold text-white text-center"
-            style={{ fontSize: '2.5rem', lineHeight: 1.1 }}
-          >
-            {agent.name}
-          </h2>
-          {outlier && (
-            <span title="One or more stats are significantly above the team average">
-              <AlertTriangle size={24} className="text-warning shrink-0" />
-            </span>
-          )}
-        </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-6 px-8 py-4 w-full max-w-3xl mx-auto">
 
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.875rem' }}>
-          Week ending {formatDateLabel(selectedWeek)}
-        </p>
-
-        <div className="grid grid-cols-3 gap-4 w-full">
-          {stats.map((s) => (
-            <div
-              key={s.label}
-              className="flex flex-col items-center gap-1 rounded-xl p-4"
-              style={{ background: 'rgba(255,255,255,0.06)' }}
-            >
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                {s.label}
-              </p>
-              <p
-                className="font-bold"
-                style={{ fontSize: '1.5rem', color: s.accent ? '#01696f' : 'white' }}
-              >
-                {s.value}
-              </p>
+          {/* Agent header */}
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex items-center gap-3">
+              <h2 className="text-4xl font-display font-bold text-white leading-tight">
+                {agent.name}
+              </h2>
+              {mode === 'one-on-1' && isOutlier(agent) && (
+                <AlertTriangle
+                  size={22}
+                  className="text-warning shrink-0"
+                  title="One or more stats significantly above team average"
+                />
+              )}
             </div>
-          ))}
-        </div>
+            <p className="text-sm text-white/50">Week ending {formatDateLabel(selectedWeek)}</p>
+            <StatusBadge status={agent.status} />
+          </div>
 
-        <div className="flex gap-4 items-center">
-          <StatusBadge status={agent.status} />
-          {ratio !== null && (
-            <span
-              className="inline-flex px-3 py-1 rounded-full text-sm font-semibold"
-              style={{ background: 'rgba(1,105,111,0.25)', color: '#01696f' }}
-            >
-              {ratio}% closing ratio
-            </span>
+          {/* 3×3 stat grid */}
+          <div className="grid grid-cols-3 gap-3">
+            {agentStats(agent).map((s) => (
+              <StatCard key={s.label} label={s.label} value={s.value} accent={s.accent} />
+            ))}
+          </div>
+
+          {/* Closing ratio */}
+          {agent.ratios.closingRatio !== null && (
+            <div className="flex justify-center">
+              <span className="inline-flex px-4 py-1.5 rounded-full text-sm font-semibold bg-primary/25 text-primary">
+                {agent.ratios.closingRatio}% closing ratio
+              </span>
+            </div>
+          )}
+
+          {/* ONE-ON-ONE — Coaching Ratios */}
+          {mode === 'one-on-1' && (
+            <>
+              <div>
+                <p className="text-xs uppercase tracking-widest text-white/40 mb-3">Coaching Ratios</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {RATIO_KEY_ORDER.map((key) => (
+                    <RatioCard key={key} ratioKey={key} value={agent.ratios[key]} />
+                  ))}
+                </div>
+              </div>
+
+              {/* ONE-ON-ONE — Self-Evaluation */}
+              <div>
+                <p className="text-xs uppercase tracking-widest text-white/40 mb-3">Self-Evaluation</p>
+                <div className="flex flex-col gap-3 rounded-xl bg-white/5 p-4">
+                  {ratingBars(agent).map((r) => (
+                    <RatingBar key={r.label} label={r.label} value={r.value} />
+                  ))}
+                </div>
+                {agent.evaluationNotes && (
+                  <p className="mt-3 text-sm text-white/50 italic leading-relaxed">
+                    "{agent.evaluationNotes}"
+                  </p>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
@@ -256,25 +298,43 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col"
-      style={{ background: '#28251d' }}
-    >
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4 shrink-0">
-        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.875rem' }}>
-          {slide + 1} / {totalSlides}
-        </p>
-        <button
-          onClick={onClose}
-          className="w-11 h-11 flex items-center justify-center rounded-full transition-colors"
-          style={{ color: 'rgba(255,255,255,0.6)' }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'white')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'rgba(255,255,255,0.6)')}
-          aria-label="Exit meeting mode"
-        >
-          <X size={22} />
-        </button>
+    <div className="fixed inset-0 z-50 flex flex-col bg-ink">
+
+      {/* Top bar — 3-col grid */}
+      <div className="grid grid-cols-3 items-center px-6 py-4 shrink-0">
+        <p className="text-sm text-white/40">{slide + 1} / {totalSlides}</p>
+
+        {/* Mode toggle */}
+        <div className="flex justify-center">
+          <div className="flex rounded-full bg-white/10 p-0.5">
+            <button
+              onClick={() => setMode('group')}
+              className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                mode === 'group' ? 'bg-primary text-white' : 'text-white/50 hover:text-white'
+              }`}
+            >
+              📊 Group
+            </button>
+            <button
+              onClick={() => setMode('one-on-1')}
+              className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
+                mode === 'one-on-1' ? 'bg-primary text-white' : 'text-white/50 hover:text-white'
+              }`}
+            >
+              🔍 1-on-1
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={onClose}
+            className="w-11 h-11 flex items-center justify-center rounded-full text-white/60 hover:text-white transition-colors"
+            aria-label="Exit meeting mode"
+          >
+            <X size={22} />
+          </button>
+        </div>
       </div>
 
       {/* Slide content */}
@@ -287,26 +347,22 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
         <button
           onClick={() => go(-1)}
           disabled={isFirst}
-          className="w-14 h-14 flex items-center justify-center rounded-full border transition-colors disabled:opacity-20"
-          style={{ borderColor: 'rgba(255,255,255,0.3)', color: 'white', background: 'rgba(255,255,255,0.06)' }}
+          className="w-14 h-14 flex items-center justify-center rounded-full border border-white/30 bg-white/5 text-white hover:bg-white/10 transition-colors disabled:opacity-20"
           aria-label="Previous slide"
         >
           <ChevronLeft size={28} />
         </button>
 
         {/* Dot indicators */}
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 items-center">
           {Array.from({ length: totalSlides }).map((_, i) => (
             <button
               key={i}
               onClick={() => setSlide(i)}
-              className="rounded-full transition-all"
-              style={{
-                width: i === slide ? '20px' : '6px',
-                height: '6px',
-                background: i === slide ? '#01696f' : 'rgba(255,255,255,0.25)',
-              }}
               aria-label={`Go to slide ${i + 1}`}
+              className={`rounded-full transition-all ${
+                i === slide ? 'w-5 h-1.5 bg-primary' : 'w-1.5 h-1.5 bg-white/25 hover:bg-white/50'
+              }`}
             />
           ))}
         </div>
@@ -314,8 +370,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
         <button
           onClick={() => go(1)}
           disabled={isLast}
-          className="w-14 h-14 flex items-center justify-center rounded-full border transition-colors disabled:opacity-20"
-          style={{ borderColor: 'rgba(255,255,255,0.3)', color: 'white', background: 'rgba(255,255,255,0.06)' }}
+          className="w-14 h-14 flex items-center justify-center rounded-full border border-white/30 bg-white/5 text-white hover:bg-white/10 transition-colors disabled:opacity-20"
           aria-label="Next slide"
         >
           <ChevronRight size={28} />
