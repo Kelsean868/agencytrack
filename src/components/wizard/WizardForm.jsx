@@ -115,6 +115,7 @@ export default function WizardForm({ onClose }) {
   const [step, setStep]                 = useState(1);
   const [formData, setFormData]         = useState(INITIAL_DATA);
   const [lastWeekData, setLastWeekData] = useState(null);
+  const [draftStatus, setDraftStatus]   = useState(null);
   const [saving, setSaving]             = useState(false);
   const [submitting, setSubmitting]     = useState(false);
   const [error, setError]               = useState('');
@@ -130,8 +131,9 @@ export default function WizardForm({ onClose }) {
     if (!weekStarting || !user) return;
     getDraft(user.uid, weekStarting)
       .then((draft) => {
-        if (!draft) return;
+        if (!draft) { setDraftStatus(null); return; }
         const { agentId, weekStarting: _ws, status, updatedAt, submittedAt, ...fields } = draft;
+        setDraftStatus(status ?? null);
         setFormData((prev) => ({ ...prev, ...fields }));
       })
       .catch(console.error);
@@ -141,13 +143,15 @@ export default function WizardForm({ onClose }) {
     if (!weekStarting || !user || screen === 'date') return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
+      // Do not auto-save submitted reports.
+      if (draftStatus === 'submitted') return;
       setSaving(true);
       try { await saveDraft(user.uid, weekStarting, formData); }
-      catch (e) { console.error('Auto-save failed:', e); }
+      catch { /* silently ignore auto-save errors */ }
       finally { setSaving(false); }
     }, 1500);
     return () => clearTimeout(saveTimer.current);
-  }, [formData, weekStarting, screen, user]);
+  }, [formData, weekStarting, screen, user, draftStatus]);
 
   const handleChange = useCallback((name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -179,9 +183,14 @@ export default function WizardForm({ onClose }) {
 
   const handleSubmit = async () => {
     setError('');
+    if (draftStatus === 'submitted') {
+      setError("This week's report has already been submitted and cannot be changed.");
+      return;
+    }
     setSubmitting(true);
     try {
       await submitReport(user.uid, weekStarting, formData);
+      setDraftStatus('submitted');
       setScreen('done');
     } catch (e) {
       setError('Submission failed. Please try again.');

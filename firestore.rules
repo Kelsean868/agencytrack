@@ -2,19 +2,95 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    match /tenants/{tenantId}/users/{userId} {
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if false;
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    match /tenants/{tenantId}/submissions/{submissionId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null
-        && request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null
-        && request.auth.uid == resource.data.userId;
-      allow delete: if false;
+    function getRole() {
+      return request.auth.token.role;
     }
 
+    function isAgent() {
+      return getRole() == 'agent';
+    }
+
+    function isManager() {
+      return getRole() in ['unit_manager', 'branch_manager', 'super_admin'];
+    }
+
+    function isSuperAdmin() {
+      return getRole() == 'super_admin';
+    }
+
+    function belongsToTenant(tenantId) {
+      return request.auth.token.tenantId == tenantId;
+    }
+
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+
+    // Tenant-scoped rules
+    match /tenants/{tenantId} {
+
+      // Users collection
+      match /users/{userId} {
+        allow read: if isSignedIn() && belongsToTenant(tenantId) && (isManager() || isOwner(userId));
+        allow write: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+      }
+
+      // Submissions collection
+      match /submissions/{submissionId} {
+        allow read: if isSignedIn() && belongsToTenant(tenantId) &&
+          (isManager() || (isAgent() && resource.data.agentId == request.auth.uid));
+
+        allow create: if isSignedIn() && belongsToTenant(tenantId) && isAgent() &&
+          request.resource.data.agentId == request.auth.uid;
+
+        allow update: if isSignedIn() && belongsToTenant(tenantId) &&
+          (
+            isManager() ||
+            (isAgent() &&
+             resource.data.agentId == request.auth.uid &&
+             resource.data.status == 'draft')
+          );
+
+        allow delete: if false;
+      }
+
+      // Persistency collection
+      match /persistency/{docId} {
+        allow read: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+        allow write: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+      }
+
+      // Goals collection
+      match /goals/{goalId} {
+        allow read: if isSignedIn() && belongsToTenant(tenantId) &&
+          (isManager() || resource.data.agentId == request.auth.uid);
+        allow write: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+      }
+
+      // Notifications collection
+      match /notifications/{notificationId} {
+        allow read: if isSignedIn() && belongsToTenant(tenantId) &&
+          resource.data.userId == request.auth.uid;
+        allow write: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+      }
+
+      // Leaderboard
+      match /leaderboard/{userId} {
+        allow read: if isSignedIn() && belongsToTenant(tenantId);
+        allow write: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+      }
+
+      // Tenant config — managers read, super_admin writes
+      match /config/{docId} {
+        allow read: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+        allow write: if isSignedIn() && belongsToTenant(tenantId) && isSuperAdmin();
+      }
+
+    }
   }
 }
