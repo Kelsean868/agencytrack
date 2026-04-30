@@ -80,6 +80,7 @@ Agents submit weekly activity reports. Managers review and track team compliance
 - polish: MeetingMode uses extractFields() for all submission schemas; same name chain as MasterSheet
 - seed: seed-agent-names.cjs back-fills agentName onto existing submissions without it
 - `e0af086` — polish: agent name display fixed in MeetingMode
+- `dc10bd6` — fix: meeting mode agent name resolved correctly (submissionService now writes agentName; ManagerDashboard enriches submissions before passing to MeetingMode)
 - **Phase 4 COMPLETE — all features verified working**
 
 ### What Was Built
