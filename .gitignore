@@ -20,6 +20,10 @@ dist-ssr
 .env.*.local
 *.local
 
+# Service account key — NEVER COMMIT
+service-account-key.json
+scripts/service-account-key.json
+
 # MCP config — personal, each dev has their own
 .mcp.json
 
