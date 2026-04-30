@@ -72,7 +72,8 @@ service cloud.firestore {
       }
 
       match /config/{docId} {
-        allow read, write: if canManage(tenantId);
+        allow read:  if isSignedIn() && getTenantId() == tenantId;
+        allow write: if isSignedIn() && (isSuperAdminUID() || getRole() == 'super_admin');
       }
 
     }

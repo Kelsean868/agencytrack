@@ -1,6 +1,12 @@
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { Pencil, X, Check } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
+import { getGoals, setGoals, getCompanyMinimums } from '../../services/goalsService';
+import { useAuth } from '../../context/AuthContext';
 import BadgeGrid from '../gamification/BadgeGrid';
+import CommissionPlayground from '../goals/CommissionPlayground';
+
+const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 
 const CAREER_LEVELS = [
   { level: 1, title: 'Salesperson',    minApi: 200000, minApps: 42, minPersistency: 90, minYears: 0  },
@@ -49,6 +55,213 @@ function CriterionRow({ label, current, target, met, formatVal }) {
   );
 }
 
+function commitmentColorClass(value, managerTarget, floor) {
+  if (value >= managerTarget && managerTarget > 0) return 'text-success font-semibold';
+  if (value >= floor)                               return 'text-warning font-semibold';
+  return 'text-danger font-semibold';
+}
+
+// ── Goals Overview section ────────────────────────────────────────────────────
+function GoalsOverview({ submissions, user, persistencyData }) {
+  const { user: authUser, userProfile } = useAuth();
+  const [goals, setGoalsState]       = useState(null);
+  const [minimums, setMinimums]      = useState(null);
+  const [editing, setEditing]        = useState(false);
+  const [showDerived, setShowDerived] = useState(false);
+  const [saving, setSaving]          = useState(false);
+  const [saveError, setSaveError]    = useState('');
+  const [draft, setDraft]            = useState({
+    personalAnnualAPI:         '',
+    personalAnnualApps:        '',
+    personalAnnualPersistency: '',
+  });
+
+  useEffect(() => {
+    if (!authUser?.uid) return;
+    Promise.all([
+      getGoals(TENANT_ID, authUser.uid).catch(() => null),
+      getCompanyMinimums(TENANT_ID).catch(() => ({ annualAPI: 200000, annualApps: 42, persistency: 90 })),
+    ]).then(([g, mins]) => {
+      setGoalsState(g);
+      setMinimums(mins);
+      setDraft({
+        personalAnnualAPI:         g?.personalAnnualAPI         ?? '',
+        personalAnnualApps:        g?.personalAnnualApps        ?? '',
+        personalAnnualPersistency: g?.personalAnnualPersistency ?? '',
+      });
+    });
+  }, [authUser?.uid]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError('');
+    try {
+      const name = userProfile?.name ?? userProfile?.email ?? 'Agent';
+      await setGoals(TENANT_ID, authUser.uid, {
+        personalAnnualAPI:         draft.personalAnnualAPI,
+        personalAnnualApps:        draft.personalAnnualApps,
+        personalAnnualPersistency: draft.personalAnnualPersistency,
+      }, authUser.uid, name);
+      const updated = await getGoals(TENANT_ID, authUser.uid);
+      setGoalsState(updated);
+      setEditing(false);
+    } catch (e) {
+      setSaveError(e.message ?? 'Failed to save.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const mins  = minimums ?? { annualAPI: 200000, annualApps: 42, persistency: 90 };
+  const mgr   = {
+    api:         goals?.targetAnnualAPI         ?? 0,
+    apps:        goals?.targetAnnualApps        ?? 0,
+    persistency: goals?.targetAnnualPersistency ?? 0,
+  };
+  const mine  = {
+    api:         goals?.personalAnnualAPI         ?? 0,
+    apps:        goals?.personalAnnualApps        ?? 0,
+    persistency: goals?.personalAnnualPersistency ?? 0,
+  };
+
+  const rows = [
+    {
+      label: 'Annual API (TTD)',
+      min: formatCurrency(mins.annualAPI),
+      mgr: mgr.api > 0 ? formatCurrency(mgr.api) : '—',
+      mine: mine.api > 0 ? formatCurrency(mine.api) : '—',
+      color: mine.api > 0 ? commitmentColorClass(mine.api, mgr.api, mins.annualAPI) : 'text-ink-muted',
+      draftKey: 'personalAnnualAPI',
+      monthly: mine.api > 0 ? formatCurrency(mine.api / 10) : '—',
+      weekly:  mine.api > 0 ? formatCurrency(mine.api / 40) : '—',
+    },
+    {
+      label: 'Annual Apps',
+      min: mins.annualApps,
+      mgr: mgr.apps > 0 ? mgr.apps : '—',
+      mine: mine.apps > 0 ? mine.apps : '—',
+      color: mine.apps > 0 ? commitmentColorClass(mine.apps, mgr.apps, mins.annualApps) : 'text-ink-muted',
+      draftKey: 'personalAnnualApps',
+      monthly: mine.apps > 0 ? Math.ceil(mine.apps / 10) : '—',
+      weekly:  mine.apps > 0 ? Math.ceil(mine.apps / 40) : '—',
+    },
+    {
+      label: 'Persistency %',
+      min: `${mins.persistency}%`,
+      mgr: mgr.persistency > 0 ? `${mgr.persistency}%` : '—',
+      mine: mine.persistency > 0 ? `${mine.persistency}%` : '—',
+      color: mine.persistency > 0 ? commitmentColorClass(mine.persistency, mgr.persistency, mins.persistency) : 'text-ink-muted',
+      draftKey: 'personalAnnualPersistency',
+      monthly: null,
+      weekly:  null,
+    },
+  ];
+
+  return (
+    <div className="card flex flex-col gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-sm font-semibold text-ink">Goals Overview</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowDerived((v) => !v)}
+            className="text-xs text-primary hover:underline"
+          >
+            {showDerived ? 'Hide monthly / weekly' : 'Show monthly / weekly'}
+          </button>
+          {!editing ? (
+            <button
+              onClick={() => setEditing(true)}
+              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border text-xs font-semibold text-ink-muted hover:text-ink transition-colors"
+            >
+              <Pencil size={12} />
+              Edit My Goals
+            </button>
+          ) : (
+            <div className="flex gap-1">
+              <button
+                onClick={() => { setEditing(false); setSaveError(''); }}
+                className="h-8 px-3 rounded-lg border border-border text-xs text-ink-muted hover:text-ink transition-colors"
+              >
+                <X size={12} />
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="h-8 px-3 rounded-lg bg-primary text-white text-xs font-semibold disabled:opacity-60 hover:bg-[color:var(--color-primary-dark)] transition-colors flex items-center gap-1"
+              >
+                <Check size={12} />
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto -mx-1">
+        <table className="w-full text-xs border-collapse min-w-[320px]">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left px-2 py-1.5 text-ink-muted font-semibold">Metric</th>
+              <th className="text-right px-2 py-1.5 text-ink-muted font-semibold">Company Min</th>
+              <th className="text-right px-2 py-1.5 text-ink-muted font-semibold">Manager Target</th>
+              <th className="text-right px-2 py-1.5 text-ink-muted font-semibold">My Commitment</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <>
+                <tr key={row.label} className={i % 2 === 0 ? 'bg-surface' : 'bg-white'}>
+                  <td className="px-2 py-2 font-medium text-ink">{row.label}</td>
+                  <td className="px-2 py-2 text-right text-ink-muted">{String(row.min)}</td>
+                  <td className="px-2 py-2 text-right text-ink-muted">{String(row.mgr)}</td>
+                  <td className={`px-2 py-2 text-right ${row.color}`}>
+                    {editing ? (
+                      <input
+                        type="number"
+                        min={0}
+                        step={row.draftKey === 'personalAnnualAPI' ? 1000 : 1}
+                        value={draft[row.draftKey]}
+                        onChange={(e) =>
+                          setDraft((prev) => ({ ...prev, [row.draftKey]: e.target.value }))
+                        }
+                        className="w-28 h-7 px-2 rounded border border-primary/40 text-xs text-ink focus:outline-none text-right"
+                      />
+                    ) : (
+                      String(row.mine)
+                    )}
+                  </td>
+                </tr>
+                {showDerived && row.monthly !== null && (
+                  <tr key={`${row.label}-derived`} className={`${i % 2 === 0 ? 'bg-surface' : 'bg-white'} opacity-70`}>
+                    <td className="pl-6 pr-2 py-1 text-ink-muted italic">↳ Monthly / Weekly</td>
+                    <td className="px-2 py-1 text-right text-ink-muted">—</td>
+                    <td className="px-2 py-1 text-right text-ink-muted">—</td>
+                    <td className="px-2 py-1 text-right text-ink-muted">
+                      {row.monthly !== '—' ? `${row.monthly} / ${row.weekly}` : '—'}
+                    </td>
+                  </tr>
+                )}
+              </>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {saveError && (
+        <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{saveError}</p>
+      )}
+
+      <div className="flex flex-wrap gap-3 text-xs text-ink-muted pt-1 border-t border-border/60">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-success inline-block" /> At or above manager target</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-warning inline-block" /> Above floor, below target</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-danger inline-block" /> Below company minimum</span>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
 export default function CareerPortal({ submissions, user, persistencyData }) {
   const thisYear = new Date().getFullYear();
 
@@ -94,8 +307,20 @@ export default function CareerPortal({ submissions, user, persistencyData }) {
 
   const nextLevel = CAREER_LEVELS.find((l) => l.level === currentLevel.level + 1) ?? null;
 
+  const { user: authUser } = useAuth();
+
   return (
     <div className="flex flex-col gap-5 pb-8">
+
+      {/* Goals Overview — first section */}
+      <GoalsOverview submissions={submissions} user={user} persistencyData={persistencyData} />
+
+      {/* Commission Playground */}
+      <CommissionPlayground
+        submissions={submissions}
+        agentId={authUser?.uid}
+        tenantId={TENANT_ID}
+      />
 
       {/* Current level badge */}
       <div className="card flex items-center gap-5">
