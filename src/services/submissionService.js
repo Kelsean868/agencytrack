@@ -79,6 +79,15 @@ function sanitize(data) {
     ratingProspecting:             int(data.ratingProspecting),
     ratingOverall:                 int(data.ratingOverall),
     notes:                         String(data.notes ?? ''),
+    // Step 9 — Next Week Goals
+    targetDials:                   int(data.targetDials),
+    targetTelContacts:             int(data.targetTelContacts),
+    targetF2FAttempts:             int(data.targetF2FAttempts),
+    targetFFI:                     int(data.targetFFI),
+    targetCI:                      int(data.targetCI),
+    targetAppsSold:                int(data.targetAppsSold),
+    targetAPI:                     float(data.targetAPI),
+    goalNotes:                     String(data.goalNotes ?? ''),
   };
 }
 

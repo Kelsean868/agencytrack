@@ -12,6 +12,7 @@ import Step5NewNames          from './steps/Step5NewNames';
 import Step6DeliveriesService from './steps/Step6DeliveriesService';
 import Step7TimeManagement    from './steps/Step7TimeManagement';
 import Step8SelfEvaluation    from './steps/Step8SelfEvaluation';
+import Step9Goals             from './steps/Step9Goals';
 
 const STEPS = [
   { title: 'Prospecting',                component: Step1Prospecting },
@@ -22,6 +23,7 @@ const STEPS = [
   { title: 'Deliveries & Service',       component: Step6DeliveriesService },
   { title: 'Time Management',            component: Step7TimeManagement },
   { title: 'Self-Evaluation',            component: Step8SelfEvaluation },
+  { title: 'Next Week Goals',            component: Step9Goals },
 ];
 
 const TOTAL_STEPS = STEPS.length;
@@ -93,6 +95,15 @@ const INITIAL_DATA = {
   ratingProspecting:            0,
   ratingOverall:                0,
   notes:                        '',
+  // Step 9
+  targetDials:                  0,
+  targetTelContacts:            0,
+  targetF2FAttempts:            0,
+  targetFFI:                    0,
+  targetCI:                     0,
+  targetAppsSold:               0,
+  targetAPI:                    0,
+  goalNotes:                    '',
 };
 
 // screen: 'date' | 'step' | 'review' | 'done'
@@ -182,6 +193,7 @@ export default function WizardForm({ onClose }) {
 
   const StepComponent = screen === 'step' ? STEPS[step - 1].component : null;
   const extraProps    = screen === 'step' && (step === 5 || step === 6) ? { lastWeekData } : {};
+
 
   const prevLabel = screen === 'review' ? 'Back' : step === 1 ? 'Change week' : 'Prev';
   const nextLabel = screen === 'review'
@@ -466,6 +478,17 @@ function ReviewSummary({ data, weekStarting }) {
         <ReviewRow label="Prospecting"       value={`${data.ratingProspecting}/10`} />
         <ReviewRow label="Overall"           value={`${data.ratingOverall}/10`} />
         {data.notes && <ReviewRow label="Notes" value={data.notes} />}
+      </ReviewSection>
+
+      <ReviewSection title="Step 9 — Next Week Goals">
+        <ReviewRow label="Target Dials"       value={data.targetDials} />
+        <ReviewRow label="Target Tel Contacts" value={data.targetTelContacts} />
+        <ReviewRow label="Target F2F Attempts" value={data.targetF2FAttempts} />
+        <ReviewRow label="Target FFI"          value={data.targetFFI} />
+        <ReviewRow label="Target CI"           value={data.targetCI} />
+        <ReviewRow label="Target Apps Sold"    value={data.targetAppsSold} />
+        <ReviewRow label="Target API"          value={formatCurrency(data.targetAPI)} />
+        {data.goalNotes && <ReviewRow label="Goal Notes" value={data.goalNotes} />}
       </ReviewSection>
     </div>
   );
