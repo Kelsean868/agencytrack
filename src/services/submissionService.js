@@ -91,21 +91,22 @@ function sanitize(data) {
   };
 }
 
-export async function saveDraft(uid, weekStarting, data) {
+export async function saveDraft(uid, agentName, weekStarting, data) {
   const ref = doc(db, `tenants/${tenantId}/submissions/${submissionDocId(uid, weekStarting)}`);
   await setDoc(
     ref,
-    { ...sanitize(data), userId: uid, agentId: uid, weekStarting, status: 'draft', updatedAt: serverTimestamp() },
+    { ...sanitize(data), userId: uid, agentId: uid, agentName, weekStarting, status: 'draft', updatedAt: serverTimestamp() },
     { merge: true }
   );
 }
 
-export async function submitReport(uid, weekStarting, data) {
+export async function submitReport(uid, agentName, weekStarting, data) {
   const ref = doc(db, `tenants/${tenantId}/submissions/${submissionDocId(uid, weekStarting)}`);
   await setDoc(ref, {
     ...sanitize(data),
     userId: uid,
     agentId: uid,
+    agentName,
     weekStarting,
     status: 'submitted',
     updatedAt: serverTimestamp(),

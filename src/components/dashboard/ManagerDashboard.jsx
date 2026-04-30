@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency } from '../../utils/formatters';
 import { getMostRecentSunday } from '../../utils/dateHelpers';
-import { getWeeklySubmissions } from '../../services/managerService';
+import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import WizardForm from '../wizard/WizardForm';
 import MasterSheet from '../manager/MasterSheet';
 import CompliancePanel from '../manager/CompliancePanel';
@@ -61,8 +61,27 @@ export default function ManagerDashboard() {
 
   const handleStartMeeting = async () => {
     try {
-      const subs = await getWeeklySubmissions(selectedWeek);
-      setMeetingSubmissions(subs);
+      const [subs, userList] = await Promise.all([
+        getWeeklySubmissions(selectedWeek),
+        getTenantUsers().catch(() => []),
+      ]);
+
+      // Build UID → name map from users collection for enrichment fallback.
+      const nameMap = {};
+      userList.forEach((u) => {
+        nameMap[u.id] = u.name ?? u.displayName ?? u.email ?? null;
+      });
+
+      // Ensure every submission has agentName — fills gaps for docs written
+      // before agentName was added to submissionService.
+      const enriched = subs.map((sub) => {
+        if (sub.agentName) return sub;
+        const uid = sub.agentId ?? sub.userId ?? '';
+        const name = nameMap[uid] ?? (uid ? `Agent ${uid.slice(-6)}` : 'Unknown');
+        return { ...sub, agentName: name };
+      });
+
+      setMeetingSubmissions(enriched);
       setMeetingActive(true);
     } catch (e) {
       console.error('Failed to load meeting data:', e);

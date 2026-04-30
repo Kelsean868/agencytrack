@@ -108,7 +108,8 @@ const INITIAL_DATA = {
 
 // screen: 'date' | 'step' | 'review' | 'done'
 export default function WizardForm({ onClose }) {
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
+  const agentName = userProfile?.name ?? userProfile?.email ?? '';
   const [screen, setScreen]             = useState('date');
   const [weekStarting, setWeekStarting] = useState('');
   const [customDate, setCustomDate]     = useState('');
@@ -146,7 +147,7 @@ export default function WizardForm({ onClose }) {
       // Do not auto-save submitted reports.
       if (draftStatus === 'submitted') return;
       setSaving(true);
-      try { await saveDraft(user.uid, weekStarting, formData); }
+      try { await saveDraft(user.uid, agentName, weekStarting, formData); }
       catch { /* silently ignore auto-save errors */ }
       finally { setSaving(false); }
     }, 1500);
@@ -189,7 +190,7 @@ export default function WizardForm({ onClose }) {
     }
     setSubmitting(true);
     try {
-      await submitReport(user.uid, weekStarting, formData);
+      await submitReport(user.uid, agentName, weekStarting, formData);
       setDraftStatus('submitted');
       setScreen('done');
     } catch (e) {
