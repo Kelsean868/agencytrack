@@ -64,6 +64,7 @@ Agents submit weekly activity reports. Managers review and track team compliance
 ### Accepted Commits
 - `ff9609e` — feat: phase 4 manager views + wizard step 9
 - `245d22e` — fix: firestore rules + wizard re-submit guard
+- `5da76a2` — fix: custom claims bootstrap + firestore rules UID bypass
 
 ### What Was Built
 
