@@ -31,7 +31,7 @@ export function AuthProvider({ children }) {
             await setUserClaims({
               uid: firebaseUser.uid,
               role: 'super_admin',
-              tenantId: 'tatil-life',
+              tenantId,
             });
             // Force token refresh to pick up new claims
             await firebaseUser.getIdToken(true);

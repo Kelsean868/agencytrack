@@ -1,9 +1,63 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Download, Search } from 'lucide-react';
-import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
+import { getWeeklySubmissions } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency } from '../../utils/formatters';
-import { formatDateLabel } from '../../utils/validators';
+
+// Normalise any submission schema variant into a common shape.
+function extractFields(d) {
+  // New wizard flat schema — current submissions (has referralCalls)
+  if (d.referralCalls !== undefined) {
+    const dials =
+      (d.referralCalls || 0) +
+      (d.followUpCalls || 0) +
+      (d.coldCalls || 0) +
+      (d.seminarTradeshowCalls || 0) +
+      (d.serviceCalls || 0);
+    return {
+      dials,
+      telContacts: d.qualifiedApproaches || 0,
+      f2fAttempts: d.f2fAttempts || 0,
+      ffi: d.ffiConducted || 0,
+      ci: d.ciConducted || 0,
+      apps: d.applicationsSold || 0,
+      api: d.apiSold || 0,
+      targetAPI: d.targetAPI || 0,
+    };
+  }
+  // Old flat schema — legacy submissions (has top-level dials)
+  if (d.dials !== undefined) {
+    return {
+      dials: parseFloat(d.dials || 0),
+      telContacts: parseFloat(d.telContacts || 0),
+      f2fAttempts: parseFloat(d.f2fAttempts || 0),
+      ffi: parseFloat(d.ffiConducted || d.ffi || 0),
+      ci: parseFloat(d.ciConducted || d.ci || 0),
+      apps: parseFloat(d.applicationsSold || d.apps || 0),
+      api: parseFloat(d.apiSold || d.api || 0),
+      targetAPI: 0,
+    };
+  }
+  // Nested schema — aspirational future format
+  return {
+    dials: parseFloat(d.step1?.dials || 0),
+    telContacts: parseFloat(d.step2?.telContacts || 0),
+    f2fAttempts: parseFloat(d.step3?.f2fAttempts || 0),
+    ffi:
+      parseFloat(d.step3?.ffiConductedNew || 0) +
+      parseFloat(d.step3?.ffiConductedOld || 0),
+    ci:
+      parseFloat(d.step4?.ciConductedNew || 0) +
+      parseFloat(d.step4?.ciConductedOld || 0),
+    apps:
+      parseFloat(d.step4?.appsSoldNew || 0) +
+      parseFloat(d.step4?.appsSoldOld || 0),
+    api:
+      parseFloat(d.step4?.apiNew || 0) +
+      parseFloat(d.step4?.apiOld || 0),
+    targetAPI: parseFloat(d.step9?.targetAPI || 0),
+  };
+}
 
 function statusBadge(status) {
   if (status === 'submitted') {
@@ -13,23 +67,16 @@ function statusBadge(status) {
       </span>
     );
   }
-  if (status === 'draft') {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-warning/15 text-warning">
-        Draft
-      </span>
-    );
-  }
   return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-danger/15 text-danger">
-      Missing
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-warning/15 text-warning">
+      Draft
     </span>
   );
 }
 
-function apiColorClass(apiSold, targetAPI) {
+function apiColorClass(api, targetAPI) {
   if (!targetAPI || targetAPI === 0) return 'text-ink';
-  const pct = (apiSold / targetAPI) * 100;
+  const pct = (api / targetAPI) * 100;
   if (pct >= 80) return 'text-success font-semibold';
   if (pct >= 50) return 'text-warning font-semibold';
   return 'text-danger font-semibold';
@@ -49,7 +96,6 @@ function SkeletonRow() {
 
 export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   const [submissions, setSubmissions] = useState([]);
-  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
@@ -59,11 +105,8 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   useEffect(() => {
     setLoading(true);
     setError('');
-    Promise.all([getWeeklySubmissions(selectedWeek), getTenantUsers()])
-      .then(([subs, userList]) => {
-        setSubmissions(subs);
-        setUsers(userList.filter((u) => u.role === 'agent'));
-      })
+    getWeeklySubmissions(selectedWeek)
+      .then(setSubmissions)
       .catch((e) => {
         console.error(e);
         setError('Failed to load data. Please try again.');
@@ -72,45 +115,30 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   }, [selectedWeek]);
 
   const rows = useMemo(() => {
-    const subMap = {};
-    submissions.forEach((s) => { subMap[s.agentId ?? s.userId] = s; });
-
-    return users
-      .map((u) => {
-        const sub = subMap[u.id] ?? null;
-        const totalCalls =
-          (sub?.referralCalls ?? 0) +
-          (sub?.followUpCalls ?? 0) +
-          (sub?.coldCalls ?? 0) +
-          (sub?.seminarTradeshowCalls ?? 0) +
-          (sub?.serviceCalls ?? 0);
-        const ffi = sub?.ffiConducted ?? 0;
-        const ci = sub?.ciConducted ?? 0;
-        const apps = sub?.applicationsSold ?? 0;
-        const api = sub?.apiSold ?? 0;
-        const target = sub?.targetAPI ?? 0;
-        const closingRatio = ci > 0 ? Math.round((apps / ci) * 100) : null;
+    return submissions
+      .map((sub) => {
+        const fields = extractFields(sub);
+        const closingRatio =
+          fields.ci > 0 ? Math.round((fields.apps / fields.ci) * 100) : null;
+        const agentName =
+          sub.agentName ?? sub.displayName ?? sub.agentId ?? sub.userId ?? '—';
 
         return {
-          id: u.id,
-          name: u.name ?? u.email ?? u.id,
-          status: sub?.status ?? 'missing',
-          dials: totalCalls,
-          telContacts: sub?.qualifiedApproaches ?? 0,
-          f2fAttempts: sub?.f2fAttempts ?? 0,
-          ffi,
-          ci,
-          appsSold: apps,
-          api,
-          targetAPI: target,
+          id: sub.agentId ?? sub.userId ?? sub.id,
+          name: agentName,
+          status: sub.status ?? 'draft',
+          ...fields,
+          appsSold: fields.apps,
           closingRatio,
         };
       })
-      .filter((r) =>
-        search.trim() === '' ||
-        r.name.toLowerCase().includes(search.trim().toLowerCase())
-      );
-  }, [users, submissions, search]);
+      .filter(
+        (r) =>
+          search.trim() === '' ||
+          r.name.toLowerCase().includes(search.trim().toLowerCase())
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [submissions, search]);
 
   const exportCSV = () => {
     const headers = [
@@ -180,7 +208,6 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         </button>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">
           {error}
@@ -212,27 +239,32 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
             {!loading && rows.length === 0 && (
               <tr>
                 <td colSpan={10} className="px-3 py-8 text-center text-sm text-ink-muted">
-                  {search ? 'No agents match your search.' : 'No agents found for this week.'}
+                  {search
+                    ? 'No agents match your search.'
+                    : 'No submissions for this week yet.'}
                 </td>
               </tr>
             )}
 
             {!loading &&
               rows.map((r) => (
-                <tr key={r.id} className="border-b border-border/40 hover:bg-surface/50 transition-colors">
+                <tr
+                  key={r.id}
+                  className="border-b border-border/40 hover:bg-surface/50 transition-colors"
+                >
                   <td className="px-3 py-3 font-medium text-ink whitespace-nowrap">{r.name}</td>
                   <td className="px-3 py-3">{statusBadge(r.status)}</td>
-                  <td className="px-3 py-3 text-ink">{r.status === 'missing' ? '—' : r.dials}</td>
-                  <td className="px-3 py-3 text-ink">{r.status === 'missing' ? '—' : r.telContacts}</td>
-                  <td className="px-3 py-3 text-ink">{r.status === 'missing' ? '—' : r.f2fAttempts}</td>
-                  <td className="px-3 py-3 text-ink">{r.status === 'missing' ? '—' : r.ffi}</td>
-                  <td className="px-3 py-3 text-ink">{r.status === 'missing' ? '—' : r.ci}</td>
-                  <td className="px-3 py-3 text-ink">{r.status === 'missing' ? '—' : r.appsSold}</td>
-                  <td className={`px-3 py-3 whitespace-nowrap ${r.status === 'missing' ? 'text-ink-muted' : apiColorClass(r.api, r.targetAPI)}`}>
-                    {r.status === 'missing' ? '—' : formatCurrency(r.api)}
+                  <td className="px-3 py-3 text-ink">{r.dials}</td>
+                  <td className="px-3 py-3 text-ink">{r.telContacts}</td>
+                  <td className="px-3 py-3 text-ink">{r.f2fAttempts}</td>
+                  <td className="px-3 py-3 text-ink">{r.ffi}</td>
+                  <td className="px-3 py-3 text-ink">{r.ci}</td>
+                  <td className="px-3 py-3 text-ink">{r.appsSold}</td>
+                  <td className={`px-3 py-3 whitespace-nowrap ${apiColorClass(r.api, r.targetAPI)}`}>
+                    {formatCurrency(r.api)}
                   </td>
                   <td className="px-3 py-3 text-ink">
-                    {r.status === 'missing' || r.closingRatio === null ? '—' : `${r.closingRatio}%`}
+                    {r.closingRatio === null ? '—' : `${r.closingRatio}%`}
                   </td>
                 </tr>
               ))}
@@ -242,9 +274,9 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
 
       {!loading && (
         <p className="text-xs text-ink-muted">
-          {rows.length} agent{rows.length !== 1 ? 's' : ''} •{' '}
+          {rows.length} submission{rows.length !== 1 ? 's' : ''} •{' '}
           {rows.filter((r) => r.status === 'submitted').length} submitted •{' '}
-          {rows.filter((r) => r.status === 'missing').length} missing
+          {rows.filter((r) => r.status === 'draft').length} draft
         </p>
       )}
     </div>

@@ -125,6 +125,19 @@ Agents submit weekly activity reports. Managers review and track team compliance
 
 ---
 
+---
+
+## Phase 4 — Post-Launch Fixes
+
+### What Was Fixed
+- **MasterSheet** — switched from users-list-driven to submissions-driven rendering; added `extractFields()` helper to normalise flat wizard schema, old flat schema, and aspirational nested schema; removed dependency on users collection being populated
+- **CompliancePanel** — Submitted and Draft columns now populated directly from submissions without needing the users list; Missing column shows "No user list available yet" when users collection is empty; summary bar shows live submitted/draft/total counts
+- **PersistencyPanel** — improved empty state copy when users collection is empty
+- **AuthContext bootstrap** — fixed `tenantId: 'tatil-life'` hardcode to use the `tenantId` env var (`tatillife_south`)
+- **Seed script** — `functions/seed-super-admin-user.cjs` seeds Kyron's user document at `tenants/tatillife_south/users/4GeeZbhZBwdtGOLoJoggf4MQo142`
+
+---
+
 ## Upcoming — Phase 5
 - Notifications (in-app + email via Firebase Cloud Functions)
 - Career Portal (agent level progression 1–7)

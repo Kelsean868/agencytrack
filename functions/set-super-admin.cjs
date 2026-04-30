@@ -9,7 +9,7 @@ async function setSuperAdminClaims() {
   const uid = '4GeeZbhZBwdtGOLoJoggf4MQo142';
   await admin.auth().setCustomUserClaims(uid, {
     role: 'super_admin',
-    tenantId: 'tatil-life',
+    tenantId: 'tatillife_south'  // changed from 'tatil-life'
   });
   console.log('Super admin claims set successfully for UID:', uid);
   process.exit(0);

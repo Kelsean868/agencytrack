@@ -157,7 +157,7 @@ export default function PersistencyPanel() {
         </div>
       ) : agents.length === 0 ? (
         <div className="py-12 text-center text-sm text-ink-muted">
-          No agents found in this team.
+          No agents in this team yet. Add agents to start tracking persistency.
         </div>
       ) : (
         <div className="bg-white rounded-xl border border-border overflow-hidden">

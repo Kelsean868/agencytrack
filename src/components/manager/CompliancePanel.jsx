@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
-import { formatDateLabel } from '../../utils/validators';
 
 function daysSinceSunday(weekStarting) {
   const sunday = new Date(weekStarting + 'T00:00:00');
@@ -25,12 +24,12 @@ function Column({ icon: Icon, title, color, children, count }) {
   const borderColor = {
     success: 'border-success/30',
     warning: 'border-warning/30',
-    danger: 'border-danger/30',
+    danger:  'border-danger/30',
   }[color];
   const headerColor = {
     success: 'bg-success/10 text-success',
     warning: 'bg-warning/10 text-warning',
-    danger: 'bg-danger/10 text-danger',
+    danger:  'bg-danger/10 text-danger',
   }[color];
 
   return (
@@ -56,9 +55,10 @@ function AgentRow({ name, sub }) {
 
 export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   const [submissions, setSubmissions] = useState([]);
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [users, setUsers]             = useState([]);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState('');
 
   const sundays = getLastNSundays(8);
 
@@ -69,6 +69,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       .then(([subs, userList]) => {
         setSubmissions(subs);
         setUsers(userList.filter((u) => u.role === 'agent'));
+        setUsersLoaded(true);
       })
       .catch((e) => {
         console.error(e);
@@ -78,30 +79,43 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   }, [selectedWeek]);
 
   const { submitted, pending, missing } = useMemo(() => {
-    const subMap = {};
-    submissions.forEach((s) => { subMap[s.agentId ?? s.userId] = s; });
+    // Submitted and draft come directly from submissions — no users needed.
+    const submitted = submissions
+      .filter((s) => s.status === 'submitted')
+      .map((s) => ({
+        id: s.agentId ?? s.userId,
+        name: s.agentName ?? s.displayName ?? s.agentId ?? s.userId ?? '—',
+        submittedAt: s.submittedAt,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
 
-    const submitted = [];
-    const pending = [];
+    const pending = submissions
+      .filter((s) => s.status !== 'submitted')
+      .map((s) => ({
+        id: s.agentId ?? s.userId,
+        name: s.agentName ?? s.displayName ?? s.agentId ?? s.userId ?? '—',
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Missing requires a populated users list to know who hasn't submitted.
     const missing = [];
-
-    users.forEach((u) => {
-      const sub = subMap[u.id];
-      const name = u.name ?? u.email ?? u.id;
-      if (!sub) {
-        missing.push({ id: u.id, name });
-      } else if (sub.status === 'submitted') {
-        submitted.push({ id: u.id, name, submittedAt: sub.submittedAt });
-      } else {
-        pending.push({ id: u.id, name });
-      }
-    });
+    if (usersLoaded && users.length > 0) {
+      const submittedIds = new Set(
+        submissions.map((s) => s.agentId ?? s.userId)
+      );
+      users.forEach((u) => {
+        if (!submittedIds.has(u.id)) {
+          missing.push({ id: u.id, name: u.name ?? u.email ?? u.id });
+        }
+      });
+      missing.sort((a, b) => a.name.localeCompare(b.name));
+    }
 
     return { submitted, pending, missing };
-  }, [users, submissions]);
+  }, [users, usersLoaded, submissions]);
 
-  const total = users.length;
   const days = daysSinceSunday(selectedWeek);
+  const totalKnown = usersLoaded && users.length > 0 ? users.length : null;
 
   if (loading) {
     return (
@@ -139,72 +153,77 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
             </option>
           ))}
         </select>
+
         <p className="text-sm text-ink-muted">
-          <span className="font-semibold text-success">{submitted.length}</span> of{' '}
-          <span className="font-semibold text-ink">{total}</span> agents submitted
+          <span className="font-semibold text-success">{submitted.length}</span> submitted
+          {pending.length > 0 && (
+            <> &nbsp;·&nbsp; <span className="font-semibold text-warning">{pending.length} draft</span></>
+          )}
+          {totalKnown !== null && (
+            <> &nbsp;·&nbsp; <span className="font-semibold text-ink">{totalKnown} agents total</span></>
+          )}
           {missing.length > 0 && (
             <> &nbsp;·&nbsp; <span className="font-semibold text-danger">{missing.length} missing</span></>
           )}
         </p>
       </div>
 
-      {total === 0 ? (
-        <div className="py-12 text-center text-sm text-ink-muted">
-          No agents found in this team.
-        </div>
-      ) : (
-        <div className="flex gap-4 flex-wrap items-start">
-          <Column
-            icon={CheckCircle}
-            title="Submitted"
-            color="success"
-            count={submitted.length}
-          >
-            {submitted.length === 0 && (
-              <p className="px-4 py-3 text-sm text-ink-muted">None yet.</p>
-            )}
-            {submitted.map((a) => (
-              <AgentRow
-                key={a.id}
-                name={a.name}
-                sub={a.submittedAt ? formatSubmittedAt(a.submittedAt) : undefined}
-              />
-            ))}
-          </Column>
+      <div className="flex gap-4 flex-wrap items-start">
+        <Column
+          icon={CheckCircle}
+          title="Submitted"
+          color="success"
+          count={submitted.length}
+        >
+          {submitted.length === 0 && (
+            <p className="px-4 py-3 text-sm text-ink-muted">None yet.</p>
+          )}
+          {submitted.map((a) => (
+            <AgentRow
+              key={a.id}
+              name={a.name}
+              sub={a.submittedAt ? formatSubmittedAt(a.submittedAt) : undefined}
+            />
+          ))}
+        </Column>
 
-          <Column
-            icon={Clock}
-            title="Pending / Draft"
-            color="warning"
-            count={pending.length}
-          >
-            {pending.length === 0 && (
-              <p className="px-4 py-3 text-sm text-ink-muted">None.</p>
-            )}
-            {pending.map((a) => (
-              <AgentRow key={a.id} name={a.name} />
-            ))}
-          </Column>
+        <Column
+          icon={Clock}
+          title="Pending / Draft"
+          color="warning"
+          count={pending.length}
+        >
+          {pending.length === 0 && (
+            <p className="px-4 py-3 text-sm text-ink-muted">None.</p>
+          )}
+          {pending.map((a) => (
+            <AgentRow key={a.id} name={a.name} />
+          ))}
+        </Column>
 
-          <Column
-            icon={AlertTriangle}
-            title="Missing"
-            color="danger"
-            count={missing.length}
-          >
-            {missing.length === 0 && (
-              <p className="px-4 py-3 text-sm text-ink-muted">All accounted for.</p>
-            )}
-            {missing.map((a) => (
+        <Column
+          icon={AlertTriangle}
+          title="Missing"
+          color="danger"
+          count={missing.length}
+        >
+          {!usersLoaded || users.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-ink-muted">
+              No user list available yet.
+            </p>
+          ) : missing.length === 0 ? (
+            <p className="px-4 py-3 text-sm text-ink-muted">All accounted for.</p>
+          ) : (
+            missing.map((a) => (
               <AgentRow
                 key={a.id}
                 name={a.name}
                 sub={days > 0 ? `${days} day${days !== 1 ? 's' : ''} since Sunday` : 'Due today'}
               />
-            ))}
-          </Column>
-        </div>
-      )}
+            ))
+          )}
+        </Column>
+      </div>
     </div>
   );
 }

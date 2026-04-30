@@ -3,11 +3,12 @@
 ## What This App Is
 Insurance sales activity tracking SaaS for Tatil Life, Trinidad & Tobago.
 Agents submit weekly reports. Managers review them. Built to scale to multiple companies.
+Firebase project: agencytrack-2a610 | Hosted: agencytrack.vercel.app | Repo: github.com/Kelsean868/agencytrack
 
 ## Commands
 - `npm run dev` — Start dev server at localhost:5173
 - `npm run build` — Production build to dist/
-- `npm run repomix` — Generate Claude context snapshot
+- `npm run repomix` — Generate Claude context snapshot (run before every session)
 - `firebase deploy --only functions` — Deploy Cloud Functions
 - `firebase deploy --only firestore:rules` — Deploy Firestore rules
 - `firebase serve` — Run Firebase emulator locally
@@ -15,7 +16,7 @@ Agents submit weekly reports. Managers review them. Built to scale to multiple c
 
 ## Tech Stack
 - React 19 + Vite (not Create React App)
-- Firebase Firestore (not Realtime DB)
+- Firebase Firestore (not Realtime DB) — project: agencytrack-2a610
 - Firebase Auth (email link — passwordless)
 - Firebase Cloud Functions (Node 20)
 - Tailwind CSS + CSS custom properties
@@ -31,14 +32,14 @@ src/
   services/    ← firebaseService, authService, submissionService, exportService
   utils/       ← calculations, validators, formatters, constants, dateHelpers
   components/
-    auth/      ← LoginScreen
-    onboarding/← WelcomeScreen
-    dashboard/ ← AgentDashboard, ManagerDashboard, KPICard, GrowthChart
-    wizard/    ← WizardForm, steps/ (7 steps)
-    manager/   ← MasterSheet, ComplianceTracker, MeetingMode
-    profile/   ← ProfileScreen, CareerPortal
+    auth/         ← LoginScreen
+    onboarding/   ← WelcomeScreen
+    dashboard/    ← AgentDashboard, ManagerDashboard, KPICard, GrowthChart
+    wizard/       ← WizardForm, steps/ (Steps 1–9)
+    manager/      ← MasterSheet, CompliancePanel, MeetingMode, PersistencyPanel
+    profile/      ← ProfileScreen, CareerPortal
     gamification/ ← Leaderboard, BadgeGrid
-    ui/        ← Shared components
+    ui/           ← Shared components
   styles/      ← index.css (design tokens), wizard.css, dashboard.css
 ```
 
@@ -49,6 +50,7 @@ src/
 - Week Starting date: must always be a Sunday — use `validateSundayDate()` from validators.js
 - FFI = Fact Finding Interview | CI = Closing Interview
 - No self-registration — managers create all accounts
+- Never store numeric values as strings in Firestore
 
 ## Roles & Permissions
 ```
@@ -57,7 +59,6 @@ branch_manager — full branch, create accounts across all units
 unit_manager — own unit only, create accounts for own agents
 agent — own data only
 ```
-
 Role is stored in Firebase custom claims AND in Firestore `/tenants/{id}/users/{uid}.role`
 
 ## Firestore Structure
@@ -65,46 +66,107 @@ Role is stored in Firebase custom claims AND in Firestore `/tenants/{id}/users/{
 /tenants/{tenantId}/
   config/settings
   users/{userId}
-  submissions/{submissionId}
-  persistency/{agentId_YYYY_MM}
+  submissions/{submissionId}       ← weekly wizard submissions
+  persistency/{agentId_YYYY_MM}   ← manager-entered persistency %
   goals/{goalId}
   leaderboard/{userId}
   notifications/{notificationId}
 ```
 
+### Submission Document Shape (actual flat schema — current wizard)
+All fields are stored at the document root (NOT nested under step1, step2, etc.).
+Key fields by step:
+```
+agentId, userId, agentName, weekStarting, status, submittedAt, updatedAt
+
+Step 1:  prospectingLettersSent, seminarsConducted, tradeshowsConducted, f2fAttempts, f2fContacts…
+Step 2:  referralCalls, followUpCalls, coldCalls, seminarTradeshowCalls, serviceCalls
+Step 3:  qualifiedApproaches, appointmentsSet, ffisScheduled, ffiConducted, solutionPresentations
+Step 4:  newCIBooked, oldCIBooked, ciConducted, applicationsSold, livesSold, apiSold, estimatedCommissions
+Step 5:  referralsSought, referralsObtained, namesFromColdCanvass, namesFromOther, oldNamesPool…
+Step 6:  policiesReceived, policiesDelivered, hasServiceWork, serviceContacts…
+Step 7:  officeHours, fieldHours
+Step 8:  ratingPlanning, ratingTimeManagement, ratingSalesPerformance, ratingProspecting, ratingOverall, notes
+Step 9:  targetDials, targetTelContacts, targetF2FAttempts, targetFFI, targetCI, targetAppsSold, targetAPI, goalNotes
+```
+
+**Schema variants (use extractFields() to normalise):**
+- Current flat schema: detected by `d.referralCalls !== undefined`
+- Old flat schema: detected by `d.dials !== undefined`
+- Nested schema: aspirational future format (`d.step1`, `d.step2`, etc.)
+`extractFields(doc)` is defined in `MasterSheet.jsx` and should be the single source of truth for reading submission KPI fields in manager views.
+
+### Persistency Document Shape
+```
+{
+  agentId, agentName, tenantId,
+  year, month,           // month = 1–12
+  persistency,           // parseFloat, 0–100
+  enteredBy,             // uid of manager
+  enteredAt              // Firestore Timestamp
+}
+```
+
 ## Design System — Nexus
 ```css
 --color-primary: #01696f    (teal)
+--color-primary-dark: #014e52
 --color-bg: #f7f6f2         (warm beige)
 --color-surface: #ffffff
+--color-surface-raised: #f9f8f5
 --color-text: #28251d
+--color-text-muted: #6b6560
 --color-success: #2d7a4f
 --color-warning: #b45309
 --color-danger: #c0392b
+--color-border: #e5e2db
 ```
 Fonts: Satoshi (body) + Cabinet Grotesk (display) from Fontshare
 NO gradient buttons. NO inline styles. ALL styling via Tailwind + CSS variables.
 Minimum 44px touch targets (mobile agents in field).
+Dark mode toggle in header (CSS class swap on `<html>`).
 
 ## Current Build Phase
-Phase 1 — Firebase + Auth setup
+**Phase 4 — Manager Views + Wizard Step 9**
 
-## Critical Decisions Made
-- Build on existing repo codebase patterns, new Firebase project (agencytrack)
-- Firestore (not Realtime DB) — better querying for Master Sheet
-- Email link auth (passwordless) — no password management
-- Wizard: 7 steps (consolidated from 12)
-- Multi-tenant from day one — SaaS ambition beyond Tatil Life
-- Gamification layer is SEPARATE from official Tatil Life career levels (1-7)
-- Service work section collapses if agent has no service work (UX win)
-- API field must strip $ sign on input and enforce parseFloat()
+## Build Phase Status
+| Phase | Scope | Status |
+|-------|-------|--------|
+| P1 | Firebase + Auth setup | ✅ COMPLETE |
+| P2 | Login + Auth flow + Agent Dashboard | ✅ COMPLETE |
+| P3 | 9-step Weekly Wizard with auto-save | ✅ COMPLETE (8 steps built; Step 9 added in P4) |
+| P4 | Manager Views + Meeting Mode + Persistency | 🔄 IN PROGRESS |
+| P5 | Notifications + Career Portal + Gamification | ⏳ PENDING |
+| P6 | Deploy + Polish | ⏳ PENDING |
 
-## What NOT to Build (Out of Scope)
-- CRM features (leads, contacts, client portfolio)
-- Task manager / agenda / calling sessions
-- Clock in / clock out
-- Campaign tracking (Phase 2)
-- Power BI direct integration (future)
+## Phase 4 — Component Checklist
+- [ ] Step9Goals.jsx — Next Week Goals wizard step
+- [ ] WizardForm.jsx — updated to 9 steps, includes step9 in submission payload
+- [ ] ManagerDashboard.jsx — tab bar: Overview | Master Sheet | Compliance | Persistency
+- [ ] MasterSheet.jsx — all agents × selected week, conditional formatting, CSV export
+- [ ] CompliancePanel.jsx — Submitted / Pending / Missing columns for selected week
+- [ ] PersistencyPanel.jsx — manager enters % per agent per month
+- [ ] MeetingMode.jsx — fullscreen projector view, agent-by-agent, keyboard nav
+- [ ] dateHelpers.js — add `getLastNSundays(n)` utility if missing
+
+### Phase 4 Key Decisions
+- `selectedWeek` state is LIFTED to ManagerDashboard — shared by MasterSheet and CompliancePanel via props so both always show the same week
+- MeetingMode renders as a fixed overlay (z-50) triggered by "Start Meeting" button in ManagerDashboard header
+- Outlier flag in MeetingMode: any field > 3× unit average for that week. Visible ONLY in MeetingMode — never on agent's own view
+- Persistency Firestore path: `/tenants/{tenantId}/persistency/{agentId}_{YYYY_MM}`
+
+## Wizard — 9 Steps
+| Step | Name | Key Fields |
+|------|------|------------|
+| 1 | Prospecting | Dials, door knocks, referrals asked |
+| 2 | Telephone | Tel contacts, tel appointments set |
+| 3 | Approaches + FFI | F2F attempts, FFI conducted (new/old) |
+| 4 | Closing + Sales | CI conducted, apps sold, API (new/old) |
+| 5 | New Names + Pipeline | Referrals, cold canvass, existing prospects |
+| 6 | Policy Deliveries + Service | Deliveries, service work (conditional expand) |
+| 7 | Time Management | Office hours, field hours |
+| 8 | Self-Evaluation | 1–10 ratings, notes |
+| 9 | Next Week Goals | Target dials, contacts, FFI, CI, apps, API |
 
 ## Conventions
 - Functional components only — no class components
@@ -120,6 +182,16 @@ All Firebase env vars use `VITE_` prefix.
 Never hardcode Firebase config — always use import.meta.env.VITE_*
 Never commit .env.local
 
-## Critical Instruction for Claude Code
-Always write files directly to disk. Never use worktrees or branches. 
-Work only on main. After writing files, always run npm run dev to verify zero errors.
+## What NOT to Build (Out of Scope)
+- CRM features (leads, contacts, client portfolio)
+- Task manager / agenda / calling sessions
+- Clock in / clock out
+- Campaign tracking (Phase 2 / future)
+- Power BI direct integration (future)
+
+## Session Protocol
+1. Always read this file + CLAUDE.md before writing any code
+2. Run `npm run repomix` to get fresh codebase snapshot before each session
+3. Confirm current phase before writing new files
+4. After all changes, run `npm run dev` and confirm no build errors
+5. Commit with descriptive message before ending session
