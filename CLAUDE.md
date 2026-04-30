@@ -182,6 +182,14 @@ All Firebase env vars use `VITE_` prefix.
 Never hardcode Firebase config — always use import.meta.env.VITE_*
 Never commit .env.local
 
+`VITE_TENANT_ID=tatillife_south` — canonical tenant ID. All Firestore paths and custom claims use this value.
+
+## Sensitive Files — Never Commit
+- `functions/service-account-key.json` — Firebase Admin SDK key
+- `functions/set-super-admin.cjs` — one-time Admin SDK script (sets super_admin claims)
+- `functions/seed-super-admin-user.cjs` — one-time seed script (creates super_admin user doc)
+- `functions/seed-agent-names.cjs` — one-time seed script (back-fills agentName onto existing submissions)
+
 ## What NOT to Build (Out of Scope)
 - CRM features (leads, contacts, client portfolio)
 - Task manager / agenda / calling sessions

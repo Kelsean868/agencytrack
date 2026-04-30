@@ -1,62 +1,60 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Download, Search } from 'lucide-react';
-import { getWeeklySubmissions } from '../../services/managerService';
+import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency } from '../../utils/formatters';
 
-// Normalise any submission schema variant into a common shape.
+// Normalise any submission schema variant into a common KPI shape.
 function extractFields(d) {
-  // New wizard flat schema — current submissions (has referralCalls)
-  if (d.referralCalls !== undefined) {
-    const dials =
-      (d.referralCalls || 0) +
-      (d.followUpCalls || 0) +
-      (d.coldCalls || 0) +
-      (d.seminarTradeshowCalls || 0) +
-      (d.serviceCalls || 0);
+  // Nested schema — future format
+  if (d.step1 !== undefined || d.step2 !== undefined) {
     return {
-      dials,
-      telContacts: d.qualifiedApproaches || 0,
-      f2fAttempts: d.f2fAttempts || 0,
-      ffi: d.ffiConducted || 0,
-      ci: d.ciConducted || 0,
-      apps: d.applicationsSold || 0,
-      api: d.apiSold || 0,
-      targetAPI: d.targetAPI || 0,
+      dials: parseFloat(d.step1?.dials || 0),
+      telContacts: parseFloat(d.step2?.telContacts || 0),
+      f2fAttempts: parseFloat(d.step3?.f2fAttempts || 0),
+      ffi:
+        parseFloat(d.step3?.ffiConductedNew || 0) +
+        parseFloat(d.step3?.ffiConductedOld || 0),
+      ci:
+        parseFloat(d.step4?.ciConductedNew || 0) +
+        parseFloat(d.step4?.ciConductedOld || 0),
+      apps:
+        parseFloat(d.step4?.appsSoldNew || 0) +
+        parseFloat(d.step4?.appsSoldOld || 0),
+      api:
+        parseFloat(d.step4?.apiNew || 0) +
+        parseFloat(d.step4?.apiOld || 0),
+      targetAPI: parseFloat(d.step9?.targetAPI || 0),
     };
   }
-  // Old flat schema — legacy submissions (has top-level dials)
-  if (d.dials !== undefined) {
-    return {
-      dials: parseFloat(d.dials || 0),
-      telContacts: parseFloat(d.telContacts || 0),
-      f2fAttempts: parseFloat(d.f2fAttempts || 0),
-      ffi: parseFloat(d.ffiConducted || d.ffi || 0),
-      ci: parseFloat(d.ciConducted || d.ci || 0),
-      apps: parseFloat(d.applicationsSold || d.apps || 0),
-      api: parseFloat(d.apiSold || d.api || 0),
-      targetAPI: 0,
-    };
-  }
-  // Nested schema — aspirational future format
+
+  // Flat schema — covers both current wizard (referralCalls) and legacy (dials)
+  const callSum =
+    (d.referralCalls || 0) +
+    (d.followUpCalls || 0) +
+    (d.coldCalls || 0) +
+    (d.seminarTradeshowCalls || 0) +
+    (d.serviceCalls || 0);
+
   return {
-    dials: parseFloat(d.step1?.dials || 0),
-    telContacts: parseFloat(d.step2?.telContacts || 0),
-    f2fAttempts: parseFloat(d.step3?.f2fAttempts || 0),
-    ffi:
-      parseFloat(d.step3?.ffiConductedNew || 0) +
-      parseFloat(d.step3?.ffiConductedOld || 0),
-    ci:
-      parseFloat(d.step4?.ciConductedNew || 0) +
-      parseFloat(d.step4?.ciConductedOld || 0),
-    apps:
-      parseFloat(d.step4?.appsSoldNew || 0) +
-      parseFloat(d.step4?.appsSoldOld || 0),
-    api:
-      parseFloat(d.step4?.apiNew || 0) +
-      parseFloat(d.step4?.apiOld || 0),
-    targetAPI: parseFloat(d.step9?.targetAPI || 0),
+    dials: parseFloat(d.dials || d.totalDials || callSum || 0),
+    telContacts: parseFloat(d.telContacts || d.telephoneContacts || d.qualifiedApproaches || 0),
+    f2fAttempts: parseFloat(d.f2fAttempts || d.f2fContacts || 0),
+    ffi: parseFloat(d.ffiConducted || d.ffisScheduled || 0),
+    ci: parseFloat(d.ciConducted || d.closingInterviews || 0),
+    apps: parseFloat(d.applicationsSold || d.appsSold || 0),
+    api: parseFloat(d.apiSold || d.api || d.annualPremium || 0),
+    targetAPI: parseFloat(d.targetAPI || 0),
   };
+}
+
+function resolveName(sub, userNameMap) {
+  if (sub.agentName)  return sub.agentName;
+  if (sub.displayName) return sub.displayName;
+  if (sub.userName)   return sub.userName;
+  const uid = sub.agentId ?? sub.userId ?? '';
+  if (uid && userNameMap[uid]) return userNameMap[uid];
+  return uid ? `Agent ${uid.slice(-6)}` : '—';
 }
 
 function statusBadge(status) {
@@ -95,18 +93,29 @@ function SkeletonRow() {
 }
 
 export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
-  const [submissions, setSubmissions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
+  const [submissions, setSubmissions]   = useState([]);
+  const [userNameMap, setUserNameMap]   = useState({});
+  const [loading, setLoading]           = useState(true);
+  const [error, setError]               = useState('');
+  const [search, setSearch]             = useState('');
 
   const sundays = getLastNSundays(8);
 
   useEffect(() => {
     setLoading(true);
     setError('');
-    getWeeklySubmissions(selectedWeek)
-      .then(setSubmissions)
+    Promise.all([
+      getWeeklySubmissions(selectedWeek),
+      getTenantUsers().catch(() => []), // best-effort; empty users won't block rows
+    ])
+      .then(([subs, userList]) => {
+        setSubmissions(subs);
+        const nameMap = {};
+        userList.forEach((u) => {
+          nameMap[u.id] = u.name ?? u.displayName ?? u.email ?? null;
+        });
+        setUserNameMap(nameMap);
+      })
       .catch((e) => {
         console.error(e);
         setError('Failed to load data. Please try again.');
@@ -120,12 +129,10 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         const fields = extractFields(sub);
         const closingRatio =
           fields.ci > 0 ? Math.round((fields.apps / fields.ci) * 100) : null;
-        const agentName =
-          sub.agentName ?? sub.displayName ?? sub.agentId ?? sub.userId ?? '—';
 
         return {
           id: sub.agentId ?? sub.userId ?? sub.id,
-          name: agentName,
+          name: resolveName(sub, userNameMap),
           status: sub.status ?? 'draft',
           ...fields,
           appsSold: fields.apps,
@@ -138,7 +145,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           r.name.toLowerCase().includes(search.trim().toLowerCase())
       )
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [submissions, search]);
+  }, [submissions, userNameMap, search]);
 
   const exportCSV = () => {
     const headers = [

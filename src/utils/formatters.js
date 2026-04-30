@@ -10,7 +10,7 @@ export const getRoleLabel = (role) => ROLE_LABELS[role] ?? 'Unknown';
 export const formatCurrency = (amount) => {
   const num = parseFloat(amount ?? 0);
   return 'TTD ' + num.toLocaleString('en-TT', {
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
 };

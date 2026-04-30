@@ -65,6 +65,20 @@ Agents submit weekly activity reports. Managers review and track team compliance
 - `ff9609e` — feat: phase 4 manager views + wizard step 9
 - `245d22e` — fix: firestore rules + wizard re-submit guard
 - `5da76a2` — fix: custom claims bootstrap + firestore rules UID bypass
+- fix: firestore rules rewritten with UID bypass for super_admin (4GeeZbhZBwdtGOLoJoggf4MQo142)
+- fix: custom claims set via Admin SDK script (role: super_admin, tenantId: tatillife_south)
+- fix: MasterSheet dual schema support — extractFields() normalises flat wizard, old flat, and nested step1–9
+- fix: MasterSheet queries submissions directly, no users collection dependency
+- fix: CompliancePanel graceful empty state when users collection is empty
+- fix: PersistencyPanel graceful empty state message
+- fix: WizardForm silent skip on auto-save for submitted reports
+- seed: super admin user doc created at tenants/tatillife_south/users/4GeeZbhZBwdtGOLoJoggf4MQo142
+- seed: tatillife_south confirmed as canonical tenantId
+- polish: agent name display — full fallback chain (agentName → displayName → userName → users lookup → Agent + last6 UID)
+- polish: extractFields() updated — nested schema detection by step1/step2, flat branch covers both current wizard and legacy field names
+- polish: formatCurrency updated — minimumFractionDigits: 0 (TTD 5,000 not TTD 5,000.00)
+- polish: MeetingMode uses extractFields() for all submission schemas; same name chain as MasterSheet
+- seed: seed-agent-names.cjs back-fills agentName onto existing submissions without it
 
 ### What Was Built
 
@@ -122,19 +136,6 @@ Agents submit weekly activity reports. Managers review and track team compliance
 - `src/utils/dateHelpers.js` — `getMostRecentSunday()`, `getLastNSundays(n)`
 - `src/services/managerService.js` — `getWeeklySubmissions(weekStarting)`, `getTenantUsers()`
 - `src/services/persistencyService.js` — `getMonthlyPersistency(year, month)`, `savePersistencyBatch(entries, enteredBy)`
-
----
-
----
-
-## Phase 4 — Post-Launch Fixes
-
-### What Was Fixed
-- **MasterSheet** — switched from users-list-driven to submissions-driven rendering; added `extractFields()` helper to normalise flat wizard schema, old flat schema, and aspirational nested schema; removed dependency on users collection being populated
-- **CompliancePanel** — Submitted and Draft columns now populated directly from submissions without needing the users list; Missing column shows "No user list available yet" when users collection is empty; summary bar shows live submitted/draft/total counts
-- **PersistencyPanel** — improved empty state copy when users collection is empty
-- **AuthContext bootstrap** — fixed `tenantId: 'tatil-life'` hardcode to use the `tenantId` env var (`tatillife_south`)
-- **Seed script** — `functions/seed-super-admin-user.cjs` seeds Kyron's user document at `tenants/tatillife_south/users/4GeeZbhZBwdtGOLoJoggf4MQo142`
 
 ---
 

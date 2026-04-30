@@ -79,12 +79,27 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   }, [selectedWeek]);
 
   const { submitted, pending, missing } = useMemo(() => {
+    // Build name map from users for enrichment
+    const userNameMap = {};
+    users.forEach((u) => {
+      userNameMap[u.id] = u.name ?? u.displayName ?? u.email ?? null;
+    });
+
+    function resolveName(s) {
+      if (s.agentName)   return s.agentName;
+      if (s.displayName) return s.displayName;
+      if (s.userName)    return s.userName;
+      const uid = s.agentId ?? s.userId ?? '';
+      if (uid && userNameMap[uid]) return userNameMap[uid];
+      return uid ? `Agent ${uid.slice(-6)}` : '—';
+    }
+
     // Submitted and draft come directly from submissions — no users needed.
     const submitted = submissions
       .filter((s) => s.status === 'submitted')
       .map((s) => ({
         id: s.agentId ?? s.userId,
-        name: s.agentName ?? s.displayName ?? s.agentId ?? s.userId ?? '—',
+        name: resolveName(s),
         submittedAt: s.submittedAt,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
@@ -93,7 +108,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       .filter((s) => s.status !== 'submitted')
       .map((s) => ({
         id: s.agentId ?? s.userId,
-        name: s.agentName ?? s.displayName ?? s.agentId ?? s.userId ?? '—',
+        name: resolveName(s),
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
