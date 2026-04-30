@@ -2,93 +2,72 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper functions
     function isSignedIn() {
       return request.auth != null;
     }
 
     function getRole() {
-      return request.auth.token.role;
+      return request.auth.token.get('role', '');
     }
 
-    function isAgent() {
-      return getRole() == 'agent';
+    function getTenantId() {
+      return request.auth.token.get('tenantId', '');
     }
 
     function isManager() {
       return getRole() in ['unit_manager', 'branch_manager', 'super_admin'];
     }
 
-    function isSuperAdmin() {
-      return getRole() == 'super_admin';
+    function isAgent() {
+      return getRole() == 'agent';
     }
 
-    function belongsToTenant(tenantId) {
-      return request.auth.token.tenantId == tenantId;
+    function isSuperAdminUID() {
+      return request.auth.uid == '4GeeZbhZBwdtGOLoJoggf4MQo142';
     }
 
-    function isOwner(userId) {
-      return request.auth.uid == userId;
+    function canManage(tenantId) {
+      return isSignedIn() && (isSuperAdminUID() || (isManager() && getTenantId() == tenantId));
     }
 
-    // Tenant-scoped rules
+    function canAccessOwn(tenantId, agentId) {
+      return isSignedIn() && (isSuperAdminUID() || (isAgent() && getTenantId() == tenantId && request.auth.uid == agentId));
+    }
+
     match /tenants/{tenantId} {
 
-      // Users collection
       match /users/{userId} {
-        allow read: if isSignedIn() && belongsToTenant(tenantId) && (isManager() || isOwner(userId));
-        allow write: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+        allow read, write: if canManage(tenantId) || (isSignedIn() && request.auth.uid == userId);
       }
 
-      // Submissions collection
       match /submissions/{submissionId} {
-        allow read: if isSignedIn() && belongsToTenant(tenantId) &&
-          (isManager() || (isAgent() && resource.data.agentId == request.auth.uid));
-
-        allow create: if isSignedIn() && belongsToTenant(tenantId) && isAgent() &&
-          request.resource.data.agentId == request.auth.uid;
-
-        allow update: if isSignedIn() && belongsToTenant(tenantId) &&
-          (
-            isManager() ||
-            (isAgent() &&
-             resource.data.agentId == request.auth.uid &&
-             resource.data.status == 'draft')
-          );
-
+        allow read: if canManage(tenantId) || canAccessOwn(tenantId, resource.data.agentId);
+        allow create: if canManage(tenantId) || canAccessOwn(tenantId, request.resource.data.agentId);
+        allow update: if canManage(tenantId) ||
+          (canAccessOwn(tenantId, resource.data.agentId) && resource.data.status == 'draft');
         allow delete: if false;
       }
 
-      // Persistency collection
       match /persistency/{docId} {
-        allow read: if isSignedIn() && belongsToTenant(tenantId) && isManager();
-        allow write: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+        allow read, write: if canManage(tenantId);
       }
 
-      // Goals collection
       match /goals/{goalId} {
-        allow read: if isSignedIn() && belongsToTenant(tenantId) &&
-          (isManager() || resource.data.agentId == request.auth.uid);
-        allow write: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+        allow read, write: if canManage(tenantId);
       }
 
-      // Notifications collection
       match /notifications/{notificationId} {
-        allow read: if isSignedIn() && belongsToTenant(tenantId) &&
-          resource.data.userId == request.auth.uid;
-        allow write: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+        allow read: if isSignedIn() && (isSuperAdminUID() || request.auth.uid == resource.data.userId);
+        allow write: if canManage(tenantId);
       }
 
-      // Leaderboard
       match /leaderboard/{userId} {
-        allow read: if isSignedIn() && belongsToTenant(tenantId);
-        allow write: if isSignedIn() && belongsToTenant(tenantId) && isManager();
+        allow read: if isSignedIn();
+        allow write: if canManage(tenantId);
       }
 
-      // Tenant config — managers read, super_admin writes
       match /config/{docId} {
-        allow read: if isSignedIn() && belongsToTenant(tenantId) && isManager();
-        allow write: if isSignedIn() && belongsToTenant(tenantId) && isSuperAdmin();
+        allow read, write: if canManage(tenantId);
       }
 
     }

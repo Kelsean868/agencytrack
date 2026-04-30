@@ -15,6 +15,32 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         setUser(firebaseUser);
+
+        // Diagnose current custom claims
+        const tokenResult = await firebaseUser.getIdTokenResult(true);
+        console.log('[AgencyTrack] Auth claims:', tokenResult.claims);
+        console.log('[AgencyTrack] UID:', firebaseUser.uid);
+
+        // Bootstrap super_admin claims if none are set yet
+        if (!tokenResult.claims.role) {
+          console.warn('[AgencyTrack] No role claim — attempting super_admin bootstrap');
+          try {
+            const { getFunctions, httpsCallable } = await import('firebase/functions');
+            const fns = getFunctions();
+            const setUserClaims = httpsCallable(fns, 'setUserClaims');
+            await setUserClaims({
+              uid: firebaseUser.uid,
+              role: 'super_admin',
+              tenantId: 'tatil-life',
+            });
+            // Force token refresh to pick up new claims
+            await firebaseUser.getIdToken(true);
+            console.log('[AgencyTrack] Super admin claims set successfully');
+          } catch (err) {
+            console.error('[AgencyTrack] Bootstrap failed:', err);
+          }
+        }
+
         try {
           const ref = doc(db, `tenants/${tenantId}/users/${firebaseUser.uid}`);
           const snap = await getDoc(ref);
