@@ -81,6 +81,7 @@ Agents submit weekly activity reports. Managers review and track team compliance
 - seed: seed-agent-names.cjs back-fills agentName onto existing submissions without it
 - `e0af086` — polish: agent name display fixed in MeetingMode
 - `dc10bd6` — fix: meeting mode agent name resolved correctly (submissionService now writes agentName; ManagerDashboard enriches submissions before passing to MeetingMode)
+- `1bf19bb` — feat: full KPI set + dual meeting mode (group + 1on1) — MasterSheet 23-col sticky table; extractFields.js shared utility; MeetingMode Group/1-on-1 toggle with coaching ratios + self-eval bars
 - **Phase 4 COMPLETE — all features verified working**
 
 ### What Was Built
@@ -128,12 +129,15 @@ Agents submit weekly activity reports. Managers review and track team compliance
 #### MeetingMode
 - File: `src/components/manager/MeetingMode.jsx`
 - Props: `{ submissions, selectedWeek, onClose }`
-- Fixed overlay, dark background (#28251d), z-50
+- Fixed overlay, `bg-ink` (#28251d), z-50
+- Mode toggle pill in top bar: 📊 Group (default) / 🔍 1-on-1
+- Top bar: `grid grid-cols-3` — slide counter | mode toggle | close button
 - Slide flow: Summary → one slide per agent (alphabetical) → Closing
 - Summary slide: Total API, Apps Sold, Avg Closing %, Submission rate
-- Agent slide: name (2.5rem+), week, 3×2 stat grid (Dials/Tel/F2F/FFI/Apps/API), status badge, closing ratio badge
-- Outlier flag: any field > 3× unit average; visible only in MeetingMode, never on agent view
-- Navigation: arrow buttons (44px), keyboard ArrowLeft/ArrowRight/Escape, dot indicators, slide counter
+- Agent slide (Group): 9-stat 3×3 grid (Prospect.Touches/Tel/F2F/Qual.App/FFI/Solutions/CI/Apps/API), status badge, closing ratio badge
+- Agent slide (1-on-1): Group stats + 8 coaching ratio cards (2×4) + 5 self-eval rating bars (1–10) + eval notes
+- Outlier flag ⚠️: any field > 3× unit average; visible ONLY in 1-on-1 mode
+- Navigation: arrow buttons (56px), keyboard ArrowLeft/ArrowRight/Escape, Tailwind dot indicators, slide counter
 
 #### New Utilities and Services
 - `src/utils/dateHelpers.js` — `getMostRecentSunday()`, `getLastNSundays(n)`
