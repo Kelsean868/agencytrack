@@ -25,6 +25,21 @@ export async function getMonthlyPersistency(year, month) {
   return map;
 }
 
+export async function getAgentPersistency(agentId, year) {
+  const q = query(
+    collection(db, `tenants/${tenantId}/persistency`),
+    where('agentId', '==', agentId),
+    where('year', '==', year)
+  );
+  const snap = await getDocs(q);
+  const map = {};
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    map[d.id] = data;
+  });
+  return map;
+}
+
 export async function savePersistencyBatch(entries, enteredBy) {
   const batch = writeBatch(db);
   entries.forEach(({ agentId, agentName, year, month, persistency }) => {

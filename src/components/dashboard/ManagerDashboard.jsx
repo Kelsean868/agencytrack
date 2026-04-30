@@ -9,13 +9,18 @@ import WizardForm from '../wizard/WizardForm';
 import MasterSheet from '../manager/MasterSheet';
 import CompliancePanel from '../manager/CompliancePanel';
 import PersistencyPanel from '../manager/PersistencyPanel';
+import GoalsPanel from '../manager/GoalsPanel';
 import MeetingMode from '../manager/MeetingMode';
+import Leaderboard from '../gamification/Leaderboard';
+import NotificationBell from '../ui/NotificationBell';
 
 const TABS = [
-  { id: 'overview',     label: 'Overview' },
+  { id: 'overview',     label: 'Overview'     },
   { id: 'mastersheet',  label: 'Master Sheet' },
-  { id: 'compliance',   label: 'Compliance' },
-  { id: 'persistency',  label: 'Persistency' },
+  { id: 'compliance',   label: 'Compliance'   },
+  { id: 'persistency',  label: 'Persistency'  },
+  { id: 'goals',        label: 'Goals'        },
+  { id: 'leaderboard',  label: 'Leaderboard'  },
 ];
 
 function StatCard({ icon: Icon, label, value, sub, accent = false }) {
@@ -49,8 +54,8 @@ export default function ManagerDashboard() {
     teamAPIGoal: 960000,
   }), []);
 
-  const displayName = userProfile?.name ?? userProfile?.email ?? 'Manager';
-  const roleLabel = getRoleLabel(role);
+  const displayName  = userProfile?.name ?? userProfile?.email ?? 'Manager';
+  const roleLabel    = getRoleLabel(role);
   const complianceRate = Math.round((stats.submittedThisWeek / stats.totalAgents) * 100);
 
   const handleSignOut = async () => {
@@ -65,22 +70,16 @@ export default function ManagerDashboard() {
         getWeeklySubmissions(selectedWeek),
         getTenantUsers().catch(() => []),
       ]);
-
-      // Build UID → name map from users collection for enrichment fallback.
       const nameMap = {};
       userList.forEach((u) => {
         nameMap[u.id] = u.name ?? u.displayName ?? u.email ?? null;
       });
-
-      // Ensure every submission has agentName — fills gaps for docs written
-      // before agentName was added to submissionService.
       const enriched = subs.map((sub) => {
         if (sub.agentName) return sub;
         const uid = sub.agentId ?? sub.userId ?? '';
         const name = nameMap[uid] ?? (uid ? `Agent ${uid.slice(-6)}` : 'Unknown');
         return { ...sub, agentName: name };
       });
-
       setMeetingSubmissions(enriched);
       setMeetingActive(true);
     } catch (e) {
@@ -118,6 +117,7 @@ export default function ManagerDashboard() {
               <Presentation size={16} />
               Start Meeting
             </button>
+            <NotificationBell />
             <button
               onClick={toggleDark}
               className="w-11 h-11 flex items-center justify-center rounded-full bg-white dark:bg-ink/10 text-ink-muted hover:text-ink transition-colors"
@@ -153,7 +153,7 @@ export default function ManagerDashboard() {
           ))}
         </div>
 
-        {/* Overview tab */}
+        {/* Overview */}
         {activeTab === 'overview' && (
           <div>
             <div className="mb-6">
@@ -202,20 +202,19 @@ export default function ManagerDashboard() {
           </div>
         )}
 
-        {/* Master Sheet tab */}
         {activeTab === 'mastersheet' && (
           <MasterSheet selectedWeek={selectedWeek} setSelectedWeek={setSelectedWeek} />
         )}
 
-        {/* Compliance tab */}
         {activeTab === 'compliance' && (
           <CompliancePanel selectedWeek={selectedWeek} setSelectedWeek={setSelectedWeek} />
         )}
 
-        {/* Persistency tab */}
-        {activeTab === 'persistency' && (
-          <PersistencyPanel />
-        )}
+        {activeTab === 'persistency' && <PersistencyPanel />}
+
+        {activeTab === 'goals' && <GoalsPanel />}
+
+        {activeTab === 'leaderboard' && <Leaderboard />}
       </div>
     </>
   );

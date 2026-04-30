@@ -1,37 +1,27 @@
 import { useState, useEffect, useMemo } from 'react';
-import { CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, LockOpen } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
+import { unlockSubmission } from '../../services/unlockService';
 import { getLastNSundays } from '../../utils/dateHelpers';
+
+const TENANT_ID = import.meta.env.VITE_TENANT_ID;
+const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'super_admin'];
 
 function daysSinceSunday(weekStarting) {
   const sunday = new Date(weekStarting + 'T00:00:00');
-  const now = new Date();
-  return Math.floor((now - sunday) / (1000 * 60 * 60 * 24));
+  return Math.floor((Date.now() - sunday.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 function formatSubmittedAt(ts) {
   if (!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleString('en-TT', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return d.toLocaleString('en-TT', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function Column({ icon: Icon, title, color, children, count }) {
-  const borderColor = {
-    success: 'border-success/30',
-    warning: 'border-warning/30',
-    danger:  'border-danger/30',
-  }[color];
-  const headerColor = {
-    success: 'bg-success/10 text-success',
-    warning: 'bg-warning/10 text-warning',
-    danger:  'bg-danger/10 text-danger',
-  }[color];
-
+  const borderColor = { success: 'border-success/30', warning: 'border-warning/30', danger: 'border-danger/30' }[color];
+  const headerColor = { success: 'bg-success/10 text-success', warning: 'bg-warning/10 text-warning', danger: 'bg-danger/10 text-danger' }[color];
   return (
     <div className={`flex-1 min-w-[200px] rounded-xl border ${borderColor} overflow-hidden`}>
       <div className={`flex items-center gap-2 px-4 py-3 ${headerColor}`}>
@@ -53,16 +43,76 @@ function AgentRow({ name, sub }) {
   );
 }
 
+function SubmittedAgentRow({ name, submittedAt, submissionId, onUnlock }) {
+  const [confirming, setConfirming] = useState(false);
+  const [unlocking, setUnlocking]   = useState(false);
+
+  const handleConfirm = async () => {
+    setUnlocking(true);
+    try {
+      await onUnlock(submissionId, name);
+      setConfirming(false);
+    } catch (e) {
+      console.error('Unlock failed:', e);
+    } finally {
+      setUnlocking(false);
+    }
+  };
+
+  return (
+    <div className="px-4 py-3 flex items-start justify-between gap-2">
+      <div>
+        <p className="text-sm font-medium text-ink">{name}</p>
+        {submittedAt && <p className="text-xs text-ink-muted mt-0.5">{formatSubmittedAt(submittedAt)}</p>}
+      </div>
+
+      {!confirming ? (
+        <button
+          onClick={() => setConfirming(true)}
+          className="shrink-0 h-8 px-2.5 flex items-center gap-1.5 rounded-lg border border-warning/40 text-warning text-xs font-semibold hover:bg-warning/10 transition-colors"
+          aria-label={`Unlock ${name}'s report`}
+        >
+          <LockOpen size={12} />
+          Unlock
+        </button>
+      ) : (
+        <div className="flex flex-col gap-1 items-end shrink-0">
+          <p className="text-[11px] text-ink-muted text-right max-w-[140px] leading-tight">
+            Unlock {name}'s report?
+          </p>
+          <div className="flex gap-1">
+            <button
+              onClick={() => setConfirming(false)}
+              className="h-7 px-2.5 rounded-lg border border-border text-xs text-ink-muted hover:text-ink transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleConfirm}
+              disabled={unlocking}
+              className="h-7 px-2.5 rounded-lg bg-warning text-white text-xs font-semibold disabled:opacity-60 hover:bg-warning/90 transition-colors"
+            >
+              {unlocking ? '…' : 'Confirm'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
+  const { user, userProfile, role } = useAuth();
   const [submissions, setSubmissions] = useState([]);
   const [users, setUsers]             = useState([]);
   const [usersLoaded, setUsersLoaded] = useState(false);
   const [loading, setLoading]         = useState(true);
   const [error, setError]             = useState('');
 
-  const sundays = getLastNSundays(8);
+  const sundays   = getLastNSundays(8);
+  const isManager = MANAGER_ROLES.includes(role);
 
-  useEffect(() => {
+  const loadData = () => {
     setLoading(true);
     setError('');
     Promise.all([getWeeklySubmissions(selectedWeek), getTenantUsers()])
@@ -76,14 +126,13 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
         setError('Failed to load data.');
       })
       .finally(() => setLoading(false));
-  }, [selectedWeek]);
+  };
+
+  useEffect(() => { loadData(); }, [selectedWeek]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { submitted, pending, missing } = useMemo(() => {
-    // Build name map from users for enrichment
     const userNameMap = {};
-    users.forEach((u) => {
-      userNameMap[u.id] = u.name ?? u.displayName ?? u.email ?? null;
-    });
+    users.forEach((u) => { userNameMap[u.id] = u.name ?? u.displayName ?? u.email ?? null; });
 
     function resolveName(s) {
       if (s.agentName)   return s.agentName;
@@ -94,34 +143,26 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       return uid ? `Agent ${uid.slice(-6)}` : '—';
     }
 
-    // Submitted and draft come directly from submissions — no users needed.
     const submitted = submissions
       .filter((s) => s.status === 'submitted')
       .map((s) => ({
-        id: s.agentId ?? s.userId,
-        name: resolveName(s),
-        submittedAt: s.submittedAt,
+        id:           s.id,
+        agentId:      s.agentId ?? s.userId,
+        name:         resolveName(s),
+        submittedAt:  s.submittedAt,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
     const pending = submissions
       .filter((s) => s.status !== 'submitted')
-      .map((s) => ({
-        id: s.agentId ?? s.userId,
-        name: resolveName(s),
-      }))
+      .map((s) => ({ id: s.agentId ?? s.userId, name: resolveName(s) }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
-    // Missing requires a populated users list to know who hasn't submitted.
     const missing = [];
     if (usersLoaded && users.length > 0) {
-      const submittedIds = new Set(
-        submissions.map((s) => s.agentId ?? s.userId)
-      );
+      const submittedIds = new Set(submissions.map((s) => s.agentId ?? s.userId));
       users.forEach((u) => {
-        if (!submittedIds.has(u.id)) {
-          missing.push({ id: u.id, name: u.name ?? u.email ?? u.id });
-        }
+        if (!submittedIds.has(u.id)) missing.push({ id: u.id, name: u.name ?? u.email ?? u.id });
       });
       missing.sort((a, b) => a.name.localeCompare(b.name));
     }
@@ -129,7 +170,15 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
     return { submitted, pending, missing };
   }, [users, usersLoaded, submissions]);
 
-  const days = daysSinceSunday(selectedWeek);
+  const handleUnlock = async (submissionId, agentName) => {
+    if (!user?.uid) return;
+    const managerName = userProfile?.name ?? userProfile?.email ?? 'Manager';
+    await unlockSubmission(TENANT_ID, submissionId, user.uid, managerName);
+    // Reload to reflect status change
+    loadData();
+  };
+
+  const days       = daysSinceSunday(selectedWeek);
   const totalKnown = usersLoaded && users.length > 0 ? users.length : null;
 
   if (loading) {
@@ -146,11 +195,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   }
 
   if (error) {
-    return (
-      <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">
-        {error}
-      </div>
-    );
+    return <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>;
   }
 
   return (
@@ -163,9 +208,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
           className="h-10 px-3 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           {sundays.map((d, i) => (
-            <option key={d} value={d}>
-              {i === 0 ? `This week (${d})` : d}
-            </option>
+            <option key={d} value={d}>{i === 0 ? `This week (${d})` : d}</option>
           ))}
         </select>
 
@@ -184,48 +227,40 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       </div>
 
       <div className="flex gap-4 flex-wrap items-start">
-        <Column
-          icon={CheckCircle}
-          title="Submitted"
-          color="success"
-          count={submitted.length}
-        >
+        {/* Submitted */}
+        <Column icon={CheckCircle} title="Submitted" color="success" count={submitted.length}>
           {submitted.length === 0 && (
             <p className="px-4 py-3 text-sm text-ink-muted">None yet.</p>
           )}
-          {submitted.map((a) => (
-            <AgentRow
-              key={a.id}
-              name={a.name}
-              sub={a.submittedAt ? formatSubmittedAt(a.submittedAt) : undefined}
-            />
-          ))}
-        </Column>
-
-        <Column
-          icon={Clock}
-          title="Pending / Draft"
-          color="warning"
-          count={pending.length}
-        >
-          {pending.length === 0 && (
-            <p className="px-4 py-3 text-sm text-ink-muted">None.</p>
+          {submitted.map((a) =>
+            isManager ? (
+              <SubmittedAgentRow
+                key={a.id}
+                name={a.name}
+                submittedAt={a.submittedAt}
+                submissionId={a.id}
+                onUnlock={handleUnlock}
+              />
+            ) : (
+              <AgentRow
+                key={a.id}
+                name={a.name}
+                sub={a.submittedAt ? formatSubmittedAt(a.submittedAt) : undefined}
+              />
+            )
           )}
-          {pending.map((a) => (
-            <AgentRow key={a.id} name={a.name} />
-          ))}
         </Column>
 
-        <Column
-          icon={AlertTriangle}
-          title="Missing"
-          color="danger"
-          count={missing.length}
-        >
+        {/* Pending / Draft */}
+        <Column icon={Clock} title="Pending / Draft" color="warning" count={pending.length}>
+          {pending.length === 0 && <p className="px-4 py-3 text-sm text-ink-muted">None.</p>}
+          {pending.map((a) => <AgentRow key={a.id} name={a.name} />)}
+        </Column>
+
+        {/* Missing */}
+        <Column icon={AlertTriangle} title="Missing" color="danger" count={missing.length}>
           {!usersLoaded || users.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-ink-muted">
-              No user list available yet.
-            </p>
+            <p className="px-4 py-3 text-sm text-ink-muted">No user list available yet.</p>
           ) : missing.length === 0 ? (
             <p className="px-4 py-3 text-sm text-ink-muted">All accounted for.</p>
           ) : (

@@ -130,3 +130,13 @@ export async function getLastSubmission(uid) {
   const snap = await getDocs(q);
   return snap.empty ? null : snap.docs[0].data();
 }
+
+export async function getAgentSubmissions(uid) {
+  const q = query(
+    collection(db, `tenants/${tenantId}/submissions`),
+    where('agentId', '==', uid),
+    orderBy('weekStarting', 'desc')
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}

@@ -41,7 +41,7 @@ service cloud.firestore {
       }
 
       match /submissions/{submissionId} {
-        allow read: if canManage(tenantId) || canAccessOwn(tenantId, resource.data.agentId);
+        allow read:   if canManage(tenantId) || canAccessOwn(tenantId, resource.data.agentId);
         allow create: if canManage(tenantId) || canAccessOwn(tenantId, request.resource.data.agentId);
         allow update: if canManage(tenantId) ||
           (canAccessOwn(tenantId, resource.data.agentId) && resource.data.status == 'draft');
@@ -49,20 +49,25 @@ service cloud.firestore {
       }
 
       match /persistency/{docId} {
-        allow read, write: if canManage(tenantId);
+        allow read: if canManage(tenantId) ||
+          (isSignedIn() && isAgent() && getTenantId() == tenantId && resource.data.agentId == request.auth.uid);
+        allow write: if canManage(tenantId);
       }
 
       match /goals/{goalId} {
-        allow read, write: if canManage(tenantId);
+        // Managers: full read/write. Agents: read their own goal doc (goalId == their uid).
+        allow read:  if canManage(tenantId) ||
+          (isSignedIn() && isAgent() && getTenantId() == tenantId && goalId == request.auth.uid);
+        allow write: if canManage(tenantId);
       }
 
       match /notifications/{notificationId} {
-        allow read: if isSignedIn() && (isSuperAdminUID() || request.auth.uid == resource.data.userId);
+        allow read:  if isSignedIn() && (isSuperAdminUID() || request.auth.uid == resource.data.userId);
         allow write: if canManage(tenantId);
       }
 
       match /leaderboard/{userId} {
-        allow read: if isSignedIn();
+        allow read:  if isSignedIn();
         allow write: if canManage(tenantId);
       }
 
