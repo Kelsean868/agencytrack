@@ -76,6 +76,16 @@ service cloud.firestore {
         allow write: if isSignedIn() && (isSuperAdminUID() || getRole() == 'super_admin');
       }
 
+      match /settlements/{docId} {
+        allow read: if isSignedIn() && (isSuperAdminUID() || getTenantId() == tenantId);
+        allow write: if isSuperAdminUID()
+          || request.auth.token.role == 'branch_manager'
+          || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true;
+        allow delete: if isSuperAdminUID()
+          || request.auth.token.role == 'branch_manager'
+          || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true;
+      }
+
     }
   }
 }

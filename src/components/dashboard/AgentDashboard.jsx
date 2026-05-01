@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { LogOut, Sun, Moon, X } from 'lucide-react';
+import { LogOut, Sun, Moon, X, Eye } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency, formatPercent } from '../../utils/formatters';
@@ -7,16 +7,21 @@ import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
 import { getGoals } from '../../services/goalsService';
 import { getAgentPersistency } from '../../services/persistencyService';
+import { getSettlements } from '../../services/settlementService';
 import WizardForm from '../wizard/WizardForm';
 import NotificationBell from '../ui/NotificationBell';
 import CareerPortal from '../profile/CareerPortal';
 import Leaderboard from '../gamification/Leaderboard';
+import AgentAwardsPanel from '../awards/AgentAwardsPanel';
+import SubmissionViewer from '../submissions/SubmissionViewer';
+import MotivationalCarousel from './MotivationalCarousel';
 
 const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 
 const TABS = [
   { id: 'dashboard',   label: 'Dashboard'   },
   { id: 'career',      label: 'Career'      },
+  { id: 'awards',      label: 'Awards'      },
   { id: 'leaderboard', label: 'Leaderboard' },
   { id: 'history',     label: 'History'     },
 ];
@@ -62,16 +67,18 @@ function ProgressRing({ percent, size = 120, stroke = 10 }) {
 export default function AgentDashboard() {
   const { user, userProfile, role } = useAuth();
 
-  const [activeTab, setActiveTab]         = useState('dashboard');
-  const [showWizard, setShowWizard]       = useState(false);
-  const [wizardWeek, setWizardWeek]       = useState(null);
+  const [activeTab, setActiveTab]             = useState('dashboard');
+  const [showWizard, setShowWizard]           = useState(false);
+  const [wizardWeek, setWizardWeek]           = useState(null);
   const [unlockDismissed, setUnlockDismissed] = useState(false);
+  const [viewingSubmission, setViewingSubmission] = useState(null);
 
-  const [currentWeekSub, setCurrentWeekSub] = useState(null);
-  const [allSubmissions, setAllSubmissions]  = useState([]);
-  const [goals, setGoals]                    = useState(null);
-  const [persistency, setPersistency]        = useState({});
-  const [loading, setLoading]                = useState(true);
+  const [currentWeekSub, setCurrentWeekSub]   = useState(null);
+  const [allSubmissions, setAllSubmissions]    = useState([]);
+  const [goals, setGoals]                      = useState(null);
+  const [persistency, setPersistency]          = useState({});
+  const [settlements, setSettlements]          = useState([]);
+  const [loading, setLoading]                  = useState(true);
 
   const currentWeek  = useMemo(() => getMostRecentSunday(), []);
   const thisYear     = new Date().getFullYear();
@@ -86,11 +93,13 @@ export default function AgentDashboard() {
       getAgentSubmissions(user.uid).catch(() => []),
       getGoals(TENANT_ID, user.uid).catch(() => null),
       getAgentPersistency(user.uid, thisYear).catch(() => ({})),
-    ]).then(([weekSub, subs, agentGoals, pers]) => {
+      getSettlements(TENANT_ID, user.uid, thisYear).catch(() => []),
+    ]).then(([weekSub, subs, agentGoals, pers, setts]) => {
       setCurrentWeekSub(weekSub);
       setAllSubmissions(subs);
       setGoals(agentGoals);
       setPersistency(pers);
+      setSettlements(setts);
     }).catch(console.error).finally(() => setLoading(false));
   }, [user?.uid, currentWeek, thisYear]);
 
@@ -107,7 +116,7 @@ export default function AgentDashboard() {
 
   const apiPercent = formatPercent(ytdAPI, ytdAPIGoal);
 
-  // Unlock banner — show when current week's draft was unlocked and not dismissed
+  // Unlock banner
   const showUnlockBanner =
     !unlockDismissed &&
     currentWeekSub?.status === 'draft' &&
@@ -130,6 +139,14 @@ export default function AgentDashboard() {
 
   return (
     <div className="min-h-screen bg-surface px-4 py-6 max-w-2xl mx-auto">
+
+      {/* Submission viewer drawer */}
+      {viewingSubmission && (
+        <SubmissionViewer
+          submission={viewingSubmission}
+          onClose={() => setViewingSubmission(null)}
+        />
+      )}
 
       {/* Header */}
       <header className="flex items-center justify-between mb-6">
@@ -186,10 +203,20 @@ export default function AgentDashboard() {
       {/* ── DASHBOARD TAB ── */}
       {activeTab === 'dashboard' && (
         <div>
-          <div className="mb-6">
+          <div className="mb-4">
             <p className="text-ink-muted text-sm">Welcome back,</p>
             <h2 className="text-xl font-bold text-ink">{displayName}</h2>
           </div>
+
+          {/* Motivational carousel */}
+          <MotivationalCarousel
+            role={role}
+            submissions={allSubmissions}
+            confirmedSettlements={settlements}
+            goals={goals}
+            agentProfile={userProfile}
+            currentDate={new Date()}
+          />
 
           {/* YTD API Progress */}
           <div className="card mb-6 flex items-center gap-6">
@@ -214,7 +241,6 @@ export default function AgentDashboard() {
           <div className="card mb-6">
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Goals</p>
             <div className="grid grid-cols-2 gap-4">
-              {/* My Commitment — from latest Step 9 */}
               <div>
                 <p className="text-xs font-medium text-ink-muted mb-2">My Commitment</p>
                 {latestSub?.targetAPI ? (
@@ -238,7 +264,6 @@ export default function AgentDashboard() {
                 )}
               </div>
 
-              {/* Manager Target */}
               <div>
                 <p className="text-xs font-medium text-ink-muted mb-2">Manager Target</p>
                 {goals?.targetWeeklyAPI ? (
@@ -290,6 +315,24 @@ export default function AgentDashboard() {
         )
       )}
 
+      {/* ── AWARDS TAB ── */}
+      {activeTab === 'awards' && (
+        loading ? (
+          <div className="flex flex-col gap-3">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-28 rounded-xl bg-border/40 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <AgentAwardsPanel
+            submissions={allSubmissions}
+            confirmedSettlements={settlements}
+            agentProfile={userProfile}
+            currentDate={new Date()}
+          />
+        )
+      )}
+
       {/* ── LEADERBOARD TAB ── */}
       {activeTab === 'leaderboard' && <Leaderboard />}
 
@@ -310,7 +353,11 @@ export default function AgentDashboard() {
           )}
           {!loading &&
             allSubmissions.map((s) => (
-              <div key={s.id ?? s.weekStarting} className="card flex items-center justify-between gap-4">
+              <button
+                key={s.id ?? s.weekStarting}
+                onClick={() => setViewingSubmission(s)}
+                className="card flex items-center justify-between gap-4 text-left w-full hover:bg-surface/70 transition-colors"
+              >
                 <div>
                   <p className="text-sm font-semibold text-ink">Week of {s.weekStarting}</p>
                   <p className="text-xs text-ink-muted mt-0.5">
@@ -318,14 +365,17 @@ export default function AgentDashboard() {
                     {s.applicationsSold ?? 0} apps
                   </p>
                 </div>
-                <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
-                  s.status === 'submitted'
-                    ? 'bg-success/15 text-success'
-                    : 'bg-warning/15 text-warning'
-                }`}>
-                  {s.status === 'submitted' ? 'Submitted' : 'Draft'}
-                </span>
-              </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                    s.status === 'submitted'
+                      ? 'bg-success/15 text-success'
+                      : 'bg-warning/15 text-warning'
+                  }`}>
+                    {s.status === 'submitted' ? 'Submitted' : 'Draft'}
+                  </span>
+                  <Eye size={15} className="text-ink-muted" />
+                </div>
+              </button>
             ))}
         </div>
       )}

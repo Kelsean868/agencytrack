@@ -4,6 +4,7 @@ import { getWeeklySubmissions, getTenantUsers } from '../../services/managerServ
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency } from '../../utils/formatters';
 import { extractFields, computeRatios } from '../../utils/extractFields';
+import SubmissionViewer from '../submissions/SubmissionViewer';
 
 // Column definitions — drives both header and cell rendering
 const COLS = [
@@ -77,11 +78,12 @@ function SkeletonRow() {
 }
 
 export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
-  const [submissions, setSubmissions] = useState([]);
-  const [userNameMap, setUserNameMap] = useState({});
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState('');
-  const [search, setSearch]           = useState('');
+  const [submissions, setSubmissions]       = useState([]);
+  const [userNameMap, setUserNameMap]       = useState({});
+  const [loading, setLoading]               = useState(true);
+  const [error, setError]                   = useState('');
+  const [search, setSearch]                 = useState('');
+  const [viewingSubmission, setViewingSubmission] = useState(null);
 
   const sundays = getLastNSundays(8);
 
@@ -115,6 +117,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         const personsReached = f.telContacts + f.f2fContacts;
         return {
           id:                   sub.agentId ?? sub.userId ?? sub.id,
+          _submission:          sub,
           name:                 resolveName(sub, userNameMap),
           status:               sub.status ?? 'draft',
           prospectingTouches:   f.prospectingTouches,
@@ -202,6 +205,14 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Submission viewer drawer */}
+      {viewingSubmission && (
+        <SubmissionViewer
+          submission={viewingSubmission}
+          onClose={() => setViewingSubmission(null)}
+        />
+      )}
+
       {/* Controls */}
       <div className="flex flex-wrap gap-3 items-center">
         <select
@@ -280,7 +291,11 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
 
             {!loading &&
               rows.map((row) => (
-                <tr key={row.id} className="group">
+                <tr
+                  key={row.id}
+                  className="group cursor-pointer"
+                  onClick={() => setViewingSubmission(row._submission)}
+                >
                   {COLS.map((col) => (
                     <td
                       key={col.key}

@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { CheckCircle, Clock, AlertTriangle, LockOpen } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, LockOpen, Eye } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { unlockSubmission } from '../../services/unlockService';
 import { getLastNSundays } from '../../utils/dateHelpers';
+import SubmissionViewer from '../submissions/SubmissionViewer';
 
 const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'super_admin'];
@@ -43,7 +44,7 @@ function AgentRow({ name, sub }) {
   );
 }
 
-function SubmittedAgentRow({ name, submittedAt, submissionId, onUnlock }) {
+function SubmittedAgentRow({ name, submittedAt, submissionId, onUnlock, onView }) {
   const [confirming, setConfirming] = useState(false);
   const [unlocking, setUnlocking]   = useState(false);
 
@@ -66,6 +67,14 @@ function SubmittedAgentRow({ name, submittedAt, submissionId, onUnlock }) {
         {submittedAt && <p className="text-xs text-ink-muted mt-0.5">{formatSubmittedAt(submittedAt)}</p>}
       </div>
 
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button
+          onClick={onView}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors"
+          aria-label={`View ${name}'s report`}
+        >
+          <Eye size={14} />
+        </button>
       {!confirming ? (
         <button
           onClick={() => setConfirming(true)}
@@ -97,17 +106,19 @@ function SubmittedAgentRow({ name, submittedAt, submissionId, onUnlock }) {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }
 
 export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   const { user, userProfile, role } = useAuth();
-  const [submissions, setSubmissions] = useState([]);
-  const [users, setUsers]             = useState([]);
-  const [usersLoaded, setUsersLoaded] = useState(false);
-  const [loading, setLoading]         = useState(true);
-  const [error, setError]             = useState('');
+  const [submissions, setSubmissions]           = useState([]);
+  const [users, setUsers]                       = useState([]);
+  const [usersLoaded, setUsersLoaded]           = useState(false);
+  const [loading, setLoading]                   = useState(true);
+  const [error, setError]                       = useState('');
+  const [viewingSubmission, setViewingSubmission] = useState(null);
 
   const sundays   = getLastNSundays(8);
   const isManager = MANAGER_ROLES.includes(role);
@@ -150,6 +161,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
         agentId:      s.agentId ?? s.userId,
         name:         resolveName(s),
         submittedAt:  s.submittedAt,
+        submission:   s,
       }))
       .sort((a, b) => a.name.localeCompare(b.name));
 
@@ -200,6 +212,14 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Submission viewer drawer */}
+      {viewingSubmission && (
+        <SubmissionViewer
+          submission={viewingSubmission}
+          onClose={() => setViewingSubmission(null)}
+        />
+      )}
+
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
         <select
@@ -240,6 +260,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
                 submittedAt={a.submittedAt}
                 submissionId={a.id}
                 onUnlock={handleUnlock}
+                onView={() => setViewingSubmission(a.submission)}
               />
             ) : (
               <AgentRow

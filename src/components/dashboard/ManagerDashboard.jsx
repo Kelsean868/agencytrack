@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { LogOut, Users, TrendingUp, FileCheck, AlertCircle, Sun, Moon, Presentation } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -10,16 +10,23 @@ import MasterSheet from '../manager/MasterSheet';
 import CompliancePanel from '../manager/CompliancePanel';
 import PersistencyPanel from '../manager/PersistencyPanel';
 import GoalsPanel from '../manager/GoalsPanel';
+import SettlementPanel from '../manager/SettlementPanel';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
 import NotificationBell from '../ui/NotificationBell';
+import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
+import MotivationalCarousel from './MotivationalCarousel';
+
+const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 
 const TABS = [
   { id: 'overview',     label: 'Overview'     },
+  { id: 'awards',       label: 'Awards'       },
   { id: 'mastersheet',  label: 'Master Sheet' },
   { id: 'compliance',   label: 'Compliance'   },
   { id: 'persistency',  label: 'Persistency'  },
   { id: 'goals',        label: 'Goals'        },
+  { id: 'settlements',  label: 'Settlements'  },
   { id: 'leaderboard',  label: 'Leaderboard'  },
 ];
 
@@ -39,12 +46,23 @@ function StatCard({ icon: Icon, label, value, sub, accent = false }) {
 }
 
 export default function ManagerDashboard() {
-  const { userProfile, role } = useAuth();
+  const { user, userProfile, role } = useAuth();
   const [showWizard, setShowWizard]       = useState(false);
   const [activeTab, setActiveTab]         = useState('overview');
   const [selectedWeek, setSelectedWeek]   = useState(getMostRecentSunday());
   const [meetingActive, setMeetingActive] = useState(false);
   const [meetingSubmissions, setMeetingSubmissions] = useState([]);
+
+  // Agent IDs for manager awards
+  const [agentIds, setAgentIds] = useState([]);
+
+  useEffect(() => {
+    getTenantUsers()
+      .then((userList) => {
+        setAgentIds(userList.filter((u) => u.role === 'agent').map((u) => u.id));
+      })
+      .catch(console.error);
+  }, []);
 
   const stats = useMemo(() => ({
     totalAgents: 8,
@@ -153,13 +171,20 @@ export default function ManagerDashboard() {
           ))}
         </div>
 
-        {/* Overview */}
+        {/* ── Overview ── */}
         {activeTab === 'overview' && (
           <div>
-            <div className="mb-6">
+            <div className="mb-4">
               <p className="text-ink-muted text-sm">Welcome back,</p>
               <h2 className="text-xl font-bold text-ink">{displayName}</h2>
             </div>
+
+            {/* Motivational carousel */}
+            <MotivationalCarousel
+              role={role}
+              submissions={[]}
+              currentDate={new Date()}
+            />
 
             <div className="card mb-6">
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Team YTD API</p>
@@ -202,6 +227,15 @@ export default function ManagerDashboard() {
           </div>
         )}
 
+        {activeTab === 'awards' && (
+          <ManagerAwardsPanel
+            agentIds={agentIds}
+            currentDate={new Date()}
+            role={role}
+            tenantId={TENANT_ID}
+          />
+        )}
+
         {activeTab === 'mastersheet' && (
           <MasterSheet selectedWeek={selectedWeek} setSelectedWeek={setSelectedWeek} />
         )}
@@ -213,6 +247,8 @@ export default function ManagerDashboard() {
         {activeTab === 'persistency' && <PersistencyPanel />}
 
         {activeTab === 'goals' && <GoalsPanel />}
+
+        {activeTab === 'settlements' && <SettlementPanel />}
 
         {activeTab === 'leaderboard' && <Leaderboard />}
       </div>
