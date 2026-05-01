@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, History } from 'lucide-react';
+import { ChevronDown, ChevronUp, History, Info } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { setGoals } from '../../services/goalsService';
 import { formatCurrency } from '../../utils/formatters';
@@ -299,6 +299,12 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Activity Required</p>
             <OutputTable computed={computed} freqKey={freqKey} onFreqChange={setFreqKey} />
+            <div className="flex items-start gap-1.5 mt-2">
+              <Info size={16} className="text-ink-muted shrink-0 mt-0.5" />
+              <p className="text-xs text-ink-muted leading-snug">
+                Calculations assume a 10-month production year. API to Settle reflects a 90% settlement rate — meaning 90% of submitted API is expected to be confirmed by Tatil Life. Adjust the Settlement Rate field above to model different scenarios.
+              </p>
+            </div>
           </div>
 
           {error && (
