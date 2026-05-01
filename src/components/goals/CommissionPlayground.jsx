@@ -4,26 +4,29 @@ import { useAuth } from '../../context/AuthContext';
 import { setGoals } from '../../services/goalsService';
 import { formatCurrency } from '../../utils/formatters';
 
-const DEFAULT_INPUTS = {
-  incomeGoal:       300000,
-  taxRate:          25,
-  renewalIncome:    0,
-  commissionRate:   35,
-  avgPolicyAPI:     12000,
-  persistencyRate:  90,
-  ciToSaleRatio:    2,
-  dialsToCIRatio:   2.5,
-  prospectRatio:    2,
-};
+const roundTo10 = (v) => Math.round(parseFloat(v) / 10) * 10;
 
 const PERIODS = [
-  { key: 'annual',     label: 'Annual',      divisor: 1   },
-  { key: 'semi',       label: 'Semi-Annual', divisor: 2   },
-  { key: 'quarterly',  label: 'Quarterly',   divisor: 4   },
-  { key: 'monthly',    label: 'Monthly',     divisor: 10  },
-  { key: 'weekly',     label: 'Weekly',      divisor: 40  },
-  { key: 'daily',      label: 'Daily',       divisor: 200 },
+  { key: 'annual',    label: 'Annual',      divisor: 1   },
+  { key: 'semi',      label: 'Semi-Annual', divisor: 2   },
+  { key: 'quarterly', label: 'Quarterly',   divisor: 4   },
+  { key: 'monthly',   label: 'Monthly',     divisor: 10  },
+  { key: 'weekly',    label: 'Weekly',      divisor: 43  },
+  { key: 'daily',     label: 'Daily',       divisor: 215 },
 ];
+
+const DEFAULT_INPUTS = {
+  incomeGoal:      300000,
+  taxRate:         25,
+  renewalIncome:   0,
+  settlementRate:  90,
+  commissionRate:  35,
+  avgPolicyAPI:    12000,
+  persistencyRate: 90,
+  ciToSaleRatio:   2,
+  dialsToCIRatio:  2.5,
+  prospectRatio:   2,
+};
 
 function NumField({ label, value, onChange, prefix, step = 1, min = 0, badge }) {
   return (
@@ -51,54 +54,65 @@ function NumField({ label, value, onChange, prefix, step = 1, min = 0, badge }) 
   );
 }
 
-function OutputTable({ computed }) {
+function OutputTable({ computed, freqKey, onFreqChange }) {
+  const period = PERIODS.find((p) => p.key === freqKey) ?? PERIODS[0];
+  const { divisor } = period;
+
   const rows = [
-    { key: 'incomeGoal',    label: 'Income Goal',         value: computed.incomeGoal,    fmt: formatCurrency },
-    { key: 'apiRequired',   label: 'API Required (TTD)',   value: computed.apiRequired,   fmt: formatCurrency },
-    { key: 'applications',  label: 'Applications',         value: computed.applications,  fmt: (v) => Math.ceil(v).toLocaleString() },
-    { key: 'ci',            label: 'Closing Interviews',   value: computed.ci,            fmt: (v) => Math.ceil(v).toLocaleString() },
-    { key: 'dials',         label: 'Dials',                value: computed.dials,         fmt: (v) => Math.ceil(v).toLocaleString() },
-    { key: 'prospects',     label: 'Prospects',            value: computed.prospects,     fmt: (v) => Math.ceil(v).toLocaleString() },
+    { label: 'Income Goal',        value: roundTo10(computed.incomeGoal  / divisor), fmt: formatCurrency,                        isCurrency: true  },
+    { label: 'API to Write',       value: roundTo10(computed.apiToWrite  / divisor), fmt: formatCurrency,                        isCurrency: true  },
+    { label: 'API to Settle',      value: roundTo10(computed.apiToSettle / divisor), fmt: formatCurrency,                        isCurrency: true  },
+    { label: 'Applications',       value: computed.applications,                       fmt: (v) => Math.ceil(v).toLocaleString(), isCurrency: false },
+    { label: 'Closing Interviews', value: computed.ci,                                fmt: (v) => Math.ceil(v).toLocaleString(), isCurrency: false },
+    { label: 'Dials',              value: computed.dials,                              fmt: (v) => Math.ceil(v).toLocaleString(), isCurrency: false },
+    { label: 'Prospects',          value: computed.prospects,                          fmt: (v) => Math.ceil(v).toLocaleString(), isCurrency: false },
   ];
 
   return (
-    <div className="overflow-x-auto -mx-1">
-      <table className="w-full text-xs border-collapse min-w-[480px]">
-        <thead>
-          <tr>
-            <th className="text-left px-2 py-2 text-ink-muted font-semibold w-36">Metric</th>
-            {PERIODS.map((p) => (
-              <th key={p.key} className="text-right px-2 py-2 text-ink-muted font-semibold whitespace-nowrap">
-                {p.label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, i) => (
-            <tr key={row.key} className={i % 2 === 0 ? 'bg-surface' : 'bg-white'}>
-              <td className="px-2 py-2 font-medium text-ink">{row.label}</td>
-              {PERIODS.map((p) => (
-                <td key={p.key} className="px-2 py-2 text-right text-ink tabular-nums">
-                  {row.fmt(row.value / p.divisor)}
-                </td>
-              ))}
-            </tr>
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-semibold text-ink-muted">View as:</label>
+        <select
+          value={freqKey}
+          onChange={(e) => onFreqChange(e.target.value)}
+          className="h-9 px-3 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          {PERIODS.map((p) => (
+            <option key={p.key} value={p.key}>{p.label}</option>
           ))}
-        </tbody>
-      </table>
+        </select>
+      </div>
+      <div className="overflow-x-auto -mx-1">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left px-2 py-2 text-ink-muted font-semibold">Metric</th>
+              <th className="text-right px-2 py-2 text-ink-muted font-semibold">{period.label}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={row.label} className={i % 2 === 0 ? 'bg-surface' : 'bg-white'}>
+                <td className="px-2 py-2 font-medium text-ink">{row.label}</td>
+                <td className="px-2 py-2 text-right text-ink tabular-nums">{row.fmt(row.value)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-export default function CommissionPlayground({ submissions = [], agentId, tenantId }) {
+export default function CommissionPlayground({ submissions = [], agentId, tenantId, agentName, isManagerSelf }) {
   const { user, userProfile } = useAuth();
-  const [open, setOpen] = useState(false);
-  const [inputs, setInputs] = useState(DEFAULT_INPUTS);
-  const [saving, setSaving] = useState(false);
-  const [savedGoals, setSavedGoals] = useState(false);
+  const [open, setOpen]                     = useState(false);
+  const [inputs, setInputs]                 = useState(DEFAULT_INPUTS);
+  const [freqKey, setFreqKey]               = useState('annual');
+  const [saving, setSaving]                 = useState(false);
+  const [savedGoals, setSavedGoals]         = useState(false);
   const [savedAssumptions, setSavedAssumptions] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError]                   = useState('');
 
   // Auto-populate ratios from last 12 submitted weeks if ≥8 available
   const { autoCiToSale, autoDialsToCI, hasHistory } = useMemo(() => {
@@ -108,8 +122,8 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
 
     if (submitted.length < 8) return { autoCiToSale: null, autoDialsToCI: null, hasHistory: false };
 
-    const totalCI   = submitted.reduce((sum, s) => sum + (parseFloat(s.ciConducted) || 0), 0);
-    const totalApps = submitted.reduce((sum, s) => sum + (parseFloat(s.applicationsSold || s.appsSold) || 0), 0);
+    const totalCI    = submitted.reduce((sum, s) => sum + (parseFloat(s.ciConducted) || 0), 0);
+    const totalApps  = submitted.reduce((sum, s) => sum + (parseFloat(s.applicationsSold || s.appsSold) || 0), 0);
     const totalDials = submitted.reduce(
       (sum, s) =>
         sum +
@@ -121,7 +135,7 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
     );
 
     const autoCiToSale  = totalApps > 0 ? totalCI / totalApps : null;
-    const autoDialsToCI = totalCI > 0   ? totalDials / totalCI : null;
+    const autoDialsToCI = totalCI   > 0 ? totalDials / totalCI : null;
     return {
       autoCiToSale,
       autoDialsToCI,
@@ -142,19 +156,23 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
   const setField = (key) => (value) => setInputs((prev) => ({ ...prev, [key]: value }));
 
   const computed = useMemo(() => {
-    const { incomeGoal, taxRate, renewalIncome, commissionRate, avgPolicyAPI,
-            persistencyRate, ciToSaleRatio, dialsToCIRatio, prospectRatio } = inputs;
+    const {
+      incomeGoal, taxRate, renewalIncome, settlementRate,
+      commissionRate, avgPolicyAPI, persistencyRate,
+      ciToSaleRatio, dialsToCIRatio, prospectRatio,
+    } = inputs;
 
-    const preTaxIncome            = taxRate < 100 ? incomeGoal / (1 - taxRate / 100) : 0;
-    const firstYearCommRequired   = Math.max(0, preTaxIncome - renewalIncome);
-    const adjustedForPersistency  = persistencyRate > 0 ? firstYearCommRequired / (persistencyRate / 100) : 0;
-    const apiRequired             = commissionRate > 0  ? adjustedForPersistency  / (commissionRate  / 100) : 0;
-    const applications            = avgPolicyAPI > 0    ? apiRequired / avgPolicyAPI : 0;
-    const ci                      = applications * ciToSaleRatio;
-    const dials                   = ci * dialsToCIRatio;
-    const prospects               = dials * prospectRatio;
+    const preTaxIncome           = taxRate < 100 ? incomeGoal / (1 - taxRate / 100) : 0;
+    const firstYearCommRequired  = Math.max(0, preTaxIncome - renewalIncome);
+    const adjustedForPersistency = persistencyRate > 0 ? firstYearCommRequired / (persistencyRate / 100) : 0;
+    const apiToWrite             = commissionRate > 0 ? adjustedForPersistency / (commissionRate / 100) : 0;
+    const apiToSettle            = apiToWrite * (settlementRate / 100);
+    const applications           = avgPolicyAPI > 0 ? apiToWrite / avgPolicyAPI : 0;
+    const ci                     = applications * ciToSaleRatio;
+    const dials                  = ci * dialsToCIRatio;
+    const prospects              = dials * prospectRatio;
 
-    return { incomeGoal, apiRequired, applications, ci, dials, prospects };
+    return { incomeGoal, apiToWrite, apiToSettle, applications, ci, dials, prospects };
   }, [inputs]);
 
   const handleSaveGoals = async () => {
@@ -163,7 +181,7 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
     try {
       const name = userProfile?.name ?? userProfile?.email ?? 'Agent';
       await setGoals(tenantId, agentId, {
-        personalAnnualAPI:  computed.apiRequired,
+        personalAnnualAPI:  computed.apiToWrite,
         personalAnnualApps: computed.applications,
       }, user.uid, name);
       setSavedGoals(true);
@@ -184,6 +202,7 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
         playgroundIncomeGoal:      inputs.incomeGoal,
         playgroundTaxRate:         inputs.taxRate,
         playgroundRenewalIncome:   inputs.renewalIncome,
+        playgroundSettlementRate:  inputs.settlementRate,
         playgroundCommissionRate:  inputs.commissionRate,
         playgroundAvgPolicyAPI:    inputs.avgPolicyAPI,
         playgroundPersistencyRate: inputs.persistencyRate,
@@ -209,7 +228,11 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
       >
         <div>
           <p className="text-sm font-semibold text-ink">Commission Playground</p>
-          <p className="text-xs text-ink-muted mt-0.5">Reverse-engineer the activity needed to hit your income goal</p>
+          <p className="text-xs text-ink-muted mt-0.5">
+            {isManagerSelf
+              ? 'Calculate the activity needed to hit your personal income goal'
+              : 'Reverse-engineer the activity needed to hit your income goal'}
+          </p>
         </div>
         {open ? <ChevronUp size={18} className="text-ink-muted" /> : <ChevronDown size={18} className="text-ink-muted" />}
       </button>
@@ -220,7 +243,8 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-primary/5 border border-primary/20">
               <History size={14} className="text-primary shrink-0" />
               <p className="text-xs text-primary">
-                CI-to-sale and dials-to-CI ratios auto-populated from your last {Math.min(submissions.filter(s => s.status === 'submitted').length, 12)} weeks of data.
+                CI-to-sale and dials-to-CI ratios auto-populated from your last{' '}
+                {Math.min((submissions ?? []).filter((s) => s.status === 'submitted').length, 12)} weeks of data.
               </p>
             </div>
           )}
@@ -228,10 +252,11 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
           {/* Income assumptions */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Income Assumptions</p>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <NumField label="Income Goal (TTD)" value={inputs.incomeGoal} onChange={setField('incomeGoal')} prefix="TTD" step={5000} />
-              <NumField label="Tax Rate (%)" value={inputs.taxRate} onChange={setField('taxRate')} step={1} min={0} />
-              <NumField label="Renewal Income (TTD)" value={inputs.renewalIncome} onChange={setField('renewalIncome')} prefix="TTD" step={1000} />
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <NumField label="Income Goal (TTD)"     value={inputs.incomeGoal}     onChange={setField('incomeGoal')}     prefix="TTD" step={5000} />
+              <NumField label="Tax Rate (%)"           value={inputs.taxRate}         onChange={setField('taxRate')}         step={1}     min={0} />
+              <NumField label="Renewal Income (TTD)"  value={inputs.renewalIncome}  onChange={setField('renewalIncome')}  prefix="TTD" step={1000} />
+              <NumField label="Settlement Rate (%)"   value={inputs.settlementRate} onChange={setField('settlementRate')} step={1}     min={0} />
             </div>
           </div>
 
@@ -239,9 +264,9 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Production Assumptions</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <NumField label="Commission Rate (%)" value={inputs.commissionRate} onChange={setField('commissionRate')} step={1} min={1} />
-              <NumField label="Avg Policy API (TTD)" value={inputs.avgPolicyAPI} onChange={setField('avgPolicyAPI')} prefix="TTD" step={500} min={1} />
-              <NumField label="Persistency Rate (%)" value={inputs.persistencyRate} onChange={setField('persistencyRate')} step={1} min={1} />
+              <NumField label="Commission Rate (%)"   value={inputs.commissionRate}  onChange={setField('commissionRate')}  step={1}   min={1} />
+              <NumField label="Avg Policy API (TTD)"  value={inputs.avgPolicyAPI}   onChange={setField('avgPolicyAPI')}   prefix="TTD" step={500} min={1} />
+              <NumField label="Persistency Rate (%)"  value={inputs.persistencyRate} onChange={setField('persistencyRate')} step={1}   min={1} />
             </div>
           </div>
 
@@ -272,10 +297,9 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
           {/* Output table */}
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Activity Required</p>
-            <OutputTable computed={computed} />
+            <OutputTable computed={computed} freqKey={freqKey} onFreqChange={setFreqKey} />
           </div>
 
-          {/* Error */}
           {error && (
             <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{error}</p>
           )}

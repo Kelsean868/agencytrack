@@ -248,6 +248,23 @@ function GoalsOverview({ submissions, user, persistencyData }) {
         </table>
       </div>
 
+      {/* Manager-set period targets — read-only */}
+      <div className="flex flex-col gap-1.5 pt-2 border-t border-border/60 text-xs">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-muted">Manager-Set Period Targets</p>
+        <div className="flex items-center justify-between">
+          <span className="text-ink-muted">Monthly Target (set by manager)</span>
+          <span className="font-medium text-ink">
+            {goals?.targetMonthlyAPI ? formatCurrency(parseFloat(goals.targetMonthlyAPI)) : '—'}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-ink-muted">Quarterly Target (set by manager)</span>
+          <span className="font-medium text-ink">
+            {goals?.targetQuarterlyAPI ? formatCurrency(parseFloat(goals.targetQuarterlyAPI)) : '—'}
+          </span>
+        </div>
+      </div>
+
       {saveError && (
         <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{saveError}</p>
       )}

@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { LogOut, Users, TrendingUp, FileCheck, AlertCircle, Sun, Moon, Presentation } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -10,6 +10,8 @@ import MasterSheet from '../manager/MasterSheet';
 import CompliancePanel from '../manager/CompliancePanel';
 import PersistencyPanel from '../manager/PersistencyPanel';
 import GoalsPanel from '../manager/GoalsPanel';
+import CommissionPlayground from '../goals/CommissionPlayground';
+import { getGoals } from '../../services/goalsService';
 import SettlementPanel from '../manager/SettlementPanel';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
@@ -63,6 +65,28 @@ export default function ManagerDashboard() {
       })
       .catch(console.error);
   }, []);
+
+  // Goals sub-tab
+  const [goalsSubTab, setGoalsSubTab]     = useState('self');
+  const [managerGoals, setManagerGoals]   = useState(null);
+  const [unitGoalsData, setUnitGoalsData] = useState({ agents: [], goalsMap: {} });
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    getGoals(TENANT_ID, user.uid).then(setManagerGoals).catch(console.error);
+  }, [user?.uid]);
+
+  const handleUnitGoalsLoaded = useCallback((agents, goalsMap) => {
+    setUnitGoalsData({ agents, goalsMap });
+  }, []);
+
+  const unitAggregate = useMemo(() => {
+    const { agents, goalsMap } = unitGoalsData;
+    const withGoals = agents.filter((a) => parseFloat(goalsMap[a.id]?.targetAnnualAPI) > 0);
+    const totalAPI  = withGoals.reduce((sum, a) => sum + (parseFloat(goalsMap[a.id]?.targetAnnualAPI) || 0), 0);
+    const avg       = withGoals.length > 0 ? totalAPI / withGoals.length : 0;
+    return { totalAPI, avg, count: withGoals.length, total: agents.length };
+  }, [unitGoalsData]);
 
   const stats = useMemo(() => ({
     totalAgents: 8,
@@ -246,7 +270,94 @@ export default function ManagerDashboard() {
 
         {activeTab === 'persistency' && <PersistencyPanel />}
 
-        {activeTab === 'goals' && <GoalsPanel />}
+        {activeTab === 'goals' && (
+          <div className="flex flex-col gap-4">
+            {/* Goals sub-tab bar */}
+            <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border">
+              {[
+                { id: 'self', label: 'My Production' },
+                { id: 'unit', label: 'My Unit'       },
+              ].map((t) => (
+                <button
+                  key={t.id}
+                  onClick={() => setGoalsSubTab(t.id)}
+                  className={`flex-1 h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
+                    goalsSubTab === t.id
+                      ? 'bg-white text-primary shadow-sm'
+                      : 'text-ink-muted hover:text-ink'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {/* My Production */}
+            {goalsSubTab === 'self' && (
+              <div className="flex flex-col gap-4">
+                <CommissionPlayground
+                  agentId={user?.uid}
+                  agentName={displayName}
+                  isManagerSelf={true}
+                  tenantId={TENANT_ID}
+                  submissions={[]}
+                />
+
+                {/* Personal annual target summary */}
+                <div className="card">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Your Personal Annual Target</p>
+                  {managerGoals?.personalAnnualAPI ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-ink-muted">Annual API</span>
+                        <span className="text-sm font-semibold text-ink">{formatCurrency(parseFloat(managerGoals.personalAnnualAPI))}</span>
+                      </div>
+                      {parseFloat(managerGoals.personalAnnualApps) > 0 && (
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-ink-muted">Annual Apps</span>
+                          <span className="text-sm font-semibold text-ink">{Math.ceil(parseFloat(managerGoals.personalAnnualApps))}</span>
+                        </div>
+                      )}
+                      {managerGoals.updatedAt && (
+                        <p className="text-xs text-ink-muted">
+                          Last updated: {managerGoals.updatedAt.toDate?.().toLocaleDateString('en-TT') ?? ''}
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-ink-muted italic">
+                      No personal target set. Use the Commission Playground above to calculate and save your goals.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* My Unit */}
+            {goalsSubTab === 'unit' && (
+              <div className="flex flex-col gap-4">
+                {/* Unit aggregate summary */}
+                {unitGoalsData.agents.length > 0 && (
+                  <div className="flex flex-wrap gap-6 px-4 py-3 rounded-xl bg-surface border border-border">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-ink-muted">Total Unit API Target</span>
+                      <span className="text-sm font-semibold text-ink">{formatCurrency(unitAggregate.totalAPI)}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-ink-muted">Avg per Advisor</span>
+                      <span className="text-sm font-semibold text-ink">{formatCurrency(unitAggregate.avg)}</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-ink-muted">Advisors with Goals</span>
+                      <span className="text-sm font-semibold text-ink">{unitAggregate.count} / {unitAggregate.total}</span>
+                    </div>
+                  </div>
+                )}
+                <GoalsPanel onGoalsLoaded={handleUnitGoalsLoaded} />
+              </div>
+            )}
+          </div>
+        )}
 
         {activeTab === 'settlements' && <SettlementPanel />}
 

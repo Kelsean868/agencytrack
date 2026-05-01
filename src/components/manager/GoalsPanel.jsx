@@ -12,6 +12,8 @@ function emptyGoals() {
     targetAnnualAPI:         '',
     targetAnnualApps:        '',
     targetAnnualPersistency: '',
+    targetMonthlyAPI:        '',
+    targetQuarterlyAPI:      '',
     targetWeeklyAPI:         '',
     targetWeeklyApps:        '',
     targetWeeklyDials:       '',
@@ -53,7 +55,7 @@ function BelowFloorWarning({ label }) {
   );
 }
 
-export default function GoalsPanel() {
+export default function GoalsPanel({ onGoalsLoaded }) {
   const { user, userProfile } = useAuth();
   const [agents, setAgents]       = useState([]);
   const [goalsMap, setGoalsMap]   = useState({});
@@ -85,6 +87,8 @@ export default function GoalsPanel() {
                   targetAnnualAPI:         g.targetAnnualAPI         ?? '',
                   targetAnnualApps:        g.targetAnnualApps        ?? '',
                   targetAnnualPersistency: g.targetAnnualPersistency ?? '',
+                  targetMonthlyAPI:        g.targetMonthlyAPI        ?? '',
+                  targetQuarterlyAPI:      g.targetQuarterlyAPI      ?? '',
                   targetWeeklyAPI:         g.targetWeeklyAPI         ?? '',
                   targetWeeklyApps:        g.targetWeeklyApps        ?? '',
                   targetWeeklyDials:       g.targetWeeklyDials       ?? '',
@@ -96,6 +100,9 @@ export default function GoalsPanel() {
         );
         setGoalsMap(gMap);
         setEditMap(eMap);
+        if (typeof onGoalsLoaded === 'function') {
+          onGoalsLoaded(agentList, gMap);
+        }
       })
       .catch((e) => {
         console.error(e);
@@ -235,6 +242,25 @@ export default function GoalsPanel() {
                   label="Annual Persistency %"
                   value={e.targetAnnualPersistency}
                   onChange={(v) => handleField(agent.id, 'targetAnnualPersistency', v)}
+                />
+              </div>
+            </div>
+
+            {/* Period API targets */}
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Period API Targets (Optional)</p>
+              <div className="grid grid-cols-2 gap-3">
+                <NumInput
+                  label="Monthly API Target"
+                  value={e.targetMonthlyAPI}
+                  onChange={(v) => handleField(agent.id, 'targetMonthlyAPI', v)}
+                  currency
+                />
+                <NumInput
+                  label="Quarterly API Target"
+                  value={e.targetQuarterlyAPI}
+                  onChange={(v) => handleField(agent.id, 'targetQuarterlyAPI', v)}
+                  currency
                 />
               </div>
             </div>
