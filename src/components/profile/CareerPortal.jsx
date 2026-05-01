@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Pencil, X, Check } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { getGoals, setGoals, getCompanyMinimums } from '../../services/goalsService';
@@ -210,8 +210,8 @@ function GoalsOverview({ submissions, user, persistencyData }) {
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <>
-                <tr key={row.label} className={i % 2 === 0 ? 'bg-surface' : 'bg-white'}>
+              <React.Fragment key={row.label}>
+                <tr className={i % 2 === 0 ? 'bg-surface' : 'bg-white'}>
                   <td className="px-2 py-2 font-medium text-ink">{row.label}</td>
                   <td className="px-2 py-2 text-right text-ink-muted">{String(row.min)}</td>
                   <td className="px-2 py-2 text-right text-ink-muted">{String(row.mgr)}</td>
@@ -233,7 +233,7 @@ function GoalsOverview({ submissions, user, persistencyData }) {
                   </td>
                 </tr>
                 {showDerived && row.monthly !== null && (
-                  <tr key={`${row.label}-derived`} className={`${i % 2 === 0 ? 'bg-surface' : 'bg-white'} opacity-70`}>
+                  <tr className={`${i % 2 === 0 ? 'bg-surface' : 'bg-white'} opacity-70`}>
                     <td className="pl-6 pr-2 py-1 text-ink-muted italic">↳ Monthly / Weekly</td>
                     <td className="px-2 py-1 text-right text-ink-muted">—</td>
                     <td className="px-2 py-1 text-right text-ink-muted">—</td>
@@ -242,7 +242,7 @@ function GoalsOverview({ submissions, user, persistencyData }) {
                     </td>
                   </tr>
                 )}
-              </>
+              </React.Fragment>
             ))}
           </tbody>
         </table>

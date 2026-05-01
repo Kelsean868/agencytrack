@@ -62,6 +62,7 @@ export default function SettlementPanel() {
   const [deletingId, setDeletingId]       = useState(null);
 
   const canAccess = role === 'branch_manager' || role === 'super_admin' || Boolean(userProfile?.canConfirmSettlements);
+  const isReadOnly = role === 'unit_manager' && !Boolean(userProfile?.canConfirmSettlements);
 
   const loadData = useCallback(() => {
     setLoadingData(true);
@@ -207,7 +208,7 @@ export default function SettlementPanel() {
     }
   }
 
-  if (!canAccess) {
+  if (!canAccess && !isReadOnly) {
     return (
       <div className="card text-center py-10">
         <p className="text-sm text-ink-muted">You do not have access to the Settlement panel.</p>
@@ -217,6 +218,76 @@ export default function SettlementPanel() {
 
   const inputCls = 'h-10 px-3 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-full';
   const labelCls = 'block text-xs font-semibold text-ink-muted mb-1';
+
+  if (isReadOnly) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="flex items-start gap-3 p-4 rounded-xl bg-primary/8 border border-primary/20">
+          <p className="text-sm text-primary">
+            Settlement figures are entered by your Branch Manager. Contact them to correct any errors.
+          </p>
+        </div>
+
+        <div>
+          <p className="text-sm font-semibold text-ink mb-3">Confirmed Settlements — Your Unit</p>
+
+          {loadingData ? (
+            <div className="space-y-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-10 bg-border/30 rounded-lg animate-pulse" />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
+          ) : settlements.length === 0 ? (
+            <div className="card text-center py-8">
+              <p className="text-sm text-ink-muted">No settlements recorded yet.</p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto rounded-xl border border-border bg-white">
+                <table className="text-sm w-full">
+                  <thead>
+                    <tr className="bg-surface border-b border-border">
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted whitespace-nowrap">Agent</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted">Period</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted">API</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted">Apps</th>
+                      <th className="px-3 py-2.5 text-right text-xs font-semibold text-ink-muted">Persist</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted">By</th>
+                      <th className="px-3 py-2.5 text-left text-xs font-semibold text-ink-muted">Date</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {settlements.slice(0, visibleCount).map((s) => (
+                      <tr key={s.id} className="hover:bg-surface/60 transition-colors">
+                        <td className="px-3 py-2.5 font-medium text-ink whitespace-nowrap">{agentName(s.agentId)}</td>
+                        <td className="px-3 py-2.5 text-ink-muted whitespace-nowrap">{periodLabel(s.periodKey)}</td>
+                        <td className="px-3 py-2.5 text-right text-ink whitespace-nowrap">{formatCurrency(s.settledAPI)}</td>
+                        <td className="px-3 py-2.5 text-right text-ink">{s.settledApps ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-right text-ink">{s.persistency != null ? `${s.persistency}%` : '—'}</td>
+                        <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{s.confirmedByName ?? '—'}</td>
+                        <td className="px-3 py-2.5 text-ink-muted text-xs whitespace-nowrap">{formatTs(s.confirmedAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {settlements.length > visibleCount && (
+                <button
+                  onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  className="mt-3 w-full h-10 rounded-lg border border-border bg-white text-sm font-medium text-ink-muted hover:text-ink transition-colors"
+                >
+                  Load More ({settlements.length - visibleCount} remaining)
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
