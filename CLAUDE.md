@@ -66,11 +66,12 @@ Role is stored in Firebase custom claims AND in Firestore `/tenants/{id}/users/{
 /tenants/{tenantId}/
   config/settings
   users/{userId}
-  submissions/{submissionId}       ← weekly wizard submissions
-  persistency/{agentId_YYYY_MM}   ← manager-entered persistency %
+  submissions/{submissionId}                    ← weekly wizard submissions
+  persistency/{agentId_YYYY_MM}                ← manager-entered persistency %
   goals/{goalId}
   leaderboard/{userId}
   notifications/{notificationId}
+  settlements/{agentId}_{year}_{periodKey}     ← confirmed production data entered by branch manager
 ```
 
 ### Submission Document Shape (actual flat schema — current wizard)
@@ -128,7 +129,7 @@ Minimum 44px touch targets (mobile agents in field).
 Dark mode toggle in header (CSS class swap on `<html>`).
 
 ## Current Build Phase
-**Phase 5 — Notifications + Career Portal + Gamification**
+**Phase 6 — Feature Set B Complete**
 
 ## Build Phase Status
 | Phase | Scope | Status |
@@ -137,8 +138,8 @@ Dark mode toggle in header (CSS class swap on `<html>`).
 | P2 | Login + Auth flow + Agent Dashboard | ✅ COMPLETE |
 | P3 | 9-step Weekly Wizard with auto-save | ✅ COMPLETE |
 | P4 | Manager Views + Meeting Mode + Persistency | ✅ COMPLETE |
-| P5 | Notifications + Career Portal + Gamification | 🔄 IN PROGRESS |
-| P6 | Deploy + Polish | ⏳ PENDING |
+| P5 | Notifications + Career Portal + Gamification | ✅ COMPLETE |
+| P6 | History Viewer + Awards Tracker + Settlement Confirmation + Motivational Carousel | ✅ COMPLETE |
 
 ## Phase 4 — Component Checklist
 - ✅ Step9Goals.jsx — Next Week Goals wizard step
@@ -172,6 +173,26 @@ Dark mode toggle in header (CSS class swap on `<html>`).
 ### Phase 4 — Deferred to Phase 5.5 (post Phase 5)
 - Branch Overview slide in Group Meeting Mode (all agents, grouped by unit, unit subtotals, branch total, click agent to jump to their slide)
 - Drill-down cards in 1-on-1 Mode (tap stat card → slide-up drawer showing field breakdown without disrupting navigation flow)
+
+## Phase 6 — Component Checklist
+- ✅ SubmissionViewer.jsx — read-only slide-in drawer, wired to AgentDashboard History tab, MasterSheet, CompliancePanel
+- ✅ awardsEngine.js — pure functions: computeAgentAwards, computeManagerAwards, computeRatioTrends
+- ✅ AgentAwardsPanel.jsx — Monthly/Quarterly/Annual/Club tabs + ratio trends, added as Awards tab in AgentDashboard
+- ✅ ManagerAwardsPanel.jsx — monthly bonus card + annual awards grid, added as Awards tab in ManagerDashboard
+- ✅ settlementService.js — getSettlements, getSettlementsForUnit, confirmSettlement, deleteSettlement (batches >30 agents)
+- ✅ SettlementPanel.jsx — single + bulk entry, history table with delete confirm, canConfirmSettlements flag enforced
+- ✅ MotivationalCarousel.jsx — 9 agent cards + 4 manager cards, auto-advance 6s, pause on hover
+- ✅ firestore.rules — settlements collection added with branch_manager + canConfirmSettlements write/delete guards
+
+### Phase 6 Key Decisions
+- ManagerDashboard tab order: Overview | Awards | Master Sheet | Compliance | Persistency | Goals | Settlements | Leaderboard
+- AgentDashboard tab order: Dashboard | Career | Awards | Leaderboard | History
+- awardsEngine.js is a pure module (zero Firebase imports, zero side effects) — safe to test in isolation
+- Data source logic: confirmed settlements take precedence; missing periods supplemented from wizard submissions with "Estimated" badge
+- MasterSheet rows are clickable (full row `onClick`) — original submission doc stored as `row._submission`
+- CompliancePanel: Eye icon button added to SubmittedAgentRow alongside existing Unlock button
+- SettlementPanel access guard: `role === 'branch_manager' || role === 'super_admin' || userProfile.canConfirmSettlements === true`
+- Settlements Firestore path: `/tenants/{tenantId}/settlements/{agentId}_{year}_{periodKey}`
 
 ## utils/extractFields.js — Key Reference
 Single source of truth for reading submission data. Import in any manager component that reads submission KPI fields:
