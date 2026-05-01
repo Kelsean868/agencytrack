@@ -189,7 +189,55 @@ Agents submit weekly activity reports. Managers review and track team compliance
 
 ---
 
-## Upcoming — Phase 6
-- Deploy polish + performance
-- Code splitting (chunk size optimisation)
+## Phase 6 — Feature Set B ✅ COMPLETE
+
+### Accepted Commits
+- `509895f` — feat: History viewer, Awards tracker, Settlement confirmation, Motivational carousel
+
+### What Was Built
+
+#### Feature 1 — Submission History Viewer
+- File: `src/components/submissions/SubmissionViewer.jsx`
+- Read-only right-side drawer (same pattern as NotificationDrawer). Close on backdrop click or Escape.
+- 7 sections: Week Info, Activity, Interviews, Production, Persistency, Next Week Goals, Self-Evaluation.
+- Uses `extractFields()` for schema normalisation. Shows "—" for null/zero fields.
+- Integrated into: AgentDashboard History tab (Eye icon per row), MasterSheet (row click), CompliancePanel (Eye button on submitted rows).
+
+#### Feature 2 — Awards Tracker
+- `src/utils/awardsEngine.js` — Pure computation engine (zero Firebase imports, zero side effects).
+  - `computeAgentAwards(confirmedData, submittedData, agentProfile, currentDate)` — Monthly, Quarterly, Annual, Club awards with `eligible`, `inContention`, `criteria`, `progressPercent`, `dataSource`, `note`.
+  - `computeManagerAwards(confirmedData, unitAgentIds, allAgentConfirmed, recruitData, currentDate, role)` — Monthly bonus tiers + annual recruiting/activity/production/persistency awards.
+  - `computeRatioTrends(submissions)` — 4-week and 12-week trailing averages for CI:Sale, Dials:CI, Avg Policy Size, FFI:Dial.
+- `src/services/settlementService.js` — `getSettlements`, `getSettlementsForUnit`, `confirmSettlement`, `deleteSettlement` against `/tenants/{tenantId}/settlements/{agentId}_{year}_{periodKey}`.
+- `src/components/awards/AgentAwardsPanel.jsx` — Monthly/Quarterly/Annual/Club tabs, award cards with progress bar + checklist, data source badges (Confirmed teal / Estimated amber), ratio trend cards 2×2 grid.
+- `src/components/awards/ManagerAwardsPanel.jsx` — Monthly bonus card (tier %, bonus amount, next tier gap) + Annual/Activity/Recruiting tabs with same award card pattern.
+- Added "Awards" tab to AgentDashboard (between Career and Leaderboard).
+- Added "Awards" and "Settlements" tabs to ManagerDashboard.
+
+#### Feature 3 — Settlement Confirmation Panel
+- `src/components/manager/SettlementPanel.jsx`
+- Access: `role === 'branch_manager'` OR `userProfile.canConfirmSettlements === true`.
+- Single entry form: agent picker, month/year, API (TTD), Apps, Persistency %, Notes.
+- Bulk mode toggle: inline table with one row per agent, single "Save All" button with row-level validation.
+- Settlement history table: 20-row pagination, Load More button, delete with confirmation dialog.
+- Firestore rules updated: settlements collection allows write/delete for branch_manager or canConfirmSettlements flag.
+
+#### Feature 4 — Motivational Carousel
+- `src/components/dashboard/MotivationalCarousel.jsx`
+- Auto-advances every 6 seconds, pauses on hover.
+- Left/right chevrons + pill dot indicators.
+- Agent cards: Streak, Rank, MDRT progress, Next club, Weekly goal, Closing ratio, Quarter countdown, Badge earned, Encouragement pool.
+- Manager cards: Compliance, Top performer, Streak spotlight, Encouragement pool.
+- Minimum 2 cards always shown (encouragement fallbacks).
+- Placed in AgentDashboard (above YTD ring) and ManagerDashboard Overview (below welcome header).
+
+### Key Decisions
+- awardsEngine is a pure module — no Firebase, no React, no side effects. Safe to test in isolation.
+- Data source logic: confirmed settlements take precedence; missing periods supplemented from wizard submissions with "Estimated" badge.
+- MasterSheet rows now clickable via `cursor-pointer` + `onClick → setViewingSubmission(row._submission)` — original submission doc stored in `row._submission`.
+- CompliancePanel: Eye icon added to SubmittedAgentRow alongside the existing Unlock button.
+- SettlementPanel guards access before rendering (`!canAccess` → permission denied card).
+
+## Upcoming — Phase 6C
+- Code splitting (chunk size optimisation — bundle currently 764 kB)
 - Power BI integration (post-launch / future)
