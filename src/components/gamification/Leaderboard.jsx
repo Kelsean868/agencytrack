@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { Flame, Trophy } from 'lucide-react';
 import { db, tenantId } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
-import { BADGES } from './BadgeGrid';
 
 const LEVEL_COLORS = {
   Rookie:    'bg-border/60 text-ink-muted',
@@ -20,13 +20,8 @@ function LevelChip({ title }) {
   );
 }
 
-const RANK_MEDALS = ['🥇', '🥈', '🥉'];
-
 function LeaderRow({ entry, rank, isCurrentUser }) {
-  const badgeIcons = (entry.badges ?? [])
-    .slice(0, 3)
-    .map((key) => BADGES[key]?.icon)
-    .filter(Boolean);
+  const badgeCount = (entry.badges ?? []).length;
 
   return (
     <div
@@ -34,9 +29,12 @@ function LeaderRow({ entry, rank, isCurrentUser }) {
         isCurrentUser ? 'border-primary bg-primary/5' : 'border-border bg-white'
       }`}
     >
-      <span className={`text-sm font-bold w-6 text-center shrink-0 ${rank <= 3 ? '' : 'text-ink-muted'}`}>
-        {rank <= 3 ? RANK_MEDALS[rank - 1] : rank}
-      </span>
+      <div className="w-6 flex items-center justify-center shrink-0">
+        {rank === 1
+          ? <Trophy size={16} className="text-warning" />
+          : <span className={`text-sm font-bold ${rank <= 3 ? 'text-primary' : 'text-ink-muted'}`}>{rank}</span>
+        }
+      </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -45,11 +43,14 @@ function LeaderRow({ entry, rank, isCurrentUser }) {
           </p>
           <LevelChip title={entry.levelTitle} />
           {(entry.weeklyStreak ?? 0) >= 4 && (
-            <span title={`${entry.weeklyStreak}-week streak`} className="text-sm leading-none">🔥</span>
+            <Flame size={13} className="text-warning shrink-0" title={`${entry.weeklyStreak}-week streak`} />
           )}
         </div>
-        {badgeIcons.length > 0 && (
-          <p className="text-xs mt-0.5 leading-none">{badgeIcons.join(' ')}</p>
+        {badgeCount > 0 && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <Trophy size={10} className="text-warning" />
+            <p className="text-[10px] text-ink-muted">{badgeCount} badge{badgeCount !== 1 ? 's' : ''}</p>
+          </div>
         )}
       </div>
 

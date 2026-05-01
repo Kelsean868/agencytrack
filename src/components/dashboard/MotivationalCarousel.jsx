@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { computeAgentAwards } from '../../utils/awardsEngine';
+import { extractFields } from '../../utils/extractFields';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -156,7 +157,30 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
     }
   }
 
-  // 6. Best ratio (closing)
+  // 6. New Names Pipeline
+  const latestSubmitted = [...(submissions ?? [])]
+    .filter((s) => s.status === 'submitted')
+    .sort((a, b) => (b.weekStarting ?? '').localeCompare(a.weekStarting ?? ''))[0];
+
+  if (latestSubmitted) {
+    const f = extractFields(latestSubmitted);
+    const totalNewNames = f.totalNewNames ?? 0;
+    const oldNamesPool  = parseFloat(latestSubmitted.oldNamesPool) || 0;
+
+    if (totalNewNames > 0 || oldNamesPool > 0) {
+      let body;
+      if (totalNewNames > 0 && oldNamesPool > 0) {
+        body = `You added ${totalNewNames} new names last week. Combined with your pool of ${oldNamesPool}, you have ${totalNewNames + oldNamesPool} names ready to dial.`;
+      } else if (totalNewNames > 0) {
+        body = `You added ${totalNewNames} new names last week. Get dialling — your pipeline is growing.`;
+      } else {
+        body = `You have ${oldNamesPool} names in your pipeline. Don't let them go cold.`;
+      }
+      cards.push({ id: 'new_names', headline: 'New Names Pipeline', body });
+    }
+  }
+
+  // 7. Best ratio (closing)
   const closingRatio = monthClosingRatio(submissions);
   if (closingRatio > 0) {
     cards.push({
@@ -166,7 +190,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
     });
   }
 
-  // 7. Quarter countdown
+  // 8. Quarter countdown
   const weeksLeft = weeksUntilQuarterEnd(now);
   if (weeksLeft > 0 && weeksLeft <= 6) {
     const qtrAPIToGo = Math.max(0, 125000 - (bestAPI / 4));
@@ -179,7 +203,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
     }
   }
 
-  // 8. Badge earned
+  // 9. Badge earned
   const badges = leaderboardDoc?.badges ?? [];
   const recentBadge = badges[badges.length - 1];
   if (recentBadge) {

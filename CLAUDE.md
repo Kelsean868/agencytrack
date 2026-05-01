@@ -74,6 +74,8 @@ Role is stored in Firebase custom claims AND in Firestore `/tenants/{id}/users/{
   settlements/{agentId}_{year}_{periodKey}     ← confirmed production data entered by branch manager
 ```
 
+New names pipeline fields on submission docs: `referralsObtained`, `namesFromColdCanvass`, `namesFromOther`, `oldNamesPool` — used in carousel and pipeline tracking
+
 ### Submission Document Shape (actual flat schema — current wizard)
 All fields are stored at the document root (NOT nested under step1, step2, etc.).
 Key fields by step:
@@ -129,7 +131,7 @@ Minimum 44px touch targets (mobile agents in field).
 Dark mode toggle in header (CSS class swap on `<html>`).
 
 ## Current Build Phase
-**Phase 6 — Feature Set B Complete**
+**Phase 6C — Polish: Carousel enhancement, activity rounding, emoji sweep**
 
 ## Build Phase Status
 | Phase | Scope | Status |
@@ -139,7 +141,8 @@ Dark mode toggle in header (CSS class swap on `<html>`).
 | P3 | 9-step Weekly Wizard with auto-save | ✅ COMPLETE |
 | P4 | Manager Views + Meeting Mode + Persistency | ✅ COMPLETE |
 | P5 | Notifications + Career Portal + Gamification | ✅ COMPLETE |
-| P6 | History Viewer + Awards Tracker + Settlement Confirmation + Motivational Carousel | ✅ COMPLETE |
+| P6B | History Viewer + Awards Tracker + Settlement Confirmation + Motivational Carousel | ✅ COMPLETE |
+| P6C | Carousel new names card, activity rounding, emoji sweep | 🔄 IN PROGRESS |
 
 ## Phase 4 — Component Checklist
 - ✅ Step9Goals.jsx — Next Week Goals wizard step
@@ -247,6 +250,20 @@ All four are confirmed in `.gitignore`.
 - Clock in / clock out
 - Campaign tracking (Phase 2 / future)
 - Power BI direct integration (future)
+
+## Planned Phase 7 Features
+- Profile screen with photo upload (Firebase Storage) — photo used in leaderboard + MeetingMode
+- Self-registration restricted to @tatil.co.tt domain — pending manager approval, default role: agent
+- Branch KPI report export (PDF/CSV) for head office
+- Visual dashboard overhaul — KPI grid, sparklines, mini charts in carousel cards
+- Dark mode full audit — replace hardcoded Tailwind colours with CSS variable equivalents
+- PWA / offline support — Firestore offline persistence + service worker via vite-plugin-pwa
+- Campaign management module — manager creates campaigns with prizes, agents see progress
+- Weekly recognition badges — Top API, Top Apps, Top Activity (resets weekly)
+- Agent performance export — full effectiveness report with ratio analysis
+- Login page SVG pattern background — insurance/sales activity icons
+- Wizard consolidation — 9 steps → 5 grouped screens to reduce cognitive load
+- Monthly and quarterly target checkpoints visible to agents in CareerPortal
 
 ## Session Protocol
 1. Always read this file + CLAUDE.md before writing any code

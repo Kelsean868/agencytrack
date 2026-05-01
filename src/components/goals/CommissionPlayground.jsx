@@ -4,7 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { setGoals } from '../../services/goalsService';
 import { formatCurrency } from '../../utils/formatters';
 
-const roundTo10 = (v) => Math.round(parseFloat(v) / 10) * 10;
+const roundTo10    = (v) => Math.round(parseFloat(v) / 10) * 10;
+const roundToWhole = (v) => Math.round(parseFloat(v));
 
 const PERIODS = [
   { key: 'annual',    label: 'Annual',      divisor: 1   },
@@ -62,10 +63,10 @@ function OutputTable({ computed, freqKey, onFreqChange }) {
     { label: 'Income Goal',        value: roundTo10(computed.incomeGoal  / divisor), fmt: formatCurrency,                        isCurrency: true  },
     { label: 'API to Write',       value: roundTo10(computed.apiToWrite  / divisor), fmt: formatCurrency,                        isCurrency: true  },
     { label: 'API to Settle',      value: roundTo10(computed.apiToSettle / divisor), fmt: formatCurrency,                        isCurrency: true  },
-    { label: 'Applications',       value: computed.applications,                       fmt: (v) => Math.ceil(v).toLocaleString(), isCurrency: false },
-    { label: 'Closing Interviews', value: computed.ci,                                fmt: (v) => Math.ceil(v).toLocaleString(), isCurrency: false },
-    { label: 'Dials',              value: computed.dials,                              fmt: (v) => Math.ceil(v).toLocaleString(), isCurrency: false },
-    { label: 'Prospects',          value: computed.prospects,                          fmt: (v) => Math.ceil(v).toLocaleString(), isCurrency: false },
+    { label: 'Applications',       value: roundToWhole(computed.applications),          fmt: (v) => v.toLocaleString(),            isCurrency: false },
+    { label: 'Closing Interviews', value: roundToWhole(computed.ci),                   fmt: (v) => v.toLocaleString(),            isCurrency: false },
+    { label: 'Dials',              value: roundToWhole(computed.dials),                fmt: (v) => v.toLocaleString(),            isCurrency: false },
+    { label: 'Prospects',          value: roundToWhole(computed.prospects),             fmt: (v) => v.toLocaleString(),            isCurrency: false },
   ];
 
   return (
