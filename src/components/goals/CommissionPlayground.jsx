@@ -63,10 +63,10 @@ function OutputTable({ computed, freqKey, onFreqChange }) {
     { label: 'Income Goal',        value: roundTo10(computed.incomeGoal  / divisor), fmt: formatCurrency,                        isCurrency: true  },
     { label: 'API to Write',       value: roundTo10(computed.apiToWrite  / divisor), fmt: formatCurrency,                        isCurrency: true  },
     { label: 'API to Settle',      value: roundTo10(computed.apiToSettle / divisor), fmt: formatCurrency,                        isCurrency: true  },
-    { label: 'Applications',       value: roundToWhole(computed.applications),          fmt: (v) => v.toLocaleString(),            isCurrency: false },
-    { label: 'Closing Interviews', value: roundToWhole(computed.ci),                   fmt: (v) => v.toLocaleString(),            isCurrency: false },
-    { label: 'Dials',              value: roundToWhole(computed.dials),                fmt: (v) => v.toLocaleString(),            isCurrency: false },
-    { label: 'Prospects',          value: roundToWhole(computed.prospects),             fmt: (v) => v.toLocaleString(),            isCurrency: false },
+    { label: 'Applications',       value: roundToWhole(computed.applications / divisor), fmt: (v) => v.toLocaleString(),            isCurrency: false },
+    { label: 'Closing Interviews', value: roundToWhole(computed.ci          / divisor), fmt: (v) => v.toLocaleString(),            isCurrency: false },
+    { label: 'Dials',              value: roundToWhole(computed.dials        / divisor), fmt: (v) => v.toLocaleString(),            isCurrency: false },
+    { label: 'Prospects',          value: roundToWhole(computed.prospects    / divisor), fmt: (v) => v.toLocaleString(),            isCurrency: false },
   ];
 
   return (
