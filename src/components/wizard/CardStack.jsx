@@ -4,7 +4,7 @@ export function Card({ badge, desc, children, variant = 'default' }) {
       className={`rounded-xl p-4 ${
         variant === 'teal'
           ? 'bg-primary/5 border border-primary/20'
-          : 'bg-white border border-border/60'
+          : 'bg-[var(--color-surface)] border border-border/60'
       }`}
     >
       {badge && (

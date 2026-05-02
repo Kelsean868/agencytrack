@@ -26,7 +26,7 @@ function NumInput({ label, value, onChange, currency }) {
   return (
     <div className="flex flex-col gap-0.5">
       <label className="text-xs text-ink-muted">{label}</label>
-      <div className="flex items-center h-9 rounded-lg border border-border bg-white overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
+      <div className="flex items-center h-9 rounded-lg border border-border bg-[var(--color-surface)] overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
         {currency && (
           <span className="text-xs text-ink-muted pl-2 pr-1 shrink-0">TTD</span>
         )}

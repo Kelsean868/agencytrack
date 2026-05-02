@@ -47,7 +47,7 @@ export default function NotificationDrawer({ open, onClose }) {
       />
 
       {/* Panel */}
-      <div className="fixed top-0 right-0 h-full z-40 w-80 max-w-full bg-white shadow-2xl flex flex-col">
+      <div className="fixed top-0 right-0 h-full z-40 w-80 max-w-full bg-[var(--color-surface)] shadow-2xl flex flex-col">
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-border shrink-0">

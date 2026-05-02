@@ -8,6 +8,7 @@ import { getDraft, getAgentSubmissions } from '../../services/submissionService'
 import { getGoals } from '../../services/goalsService';
 import { getAgentPersistency } from '../../services/persistencyService';
 import { getSettlements } from '../../services/settlementService';
+import { extractFields } from '../../utils/extractFields';
 import WizardForm from '../wizard/WizardForm';
 import NotificationBell from '../ui/NotificationBell';
 import CareerPortal from '../profile/CareerPortal';
@@ -15,8 +16,19 @@ import Leaderboard from '../gamification/Leaderboard';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import MotivationalCarousel from './MotivationalCarousel';
+import KPICard from './KPICard';
 
 const TENANT_ID = import.meta.env.VITE_TENANT_ID;
+
+const KPIS = [
+  { key: 'dials',    label: 'Dials',         field: 'totalTelAttempts', isCurrency: false },
+  { key: 'contacts', label: 'Tel Contacts',   field: 'telContacts',      isCurrency: false },
+  { key: 'f2f',      label: 'F2F Approaches', field: 'f2fAttempts',      isCurrency: false },
+  { key: 'ffi',      label: 'FFI',            field: 'ffiConducted',     isCurrency: false },
+  { key: 'ci',       label: 'CI',             field: 'ciConducted',      isCurrency: false },
+  { key: 'apps',     label: 'Applications',   field: 'applicationsSold', isCurrency: false },
+  { key: 'api',      label: 'API',            field: 'apiSold',          isCurrency: true  },
+];
 
 const TABS = [
   { id: 'dashboard',   label: 'Dashboard'   },
@@ -35,7 +47,7 @@ function TabBar({ active, onChange }) {
           onClick={() => onChange(t.id)}
           className={`flex-1 min-w-max h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
             active === t.id
-              ? 'bg-white text-primary shadow-sm'
+              ? 'bg-[var(--color-surface)] text-primary shadow-sm'
               : 'text-ink-muted hover:text-ink'
           }`}
         >
@@ -116,6 +128,16 @@ export default function AgentDashboard() {
 
   const apiPercent = formatPercent(ytdAPI, ytdAPIGoal);
 
+  // Last 4 submitted weeks for KPI sparklines (oldest → newest)
+  const kpiData = useMemo(() => {
+    return allSubmissions
+      .filter((s) => s.status === 'submitted')
+      .sort((a, b) => (b.weekStarting ?? '').localeCompare(a.weekStarting ?? ''))
+      .slice(0, 4)
+      .reverse()
+      .map((s) => extractFields(s));
+  }, [allSubmissions]);
+
   // Unlock banner
   const showUnlockBanner =
     !unlockDismissed &&
@@ -158,7 +180,7 @@ export default function AgentDashboard() {
           <NotificationBell />
           <button
             onClick={toggleDark}
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-white dark:bg-ink/10 text-ink-muted hover:text-ink transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-full bg-[var(--color-surface)] dark:bg-ink/10 text-ink-muted hover:text-ink transition-colors"
             aria-label="Toggle dark mode"
           >
             <Sun size={18} className="dark:hidden" />
@@ -166,7 +188,7 @@ export default function AgentDashboard() {
           </button>
           <button
             onClick={handleSignOut}
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-white dark:bg-ink/10 text-ink-muted hover:text-danger transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-full bg-[var(--color-surface)] dark:bg-ink/10 text-ink-muted hover:text-danger transition-colors"
             aria-label="Sign out"
           >
             <LogOut size={18} />
@@ -236,6 +258,49 @@ export default function AgentDashboard() {
               </p>
             </div>
           </div>
+
+          {/* KPI Activity Grid */}
+          {kpiData.length > 0 && (
+            <div className="mb-6">
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
+                Activity Trend — Last {kpiData.length} Week{kpiData.length !== 1 ? 's' : ''}
+              </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
+                {KPIS.map((kpi) => (
+                  <KPICard
+                    key={kpi.key}
+                    label={kpi.label}
+                    values={kpiData.map((f) => f[kpi.field] ?? 0)}
+                    isCurrency={kpi.isCurrency}
+                  />
+                ))}
+              </div>
+
+              {/* Week-over-week comparison strip */}
+              {kpiData.length >= 2 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {KPIS.map((kpi) => {
+                    const cur   = kpiData[kpiData.length - 1][kpi.field] ?? 0;
+                    const prev  = kpiData[kpiData.length - 2][kpi.field] ?? 0;
+                    const delta = cur - prev;
+                    const colorClass =
+                      delta > 0 ? 'bg-success/10 text-success border-success/20' :
+                      delta < 0 ? 'bg-danger/10 text-danger border-danger/20' :
+                      'bg-surface text-ink-muted border-border';
+                    const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '—';
+                    return (
+                      <span
+                        key={kpi.key}
+                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-semibold ${colorClass}`}
+                      >
+                        {kpi.label} {arrow}
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Goals section */}
           <div className="card mb-6">

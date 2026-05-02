@@ -53,7 +53,7 @@ export default function Step6DeliveriesService({ data, onChange, lastWeekData })
               className={`flex-1 h-11 rounded-lg border font-semibold text-sm transition-colors ${
                 data.hasServiceWork === v
                   ? 'border-primary bg-primary text-white'
-                  : 'border-border bg-white text-ink hover:border-primary/60'
+                  : 'border-border bg-[var(--color-surface)] text-ink hover:border-primary/60'
               }`}
             >
               {v ? 'Yes' : 'No'}

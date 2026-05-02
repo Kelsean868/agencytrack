@@ -30,7 +30,7 @@ function Column({ icon: Icon, title, color, children, count }) {
         <span className="text-sm font-semibold">{title}</span>
         <span className="ml-auto text-sm font-bold">{count}</span>
       </div>
-      <div className="divide-y divide-border/40 bg-white">{children}</div>
+      <div className="divide-y divide-border/40 bg-[var(--color-surface)]">{children}</div>
     </div>
   );
 }
@@ -225,7 +225,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
         <select
           value={selectedWeek}
           onChange={(e) => setSelectedWeek(e.target.value)}
-          className="h-10 px-3 rounded-lg border border-border bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           {sundays.map((d, i) => (
             <option key={d} value={d}>{i === 0 ? `This week (${d})` : d}</option>

@@ -162,7 +162,7 @@ export default function ManagerDashboard() {
             <NotificationBell />
             <button
               onClick={toggleDark}
-              className="w-11 h-11 flex items-center justify-center rounded-full bg-white dark:bg-ink/10 text-ink-muted hover:text-ink transition-colors"
+              className="w-11 h-11 flex items-center justify-center rounded-full bg-[var(--color-surface)] dark:bg-ink/10 text-ink-muted hover:text-ink transition-colors"
               aria-label="Toggle dark mode"
             >
               <Sun size={18} className="dark:hidden" />
@@ -170,7 +170,7 @@ export default function ManagerDashboard() {
             </button>
             <button
               onClick={handleSignOut}
-              className="w-11 h-11 flex items-center justify-center rounded-full bg-white dark:bg-ink/10 text-ink-muted hover:text-danger transition-colors"
+              className="w-11 h-11 flex items-center justify-center rounded-full bg-[var(--color-surface)] dark:bg-ink/10 text-ink-muted hover:text-danger transition-colors"
               aria-label="Sign out"
             >
               <LogOut size={18} />
@@ -186,7 +186,7 @@ export default function ManagerDashboard() {
               onClick={() => setActiveTab(t.id)}
               className={`flex-1 min-w-max h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
                 activeTab === t.id
-                  ? 'bg-white text-primary shadow-sm'
+                  ? 'bg-[var(--color-surface)] text-primary shadow-sm'
                   : 'text-ink-muted hover:text-ink'
               }`}
             >
@@ -283,7 +283,7 @@ export default function ManagerDashboard() {
                   onClick={() => setGoalsSubTab(t.id)}
                   className={`flex-1 h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
                     goalsSubTab === t.id
-                      ? 'bg-white text-primary shadow-sm'
+                      ? 'bg-[var(--color-surface)] text-primary shadow-sm'
                       : 'text-ink-muted hover:text-ink'
                   }`}
                 >

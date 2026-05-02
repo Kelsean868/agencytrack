@@ -26,7 +26,7 @@ function LeaderRow({ entry, rank, isCurrentUser }) {
   return (
     <div
       className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors ${
-        isCurrentUser ? 'border-primary bg-primary/5' : 'border-border bg-white'
+        isCurrentUser ? 'border-primary bg-primary/5' : 'border-border bg-[var(--color-surface)]'
       }`}
     >
       <div className="w-6 flex items-center justify-center shrink-0">

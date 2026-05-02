@@ -14,19 +14,46 @@ import Step7TimeManagement    from './steps/Step7TimeManagement';
 import Step8SelfEvaluation    from './steps/Step8SelfEvaluation';
 import Step9Goals             from './steps/Step9Goals';
 
-const STEPS = [
-  { title: 'Prospecting',                component: Step1Prospecting },
-  { title: 'Telephone Activity',         component: Step2Telephone },
-  { title: 'Approaches & FFI',           component: Step3Approaches },
-  { title: 'Closing Interviews & Sales', component: Step4ClosingSales },
-  { title: 'New Names & Pipeline',       component: Step5NewNames },
-  { title: 'Deliveries & Service',       component: Step6DeliveriesService },
-  { title: 'Time Management',            component: Step7TimeManagement },
-  { title: 'Self-Evaluation',            component: Step8SelfEvaluation },
-  { title: 'Next Week Goals',            component: Step9Goals },
+// 9 step components grouped into 5 screens.
+// Each entry in `components` is [Component, needsLastWeekData].
+const SCREENS = [
+  {
+    title: 'Prospecting & Calls',
+    components: [
+      [Step1Prospecting, false],
+      [Step2Telephone,   false],
+    ],
+  },
+  {
+    title: 'Interviews & Sales',
+    components: [
+      [Step3Approaches,  false],
+      [Step4ClosingSales, false],
+    ],
+  },
+  {
+    title: 'New Names & Service',
+    components: [
+      [Step5NewNames,          true],
+      [Step6DeliveriesService, true],
+    ],
+  },
+  {
+    title: 'Time & Reflection',
+    components: [
+      [Step7TimeManagement, false],
+      [Step8SelfEvaluation, false],
+    ],
+  },
+  {
+    title: 'Next Week Goals',
+    components: [
+      [Step9Goals, false],
+    ],
+  },
 ];
 
-const TOTAL_STEPS = STEPS.length;
+const TOTAL_SCREENS = SCREENS.length; // 5
 
 const INITIAL_DATA = {
   // Step 1
@@ -113,7 +140,7 @@ export default function WizardForm({ onClose }) {
   const [screen, setScreen]             = useState('date');
   const [weekStarting, setWeekStarting] = useState('');
   const [customDate, setCustomDate]     = useState('');
-  const [step, setStep]                 = useState(1);
+  const [step, setStep]                 = useState(1);   // 1–5 grouped screens
   const [formData, setFormData]         = useState(INITIAL_DATA);
   const [lastWeekData, setLastWeekData] = useState(null);
   const [draftStatus, setDraftStatus]   = useState(null);
@@ -140,11 +167,11 @@ export default function WizardForm({ onClose }) {
       .catch(console.error);
   }, [weekStarting, user]);
 
+  // Auto-save on formData change AND on screen/step change
   useEffect(() => {
     if (!weekStarting || !user || screen === 'date') return;
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      // Do not auto-save submitted reports.
       if (draftStatus === 'submitted') return;
       setSaving(true);
       try { await saveDraft(user.uid, agentName, weekStarting, formData); }
@@ -152,7 +179,7 @@ export default function WizardForm({ onClose }) {
       finally { setSaving(false); }
     }, 1500);
     return () => clearTimeout(saveTimer.current);
-  }, [formData, weekStarting, screen, user, draftStatus]);
+  }, [formData, step, weekStarting, screen, user, draftStatus]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleChange = useCallback((name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -172,14 +199,14 @@ export default function WizardForm({ onClose }) {
   };
 
   const handleNext = () => {
-    if (step < TOTAL_STEPS) setStep((s) => s + 1);
+    if (step < TOTAL_SCREENS) setStep((s) => s + 1);
     else setScreen('review');
   };
 
   const handleBack = () => {
-    if (screen === 'review')                    { setScreen('step'); setStep(TOTAL_STEPS); }
-    else if (screen === 'step' && step > 1)     { setStep((s) => s - 1); }
-    else if (screen === 'step' && step === 1)   { setScreen('date'); }
+    if (screen === 'review')                  { setScreen('step'); setStep(TOTAL_SCREENS); }
+    else if (screen === 'step' && step > 1)   { setStep((s) => s - 1); }
+    else if (screen === 'step' && step === 1) { setScreen('date'); }
   };
 
   const handleSubmit = async () => {
@@ -201,14 +228,10 @@ export default function WizardForm({ onClose }) {
     }
   };
 
-  const StepComponent = screen === 'step' ? STEPS[step - 1].component : null;
-  const extraProps    = screen === 'step' && (step === 5 || step === 6) ? { lastWeekData } : {};
-
-
   const prevLabel = screen === 'review' ? 'Back' : step === 1 ? 'Change week' : 'Prev';
   const nextLabel = screen === 'review'
     ? (submitting ? 'Submitting…' : 'Submit Report')
-    : step === TOTAL_STEPS ? 'Review' : 'Next';
+    : step === TOTAL_SCREENS ? 'Review' : 'Next';
 
   return (
     <div className="fixed inset-0 z-50 bg-bg flex flex-col">
@@ -217,14 +240,14 @@ export default function WizardForm({ onClose }) {
       <header className="flex items-center justify-between px-4 pt-4 pb-3 bg-bg shrink-0">
         <div>
           <p className="text-xs font-medium text-ink-muted">
-            {screen === 'step'   && `Step ${step} of ${TOTAL_STEPS}`}
+            {screen === 'step'   && `Screen ${step} of ${TOTAL_SCREENS}`}
             {screen === 'review' && 'Review'}
             {screen === 'date'   && 'Weekly Report'}
             {screen === 'done'   && 'Complete'}
           </p>
           <h1 className="text-lg font-bold text-ink leading-tight">
             {screen === 'date'   && 'Select Week'}
-            {screen === 'step'   && STEPS[step - 1].title}
+            {screen === 'step'   && SCREENS[step - 1].title}
             {screen === 'review' && 'Review & Submit'}
             {screen === 'done'   && 'Report Submitted'}
           </h1>
@@ -244,10 +267,10 @@ export default function WizardForm({ onClose }) {
         </div>
       </header>
 
-      {/* Pill-dot progress */}
+      {/* 5-dot progress bar */}
       {screen === 'step' && (
         <div className="flex gap-1.5 px-4 pb-3 shrink-0">
-          {STEPS.map((_, i) => (
+          {SCREENS.map((_, i) => (
             <div
               key={i}
               className={`h-1.5 rounded-full transition-all duration-300 ${
@@ -277,7 +300,7 @@ export default function WizardForm({ onClose }) {
                   key={d}
                   type="button"
                   onClick={() => handleDateSelect(d)}
-                  className="w-full text-left px-4 py-3.5 rounded-xl border border-border/60 bg-white hover:border-primary hover:bg-primary/5 transition-colors flex justify-between items-center"
+                  className="w-full text-left px-4 py-3.5 rounded-xl border border-border/60 bg-[var(--color-surface)] hover:border-primary hover:bg-primary/5 transition-colors flex justify-between items-center"
                 >
                   <span className="text-sm font-medium text-ink">{formatDateLabel(d)}</span>
                   {i === 0 && (
@@ -295,7 +318,7 @@ export default function WizardForm({ onClose }) {
                   type="date"
                   value={customDate}
                   onChange={(e) => { setCustomDate(e.target.value); setError(''); }}
-                  className="flex-1 h-11 px-3 border border-border/60 rounded-lg bg-white text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="flex-1 h-11 px-3 border border-border/60 rounded-lg bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
                 <button type="button" onClick={handleCustomDate} className="btn-primary px-5">
                   Go
@@ -306,10 +329,21 @@ export default function WizardForm({ onClose }) {
           </div>
         )}
 
-        {/* Step form */}
-        {screen === 'step' && StepComponent && (
+        {/* Grouped step screens */}
+        {screen === 'step' && (
           <div className="px-4 pb-6 max-w-lg mx-auto">
-            <StepComponent data={formData} onChange={handleChange} {...extraProps} />
+            {SCREENS[step - 1].components.map(([Component, needsLastWeek], i) => (
+              <div key={i}>
+                {i > 0 && (
+                  <hr className="border-t border-[var(--color-border)] my-6" />
+                )}
+                <Component
+                  data={formData}
+                  onChange={handleChange}
+                  {...(needsLastWeek ? { lastWeekData } : {})}
+                />
+              </div>
+            ))}
           </div>
         )}
 
@@ -340,11 +374,11 @@ export default function WizardForm({ onClose }) {
 
       {/* Footer nav */}
       {(screen === 'step' || screen === 'review') && (
-        <div className="grid grid-cols-5 gap-2 px-4 py-4 border-t border-border bg-white shrink-0">
+        <div className="grid grid-cols-5 gap-2 px-4 py-4 border-t border-border bg-[var(--color-surface)] shrink-0">
           <button
             type="button"
             onClick={handleBack}
-            className="col-span-2 h-11 rounded-xl border border-border bg-white text-ink font-semibold text-sm hover:bg-surface transition-colors"
+            className="col-span-2 h-11 rounded-xl border border-border bg-[var(--color-surface)] text-ink font-semibold text-sm hover:bg-surface transition-colors"
           >
             {prevLabel}
           </button>
@@ -375,7 +409,7 @@ function ReviewRow({ label, value }) {
 
 function ReviewSection({ title, children }) {
   return (
-    <div className="bg-white rounded-xl border border-border/60 p-4 mb-3">
+    <div className="bg-[var(--color-surface)] rounded-xl border border-border/60 p-4 mb-3">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">{title}</h3>
       {children}
     </div>
@@ -398,10 +432,10 @@ function ReviewSummary({ data, weekStarting }) {
   return (
     <div>
       <p className="text-sm text-ink-muted mb-4">
-        Check your numbers before submitting. You can go back to edit any step.
+        Check your numbers before submitting. You can go back to edit any screen.
       </p>
 
-      <ReviewSection title="Step 1 — Prospecting">
+      <ReviewSection title="Screen 1 — Prospecting & Calls">
         <ReviewRow label="Letters Sent"                    value={data.prospectingLettersSent} />
         <ReviewRow label="Emails Sent"                     value={data.prospectingEmailsSent} />
         <ReviewRow label="Seminars Conducted"              value={data.seminarsConducted} />
@@ -414,36 +448,30 @@ function ReviewSummary({ data, weekStarting }) {
         <ReviewRow label="Names (Tradeshows Attended)"     value={data.namesFromTradeshowsAttended} />
         <ReviewRow label="F2F Attempts"                    value={data.f2fAttempts} />
         <ReviewRow label="F2F Contacts"                    value={data.f2fContacts} />
+        <ReviewRow label="Referral Calls"                  value={data.referralCalls} />
+        <ReviewRow label="Follow-Up Calls"                 value={data.followUpCalls} />
+        <ReviewRow label="Cold Calls"                      value={data.coldCalls} />
+        <ReviewRow label="Seminar / Tradeshow Calls"       value={data.seminarTradeshowCalls} />
+        <ReviewRow label="Service Calls"                   value={data.serviceCalls} />
+        <ReviewRow label="Total Calls"                     value={totalCalls} />
       </ReviewSection>
 
-      <ReviewSection title="Step 2 — Telephone Activity">
-        <ReviewRow label="Referral Calls"            value={data.referralCalls} />
-        <ReviewRow label="Follow-Up Calls"           value={data.followUpCalls} />
-        <ReviewRow label="Cold Calls"                value={data.coldCalls} />
-        <ReviewRow label="Seminar / Tradeshow Calls" value={data.seminarTradeshowCalls} />
-        <ReviewRow label="Service Calls"             value={data.serviceCalls} />
-        <ReviewRow label="Total Calls"               value={totalCalls} />
-      </ReviewSection>
-
-      <ReviewSection title="Step 3 — Approaches & FFI">
+      <ReviewSection title="Screen 2 — Interviews & Sales">
         <ReviewRow label="Qualified Approaches"   value={data.qualifiedApproaches} />
         <ReviewRow label="Appointments Set"       value={data.appointmentsSet} />
         <ReviewRow label="FFIs Scheduled"         value={data.ffisScheduled} />
         <ReviewRow label="FFIs Conducted"         value={data.ffiConducted} />
         <ReviewRow label="Solution Presentations" value={data.solutionPresentations} />
+        <ReviewRow label="New CI Booked"          value={data.newCIBooked} />
+        <ReviewRow label="Old CI Booked"          value={data.oldCIBooked} />
+        <ReviewRow label="CI Conducted"           value={data.ciConducted} />
+        <ReviewRow label="Applications Sold"      value={data.applicationsSold} />
+        <ReviewRow label="Lives Sold"             value={data.livesSold} />
+        <ReviewRow label="API Sold"               value={formatCurrency(data.apiSold)} />
+        <ReviewRow label="Est. Commissions"       value={formatCurrency(data.estimatedCommissions)} />
       </ReviewSection>
 
-      <ReviewSection title="Step 4 — Closing Interviews & Sales">
-        <ReviewRow label="New CI Booked"         value={data.newCIBooked} />
-        <ReviewRow label="Old CI Booked"         value={data.oldCIBooked} />
-        <ReviewRow label="CI Conducted"          value={data.ciConducted} />
-        <ReviewRow label="Applications Sold"     value={data.applicationsSold} />
-        <ReviewRow label="Lives Sold"            value={data.livesSold} />
-        <ReviewRow label="API Sold"              value={formatCurrency(data.apiSold)} />
-        <ReviewRow label="Est. Commissions"      value={formatCurrency(data.estimatedCommissions)} />
-      </ReviewSection>
-
-      <ReviewSection title="Step 5 — New Names & Pipeline">
+      <ReviewSection title="Screen 3 — New Names & Service">
         <ReviewRow label="Referrals Sought"             value={data.referralsSought} />
         <ReviewRow label="Referrals Obtained"           value={data.referralsObtained} />
         <ReviewRow label="Names from Cold Canvass"      value={data.namesFromColdCanvass} />
@@ -451,16 +479,13 @@ function ReviewSummary({ data, weekStarting }) {
         <ReviewRow label="Old Names Pool"               value={data.oldNamesPool} />
         <ReviewRow label="Portfolio Clients Identified" value={data.portfolioClientsIdentified} />
         <ReviewRow label="New Names Added"              value={totalNames} />
-      </ReviewSection>
-
-      <ReviewSection title="Step 6 — Policy Deliveries">
-        <ReviewRow label="Policies Received"    value={data.policiesReceived} />
-        <ReviewRow label="Policies Delivered"   value={data.policiesDelivered} />
-        <ReviewRow label="Policies Outstanding" value={data.policiesOutstanding} />
+        <ReviewRow label="Policies Received"            value={data.policiesReceived} />
+        <ReviewRow label="Policies Delivered"           value={data.policiesDelivered} />
+        <ReviewRow label="Policies Outstanding"         value={data.policiesOutstanding} />
       </ReviewSection>
 
       {data.hasServiceWork && (
-        <ReviewSection title="Step 6 — Service Work">
+        <ReviewSection title="Screen 3 — Service Work">
           <ReviewRow label="Service Contacts"            value={data.serviceContacts} />
           <ReviewRow label="Premium Collection Meetings" value={data.premiumCollectionMeetings} />
           <ReviewRow label="Withdrawal & Loan Requests"  value={data.withdrawalsLoans} />
@@ -475,23 +500,20 @@ function ReviewSummary({ data, weekStarting }) {
         </ReviewSection>
       )}
 
-      <ReviewSection title="Step 7 — Time Management">
-        <ReviewRow label="Office Hours" value={`${data.officeHours}h`} />
-        <ReviewRow label="Field Hours"  value={`${data.fieldHours}h`} />
-        <ReviewRow label="Total Hours"  value={`${totalHours}h`} />
-      </ReviewSection>
-
-      <ReviewSection title="Step 8 — Self-Evaluation">
-        <ReviewRow label="Planning"          value={`${data.ratingPlanning}/10`} />
-        <ReviewRow label="Time Management"   value={`${data.ratingTimeManagement}/10`} />
+      <ReviewSection title="Screen 4 — Time & Reflection">
+        <ReviewRow label="Office Hours"     value={`${data.officeHours}h`} />
+        <ReviewRow label="Field Hours"      value={`${data.fieldHours}h`} />
+        <ReviewRow label="Total Hours"      value={`${totalHours}h`} />
+        <ReviewRow label="Planning"         value={`${data.ratingPlanning}/10`} />
+        <ReviewRow label="Time Management"  value={`${data.ratingTimeManagement}/10`} />
         <ReviewRow label="Sales Performance" value={`${data.ratingSalesPerformance}/10`} />
-        <ReviewRow label="Prospecting"       value={`${data.ratingProspecting}/10`} />
-        <ReviewRow label="Overall"           value={`${data.ratingOverall}/10`} />
+        <ReviewRow label="Prospecting"      value={`${data.ratingProspecting}/10`} />
+        <ReviewRow label="Overall"          value={`${data.ratingOverall}/10`} />
         {data.notes && <ReviewRow label="Notes" value={data.notes} />}
       </ReviewSection>
 
-      <ReviewSection title="Step 9 — Next Week Goals">
-        <ReviewRow label="Target Dials"       value={data.targetDials} />
+      <ReviewSection title="Screen 5 — Next Week Goals">
+        <ReviewRow label="Target Dials"        value={data.targetDials} />
         <ReviewRow label="Target Tel Contacts" value={data.targetTelContacts} />
         <ReviewRow label="Target F2F Attempts" value={data.targetF2FAttempts} />
         <ReviewRow label="Target FFI"          value={data.targetFFI} />

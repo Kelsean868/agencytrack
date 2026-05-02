@@ -234,7 +234,7 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
             key={t.id}
             onClick={() => setActiveTab(t.id)}
             className={`flex-1 min-w-max h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
-              activeTab === t.id ? 'bg-white text-primary shadow-sm' : 'text-ink-muted hover:text-ink'
+              activeTab === t.id ? 'bg-[var(--color-surface)] text-primary shadow-sm' : 'text-ink-muted hover:text-ink'
             }`}
           >
             {t.label}
