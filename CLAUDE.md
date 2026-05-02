@@ -190,7 +190,7 @@ Dark mode toggle in header (CSS class swap on `<html>`).
 | P7B | Visual dashboard overhaul (KPI grid, sparklines, delta arrows) | ✅ COMPLETE |
 | P7C | Dark mode audit + profile photo in leaderboard + MeetingMode | ✅ COMPLETE |
 | P8A | Weekly Recognition Badges | 🔄 IN PROGRESS |
-| P8B | Campaign Module | ⏳ PLANNED |
+| P8B | Campaign Module | 🔄 IN PROGRESS |
 | P8C | Goals Tier 2 — gap analysis (unitGoals + branchGoals) | ⏳ PLANNED |
 | P8D | Multi-tenancy rollout | ⏳ DEFERRED (post-pilot) |
 
@@ -318,6 +318,15 @@ All four are confirmed in `.gitignore`.
 - Self-registration (managers create all accounts — no exceptions)
 - Any new PDF library — @react-pdf/renderer is final
 
+## Date Format Convention
+- **Storage / Firestore / document IDs:** always `YYYY-MM-DD` (ISO). Never change this.
+- **Display (UI labels, tables, PDF, dropdowns):** always `DD-MM-YYYY` or friendly format ("Sun, 27 Apr 2026") depending on context.
+- Single source of truth for formatting: `src/utils/formatters.js`
+  - `formatDateDisplay(isoString)` → `"27-04-2026"`
+  - `formatDateFriendly(isoString)` → `"Sun, 27 Apr 2026"`
+- **NEVER** display a raw `YYYY-MM-DD` string to the user anywhere in the app.
+- Week Starting dropdown: shows last 6 Sundays in friendly format, stores selected value as `YYYY-MM-DD`.
+
 ## Phase 8 Plan
 
 ### P8A — Weekly Recognition Badges
@@ -327,6 +336,17 @@ All four are confirmed in `.gitignore`.
 - Computed on the fly from existing submissions — no new Firestore collection
 - New util: `src/utils/weeklyChampions.js`
 - Touches: `Leaderboard.jsx` (add champions banner), `weeklyChampions.js` (new)
+
+## P8B Key Decisions
+- Unit Manager can create campaigns scoped to their own unit only
+- Branch Manager + Super Admin can create campaigns scoped to: branch-wide, specific unit(s), or specific agent(s)
+- Campaign scope stored as: `{ type: 'branch'|'unit'|'agent', unitIds: [], agentIds: [] }`
+- Unit Manager campaigns always have `scope.type = 'unit'` and `scope.unitIds = [their unitId]`
+- Agent card shows: name, prize, days remaining, per-metric progress bars, mini-rank
+- Mini-rank computed client-side from all participant submissions in campaign period
+- Progress = sum of metric field from `extractFields()` across all submissions in the campaign date range (`weekStarting >= startDate AND weekStarting <= endDate`)
+- Active campaign = today's date is between startDate and endDate (inclusive)
+- Firestore path: `/tenants/{tenantId}/campaigns/{campaignId}`
 
 ### P8B — Campaign Module
 - Branch Manager creates campaigns: name, description, prize, start date, end date

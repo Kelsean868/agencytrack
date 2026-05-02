@@ -17,6 +17,7 @@ import { getGoals } from '../../services/goalsService';
 import SettlementPanel from '../manager/SettlementPanel';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
+import CampaignPanel from '../campaigns/CampaignPanel';
 import NotificationBell from '../ui/NotificationBell';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import MotivationalCarousel from './MotivationalCarousel';
@@ -27,6 +28,7 @@ const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 
 const TABS = [
   { id: 'overview',     label: 'Overview'     },
+  { id: 'campaigns',    label: 'Campaigns'    },
   { id: 'awards',       label: 'Awards'       },
   { id: 'mastersheet',  label: 'Master Sheet' },
   { id: 'compliance',   label: 'Compliance'   },
@@ -279,6 +281,8 @@ export default function ManagerDashboard() {
             </button>
           </div>
         )}
+
+        {activeTab === 'campaigns' && <CampaignPanel />}
 
         {activeTab === 'awards' && (
           <ManagerAwardsPanel

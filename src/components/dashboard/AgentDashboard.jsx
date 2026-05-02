@@ -10,7 +10,9 @@ import { getAgentPersistency } from '../../services/persistencyService';
 import { getSettlements } from '../../services/settlementService';
 import { extractFields } from '../../utils/extractFields';
 import { generateAgentPDF } from '../../services/exportService';
+import { getActiveCampaignsForAgent, getCampaignSubmissions } from '../../services/campaignService';
 import WizardForm from '../wizard/WizardForm';
+import CampaignCard from '../campaigns/CampaignCard';
 import NotificationBell from '../ui/NotificationBell';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
@@ -97,6 +99,9 @@ export default function AgentDashboard() {
   const [persistency, setPersistency]          = useState({});
   const [settlements, setSettlements]          = useState([]);
   const [loading, setLoading]                  = useState(true);
+  const [activeCampaigns, setActiveCampaigns]   = useState([]);
+  const [campaignSubs, setCampaignSubs]         = useState({});
+  const [campaignsLoading, setCampaignsLoading] = useState(true);
 
   const currentWeek  = useMemo(() => getMostRecentSunday(), []);
   const thisYear     = new Date().getFullYear();
@@ -143,6 +148,26 @@ export default function AgentDashboard() {
       .reverse()
       .map((s) => extractFields(s));
   }, [allSubmissions]);
+
+  // Fetch active campaigns for this agent
+  useEffect(() => {
+    if (!user?.uid) return;
+    setCampaignsLoading(true);
+    getActiveCampaignsForAgent(TENANT_ID, user.uid, userProfile?.unitId ?? null)
+      .then(async (camps) => {
+        setActiveCampaigns(camps);
+        const subsMap = {};
+        await Promise.all(
+          camps.map(async (c) => {
+            const subs = await getCampaignSubmissions(TENANT_ID, c.startDate, c.endDate).catch(() => []);
+            subsMap[c.id] = subs;
+          })
+        );
+        setCampaignSubs(subsMap);
+      })
+      .catch(console.error)
+      .finally(() => setCampaignsLoading(false));
+  }, [user?.uid, userProfile?.unitId]);
 
   // Unlock banner
   const showUnlockBanner =
@@ -323,6 +348,22 @@ export default function AgentDashboard() {
             agentProfile={userProfile}
             currentDate={new Date()}
           />
+
+          {/* Active Campaigns */}
+          {campaignsLoading ? (
+            <div className="mb-4 h-28 rounded-xl bg-border/30 animate-pulse" />
+          ) : activeCampaigns.length > 0 && (
+            <div className="flex flex-col gap-3 mb-4">
+              {activeCampaigns.map((c) => (
+                <CampaignCard
+                  key={c.id}
+                  campaign={c}
+                  submissions={campaignSubs[c.id] ?? []}
+                  agentId={user?.uid}
+                />
+              ))}
+            </div>
+          )}
 
           {/* YTD API Progress */}
           <div className="card mb-6 flex items-center gap-6">
