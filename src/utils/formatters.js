@@ -17,3 +17,16 @@ export const formatCurrency = (amount) => {
 
 export const formatPercent = (value, total) =>
   total > 0 ? Math.round((value / total) * 100) : 0;
+
+export const formatDateDisplay = (isoString) => {
+  if (!isoString) return '';
+  const [yyyy, mm, dd] = isoString.split('-');
+  return `${dd}-${mm}-${yyyy}`;
+};
+
+export const formatDateFriendly = (isoString) => {
+  if (!isoString) return '';
+  return new Date(isoString + 'T12:00:00Z').toLocaleDateString('en-TT', {
+    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+  });
+};

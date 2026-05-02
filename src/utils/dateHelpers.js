@@ -17,6 +17,15 @@ export function getLastNSundays(n) {
   return sundays;
 }
 
+export function getLastNSundaysForDropdown(n = 6) {
+  return getLastNSundays(n).map((value) => ({
+    value,
+    label: new Date(value + 'T12:00:00Z').toLocaleDateString('en-TT', {
+      weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
+    }),
+  }));
+}
+
 function toDateString(d) {
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, '0');

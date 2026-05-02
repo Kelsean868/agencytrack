@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { unlockSubmission } from '../../services/unlockService';
 import { getLastNSundays } from '../../utils/dateHelpers';
+import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 
 const TENANT_ID = import.meta.env.VITE_TENANT_ID;
@@ -228,7 +229,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
           className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           {sundays.map((d, i) => (
-            <option key={d} value={d}>{i === 0 ? `This week (${d})` : d}</option>
+            <option key={d} value={d}>{i === 0 ? `This week — ${formatDateFriendly(d)}` : formatDateFriendly(d)}</option>
           ))}
         </select>
 

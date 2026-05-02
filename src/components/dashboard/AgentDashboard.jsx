@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { LogOut, Sun, Moon, X, Eye, Download, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
-import { getRoleLabel, formatCurrency, formatPercent } from '../../utils/formatters';
+import { getRoleLabel, formatCurrency, formatPercent, formatDateDisplay } from '../../utils/formatters';
 import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
 import { getGoals } from '../../services/goalsService';
@@ -289,7 +289,7 @@ export default function AgentDashboard() {
           <div className="flex-1">
             <p className="text-sm font-semibold text-warning">Report Unlocked</p>
             <p className="text-xs text-warning/80 mt-0.5">
-              Your report for week of {currentWeekSub.weekStarting} was unlocked by{' '}
+              Your report for week of {formatDateDisplay(currentWeekSub.weekStarting)} was unlocked by{' '}
               {currentWeekSub.unlockedByName ?? 'your manager'}. Tap to review and resubmit.
             </p>
           </div>
@@ -537,7 +537,7 @@ export default function AgentDashboard() {
                 className="card flex items-center justify-between gap-4 text-left w-full hover:bg-surface/70 transition-colors"
               >
                 <div>
-                  <p className="text-sm font-semibold text-ink">Week of {s.weekStarting}</p>
+                  <p className="text-sm font-semibold text-ink">Week of {formatDateDisplay(s.weekStarting)}</p>
                   <p className="text-xs text-ink-muted mt-0.5">
                     {formatCurrency(parseFloat(s.apiSold) || 0)} API &nbsp;·&nbsp;
                     {s.applicationsSold ?? 0} apps

@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { X, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { saveDraft, submitReport, getDraft, getLastSubmission } from '../../services/submissionService';
-import { validateSundayDate, getRecentSundays, formatDateLabel } from '../../utils/validators';
-import { formatCurrency } from '../../utils/formatters';
+import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
+import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 import Step1Prospecting      from './steps/Step1Prospecting';
 import Step2Telephone        from './steps/Step2Telephone';
 import Step3Approaches       from './steps/Step3Approaches';
@@ -134,12 +134,14 @@ const INITIAL_DATA = {
 };
 
 // screen: 'date' | 'step' | 'review' | 'done'
-export default function WizardForm({ onClose }) {
+export default function WizardForm({ onClose, initialWeek }) {
   const { user, userProfile } = useAuth();
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
-  const [screen, setScreen]             = useState('date');
-  const [weekStarting, setWeekStarting] = useState('');
-  const [customDate, setCustomDate]     = useState('');
+  const [screen, setScreen]             = useState(initialWeek ? 'step' : 'date');
+  const [weekStarting, setWeekStarting] = useState(initialWeek ?? '');
+  const [localWeekChoice, setLocalWeekChoice] = useState(
+    () => initialWeek ?? getLastNSundaysForDropdown(1)[0]?.value ?? ''
+  );
   const [step, setStep]                 = useState(1);   // 1–5 grouped screens
   const [formData, setFormData]         = useState(INITIAL_DATA);
   const [lastWeekData, setLastWeekData] = useState(null);
@@ -148,7 +150,14 @@ export default function WizardForm({ onClose }) {
   const [submitting, setSubmitting]     = useState(false);
   const [error, setError]               = useState('');
   const saveTimer = useRef(null);
-  const recentSundays = getRecentSundays(8);
+
+  const dropdownOptions = useMemo(() => {
+    const opts = getLastNSundaysForDropdown(6);
+    if (initialWeek && !opts.find((o) => o.value === initialWeek)) {
+      opts.push({ value: initialWeek, label: formatDateFriendly(initialWeek) });
+    }
+    return opts;
+  }, [initialWeek]);
 
   useEffect(() => {
     if (!user) return;
@@ -190,12 +199,6 @@ export default function WizardForm({ onClose }) {
     setStep(1);
     setScreen('step');
     setError('');
-  };
-
-  const handleCustomDate = () => {
-    if (!customDate) { setError('Please select a date.'); return; }
-    if (!validateSundayDate(customDate)) { setError('Week Starting must be a Sunday.'); return; }
-    handleDateSelect(customDate);
   };
 
   const handleNext = () => {
@@ -294,38 +297,25 @@ export default function WizardForm({ onClose }) {
             <p className="text-sm text-ink-muted mb-4">
               Select the Sunday this reporting week starts on.
             </p>
-            <div className="flex flex-col gap-2 mb-6">
-              {recentSundays.map((d, i) => (
-                <button
-                  key={d}
-                  type="button"
-                  onClick={() => handleDateSelect(d)}
-                  className="w-full text-left px-4 py-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-primary hover:bg-primary/5 transition-colors flex justify-between items-center"
-                >
-                  <span className="text-sm font-medium text-[var(--color-text)]">{formatDateLabel(d)}</span>
-                  {i === 0 && (
-                    <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
-                      This week
-                    </span>
-                  )}
-                </button>
+            <select
+              value={localWeekChoice}
+              onChange={(e) => { setLocalWeekChoice(e.target.value); setError(''); }}
+              className="w-full h-11 px-3 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)] text-[var(--color-text)] text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 mb-4"
+            >
+              {dropdownOptions.map((opt, i) => (
+                <option key={opt.value} value={opt.value}>
+                  {i === 0 ? `This week — ${opt.label}` : opt.label}
+                </option>
               ))}
-            </div>
-            <div className="border-t border-border pt-5">
-              <p className="text-xs text-ink-muted mb-2">Or enter a specific Sunday:</p>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={customDate}
-                  onChange={(e) => { setCustomDate(e.target.value); setError(''); }}
-                  className="flex-1 h-11 px-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] text-[var(--color-text)] text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-                />
-                <button type="button" onClick={handleCustomDate} className="btn-primary px-5">
-                  Go
-                </button>
-              </div>
-              {error && <p className="text-xs text-danger mt-2">{error}</p>}
-            </div>
+            </select>
+            {error && <p className="text-xs text-danger mb-3">{error}</p>}
+            <button
+              type="button"
+              onClick={() => handleDateSelect(localWeekChoice)}
+              className="btn-primary w-full h-11"
+            >
+              Start Report
+            </button>
           </div>
         )}
 
@@ -363,7 +353,7 @@ export default function WizardForm({ onClose }) {
             </div>
             <h2 className="text-xl font-bold text-ink mb-2">Report Submitted!</h2>
             <p className="text-sm text-ink-muted mb-8">
-              Your weekly report for {formatDateLabel(weekStarting)} has been submitted successfully.
+              Your weekly report for {formatDateFriendly(weekStarting)} has been submitted successfully.
             </p>
             <button type="button" onClick={onClose} className="btn-primary w-full max-w-xs">
               Back to Dashboard

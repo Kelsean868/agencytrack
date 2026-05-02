@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Download, Search } from 'lucide-react';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 import { extractFields, computeRatios } from '../../utils/extractFields';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 
@@ -222,7 +222,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         >
           {sundays.map((d, i) => (
             <option key={d} value={d}>
-              {i === 0 ? `This week (${d})` : d}
+              {i === 0 ? `This week — ${formatDateFriendly(d)}` : formatDateFriendly(d)}
             </option>
           ))}
         </select>
