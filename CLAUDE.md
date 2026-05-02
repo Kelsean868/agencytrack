@@ -17,30 +17,73 @@ Firebase project: agencytrack-2a610 | Hosted: agencytrack.vercel.app | Repo: git
 ## Tech Stack
 - React 19 + Vite (not Create React App)
 - Firebase Firestore (not Realtime DB) — project: agencytrack-2a610
-- Firebase Auth (email link — passwordless)
+- Firebase Auth: email + password (NOT email link — passwordless was abandoned, too unreliable for field agents)
+- Firebase Storage: profile photos at avatars/{tenantId}/{uid}.jpg
 - Firebase Cloud Functions (Node 20)
 - Tailwind CSS + CSS custom properties
+- @react-pdf/renderer: PDF generation (html2canvas was REMOVED)
+- vite-plugin-pwa: PWA + offline support
 - Recharts for charts
 - Lucide React for icons
+- jsPDF: kept only for branch CSV export
 - Hosted on Vercel
+
+## Build Phase History
+| Phase | Scope | Status |
+|-------|-------|--------|
+| P1 | Firebase + Auth setup | ✅ COMPLETE |
+| P2 | Login + Auth flow + Agent Dashboard | ✅ COMPLETE |
+| P3 | 9-step Weekly Wizard with auto-save | ✅ COMPLETE |
+| P4 | Manager Views + Meeting Mode + Persistency | ✅ COMPLETE |
+| P5 | Notifications + Career Portal + Gamification | ✅ COMPLETE |
+| P6A | Goals System Tier 1 + Commission Playground | ✅ COMPLETE |
+| P6B | History + Awards + Settlement + Carousel | ✅ COMPLETE |
+| P6C | Carousel polish + activity rounding | ✅ COMPLETE |
+| P7A | Dashboard KPI+sparklines, dark mode audit, wizard 9→5 | ✅ COMPLETE |
+| P7B | PDF report, ProfileScreen+photo, Branch CSV | ✅ COMPLETE |
+| P7C | PDF polish, photos in Leaderboard+MeetingMode, SVG login, PWA | ✅ COMPLETE |
+| P8 | Campaign module, recognition badges, Goals Tier 2, multi-tenancy | 🔜 NEXT |
+
+## Key Technical Decisions
+- Auth: email + password. Passwordless email link was abandoned — unreliable for field agents with intermittent connectivity.
+- Wizard: Step1–Step9 files are NEVER modified. WizardForm.jsx groups them into 5 screens. Revert to 9 steps = one git revert on WizardForm.jsx only.
+- PDF: @react-pdf/renderer ONLY. html2canvas removed — had unfixable text alignment issues in production.
+- AgentReportDocument.jsx: HARDCODED HEX colours only. No CSS variables — react-pdf cannot resolve them.
+- extractFields.js: ONLY way to read submission fields. Never access raw Firestore fields directly.
+- Profile photos: Firebase Storage at avatars/{tenantId}/{uid}.jpg. photoURL in Firestore user doc. Shown in ProfileScreen, Leaderboard, MeetingMode. NOT yet on agent dashboard or wizard.
+- PWA: vite-plugin-pwa + Workbox. Firestore offline persistence via enableIndexedDbPersistence(db) in firebase.js.
+- Goals system: 3 layers — Company Floor (Super Admin), Manager Target, Personal Commitment (≥ floor). Tier 2 (unitGoals, branchGoals, gap analysis) deferred to Phase 8.
 
 ## Architecture
 ```
 src/
-  context/     ← AuthContext, TenantContext, NotificationContext
-  hooks/       ← useAuth, useSubmissions, useAgentMetrics, usePersistency
-  services/    ← firebaseService, authService, submissionService, exportService
-  utils/       ← calculations, validators, formatters, constants, dateHelpers, extractFields
+  context/        ← AuthContext, NotificationContext
+  hooks/          ← useAuth, useSubmissions, useAgentMetrics
+  services/       ← authService, submissionService,
+                     exportService, goalsService,
+                     managerService, notificationService,
+                     persistencyService, settlementService,
+                     unlockService, userService
+  utils/          ← awardsEngine, dateHelpers, extractFields,
+                     formatters, validators
   components/
-    auth/         ← LoginScreen
-    onboarding/   ← WelcomeScreen
-    dashboard/    ← AgentDashboard, ManagerDashboard, KPICard, GrowthChart
-    wizard/       ← WizardForm, steps/ (Steps 1–9)
-    manager/      ← MasterSheet, CompliancePanel, MeetingMode, PersistencyPanel
-    profile/      ← ProfileScreen, CareerPortal
-    gamification/ ← Leaderboard, BadgeGrid
-    ui/           ← Shared components
-  styles/      ← index.css (design tokens), wizard.css, dashboard.css
+    auth/         ← LoginScreen (SVG pattern background)
+    awards/       ← AgentAwardsPanel, ManagerAwardsPanel
+    dashboard/    ← AgentDashboard, ManagerDashboard,
+                     KPICard, MotivationalCarousel
+    gamification/ ← Leaderboard (AgentAvatar), BadgeGrid
+    goals/        ← CommissionPlayground
+    manager/      ← MasterSheet, CompliancePanel, GoalsPanel,
+                     MeetingMode (AgentAvatar), PersistencyPanel,
+                     SettlementPanel
+    profile/      ← ProfileScreen, CareerPortal,
+                     AgentReportDocument (react-pdf, hex only)
+    submissions/  ← SubmissionViewer
+    ui/           ← NotificationBell, NotificationDrawer,
+                     ReportRangeModal, SyncIndicator
+    wizard/       ← WizardForm (5 screens), CardStack,
+                     CurrencyField, NumericField,
+                     steps/ (Step1–Step9, NEVER MODIFY)
 ```
 
 ## Domain Rules (NEVER BREAK THESE)
@@ -64,14 +107,14 @@ Role is stored in Firebase custom claims AND in Firestore `/tenants/{id}/users/{
 ## Firestore Structure
 ```
 /tenants/{tenantId}/
-  config/settings
-  users/{userId}
-  submissions/{submissionId}                    ← weekly wizard submissions
+  config/settings       ← companyMinimums, tenant config
+  users/{userId}        ← profile, role, photoURL, phone, bio
+  submissions/{id}      ← weekly report (read via extractFields.js)
   persistency/{agentId_YYYY_MM}                ← manager-entered persistency %
-  goals/{goalId}
+  goals/{goalId}        ← personal + manager targets
   leaderboard/{userId}
-  notifications/{notificationId}
-  settlements/{agentId}_{year}_{periodKey}     ← confirmed production data entered by branch manager
+  notifications/{id}
+  settlements/{id}      ← confirmed production data (agentId_year_periodKey)
 ```
 
 New names pipeline fields on submission docs: `referralsObtained`, `namesFromColdCanvass`, `namesFromOther`, `oldNamesPool` — used in carousel and pipeline tracking
@@ -131,7 +174,7 @@ Minimum 44px touch targets (mobile agents in field).
 Dark mode toggle in header (CSS class swap on `<html>`).
 
 ## Current Build Phase
-**Phase 6C — Polish: Carousel enhancement, activity rounding, emoji sweep**
+**Phase 8 — Post-pilot features**
 
 ## Build Phase Status
 | Phase | Scope | Status |
@@ -228,6 +271,21 @@ Schema detection order:
 - CSS via Tailwind classes + CSS variables — no inline styles
 - All Firestore writes go through service files, not directly from components
 - Commit messages: `feat:`, `fix:`, `refactor:`, `style:`, `docs:`, `chore:`
+- AgentReportDocument.jsx is the ONLY file allowed to use inline styles (required by react-pdf renderer)
+
+## PWA Icons
+- /public/icon-192.png — shield + bars, deep teal #014e52
+- /public/icon-512.png — same, larger
+- /public/favicon.svg — simplified 3-bar for browser tabs
+- /public/icons.svg — full design SVG source
+
+## Test Accounts
+- Email: kelsean@gmail.com
+- Password: AgentTest123!
+- UID: J0j4uBqzTPcfm1IlGCPyDzo27RP2
+- Role: agent
+- TenantId: tatillife_south
+- Super Admin UID: 4GeeZbhZBwdtGOLoJoggf4MQo142
 
 ## Environment Variables (Vite format)
 All Firebase env vars use `VITE_` prefix.
@@ -250,6 +308,8 @@ All four are confirmed in `.gitignore`.
 - Clock in / clock out
 - Campaign tracking (Phase 2 / future)
 - Power BI direct integration (future)
+- Self-registration (managers create all accounts — no exceptions)
+- Any new PDF library — @react-pdf/renderer is final
 
 ## Planned Phase 7 Features
 - Profile screen with photo upload (Firebase Storage) — photo used in leaderboard + MeetingMode
