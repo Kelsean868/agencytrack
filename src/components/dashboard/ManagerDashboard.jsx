@@ -18,6 +18,7 @@ import SettlementPanel from '../manager/SettlementPanel';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
 import CampaignPanel from '../campaigns/CampaignPanel';
+import AgentManagementPanel from '../manager/AgentManagementPanel';
 import NotificationBell from '../ui/NotificationBell';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import MotivationalCarousel from './MotivationalCarousel';
@@ -28,6 +29,7 @@ const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 
 const TABS = [
   { id: 'overview',     label: 'Overview'     },
+  { id: 'team',         label: 'Team'         },
   { id: 'campaigns',    label: 'Campaigns'    },
   { id: 'awards',       label: 'Awards'       },
   { id: 'mastersheet',  label: 'Master Sheet' },
@@ -281,6 +283,8 @@ export default function ManagerDashboard() {
             </button>
           </div>
         )}
+
+        {activeTab === 'team' && <AgentManagementPanel />}
 
         {activeTab === 'campaigns' && <CampaignPanel />}
 

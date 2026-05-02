@@ -212,6 +212,7 @@ Dark mode toggle in header (CSS class swap on `<html>`).
 | P8B | Campaign Module | 🔄 IN PROGRESS |
 | P8C | Goals Tier 2 — gap analysis (unitGoals + branchGoals) | 🔄 IN PROGRESS |
 | P8D | Multi-tenancy rollout | ⏳ Deferred (Phase 10) |
+| P8E | Agent Management + Campaign Notifications + Welcome Screen | 🔄 IN PROGRESS |
 | P9  | Sales Manager role (post-pilot) | ⏳ Planned |
 | P10 | Multi-tenancy full rollout | ⏳ Deferred |
 
@@ -397,6 +398,15 @@ All four are confirmed in `.gitignore`.
 - Firestore: `/tenants/{tenantId}/unitGoals/{unitId_year}`, `/tenants/{tenantId}/branchGoals/{year}`
 - Gap analysis hierarchy: personal commitment → unit target → branch target → company floor
 - Touches: `goalsService.js`, `GoalsPanel.jsx`, `CareerPortal.jsx`
+
+## P8E Key Decisions
+- Agent creation uses a callable Cloud Function `createAgentAccount` (client cannot call admin.auth().createUser() directly)
+- Unit Manager can create agents in their own unit only; Branch Manager + Super Admin can create agents in any unit
+- Contract start date stored as YYYY-MM-DD string on the user profile doc
+- New agent receives a password reset email automatically on account creation (Firebase Admin SDK: admin.auth().generatePasswordResetLink())
+- Welcome screen shown on first login only — tracked via `hasSeenWelcome` boolean on the Firestore user profile doc
+- Welcome screen: 4 slides covering the app's main features
+- Campaign notifications: triggered client-side in campaignService.js when a campaign is created with status 'active'
 
 ### P8D — Multi-tenancy (DEFERRED → Phase 10)
 - White-label theming, tenant config screen, onboarding flow

@@ -26,6 +26,7 @@ import SubmissionViewer from '../submissions/SubmissionViewer';
 import MotivationalCarousel from './MotivationalCarousel';
 import KPICard from './KPICard';
 import SyncIndicator from '../ui/SyncIndicator';
+import WelcomeScreen from '../onboarding/WelcomeScreen';
 
 const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 
@@ -106,11 +107,19 @@ export default function AgentDashboard() {
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [hierarchy, setHierarchy]               = useState(null);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
+  const [showWelcome, setShowWelcome]           = useState(false);
 
   const currentWeek  = useMemo(() => getMostRecentSunday(), []);
   const thisYear     = new Date().getFullYear();
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Agent';
   const roleLabel    = getRoleLabel(role);
+
+  // Show welcome screen on first login (agents only)
+  useEffect(() => {
+    if (userProfile && userProfile.hasSeenWelcome === false && role === 'agent') {
+      setShowWelcome(true);
+    }
+  }, [userProfile, role]);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -266,6 +275,11 @@ export default function AgentDashboard() {
 
   return (
     <div className="min-h-screen bg-surface px-4 py-6 max-w-2xl mx-auto">
+
+      {/* Welcome / onboarding overlay */}
+      {showWelcome && (
+        <WelcomeScreen onComplete={() => setShowWelcome(false)} />
+      )}
 
       {/* Report range modal */}
       {reportModalOpen && (

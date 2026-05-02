@@ -77,9 +77,111 @@ exports.setUserClaims = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
-// EXISTING: Log new users
+// EXISTING: Log new users — skip if profile already created by createAgentAccount
 exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
-  console.log('New user created — awaiting role assignment:', user.uid, user.email);
+  const existing = await admin.firestore()
+    .doc(`tenants/${TENANT_ID}/users/${user.uid}`)
+    .get()
+    .catch(() => null);
+
+  if (existing?.exists) {
+    console.log('[onUserCreated] Profile already exists, skipping:', user.uid);
+    return;
+  }
+  console.log('[onUserCreated] New user — awaiting role assignment:', user.uid, user.email);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CALLABLE: Create a new agent account (manager-initiated)
+// ─────────────────────────────────────────────────────────────────────────────
+exports.createAgentAccount = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
+  }
+
+  const callerRole   = context.auth.token.role;
+  const callerUid    = context.auth.uid;
+  const callerTenant = context.auth.token.tenantId;
+
+  const allowedRoles = ['unit_manager', 'branch_manager', 'super_admin'];
+  if (!allowedRoles.includes(callerRole)) {
+    throw new functions.https.HttpsError('permission-denied', 'Only managers can create agent accounts.');
+  }
+
+  const { name, email, agentNumber, unitId, contractStartDate } = data;
+
+  if (!name || !email || !unitId) {
+    throw new functions.https.HttpsError('invalid-argument', 'name, email, and unitId are required.');
+  }
+
+  // Unit Manager can only create agents in their own unit
+  if (callerRole === 'unit_manager') {
+    const callerSnap = await admin.firestore()
+      .doc(`tenants/${callerTenant}/users/${callerUid}`)
+      .get();
+    const callerUnitId = callerSnap.data()?.unitId;
+    if (unitId !== callerUnitId) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Unit managers can only create agents in their own unit.'
+      );
+    }
+  }
+
+  // Check email not already in use
+  try {
+    await admin.auth().getUserByEmail(email);
+    throw new functions.https.HttpsError('already-exists', 'An account with this email already exists.');
+  } catch (err) {
+    if (err.code !== 'auth/user-not-found') throw err;
+  }
+
+  // Create Firebase Auth user
+  const userRecord = await admin.auth().createUser({
+    email,
+    displayName: name,
+    emailVerified: false,
+  });
+
+  const newUid = userRecord.uid;
+
+  // Set custom claims
+  await admin.auth().setCustomUserClaims(newUid, {
+    role: 'agent',
+    tenantId: callerTenant,
+  });
+
+  // Create Firestore user profile
+  await admin.firestore()
+    .doc(`tenants/${callerTenant}/users/${newUid}`)
+    .set({
+      uid:               newUid,
+      tenantId:          callerTenant,
+      role:              'agent',
+      name,
+      email,
+      agentNumber:       agentNumber ?? '',
+      unitId,
+      contractStartDate: contractStartDate ?? '',
+      hasSeenWelcome:    false,
+      createdAt:         admin.firestore.FieldValue.serverTimestamp(),
+      createdBy:         callerUid,
+    });
+
+  // Send password setup email via Firebase's built-in reset email
+  await admin.auth().generatePasswordResetLink(email, {
+    url: 'https://agencytrack.vercel.app',
+  }).catch((err) => console.error('[createAgentAccount] Reset link error:', err));
+
+  // Notify the new agent
+  await createAdminNotification(callerTenant, newUid, {
+    type:  'account_created',
+    title: 'Welcome to AgencyTrack',
+    body:  'Your account has been created. Check your email to set your password and get started.',
+  }).catch(console.error);
+
+  console.log(`[createAgentAccount] Created agent ${newUid} (${email}) in unit ${unitId}`);
+  return { success: true, uid: newUid };
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

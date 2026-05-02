@@ -37,7 +37,13 @@ service cloud.firestore {
     match /tenants/{tenantId} {
 
       match /users/{userId} {
-        allow read, write: if canManage(tenantId) || (isSignedIn() && request.auth.uid == userId);
+        allow read: if canManage(tenantId) || (isSignedIn() && request.auth.uid == userId);
+        // Managers: full write. Agent: can update their own safe profile fields only.
+        allow write: if canManage(tenantId);
+        allow update: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['hasSeenWelcome', 'photoURL', 'bio', 'phone']);
       }
 
       match /submissions/{submissionId} {

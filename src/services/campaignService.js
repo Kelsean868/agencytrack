@@ -9,6 +9,8 @@ import {
   doc, addDoc, updateDoc, deleteDoc, serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
+import { createNotification } from './notificationService';
+import { formatDateFriendly } from '../utils/formatters';
 
 export async function getCampaigns(tenantId) {
   const q = query(
@@ -54,10 +56,16 @@ export async function createCampaign(tenantId, createdBy, createdByName, created
     createdByRole,
     createdAt: serverTimestamp(),
   });
+
+  const savedCampaign = { id: docRef.id, ...campaignData, targets };
+  if (campaignData.status === 'active') {
+    await notifyCampaignParticipants(tenantId, savedCampaign).catch(console.error);
+  }
+
   return docRef.id;
 }
 
-export async function updateCampaign(tenantId, campaignId, updates) {
+export async function updateCampaign(tenantId, campaignId, updates, previousStatus) {
   const targets = updates.targets
     ? updates.targets.map((t) => ({ ...t, threshold: parseFloat(t.threshold) || 0 }))
     : undefined;
@@ -66,10 +74,66 @@ export async function updateCampaign(tenantId, campaignId, updates) {
   if (targets) payload.targets = targets;
 
   await updateDoc(doc(db, `tenants/${tenantId}/campaigns/${campaignId}`), payload);
+
+  // Notify when transitioning draft → active
+  if (previousStatus === 'draft' && updates.status === 'active') {
+    const campaign = { id: campaignId, ...updates };
+    await notifyCampaignParticipants(tenantId, campaign).catch(console.error);
+  }
 }
 
 export async function deleteCampaign(tenantId, campaignId) {
   await deleteDoc(doc(db, `tenants/${tenantId}/campaigns/${campaignId}`));
+}
+
+/**
+ * notifyCampaignParticipants — internal helper
+ * Fetches affected agents by scope and sends each one a notification.
+ */
+async function notifyCampaignParticipants(tenantId, campaign) {
+  const { scope = {}, name, prize, startDate, endDate } = campaign;
+  const { type, unitIds = [], agentIds = [] } = scope;
+
+  let agentQuery;
+  if (type === 'branch') {
+    agentQuery = query(
+      collection(db, `tenants/${tenantId}/users`),
+      where('role', '==', 'agent')
+    );
+  } else if (type === 'unit' && unitIds.length > 0) {
+    agentQuery = query(
+      collection(db, `tenants/${tenantId}/users`),
+      where('role', '==', 'agent'),
+      where('unitId', 'in', unitIds)
+    );
+  } else if (type === 'agent' && agentIds.length > 0) {
+    // Notify listed agents directly
+    const body = `A new campaign has launched. Prize: ${prize ?? '—'}. Runs ${formatDateFriendly(startDate)} to ${formatDateFriendly(endDate)}.`;
+    await Promise.all(
+      agentIds.map((uid) =>
+        createNotification(tenantId, uid, {
+          type:  'campaign_launched',
+          title: `New Campaign: ${name}`,
+          body,
+        }).catch(console.error)
+      )
+    );
+    return;
+  } else {
+    return;
+  }
+
+  const snap = await getDocs(agentQuery);
+  const body = `A new campaign has launched. Prize: ${prize ?? '—'}. Runs ${formatDateFriendly(startDate)} to ${formatDateFriendly(endDate)}.`;
+  await Promise.all(
+    snap.docs.map((d) =>
+      createNotification(tenantId, d.id, {
+        type:  'campaign_launched',
+        title: `New Campaign: ${name}`,
+        body,
+      }).catch(console.error)
+    )
+  );
 }
 
 export async function getCampaignSubmissions(tenantId, startDate, endDate) {
