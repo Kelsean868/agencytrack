@@ -18,7 +18,7 @@ import {
 } from '@react-pdf/renderer';
 import { extractFields } from '../../utils/extractFields';
 import { computeAgentAwards } from '../../utils/awardsEngine';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const COLORS = {
@@ -73,10 +73,7 @@ function safeRate(num, den) {
 
 function weekLabel(weekStarting) {
   if (!weekStarting) return '';
-  const M = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const p = weekStarting.split('-');
-  if (p.length < 3) return weekStarting.slice(5);
-  return `${M[parseInt(p[1], 10) - 1] ?? ''} ${parseInt(p[2], 10)}`;
+  return formatDateDisplay(weekStarting);
 }
 
 function buildSparklinePath(values, width, height) {

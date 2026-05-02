@@ -35,8 +35,8 @@ function computeWeeklyStreak(submissions) {
   if (submitted.length === 0) return 0;
   let streak = 1;
   for (let i = 0; i < submitted.length - 1; i++) {
-    const cur  = new Date((submitted[i].weekStarting ?? '') + 'T00:00:00');
-    const prev = new Date((submitted[i + 1].weekStarting ?? '') + 'T00:00:00');
+    const cur  = new Date((submitted[i].weekStarting ?? '') + 'T12:00:00Z');
+    const prev = new Date((submitted[i + 1].weekStarting ?? '') + 'T12:00:00Z');
     const diffWeeks = Math.round((cur.getTime() - prev.getTime()) / (7 * 24 * 60 * 60 * 1000));
     if (diffWeeks === 1) streak++;
     else break;

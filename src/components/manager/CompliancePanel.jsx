@@ -11,7 +11,7 @@ const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'super_admin'];
 
 function daysSinceSunday(weekStarting) {
-  const sunday = new Date(weekStarting + 'T00:00:00');
+  const sunday = new Date(weekStarting + 'T12:00:00Z');
   return Math.floor((Date.now() - sunday.getTime()) / (1000 * 60 * 60 * 24));
 }
 

@@ -11,7 +11,7 @@ function formatTs(ts) {
 
 function formatWeekLabel(dateStr) {
   if (!dateStr) return '—';
-  const d = new Date(dateStr + 'T00:00:00');
+  const d = new Date(dateStr + 'T12:00:00Z');
   return `Week of Sunday ${d.toLocaleDateString('en-TT', { day: '2-digit', month: 'short', year: 'numeric' })}`;
 }
 

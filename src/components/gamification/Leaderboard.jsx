@@ -5,7 +5,7 @@ import { db, tenantId } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { computeWeeklyChampions } from '../../utils/weeklyChampions';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 
 function ChampionCard({ emoji, label, champion, format }) {
   return (
@@ -44,7 +44,7 @@ function WeeklyChampionsBanner({ champions, loading }) {
 
   const { topAPI, topApps, topActivity, weekStarting } = champions;
   const weekLabel = weekStarting
-    ? new Date(weekStarting + 'T00:00:00').toLocaleDateString('en-TT', { month: 'short', day: 'numeric', year: 'numeric' })
+    ? formatDateFriendly(weekStarting)
     : '';
 
   const cards = [
