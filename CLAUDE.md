@@ -193,7 +193,7 @@ Minimum 44px touch targets (mobile agents in field).
 Dark mode toggle in header (CSS class swap on `<html>`).
 
 ## Current Build Phase
-**Phase 8A — Weekly Recognition Badges**
+**Pilot Prep — Pre-launch testing and configuration**
 
 ## Build Phase Status
 | Phase | Scope | Status |
@@ -212,7 +212,8 @@ Dark mode toggle in header (CSS class swap on `<html>`).
 | P8B | Campaign Module | 🔄 IN PROGRESS |
 | P8C | Goals Tier 2 — gap analysis (unitGoals + branchGoals) | 🔄 IN PROGRESS |
 | P8D | Multi-tenancy rollout | ⏳ Deferred (Phase 10) |
-| P8E | Agent Management + Campaign Notifications + Welcome Screen | 🔄 IN PROGRESS |
+| P8E | Agent Management + Campaign Notifications + Welcome Screen | ✅ COMPLETE |
+| Pilot Prep | End-to-end testing, account setup, mobile audit, notifications | 🔄 IN PROGRESS |
 | P9  | Sales Manager role (post-pilot) | ⏳ Planned |
 | P10 | Multi-tenancy full rollout | ⏳ Deferred |
 
@@ -471,9 +472,60 @@ Deferred until second pilot tenant is confirmed and onboarding flow is scoped.
 - Decision on deployment model (shared app + subdomain vs. per-tenant deploy)
 - Data migration plan for existing tatillife_south data
 
+## Pilot Prep Checklist
+
+### Account Setup
+- [ ] Create Branch Manager account via Firebase Console
+- [ ] Create Unit Manager account via Firebase Console
+  (set role=unit_manager, tenantId=tatillife_south, unitId)
+- [ ] Log in as Unit Manager → create first real agent via Team tab
+- [ ] Verify agent receives password reset email
+- [ ] Verify agent's WelcomeScreen appears on first login
+
+### Configuration
+- [ ] Set company minimums via Super Admin config
+  (< 2 years: $250K API / 40 apps, 2–5 years: $350K / 40 apps, 6+: $500K / 40 apps)
+- [ ] Set branch goals for current year via GoalsPanel → Branch Goals
+- [ ] Set unit goals for pilot unit via GoalsPanel → Unit Goals
+- [ ] Verify GapAnalysisPanel shows all layers for agent
+
+### End-to-End Wizard Test
+- [ ] Log in as test agent (kelsean@gmail.com)
+- [ ] Submit a full wizard — all 5 grouped screens
+- [ ] Verify submission appears in MasterSheet
+- [ ] Verify submission appears in CompliancePanel as submitted
+- [ ] Verify KPI dashboard updates after submission
+- [ ] Verify WeeklyChampionsBanner updates in Leaderboard
+
+### Notifications
+- [ ] Verify Sunday 6 PM nudge fires (check Firebase Functions logs)
+- [ ] Verify Monday 7 AM nudge fires
+- [ ] Verify Monday 9:01 AM deadline flag fires + notifies manager
+- [ ] Create an active campaign → verify participants receive notification
+- [ ] Check NotificationDrawer shows all notifications correctly
+
+### Manager Flows
+- [ ] Unit Manager: Meeting Mode — group + 1-on-1
+- [ ] Unit Manager: Persistency entry for an agent
+- [ ] Branch Manager: Settlement confirmation
+- [ ] Branch Manager: Campaign creation (branch-wide)
+- [ ] Verify MasterSheet CSV export works
+
+### Mobile Audit
+- [ ] Test on Android phone — wizard submission
+- [ ] Test on iOS phone — wizard submission
+- [ ] Verify all touch targets ≥ 44px
+- [ ] Verify no horizontal scroll on mobile dashboard
+- [ ] Verify WelcomeScreen renders correctly on small screen
+
+### Known Issues / Pre-Pilot Fixes
+(populate as issues are found during testing)
+
 ## Session Protocol
 1. Always read this file + CLAUDE.md before writing any code
 2. Run `npm run repomix` to get fresh codebase snapshot before each session
 3. Confirm current phase before writing new files
 4. After all changes, run `npm run dev` and confirm no build errors
 5. Commit with descriptive message before ending session
+6. For pilot prep: work through checklist items in order, document
+   any bugs found in the Known Issues section above before fixing them.
