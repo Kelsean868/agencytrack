@@ -52,7 +52,13 @@ Firebase project: agencytrack-2a610 | Hosted: agencytrack.vercel.app | Repo: git
 - extractFields.js: ONLY way to read submission fields. Never access raw Firestore fields directly.
 - Profile photos: Firebase Storage at avatars/{tenantId}/{uid}.jpg. photoURL in Firestore user doc. Shown in ProfileScreen, Leaderboard, MeetingMode. NOT yet on agent dashboard or wizard.
 - PWA: vite-plugin-pwa + Workbox. Firestore offline persistence via enableIndexedDbPersistence(db) in firebase.js.
-- Goals system: 3 layers — Company Floor (Super Admin), Manager Target, Personal Commitment (≥ floor). Tier 2 (unitGoals, branchGoals, gap analysis) deferred to Phase 8.
+- Goals system (5 layers, full hierarchy):
+  1. **Personal Commitment** — agent sets own target (≥ company floor) — `goals/{goalId}` ✅ built
+  2. **Unit Target** — unit manager sets target for their unit — `unitGoals/{unitId}_{year}` ✅ built
+  3. **Branch Target** — branch manager sets target for branch — `branchGoals/{year}` ✅ built
+  4. **Company Floor** — super admin sets minimum floor — `config/companyMinimums` ✅ built
+  5. **Sales Manager Target** — cross-branch layer (planned Phase 9, not yet built)
+  Gap analysis fetched via `getGoalHierarchy(tenantId, unitId, year, agentId)` in goalsService.js. Displayed in AgentDashboard Goals section and CareerPortal via `GapAnalysisPanel.jsx`.
 
 ## Architecture
 ```
@@ -96,25 +102,38 @@ src/
 - Never store numeric values as strings in Firestore
 
 ## Roles & Permissions
+
+Full organisational hierarchy (lowest → highest):
+**Agent → Unit Manager → Branch Manager → Sales Manager → Super Admin**
+
 ```
-super_admin (Kyron) — all access + sensitive system config
-branch_manager — full branch, create accounts across all units
-unit_manager — own unit only, create accounts for own agents
-agent — own data only
+super_admin (Kyron)  — all access + sensitive system config
+sales_manager        — cross-branch visibility, company-wide campaigns,
+                       manages Branch Managers (planned Phase 9, not yet built)
+branch_manager       — full branch, create accounts across all units
+unit_manager         — own unit only, create accounts for own agents
+agent                — own data only
 ```
 Role is stored in Firebase custom claims AND in Firestore `/tenants/{id}/users/{uid}.role`
+
+> **Note:** `sales_manager` role is defined here for planning purposes.
+> It is NOT yet implemented in code. Do not add `sales_manager` checks
+> to any component until Phase 9 begins.
 
 ## Firestore Structure
 ```
 /tenants/{tenantId}/
-  config/settings       ← companyMinimums, tenant config
-  users/{userId}        ← profile, role, photoURL, phone, bio
-  submissions/{id}      ← weekly report (read via extractFields.js)
-  persistency/{agentId_YYYY_MM}                ← manager-entered persistency %
-  goals/{goalId}        ← personal + manager targets
+  config/settings              ← companyMinimums, tenant config
+  users/{userId}               ← profile, role, photoURL, phone, bio
+  submissions/{id}             ← weekly report (read via extractFields.js)
+  persistency/{agentId_YYYY_MM} ← manager-entered persistency %
+  goals/{goalId}               ← personal commitment + manager targets
+  unitGoals/{unitId}_{year}    ← unit manager targets (P8C)
+  branchGoals/{year}           ← branch manager targets (P8C)
   leaderboard/{userId}
   notifications/{id}
-  settlements/{id}      ← confirmed production data (agentId_year_periodKey)
+  settlements/{id}             ← confirmed production data (agentId_year_periodKey)
+  campaigns/{campaignId}       ← branch/unit/agent campaigns (P8B)
 ```
 
 New names pipeline fields on submission docs: `referralsObtained`, `namesFromColdCanvass`, `namesFromOther`, `oldNamesPool` — used in carousel and pipeline tracking
@@ -192,7 +211,9 @@ Dark mode toggle in header (CSS class swap on `<html>`).
 | P8A | Weekly Recognition Badges | 🔄 IN PROGRESS |
 | P8B | Campaign Module | 🔄 IN PROGRESS |
 | P8C | Goals Tier 2 — gap analysis (unitGoals + branchGoals) | 🔄 IN PROGRESS |
-| P8D | Multi-tenancy rollout | ⏳ DEFERRED (post-pilot) |
+| P8D | Multi-tenancy rollout | ⏳ Deferred (Phase 10) |
+| P9  | Sales Manager role (post-pilot) | ⏳ Planned |
+| P10 | Multi-tenancy full rollout | ⏳ Deferred |
 
 ## Phase 4 — Component Checklist
 - ✅ Step9Goals.jsx — Next Week Goals wizard step
@@ -377,9 +398,68 @@ All four are confirmed in `.gitignore`.
 - Gap analysis hierarchy: personal commitment → unit target → branch target → company floor
 - Touches: `goalsService.js`, `GoalsPanel.jsx`, `CareerPortal.jsx`
 
-### P8D — Multi-tenancy (DEFERRED)
+### P8D — Multi-tenancy (DEFERRED → Phase 10)
 - White-label theming, tenant config screen, onboarding flow
 - Not building until second tenant is confirmed
+
+## Phase 9 Plan — Sales Manager Role
+
+### Overview
+`sales_manager` sits between `branch_manager` and `super_admin` in the org hierarchy.
+They oversee multiple branches within a single tenant and manage Branch Managers.
+**Do NOT add any `sales_manager` code until Phase 9 begins.**
+
+### Scope
+- Cross-branch dashboards: see all branches, all units, all agents in a tenant
+- Company-wide campaigns: create campaigns visible to all branches
+- Goals Tier 3: set Sales Manager targets above branch targets (6th layer)
+- Create / manage Branch Manager accounts
+- Read-only access to all branch submissions, leaderboards, and reports
+
+### Impact on Existing Features
+| Feature | Change needed |
+|---------|--------------|
+| ManagerDashboard | `sales_manager` sees ALL branches, not filtered by own branch |
+| GoalsPanel | Add Sales Manager layer to BranchGoalsTab (set SM target above branch) |
+| GapAnalysisPanel | Add 5th bar layer (sales_manager target) |
+| gapAnalysis.js | Add `salesManagerTarget` layer to `LAYER_CONFIG` and `computeGapAnalysis` |
+| goalsService.js | Add `getSalesManagerGoals`, `setSalesManagerGoals` |
+| Firestore path | `/tenants/{tenantId}/salesManagerGoals/{year}` |
+| Firestore rules | Add `sales_manager` write access to `salesManagerGoals`, read access to all sub-collections |
+| CampaignPanel | `sales_manager` can create branch-wide + cross-branch campaigns |
+| Leaderboard | Company-wide view for `sales_manager` |
+| userService / authService | `createSalesManager()` (super_admin only) |
+
+### New Files
+- `src/components/manager/SalesManagerDashboard.jsx` — cross-branch overview
+- (or extend ManagerDashboard with a role-based branch selector)
+
+### Modified Files
+- `src/services/goalsService.js` — add getSalesManagerGoals, setSalesManagerGoals
+- `src/utils/gapAnalysis.js` — add salesManagerTarget layer
+- `src/components/goals/GapAnalysisPanel.jsx` — add 5th bar
+- `src/components/manager/GoalsPanel.jsx` — BranchGoalsTab gets SM target row
+- `firestore.rules` — salesManagerGoals collection + cross-branch read rules
+- `CLAUDE.md` — update goals system docs, role table, Firestore structure
+
+## Phase 10 Plan — Multi-Tenancy Full Rollout
+
+### Overview
+Enable the platform to serve multiple insurance companies under isolated tenants.
+Deferred until second pilot tenant is confirmed and onboarding flow is scoped.
+
+### Scope
+- Tenant onboarding flow (Super Admin creates new tenant)
+- White-label theming per tenant (logo, primary colour, company name)
+- Tenant config screen: edit companyMinimums, currency display, feature flags
+- Tenant isolation audit: verify all Firestore reads/writes are correctly scoped to `tenantId`
+- Billing / subscription hooks (if required)
+- Separate Vercel deployment per tenant OR subdomain routing
+
+### Prerequisites before starting Phase 10
+- At least one confirmed second pilot tenant
+- Decision on deployment model (shared app + subdomain vs. per-tenant deploy)
+- Data migration plan for existing tatillife_south data
 
 ## Session Protocol
 1. Always read this file + CLAUDE.md before writing any code
