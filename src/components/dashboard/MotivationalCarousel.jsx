@@ -1,5 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  ChevronLeft, ChevronRight,
+  Flame, Trophy, Target, Award, CheckCircle2,
+  Users, TrendingUp, Calendar, Star,
+  ClipboardList, Crown,
+} from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { computeAgentAwards } from '../../utils/awardsEngine';
 import { extractFields } from '../../utils/extractFields';
@@ -82,6 +87,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
   if (streak >= 2) {
     cards.push({
       id: 'streak',
+      icon: Flame,
       headline: `${streak}-Week Streak!`,
       body: 'Consistency is your competitive advantage. Keep it going.',
     });
@@ -93,6 +99,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
   if (rank && totalAgents) {
     cards.push({
       id: 'rank',
+      icon: Trophy,
       headline: `You're ranked #${rank} of ${totalAgents}`,
       body: 'in your branch. Keep pushing.',
     });
@@ -115,12 +122,14 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
   if (mdrtPct < 100) {
     cards.push({
       id: 'mdrt',
+      icon: Target,
       headline: `${mdrtPct}% to MDRT`,
       body: `${formatCurrency(mdrtToGo)} to go for your MDRT qualification.`,
     });
   } else {
     cards.push({
       id: 'mdrt_qualified',
+      icon: Target,
       headline: 'MDRT Qualified!',
       body: 'Outstanding. You\'ve hit MDRT threshold for the year.',
     });
@@ -137,6 +146,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
       const toGo = Math.max(0, apiCriterion.target - apiCriterion.current);
       cards.push({
         id: 'next_club',
+        icon: Award,
         headline: `${formatCurrency(toGo)} from ${a.name}`,
         body: 'Keep building your production.',
       });
@@ -151,6 +161,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
     if (latestSub) {
       cards.push({
         id: 'weekly_goal',
+        icon: CheckCircle2,
         headline: `${formatCurrency(weekAPI)} of ${formatCurrency(goals.targetWeeklyAPI)} API`,
         body: `This week's target from your manager.`,
       });
@@ -176,7 +187,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
       } else {
         body = `You have ${oldNamesPool} names in your pipeline. Don't let them go cold.`;
       }
-      cards.push({ id: 'new_names', headline: 'New Names Pipeline', body });
+      cards.push({ id: 'new_names', icon: Users, headline: 'New Names Pipeline', body });
     }
   }
 
@@ -185,6 +196,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
   if (closingRatio > 0) {
     cards.push({
       id: 'closing_ratio',
+      icon: TrendingUp,
       headline: `${closingRatio}% closing ratio this month`,
       body: 'Keep converting those CIs into sales.',
     });
@@ -197,6 +209,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
     if (!awards.quarterly_api?.eligible) {
       cards.push({
         id: 'quarter_countdown',
+        icon: Calendar,
         headline: `${weeksLeft} weeks left in Q${getQuarter(now)}`,
         body: `You need approx. ${formatCurrency(qtrAPIToGo)} more API for your quarterly award.`,
       });
@@ -209,6 +222,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
   if (recentBadge) {
     cards.push({
       id: 'badge',
+      icon: Star,
       headline: `Badge Earned: ${recentBadge}`,
       body: 'A new achievement unlocked. Well done!',
     });
@@ -220,6 +234,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
   while (cards.length < 2) {
     cards.push({
       id: `enc_${poolIdx}`,
+      icon: Star,
       headline: 'Stay Consistent',
       body: pool[poolIdx % pool.length],
     });
@@ -229,6 +244,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
   // Always append one encouragement rotation
   cards.push({
     id: 'encouragement',
+    icon: Star,
     headline: 'Daily Reminder',
     body: AGENT_ENCOURAGEMENTS[new Date().getDay() % AGENT_ENCOURAGEMENTS.length],
   });
@@ -246,6 +262,7 @@ function buildManagerCards({ submissions, leaderboardDoc, goals, unitAgents, cur
     const pending = total - submitted;
     cards.push({
       id: 'compliance',
+      icon: ClipboardList,
       headline: `${submitted} of ${total} agents submitted`,
       body: pending > 0 ? `${pending} still pending this week.` : 'Full compliance this week!',
     });
@@ -259,6 +276,7 @@ function buildManagerCards({ submissions, leaderboardDoc, goals, unitAgents, cur
   if (topPerformer && parseFloat(topPerformer.weekAPI) > 0) {
     cards.push({
       id: 'top_performer',
+      icon: Crown,
       headline: `Top performer: ${topPerformer.name}`,
       body: `${formatCurrency(topPerformer.weekAPI)} API, ${topPerformer.weekApps ?? 0} apps this week.`,
     });
@@ -271,6 +289,7 @@ function buildManagerCards({ submissions, leaderboardDoc, goals, unitAgents, cur
   if ((longestStreakAgent?.weeklyStreak ?? 0) >= 3) {
     cards.push({
       id: 'streak_spotlight',
+      icon: Flame,
       headline: `${longestStreakAgent.name} on a ${longestStreakAgent.weeklyStreak}-week streak`,
       body: 'Celebrate their consistency in your next meeting.',
     });
@@ -282,6 +301,7 @@ function buildManagerCards({ submissions, leaderboardDoc, goals, unitAgents, cur
   while (cards.length < 2) {
     cards.push({
       id: `menc_${poolIdx}`,
+      icon: Star,
       headline: 'Manager Reminder',
       body: pool[poolIdx % pool.length],
     });
@@ -290,6 +310,7 @@ function buildManagerCards({ submissions, leaderboardDoc, goals, unitAgents, cur
 
   cards.push({
     id: 'encouragement',
+    icon: Star,
     headline: 'Leadership Today',
     body: MANAGER_ENCOURAGEMENTS[new Date().getDay() % MANAGER_ENCOURAGEMENTS.length],
   });
@@ -349,6 +370,9 @@ export default function MotivationalCarousel({
     >
       {/* Content */}
       <div className="text-center px-8 min-h-[56px] flex flex-col items-center justify-center transition-all duration-300">
+        {card.icon && (
+          <card.icon size={28} className="text-primary mb-2" aria-hidden="true" />
+        )}
         <p className="text-sm font-bold text-primary leading-snug">{card.headline}</p>
         <p className="text-xs text-ink-muted mt-1 leading-snug">{card.body}</p>
       </div>

@@ -1,21 +1,27 @@
 import { useMemo } from 'react';
-import { Target, Flame, Zap, Star, Trophy, CheckCircle, TrendingUp, Crown } from 'lucide-react';
+import { Target, Flame, Zap, Star, Trophy, CheckCircle, TrendingUp, Crown, Phone } from 'lucide-react';
 
 export const BADGES = {
-  first_submission: { label: 'First Step',    Icon: Target,      accent: 'text-primary', desc: 'Submitted your first report' },
-  streak_4:         { label: 'On a Roll',      Icon: Flame,       accent: 'text-warning', desc: '4 consecutive weeks submitted' },
-  streak_8:         { label: 'Consistent',     Icon: Zap,         accent: 'text-warning', desc: '8 consecutive weeks submitted' },
-  streak_13:        { label: 'Unstoppable',    Icon: Crown,       accent: 'text-danger',  desc: '13 consecutive weeks submitted' },
-  mdrt_pace:        { label: 'MDRT Pace',      Icon: Star,        accent: 'text-warning', desc: 'On track for MDRT (50%+ of $500k by mid-year)' },
-  mdrt_qualified:   { label: 'MDRT Qualified', Icon: Trophy,      accent: 'text-success', desc: 'Achieved MDRT threshold ($500k API)' },
-  top_apps_week:    { label: 'App Machine',    Icon: CheckCircle, accent: 'text-primary', desc: '5+ applications in a single week' },
-  big_week:         { label: 'Big Week',       Icon: TrendingUp,  accent: 'text-success', desc: 'Over $20,000 API in a single week' },
-  century_dials:    { label: 'Dialler',        Icon: Zap,         accent: 'text-primary', desc: '100+ dials in a single week' },
+  first_submission: { label: 'First Step',    Icon: Target,      accent: 'text-primary',       desc: 'Submitted your first report' },
+  streak_4:         { label: 'On a Roll',      Icon: Flame,       accent: 'text-warning',       desc: '4 consecutive weeks submitted' },
+  streak_8:         { label: 'Consistent',     Icon: Zap,         accent: 'text-warning',       desc: '8 consecutive weeks submitted' },
+  streak_13:        { label: 'Unstoppable',    Icon: Crown,       accent: 'text-danger',        desc: '13 consecutive weeks submitted' },
+  mdrt_pace:        { label: 'MDRT Pace',      Icon: Star,        accent: 'text-warning',       desc: 'On track for MDRT (50%+ of $500k by mid-year)' },
+  mdrt_qualified:   { label: 'MDRT Qualified', Icon: Trophy,      accent: 'text-success',       desc: 'Achieved MDRT threshold ($500k API)' },
+  top_apps_week:    { label: 'App Machine',    Icon: CheckCircle, accent: 'text-primary',       desc: '5+ applications in a single week' },
+  big_week:         { label: 'Big Week',       Icon: TrendingUp,  accent: 'text-success',       desc: 'Over $20,000 API in a single week' },
+  century_dials:    { label: 'Dialler',        Icon: Zap,         accent: 'text-primary',       desc: '100+ dials in a single week' },
+  dial_king:        { label: 'Dial King',      Icon: Phone,       accent: 'text-[#3b82f6]',     desc: 'Highest dials in unit that week' },
+  sharpshooter:     { label: 'Sharpshooter',   Icon: Target,      accent: 'text-[#8b5cf6]',     desc: 'Closing ratio > 80% for a week' },
+  mdrt_bound:       { label: 'MDRT Bound',     Icon: Crown,       accent: 'text-warning',       desc: 'YTD API crosses 50% of MDRT threshold' },
+  untouchable:      { label: 'Untouchable',    Icon: Trophy,      accent: 'text-primary',       desc: '52 consecutive weeks submitted' },
+  consistent:       { label: 'Consistent',     Icon: Star,        accent: 'text-warning',       desc: '12 consecutive months ≥ 90% persistency' },
 };
 
 export const BADGE_KEY_ORDER = [
   'first_submission', 'streak_4', 'streak_8', 'streak_13',
   'mdrt_pace', 'mdrt_qualified', 'top_apps_week', 'big_week', 'century_dials',
+  'dial_king', 'sharpshooter', 'mdrt_bound', 'untouchable', 'consistent',
 ];
 
 export function computeEarnedBadges(submissions) {
