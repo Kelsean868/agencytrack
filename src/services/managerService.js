@@ -1,5 +1,5 @@
 import {
-  collection, query, where, getDocs, orderBy,
+  collection, query, where, getDocs,
 } from 'firebase/firestore';
 import { db, tenantId } from '../firebase';
 
@@ -14,5 +14,17 @@ export async function getWeeklySubmissions(weekStarting) {
 
 export async function getTenantUsers() {
   const snap = await getDocs(collection(db, `tenants/${tenantId}/users`));
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+}
+
+export async function getAllYTDSubmissions() {
+  const year = new Date().getFullYear();
+  const q = query(
+    collection(db, `tenants/${tenantId}/submissions`),
+    where('weekStarting', '>=', `${year}-01-01`),
+    where('weekStarting', '<=', `${year}-12-31`),
+    where('status', '==', 'submitted')
+  );
+  const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }

@@ -1,7 +1,40 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
 import { X, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDateLabel } from '../../utils/validators';
+import { db, tenantId } from '../../firebase';
+
+function AgentAvatar({ photoURL, name, size = 40 }) {
+  const initials = (name ?? 'A')
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+  return photoURL ? (
+    <img
+      src={photoURL}
+      alt={name}
+      style={{
+        width: size, height: size, borderRadius: '50%', objectFit: 'cover',
+        border: '2px solid rgba(255,255,255,0.2)', flexShrink: 0,
+      }}
+    />
+  ) : (
+    <div
+      style={{
+        width: size, height: size, borderRadius: '50%', flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: 'var(--color-primary)', color: '#fff',
+        fontSize: size * 0.36, fontWeight: 700,
+        border: '2px solid rgba(255,255,255,0.2)',
+      }}
+    >
+      {initials}
+    </div>
+  );
+}
 import {
   extractFields,
   computeRatios,
@@ -69,8 +102,19 @@ function RatingBar({ label, value }) {
 }
 
 export default function MeetingMode({ submissions, selectedWeek, onClose }) {
-  const [slide, setSlide] = useState(0);
-  const [mode, setMode]   = useState('group'); // 'group' | 'one-on-1'
+  const [slide, setSlide]       = useState(0);
+  const [mode, setMode]         = useState('group'); // 'group' | 'one-on-1'
+  const [photoMap, setPhotoMap] = useState({});
+
+  useEffect(() => {
+    getDocs(collection(db, `tenants/${tenantId}/users`))
+      .then((snap) => {
+        const map = {};
+        snap.forEach((d) => { if (d.data().photoURL) map[d.id] = d.data().photoURL; });
+        setPhotoMap(map);
+      })
+      .catch(() => {});
+  }, []);
 
   const agentSlides = useMemo(() => {
     return [...submissions]
@@ -80,6 +124,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
         const ratios = computeRatios(f);
         return {
           name:                  resolveName(sub),
+          agentId:               sub.agentId ?? sub.userId ?? '',
           status:                sub.status ?? 'draft',
           prospectingTouches:    f.prospectingTouches,
           totalTelAttempts:      f.totalTelAttempts,
@@ -232,18 +277,30 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
 
           {/* Agent header */}
           <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex items-center gap-3">
-              <h2 className="text-4xl font-display font-bold text-white leading-tight">
-                {agent.name}
-              </h2>
-              {mode === 'one-on-1' && isOutlier(agent) && (
-                <AlertTriangle
-                  size={22}
-                  className="text-warning shrink-0"
-                  title="One or more stats significantly above team average"
-                />
-              )}
-            </div>
+            {mode === 'group' ? (
+              <>
+                <AgentAvatar photoURL={photoMap[agent.agentId]} name={agent.name} size={40} />
+                <h2 className="text-4xl font-display font-bold text-white leading-tight">
+                  {agent.name}
+                </h2>
+              </>
+            ) : (
+              <div className="flex items-center gap-4">
+                <AgentAvatar photoURL={photoMap[agent.agentId]} name={agent.name} size={56} />
+                <div className="flex items-center gap-3">
+                  <h2 className="text-4xl font-display font-bold text-white leading-tight">
+                    {agent.name}
+                  </h2>
+                  {isOutlier(agent) && (
+                    <AlertTriangle
+                      size={22}
+                      className="text-warning shrink-0"
+                      title="One or more stats significantly above team average"
+                    />
+                  )}
+                </div>
+              </div>
+            )}
             <p className="text-sm text-white/50">Week ending {formatDateLabel(selectedWeek)}</p>
             <StatusBadge status={agent.status} />
           </div>

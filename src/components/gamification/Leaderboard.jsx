@@ -1,8 +1,35 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
 import { Flame, Trophy } from 'lucide-react';
 import { db, tenantId } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
+
+function AgentAvatar({ photoURL, name, size = 36 }) {
+  const initials = (name ?? 'A')
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+  return photoURL ? (
+    <img
+      src={photoURL}
+      alt={name}
+      style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+    />
+  ) : (
+    <div
+      style={{
+        width: size, height: size, borderRadius: '50%', flexShrink: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        backgroundColor: 'var(--color-primary)', color: '#fff',
+        fontSize: size * 0.36, fontWeight: 700,
+      }}
+    >
+      {initials}
+    </div>
+  );
+}
 
 const LEVEL_COLORS = {
   Rookie:    'bg-border/60 text-ink-muted',
@@ -20,7 +47,7 @@ function LevelChip({ title }) {
   );
 }
 
-function LeaderRow({ entry, rank, isCurrentUser }) {
+function LeaderRow({ entry, rank, isCurrentUser, photoURL }) {
   const badgeCount = (entry.badges ?? []).length;
 
   return (
@@ -35,6 +62,8 @@ function LeaderRow({ entry, rank, isCurrentUser }) {
           : <span className={`text-sm font-bold ${rank <= 3 ? 'text-primary' : 'text-ink-muted'}`}>{rank}</span>
         }
       </div>
+
+      <AgentAvatar photoURL={photoURL} name={entry.agentName} size={36} />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -64,9 +93,10 @@ function LeaderRow({ entry, rank, isCurrentUser }) {
 
 export default function Leaderboard() {
   const { user, role } = useAuth();
-  const [docs, setDocs]     = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]   = useState('');
+  const [docs, setDocs]         = useState([]);
+  const [photoMap, setPhotoMap] = useState({});
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState('');
 
   const isManager = role && ['unit_manager', 'branch_manager', 'super_admin'].includes(role);
 
@@ -88,6 +118,18 @@ export default function Leaderboard() {
       }
     );
     return unsub;
+  }, []);
+
+  useEffect(() => {
+    getDocs(collection(db, `tenants/${tenantId}/users`))
+      .then((snap) => {
+        const map = {};
+        snap.forEach((d) => {
+          if (d.data().photoURL) map[d.id] = d.data().photoURL;
+        });
+        setPhotoMap(map);
+      })
+      .catch(() => {});
   }, []);
 
   const { competition, branchUnit } = useMemo(() => ({
@@ -124,20 +166,23 @@ export default function Leaderboard() {
     );
   }
 
+  const myEntry = competition.find((d) => d.userId === user?.uid);
+
   // Agent view — own rank card + full competition list
   if (!isManager) {
     return (
       <div className="flex flex-col gap-4">
         {myRank && (
-          <div className="card text-center">
-            <p className="text-xs uppercase tracking-wide text-ink-muted mb-1">Your Rank</p>
+          <div className="card flex flex-col items-center py-5">
+            <AgentAvatar photoURL={photoMap[user?.uid]} name={myEntry?.agentName} size={48} />
+            <p className="text-xs uppercase tracking-wide text-ink-muted mt-3 mb-1">Your Rank</p>
             <p className="text-4xl font-bold text-primary">#{myRank}</p>
             <p className="text-sm text-ink-muted mt-0.5">of {competition.length} agent{competition.length !== 1 ? 's' : ''}</p>
           </div>
         )}
         <div className="flex flex-col gap-2">
           {competition.map((entry, i) => (
-            <LeaderRow key={entry.id} entry={entry} rank={i + 1} isCurrentUser={entry.userId === user?.uid} />
+            <LeaderRow key={entry.id} entry={entry} rank={i + 1} isCurrentUser={entry.userId === user?.uid} photoURL={photoMap[entry.userId]} />
           ))}
         </div>
       </div>
@@ -149,7 +194,7 @@ export default function Leaderboard() {
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
         {competition.map((entry, i) => (
-          <LeaderRow key={entry.id} entry={entry} rank={i + 1} isCurrentUser={entry.userId === user?.uid} />
+          <LeaderRow key={entry.id} entry={entry} rank={i + 1} isCurrentUser={entry.userId === user?.uid} photoURL={photoMap[entry.userId]} />
         ))}
       </div>
 
@@ -158,7 +203,7 @@ export default function Leaderboard() {
           <p className="text-xs uppercase tracking-wide text-ink-muted mb-2">Branch Unit — not in competition</p>
           <div className="flex flex-col gap-2 opacity-60">
             {branchUnit.map((entry, i) => (
-              <LeaderRow key={entry.id} entry={entry} rank={i + 1} isCurrentUser={entry.userId === user?.uid} />
+              <LeaderRow key={entry.id} entry={entry} rank={i + 1} isCurrentUser={entry.userId === user?.uid} photoURL={photoMap[entry.userId]} />
             ))}
           </div>
         </div>

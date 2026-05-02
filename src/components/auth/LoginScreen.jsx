@@ -60,8 +60,45 @@ export default function LoginScreen() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-surface">
-      <div className="card w-full max-w-sm">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-surface relative overflow-hidden">
+
+      {/* SVG repeating pattern background */}
+      <div aria-hidden="true" className="fixed inset-0 pointer-events-none dark:opacity-50" style={{ zIndex: 0 }}>
+        <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="login-bg-pattern" x="0" y="0" width="180" height="120" patternUnits="userSpaceOnUse">
+              {/* Phone */}
+              <g transform="translate(20,18)" fill="rgba(1,105,111,0.07)">
+                <path d="M6 2a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H6zm0 2h12v16H6V4zm6 13a1 1 0 1 1 0 2 1 1 0 0 1 0-2z" />
+              </g>
+              {/* Handshake */}
+              <g transform="translate(100,18)" fill="rgba(1,105,111,0.07)">
+                <path d="M2 10h3l2-2h4l2 2h3v6H2v-6zm1 2v2h14v-2H14l-2-2H8L6 12H3zm9-7l-2 2H8L6 5l2-3h4l2 3z" />
+              </g>
+              {/* Document / clipboard */}
+              <g transform="translate(20,70)" fill="rgba(1,105,111,0.07)">
+                <path d="M8 2H5a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2h-3M8 2v4h8V2M8 2h8M7 12h10M7 16h7" stroke="rgba(1,105,111,0.07)" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              </g>
+              {/* Dollar / currency */}
+              <g transform="translate(100,70)" fill="rgba(1,105,111,0.07)">
+                <path d="M12 2v2M12 20v2M7 7h8a3 3 0 0 1 0 6H9a3 3 0 0 0 0 6h8" stroke="rgba(1,105,111,0.07)" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              </g>
+              {/* Calendar */}
+              <g transform="translate(58,18)" fill="rgba(1,105,111,0.07)">
+                <path d="M8 2v2M16 2v2M3 8h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="rgba(1,105,111,0.07)" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              </g>
+              {/* Shield */}
+              <g transform="translate(58,70)" fill="rgba(1,105,111,0.07)">
+                <path d="M12 2l9 4v5c0 5-3.8 9.3-9 11C6.8 20.3 3 16 3 11V6l9-4z" stroke="rgba(1,105,111,0.07)" strokeWidth="2" strokeLinejoin="round" fill="none"/>
+                <path d="M9 12l2 2 4-4" stroke="rgba(1,105,111,0.07)" strokeWidth="2" strokeLinecap="round" fill="none"/>
+              </g>
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#login-bg-pattern)" />
+        </svg>
+      </div>
+
+      <div className="card w-full max-w-sm" style={{ position: 'relative', zIndex: 1 }}>
 
         {/* Brand */}
         <div className="text-center mb-8">
@@ -134,6 +171,7 @@ export default function LoginScreen() {
         </div>
 
       </div>
+
     </div>
   );
 }

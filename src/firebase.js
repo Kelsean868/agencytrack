@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
 
@@ -20,5 +20,12 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 export const tenantId = import.meta.env.VITE_TENANT_ID;
+
+// Enable offline persistence — silently ignored if already enabled (e.g. multiple tabs)
+enableIndexedDbPersistence(db).catch((err) => {
+  if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
+    console.warn('[Firebase] Offline persistence unavailable:', err.code);
+  }
+});
 
 export default app;

@@ -1,10 +1,12 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { LogOut, Users, TrendingUp, FileCheck, AlertCircle, Sun, Moon, Presentation } from 'lucide-react';
+import { LogOut, Users, TrendingUp, FileCheck, AlertCircle, Sun, Moon, Presentation, Download } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency } from '../../utils/formatters';
 import { getMostRecentSunday } from '../../utils/dateHelpers';
-import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
+import { getWeeklySubmissions, getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
+import { getAllPersistencyForYear } from '../../services/persistencyService';
+import { exportBranchCSV } from '../../services/exportService';
 import WizardForm from '../wizard/WizardForm';
 import MasterSheet from '../manager/MasterSheet';
 import CompliancePanel from '../manager/CompliancePanel';
@@ -18,6 +20,8 @@ import Leaderboard from '../gamification/Leaderboard';
 import NotificationBell from '../ui/NotificationBell';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import MotivationalCarousel from './MotivationalCarousel';
+import SyncIndicator from '../ui/SyncIndicator';
+import ProfileScreen from '../profile/ProfileScreen';
 
 const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 
@@ -30,6 +34,7 @@ const TABS = [
   { id: 'goals',        label: 'Goals'        },
   { id: 'settlements',  label: 'Settlements'  },
   { id: 'leaderboard',  label: 'Leaderboard'  },
+  { id: 'profile',      label: 'Profile'      },
 ];
 
 function StatCard({ icon: Icon, label, value, sub, accent = false }) {
@@ -129,6 +134,20 @@ export default function ManagerDashboard() {
     }
   };
 
+  const handleExportBranchCSV = async () => {
+    try {
+      const year = new Date().getFullYear();
+      const [userList, subs, persMap] = await Promise.all([
+        getTenantUsers().catch(() => []),
+        getAllYTDSubmissions().catch(() => []),
+        getAllPersistencyForYear(year).catch(() => ({})),
+      ]);
+      exportBranchCSV(userList, subs, persMap);
+    } catch (err) {
+      console.error('Branch CSV export failed:', err);
+    }
+  };
+
   if (showWizard) {
     return <WizardForm onClose={() => setShowWizard(false)} />;
   }
@@ -152,6 +171,15 @@ export default function ManagerDashboard() {
             <p className="text-sm text-ink-muted">{roleLabel}</p>
           </div>
           <div className="flex items-center gap-2">
+            {(role === 'branch_manager' || role === 'super_admin') && (
+              <button
+                onClick={handleExportBranchCSV}
+                className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors"
+              >
+                <Download size={16} />
+                Export Branch Report
+              </button>
+            )}
             <button
               onClick={handleStartMeeting}
               className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors"
@@ -159,6 +187,7 @@ export default function ManagerDashboard() {
               <Presentation size={16} />
               Start Meeting
             </button>
+            <SyncIndicator />
             <NotificationBell />
             <button
               onClick={toggleDark}
@@ -362,6 +391,8 @@ export default function ManagerDashboard() {
         {activeTab === 'settlements' && <SettlementPanel />}
 
         {activeTab === 'leaderboard' && <Leaderboard />}
+
+        {activeTab === 'profile' && <ProfileScreen />}
       </div>
     </>
   );

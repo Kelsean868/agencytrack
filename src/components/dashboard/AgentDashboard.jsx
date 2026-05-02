@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { LogOut, Sun, Moon, X, Eye } from 'lucide-react';
+import { LogOut, Sun, Moon, X, Eye, Download, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency, formatPercent } from '../../utils/formatters';
@@ -9,14 +9,19 @@ import { getGoals } from '../../services/goalsService';
 import { getAgentPersistency } from '../../services/persistencyService';
 import { getSettlements } from '../../services/settlementService';
 import { extractFields } from '../../utils/extractFields';
+import { generateAgentPDF } from '../../services/exportService';
 import WizardForm from '../wizard/WizardForm';
 import NotificationBell from '../ui/NotificationBell';
 import CareerPortal from '../profile/CareerPortal';
+import ProfileScreen from '../profile/ProfileScreen';
+import AgentReportDocument from '../profile/AgentReportDocument';
+import ReportRangeModal from '../ui/ReportRangeModal';
 import Leaderboard from '../gamification/Leaderboard';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import MotivationalCarousel from './MotivationalCarousel';
 import KPICard from './KPICard';
+import SyncIndicator from '../ui/SyncIndicator';
 
 const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 
@@ -36,6 +41,7 @@ const TABS = [
   { id: 'awards',      label: 'Awards'      },
   { id: 'leaderboard', label: 'Leaderboard' },
   { id: 'history',     label: 'History'     },
+  { id: 'profile',     label: 'Profile'     },
 ];
 
 function TabBar({ active, onChange }) {
@@ -155,12 +161,89 @@ export default function AgentDashboard() {
     setShowWizard(true);
   };
 
+  // ── PDF report modal + off-screen capture ──────────────────────────────
+  const [reportModalOpen,  setReportModalOpen]  = useState(false);
+  const [generating,       setGenerating]        = useState(false);
+  const [reportWeekRange,  setReportWeekRange]   = useState(null);
+  const [reportEl,         setReportEl]          = useState(null);
+
+  // Fires when the off-screen <AgentReportDocument /> is mounted and ready
+  useEffect(() => {
+    if (!generating || !reportEl) return;
+    let cancelled = false;
+    // Give Recharts 900ms to fully render its SVGs before capture
+    const timer = setTimeout(async () => {
+      if (cancelled) return;
+      try {
+        await generateAgentPDF(
+          {
+            displayName,
+            email: userProfile?.email ?? user?.email ?? '',
+            role: roleLabel,
+            careerLevel: userProfile?.levelTitle ?? userProfile?.careerLevel ?? 'Agent',
+          },
+          allSubmissions,
+          goals,
+          reportWeekRange,
+          reportEl
+        );
+      } catch (err) {
+        console.error('PDF generation failed:', err);
+      } finally {
+        if (!cancelled) {
+          setGenerating(false);
+          setReportWeekRange(null);
+        }
+      }
+    }, 900);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [generating, reportEl]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleOpenReportModal  = () => setReportModalOpen(true);
+  const handleReportGenerate   = (weekRange) => {
+    setReportModalOpen(false);
+    setGenerating(true);
+    setReportWeekRange(weekRange);
+  };
+
   if (showWizard) {
     return <WizardForm initialWeek={wizardWeek} onClose={() => { setShowWizard(false); setWizardWeek(null); }} />;
   }
 
   return (
     <div className="min-h-screen bg-surface px-4 py-6 max-w-2xl mx-auto">
+
+      {/* Report range modal */}
+      {reportModalOpen && (
+        <ReportRangeModal
+          onGenerate={handleReportGenerate}
+          onClose={() => setReportModalOpen(false)}
+        />
+      )}
+
+      {/* Off-screen AgentReportDocument for html2canvas capture */}
+      {generating && reportWeekRange && (
+        <div
+          ref={setReportEl}
+          style={{ position: 'absolute', left: -9999, top: 0, width: 794, overflow: 'visible', zIndex: -1 }}
+          aria-hidden="true"
+        >
+          <AgentReportDocument
+            agentInfo={{
+              displayName,
+              email: userProfile?.email ?? user?.email ?? '',
+              role: roleLabel,
+              careerLevel: userProfile?.levelTitle ?? userProfile?.careerLevel ?? 'Agent',
+              joinDate: userProfile?.createdAt?.toDate?.()?.toLocaleDateString('en-TT') ?? '',
+            }}
+            submissions={allSubmissions}
+            goals={goals}
+            weekRange={reportWeekRange}
+            confirmedSettlements={settlements}
+            agentProfile={userProfile}
+          />
+        </div>
+      )}
 
       {/* Submission viewer drawer */}
       {viewingSubmission && (
@@ -177,6 +260,7 @@ export default function AgentDashboard() {
           <p className="text-sm text-ink-muted">{roleLabel}</p>
         </div>
         <div className="flex items-center gap-2">
+          <SyncIndicator />
           <NotificationBell />
           <button
             onClick={toggleDark}
@@ -389,21 +473,50 @@ export default function AgentDashboard() {
             ))}
           </div>
         ) : (
-          <AgentAwardsPanel
-            submissions={allSubmissions}
-            confirmedSettlements={settlements}
-            agentProfile={userProfile}
-            currentDate={new Date()}
-          />
+          <div className="flex flex-col gap-4">
+            <button
+              onClick={handleOpenReportModal}
+              disabled={generating}
+              className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-60"
+            >
+              {generating ? (
+                <><Loader2 size={15} className="animate-spin" /> Generating…</>
+              ) : (
+                <><Download size={15} /> Download My Performance Report</>
+              )}
+            </button>
+            <AgentAwardsPanel
+              submissions={allSubmissions}
+              confirmedSettlements={settlements}
+              agentProfile={userProfile}
+              currentDate={new Date()}
+            />
+          </div>
         )
       )}
 
       {/* ── LEADERBOARD TAB ── */}
       {activeTab === 'leaderboard' && <Leaderboard />}
 
+      {/* ── PROFILE TAB ── */}
+      {activeTab === 'profile' && <ProfileScreen />}
+
       {/* ── HISTORY TAB ── */}
       {activeTab === 'history' && (
         <div className="flex flex-col gap-3">
+          {!loading && allSubmissions.length > 0 && (
+            <button
+              onClick={handleOpenReportModal}
+              disabled={generating}
+              className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-60"
+            >
+              {generating ? (
+                <><Loader2 size={15} className="animate-spin" /> Generating…</>
+              ) : (
+                <><Download size={15} /> Download Report</>
+              )}
+            </button>
+          )}
           {loading && (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (

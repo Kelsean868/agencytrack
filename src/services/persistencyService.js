@@ -40,6 +40,24 @@ export async function getAgentPersistency(agentId, year) {
   return map;
 }
 
+export async function getAllPersistencyForYear(year) {
+  const q = query(
+    collection(db, `tenants/${tenantId}/persistency`),
+    where('year', '==', year)
+  );
+  const snap = await getDocs(q);
+  // Returns { [agentId]: [persistencyDoc, ...] }
+  const map = {};
+  snap.docs.forEach((d) => {
+    const data = d.data();
+    const id = data.agentId;
+    if (!id) return;
+    if (!map[id]) map[id] = [];
+    map[id].push(data);
+  });
+  return map;
+}
+
 export async function savePersistencyBatch(entries, enteredBy) {
   const batch = writeBatch(db);
   entries.forEach(({ agentId, agentName, year, month, persistency }) => {
