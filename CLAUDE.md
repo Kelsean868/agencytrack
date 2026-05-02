@@ -174,7 +174,7 @@ Minimum 44px touch targets (mobile agents in field).
 Dark mode toggle in header (CSS class swap on `<html>`).
 
 ## Current Build Phase
-**Phase 8 — Post-pilot features**
+**Phase 8A — Weekly Recognition Badges**
 
 ## Build Phase Status
 | Phase | Scope | Status |
@@ -185,7 +185,14 @@ Dark mode toggle in header (CSS class swap on `<html>`).
 | P4 | Manager Views + Meeting Mode + Persistency | ✅ COMPLETE |
 | P5 | Notifications + Career Portal + Gamification | ✅ COMPLETE |
 | P6B | History Viewer + Awards Tracker + Settlement Confirmation + Motivational Carousel | ✅ COMPLETE |
-| P6C | Carousel new names card, activity rounding, emoji sweep | 🔄 IN PROGRESS |
+| P6C | Carousel new names card, activity rounding, emoji sweep | ✅ COMPLETE |
+| P7A | Wizard consolidation 9→5 steps + PDF report | ✅ COMPLETE |
+| P7B | Visual dashboard overhaul (KPI grid, sparklines, delta arrows) | ✅ COMPLETE |
+| P7C | Dark mode audit + profile photo in leaderboard + MeetingMode | ✅ COMPLETE |
+| P8A | Weekly Recognition Badges | 🔄 IN PROGRESS |
+| P8B | Campaign Module | ⏳ PLANNED |
+| P8C | Goals Tier 2 — gap analysis (unitGoals + branchGoals) | ⏳ PLANNED |
+| P8D | Multi-tenancy rollout | ⏳ DEFERRED (post-pilot) |
 
 ## Phase 4 — Component Checklist
 - ✅ Step9Goals.jsx — Next Week Goals wizard step
@@ -311,19 +318,36 @@ All four are confirmed in `.gitignore`.
 - Self-registration (managers create all accounts — no exceptions)
 - Any new PDF library — @react-pdf/renderer is final
 
-## Planned Phase 7 Features
-- Profile screen with photo upload (Firebase Storage) — photo used in leaderboard + MeetingMode
-- Self-registration restricted to @tatil.co.tt domain — pending manager approval, default role: agent
-- Branch KPI report export (PDF/CSV) for head office
-- Visual dashboard overhaul — KPI grid, sparklines, mini charts in carousel cards
-- Dark mode full audit — replace hardcoded Tailwind colours with CSS variable equivalents
-- PWA / offline support — Firestore offline persistence + service worker via vite-plugin-pwa
-- Campaign management module — manager creates campaigns with prizes, agents see progress
-- Weekly recognition badges — Top API, Top Apps, Top Activity (resets weekly)
-- Agent performance export — full effectiveness report with ratio analysis
-- Login page SVG pattern background — insurance/sales activity icons
-- Wizard consolidation — 9 steps → 5 grouped screens to reduce cognitive load
-- Monthly and quarterly target checkpoints visible to agents in CareerPortal
+## Phase 8 Plan
+
+### P8A — Weekly Recognition Badges
+- Compute Top API / Top Apps / Top Activity from previous week's submitted submissions
+- Champions displayed in a banner at the top of Leaderboard.jsx
+- Visible to all agents in the unit (not just managers)
+- Computed on the fly from existing submissions — no new Firestore collection
+- New util: `src/utils/weeklyChampions.js`
+- Touches: `Leaderboard.jsx` (add champions banner), `weeklyChampions.js` (new)
+
+### P8B — Campaign Module
+- Branch Manager creates campaigns: name, description, prize, start date, end date
+- Each campaign has 1+ metric targets (e.g. API ≥ $50,000 AND Apps ≥ 15)
+- Supported metrics: apiSold, applicationsSold, ffiConducted, ciConducted
+- Agent dashboard shows a CampaignCard during active campaign periods
+- Progress computed from submissions within the campaign date range
+- Firestore: `/tenants/{tenantId}/campaigns/{campaignId}`
+- Campaign doc shape: `{ id, tenantId, createdBy, createdAt, name, description, prize, startDate, endDate, targets: [{ metric, threshold }], status }`
+- New files: `src/components/campaigns/CampaignPanel.jsx`, `src/components/campaigns/CampaignCard.jsx`, `src/services/campaignService.js`
+- Touches: ManagerDashboard.jsx (Campaigns tab), AgentDashboard.jsx (CampaignCard when active)
+
+### P8C — Goals Tier 2: Gap Analysis
+- Add `unitGoals` and `branchGoals` Firestore collections
+- Firestore: `/tenants/{tenantId}/unitGoals/{unitId_year}`, `/tenants/{tenantId}/branchGoals/{year}`
+- Gap analysis hierarchy: personal commitment → unit target → branch target → company floor
+- Touches: `goalsService.js`, `GoalsPanel.jsx`, `CareerPortal.jsx`
+
+### P8D — Multi-tenancy (DEFERRED)
+- White-label theming, tenant config screen, onboarding flow
+- Not building until second tenant is confirmed
 
 ## Session Protocol
 1. Always read this file + CLAUDE.md before writing any code

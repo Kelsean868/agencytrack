@@ -1,8 +1,82 @@
 import { useState, useEffect, useMemo } from 'react';
-import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { Flame, Trophy } from 'lucide-react';
 import { db, tenantId } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
+import { getLastNSundays } from '../../utils/dateHelpers';
+import { computeWeeklyChampions } from '../../utils/weeklyChampions';
+import { formatCurrency } from '../../utils/formatters';
+
+function ChampionCard({ emoji, label, champion, format }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-xl bg-[var(--color-surface)] border border-primary/20 p-3 min-h-[44px]">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-primary flex items-center gap-1">
+        <span>{emoji}</span>
+        <span>{label}</span>
+      </p>
+      {champion ? (
+        <>
+          <p className="text-sm font-bold text-ink truncate">{champion.agentName}</p>
+          <p className="text-xs text-ink-muted">{format(champion.value)}</p>
+        </>
+      ) : (
+        <p className="text-xs text-ink-muted italic">No data yet</p>
+      )}
+    </div>
+  );
+}
+
+function WeeklyChampionsBanner({ champions, loading }) {
+  if (loading) {
+    return (
+      <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 mb-4">
+        <div className="h-3 w-36 rounded bg-primary/20 animate-pulse mb-3" />
+        <div className="grid grid-cols-3 gap-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-20 rounded-xl bg-primary/10 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (!champions) return null;
+
+  const { topAPI, topApps, topActivity, weekStarting } = champions;
+  const weekLabel = weekStarting
+    ? new Date(weekStarting + 'T00:00:00').toLocaleDateString('en-TT', { month: 'short', day: 'numeric', year: 'numeric' })
+    : '';
+
+  const cards = [
+    { emoji: '🏆', label: 'Top API',      champion: topAPI,      format: (v) => formatCurrency(Math.round(v)) },
+    { emoji: '📋', label: 'Top Apps',     champion: topApps,     format: (v) => String(v) },
+    { emoji: '⚡', label: 'Top Activity', champion: topActivity, format: (v) => String(v) },
+  ];
+
+  const hasAnyData = topAPI || topApps || topActivity;
+
+  return (
+    <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 mb-4">
+      <p className="text-xs font-bold uppercase tracking-wide text-primary mb-0.5">
+        Last Week's Champions
+      </p>
+      <p className="text-[10px] text-ink-muted mb-3">
+        {hasAnyData ? `Week of ${weekLabel}` : 'No submissions recorded last week'}
+      </p>
+      <div className="grid grid-cols-3 gap-3">
+        {cards.map((card) => (
+          <ChampionCard
+            key={card.label}
+            emoji={card.emoji}
+            label={card.label}
+            champion={card.champion}
+            format={card.format}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function AgentAvatar({ photoURL, name, size = 36 }) {
   const initials = (name ?? 'A')
@@ -93,12 +167,17 @@ function LeaderRow({ entry, rank, isCurrentUser, photoURL }) {
 
 export default function Leaderboard() {
   const { user, role } = useAuth();
-  const [docs, setDocs]         = useState([]);
-  const [photoMap, setPhotoMap] = useState({});
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
+  const [docs, setDocs]                   = useState([]);
+  const [photoMap, setPhotoMap]           = useState({});
+  const [prevSubs, setPrevSubs]           = useState([]);
+  const [championsLoading, setChampionsLoading] = useState(true);
+  const [loading, setLoading]             = useState(true);
+  const [error, setError]                 = useState('');
 
   const isManager = role && ['unit_manager', 'branch_manager', 'super_admin'].includes(role);
+
+  // Previous week's Sunday — stable across renders
+  const prevSunday = useMemo(() => getLastNSundays(2)[1], []);
 
   useEffect(() => {
     const q = query(
@@ -132,6 +211,28 @@ export default function Leaderboard() {
       .catch(() => {});
   }, []);
 
+  // Fetch previous week's submitted submissions for champions banner
+  useEffect(() => {
+    setChampionsLoading(true);
+    getDocs(
+      query(
+        collection(db, `tenants/${tenantId}/submissions`),
+        where('weekStarting', '==', prevSunday),
+        where('status', '==', 'submitted')
+      )
+    )
+      .then((snap) => {
+        setPrevSubs(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      })
+      .catch(() => {})
+      .finally(() => setChampionsLoading(false));
+  }, [prevSunday]);
+
+  const champions = useMemo(
+    () => computeWeeklyChampions(prevSubs, prevSunday),
+    [prevSubs, prevSunday]
+  );
+
   const { competition, branchUnit } = useMemo(() => ({
     competition: docs.filter((d) => !d.isBranchManagerUnit),
     branchUnit:  docs.filter((d) => d.isBranchManagerUnit),
@@ -160,18 +261,23 @@ export default function Leaderboard() {
 
   if (competition.length === 0 && branchUnit.length === 0) {
     return (
-      <div className="card text-center py-10">
-        <p className="text-sm text-ink-muted">No leaderboard data yet. Submit your first report to appear here!</p>
+      <div className="flex flex-col gap-4">
+        <WeeklyChampionsBanner champions={champions} loading={championsLoading} />
+        <div className="card text-center py-10">
+          <p className="text-sm text-ink-muted">No leaderboard data yet. Submit your first report to appear here!</p>
+        </div>
       </div>
     );
   }
 
   const myEntry = competition.find((d) => d.userId === user?.uid);
 
-  // Agent view — own rank card + full competition list
+  // Agent view — champions banner + own rank card + full competition list
   if (!isManager) {
     return (
       <div className="flex flex-col gap-4">
+        <WeeklyChampionsBanner champions={champions} loading={championsLoading} />
+
         {myRank && (
           <div className="card flex flex-col items-center py-5">
             <AgentAvatar photoURL={photoMap[user?.uid]} name={myEntry?.agentName} size={48} />
@@ -189,9 +295,11 @@ export default function Leaderboard() {
     );
   }
 
-  // Manager view — full competition + separated branch unit section
+  // Manager view — champions banner + full competition + separated branch unit section
   return (
     <div className="flex flex-col gap-3">
+      <WeeklyChampionsBanner champions={champions} loading={championsLoading} />
+
       <div className="flex flex-col gap-2">
         {competition.map((entry, i) => (
           <LeaderRow key={entry.id} entry={entry} rank={i + 1} isCurrentUser={entry.userId === user?.uid} photoURL={photoMap[entry.userId]} />
