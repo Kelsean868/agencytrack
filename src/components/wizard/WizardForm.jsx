@@ -300,9 +300,9 @@ export default function WizardForm({ onClose }) {
                   key={d}
                   type="button"
                   onClick={() => handleDateSelect(d)}
-                  className="w-full text-left px-4 py-3.5 rounded-xl border border-border/60 bg-[var(--color-surface)] hover:border-primary hover:bg-primary/5 transition-colors flex justify-between items-center"
+                  className="w-full text-left px-4 py-3.5 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-primary hover:bg-primary/5 transition-colors flex justify-between items-center"
                 >
-                  <span className="text-sm font-medium text-ink">{formatDateLabel(d)}</span>
+                  <span className="text-sm font-medium text-[var(--color-text)]">{formatDateLabel(d)}</span>
                   {i === 0 && (
                     <span className="text-xs font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                       This week
@@ -318,7 +318,7 @@ export default function WizardForm({ onClose }) {
                   type="date"
                   value={customDate}
                   onChange={(e) => { setCustomDate(e.target.value); setError(''); }}
-                  className="flex-1 h-11 px-3 border border-border/60 rounded-lg bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="flex-1 h-11 px-3 border border-[var(--color-border)] rounded-lg bg-[var(--color-surface)] text-[var(--color-text)] text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
                 <button type="button" onClick={handleCustomDate} className="btn-primary px-5">
                   Go
