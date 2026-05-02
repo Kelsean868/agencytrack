@@ -5,6 +5,7 @@ import { getGoals, setGoals, getCompanyMinimums } from '../../services/goalsServ
 import { useAuth } from '../../context/AuthContext';
 import BadgeGrid from '../gamification/BadgeGrid';
 import CommissionPlayground from '../goals/CommissionPlayground';
+import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 
 const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 
@@ -279,7 +280,7 @@ function GoalsOverview({ submissions, user, persistencyData }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function CareerPortal({ submissions, user, persistencyData }) {
+export default function CareerPortal({ submissions, user, persistencyData, hierarchy, hierarchyLoading, ytdTotals }) {
   const thisYear = new Date().getFullYear();
 
   const { ytdAPI, ytdApps, avgPersistency, yearsOfService } = useMemo(() => {
@@ -404,6 +405,14 @@ export default function CareerPortal({ submissions, user, persistencyData }) {
           )}
         </div>
       )}
+
+      {/* Goal Hierarchy */}
+      <GapAnalysisPanel
+        hierarchy={hierarchy ?? null}
+        ytdTotals={ytdTotals ?? { api: ytdAPI, apps: ytdApps, ffiConducted: 0, ciConducted: 0, dials: 0 }}
+        loading={hierarchyLoading ?? false}
+        title="Goal Hierarchy"
+      />
 
       {/* What unlocks next */}
       {nextLevel && UNLOCK_COPY[nextLevel.level] && (

@@ -86,6 +86,34 @@ service cloud.firestore {
           || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true;
       }
 
+      match /unitGoals/{docId} {
+        allow read: if request.auth != null
+          && request.auth.token.tenantId == tenantId;
+
+        allow write: if request.auth != null
+          && request.auth.token.tenantId == tenantId
+          && (
+            request.auth.token.role == 'super_admin'
+            || request.auth.token.role == 'branch_manager'
+            || (
+              request.auth.token.role == 'unit_manager'
+              && docId.matches(request.auth.token.unitId + '_.*')
+            )
+          );
+      }
+
+      match /branchGoals/{docId} {
+        allow read: if request.auth != null
+          && request.auth.token.tenantId == tenantId;
+
+        allow write: if request.auth != null
+          && request.auth.token.tenantId == tenantId
+          && (
+            request.auth.token.role == 'super_admin'
+            || request.auth.token.role == 'branch_manager'
+          );
+      }
+
       match /campaigns/{campaignId} {
         allow read: if request.auth != null
           && request.auth.token.tenantId == tenantId;

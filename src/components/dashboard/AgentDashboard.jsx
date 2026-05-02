@@ -11,7 +11,9 @@ import { getSettlements } from '../../services/settlementService';
 import { extractFields } from '../../utils/extractFields';
 import { generateAgentPDF } from '../../services/exportService';
 import { getActiveCampaignsForAgent, getCampaignSubmissions } from '../../services/campaignService';
+import { getGoalHierarchy } from '../../services/goalsService';
 import WizardForm from '../wizard/WizardForm';
+import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import CampaignCard from '../campaigns/CampaignCard';
 import NotificationBell from '../ui/NotificationBell';
 import CareerPortal from '../profile/CareerPortal';
@@ -102,6 +104,8 @@ export default function AgentDashboard() {
   const [activeCampaigns, setActiveCampaigns]   = useState([]);
   const [campaignSubs, setCampaignSubs]         = useState({});
   const [campaignsLoading, setCampaignsLoading] = useState(true);
+  const [hierarchy, setHierarchy]               = useState(null);
+  const [hierarchyLoading, setHierarchyLoading] = useState(true);
 
   const currentWeek  = useMemo(() => getMostRecentSunday(), []);
   const thisYear     = new Date().getFullYear();
@@ -139,6 +143,21 @@ export default function AgentDashboard() {
 
   const apiPercent = formatPercent(ytdAPI, ytdAPIGoal);
 
+  const ytdTotals = useMemo(() => {
+    const yearSubs = allSubmissions.filter(
+      (s) => s.status === 'submitted' && s.weekStarting?.startsWith(String(thisYear))
+    );
+    return yearSubs.reduce((acc, s) => {
+      const f = extractFields(s);
+      acc.api          += parseFloat(f.apiSold)          || 0;
+      acc.apps         += parseFloat(f.applicationsSold) || 0;
+      acc.ffiConducted += parseFloat(f.ffiConducted)     || 0;
+      acc.ciConducted  += parseFloat(f.ciConducted)      || 0;
+      acc.dials        += parseFloat(f.totalTelAttempts)  || 0;
+      return acc;
+    }, { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 });
+  }, [allSubmissions, thisYear]);
+
   // Last 4 submitted weeks for KPI sparklines (oldest → newest)
   const kpiData = useMemo(() => {
     return allSubmissions
@@ -167,6 +186,16 @@ export default function AgentDashboard() {
       })
       .catch(console.error)
       .finally(() => setCampaignsLoading(false));
+  }, [user?.uid, userProfile?.unitId]);
+
+  // Fetch goal hierarchy for gap analysis
+  useEffect(() => {
+    if (!user?.uid) return;
+    setHierarchyLoading(true);
+    getGoalHierarchy(TENANT_ID, userProfile?.unitId ?? null, new Date().getFullYear(), user.uid)
+      .then(setHierarchy)
+      .catch(console.error)
+      .finally(() => setHierarchyLoading(false));
   }, [user?.uid, userProfile?.unitId]);
 
   // Unlock banner
@@ -479,6 +508,16 @@ export default function AgentDashboard() {
             </div>
           </div>
 
+          {/* Goal hierarchy / gap analysis */}
+          <div className="mb-6">
+            <GapAnalysisPanel
+              hierarchy={hierarchy}
+              ytdTotals={ytdTotals}
+              loading={hierarchyLoading}
+              title="Goal Hierarchy"
+            />
+          </div>
+
           <button
             className="btn-primary w-full"
             onClick={() => setShowWizard(true)}
@@ -501,6 +540,9 @@ export default function AgentDashboard() {
             submissions={allSubmissions}
             user={userProfile}
             persistencyData={persistency}
+            hierarchy={hierarchy}
+            hierarchyLoading={hierarchyLoading}
+            ytdTotals={ytdTotals}
           />
         )
       )}

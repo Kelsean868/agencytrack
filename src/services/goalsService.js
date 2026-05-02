@@ -66,3 +66,95 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
 
   await setDoc(ref, payload, { merge: true });
 }
+
+// ── Unit Goals ────────────────────────────────────────────────────────────────
+
+export async function getUnitGoals(tenantId, unitId, year) {
+  const ref = doc(db, `tenants/${tenantId}/unitGoals/${unitId}_${year}`);
+  const snap = await getDoc(ref);
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function setUnitGoals(tenantId, unitId, year, targets, meta) {
+  const p = (v) => parseFloat(v) || 0;
+  const payload = {
+    unitId, year, tenantId,
+    api:  p(targets.api),
+    apps: p(targets.apps),
+    setBy:     meta.setBy,
+    setByName: meta.setByName,
+    setByRole: meta.setByRole,
+    setAt:     serverTimestamp(),
+  };
+  if (p(targets.ffiConducted) > 0) payload.ffiConducted = p(targets.ffiConducted);
+  if (p(targets.ciConducted)  > 0) payload.ciConducted  = p(targets.ciConducted);
+  if (p(targets.dials)        > 0) payload.dials         = p(targets.dials);
+
+  await setDoc(doc(db, `tenants/${tenantId}/unitGoals/${unitId}_${year}`), payload);
+}
+
+// ── Branch Goals ──────────────────────────────────────────────────────────────
+
+export async function getBranchGoals(tenantId, year) {
+  const ref = doc(db, `tenants/${tenantId}/branchGoals/${year}`);
+  const snap = await getDoc(ref);
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function setBranchGoals(tenantId, year, targets, meta) {
+  const p = (v) => parseFloat(v) || 0;
+  const payload = {
+    year, tenantId,
+    api:  p(targets.api),
+    apps: p(targets.apps),
+    setBy:     meta.setBy,
+    setByName: meta.setByName,
+    setAt:     serverTimestamp(),
+  };
+  if (p(targets.ffiConducted) > 0) payload.ffiConducted = p(targets.ffiConducted);
+  if (p(targets.ciConducted)  > 0) payload.ciConducted  = p(targets.ciConducted);
+  if (p(targets.dials)        > 0) payload.dials         = p(targets.dials);
+
+  await setDoc(doc(db, `tenants/${tenantId}/branchGoals/${year}`), payload);
+}
+
+// ── Goal Hierarchy ────────────────────────────────────────────────────────────
+
+export async function getGoalHierarchy(tenantId, unitId, year, agentId) {
+  const [mins, branchDoc, unitDoc, personalDoc] = await Promise.all([
+    getCompanyMinimums(tenantId).catch(() => null),
+    getBranchGoals(tenantId, year).catch(() => null),
+    unitId ? getUnitGoals(tenantId, unitId, year).catch(() => null) : Promise.resolve(null),
+    agentId ? getGoals(tenantId, agentId).catch(() => null) : Promise.resolve(null),
+  ]);
+
+  const p = (v) => (parseFloat(v) > 0 ? parseFloat(v) : null);
+
+  const companyFloor = mins ? { api: p(mins.annualAPI), apps: p(mins.annualApps) } : null;
+
+  const branchTarget = branchDoc ? {
+    api:          p(branchDoc.api),
+    apps:         p(branchDoc.apps),
+    ffiConducted: p(branchDoc.ffiConducted),
+    ciConducted:  p(branchDoc.ciConducted),
+    dials:        p(branchDoc.dials),
+  } : null;
+
+  const unitTarget = unitDoc ? {
+    api:          p(unitDoc.api),
+    apps:         p(unitDoc.apps),
+    ffiConducted: p(unitDoc.ffiConducted),
+    ciConducted:  p(unitDoc.ciConducted),
+    dials:        p(unitDoc.dials),
+  } : null;
+
+  const personal = personalDoc ? {
+    api:          p(personalDoc.personalAnnualAPI),
+    apps:         p(personalDoc.personalAnnualApps),
+    ffiConducted: null,
+    ciConducted:  null,
+    dials:        null,
+  } : null;
+
+  return { companyFloor, branchTarget, unitTarget, personal };
+}

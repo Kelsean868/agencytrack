@@ -191,7 +191,7 @@ Dark mode toggle in header (CSS class swap on `<html>`).
 | P7C | Dark mode audit + profile photo in leaderboard + MeetingMode | ✅ COMPLETE |
 | P8A | Weekly Recognition Badges | 🔄 IN PROGRESS |
 | P8B | Campaign Module | 🔄 IN PROGRESS |
-| P8C | Goals Tier 2 — gap analysis (unitGoals + branchGoals) | ⏳ PLANNED |
+| P8C | Goals Tier 2 — gap analysis (unitGoals + branchGoals) | 🔄 IN PROGRESS |
 | P8D | Multi-tenancy rollout | ⏳ DEFERRED (post-pilot) |
 
 ## Phase 4 — Component Checklist
@@ -358,6 +358,18 @@ All four are confirmed in `.gitignore`.
 - Campaign doc shape: `{ id, tenantId, createdBy, createdAt, name, description, prize, startDate, endDate, targets: [{ metric, threshold }], status }`
 - New files: `src/components/campaigns/CampaignPanel.jsx`, `src/components/campaigns/CampaignCard.jsx`, `src/services/campaignService.js`
 - Touches: ManagerDashboard.jsx (Campaigns tab), AgentDashboard.jsx (CampaignCard when active)
+
+## P8C Key Decisions
+- `unitGoals` path: `/tenants/{tenantId}/unitGoals/{unitId}_{year}`
+- `branchGoals` path: `/tenants/{tenantId}/branchGoals/{year}`
+- Required metrics at both levels: `api`, `apps`
+- Optional metrics at both levels: `ffiConducted`, `ciConducted`, `dials`
+- Unit Manager can set/update their own unit's goals only
+- Branch Manager + Super Admin can set/update any unit's goals AND branch goals
+- Gap analysis hierarchy (lowest to highest floor): Personal Commitment → Unit Target → Branch Target → Company Floor
+- Company floor comes from existing `/tenants/{tenantId}/config/companyMinimums`
+- Gap analysis visible in: Goals section on AgentDashboard dashboard tab, and CareerPortal
+- Manager sets unit/branch goals from GoalsPanel.jsx (sub-tabs: Agent Goals | Unit Goals | Branch Goals)
 
 ### P8C — Goals Tier 2: Gap Analysis
 - Add `unitGoals` and `branchGoals` Firestore collections

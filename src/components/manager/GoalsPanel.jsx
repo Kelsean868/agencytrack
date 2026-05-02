@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { getTenantUsers } from '../../services/managerService';
-import { getGoals, setGoals, getCompanyMinimums } from '../../services/goalsService';
+import { getGoals, setGoals, getCompanyMinimums, getUnitGoals, setUnitGoals, getBranchGoals, setBranchGoals } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 
 const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 
@@ -55,7 +55,203 @@ function BelowFloorWarning({ label }) {
   );
 }
 
-export default function GoalsPanel({ onGoalsLoaded }) {
+// ── Unit / Branch Goals form ─────────────────────────────────────────────────
+
+function GoalLevelForm({ value, onChange }) {
+  const set = (k, v) => onChange({ ...value, [k]: v });
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-3">
+        <NumInput label="Annual API (TTD) *" value={value.api ?? ''} onChange={(v) => set('api', v)} currency />
+        <NumInput label="Annual Apps *"       value={value.apps ?? ''} onChange={(v) => set('apps', v)} />
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <NumInput label="FFIs (optional)"   value={value.ffiConducted ?? ''} onChange={(v) => set('ffiConducted', v)} />
+        <NumInput label="CIs (optional)"    value={value.ciConducted  ?? ''} onChange={(v) => set('ciConducted', v)} />
+        <NumInput label="Dials (optional)"  value={value.dials        ?? ''} onChange={(v) => set('dials', v)} />
+      </div>
+    </div>
+  );
+}
+
+function UnitGoalsTab({ role, userProfile, allUsers }) {
+  const { user } = useAuth();
+  const isUnitManager = role === 'unit_manager';
+  const currentYear = new Date().getFullYear();
+  const unitId = userProfile?.unitId ?? null;
+
+  const units = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const u of allUsers) {
+      if (u.role === 'unit_manager' && u.unitId && !seen.has(u.unitId)) {
+        seen.add(u.unitId);
+        out.push({ id: u.unitId, label: u.name ?? u.unitId });
+      }
+    }
+    return out;
+  }, [allUsers]);
+
+  const [selectedUnit, setSelectedUnit] = useState(isUnitManager ? unitId : (units[0]?.id ?? ''));
+  const [form, setForm]     = useState({ api: '', apps: '', ffiConducted: '', ciConducted: '', dials: '' });
+  const [existing, setExisting] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved,  setSaved]  = useState(false);
+  const [loadingGoals, setLoadingGoals] = useState(false);
+
+  useEffect(() => {
+    if (!selectedUnit) return;
+    setLoadingGoals(true);
+    getUnitGoals(TENANT_ID, selectedUnit, currentYear)
+      .then((g) => {
+        setExisting(g);
+        setForm({
+          api:          g?.api          ?? '',
+          apps:         g?.apps         ?? '',
+          ffiConducted: g?.ffiConducted ?? '',
+          ciConducted:  g?.ciConducted  ?? '',
+          dials:        g?.dials        ?? '',
+        });
+      })
+      .catch(console.error)
+      .finally(() => setLoadingGoals(false));
+  }, [selectedUnit, currentYear]);
+
+  const handleSave = async () => {
+    if (!selectedUnit) return;
+    setSaving(true);
+    try {
+      await setUnitGoals(TENANT_ID, selectedUnit, currentYear, form, {
+        setBy:     user.uid,
+        setByName: userProfile?.name ?? userProfile?.email ?? 'Manager',
+        setByRole: role,
+      });
+      const updated = await getUnitGoals(TENANT_ID, selectedUnit, currentYear);
+      setExisting(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) { console.error(e); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          Unit Goals — {currentYear}
+        </p>
+        {!isUnitManager && units.length > 0 && (
+          <select
+            value={selectedUnit}
+            onChange={(e) => setSelectedUnit(e.target.value)}
+            className="h-9 px-3 border border-border rounded-lg bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            {units.map((u) => (
+              <option key={u.id} value={u.id}>{u.label}</option>
+            ))}
+          </select>
+        )}
+        {isUnitManager && unitId && (
+          <span className="text-xs text-ink-muted">Your unit</span>
+        )}
+      </div>
+
+      {!selectedUnit ? (
+        <p className="text-sm text-ink-muted italic">No units found.</p>
+      ) : loadingGoals ? (
+        <div className="h-24 rounded-xl bg-border/30 animate-pulse" />
+      ) : (
+        <div className="card flex flex-col gap-4">
+          {existing?.setByName && (
+            <p className="text-xs text-ink-muted">
+              Last set by {existing.setByName}
+              {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
+            </p>
+          )}
+          <GoalLevelForm value={form} onChange={setForm} />
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={`h-10 px-4 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 self-start ${
+              saved ? 'bg-success/15 text-success' : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
+            }`}
+          >
+            {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Unit Goals'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BranchGoalsTab({ userProfile }) {
+  const { user } = useAuth();
+  const currentYear = new Date().getFullYear();
+
+  const [form, setForm]     = useState({ api: '', apps: '', ffiConducted: '', ciConducted: '', dials: '' });
+  const [existing, setExisting] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [saved,  setSaved]  = useState(false);
+
+  useEffect(() => {
+    getBranchGoals(TENANT_ID, currentYear)
+      .then((g) => {
+        setExisting(g);
+        setForm({
+          api:          g?.api          ?? '',
+          apps:         g?.apps         ?? '',
+          ffiConducted: g?.ffiConducted ?? '',
+          ciConducted:  g?.ciConducted  ?? '',
+          dials:        g?.dials        ?? '',
+        });
+      })
+      .catch(console.error);
+  }, [currentYear]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await setBranchGoals(TENANT_ID, currentYear, form, {
+        setBy:     user.uid,
+        setByName: userProfile?.name ?? userProfile?.email ?? 'Manager',
+      });
+      const updated = await getBranchGoals(TENANT_ID, currentYear);
+      setExisting(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+    } catch (e) { console.error(e); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        Branch Goals — {currentYear}
+      </p>
+      <div className="card flex flex-col gap-4">
+        {existing?.setByName && (
+          <p className="text-xs text-ink-muted">
+            Last set by {existing.setByName}
+            {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
+          </p>
+        )}
+        <GoalLevelForm value={form} onChange={setForm} />
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className={`h-10 px-4 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 self-start ${
+            saved ? 'bg-success/15 text-success' : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
+          }`}
+        >
+          {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Branch Goals'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Agent goals panel (original content) ─────────────────────────────────────
+function AgentGoalsTab({ onGoalsLoaded }) {
   const { user, userProfile } = useAuth();
   const [agents, setAgents]       = useState([]);
   const [goalsMap, setGoalsMap]   = useState({});
@@ -307,6 +503,51 @@ export default function GoalsPanel({ onGoalsLoaded }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Main GoalsPanel — sub-tab wrapper ────────────────────────────────────────
+export default function GoalsPanel({ onGoalsLoaded }) {
+  const { role, userProfile } = useAuth();
+  const [subTab, setSubTab] = useState('agents');
+  const [allUsers, setAllUsers] = useState([]);
+
+  const canSeeBranch = role === 'branch_manager' || role === 'super_admin';
+  const canSeeUnit   = role === 'unit_manager' || canSeeBranch;
+
+  useEffect(() => {
+    getTenantUsers().then(setAllUsers).catch(console.error);
+  }, []);
+
+  const tabs = [
+    { id: 'agents',  label: 'Agent Goals' },
+    ...(canSeeUnit   ? [{ id: 'unit',   label: 'Unit Goals'   }] : []),
+    ...(canSeeBranch ? [{ id: 'branch', label: 'Branch Goals' }] : []),
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Sub-tab bar */}
+      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setSubTab(t.id)}
+            className={`flex-1 h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
+              subTab === t.id
+                ? 'bg-[var(--color-surface)] text-primary shadow-sm'
+                : 'text-ink-muted hover:text-ink'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {subTab === 'agents' && <AgentGoalsTab onGoalsLoaded={onGoalsLoaded} />}
+      {subTab === 'unit'   && canSeeUnit   && <UnitGoalsTab   role={role} userProfile={userProfile} allUsers={allUsers} />}
+      {subTab === 'branch' && canSeeBranch && <BranchGoalsTab userProfile={userProfile} />}
     </div>
   );
 }
