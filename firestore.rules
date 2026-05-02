@@ -22,28 +22,36 @@ service cloud.firestore {
       return getRole() == 'agent';
     }
 
-    function isSuperAdminUID() {
-      return request.auth.uid == '4GeeZbhZBwdtGOLoJoggf4MQo142';
-    }
-
     function canManage(tenantId) {
-      return isSignedIn() && (isSuperAdminUID() || (isManager() && getTenantId() == tenantId));
+      return isSignedIn() && (getRole() == 'super_admin' || (isManager() && getTenantId() == tenantId));
     }
 
     function canAccessOwn(tenantId, agentId) {
-      return isSignedIn() && (isSuperAdminUID() || (isAgent() && getTenantId() == tenantId && request.auth.uid == agentId));
+      return isSignedIn() && (getRole() == 'super_admin' || (isAgent() && getTenantId() == tenantId && request.auth.uid == agentId));
+    }
+
+    // SEC-4: fetch caller's unitId from Firestore profile (not token — unitId is not a custom claim)
+    function callerUnitId(tenantId) {
+      return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.unitId;
     }
 
     match /tenants/{tenantId} {
 
       match /users/{userId} {
         allow read: if canManage(tenantId) || (isSignedIn() && request.auth.uid == userId);
-        // Managers: full write. Agent: can update their own safe profile fields only.
-        allow write: if canManage(tenantId);
-        allow update: if isSignedIn()
-          && request.auth.uid == userId
-          && request.resource.data.diff(resource.data).affectedKeys()
-             .hasOnly(['hasSeenWelcome', 'photoURL', 'bio', 'phone']);
+        // SEC-4: unit_manager can only create/update users within their own unit
+        allow create: if canManage(tenantId) && (
+          getRole() != 'unit_manager' ||
+          callerUnitId(tenantId) == request.resource.data.unitId
+        );
+        allow update: if (canManage(tenantId) && (
+            getRole() != 'unit_manager' ||
+            callerUnitId(tenantId) == resource.data.unitId
+          )) || (isSignedIn()
+            && request.auth.uid == userId
+            && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['hasSeenWelcome', 'photoURL', 'bio', 'phone']));
+        allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
       }
 
       match /submissions/{submissionId} {
@@ -61,35 +69,36 @@ service cloud.firestore {
       }
 
       match /goals/{goalId} {
-        // Managers: full read/write. Agents: read their own goal doc (goalId == their uid).
         allow read:  if canManage(tenantId) ||
           (isSignedIn() && isAgent() && getTenantId() == tenantId && goalId == request.auth.uid);
         allow write: if canManage(tenantId);
       }
 
       match /notifications/{notificationId} {
-        allow read:  if isSignedIn() && (isSuperAdminUID() || request.auth.uid == resource.data.userId);
+        // SEC-3: add tenant scope to notification reads
+        allow read:  if isSignedIn() && getTenantId() == tenantId && (getRole() == 'super_admin' || request.auth.uid == resource.data.userId);
         allow write: if canManage(tenantId);
       }
 
       match /leaderboard/{userId} {
-        allow read:  if isSignedIn();
+        // SEC-2: scope leaderboard reads to own tenant
+        allow read:  if isSignedIn() && getTenantId() == tenantId;
         allow write: if canManage(tenantId);
       }
 
       match /config/{docId} {
         allow read:  if isSignedIn() && getTenantId() == tenantId;
-        allow write: if isSignedIn() && (isSuperAdminUID() || getRole() == 'super_admin');
+        allow write: if isSignedIn() && getRole() == 'super_admin';
       }
 
       match /settlements/{docId} {
-        allow read: if isSignedIn() && (isSuperAdminUID() || getTenantId() == tenantId);
-        allow write: if isSuperAdminUID()
-          || request.auth.token.role == 'branch_manager'
-          || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true;
-        allow delete: if isSuperAdminUID()
-          || request.auth.token.role == 'branch_manager'
-          || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true;
+        allow read: if isSignedIn() && (getRole() == 'super_admin' || getTenantId() == tenantId);
+        allow write: if isSignedIn() && (getRole() == 'super_admin'
+          || getRole() == 'branch_manager'
+          || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true);
+        allow delete: if isSignedIn() && (getRole() == 'super_admin'
+          || getRole() == 'branch_manager'
+          || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true);
       }
 
       match /unitGoals/{docId} {
