@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { CheckCircle2 } from 'lucide-react';
 import { computeGapAnalysis } from '../../utils/gapAnalysis';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -18,7 +19,9 @@ function GapBadge({ gap, target, isCurrency }) {
   if (gap === null) return null;
   if (gap <= 0) {
     return (
-      <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold bg-success/15 text-success">✓ Met</span>
+      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-success/15 text-success">
+        <CheckCircle2 size={10} /> Met
+      </span>
     );
   }
   const threshold = target > 0 ? target * 0.2 : Infinity;

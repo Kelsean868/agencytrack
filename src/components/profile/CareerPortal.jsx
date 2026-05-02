@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Pencil, X, Check } from 'lucide-react';
+import { Pencil, X, Check, CheckCircle2, XCircle, Trophy, Star } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { getGoals, setGoals, getCompanyMinimums } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
@@ -48,7 +48,10 @@ function CriterionRow({ label, current, target, met, formatVal }) {
         <p className="text-xs font-medium text-ink-muted">{label}</p>
         <div className="flex items-center gap-1.5 shrink-0">
           <p className="text-xs text-ink">{formatVal(current)} / {formatVal(target)}</p>
-          <span className="text-sm">{met ? '✅' : '❌'}</span>
+          {met
+            ? <CheckCircle2 size={14} className="text-success shrink-0" />
+            : <XCircle size={14} className="text-danger shrink-0" />
+          }
         </div>
       </div>
       <ProgressBar value={current} max={target} colorClass={barColor} />
@@ -349,7 +352,7 @@ export default function CareerPortal({ submissions, user, persistencyData, hiera
           <p className="text-xs uppercase tracking-wide text-ink-muted mb-0.5">Current Career Level</p>
           <p className="text-xl font-bold text-ink">{currentLevel.title}</p>
           {currentLevel.level === 7 && (
-            <p className="text-xs text-primary mt-1">You've reached the pinnacle 🏆</p>
+            <p className="text-xs text-primary mt-1 flex items-center gap-1"><Trophy size={12} /> You've reached the pinnacle</p>
           )}
         </div>
       </div>
@@ -434,12 +437,12 @@ export default function CareerPortal({ submissions, user, persistencyData, hiera
         <div className="flex items-center justify-between flex-wrap gap-2">
           <p className="text-sm font-semibold text-ink">MDRT Status</p>
           {ytdAPI >= MDRT_THRESHOLD ? (
-            <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-bold bg-success/15 text-success">
-              🏆 MDRT Qualified
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-success/15 text-success">
+              <Trophy size={12} /> MDRT Qualified
             </span>
           ) : (
-            <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-bold bg-warning/15 text-warning">
-              ⭐ MDRT Tracker
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-warning/15 text-warning">
+              <Star size={12} /> MDRT Tracker
             </span>
           )}
         </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   getCampaigns, createCampaign, updateCampaign, deleteCampaign,
@@ -94,7 +94,7 @@ function ProgressTable({ campaign, submissions, allUsers }) {
               ))}
               <td className="py-2 pl-3 text-right">
                 {row.allAchieved
-                  ? <span className="text-success font-semibold">✓ Complete</span>
+                  ? <span className="inline-flex items-center gap-0.5 text-success font-semibold"><CheckCircle2 size={12} /> Complete</span>
                   : <span className="text-ink-muted">In Progress</span>
                 }
               </td>

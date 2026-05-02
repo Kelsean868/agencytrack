@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ChevronDown, ChevronUp, History, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, History, Info, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { setGoals } from '../../services/goalsService';
 import { formatCurrency } from '../../utils/formatters';
@@ -322,7 +322,7 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
                   : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
               }`}
             >
-              {savedGoals ? 'Goals Saved ✓' : 'Save as My Goals'}
+              {savedGoals ? <><Check size={13} className="inline mr-1" />Goals Saved</> : 'Save as My Goals'}
             </button>
             <button
               onClick={handleSaveAssumptions}
@@ -333,7 +333,7 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
                   : 'border-border text-ink-muted hover:text-ink'
               }`}
             >
-              {savedAssumptions ? 'Saved ✓' : 'Save Assumptions'}
+              {savedAssumptions ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save Assumptions'}
             </button>
           </div>
         </div>

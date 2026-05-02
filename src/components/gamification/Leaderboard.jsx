@@ -1,17 +1,17 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, query, orderBy, where, onSnapshot, getDocs } from 'firebase/firestore';
-import { Flame, Trophy } from 'lucide-react';
+import { Flame, Trophy, ClipboardList, Zap } from 'lucide-react';
 import { db, tenantId } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { computeWeeklyChampions } from '../../utils/weeklyChampions';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 
-function ChampionCard({ emoji, label, champion, format }) {
+function ChampionCard({ Icon, label, champion, format }) {
   return (
     <div className="flex flex-col gap-1 rounded-xl bg-[var(--color-surface)] border border-primary/20 p-3 min-h-[44px]">
       <p className="text-[10px] font-bold uppercase tracking-wide text-primary flex items-center gap-1">
-        <span>{emoji}</span>
+        <Icon size={12} />
         <span>{label}</span>
       </p>
       {champion ? (
@@ -48,9 +48,9 @@ function WeeklyChampionsBanner({ champions, loading }) {
     : '';
 
   const cards = [
-    { emoji: '🏆', label: 'Top API',      champion: topAPI,      format: (v) => formatCurrency(Math.round(v)) },
-    { emoji: '📋', label: 'Top Apps',     champion: topApps,     format: (v) => String(v) },
-    { emoji: '⚡', label: 'Top Activity', champion: topActivity, format: (v) => String(v) },
+    { Icon: Trophy,        label: 'Top API',      champion: topAPI,      format: (v) => formatCurrency(Math.round(v)) },
+    { Icon: ClipboardList, label: 'Top Apps',     champion: topApps,     format: (v) => String(v) },
+    { Icon: Zap,           label: 'Top Activity', champion: topActivity, format: (v) => String(v) },
   ];
 
   const hasAnyData = topAPI || topApps || topActivity;
@@ -67,7 +67,7 @@ function WeeklyChampionsBanner({ champions, loading }) {
         {cards.map((card) => (
           <ChampionCard
             key={card.label}
-            emoji={card.emoji}
+            Icon={card.Icon}
             label={card.label}
             champion={card.champion}
             format={card.format}

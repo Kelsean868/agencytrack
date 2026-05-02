@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { collection, getDocs } from 'firebase/firestore';
-import { X, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, AlertTriangle, BarChart2, Search } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDateLabel } from '../../utils/validators';
 import { db, tenantId } from '../../firebase';
@@ -370,7 +370,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
                 mode === 'group' ? 'bg-primary text-white' : 'text-white/50 hover:text-white'
               }`}
             >
-              📊 Group
+              <BarChart2 size={14} className="inline mr-1" /> Group
             </button>
             <button
               onClick={() => setMode('one-on-1')}
@@ -378,7 +378,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
                 mode === 'one-on-1' ? 'bg-primary text-white' : 'text-white/50 hover:text-white'
               }`}
             >
-              🔍 1-on-1
+              <Search size={14} className="inline mr-1" /> 1-on-1
             </button>
           </div>
         </div>

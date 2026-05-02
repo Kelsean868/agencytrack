@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Trophy, Gift, CheckCircle2 } from 'lucide-react';
 import { computeCampaignProgress, getDaysRemaining } from '../../utils/campaignEngine';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 
@@ -21,7 +22,9 @@ function MetricBar({ label, metric, current, threshold, pct, achieved }) {
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-ink">{currentFmt} / {threshFmt}</span>
           {achieved && (
-            <span className="text-[10px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full">✓ Achieved</span>
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full">
+              <CheckCircle2 size={10} /> Achieved
+            </span>
           )}
         </div>
       </div>
@@ -35,11 +38,18 @@ function MetricBar({ label, metric, current, threshold, pct, achieved }) {
   );
 }
 
+function RankBadge({ rank }) {
+  if (rank === 1) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#f59e0b] text-white text-[10px] font-bold">1</span>;
+  if (rank === 2) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#94a3b8] text-white text-[10px] font-bold">2</span>;
+  if (rank === 3) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#b45309] text-white text-[10px] font-bold">3</span>;
+  return null;
+}
+
 function RankLine({ rank, totalParticipants }) {
   if (rank === null) return <p className="text-xs text-ink-muted">No rankings yet</p>;
-  if (rank === 1)   return <p className="text-xs font-semibold text-primary">🥇 You&apos;re leading!</p>;
-  if (rank === 2)   return <p className="text-xs font-semibold text-ink">🥈 2nd place</p>;
-  if (rank === 3)   return <p className="text-xs font-semibold text-ink">🥉 3rd place</p>;
+  if (rank === 1)   return <p className="text-xs font-semibold text-primary flex items-center gap-1"><RankBadge rank={1} /> You&apos;re leading!</p>;
+  if (rank === 2)   return <p className="text-xs font-semibold text-ink flex items-center gap-1"><RankBadge rank={2} /> 2nd place</p>;
+  if (rank === 3)   return <p className="text-xs font-semibold text-ink flex items-center gap-1"><RankBadge rank={3} /> 3rd place</p>;
   const suffix = rank === 11 || rank === 12 || rank === 13 ? 'th' : rank % 10 === 1 ? 'st' : rank % 10 === 2 ? 'nd' : rank % 10 === 3 ? 'rd' : 'th';
   return <p className="text-xs text-ink-muted">{rank}{suffix} of {totalParticipants} participant{totalParticipants !== 1 ? 's' : ''}</p>;
 }
@@ -68,7 +78,7 @@ export default function CampaignCard({ campaign, submissions, agentId }) {
 
       {/* Prize + dates */}
       <div className="flex flex-col gap-0.5">
-        <p className="text-sm font-semibold text-ink">🏆 {campaign.prize}</p>
+        <p className="text-sm font-semibold text-ink flex items-center gap-1.5"><Gift size={14} className="text-primary shrink-0" />{campaign.prize}</p>
         <p className="text-xs text-ink-muted">
           {formatDateFriendly(campaign.startDate)} → {formatDateFriendly(campaign.endDate)}
         </p>
@@ -85,8 +95,8 @@ export default function CampaignCard({ campaign, submissions, agentId }) {
 
       {/* All-achieved banner */}
       {allAchieved && (
-        <div className="rounded-lg bg-success/10 border border-success/20 px-3 py-2 text-xs font-semibold text-success text-center">
-          🎉 All targets achieved!
+        <div className="rounded-lg bg-success/10 border border-success/20 px-3 py-2 text-xs font-semibold text-success flex items-center justify-center gap-1.5">
+          <CheckCircle2 size={14} /> All targets achieved!
         </div>
       )}
 

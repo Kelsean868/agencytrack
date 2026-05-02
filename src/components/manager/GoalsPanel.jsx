@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Check } from 'lucide-react';
 import { getTenantUsers } from '../../services/managerService';
 import { getGoals, setGoals, getCompanyMinimums, getUnitGoals, setUnitGoals, getBranchGoals, setBranchGoals } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
@@ -176,7 +176,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
               saved ? 'bg-success/15 text-success' : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
             }`}
           >
-            {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Unit Goals'}
+            {saving ? 'Saving…' : saved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save Unit Goals'}
           </button>
         </div>
       )}
@@ -243,7 +243,7 @@ function BranchGoalsTab({ userProfile }) {
             saved ? 'bg-success/15 text-success' : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
           }`}
         >
-          {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save Branch Goals'}
+          {saving ? 'Saving…' : saved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save Branch Goals'}
         </button>
       </div>
     </div>
@@ -406,7 +406,7 @@ function AgentGoalsTab({ onGoalsLoaded }) {
                     : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
                 }`}
               >
-                {isSaving ? 'Saving…' : isSaved ? 'Saved ✓' : 'Save'}
+                {isSaving ? 'Saving…' : isSaved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save'}
               </button>
             </div>
 
