@@ -5,12 +5,8 @@
  * react-pdf flex implementation, which (unlike html2canvas) does not
  * suffer from baseline drift.
  *
- * Two exports:
- *   - default: DOM-safe stub (returns null). AgentDashboard mounts the
- *     component off-screen for legacy reasons; rendering this stub there
- *     is a no-op. Do NOT remove unless AgentDashboard is updated.
- *   - named `AgentReportDocument`: the real <Document> used by
- *     exportService.generateAgentPDF().
+ * Used by exportService.generateAgentPDF() — built directly from props,
+ * no DOM mount required.
  */
 import {
   Document, Page, View, Text, StyleSheet,
@@ -875,10 +871,3 @@ export function AgentReportDocument({ agentInfo, submissions, goals, weekRange }
   );
 }
 
-// ── DOM-safe stub default export ──────────────────────────────────────────────
-// AgentDashboard mounts <AgentReportDocument /> off-screen (legacy holdover).
-// Returning null keeps that mount harmless. The actual PDF is generated from
-// props by exportService.generateAgentPDF() using the named export above.
-export default function AgentReportDocumentStub() {
-  return null;
-}

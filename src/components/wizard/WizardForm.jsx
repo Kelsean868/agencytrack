@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { X, Check } from 'lucide-react';
+import { X, Check, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { saveDraft, submitReport, getDraft, getLastSubmission } from '../../services/submissionService';
 import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
@@ -147,6 +147,7 @@ export default function WizardForm({ onClose, initialWeek }) {
   const [lastWeekData, setLastWeekData] = useState(null);
   const [draftStatus, setDraftStatus]   = useState(null);
   const [saving, setSaving]             = useState(false);
+  const [saveError, setSaveError]       = useState(false);
   const [submitting, setSubmitting]     = useState(false);
   const [error, setError]               = useState('');
   const saveTimer = useRef(null);
@@ -183,9 +184,15 @@ export default function WizardForm({ onClose, initialWeek }) {
     saveTimer.current = setTimeout(async () => {
       if (draftStatus === 'submitted') return;
       setSaving(true);
-      try { await saveDraft(user.uid, agentName, weekStarting, formData); }
-      catch { /* silently ignore auto-save errors */ }
-      finally { setSaving(false); }
+      setSaveError(false);
+      try {
+        await saveDraft(user.uid, agentName, weekStarting, formData);
+      } catch (err) {
+        console.error('Auto-save failed:', err);
+        setSaveError(true);
+      } finally {
+        setSaving(false);
+      }
     }, 1500);
     return () => clearTimeout(saveTimer.current);
   }, [formData, step, weekStarting, screen, user, draftStatus]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -258,6 +265,12 @@ export default function WizardForm({ onClose, initialWeek }) {
         <div className="flex items-center gap-2">
           {saving && (
             <span className="text-xs text-ink-muted animate-pulse">Saving…</span>
+          )}
+          {!saving && saveError && (
+            <span className="flex items-center gap-1 text-xs text-danger">
+              <AlertTriangle size={13} />
+              Save failed — check connection
+            </span>
           )}
           <button
             type="button"

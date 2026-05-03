@@ -18,7 +18,6 @@ import CampaignCard from '../campaigns/CampaignCard';
 import NotificationBell from '../ui/NotificationBell';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
-import AgentReportDocument from '../profile/AgentReportDocument';
 import ReportRangeModal from '../ui/ReportRangeModal';
 import Leaderboard from '../gamification/Leaderboard';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
@@ -227,49 +226,31 @@ export default function AgentDashboard() {
     setShowWizard(true);
   };
 
-  // ── PDF report modal + off-screen capture ──────────────────────────────
-  const [reportModalOpen,  setReportModalOpen]  = useState(false);
-  const [generating,       setGenerating]        = useState(false);
-  const [reportWeekRange,  setReportWeekRange]   = useState(null);
-  const [reportEl,         setReportEl]          = useState(null);
+  // ── PDF report modal ───────────────────────────────────────────────────
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [generating,      setGenerating]      = useState(false);
 
-  // Fires when the off-screen <AgentReportDocument /> is mounted and ready
-  useEffect(() => {
-    if (!generating || !reportEl) return;
-    let cancelled = false;
-    // Give Recharts 900ms to fully render its SVGs before capture
-    const timer = setTimeout(async () => {
-      if (cancelled) return;
-      try {
-        await generateAgentPDF(
-          {
-            displayName,
-            email: userProfile?.email ?? user?.email ?? '',
-            role: roleLabel,
-            careerLevel: userProfile?.levelTitle ?? userProfile?.careerLevel ?? 'Agent',
-          },
-          allSubmissions,
-          goals,
-          reportWeekRange,
-          reportEl
-        );
-      } catch (err) {
-        console.error('PDF generation failed:', err);
-      } finally {
-        if (!cancelled) {
-          setGenerating(false);
-          setReportWeekRange(null);
-        }
-      }
-    }, 900);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [generating, reportEl]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleOpenReportModal  = () => setReportModalOpen(true);
-  const handleReportGenerate   = (weekRange) => {
+  const handleOpenReportModal = () => setReportModalOpen(true);
+  const handleReportGenerate  = async (weekRange) => {
     setReportModalOpen(false);
     setGenerating(true);
-    setReportWeekRange(weekRange);
+    try {
+      await generateAgentPDF(
+        {
+          displayName,
+          email: userProfile?.email ?? user?.email ?? '',
+          role: roleLabel,
+          careerLevel: userProfile?.levelTitle ?? userProfile?.careerLevel ?? 'Agent',
+        },
+        allSubmissions,
+        goals,
+        weekRange
+      );
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   if (showWizard) {
@@ -290,30 +271,6 @@ export default function AgentDashboard() {
           onGenerate={handleReportGenerate}
           onClose={() => setReportModalOpen(false)}
         />
-      )}
-
-      {/* Off-screen AgentReportDocument for html2canvas capture */}
-      {generating && reportWeekRange && (
-        <div
-          ref={setReportEl}
-          style={{ position: 'absolute', left: -9999, top: 0, width: 794, overflow: 'visible', zIndex: -1 }}
-          aria-hidden="true"
-        >
-          <AgentReportDocument
-            agentInfo={{
-              displayName,
-              email: userProfile?.email ?? user?.email ?? '',
-              role: roleLabel,
-              careerLevel: userProfile?.levelTitle ?? userProfile?.careerLevel ?? 'Agent',
-              joinDate: userProfile?.createdAt?.toDate?.()?.toLocaleDateString('en-TT') ?? '',
-            }}
-            submissions={allSubmissions}
-            goals={goals}
-            weekRange={reportWeekRange}
-            confirmedSettlements={settlements}
-            agentProfile={userProfile}
-          />
-        </div>
       )}
 
       {/* Submission viewer drawer */}
