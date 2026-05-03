@@ -77,7 +77,12 @@ service cloud.firestore {
       match /notifications/{notificationId} {
         // SEC-3: add tenant scope to notification reads
         allow read:  if isSignedIn() && getTenantId() == tenantId && (getRole() == 'super_admin' || request.auth.uid == resource.data.userId);
-        allow write: if canManage(tenantId);
+        // SEC-10: recipient can mark their own notification read; field-restricted to read/readAt
+        allow update: if (isSignedIn() && getTenantId() == tenantId
+                         && request.auth.uid == resource.data.userId
+                         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']))
+                      || canManage(tenantId);
+        allow create, delete: if canManage(tenantId);
       }
 
       match /leaderboard/{userId} {
