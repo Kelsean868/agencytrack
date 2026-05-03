@@ -3,7 +3,8 @@ import { X, Check, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { saveDraft, submitReport, getDraft, getLastSubmission } from '../../services/submissionService';
 import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
-import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
+import { formatCurrency, formatDateFriendly, formatDateDisplay } from '../../utils/formatters';
+import SubmissionViewer from '../submissions/SubmissionViewer';
 import Step1Prospecting      from './steps/Step1Prospecting';
 import Step2Telephone        from './steps/Step2Telephone';
 import Step3Approaches       from './steps/Step3Approaches';
@@ -133,7 +134,7 @@ const INITIAL_DATA = {
   goalNotes:                    '',
 };
 
-// screen: 'date' | 'step' | 'review' | 'done'
+// screen: 'date' | 'step' | 'review' | 'done' | 'submitted'
 export default function WizardForm({ onClose, initialWeek }) {
   const { user, userProfile } = useAuth();
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
@@ -146,6 +147,8 @@ export default function WizardForm({ onClose, initialWeek }) {
   const [formData, setFormData]         = useState(INITIAL_DATA);
   const [lastWeekData, setLastWeekData] = useState(null);
   const [draftStatus, setDraftStatus]   = useState(null);
+  const [submissionData, setSubmissionData] = useState(null);
+  const [viewingSubmission, setViewingSubmission] = useState(false);
   const [saving, setSaving]             = useState(false);
   const [saveError, setSaveError]       = useState(false);
   const [submitting, setSubmitting]     = useState(false);
@@ -169,10 +172,20 @@ export default function WizardForm({ onClose, initialWeek }) {
     if (!weekStarting || !user) return;
     getDraft(user.uid, weekStarting)
       .then((draft) => {
-        if (!draft) { setDraftStatus(null); return; }
+        if (!draft) {
+          setDraftStatus(null);
+          setSubmissionData(null);
+          return;
+        }
         const { agentId, weekStarting: _ws, status, updatedAt, submittedAt, ...fields } = draft;
         setDraftStatus(status ?? null);
-        setFormData((prev) => ({ ...prev, ...fields }));
+        if (status === 'submitted') {
+          setSubmissionData(draft);
+          setScreen('submitted');
+        } else {
+          setSubmissionData(null);
+          setFormData((prev) => ({ ...prev, ...fields }));
+        }
       })
       .catch(console.error);
   }, [weekStarting, user]);
@@ -207,6 +220,28 @@ export default function WizardForm({ onClose, initialWeek }) {
     setScreen('step');
     setError('');
   };
+
+  const resetToDatePicker = () => {
+    setViewingSubmission(false);
+    setScreen('date');
+    setWeekStarting('');
+    setDraftStatus(null);
+    setSubmissionData(null);
+    setFormData(INITIAL_DATA);
+    setStep(1);
+    setError('');
+  };
+
+  const submittedAtLabel = (() => {
+    const ts = submissionData?.submittedAt;
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return formatDateDisplay(`${yyyy}-${mm}-${dd}`);
+  })();
 
   const handleNext = () => {
     if (step < TOTAL_SCREENS) setStep((s) => s + 1);
@@ -250,16 +285,18 @@ export default function WizardForm({ onClose, initialWeek }) {
       <header className="flex items-center justify-between px-4 pt-4 pb-3 bg-bg shrink-0">
         <div>
           <p className="text-xs font-medium text-ink-muted">
-            {screen === 'step'   && `Screen ${step} of ${TOTAL_SCREENS}`}
-            {screen === 'review' && 'Review'}
-            {screen === 'date'   && 'Weekly Report'}
-            {screen === 'done'   && 'Complete'}
+            {screen === 'step'      && `Screen ${step} of ${TOTAL_SCREENS}`}
+            {screen === 'review'    && 'Review'}
+            {screen === 'date'      && 'Weekly Report'}
+            {screen === 'done'      && 'Complete'}
+            {screen === 'submitted' && 'Weekly Report'}
           </p>
           <h1 className="text-lg font-bold text-ink leading-tight">
-            {screen === 'date'   && 'Select Week'}
-            {screen === 'step'   && SCREENS[step - 1].title}
-            {screen === 'review' && 'Review & Submit'}
-            {screen === 'done'   && 'Report Submitted'}
+            {screen === 'date'      && 'Select Week'}
+            {screen === 'step'      && SCREENS[step - 1].title}
+            {screen === 'review'    && 'Review & Submit'}
+            {screen === 'done'      && 'Report Submitted'}
+            {screen === 'submitted' && 'Already submitted'}
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -358,6 +395,37 @@ export default function WizardForm({ onClose, initialWeek }) {
           </div>
         )}
 
+        {/* Already submitted — interstitial */}
+        {screen === 'submitted' && (
+          <div className="px-4 py-4 max-w-lg mx-auto">
+            <div className="bg-card rounded-xl border border-border/60 p-5 shadow-sm">
+              <h2 className="text-lg font-bold text-ink mb-2">Already submitted</h2>
+              <p className="text-sm text-ink-muted leading-relaxed mb-5">
+                You submitted this week
+                {submittedAtLabel ? ` on ${submittedAtLabel}` : ''}.
+                Submitted weeks can&apos;t be edited. You can view what you submitted,
+                or pick a different week.
+              </p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setViewingSubmission(true)}
+                  className="btn-primary w-full h-11"
+                >
+                  View Submission
+                </button>
+                <button
+                  type="button"
+                  onClick={resetToDatePicker}
+                  className="w-full h-11 rounded-xl border border-border bg-[var(--color-surface)] text-ink font-semibold text-sm hover:bg-surface transition-colors"
+                >
+                  Pick Different Week
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Done */}
         {screen === 'done' && (
           <div className="px-4 py-6 max-w-lg mx-auto flex flex-col items-center text-center pt-16">
@@ -374,6 +442,14 @@ export default function WizardForm({ onClose, initialWeek }) {
           </div>
         )}
       </div>
+
+      {/* Submission viewer overlay (reused as-is from History tab) */}
+      {viewingSubmission && submissionData && (
+        <SubmissionViewer
+          submission={submissionData}
+          onClose={resetToDatePicker}
+        />
+      )}
 
       {/* Footer nav */}
       {(screen === 'step' || screen === 'review') && (
