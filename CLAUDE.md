@@ -98,7 +98,8 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 | P8D | Multi-tenancy rollout | ⏳ Deferred to P10 |
 | P8E | Agent Management + Campaign Notifications + Welcome Screen | ✅ COMPLETE |
 | Dark Mode Hotfix | Warm palette + CSS-var theme system + persistence | ✅ COMPLETE |
-| Track A | Security/perf hardening | 🔄 NEXT |
+| Track A | Security/perf hardening | ✅ COMPLETE — Shipped May 3, 2026 (commits 57828d7, 0e9b6f2, 73ce1d0 + 0ca2046 from prior session). Production smoke verified. |
+| Track B | Pre-Tatil-demo polish | 🔄 IN PROGRESS |
 | Pilot Prep | End-to-end testing, account setup, mobile audit | ⏸️ DEFERRED (app not at Tatil yet) |
 | P9  | Sales Manager role | ⏳ Planned (post-pilot) |
 | P10 | Multi-tenancy full rollout | ⏳ Deferred |
@@ -106,9 +107,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 ## Current Phase
 **Pre-Tatil-demo polish.** App has not been demoed to Tatil yet. Goal: ship app close to v1.0 because Kyron is also the decision-maker for the branch and wants minimal rework after pilot.
 
-**Active task:** Track A — security & performance hardening (4 fixes across firestore.rules, WizardForm, AgentDashboard, firebase.js).
-
-**Then:** Track B — visible polish (mobile audit, loading/error states, WelcomeScreen copy, hardcoded color sweep).
+**Active task:** Track B — pre-Tatil-demo polish (visible polish: WIZARD-1, PDF-1/2, CONFIG-1, UX-1/2/4, BEH-1, mobile audit).
 
 **Then:** Track C — configuration & data (real Tatil accounts, company minimums, 2026 goals, persistency historicals).
 
@@ -121,7 +120,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 - AgentReportDocument.jsx: HARDCODED HEX colours only. No CSS variables — react-pdf cannot resolve them.
 - extractFields.js: ONLY way to read submission fields. Never access raw Firestore fields directly.
 - Profile photos: Firebase Storage at avatars/{tenantId}/{uid}.jpg. photoURL in Firestore user doc. Shown in ProfileScreen, Leaderboard, MeetingMode.
-- PWA: vite-plugin-pwa + Workbox. Firestore offline persistence via enableIndexedDbPersistence(db) in firebase.js — **TRACK A WILL MIGRATE TO persistentLocalCache (deprecated API)**.
+- PWA: vite-plugin-pwa + Workbox. Firestore offline persistence via `persistentLocalCache` + `persistentMultipleTabManager` in firebase.js (migrated from deprecated `enableIndexedDbPersistence` in Track A, commit 73ce1d0).
 - Theme system: Tailwind tokens in `tailwind.config.js` resolve through `var(--color-*)` (NOT hardcoded hex). Adding new utilities requires updating BOTH `:root` and `.dark` blocks in `src/index.css` with the same variable names.
 - Goals system (5 layers, full hierarchy):
   1. **Personal Commitment** — agent sets own target (≥ company floor) — `goals/{goalId}` ✅ built
@@ -232,19 +231,39 @@ Use `extractFields()` in `src/utils/extractFields.js` — single source of truth
 
 All four are confirmed in `.gitignore`.
 
-## Known Open Items (Track A targets)
-1. **firestore.rules**: hardcoded super_admin UID (`4GeeZbhZBwdtGOLoJoggf4MQo142`) bypasses tenant scoping — must remove
-2. **firestore.rules**: leaderboard reads not tenant-scoped (cross-tenant leak risk when 2nd tenant onboards)
-3. **firestore.rules**: notification reads not tenant-scoped (same issue)
-4. **firestore.rules**: unit_managers can write any user in tenant (should be scoped to own unit)
-5. **WizardForm.jsx**: auto-save fires on every keystroke (no debounce) — Firestore cost + battery drain
-6. **WizardForm.jsx**: auto-save errors silently swallowed — agents lose data without warning
-7. **AgentDashboard.jsx**: dead html2canvas off-screen mount + 900ms setTimeout still active
-8. **firebase.js**: `enableIndexedDbPersistence` is deprecated, migrate to `persistentLocalCache`
+## Track A — Shipped (May 3, 2026)
+- SEC-1: Removed hardcoded super_admin UID from firestore.rules (commit 0ca2046)
+- SEC-2: Tenant-scoped leaderboard reads (commit 0ca2046)
+- SEC-3: Tenant-scoped notification reads (commit 0ca2046)
+- SEC-4: Scoped unit_manager writes (commit 0ca2046)
+- SEC-6: Wizard auto-save error indicator (commit 57828d7)
+- PERF-1: Removed dead off-screen AgentReportDocument mount (commit 0e9b6f2)
+- PERF-3: Migrated to persistentLocalCache + persistentMultipleTabManager (commit 73ce1d0)
+- Note: PERF-2 (1500ms debounce) was already in place pre-Track A
 
-## Cosmetic Inconsistencies (low priority, not blocking)
-- `MotivationalCarousel.jsx:367` uses hex literal `bg-[#01696f]/8` instead of CSS var
-- A few components use `bg-[var(--color-surface)]` arbitrary syntax instead of `bg-card` utility — works fine, just inconsistent
+## Track B — Current Scope
+- WIZARD-1: Submitted-week wizard re-entry UX (this PR)
+- PDF-1: AgentReportDocument named export ignores `confirmedSettlements` and `agentProfile` props — extend signature; ask Tatil at demo whether settlements should appear in agent PDF
+- PDF-2: Manager-tier PDF reports — Unit Manager downloads (Unit / self / specific agent), Branch Manager downloads (Branch / specific unit / specific agent). Reuse @react-pdf/renderer pattern. New components: UnitReportDocument.jsx, BranchReportDocument.jsx
+- CONFIG-1: firestore.indexes.json audit — diff committed indexes against deployed indexes. The campaigns startDate/endDate composite index was missing on production; click-create rescued it but it should live in version control. Audit notifications, leaderboard, history queries too.
+- UX-1: Inline-style audit. `grep -rn "style={{" src/components/`. Anything outside AgentReportDocument.jsx (exempt — react-pdf needs hex inline) is a violation
+- UX-2: Cosmetic color sweep. Replace `bg-[var(--color-surface)]` arbitrary syntax with `bg-card` utility (known: AgentDashboard.jsx:61, ManagerDashboard.jsx:225 + 326, GoalsPanel.jsx:539). Fix MotivationalCarousel.jsx:367 hex literal
+- UX-4: Loading/error/empty state sweep on AgentAwardsPanel, ManagerAwardsPanel, GoalsPanel, PersistencyPanel, SettlementPanel, GapAnalysisPanel
+- BEH-1: WelcomeScreen Epic Meaning copy (user writes copy; Claude Code wires)
+- Mobile audit on real iPhone + Android (user-driven, not Claude Code work)
+
+### Track B is NOT
+- Real Tatil data setup (that's Track C)
+- Cron firing verification (that's Track D)
+- New features
+
+## Deferred — Post-Pilot
+- SEC-5: useEffect exhaustive-deps audit
+- SEC-7: maxLength on free-text inputs
+- PERF-4: useMemo on derived metrics
+- PERF-5: onSnapshot unsubscribe verification
+- PERF-6: Recharts lazy loading
+- PERF-7: react-is direct dep cleanup
 
 ## Session Protocol
 1. Always read this file before writing any code
