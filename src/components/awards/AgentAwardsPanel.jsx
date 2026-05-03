@@ -153,15 +153,21 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   const [activeCategory, setActiveCategory] = useState('monthly');
 
   const now = currentDate ?? new Date();
-  const awards = useMemo(
-    () => computeAgentAwards(confirmedSettlements, submissions, agentProfile, now),
-    [confirmedSettlements, submissions, agentProfile, now] // eslint-disable-line react-hooks/exhaustive-deps
-  );
 
-  const ratioTrends = useMemo(
-    () => computeRatioTrends(submissions),
-    [submissions]
-  );
+  const computation = useMemo(() => {
+    try {
+      return {
+        awards: computeAgentAwards(confirmedSettlements, submissions, agentProfile, now),
+        ratioTrends: computeRatioTrends(submissions),
+        error: null,
+      };
+    } catch (e) {
+      console.error(e);
+      return { awards: {}, ratioTrends: null, error: 'Failed to compute awards.' };
+    }
+  }, [confirmedSettlements, submissions, agentProfile, now]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { awards, ratioTrends, error } = computation;
 
   const categoryAwards = useMemo(() => {
     const all = Object.values(awards).filter((a) => a.category === activeCategory);
@@ -170,6 +176,20 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
     const notYet       = all.filter((a) => !a.eligible && !a.inContention);
     return [...qualified, ...inContention, ...notYet];
   }, [awards, activeCategory]);
+
+  if (!submissions?.length) {
+    return (
+      <div className="card text-center py-10">
+        <p className="text-sm text-ink-muted">Start submitting weekly reports to see your awards progress.</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">

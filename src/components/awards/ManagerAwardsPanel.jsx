@@ -221,6 +221,14 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
     return <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>;
   }
 
+  if (!agentIds?.length) {
+    return (
+      <div className="card text-center py-10">
+        <p className="text-sm text-ink-muted">No agents in your unit yet.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
 
