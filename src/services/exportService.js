@@ -5,18 +5,31 @@ import { formatCurrency } from '../utils/formatters';
 import { AgentReportDocument } from '../components/profile/AgentReportDocument';
 
 // ── generateAgentPDF ──────────────────────────────────────────────────────────
-// agentInfo:   { displayName, email, role, careerLevel }
-// submissions: raw submission docs (all agent submissions)
-// goals:       goals doc from Firestore
-// weekRange:   4 | 8 | 12 | 'year'
-// (legacy 5th arg `domElement` is silently ignored — the report is now built
-//  by @react-pdf/renderer directly from props, no DOM capture required)
-export async function generateAgentPDF(agentInfo, submissions, goals, weekRange) {
+// Options:
+//   agentInfo:            { displayName, email, role, careerLevel }
+//   submissions:          raw submission docs (all agent submissions)
+//   goals:                goals doc from Firestore
+//   weekRange:            4 | 8 | 12 | 'year'
+//   confirmedSettlements: array of settlement docs for the agent (current year)
+//   agentProfile:         user profile doc (agentNumber, monthsInIndustry, etc.)
+//   persistency:          map keyed by `${agentId}_${year}_${mm}` → persistency doc
+export async function generateAgentPDF({
+  agentInfo,
+  submissions,
+  goals,
+  weekRange,
+  confirmedSettlements,
+  agentProfile,
+  persistency,
+}) {
   const doc = createElement(AgentReportDocument, {
     agentInfo,
     submissions,
     goals,
     weekRange,
+    confirmedSettlements,
+    agentProfile,
+    persistency,
   });
 
   const blob = await pdf(doc).toBlob();

@@ -240,17 +240,20 @@ export default function AgentDashboard() {
     setReportModalOpen(false);
     setGenerating(true);
     try {
-      await generateAgentPDF(
-        {
+      await generateAgentPDF({
+        agentInfo: {
           displayName,
           email: userProfile?.email ?? user?.email ?? '',
           role: roleLabel,
           careerLevel: userProfile?.levelTitle ?? userProfile?.careerLevel ?? 'Agent',
         },
-        allSubmissions,
+        submissions: allSubmissions,
         goals,
-        weekRange
-      );
+        weekRange,
+        confirmedSettlements: settlements,
+        agentProfile: userProfile,
+        persistency,
+      });
     } catch (err) {
       console.error('PDF generation failed:', err);
     } finally {
