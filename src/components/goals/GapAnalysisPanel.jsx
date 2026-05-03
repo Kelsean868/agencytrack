@@ -76,7 +76,7 @@ function MetricSection({ row }) {
   );
 }
 
-export default function GapAnalysisPanel({ hierarchy, ytdTotals, loading, title = 'Goal Hierarchy' }) {
+export default function GapAnalysisPanel({ hierarchy, ytdTotals, loading, error = null, title = 'Goal Hierarchy' }) {
   const rows = useMemo(
     () => computeGapAnalysis(hierarchy, ytdTotals),
     [hierarchy, ytdTotals]
@@ -89,6 +89,15 @@ export default function GapAnalysisPanel({ hierarchy, ytdTotals, loading, title 
         {[0, 1].map((i) => (
           <div key={i} className="h-16 rounded-lg bg-border/30 animate-pulse" />
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="card">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">{title}</p>
+        <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
       </div>
     );
   }

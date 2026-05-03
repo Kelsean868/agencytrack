@@ -289,6 +289,18 @@ export default function SettlementPanel() {
     );
   }
 
+  if (!loadingData && agents.length === 0) {
+    return (
+      <div className="flex flex-col gap-6">
+        <div className="card text-center py-10">
+          <p className="text-sm text-ink-muted">
+            No agents in your unit yet. Add agents in the Agent Management panel before recording settlements.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6">
 
@@ -471,7 +483,7 @@ export default function SettlementPanel() {
               <div key={i} className="h-10 bg-border/30 rounded-lg animate-pulse" />
             ))}
           </div>
-        ) : error ? (
+        ) : error && settlements.length === 0 ? (
           <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
         ) : settlements.length === 0 ? (
           <div className="card text-center py-8">
@@ -479,6 +491,9 @@ export default function SettlementPanel() {
           </div>
         ) : (
           <>
+            {error && (
+              <div className="mb-3 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
+            )}
             <div className="overflow-x-auto rounded-xl border border-border bg-surface-raised">
               <table className="text-sm w-full">
                 <thead>

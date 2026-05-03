@@ -283,7 +283,7 @@ function GoalsOverview({ submissions, user, persistencyData }) {
 }
 
 // ── Main component ────────────────────────────────────────────────────────────
-export default function CareerPortal({ submissions, user, persistencyData, hierarchy, hierarchyLoading, ytdTotals }) {
+export default function CareerPortal({ submissions, user, persistencyData, hierarchy, hierarchyLoading, hierarchyError, ytdTotals }) {
   const thisYear = new Date().getFullYear();
 
   const { ytdAPI, ytdApps, avgPersistency, yearsOfService } = useMemo(() => {
@@ -414,6 +414,7 @@ export default function CareerPortal({ submissions, user, persistencyData, hiera
         hierarchy={hierarchy ?? null}
         ytdTotals={ytdTotals ?? { api: ytdAPI, apps: ytdApps, ffiConducted: 0, ciConducted: 0, dials: 0 }}
         loading={hierarchyLoading ?? false}
+        error={hierarchyError ?? null}
         title="Goal Hierarchy"
       />
 

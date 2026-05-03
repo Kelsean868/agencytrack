@@ -106,6 +106,7 @@ export default function AgentDashboard() {
   const [campaignsLoading, setCampaignsLoading] = useState(true);
   const [hierarchy, setHierarchy]               = useState(null);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
+  const [hierarchyError, setHierarchyError]     = useState(null);
   const [showWelcome, setShowWelcome]           = useState(false);
 
   const currentWeek  = useMemo(() => getMostRecentSunday(), []);
@@ -200,9 +201,13 @@ export default function AgentDashboard() {
   useEffect(() => {
     if (!user?.uid) return;
     setHierarchyLoading(true);
+    setHierarchyError(null);
     getGoalHierarchy(TENANT_ID, userProfile?.unitId ?? null, new Date().getFullYear(), user.uid)
       .then(setHierarchy)
-      .catch(console.error)
+      .catch((e) => {
+        console.error(e);
+        setHierarchyError('Failed to load goal hierarchy.');
+      })
       .finally(() => setHierarchyLoading(false));
   }, [user?.uid, userProfile?.unitId]);
 
@@ -488,6 +493,7 @@ export default function AgentDashboard() {
               hierarchy={hierarchy}
               ytdTotals={ytdTotals}
               loading={hierarchyLoading}
+              error={hierarchyError}
               title="Goal Hierarchy"
             />
           </div>
@@ -516,6 +522,7 @@ export default function AgentDashboard() {
             persistencyData={persistency}
             hierarchy={hierarchy}
             hierarchyLoading={hierarchyLoading}
+            hierarchyError={hierarchyError}
             ytdTotals={ytdTotals}
           />
         )
