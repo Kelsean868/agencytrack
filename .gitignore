@@ -59,3 +59,4 @@ functions/create-test-agent.cjs
 functions/create-test-managers.cjs
 
 functions/seed-company-minimums.cjs
+.vercel

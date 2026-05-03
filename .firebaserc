@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "agencytrack-2a610"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }
