@@ -45,7 +45,11 @@ const log = (label, ok, err) => {
 async function main() {
   const env = await initializeTestEnvironment({
     projectId: PROJECT_ID,
-    firestore: { rules: readFileSync('firestore.rules', 'utf8') },
+    firestore: {
+      rules: readFileSync('firestore.rules', 'utf8'),
+      host: '127.0.0.1',
+      port: 8080,
+    },
   });
 
   // Seed: notification owned by AGENT_A
