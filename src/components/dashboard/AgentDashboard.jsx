@@ -124,11 +124,11 @@ export default function AgentDashboard() {
     if (!user?.uid) return;
     setLoading(true);
     Promise.all([
-      getDraft(user.uid, currentWeek).catch(() => null),
-      getAgentSubmissions(user.uid).catch(() => []),
-      getGoals(TENANT_ID, user.uid).catch(() => null),
-      getAgentPersistency(user.uid, thisYear).catch(() => ({})),
-      getSettlements(TENANT_ID, user.uid, thisYear).catch(() => []),
+      getDraft(user.uid, currentWeek).catch((err) => { console.error('[Dashboard/getDraft] FAILED:', err.code, err.message, { uid: user.uid, currentWeek }); return null; }),
+      getAgentSubmissions(user.uid).catch((err) => { console.error('[Dashboard/getAgentSubmissions] FAILED:', err.code, err.message, { uid: user.uid }); return []; }),
+      getGoals(TENANT_ID, user.uid).catch((err) => { console.error('[Dashboard/getGoals] FAILED:', err.code, err.message, { TENANT_ID, uid: user.uid }); return null; }),
+      getAgentPersistency(user.uid, thisYear).catch((err) => { console.error('[Dashboard/getAgentPersistency] FAILED:', err.code, err.message, { uid: user.uid, thisYear }); return {}; }),
+      getSettlements(TENANT_ID, user.uid, thisYear).catch((err) => { console.error('[Dashboard/getSettlements] FAILED:', err.code, err.message, { TENANT_ID, uid: user.uid, thisYear }); return []; }),
     ]).then(([weekSub, subs, agentGoals, pers, setts]) => {
       setCurrentWeekSub(weekSub);
       setAllSubmissions(subs);
@@ -186,13 +186,19 @@ export default function AgentDashboard() {
         const subsMap = {};
         await Promise.all(
           camps.map(async (c) => {
-            const subs = await getCampaignSubmissions(TENANT_ID, c.startDate, c.endDate).catch(() => []);
+            const subs = await getCampaignSubmissions(TENANT_ID, c.startDate, c.endDate)
+              .catch((err) => {
+                console.error('[Campaign/getCampaignSubmissions] FAILED:', err.code, err.message, { campaignId: c.id, startDate: c.startDate, endDate: c.endDate });
+                return [];
+              });
             subsMap[c.id] = subs;
           })
         );
         setCampaignSubs(subsMap);
       })
-      .catch(console.error)
+      .catch((err) => {
+        console.error('[Campaign/getActiveCampaignsForAgent] FAILED:', err.code, err.message, { TENANT_ID, uid: user.uid, unitId: userProfile?.unitId });
+      })
       .finally(() => setCampaignsLoading(false));
   }, [user?.uid, userProfile?.unitId]);
 
@@ -202,7 +208,9 @@ export default function AgentDashboard() {
     setHierarchyLoading(true);
     getGoalHierarchy(TENANT_ID, userProfile?.unitId ?? null, new Date().getFullYear(), user.uid)
       .then(setHierarchy)
-      .catch(console.error)
+      .catch((err) => {
+        console.error('[GoalHierarchy/wrapper] FAILED:', err.code, err.message);
+      })
       .finally(() => setHierarchyLoading(false));
   }, [user?.uid, userProfile?.unitId]);
 

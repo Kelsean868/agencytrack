@@ -41,7 +41,7 @@ export function NotificationProvider({ children }) {
         setLoading(false);
       },
       (err) => {
-        console.error('[Notifications] listener error:', err);
+        console.error('[Notifications] listener error:', err.code, err.message, err);
         setError('Failed to load notifications.');
         setLoading(false);
       }
