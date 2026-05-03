@@ -98,10 +98,13 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
   const [loadingGoals, setLoadingGoals] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     if (!selectedUnit) return;
     setLoadingGoals(true);
+    setLoadError('');
     getUnitGoals(TENANT_ID, selectedUnit, currentYear)
       .then((g) => {
         setExisting(g);
@@ -113,13 +116,17 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
           dials:        g?.dials        ?? '',
         });
       })
-      .catch(console.error)
+      .catch((e) => {
+        console.error(e);
+        setLoadError('Failed to load unit goals.');
+      })
       .finally(() => setLoadingGoals(false));
   }, [selectedUnit, currentYear]);
 
   const handleSave = async () => {
     if (!selectedUnit) return;
     setSaving(true);
+    setSaveError('');
     try {
       await setUnitGoals(TENANT_ID, selectedUnit, currentYear, form, {
         setBy:     user.uid,
@@ -130,7 +137,10 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
       setExisting(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setSaveError('Failed to save unit goals. Please try again.');
+    }
     finally { setSaving(false); }
   };
 
@@ -156,10 +166,16 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
         )}
       </div>
 
-      {!selectedUnit ? (
+      {!isUnitManager && units.length === 0 ? (
+        <div className="card text-center py-10">
+          <p className="text-sm text-ink-muted">No unit managers in this tenant. Add one to set unit goals.</p>
+        </div>
+      ) : !selectedUnit ? (
         <p className="text-sm text-ink-muted italic">No units found.</p>
       ) : loadingGoals ? (
         <div className="h-24 rounded-xl bg-border/30 animate-pulse" />
+      ) : loadError ? (
+        <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{loadError}</div>
       ) : (
         <div className="card flex flex-col gap-4">
           {existing?.setByName && (
@@ -169,6 +185,11 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
             </p>
           )}
           <GoalLevelForm value={form} onChange={setForm} />
+          {saveError && (
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">
+              {saveError}
+            </div>
+          )}
           <button
             onClick={handleSave}
             disabled={saving}
@@ -192,8 +213,13 @@ function BranchGoalsTab({ userProfile }) {
   const [existing, setExisting] = useState(null);
   const [saving, setSaving] = useState(false);
   const [saved,  setSaved]  = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
+    setLoading(true);
+    setLoadError('');
     getBranchGoals(TENANT_ID, currentYear)
       .then((g) => {
         setExisting(g);
@@ -205,11 +231,16 @@ function BranchGoalsTab({ userProfile }) {
           dials:        g?.dials        ?? '',
         });
       })
-      .catch(console.error);
+      .catch((e) => {
+        console.error(e);
+        setLoadError('Failed to load branch goals.');
+      })
+      .finally(() => setLoading(false));
   }, [currentYear]);
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveError('');
     try {
       await setBranchGoals(TENANT_ID, currentYear, form, {
         setBy:     user.uid,
@@ -219,7 +250,10 @@ function BranchGoalsTab({ userProfile }) {
       setExisting(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      console.error(e);
+      setSaveError('Failed to save branch goals. Please try again.');
+    }
     finally { setSaving(false); }
   };
 
@@ -228,24 +262,35 @@ function BranchGoalsTab({ userProfile }) {
       <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
         Branch Goals — {currentYear}
       </p>
-      <div className="card flex flex-col gap-4">
-        {existing?.setByName && (
-          <p className="text-xs text-ink-muted">
-            Last set by {existing.setByName}
-            {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
-          </p>
-        )}
-        <GoalLevelForm value={form} onChange={setForm} />
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className={`h-10 px-4 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 self-start ${
-            saved ? 'bg-success/15 text-success' : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
-          }`}
-        >
-          {saving ? 'Saving…' : saved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save Branch Goals'}
-        </button>
-      </div>
+      {loading ? (
+        <div className="h-24 rounded-xl bg-border/30 animate-pulse" />
+      ) : loadError ? (
+        <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{loadError}</div>
+      ) : (
+        <div className="card flex flex-col gap-4">
+          {existing?.setByName && (
+            <p className="text-xs text-ink-muted">
+              Last set by {existing.setByName}
+              {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
+            </p>
+          )}
+          <GoalLevelForm value={form} onChange={setForm} />
+          {saveError && (
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">
+              {saveError}
+            </div>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className={`h-10 px-4 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 self-start ${
+              saved ? 'bg-success/15 text-success' : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
+            }`}
+          >
+            {saving ? 'Saving…' : saved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save Branch Goals'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -259,8 +304,10 @@ function AgentGoalsTab({ onGoalsLoaded }) {
   const [minimums, setMinimums]   = useState(null);
   const [savingId, setSavingId]   = useState(null);
   const [savedId, setSavedId]     = useState(null);
+  const [saveErrorId, setSaveErrorId] = useState(null);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
+  const [partialLoadWarning, setPartialLoadWarning] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -274,9 +321,13 @@ function AgentGoalsTab({ onGoalsLoaded }) {
 
         const gMap = {};
         const eMap = {};
+        let anyFailed = false;
         await Promise.all(
           agentList.map(async (a) => {
-            const g = await getGoals(TENANT_ID, a.id).catch(() => null);
+            const g = await getGoals(TENANT_ID, a.id).catch(() => {
+              anyFailed = true;
+              return null;
+            });
             gMap[a.id] = g;
             eMap[a.id] = g
               ? {
@@ -296,6 +347,7 @@ function AgentGoalsTab({ onGoalsLoaded }) {
         );
         setGoalsMap(gMap);
         setEditMap(eMap);
+        setPartialLoadWarning(anyFailed);
         if (typeof onGoalsLoaded === 'function') {
           onGoalsLoaded(agentList, gMap);
         }
@@ -316,6 +368,7 @@ function AgentGoalsTab({ onGoalsLoaded }) {
 
   const handleSave = async (agent) => {
     setSavingId(agent.id);
+    setSaveErrorId(null);
     try {
       const managerName = userProfile?.name ?? userProfile?.email ?? 'Manager';
       await setGoals(TENANT_ID, agent.id, editMap[agent.id], user.uid, managerName);
@@ -325,6 +378,7 @@ function AgentGoalsTab({ onGoalsLoaded }) {
       setTimeout(() => setSavedId(null), 2500);
     } catch (e) {
       console.error('Failed to save goals:', e);
+      setSaveErrorId(agent.id);
     } finally {
       setSavingId(null);
     }
@@ -366,11 +420,18 @@ function AgentGoalsTab({ onGoalsLoaded }) {
         <span>Persistency: <span className="font-semibold text-ink">{mins.persistency}%</span></span>
       </div>
 
+      {partialLoadWarning && (
+        <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm text-warning">
+          Some agents&rsquo; goals couldn&rsquo;t be loaded. They will appear blank.
+        </div>
+      )}
+
       {agents.map((agent) => {
         const g   = goalsMap[agent.id];
         const e   = editMap[agent.id] ?? emptyGoals();
         const isSaving = savingId === agent.id;
         const isSaved  = savedId  === agent.id;
+        const isSaveError = saveErrorId === agent.id;
 
         const agentLabel = agent.name ?? agent.displayName ?? agent.email ?? agent.id;
 
@@ -416,6 +477,13 @@ function AgentGoalsTab({ onGoalsLoaded }) {
                 {apiWarn  && <BelowFloorWarning label="Annual API" />}
                 {appsWarn && <BelowFloorWarning label="Annual Apps" />}
                 {persWarn && <BelowFloorWarning label="Persistency" />}
+              </div>
+            )}
+
+            {/* Save error — visible feedback if setGoals fails */}
+            {isSaveError && (
+              <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">
+                Failed to save goals for {agentLabel}. Please try again.
               </div>
             )}
 
