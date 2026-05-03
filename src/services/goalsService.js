@@ -122,10 +122,10 @@ export async function setBranchGoals(tenantId, year, targets, meta) {
 
 export async function getGoalHierarchy(tenantId, unitId, year, agentId) {
   const [mins, branchDoc, unitDoc, personalDoc] = await Promise.all([
-    getCompanyMinimums(tenantId).catch((err) => { console.error('[Goals/companyMinimums] FAILED:', err.code, err.message, { tenantId }); return null; }),
-    getBranchGoals(tenantId, year).catch((err) => { console.error('[Goals/branchGoals] FAILED:', err.code, err.message, { tenantId, year }); return null; }),
-    unitId ? getUnitGoals(tenantId, unitId, year).catch((err) => { console.error('[Goals/unitGoals] FAILED:', err.code, err.message, { tenantId, unitId, year }); return null; }) : Promise.resolve(null),
-    agentId ? getGoals(tenantId, agentId).catch((err) => { console.error('[Goals/personalGoals] FAILED:', err.code, err.message, { tenantId, agentId }); return null; }) : Promise.resolve(null),
+    getCompanyMinimums(tenantId).catch(() => null),
+    getBranchGoals(tenantId, year).catch(() => null),
+    unitId ? getUnitGoals(tenantId, unitId, year).catch(() => null) : Promise.resolve(null),
+    agentId ? getGoals(tenantId, agentId).catch(() => null) : Promise.resolve(null),
   ]);
 
   const p = (v) => (parseFloat(v) > 0 ? parseFloat(v) : null);

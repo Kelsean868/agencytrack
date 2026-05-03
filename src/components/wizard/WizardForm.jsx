@@ -162,11 +162,7 @@ export default function WizardForm({ onClose, initialWeek }) {
 
   useEffect(() => {
     if (!user) return;
-    getLastSubmission(user.uid)
-      .then(setLastWeekData)
-      .catch((err) => {
-        console.error('[Submission/getLastSubmission] FAILED:', err.code, err.message, { uid: user.uid });
-      });
+    getLastSubmission(user.uid).then(setLastWeekData).catch(console.error);
   }, [user]);
 
   useEffect(() => {
@@ -178,9 +174,7 @@ export default function WizardForm({ onClose, initialWeek }) {
         setDraftStatus(status ?? null);
         setFormData((prev) => ({ ...prev, ...fields }));
       })
-      .catch((err) => {
-        console.error('[Submission/getDraft] FAILED:', err.code, err.message, { uid: user.uid, weekStarting });
-      });
+      .catch(console.error);
   }, [weekStarting, user]);
 
   // Auto-save on formData change AND on screen/step change
