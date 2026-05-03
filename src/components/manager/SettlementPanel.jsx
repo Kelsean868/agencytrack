@@ -479,7 +479,7 @@ export default function SettlementPanel() {
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto rounded-xl border border-border bg-white">
+            <div className="overflow-x-auto rounded-xl border border-border bg-surface-raised">
               <table className="text-sm w-full">
                 <thead>
                   <tr className="bg-surface border-b border-border">
