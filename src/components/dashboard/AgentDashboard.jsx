@@ -217,7 +217,10 @@ export default function AgentDashboard() {
     try { await signOut(); } catch (err) { console.error(err); }
   };
 
-  const toggleDark = () => document.documentElement.classList.toggle('dark');
+  const toggleDark = () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('agencytrack-dark', isDark ? '1' : '0');
+  };
 
   const openWizardForWeek = (week) => {
     setWizardWeek(week);
@@ -332,7 +335,7 @@ export default function AgentDashboard() {
           <NotificationBell />
           <button
             onClick={toggleDark}
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-[var(--color-surface)] dark:bg-ink/10 text-ink-muted hover:text-ink transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-full bg-card text-ink-muted hover:text-ink transition-colors"
             aria-label="Toggle dark mode"
           >
             <Sun size={18} className="dark:hidden" />
@@ -340,7 +343,7 @@ export default function AgentDashboard() {
           </button>
           <button
             onClick={handleSignOut}
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-[var(--color-surface)] dark:bg-ink/10 text-ink-muted hover:text-danger transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-full bg-card text-ink-muted hover:text-danger transition-colors"
             aria-label="Sign out"
           >
             <LogOut size={18} />

@@ -11,7 +11,7 @@ export default function NotificationBell() {
     <>
       <button
         onClick={() => setOpen((v) => !v)}
-        className="relative w-11 h-11 flex items-center justify-center rounded-full bg-white dark:bg-ink/10 text-ink-muted hover:text-ink transition-colors"
+        className="relative w-11 h-11 flex items-center justify-center rounded-full bg-surface-raised text-ink-muted hover:text-ink transition-colors"
         aria-label={`Notifications${unreadCount > 0 ? ` — ${unreadCount} unread` : ''}`}
       >
         <Bell size={18} />

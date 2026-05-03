@@ -13,7 +13,7 @@ export default function ReportRangeModal({ onGenerate, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+      <div className="bg-surface-raised rounded-2xl shadow-xl w-full max-w-sm p-6 border border-border">
 
         <div className="flex items-start justify-between mb-1">
           <h2 className="text-lg font-bold text-ink">Generate Performance Report</h2>
@@ -35,7 +35,7 @@ export default function ReportRangeModal({ onGenerate, onClose }) {
               className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
                 selected === opt.value
                   ? 'bg-primary text-white border-primary'
-                  : 'bg-white text-ink-muted border-border hover:border-primary/40 hover:text-ink'
+                  : 'bg-surface-raised text-ink-muted border-border hover:border-primary/40 hover:text-ink'
               }`}
             >
               {opt.label}
