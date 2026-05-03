@@ -14,28 +14,42 @@ export default {
       },
       colors: {
         primary: {
-          DEFAULT: '#01696f',
-          dark: '#014e52',
-          light: '#018a91',
+          DEFAULT: 'var(--color-primary)',
+          dark: 'var(--color-primary-dark)',
+          light: 'var(--color-primary-light)',
+          tint: 'var(--color-primary-tint)',
         },
         surface: {
-          DEFAULT: '#f7f6f2',
-          raised: '#ffffff',
-          muted: '#f0efe9',
+          DEFAULT: 'var(--color-bg)',
+          raised: 'var(--color-surface-raised)',
+          muted: 'var(--color-surface-muted)',
+        },
+        card: {
+          DEFAULT: 'var(--color-surface)',
+          raised: 'var(--color-surface-raised)',
         },
         ink: {
-          DEFAULT: '#28251d',
-          muted: '#6b6560',
-          faint: '#a8a39c',
+          DEFAULT: 'var(--color-text)',
+          muted: 'var(--color-text-muted)',
+          faint: 'var(--color-text-faint)',
         },
-        success: '#2d7a4f',
-        warning: '#b45309',
-        danger: '#c0392b',
+        success: {
+          DEFAULT: 'var(--color-success)',
+          tint: 'var(--color-success-tint)',
+        },
+        warning: {
+          DEFAULT: 'var(--color-warning)',
+          tint: 'var(--color-warning-tint)',
+        },
+        danger: {
+          DEFAULT: 'var(--color-danger)',
+          tint: 'var(--color-danger-tint)',
+        },
       },
       boxShadow: {
-        sm: '0 1px 3px rgba(40,37,29,0.06), 0 1px 2px rgba(40,37,29,0.04)',
-        md: '0 4px 12px rgba(40,37,29,0.08), 0 2px 4px rgba(40,37,29,0.04)',
-        lg: '0 10px 30px rgba(40,37,29,0.10), 0 4px 8px rgba(40,37,29,0.06)',
+        sm: 'var(--shadow-sm)',
+        md: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
       },
       borderRadius: {
         DEFAULT: '0.5rem',
