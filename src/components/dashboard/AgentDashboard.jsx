@@ -50,7 +50,10 @@ const TABS = [
 
 function TabBar({ active, onChange }) {
   return (
-    <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border mb-6 overflow-x-auto">
+    <nav
+      aria-label="Dashboard sections"
+      className="flex gap-1 p-1 rounded-xl bg-surface border border-border mb-6 overflow-x-auto"
+    >
       {TABS.map((t) => (
         <button
           key={t.id}
@@ -64,7 +67,7 @@ function TabBar({ active, onChange }) {
           {t.label}
         </button>
       ))}
-    </div>
+    </nav>
   );
 }
 
@@ -316,6 +319,10 @@ export default function AgentDashboard() {
         </div>
       </header>
 
+      {/* Tab bar */}
+      <TabBar active={activeTab} onChange={setActiveTab} />
+
+      <main>
       {/* Unlock banner */}
       {showUnlockBanner && (
         <button
@@ -338,9 +345,6 @@ export default function AgentDashboard() {
           </button>
         </button>
       )}
-
-      {/* Tab bar */}
-      <TabBar active={activeTab} onChange={setActiveTab} />
 
       {/* ── DASHBOARD TAB ── */}
       {activeTab === 'dashboard' && (
@@ -624,6 +628,7 @@ export default function AgentDashboard() {
             ))}
         </div>
       )}
+      </main>
     </div>
   );
 }

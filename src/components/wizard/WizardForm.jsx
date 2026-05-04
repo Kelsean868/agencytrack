@@ -344,10 +344,11 @@ export default function WizardForm({ onClose, initialWeek }) {
         {/* Date picker */}
         {screen === 'date' && (
           <div className="px-4 py-4 max-w-lg mx-auto">
-            <p className="text-sm text-ink-muted mb-4">
+            <label htmlFor="wizard-week" className="block text-sm text-ink-muted mb-4">
               Select the Sunday this reporting week starts on.
-            </p>
+            </label>
             <select
+              id="wizard-week"
               value={localWeekChoice}
               onChange={(e) => { setLocalWeekChoice(e.target.value); setError(''); }}
               className="w-full h-11 px-3 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)] text-[var(--color-text)] text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 mb-4"

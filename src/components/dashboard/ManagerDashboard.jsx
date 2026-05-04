@@ -215,7 +215,10 @@ export default function ManagerDashboard() {
         </header>
 
         {/* Tab bar */}
-        <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border mb-6 overflow-x-auto">
+        <nav
+          aria-label="Manager sections"
+          className="flex gap-1 p-1 rounded-xl bg-surface border border-border mb-6 overflow-x-auto"
+        >
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -229,8 +232,9 @@ export default function ManagerDashboard() {
               {t.label}
             </button>
           ))}
-        </div>
+        </nav>
 
+        <main>
         {/* ── Overview ── */}
         {activeTab === 'overview' && (
           <div>
@@ -404,6 +408,7 @@ export default function ManagerDashboard() {
         {activeTab === 'leaderboard' && <Leaderboard />}
 
         {activeTab === 'profile' && <ProfileScreen />}
+        </main>
       </div>
     </>
   );
