@@ -64,7 +64,8 @@
 Known-harmless patterns to filter:
 - `[AgencyTrack] Auth claims: …` — intentional AuthContext logging
 - `[AgencyTrack] UID: …` — intentional AuthContext logging
-- 1× `net::ERR_ABORTED` on initial Firestore Listen channel POST when AuthContext mounts under StrictMode, immediately followed by a successful retry on the next reqid
+- 1–2× `net::ERR_ABORTED` on initial Firestore Listen channel POST when AuthContext mounts under StrictMode, immediately followed by a successful retry on the next reqid. Filter regex: `firestore\.googleapis\.com/.*Listen/channel` (broader than the older `Listen.*\?gsessionid=` — actual abort URLs interleave other params before `gsessionid`).
+- 1–3× `net::ERR_ABORTED` on Fontshare WOFF2 font requests (`cdn.fontshare.com/.*.woff2`) — browser cancels font fetches when the page paints before the font is needed, especially behind the Vercel SSO bypass-cookie redirect. Fonts load successfully on the next paint.
 
 DevTools issues panel (NOT runtime errors, accessibility-only):
 - Form field id/name missing (count: __)
