@@ -84,6 +84,39 @@ function buildSparklinePath(values, width, height) {
   }).join(' ');
 }
 
+function latestPersistencyPercent(persistencyMap) {
+  if (!persistencyMap || typeof persistencyMap !== 'object') return null;
+  const entries = Object.values(persistencyMap);
+  if (!entries.length) return null;
+  const sorted = [...entries].sort((a, b) => {
+    const ka = `${a.year}-${String(a.month).padStart(2, '0')}`;
+    const kb = `${b.year}-${String(b.month).padStart(2, '0')}`;
+    return kb.localeCompare(ka);
+  });
+  const v = parseFloat(sorted[0]?.persistency);
+  return Number.isFinite(v) ? v : null;
+}
+
+function periodLabel(periodKey) {
+  if (!periodKey) return '—';
+  const qm = String(periodKey).match(/^(\d{4})-Q(\d)$/);
+  if (qm) return `Q${qm[2]} ${qm[1]}`;
+  const mm = String(periodKey).match(/^(\d{4})-(\d{2})$/);
+  if (mm) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const idx = parseInt(mm[2], 10) - 1;
+    return `${months[idx] ?? mm[2]} ${mm[1]}`;
+  }
+  return periodKey;
+}
+
+function formatConfirmedDate(ts) {
+  if (!ts) return '—';
+  const d = ts.toDate ? ts.toDate() : (ts instanceof Date ? ts : new Date(ts));
+  if (Number.isNaN(d?.getTime?.())) return '—';
+  return d.toLocaleDateString('en-TT', { year: '2-digit', month: 'short', day: 'numeric' });
+}
+
 // ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   page: {
@@ -333,7 +366,10 @@ function AwardRow({ name, requirement, progress, status }) {
 }
 
 // ── Main report component (named export — used by exportService) ──────────────
-export function AgentReportDocument({ agentInfo, submissions, goals, weekRange }) {
+export function AgentReportDocument({
+  agentInfo, submissions, goals, weekRange,
+  confirmedSettlements, agentProfile, persistency,
+}) {
   const now     = new Date();
   const year    = now.getFullYear();
   const dateStr = now.toLocaleDateString('en-TT', { year: 'numeric', month: 'long', day: 'numeric' });
@@ -363,6 +399,20 @@ export function AgentReportDocument({ agentInfo, submissions, goals, weekRange }
   const ytdAPIGoal = parseFloat(goals?.annualAPI ?? goals?.personalCommitment?.annualAPI) || 0;
   const weeksSubmittedYTD = yearSubs.length;
   const avgAPIperApp      = ytdApps > 0 ? Math.round(ytdAPI / ytdApps) : 0;
+
+  // ── Settled YTD (from confirmed settlements) ──────────────────────────────
+  const settledYTD = (confirmedSettlements ?? [])
+    .filter((s) => String(s.periodKey ?? '').startsWith(String(year)))
+    .reduce((sum, s) => sum + (parseFloat(s.settledAPI) || 0), 0);
+
+  const settledAppsYTD = (confirmedSettlements ?? [])
+    .filter((s) => String(s.periodKey ?? '').startsWith(String(year)))
+    .reduce((sum, s) => sum + (parseFloat(s.settledApps) || 0), 0);
+
+  const hasSettlements = (confirmedSettlements ?? []).length > 0;
+  const heroPrimaryAPI = hasSettlements ? settledYTD : ytdAPI;
+  const heroEyebrow = hasSettlements ? 'YTD API · Settled' : 'YTD API · Submitted';
+  const heroAppsValue = hasSettlements ? settledAppsYTD : ytdApps;
 
   // ── Sparklines (last 4 weeks) ─────────────────────────────────────────────
   const last4 = sorted.slice(0, 4).reverse().map((s) => extractFields(s));
@@ -445,7 +495,12 @@ export function AgentReportDocument({ agentInfo, submissions, goals, weekRange }
   const appsNeeded       = nextLevel ? Math.max(0, nextLevel.minApps - ytdApps) : 0;
 
   // ── Awards ────────────────────────────────────────────────────────────────
-  const awardsObj = computeAgentAwards([], submissions ?? [], {}, now);
+  const awardsObj = computeAgentAwards(
+    confirmedSettlements ?? [],
+    submissions ?? [],
+    agentProfile ?? {},
+    now
+  );
   const awardList = Object.values(awardsObj);
   const inProgressAwards = awardList.filter((a) => (a.progressPercent ?? 0) > 0 && (a.progressPercent ?? 0) < 100);
   const achievedAwards   = awardList.filter((a) => (a.progressPercent ?? 0) >= 100);
@@ -459,7 +514,11 @@ export function AgentReportDocument({ agentInfo, submissions, goals, weekRange }
 
   // ──────────────────────────────────────────────────────────────────────────
   const summaryCards = [
-    { label: 'YTD Apps',        value: String(ytdApps),                                       spark: appsSpark  },
+    {
+      label: hasSettlements ? 'YTD Apps · Settled' : 'YTD Apps',
+      value: String(heroAppsValue),
+      spark: appsSpark,
+    },
     { label: 'Weeks Submitted', value: String(weeksSubmittedYTD),                              spark: weeksSpark },
     { label: 'Avg API / App',   value: avgAPIperApp > 0 ? formatCurrency(avgAPIperApp) : '—', spark: avgSpark   },
   ];
@@ -475,6 +534,19 @@ export function AgentReportDocument({ agentInfo, submissions, goals, weekRange }
           <Text style={styles.headerMeta}>
             {[agentInfo?.role, `Generated ${dateStr}`, rangeLabel].filter(Boolean).join('  ·  ')}
           </Text>
+          <Text style={[styles.headerMeta, { marginTop: 2 }]}>
+            {[
+              agentProfile?.agentNumber ? `Agent #${agentProfile.agentNumber}` : null,
+              (() => {
+                const m = parseFloat(agentProfile?.monthsInIndustry ?? agentProfile?.monthsAtTatil);
+                return Number.isFinite(m) && m > 0 ? `${Math.round(m)} months in service` : null;
+              })(),
+              (() => {
+                const p = latestPersistencyPercent(persistency);
+                return p !== null ? `Persistency ${p.toFixed(0)}%` : null;
+              })(),
+            ].filter(Boolean).join('  ·  ') || '—'}
+          </Text>
         </View>
 
         {/* ═══ Executive summary ════════════════════════════════════════════ */}
@@ -488,15 +560,30 @@ export function AgentReportDocument({ agentInfo, submissions, goals, weekRange }
               padding: 16,
               marginRight: 14,
             }}>
-              <Text style={{ color: COLORS.white, fontSize: 8, opacity: 0.7, fontFamily: 'Helvetica-Bold', letterSpacing: 0.8, marginBottom: 4 }}>
-                YTD API
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <Text style={{ color: COLORS.white, fontSize: 8, opacity: 0.7, fontFamily: 'Helvetica-Bold', letterSpacing: 0.8 }}>
+                  {heroEyebrow.toUpperCase()}
+                </Text>
+                {!hasSettlements && (
+                  <Pill
+                    label="ESTIMATED"
+                    bg={COLORS.warningBg}
+                    fg={COLORS.warning}
+                    minHeight={14}
+                  />
+                )}
+              </View>
               <Text style={{ color: COLORS.white, fontSize: 26, fontFamily: 'Helvetica-Bold', marginBottom: 4 }}>
-                {formatCurrency(ytdAPI)}
+                {formatCurrency(heroPrimaryAPI)}
               </Text>
+              {hasSettlements && (
+                <Text style={{ color: COLORS.white, fontSize: 8, opacity: 0.75, marginBottom: 2 }}>
+                  Submitted: {formatCurrency(ytdAPI)}
+                </Text>
+              )}
               <Text style={{ color: COLORS.white, fontSize: 8, opacity: 0.85, marginBottom: 10 }}>
                 {ytdAPIGoal > 0
-                  ? `Goal: ${formatCurrency(ytdAPIGoal)}  |  ${formatCurrency(Math.max(0, ytdAPIGoal - ytdAPI))} remaining`
+                  ? `Goal: ${formatCurrency(ytdAPIGoal)}  |  ${formatCurrency(Math.max(0, ytdAPIGoal - heroPrimaryAPI))} remaining`
                   : 'No goal set'}
               </Text>
               <Sparkline values={apiSpark} width={180} height={36} color={COLORS.white} />
@@ -855,6 +942,96 @@ export function AgentReportDocument({ agentInfo, submissions, goals, weekRange }
             </Text>
           )}
         </View>
+
+        {/* ═══ Settlement History ═══════════════════════════════════════════ */}
+        {(() => {
+          const settlementRows = (confirmedSettlements ?? [])
+            .filter((s) => String(s.periodKey ?? '').startsWith(String(year)))
+            .sort((a, b) => String(b.periodKey ?? '').localeCompare(String(a.periodKey ?? '')));
+
+          const COL = {
+            period: 100,
+            api:    115,
+            apps:    70,
+            pers:    80,
+            by:     100,
+            date:    66,
+          };
+
+          return (
+            <View style={styles.section} wrap={settlementRows.length > 8}>
+              <Text style={styles.sectionTitle}>Settlement History — {year}</Text>
+
+              {settlementRows.length === 0 ? (
+                <Text style={{ fontSize: 9, color: COLORS.textMuted, paddingVertical: 8 }}>
+                  No confirmed settlements yet for {year}.
+                </Text>
+              ) : (
+                <View>
+                  {/* Header row */}
+                  <View style={styles.tableHeaderRow}>
+                    <View style={{ width: COL.period }}>
+                      <Text style={styles.tableHeaderCell}>Period</Text>
+                    </View>
+                    <View style={{ width: COL.api, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                      <Text style={[styles.tableHeaderCell, { textAlign: 'right' }]}>Settled API</Text>
+                    </View>
+                    <View style={{ width: COL.apps, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                      <Text style={[styles.tableHeaderCell, { textAlign: 'right' }]}>Settled Apps</Text>
+                    </View>
+                    <View style={{ width: COL.pers, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                      <Text style={[styles.tableHeaderCell, { textAlign: 'right' }]}>Persistency</Text>
+                    </View>
+                    <View style={{ width: COL.by }}>
+                      <Text style={styles.tableHeaderCell}>Confirmed By</Text>
+                    </View>
+                    <View style={{ width: COL.date }}>
+                      <Text style={styles.tableHeaderCell}>Date</Text>
+                    </View>
+                  </View>
+
+                  {/* Body rows */}
+                  {settlementRows.map((s, i) => {
+                    const persVal = parseFloat(s.persistency);
+                    const persStr = Number.isFinite(persVal) && persVal > 0 ? `${persVal.toFixed(0)}%` : '—';
+                    return (
+                      <View
+                        key={s.id ?? `${s.periodKey}-${i}`}
+                        style={[
+                          styles.tableRow,
+                          { backgroundColor: i % 2 === 0 ? COLORS.surfaceRaised : COLORS.surface },
+                        ]}
+                      >
+                        <View style={{ width: COL.period }}>
+                          <Text style={{ fontSize: 9 }}>{periodLabel(s.periodKey)}</Text>
+                        </View>
+                        <View style={{ width: COL.api, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                          <Text style={{ fontSize: 9, textAlign: 'right' }}>
+                            {formatCurrency(parseFloat(s.settledAPI) || 0)}
+                          </Text>
+                        </View>
+                        <View style={{ width: COL.apps, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                          <Text style={{ fontSize: 9, textAlign: 'right' }}>
+                            {String(parseFloat(s.settledApps) || 0)}
+                          </Text>
+                        </View>
+                        <View style={{ width: COL.pers, flexDirection: 'row', justifyContent: 'flex-end' }}>
+                          <Text style={{ fontSize: 9, textAlign: 'right' }}>{persStr}</Text>
+                        </View>
+                        <View style={{ width: COL.by }}>
+                          <Text style={{ fontSize: 9 }}>{s.confirmedByName ?? '—'}</Text>
+                        </View>
+                        <View style={{ width: COL.date }}>
+                          <Text style={{ fontSize: 9 }}>{formatConfirmedDate(s.confirmedAt)}</Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          );
+        })()}
 
         {/* ═══ Footer band ══════════════════════════════════════════════════ */}
         <View style={styles.footerBand} fixed>
