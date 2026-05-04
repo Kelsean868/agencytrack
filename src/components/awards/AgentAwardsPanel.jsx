@@ -226,7 +226,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
 
       {/* Ratio Trends section */}
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Activity Ratio Trends</h3>
+        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Activity Ratio Trends</h2>
         <div className="grid grid-cols-2 gap-3">
           <RatioCard
             label="CI to Sale"

@@ -98,7 +98,7 @@ export default function LoginScreen() {
         </svg>
       </div>
 
-      <div className="card w-full max-w-sm" style={{ position: 'relative', zIndex: 1 }}>
+      <main className="card w-full max-w-sm" style={{ position: 'relative', zIndex: 1 }}>
 
         {/* Brand */}
         <div className="text-center mb-8">
@@ -170,7 +170,7 @@ export default function LoginScreen() {
           </button>
         </div>
 
-      </div>
+      </main>
 
     </div>
   );
