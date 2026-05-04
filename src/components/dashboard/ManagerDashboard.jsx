@@ -159,16 +159,18 @@ export default function ManagerDashboard() {
     return <WizardForm onClose={() => setShowWizard(false)} />;
   }
 
+  if (meetingActive) {
+    return (
+      <MeetingMode
+        submissions={meetingSubmissions}
+        selectedWeek={selectedWeek}
+        onClose={() => setMeetingActive(false)}
+      />
+    );
+  }
+
   return (
     <>
-      {meetingActive && (
-        <MeetingMode
-          submissions={meetingSubmissions}
-          selectedWeek={selectedWeek}
-          onClose={() => setMeetingActive(false)}
-        />
-      )}
-
       <div className="min-h-screen bg-surface px-4 py-6 max-w-5xl mx-auto">
 
         {/* Header */}
