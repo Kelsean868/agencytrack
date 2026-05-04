@@ -60,3 +60,13 @@ functions/create-test-managers.cjs
 
 functions/seed-company-minimums.cjs
 .vercel
+
+# Verification artifacts (PDFs, screenshots, exploration reports)
+verification/
+
+# Playwright MCP local state
+.playwright-mcp/
+
+# Playwright browser cache and test artifacts
+test-results/
+playwright-report/
