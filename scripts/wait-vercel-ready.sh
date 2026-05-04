@@ -1,21 +1,44 @@
 #!/usr/bin/env bash
-# wait-vercel-ready.sh — wait for the Vercel deployment of a specific commit SHA to reach SUCCESS.
+# wait-vercel-ready.sh — wait for the Vercel preview deployment of a specific commit SHA to reach SUCCESS.
+#
+# ┌─────────────────────────────────────────────────────────────────────────────┐
+# │ STATUS — preview path PRODUCTION-VERIFIED, production path RETIRED.          │
+# │                                                                              │
+# │ --target preview:    self-verified successfully across 4 commits              │
+# │                      (PR 1 106d093, PR 14 2c94aba, PR 14 a349cdc, plus       │
+# │                      this PR's own self-test). Use freely for post-push      │
+# │                      preview verification.                                   │
+# │                                                                              │
+# │ --target production: 3 consecutive failures on real-use scenarios:           │
+# │                      - PR 1 post-merge (fd189a9): hung on PR-scoped query    │
+# │                        because PR HEAD never advances past the last branch   │
+# │                        commit after merge.                                   │
+# │                      - PR 14 first attempt: same issue (pre-fix).            │
+# │                      - PR 14 post-merge (83e54ad): /statuses fallback        │
+# │                        regex `\{[^{}]*"context":"Vercel"[^{}]*\}` cannot     │
+# │                        span the nested `creator: {...}` field that the      │
+# │                        endpoint returns, so state extraction silently        │
+# │                        returns empty and the helper polls until timeout.     │
+# │                                                                              │
+# │ Three strikes is enough. The production path now hard-errors immediately     │
+# │ instead of polling. Production deploy verification is MANUAL via the         │
+# │ Vercel dashboard at https://vercel.com/<team>/agencytrack until someone      │
+# │ replaces this script with `vercel inspect <url> --wait` (officially          │
+# │ maintained by Vercel, bypasses our custom GitHub-API plumbing entirely —     │
+# │ requires Vercel CLI auth setup).                                             │
+# │                                                                              │
+# │ DO NOT re-attempt fixes to the production path here. If automation becomes   │
+# │ worth the Vercel CLI auth setup, replace this whole script.                  │
+# └─────────────────────────────────────────────────────────────────────────────┘
 #
 # Usage:
-#   scripts/wait-vercel-ready.sh <commit-sha> [--target preview|production] [--pr <number>]
+#   scripts/wait-vercel-ready.sh <commit-sha> [--target preview] [--pr <number>]
 #
-# Two lookup modes:
-#   --target preview     (default) — queries the PR's statusCheckRollup. Requires --pr.
-#                                    Use immediately after pushing to a PR branch.
-#   --target production  — queries the commit's check-runs directly via gh api.
-#                          Not PR-scoped, works for any branch including main.
-#                          Use after merge to wait for the production deploy.
-#
-# Distinguishes BUILDING / SUCCESS / ERROR / FAILURE / MISSING. Hard-stops at 300 s,
-# prints last-known URL on every failure mode.
-#
+# --target preview is the only supported mode. Queries the PR's statusCheckRollup.
+# Requires --pr. Distinguishes BUILDING / SUCCESS / ERROR / FAILURE / MISSING,
+# hard-stops at 300 s, prints last-known URL on every failure mode.
 # Sleep schedule: first check at 60 s, then every 20 s, max 13 iterations.
-# Exits 0 with the preview/production URL on stdout when SUCCESS.
+# Exits 0 with the preview URL on stdout when SUCCESS.
 # Exits non-zero on ERROR/CANCELED/timeout/parse-failure.
 #
 # Uses gh's embedded jq (--jq) — does not require a standalone jq binary.
@@ -35,6 +58,29 @@ while [ $# -gt 0 ]; do
     *)         shift ;;
   esac
 done
+
+# ── Hard-error on retired --target production ──────────────────────────────
+# See the STATUS banner at the top of this file for context. The production
+# polling path failed three consecutive real-use scenarios; rather than
+# letting it run and silently time out (the previous failure mode),
+# hard-error immediately and direct the caller to the manual fallback.
+if [ "$TARGET" = "production" ]; then
+  cat >&2 <<'EOF'
+ERROR: --target production is retired.
+
+The production polling path hung on three consecutive real-use scenarios
+(see STATUS banner at the top of scripts/wait-vercel-ready.sh for details).
+
+Production deploy verification is now MANUAL via the Vercel dashboard:
+  https://vercel.com/<your-team>/agencytrack
+
+If you want to automate this, replace this whole script with:
+  vercel inspect <url> --wait
+
+(Officially maintained by Vercel; requires Vercel CLI auth setup.)
+EOF
+  exit 7
+fi
 
 # Backward-compatible: positional arg after SHA was historically PR_NUMBER.
 if [ -z "$PR_NUMBER" ] && [ "$TARGET" = "preview" ]; then
@@ -97,89 +143,13 @@ fetch_preview() {
   return 0
 }
 
-# ── Production lookup: query the commit's check-runs directly ────────────────
-fetch_production() {
-  # check-runs covers Vercel's modern reporting (CheckRun objects on commits).
-  # Falls back to the older /statuses endpoint if check-runs returns nothing for Vercel.
-  local raw rc
-  raw=$(gh api "repos/${REPO}/commits/${EXPECTED_SHA}/check-runs?per_page=50" 2>&1)
-  rc=$?
-  if [ $rc -ne 0 ]; then
-    echo "FETCH_ERROR"
-    echo ""
-    echo ""
-    echo "$raw"
-    return 1
-  fi
-
-  # Find the most recent Vercel check-run. Names that Vercel uses:
-  #   "Vercel"  — primary deploy check (legacy)
-  #   "Vercel – <project>" — newer naming for project-scoped checks
-  # We grep by name containing "Vercel" and skip "Vercel Preview Comments".
-  local vercel_block
-  vercel_block=$(echo "$raw" | grep -oE '\{[^{}]*"name":"Vercel[^"]*"[^{}]*\}' | grep -v 'Preview Comments' | tail -1)
-
-  local state url
-  if [ -z "$vercel_block" ]; then
-    # Fallback: try the legacy commit-statuses endpoint.
-    raw=$(gh api "repos/${REPO}/commits/${EXPECTED_SHA}/statuses?per_page=50" 2>&1)
-    rc=$?
-    if [ $rc -ne 0 ]; then
-      echo "FETCH_ERROR"
-      echo ""
-      echo ""
-      echo "$raw"
-      return 1
-    fi
-    vercel_block=$(echo "$raw" | grep -oE '\{[^{}]*"context":"Vercel"[^{}]*\}' | head -1)
-    if [ -z "$vercel_block" ]; then
-      echo "MISSING"
-      echo ""
-      echo "$raw"
-      return 0
-    fi
-    state=$(echo "$vercel_block" | grep -oE '"state":"[a-z_]+"' | head -1 | sed 's/.*"state":"\([a-z_]*\)".*/\1/')
-    url=$(echo "$vercel_block"   | grep -oE '"target_url":"[^"]*"' | head -1 | sed 's/.*"target_url":"\([^"]*\)".*/\1/')
-    # Map status states (lowercase) to check-run conclusions for downstream uniformity.
-    case "$state" in
-      "success")  state="success" ;;
-      "pending")  state="in_progress" ;;
-      "failure")  state="failure" ;;
-      "error")    state="failure" ;;
-      *)          state="$state" ;;
-    esac
-  else
-    # check-run JSON: status (in_progress/queued/completed) + conclusion (success/failure/neutral/cancelled/timed_out)
-    local status conclusion
-    status=$(echo "$vercel_block"     | grep -oE '"status":"[a-z_]+"' | head -1 | sed 's/.*"status":"\([a-z_]*\)".*/\1/')
-    conclusion=$(echo "$vercel_block" | grep -oE '"conclusion":"[a-z_]*"' | head -1 | sed 's/.*"conclusion":"\([a-z_]*\)".*/\1/')
-    url=$(echo "$vercel_block"        | grep -oE '"details_url":"[^"]*"' | head -1 | sed 's/.*"details_url":"\([^"]*\)".*/\1/')
-    if [ "$status" = "completed" ]; then
-      case "$conclusion" in
-        "success")               state="success" ;;
-        "failure"|"timed_out")   state="failure" ;;
-        "cancelled")             state="cancelled" ;;
-        *)                       state="$conclusion" ;;
-      esac
-    else
-      state="in_progress"
-    fi
-  fi
-
-  echo "$EXPECTED_SHA"
-  echo "$state"
-  echo "$url"
-  echo "$raw"
-  return 0
-}
+# Production lookup intentionally removed — see retirement banner at the top.
+# The production --target is now blocked at argument parsing and never reaches
+# this point.
 
 handle_check() {
   local result head state url raw
-  if [ "$TARGET" = "production" ]; then
-    result=$(fetch_production)
-  else
-    result=$(fetch_preview)
-  fi
+  result=$(fetch_preview)
   head=$(echo "$result"  | sed -n '1p')
   state=$(echo "$result" | sed -n '2p')
   url=$(echo "$result"   | sed -n '3p')
@@ -197,13 +167,13 @@ handle_check() {
       exit 3
       ;;
     "MISSING")
-      echo "INFO t=$(elapsed)s — no Vercel ${TARGET} check yet for ${EXPECTED_SHA:0:9} (still propagating)"
+      echo "INFO t=$(elapsed)s — no Vercel preview check yet for ${EXPECTED_SHA:0:9} (still propagating)"
       return 1
       ;;
   esac
 
-  # Preview-only: verify PR HEAD matches expected SHA before trusting state.
-  if [ "$TARGET" = "preview" ] && [ -n "$head" ]; then
+  # Verify PR HEAD matches expected SHA before trusting state.
+  if [ -n "$head" ]; then
     if [ "${head:0:${#EXPECTED_SHA}}" != "$EXPECTED_SHA" ] && [ "${EXPECTED_SHA:0:${#head}}" != "$head" ]; then
       echo "INFO t=$(elapsed)s — PR HEAD is ${head:0:9}, expected ${EXPECTED_SHA:0:9} (waiting for matching push)"
       return 1
@@ -239,7 +209,7 @@ cleanup_on_timeout() {
   exit 6
 }
 
-echo "INFO waiting ${FIRST_DELAY}s before first check (target=$TARGET expected_sha=${EXPECTED_SHA:0:9})"
+echo "INFO waiting ${FIRST_DELAY}s before first check (target=preview expected_sha=${EXPECTED_SHA:0:9})"
 sleep $FIRST_DELAY
 handle_check || true
 
