@@ -358,7 +358,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     <div className="fixed inset-0 z-50 flex flex-col bg-ink">
 
       {/* Top bar — 3-col grid */}
-      <div className="grid grid-cols-3 items-center px-6 py-4 shrink-0">
+      <header className="grid grid-cols-3 items-center px-6 py-4 shrink-0">
         <p className="text-sm text-white/40">{slide + 1} / {totalSlides}</p>
 
         {/* Mode toggle */}
@@ -392,15 +392,15 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
             <X size={22} />
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Slide content */}
-      <div className="flex flex-1 overflow-hidden">
+      <main className="flex flex-1 overflow-hidden">
         {renderSlide()}
-      </div>
+      </main>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between px-6 py-5 shrink-0">
+      <footer className="flex items-center justify-between px-6 py-5 shrink-0">
         <button
           onClick={() => go(-1)}
           disabled={isFirst}
@@ -432,7 +432,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
         >
           <ChevronRight size={28} />
         </button>
-      </div>
+      </footer>
     </div>
   );
 }
