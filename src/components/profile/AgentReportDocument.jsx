@@ -10,7 +10,7 @@
  */
 import {
   Document, Page, View, Text, StyleSheet,
-  Svg, Rect, Line, Path,
+  Svg, Line, Path,
 } from '@react-pdf/renderer';
 import { extractFields } from '../../utils/extractFields';
 import { computeAgentAwards } from '../../utils/awardsEngine';
@@ -414,6 +414,41 @@ export function AgentReportDocument({
   const heroEyebrow = hasSettlements ? 'YTD API · Settled' : 'YTD API · Submitted';
   const heroAppsValue = hasSettlements ? settledAppsYTD : ytdApps;
 
+  // ── Effective YTD (settled + non-overlapping submitted) ─────────────
+  // Mirrors awardsEngine annual aggregation logic.
+  const yearKeys = Array.from({ length: 12 }, (_, i) =>
+    `${year}-${String(i + 1).padStart(2, '0')}`
+  );
+
+  const annualConf = (confirmedSettlements ?? []).filter((d) =>
+    yearKeys.includes(d.periodKey)
+  );
+  const settledYTD_API  = annualConf.reduce((s, d) => s + (parseFloat(d.settledAPI)  || 0), 0);
+  const settledYTD_Apps = annualConf.reduce((s, d) => s + (parseFloat(d.settledApps) || 0), 0);
+  const confirmedMonthKeys = new Set(annualConf.map((d) => d.periodKey));
+
+  const subsByMonth = {};
+  yearSubs.forEach((s) => {
+    const mk = (s.weekStarting ?? '').substring(0, 7);
+    if (!mk) return;
+    if (!subsByMonth[mk]) subsByMonth[mk] = { api: 0, apps: 0 };
+    subsByMonth[mk].api  += parseFloat(s.apiSold)          || 0;
+    subsByMonth[mk].apps += parseFloat(s.applicationsSold) || 0;
+  });
+
+  let pendingYTD_API = 0;
+  let pendingYTD_Apps = 0;
+  yearKeys.forEach((mk) => {
+    if (!confirmedMonthKeys.has(mk) && subsByMonth[mk]) {
+      pendingYTD_API  += subsByMonth[mk].api;
+      pendingYTD_Apps += subsByMonth[mk].apps;
+    }
+  });
+
+  const effectiveYTD_API  = settledYTD_API  + pendingYTD_API;
+  const effectiveYTD_Apps = settledYTD_Apps + pendingYTD_Apps;
+  const hasSettlementsForYear = annualConf.length > 0;
+
   // ── Sparklines (last 4 weeks) ─────────────────────────────────────────────
   const last4 = sorted.slice(0, 4).reverse().map((s) => extractFields(s));
   const apiSpark   = last4.map((f) => f.apiSold);
@@ -477,22 +512,25 @@ export function AgentReportDocument({
   const displayBullets = focusBullets.slice(0, 3);
 
   // ── API progress bar geometry ─────────────────────────────────────────────
-  const barMax      = Math.max(ytdAPIGoal || MDRT_THRESHOLD, MDRT_THRESHOLD, ytdAPI * 1.05, 300000);
+  const barMax      = Math.max(ytdAPIGoal || MDRT_THRESHOLD, MDRT_THRESHOLD, effectiveYTD_API * 1.05, 300000);
   const barWidth    = CONTENT_W;
   const barHeight   = 22;
-  const fillWidth   = Math.max(0, Math.min(barWidth, (ytdAPI / barMax) * barWidth));
+  const settledFillWidth = Math.max(0, Math.min(barWidth, (settledYTD_API / barMax) * barWidth));
+  const pendingFillWidth = Math.max(0, Math.min(barWidth - settledFillWidth, (pendingYTD_API / barMax) * barWidth));
   const floorX      = (COMPANY_FLOOR  / barMax) * barWidth;
   const mdrtX       = (MDRT_THRESHOLD / barMax) * barWidth;
   const goalX       = ytdAPIGoal > 0 ? (ytdAPIGoal / barMax) * barWidth : null;
-  const achievedPct = Math.round(Math.min(100, (ytdAPI / barMax) * 100));
+  const achievedPct = Math.round(Math.min(100, (effectiveYTD_API / barMax) * 100));
 
-  // ── Career level ──────────────────────────────────────────────────────────
-  const qualifiedLevels = CAREER_LEVELS.filter((l) => ytdAPI >= l.minAPI && ytdApps >= l.minApps);
+  // ── Career level (uses effective YTD = settled + non-overlapping submitted) ─
+  const qualifiedLevels = CAREER_LEVELS.filter((l) =>
+    effectiveYTD_API >= l.minAPI && effectiveYTD_Apps >= l.minApps
+  );
   const currentLevel    = qualifiedLevels.length > 0 ? qualifiedLevels[qualifiedLevels.length - 1] : CAREER_LEVELS[0];
   const nextLevel       = currentLevel.level < 7 ? CAREER_LEVELS.find((l) => l.level === currentLevel.level + 1) : null;
   const isMaxLevel      = currentLevel.level === 7;
-  const levelProgressPct = nextLevel ? Math.min(99, (ytdAPI / nextLevel.minAPI) * 100) : 100;
-  const appsNeeded       = nextLevel ? Math.max(0, nextLevel.minApps - ytdApps) : 0;
+  const levelProgressPct = nextLevel ? Math.min(99, (effectiveYTD_API / nextLevel.minAPI) * 100) : 100;
+  const appsNeeded       = nextLevel ? Math.max(0, nextLevel.minApps - effectiveYTD_Apps) : 0;
 
   // ── Awards ────────────────────────────────────────────────────────────────
   const awardsObj = computeAgentAwards(
@@ -664,7 +702,7 @@ export function AgentReportDocument({
                 </View>
                 {nextLevel && (
                   <Text style={{ marginTop: 4, fontSize: 8, color: COLORS.textMuted }}>
-                    {`${formatCurrency(ytdAPI)} of ${formatCurrency(nextLevel.minAPI)} needed for Level ${nextLevel.level}${appsNeeded > 0 ? ` — ${appsNeeded} more apps required` : ''}`}
+                    {`${formatCurrency(effectiveYTD_API)} of ${formatCurrency(nextLevel.minAPI)} needed for Level ${nextLevel.level}${appsNeeded > 0 ? ` — ${appsNeeded} more apps required` : ''}`}
                   </Text>
                 )}
               </View>
@@ -676,37 +714,71 @@ export function AgentReportDocument({
         <View style={styles.section} wrap={false}>
           <Text style={styles.sectionTitle}>YTD API vs Targets</Text>
 
-          {/* Bar drawn with SVG primitives */}
+          {/* Stacked bar: settled (dark) + pending (lighter), with markers */}
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Svg width={barWidth - 36} height={barHeight}>
-              <Rect x={0} y={0} width={barWidth - 36} height={barHeight} rx={11} ry={11} fill={COLORS.border} />
-              {fillWidth > 0 && (
-                <Rect
-                  x={0} y={0}
-                  width={Math.max(0, Math.min(fillWidth * (barWidth - 36) / barWidth, barWidth - 36))}
-                  height={barHeight}
-                  rx={11} ry={11}
-                  fill={COLORS.primary}
-                />
+            <View style={{ width: barWidth - 36, height: barHeight, position: 'relative' }}>
+              {/* Track */}
+              <View style={{
+                position: 'absolute', left: 0, top: 0,
+                width: barWidth - 36, height: barHeight,
+                backgroundColor: COLORS.border, borderRadius: 4,
+              }} />
+              {/* Settled portion (dark) */}
+              {settledFillWidth > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  width: settledFillWidth * (barWidth - 36) / barWidth,
+                  height: barHeight,
+                  backgroundColor: COLORS.primary,
+                  borderTopLeftRadius: 4,
+                  borderBottomLeftRadius: 4,
+                  borderTopRightRadius: pendingFillWidth === 0 ? 4 : 0,
+                  borderBottomRightRadius: pendingFillWidth === 0 ? 4 : 0,
+                }} />
               )}
-              <Line
-                x1={floorX * (barWidth - 36) / barWidth} y1={0}
-                x2={floorX * (barWidth - 36) / barWidth} y2={barHeight}
-                stroke={COLORS.text} strokeWidth={1.2}
-              />
-              {goalX !== null && (
+              {/* Pending portion (lighter) */}
+              {pendingFillWidth > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  left: settledFillWidth * (barWidth - 36) / barWidth,
+                  top: 0,
+                  width: pendingFillWidth * (barWidth - 36) / barWidth,
+                  height: barHeight,
+                  backgroundColor: COLORS.primaryLight ?? COLORS.primary,
+                  opacity: 0.45,
+                  borderTopRightRadius: 4,
+                  borderBottomRightRadius: 4,
+                  borderTopLeftRadius: settledFillWidth === 0 ? 4 : 0,
+                  borderBottomLeftRadius: settledFillWidth === 0 ? 4 : 0,
+                }} />
+              )}
+              {/* Marker overlay (Floor / Goal / MDRT) drawn on top with absolute SVG */}
+              <Svg
+                style={{ position: 'absolute', left: 0, top: 0 }}
+                width={barWidth - 36}
+                height={barHeight}
+              >
                 <Line
-                  x1={goalX * (barWidth - 36) / barWidth} y1={0}
-                  x2={goalX * (barWidth - 36) / barWidth} y2={barHeight}
-                  stroke={COLORS.success} strokeWidth={1.2}
+                  x1={floorX * (barWidth - 36) / barWidth} y1={0}
+                  x2={floorX * (barWidth - 36) / barWidth} y2={barHeight}
+                  stroke={COLORS.text} strokeWidth={1.2}
                 />
-              )}
-              <Line
-                x1={mdrtX * (barWidth - 36) / barWidth} y1={0}
-                x2={mdrtX * (barWidth - 36) / barWidth} y2={barHeight}
-                stroke={COLORS.warning} strokeWidth={1.2}
-              />
-            </Svg>
+                {goalX !== null && (
+                  <Line
+                    x1={goalX * (barWidth - 36) / barWidth} y1={0}
+                    x2={goalX * (barWidth - 36) / barWidth} y2={barHeight}
+                    stroke={COLORS.success} strokeWidth={1.2}
+                  />
+                )}
+                <Line
+                  x1={mdrtX * (barWidth - 36) / barWidth} y1={0}
+                  x2={mdrtX * (barWidth - 36) / barWidth} y2={barHeight}
+                  stroke={COLORS.warning} strokeWidth={1.2}
+                />
+              </Svg>
+            </View>
             <View style={{ width: 36, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end' }}>
               <Text style={{ fontSize: 9, fontFamily: 'Helvetica-Bold', color: COLORS.text }}>
                 {achievedPct}%
@@ -729,11 +801,44 @@ export function AgentReportDocument({
             </Text>
           </View>
 
-          <Text style={{ marginTop: 6, fontSize: 9, color: COLORS.textMuted }}>
-            <Text style={{ color: COLORS.primary, fontFamily: 'Helvetica-Bold' }}>{formatCurrency(ytdAPI)}</Text>
-            {' achieved'}
-            {ytdAPIGoal > 0 && ` · ${Math.round((ytdAPI / ytdAPIGoal) * 100)}% of goal · ${formatCurrency(Math.max(0, ytdAPIGoal - ytdAPI))} remaining`}
-          </Text>
+          {/* Settled / Pending legend (only when both segments visible) */}
+          {hasSettlementsForYear && pendingYTD_API > 0 && (
+            <View style={{ flexDirection: 'row', marginTop: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginRight: 12 }}>
+                <View style={{ width: 8, height: 8, backgroundColor: COLORS.primary, borderRadius: 2, marginRight: 4 }} />
+                <Text style={{ fontSize: 8, color: COLORS.textMuted }}>Settled</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ width: 8, height: 8, backgroundColor: COLORS.primaryLight ?? COLORS.primary, opacity: 0.45, borderRadius: 2, marginRight: 4 }} />
+                <Text style={{ fontSize: 8, color: COLORS.textMuted }}>Pending settlement</Text>
+              </View>
+            </View>
+          )}
+
+          {/* Achieved caption: settled + pending split, settled-only, or estimated */}
+          {hasSettlementsForYear && pendingYTD_API > 0 ? (
+            <Text style={{ marginTop: 6, fontSize: 9, color: COLORS.textMuted }}>
+              <Text style={{ color: COLORS.primary, fontFamily: 'Helvetica-Bold' }}>{formatCurrency(effectiveYTD_API)}</Text>
+              {' achieved '}
+              <Text style={{ color: COLORS.textMuted, fontSize: 8 }}>
+                ({formatCurrency(settledYTD_API)} settled · {formatCurrency(pendingYTD_API)} pending)
+              </Text>
+              {ytdAPIGoal > 0 && ` · ${Math.round((effectiveYTD_API / ytdAPIGoal) * 100)}% of goal · ${formatCurrency(Math.max(0, ytdAPIGoal - effectiveYTD_API))} remaining`}
+            </Text>
+          ) : hasSettlementsForYear ? (
+            <Text style={{ marginTop: 6, fontSize: 9, color: COLORS.textMuted }}>
+              <Text style={{ color: COLORS.primary, fontFamily: 'Helvetica-Bold' }}>{formatCurrency(settledYTD_API)}</Text>
+              {' achieved (settled)'}
+              {ytdAPIGoal > 0 && ` · ${Math.round((settledYTD_API / ytdAPIGoal) * 100)}% of goal · ${formatCurrency(Math.max(0, ytdAPIGoal - settledYTD_API))} remaining`}
+            </Text>
+          ) : (
+            <Text style={{ marginTop: 6, fontSize: 9, color: COLORS.textMuted }}>
+              <Text style={{ color: COLORS.primary, fontFamily: 'Helvetica-Bold' }}>{formatCurrency(effectiveYTD_API)}</Text>
+              {' achieved '}
+              <Text style={{ color: COLORS.textMuted, fontSize: 8 }}>(estimated)</Text>
+              {ytdAPIGoal > 0 && ` · ${Math.round((effectiveYTD_API / ytdAPIGoal) * 100)}% of goal · ${formatCurrency(Math.max(0, ytdAPIGoal - effectiveYTD_API))} remaining`}
+            </Text>
+          )}
         </View>
 
         {/* ═══ Weekly Activity Trend ═══════════════════════════════════════ */}
