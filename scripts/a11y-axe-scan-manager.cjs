@@ -50,10 +50,20 @@ const argUrl = (process.argv.find((a) => a.startsWith('--url=')) || '').replace(
 const BASE_URL = argUrl || process.env.A11Y_BASE_URL || 'http://localhost:5173';
 const EMAIL    = process.env.A11Y_MANAGER_EMAIL;
 const PASSWORD = process.env.A11Y_MANAGER_PASSWORD;
+const BYPASS   = process.env.VERCEL_BYPASS_TOKEN || '';
 
 if (!EMAIL || !PASSWORD) {
   console.error('Missing A11Y_MANAGER_EMAIL / A11Y_MANAGER_PASSWORD in .env.local');
   process.exit(1);
+}
+
+async function applyVercelBypass(page) {
+  if (!BYPASS) return;
+  if (!/vercel\.app/i.test(BASE_URL)) return;
+  const u = new URL(BASE_URL);
+  u.searchParams.set('x-vercel-protection-bypass', BYPASS);
+  u.searchParams.set('x-vercel-set-bypass-cookie', 'samesitenone');
+  await page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
 }
 
 // pageId, tabLabel (or null for special flows)
@@ -75,6 +85,7 @@ async function clickTab(page, label) {
 }
 
 async function signIn(page) {
+  await applyVercelBypass(page);
   await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await page.fill('input[type="email"]', EMAIL);
   await page.fill('input[type="password"]', PASSWORD);

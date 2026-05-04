@@ -339,7 +339,7 @@ export default function WizardForm({ onClose, initialWeek }) {
       )}
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-y-auto">
 
         {/* Date picker */}
         {screen === 'date' && (
@@ -442,7 +442,7 @@ export default function WizardForm({ onClose, initialWeek }) {
             </button>
           </div>
         )}
-      </div>
+      </main>
 
       {/* Submission viewer overlay (reused as-is from History tab) */}
       {viewingSubmission && submissionData && (
@@ -454,7 +454,7 @@ export default function WizardForm({ onClose, initialWeek }) {
 
       {/* Footer nav */}
       {(screen === 'step' || screen === 'review') && (
-        <div className="grid grid-cols-5 gap-2 px-4 py-4 border-t border-border bg-[var(--color-surface)] shrink-0">
+        <footer className="grid grid-cols-5 gap-2 px-4 py-4 border-t border-border bg-[var(--color-surface)] shrink-0">
           <button
             type="button"
             onClick={handleBack}
@@ -470,7 +470,7 @@ export default function WizardForm({ onClose, initialWeek }) {
           >
             {nextLabel}
           </button>
-        </div>
+        </footer>
       )}
     </div>
   );

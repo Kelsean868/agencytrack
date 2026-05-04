@@ -47,16 +47,28 @@ const argUrl = (process.argv.find((a) => a.startsWith('--url=')) || '').replace(
 const BASE_URL = argUrl || process.env.A11Y_BASE_URL || 'http://localhost:5173';
 const EMAIL    = process.env.A11Y_AGENT_EMAIL;
 const PASSWORD = process.env.A11Y_AGENT_PASSWORD;
+const BYPASS   = process.env.VERCEL_BYPASS_TOKEN || '';
 
 if (!EMAIL || !PASSWORD) {
   console.error('Missing A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD in .env.local');
   process.exit(1);
 }
 
+async function applyVercelBypass(page) {
+  if (!BYPASS) return;
+  if (!/vercel\.app/i.test(BASE_URL)) return;
+  // Visit with bypass query — Vercel sets a persistent bypass cookie on the response.
+  const u = new URL(BASE_URL);
+  u.searchParams.set('x-vercel-protection-bypass', BYPASS);
+  u.searchParams.set('x-vercel-set-bypass-cookie', 'samesitenone');
+  await page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+}
+
 // ── Pages to scan ────────────────────────────────────────────────────────────
 // Each entry: [pageId, gotoFn(page) -> Promise<void>]
 const PAGES = [
   ['login', async (page) => {
+    await applyVercelBypass(page);
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
     // Login screen is the unauthenticated landing — wait for the AT brand.
     await page.waitForSelector('text=AgencyTrack', { timeout: 10_000 });
@@ -81,6 +93,7 @@ async function clickTab(page, label) {
 
 // ── Login flow ───────────────────────────────────────────────────────────────
 async function signIn(page) {
+  await applyVercelBypass(page);
   await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   await page.fill('input[type="email"]', EMAIL);
   await page.fill('input[type="password"]', PASSWORD);
