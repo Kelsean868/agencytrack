@@ -88,6 +88,10 @@ const HARMLESS_NET = [
   // Initial Firestore Listen channel POST aborts under StrictMode double-mount,
   // immediately retried successfully. Per scripts/exploration-template.md.
   /firestore\.googleapis\.com\/.*Listen\/channel/,
+  // Fontshare WOFF2 font requests get cancelled by the browser when the
+  // page paints before the font is needed (especially behind the Vercel
+  // SSO bypass-cookie redirect). Harmless — fonts load on the next paint.
+  /cdn\.fontshare\.com\/.*\.woff2/,
 ];
 const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
 
