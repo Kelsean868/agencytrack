@@ -64,7 +64,7 @@
 Known-harmless patterns to filter:
 - `[AgencyTrack] Auth claims: …` — intentional AuthContext logging
 - `[AgencyTrack] UID: …` — intentional AuthContext logging
-- 1× `net::ERR_ABORTED` on initial Firestore Listen channel POST when AuthContext mounts under StrictMode, immediately followed by a successful retry on the next reqid
+- 1–2× `net::ERR_ABORTED` on initial Firestore Listen channel POST when AuthContext mounts under StrictMode, immediately followed by a successful retry on the next reqid. Filter regex: `firestore\.googleapis\.com/.*Listen/channel` (broader than the older `Listen.*\?gsessionid=` — actual abort URLs interleave other params before `gsessionid`).
 
 DevTools issues panel (NOT runtime errors, accessibility-only):
 - Form field id/name missing (count: __)
