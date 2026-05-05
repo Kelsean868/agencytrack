@@ -27,8 +27,6 @@ import KPICard from './KPICard';
 import SyncIndicator from '../ui/SyncIndicator';
 import WelcomeScreen from '../onboarding/WelcomeScreen';
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID;
-
 const KPIS = [
   { key: 'dials',    label: 'Dials',         field: 'totalTelAttempts', isCurrency: false },
   { key: 'contacts', label: 'Tel Contacts',   field: 'telContacts',      isCurrency: false },
@@ -90,7 +88,7 @@ function ProgressRing({ percent, size = 120, stroke = 10 }) {
 }
 
 export default function AgentDashboard() {
-  const { user, userProfile, role } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
 
   const [activeTab, setActiveTab]             = useState('dashboard');
   const [showWizard, setShowWizard]           = useState(false);
@@ -125,14 +123,14 @@ export default function AgentDashboard() {
   }, [userProfile, role]);
 
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid || !tenantId) return;
     setLoading(true);
     Promise.all([
       getDraft(user.uid, currentWeek).catch(() => null),
       getAgentSubmissions(user.uid).catch(() => []),
-      getGoals(TENANT_ID, user.uid).catch(() => null),
+      getGoals(tenantId, user.uid).catch(() => null),
       getAgentPersistency(user.uid, thisYear).catch(() => ({})),
-      getSettlements(TENANT_ID, user.uid, thisYear).catch(() => []),
+      getSettlements(tenantId, user.uid, thisYear).catch(() => []),
     ]).then(([weekSub, subs, agentGoals, pers, setts]) => {
       setCurrentWeekSub(weekSub);
       setAllSubmissions(subs);
@@ -140,7 +138,7 @@ export default function AgentDashboard() {
       setPersistency(pers);
       setSettlements(setts);
     }).catch(console.error).finally(() => setLoading(false));
-  }, [user?.uid, currentWeek, thisYear]);
+  }, [user?.uid, tenantId, currentWeek, thisYear]);
 
   // YTD metrics derived from real submissions
   const { ytdAPI, ytdAPIGoal, latestSub } = useMemo(() => {
@@ -182,15 +180,15 @@ export default function AgentDashboard() {
 
   // Fetch active campaigns for this agent
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid || !tenantId) return;
     setCampaignsLoading(true);
-    getActiveCampaignsForAgent(TENANT_ID, user.uid, userProfile?.unitId ?? null)
+    getActiveCampaignsForAgent(tenantId, user.uid, userProfile?.unitId ?? null)
       .then(async (camps) => {
         setActiveCampaigns(camps);
         const subsMap = {};
         await Promise.all(
           camps.map(async (c) => {
-            const subs = await getCampaignSubmissions(TENANT_ID, c.startDate, c.endDate).catch(() => []);
+            const subs = await getCampaignSubmissions(tenantId, c.startDate, c.endDate).catch(() => []);
             subsMap[c.id] = subs;
           })
         );
@@ -198,21 +196,21 @@ export default function AgentDashboard() {
       })
       .catch(console.error)
       .finally(() => setCampaignsLoading(false));
-  }, [user?.uid, userProfile?.unitId]);
+  }, [user?.uid, tenantId, userProfile?.unitId]);
 
   // Fetch goal hierarchy for gap analysis
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid || !tenantId) return;
     setHierarchyLoading(true);
     setHierarchyError(null);
-    getGoalHierarchy(TENANT_ID, userProfile?.unitId ?? null, new Date().getFullYear(), user.uid)
+    getGoalHierarchy(tenantId, userProfile?.unitId ?? null, new Date().getFullYear(), user.uid)
       .then(setHierarchy)
       .catch((e) => {
         console.error(e);
         setHierarchyError('Failed to load goal hierarchy.');
       })
       .finally(() => setHierarchyLoading(false));
-  }, [user?.uid, userProfile?.unitId]);
+  }, [user?.uid, tenantId, userProfile?.unitId]);
 
   // Unlock banner
   const showUnlockBanner =

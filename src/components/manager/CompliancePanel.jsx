@@ -7,7 +7,6 @@ import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID;
 const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'super_admin'];
 
 function daysSinceSunday(weekStarting) {
@@ -113,7 +112,7 @@ function SubmittedAgentRow({ name, submittedAt, submissionId, onUnlock, onView }
 }
 
 export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
-  const { user, userProfile, role } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
   const [submissions, setSubmissions]           = useState([]);
   const [users, setUsers]                       = useState([]);
   const [usersLoaded, setUsersLoaded]           = useState(false);
@@ -184,9 +183,9 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   }, [users, usersLoaded, submissions]);
 
   const handleUnlock = async (submissionId, agentName) => {
-    if (!user?.uid) return;
+    if (!user?.uid || !tenantId) return;
     const managerName = userProfile?.name ?? userProfile?.email ?? 'Manager';
-    await unlockSubmission(TENANT_ID, submissionId, user.uid, managerName);
+    await unlockSubmission(tenantId, submissionId, user.uid, managerName);
     // Reload to reflect status change
     loadData();
   };

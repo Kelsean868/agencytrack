@@ -4,8 +4,6 @@ import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID;
-
 const SLIDES = [
   {
     Icon: Trophy,
@@ -31,7 +29,7 @@ const SLIDES = [
 ];
 
 export default function WelcomeScreen({ onComplete }) {
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const [index, setIndex] = useState(0);
   const [completing, setCompleting] = useState(false);
 
@@ -41,8 +39,8 @@ export default function WelcomeScreen({ onComplete }) {
     if (completing) return;
     setCompleting(true);
     try {
-      if (user?.uid) {
-        await updateDoc(doc(db, `tenants/${TENANT_ID}/users/${user.uid}`), {
+      if (user?.uid && tenantId) {
+        await updateDoc(doc(db, `tenants/${tenantId}/users/${user.uid}`), {
           hasSeenWelcome: true,
         });
       }

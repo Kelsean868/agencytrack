@@ -1,9 +1,9 @@
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage, tenantId } from '../firebase';
+import { db, storage, getTenantId } from '../firebase';
 
 export async function updateUserProfile(uid, fields) {
-  const docRef = doc(db, `tenants/${tenantId}/users/${uid}`);
+  const docRef = doc(db, `tenants/${getTenantId()}/users/${uid}`);
   await updateDoc(docRef, { ...fields, updatedAt: serverTimestamp() });
 }
 
@@ -42,7 +42,7 @@ export function compressImage(file, maxDim = 400) {
 // onProgress: (0–100) => void
 export function uploadProfilePhoto(uid, blob, onProgress) {
   return new Promise((resolve, reject) => {
-    const storageRef = ref(storage, `avatars/${tenantId}/${uid}.jpg`);
+    const storageRef = ref(storage, `avatars/${getTenantId()}/${uid}.jpg`);
     const task = uploadBytesResumable(storageRef, blob, { contentType: 'image/jpeg' });
 
     task.on(

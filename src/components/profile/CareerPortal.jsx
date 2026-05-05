@@ -7,8 +7,6 @@ import BadgeGrid from '../gamification/BadgeGrid';
 import CommissionPlayground from '../goals/CommissionPlayground';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID;
-
 const CAREER_LEVELS = [
   { level: 1, title: 'Salesperson',    minApi: 200000, minApps: 42, minPersistency: 90, minYears: 0  },
   { level: 2, title: 'Advisor II',     minApi: 250000, minApps: 42, minPersistency: 90, minYears: 2  },
@@ -67,7 +65,7 @@ function commitmentColorClass(value, managerTarget, floor) {
 
 // ── Goals Overview section ────────────────────────────────────────────────────
 function GoalsOverview({ submissions, user, persistencyData }) {
-  const { user: authUser, userProfile } = useAuth();
+  const { user: authUser, userProfile, tenantId } = useAuth();
   const [goals, setGoalsState]       = useState(null);
   const [minimums, setMinimums]      = useState(null);
   const [editing, setEditing]        = useState(false);
@@ -81,10 +79,10 @@ function GoalsOverview({ submissions, user, persistencyData }) {
   });
 
   useEffect(() => {
-    if (!authUser?.uid) return;
+    if (!authUser?.uid || !tenantId) return;
     Promise.all([
-      getGoals(TENANT_ID, authUser.uid).catch(() => null),
-      getCompanyMinimums(TENANT_ID).catch(() => ({ annualAPI: 200000, annualApps: 42, persistency: 90 })),
+      getGoals(tenantId, authUser.uid).catch(() => null),
+      getCompanyMinimums(tenantId).catch(() => ({ annualAPI: 200000, annualApps: 42, persistency: 90 })),
     ]).then(([g, mins]) => {
       setGoalsState(g);
       setMinimums(mins);
@@ -94,19 +92,20 @@ function GoalsOverview({ submissions, user, persistencyData }) {
         personalAnnualPersistency: g?.personalAnnualPersistency ?? '',
       });
     });
-  }, [authUser?.uid]);
+  }, [authUser?.uid, tenantId]);
 
   const handleSave = async () => {
+    if (!tenantId) return;
     setSaving(true);
     setSaveError('');
     try {
       const name = userProfile?.name ?? userProfile?.email ?? 'Agent';
-      await setGoals(TENANT_ID, authUser.uid, {
+      await setGoals(tenantId, authUser.uid, {
         personalAnnualAPI:         draft.personalAnnualAPI,
         personalAnnualApps:        draft.personalAnnualApps,
         personalAnnualPersistency: draft.personalAnnualPersistency,
       }, authUser.uid, name);
-      const updated = await getGoals(TENANT_ID, authUser.uid);
+      const updated = await getGoals(tenantId, authUser.uid);
       setGoalsState(updated);
       setEditing(false);
     } catch (e) {
@@ -328,7 +327,7 @@ export default function CareerPortal({ submissions, user, persistencyData, hiera
 
   const nextLevel = CAREER_LEVELS.find((l) => l.level === currentLevel.level + 1) ?? null;
 
-  const { user: authUser } = useAuth();
+  const { user: authUser, tenantId } = useAuth();
 
   return (
     <div className="flex flex-col gap-5 pb-8">
@@ -340,7 +339,7 @@ export default function CareerPortal({ submissions, user, persistencyData, hiera
       <CommissionPlayground
         submissions={submissions}
         agentId={authUser?.uid}
-        tenantId={TENANT_ID}
+        tenantId={tenantId}
       />
 
       {/* Current level badge */}

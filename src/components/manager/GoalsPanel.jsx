@@ -5,8 +5,6 @@ import { getGoals, setGoals, getCompanyMinimums, getUnitGoals, setUnitGoals, get
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID;
-
 function emptyGoals() {
   return {
     targetAnnualAPI:         '',
@@ -75,7 +73,7 @@ function GoalLevelForm({ value, onChange }) {
 }
 
 function UnitGoalsTab({ role, userProfile, allUsers }) {
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const isUnitManager = role === 'unit_manager';
   const currentYear = new Date().getFullYear();
   const unitId = userProfile?.unitId ?? null;
@@ -102,10 +100,10 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
   const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
-    if (!selectedUnit) return;
+    if (!selectedUnit || !tenantId) return;
     setLoadingGoals(true);
     setLoadError('');
-    getUnitGoals(TENANT_ID, selectedUnit, currentYear)
+    getUnitGoals(tenantId, selectedUnit, currentYear)
       .then((g) => {
         setExisting(g);
         setForm({
@@ -121,19 +119,19 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
         setLoadError('Failed to load unit goals.');
       })
       .finally(() => setLoadingGoals(false));
-  }, [selectedUnit, currentYear]);
+  }, [selectedUnit, currentYear, tenantId]);
 
   const handleSave = async () => {
-    if (!selectedUnit) return;
+    if (!selectedUnit || !tenantId) return;
     setSaving(true);
     setSaveError('');
     try {
-      await setUnitGoals(TENANT_ID, selectedUnit, currentYear, form, {
+      await setUnitGoals(tenantId, selectedUnit, currentYear, form, {
         setBy:     user.uid,
         setByName: userProfile?.name ?? userProfile?.email ?? 'Manager',
         setByRole: role,
       });
-      const updated = await getUnitGoals(TENANT_ID, selectedUnit, currentYear);
+      const updated = await getUnitGoals(tenantId, selectedUnit, currentYear);
       setExisting(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -206,7 +204,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
 }
 
 function BranchGoalsTab({ userProfile }) {
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const currentYear = new Date().getFullYear();
 
   const [form, setForm]     = useState({ api: '', apps: '', ffiConducted: '', ciConducted: '', dials: '' });
@@ -218,9 +216,10 @@ function BranchGoalsTab({ userProfile }) {
   const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
+    if (!tenantId) return;
     setLoading(true);
     setLoadError('');
-    getBranchGoals(TENANT_ID, currentYear)
+    getBranchGoals(tenantId, currentYear)
       .then((g) => {
         setExisting(g);
         setForm({
@@ -236,17 +235,18 @@ function BranchGoalsTab({ userProfile }) {
         setLoadError('Failed to load branch goals.');
       })
       .finally(() => setLoading(false));
-  }, [currentYear]);
+  }, [currentYear, tenantId]);
 
   const handleSave = async () => {
+    if (!tenantId) return;
     setSaving(true);
     setSaveError('');
     try {
-      await setBranchGoals(TENANT_ID, currentYear, form, {
+      await setBranchGoals(tenantId, currentYear, form, {
         setBy:     user.uid,
         setByName: userProfile?.name ?? userProfile?.email ?? 'Manager',
       });
-      const updated = await getBranchGoals(TENANT_ID, currentYear);
+      const updated = await getBranchGoals(tenantId, currentYear);
       setExisting(updated);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -297,7 +297,7 @@ function BranchGoalsTab({ userProfile }) {
 
 // ── Agent goals panel (original content) ─────────────────────────────────────
 function AgentGoalsTab({ onGoalsLoaded }) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, tenantId } = useAuth();
   const [agents, setAgents]       = useState([]);
   const [goalsMap, setGoalsMap]   = useState({});
   const [editMap, setEditMap]     = useState({});
@@ -310,9 +310,10 @@ function AgentGoalsTab({ onGoalsLoaded }) {
   const [partialLoadWarning, setPartialLoadWarning] = useState(false);
 
   useEffect(() => {
+    if (!tenantId) return;
     Promise.all([
       getTenantUsers(),
-      getCompanyMinimums(TENANT_ID).catch(() => ({ annualAPI: 200000, annualApps: 42, persistency: 90 })),
+      getCompanyMinimums(tenantId).catch(() => ({ annualAPI: 200000, annualApps: 42, persistency: 90 })),
     ])
       .then(async ([userList, mins]) => {
         setMinimums(mins);
@@ -324,7 +325,7 @@ function AgentGoalsTab({ onGoalsLoaded }) {
         let anyFailed = false;
         await Promise.all(
           agentList.map(async (a) => {
-            const g = await getGoals(TENANT_ID, a.id).catch(() => {
+            const g = await getGoals(tenantId, a.id).catch(() => {
               anyFailed = true;
               return null;
             });
@@ -357,7 +358,7 @@ function AgentGoalsTab({ onGoalsLoaded }) {
         setError('Failed to load agents or goals.');
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [tenantId]);
 
   const handleField = useCallback((agentId, field, value) => {
     setEditMap((prev) => ({
@@ -367,12 +368,13 @@ function AgentGoalsTab({ onGoalsLoaded }) {
   }, []);
 
   const handleSave = async (agent) => {
+    if (!tenantId) return;
     setSavingId(agent.id);
     setSaveErrorId(null);
     try {
       const managerName = userProfile?.name ?? userProfile?.email ?? 'Manager';
-      await setGoals(TENANT_ID, agent.id, editMap[agent.id], user.uid, managerName);
-      const updated = await getGoals(TENANT_ID, agent.id);
+      await setGoals(tenantId, agent.id, editMap[agent.id], user.uid, managerName);
+      const updated = await getGoals(tenantId, agent.id);
       setGoalsMap((prev) => ({ ...prev, [agent.id]: updated }));
       setSavedId(agent.id);
       setTimeout(() => setSavedId(null), 2500);
