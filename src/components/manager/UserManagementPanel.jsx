@@ -1,0 +1,450 @@
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, X, Loader2, UserCircle, AlertTriangle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import {
+  createUser,
+  getUnitManagers,
+  getBranchManagers,
+} from '../../services/agentManagementService';
+import { getTenantUsers } from '../../services/managerService';
+import { formatDateDisplay, formatDateFriendly, getRoleLabel } from '../../utils/formatters';
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Mirrors CREATION_MATRIX in functions/index.js
+const CREATABLE_ROLES = {
+  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  sales_manager:  ['branch_manager', 'unit_manager', 'agent'],
+  branch_manager: ['unit_manager', 'agent'],
+  unit_manager:   ['agent'],
+};
+
+const ROLE_DISPLAY = {
+  platform_admin: 'Platform Admin',
+  tenant_admin:   'Tenant Admin',
+  sales_manager:  'Sales Manager',
+  branch_manager: 'Branch Manager',
+  unit_manager:   'Unit Manager',
+  agent:          'Agent',
+};
+
+function UserAvatar({ name }) {
+  const initials = (name ?? '?')
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-primary text-xs font-bold shrink-0">
+      {initials}
+    </div>
+  );
+}
+
+function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenantId }) {
+  const creatableRoles = CREATABLE_ROLES[callerRole] ?? ['agent'];
+  const isUnitManager  = callerRole === 'unit_manager';
+
+  const [targetRole, setTargetRole] = useState(creatableRoles[creatableRoles.length - 1]);
+  const [form, setForm] = useState({
+    name: '', email: '', agentNumber: '', contractStartDate: '', unitId: '', branchId: '', unitName: '',
+  });
+  const [unitManagers, setUnitManagers]     = useState([]);
+  const [branchManagers, setBranchManagers] = useState([]);
+  const [saving, setSaving]   = useState(false);
+  const [error, setError]     = useState('');
+
+  useEffect(() => {
+    if (isUnitManager) {
+      setForm((f) => ({ ...f, unitId: callerProfile?.uid ?? callerProfile?.id ?? '' }));
+      return;
+    }
+    if (!tenantId) return;
+    getUnitManagers(tenantId).then(setUnitManagers).catch(console.error);
+    getBranchManagers(tenantId).then(setBranchManagers).catch(console.error);
+    if (callerRole === 'branch_manager') {
+      setForm((f) => ({ ...f, branchId: callerProfile?.branchId ?? '' }));
+    }
+  }, [isUnitManager, callerProfile, tenantId, callerRole]);
+
+  const effectiveRole = isUnitManager ? 'agent' : targetRole;
+
+  function validate() {
+    if (!form.name.trim()) return 'Full name is required.';
+    if (!EMAIL_RE.test(form.email)) return 'A valid email address is required.';
+    if (effectiveRole === 'agent') {
+      if (!form.unitId) return 'Unit assignment is required.';
+      if (!form.contractStartDate) return 'Contract start date is required.';
+      if (form.contractStartDate > new Date().toISOString().slice(0, 10)) {
+        return 'Contract start date cannot be in the future.';
+      }
+    }
+    if (effectiveRole === 'unit_manager' && !form.branchId) return 'Branch is required.';
+    if (effectiveRole === 'branch_manager' && !form.branchId) return 'Branch is required.';
+    return null;
+  }
+
+  async function handleSave() {
+    setError('');
+    const validationError = validate();
+    if (validationError) { setError(validationError); return; }
+
+    setSaving(true);
+    try {
+      const payload = {
+        role:  effectiveRole,
+        name:  form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+      };
+
+      if (effectiveRole === 'agent') {
+        payload.agentNumber       = form.agentNumber.trim();
+        payload.unitId            = form.unitId;
+        payload.contractStartDate = form.contractStartDate;
+      } else if (effectiveRole === 'unit_manager') {
+        payload.branchId = form.branchId;
+        if (form.unitName.trim()) payload.unitName = form.unitName.trim();
+      } else if (effectiveRole === 'branch_manager') {
+        payload.branchId = form.branchId;
+      } else if (effectiveRole === 'tenant_admin') {
+        payload.confirmationPhrase = 'CREATE TENANT ADMIN';
+      }
+
+      await createUser(payload);
+      onCreated(payload.email, effectiveRole);
+    } catch (err) {
+      const code = err?.code ?? '';
+      if (code.includes('already-exists')) {
+        setError('An account with this email already exists.');
+      } else if (code.includes('permission-denied')) {
+        setError("You don't have permission to create this role.");
+      } else if (code.includes('unimplemented')) {
+        setError('Creating platform admins via this panel is not yet supported.');
+      } else {
+        setError('Failed to create account. Please try again.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+
+  return (
+    <div className="fixed inset-0 z-40 flex">
+      <div className="flex-1 bg-black/40" onClick={onClose} />
+      <div className="w-full max-w-md bg-[var(--color-surface)] shadow-2xl flex flex-col h-full overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <p className="text-sm font-bold text-ink">Add New User</p>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-border/40 transition-colors">
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
+          {/* Role selector — hidden for unit_manager (locked to agent) */}
+          {!isUnitManager && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Role *</label>
+              <select
+                value={targetRole}
+                onChange={(e) => setTargetRole(e.target.value)}
+                className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                {creatableRoles.map((r) => (
+                  <option key={r} value={r}>{ROLE_DISPLAY[r] ?? r}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Sensitive-role warning banners */}
+          {effectiveRole === 'tenant_admin' && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-warning/10 border border-warning/30">
+              <AlertTriangle size={15} className="text-warning mt-0.5 shrink-0" />
+              <p className="text-xs text-ink">Tenant admin has full power within this company. Assign carefully.</p>
+            </div>
+          )}
+          {effectiveRole === 'platform_admin' && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-danger/10 border border-danger/30">
+              <AlertTriangle size={15} className="text-danger mt-0.5 shrink-0" />
+              <p className="text-xs text-ink">Platform admin has cross-tenant access. This role is rare — confirm intent.</p>
+            </div>
+          )}
+
+          {/* Full Name */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Full Name *</label>
+            <input
+              type="text"
+              value={form.name}
+              onChange={set('name')}
+              placeholder="e.g. Jordan Smith"
+              className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+
+          {/* Email */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Email Address *</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={set('email')}
+              placeholder="user@example.com"
+              className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+
+          {/* Agent-specific fields */}
+          {effectiveRole === 'agent' && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Agent Number</label>
+                <input
+                  type="text"
+                  value={form.agentNumber}
+                  onChange={set('agentNumber')}
+                  placeholder="Optional"
+                  className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Contract Start Date *</label>
+                <input
+                  type="date"
+                  value={form.contractStartDate}
+                  onChange={set('contractStartDate')}
+                  max={new Date().toISOString().slice(0, 10)}
+                  className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                {form.contractStartDate && (
+                  <p className="text-[10px] text-ink-muted">{formatDateFriendly(form.contractStartDate)}</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Unit *</label>
+                {isUnitManager ? (
+                  <div className="h-10 px-3 rounded-lg border border-border bg-border/30 text-sm text-ink-muted flex items-center">
+                    {callerProfile?.name ?? 'Your unit'} (locked)
+                  </div>
+                ) : (
+                  <select
+                    value={form.unitId}
+                    onChange={set('unitId')}
+                    className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">Select a unit…</option>
+                    {unitManagers.map((um) => (
+                      <option key={um.uid} value={um.uid}>
+                        {um.unitName?.trim() || `${um.name ?? um.email}'s Unit`}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* unit_manager fields: unit name + branch */}
+          {effectiveRole === 'unit_manager' && (
+            <>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
+                  Unit Name <span className="font-normal normal-case text-ink-faint">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.unitName}
+                  onChange={set('unitName')}
+                  placeholder='e.g. "Phoenix Unit"'
+                  maxLength={50}
+                  className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Branch *</label>
+                {callerRole === 'branch_manager' ? (
+                  <div className="h-10 px-3 rounded-lg border border-border bg-border/30 text-sm text-ink-muted flex items-center">
+                    {callerProfile?.branchId ?? 'Your branch'} (locked)
+                  </div>
+                ) : (
+                  <select
+                    value={form.branchId}
+                    onChange={set('branchId')}
+                    className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value="">Select a branch…</option>
+                    {branchManagers.map((bm) => (
+                      <option key={bm.uid} value={bm.branchId ?? bm.uid}>
+                        {bm.name ?? bm.branchId ?? bm.uid}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* branch_manager field: branch */}
+          {effectiveRole === 'branch_manager' && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Branch *</label>
+              {callerRole === 'branch_manager' ? (
+                <div className="h-10 px-3 rounded-lg border border-border bg-border/30 text-sm text-ink-muted flex items-center">
+                  {callerProfile?.branchId ?? 'Your branch'} (locked)
+                </div>
+              ) : (
+                <select
+                  value={form.branchId}
+                  onChange={set('branchId')}
+                  className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                >
+                  <option value="">Select a branch…</option>
+                  {branchManagers.map((bm) => (
+                    <option key={bm.uid} value={bm.branchId ?? bm.uid}>
+                      {bm.name ?? bm.branchId ?? bm.uid}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          {error && (
+            <p className="text-xs text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-border">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="btn-primary w-full flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {saving
+              ? <><Loader2 size={15} className="animate-spin" /> Creating…</>
+              : `Create ${ROLE_DISPLAY[effectiveRole] ?? 'User'} Account`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function UserManagementPanel() {
+  const { role, userProfile, tenantId } = useAuth();
+
+  const [users, setUsers]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [toast, setToast]         = useState('');
+
+  const canCreate = (CREATABLE_ROLES[role]?.length ?? 0) > 0;
+
+  const loadUsers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const list = await getTenantUsers();
+      list.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+      setUsers(list);
+    } catch (err) {
+      console.error('[UserManagementPanel] loadUsers:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  function handleCreated(email, createdRole) {
+    setShowDrawer(false);
+    loadUsers();
+    setToast(`${ROLE_DISPLAY[createdRole] ?? 'User'} account created. A password setup email has been sent to ${email}.`);
+    setTimeout(() => setToast(''), 6000);
+  }
+
+  return (
+    <div className="flex flex-col gap-4 relative">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-success text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg max-w-sm text-center">
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          User Roster{users.length > 0 ? ` — ${users.length} user${users.length !== 1 ? 's' : ''}` : ''}
+        </p>
+        {canCreate && (
+          <button
+            onClick={() => setShowDrawer(true)}
+            className="btn-primary flex items-center gap-1.5 text-sm px-3 h-9"
+          >
+            <Plus size={15} /> Add User
+          </button>
+        )}
+      </div>
+
+      {/* Table */}
+      {loading ? (
+        <div className="flex flex-col gap-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-14 rounded-xl bg-border/30 animate-pulse" />
+          ))}
+        </div>
+      ) : users.length === 0 ? (
+        <div className="card text-center py-10 flex flex-col items-center gap-3">
+          <UserCircle size={40} className="text-border" />
+          <p className="text-sm text-ink-muted italic">No users yet — create the first user above.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-[2fr_2fr_1.5fr_1fr] gap-3 px-3 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+            <span>Name</span>
+            <span>Email</span>
+            <span>Role</span>
+            <span>Joined</span>
+          </div>
+          {users.map((u) => {
+            const joinedDate = u.createdAt?.toDate?.().toISOString().slice(0, 10) ?? '';
+            return (
+              <div
+                key={u.uid ?? u.id}
+                className="grid grid-cols-[2fr_2fr_1.5fr_1fr] gap-3 items-center px-3 py-3 rounded-xl bg-[var(--color-surface)] border border-border"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <UserAvatar name={u.name} />
+                  <span className="text-sm font-semibold text-ink truncate">{u.name ?? '—'}</span>
+                </div>
+                <span className="text-xs text-ink-muted truncate">{u.email ?? '—'}</span>
+                <span className="text-xs text-ink-muted">{getRoleLabel(u.role)}</span>
+                <span className="text-xs text-ink-muted">
+                  {joinedDate ? formatDateDisplay(joinedDate) : '—'}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Create drawer */}
+      {showDrawer && (
+        <CreateUserDrawer
+          onClose={() => setShowDrawer(false)}
+          onCreated={handleCreated}
+          callerRole={role}
+          callerProfile={userProfile}
+          tenantId={tenantId}
+        />
+      )}
+    </div>
+  );
+}

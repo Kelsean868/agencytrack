@@ -18,7 +18,7 @@ import SettlementPanel from '../manager/SettlementPanel';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
 import CampaignPanel from '../campaigns/CampaignPanel';
-import AgentManagementPanel from '../manager/AgentManagementPanel';
+import UserManagementPanel from '../manager/UserManagementPanel';
 import NotificationBell from '../ui/NotificationBell';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import MotivationalCarousel from './MotivationalCarousel';
@@ -292,7 +292,7 @@ export default function ManagerDashboard() {
           </div>
         )}
 
-        {activeTab === 'team' && <AgentManagementPanel />}
+        {activeTab === 'team' && <UserManagementPanel />}
 
         {activeTab === 'campaigns' && <CampaignPanel />}
 

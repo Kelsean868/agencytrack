@@ -99,7 +99,7 @@ function buildDocFields(targetRole, data, { newUid, callerTenant, derivedBranchI
     doc.contractStartDate = data.contractStartDate ?? '';
     doc.hasSeenWelcome    = false;
   } else if (targetRole === 'unit_manager') {
-    doc.unitId = data.unitId;
+    doc.unitId = newUid; // unit_manager's own UID is their unit identifier
     if (data.unitName) doc.unitName = data.unitName;
   }
   return doc;
@@ -149,8 +149,8 @@ async function doCreateUser(data, context) {
     );
   }
 
-  if (['agent', 'unit_manager'].includes(targetRole) && !data.unitId) {
-    throw new functions.https.HttpsError('invalid-argument', 'unitId is required for this role.');
+  if (targetRole === 'agent' && !data.unitId) {
+    throw new functions.https.HttpsError('invalid-argument', 'unitId is required for agent accounts.');
   }
 
   if (!data.name || !data.email) {
