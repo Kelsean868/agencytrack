@@ -35,6 +35,7 @@ functions/seed-company-minimums.cjs
 !functions/scripts/seed-first-tenant-admin.cjs
 !functions/scripts/migrate-super-admin-to-tenant-admin.cjs
 !functions/scripts/seed-platform-admin.cjs
+!functions/scripts/restore-super-admin-claim.cjs
 
 # MCP config — personal, each dev has their own
 .mcp.json
