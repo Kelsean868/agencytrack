@@ -32,16 +32,35 @@ function loadDotEnvLocal() {
   const envPath = path.resolve(process.cwd(), '.env.local');
   if (!fs.existsSync(envPath)) return;
   const text = fs.readFileSync(envPath, 'utf8');
-  for (const raw of text.split(/\r?\n/)) {
+  const lines = text.split(/\r?\n/);
+  // First pass: validate every line. Throw before mutating process.env so a
+  // partial parse can't precede the failure. Detection target: a line where
+  // the value half contains an embedded `KEY=` pattern, which only happens
+  // when two key=value pairs got concatenated by a missing newline (see
+  // TOOLING-N — silent corruption ate an hour of the SEC-9 autonomous run).
+  const parsed = [];
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
     const line = raw.trim();
     if (!line || line.startsWith('#')) continue;
     const eq = line.indexOf('=');
     if (eq === -1) continue;
     const key = line.slice(0, eq).trim();
     let val = line.slice(eq + 1).trim();
+    const embedded = val.match(/([A-Z][A-Z0-9_]*)=/);
+    if (embedded) {
+      throw new Error(
+        `Malformed .env.local: line ${i + 1} appears to concatenate two keys ` +
+        `("${key}" and "${embedded[1]}"). Ensure each key is on its own line ` +
+        `and the file ends with a trailing newline.`
+      );
+    }
     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
       val = val.slice(1, -1);
     }
+    parsed.push([key, val]);
+  }
+  for (const [key, val] of parsed) {
     if (!(key in process.env)) process.env[key] = val;
   }
 }

@@ -13,11 +13,11 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-04` |
-| Current main HEAD | `f17e217` (SEC-9 squash, PR #16) |
+| Current main HEAD | `b07e512` (kickoff template + .session-handoffs ignore, PR #21) |
 | Active track | User-management hierarchy matrix — plan approved, awaiting PR-1 implementation kickoff |
 | Next track | (after user-mgmt) → provision a11y-scan-manager → resume A11Y PR2+ |
 | Two-strike counter | 0 — resets each session |
-| Stash pending | Yes — `stash@{0}` session-handoffs gitignore |
+| Stash pending | No |
 
 ---
 
@@ -104,7 +104,7 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 | SEC-9b | Migrate services to explicit `tenantId` parameter | No | ~20 call site refactor; schedule after user-mgmt ships |
 | SEC-11 | Replace AuthContext bootstrap with seed script | Closes in user-mgmt PR-2 | Auto-resolves |
 | SEC-9c | Server-side tenant isolation for scheduled Cloud Functions | No | Scheduled functions still hardcode `TENANT_ID = 'tatillife_south'`; future work |
-| TOOLING-N | env loader silently concatenates keys when `.env.local` lacks trailing newline | No | 15-min fix recommended before next autonomous session |
+| TOOLING-N | env loader silently concatenates keys when `.env.local` lacks trailing newline | No | In progress — fail-loud fix bundled in this PR (3 scripts) |
 
 ---
 
@@ -112,11 +112,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #21 | `b07e512` | chore — `docs/CONTEXT.md`, `docs/kickoff-template.md`, ignore `.session-handoffs/` |
 | #16 | `f17e217` | SEC-9 — runtime tenant ID holder, 18 files migrated |
 | #15 | `3784713` | chore(tooling) — production polling path retired |
 | #14 | `83e54ad` | chore(tooling) — verification helpers (exploration-walk, wait-vercel-ready) |
 | #13 | `fd189a9` | feat(a11y) PR1 — landmark structure, week-picker label, awards heading order |
-| (prev) | `ce94c4b` | PDF-3 — stacked Settled/Pending bar + effective YTD career level |
 
 ---
 
@@ -124,7 +124,6 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 These don't block anything, but they need to be resolved or carried forward each session.
 
-- **`stash@{0}`** — `session-handoffs gitignore — pop and commit in next PR`. Lives on the main checkout, not in any worktree. Pop and commit alongside whichever PR ships next (PR-1 of user-mgmt is the natural home).
 - **Empty worktree dir** at `.claude/worktrees/sad-meninsky-278312` — git worktree manifest cleared, but the OS directory remains. Cosmetic, run `rmdir` from any fresh shell whose cwd is not under it.
 - **Last verification artifacts** (post-SEC-9): `verification/sec9_production_console.log` + 3 screenshots `sec9_prod_post_*.png`. Local-only by design.
 
