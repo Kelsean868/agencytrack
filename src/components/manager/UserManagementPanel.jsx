@@ -7,7 +7,7 @@ import {
   getBranchManagers,
 } from '../../services/agentManagementService';
 import { getTenantUsers } from '../../services/managerService';
-import { formatDateDisplay, formatDateFriendly, getRoleLabel } from '../../utils/formatters';
+import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -241,7 +241,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                     <option value="">Select a unit…</option>
                     {unitManagers.map((um) => (
                       <option key={um.uid} value={um.uid}>
-                        {um.unitName?.trim() || `${um.name ?? um.email}'s Unit`}
+                        {getUnitDisplayName(um)}
                       </option>
                     ))}
                   </select>

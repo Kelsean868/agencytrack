@@ -7,7 +7,7 @@ import {
 } from '../../services/campaignService';
 import { getTenantUsers } from '../../services/managerService';
 import { computeCampaignProgress } from '../../utils/campaignEngine';
-import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
+import { formatCurrency, formatDateFriendly, getUnitDisplayName } from '../../utils/formatters';
 
 const METRIC_OPTIONS = [
   { value: 'apiSold',          label: 'API'  },
@@ -207,7 +207,7 @@ function CampaignForm({ initial, role, uid, userProfile, allUsers, onSave, onClo
     for (const u of allUsers) {
       if (u.role === 'unit_manager' && u.unitId && !seen.has(u.unitId)) {
         seen.add(u.unitId);
-        out.push({ id: u.unitId, label: u.name ?? u.unitId });
+        out.push({ id: u.unitId, label: getUnitDisplayName(u) });
       }
     }
     return out;

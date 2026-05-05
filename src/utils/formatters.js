@@ -1,3 +1,10 @@
+export const getUnitDisplayName = (unitManagerDoc) => {
+  if (!unitManagerDoc) return 'Unknown Unit';
+  if (unitManagerDoc.unitName?.trim()) return unitManagerDoc.unitName.trim();
+  const name = unitManagerDoc.name || unitManagerDoc.displayName || 'Unit Manager';
+  return `${name}'s Unit`;
+};
+
 export const ROLE_LABELS = {
   super_admin: 'Super Admin', // TEMPORARY: remove in commit 6 after production migration runs
   tenant_admin: 'Tenant Admin',
