@@ -127,7 +127,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
   1. **Personal Commitment** — agent sets own target (≥ company floor) — `goals/{goalId}` ✅ built
   2. **Unit Target** — unit manager sets target — `unitGoals/{unitId}_{year}` ✅ built
   3. **Branch Target** — branch manager sets target — `branchGoals/{year}` ✅ built
-  4. **Company Floor** — super admin sets minimum floor — `config/companyMinimums` ✅ built
+  4. **Company Floor** — tenant_admin sets minimum floor — `config/companyMinimums` ✅ built
   5. **Sales Manager Target** — cross-branch layer (planned Phase 9, not yet built)
   Gap analysis fetched via `getGoalHierarchy(tenantId, unitId, year, agentId)` in goalsService.js. Displayed in AgentDashboard Goals section and CareerPortal via `GapAnalysisPanel.jsx`.
 
@@ -154,7 +154,7 @@ src/
     goals/        ← CommissionPlayground, GapAnalysisPanel
     manager/      ← MasterSheet, CompliancePanel, GoalsPanel,
                      MeetingMode (AgentAvatar), PersistencyPanel,
-                     SettlementPanel, AgentManagementPanel
+                     SettlementPanel, UserManagementPanel
     onboarding/   ← WelcomeScreen
     profile/      ← ProfileScreen, CareerPortal,
                      AgentReportDocument (react-pdf, hex only)
@@ -178,16 +178,19 @@ src/
 ## Roles & Permissions
 
 Full organisational hierarchy (lowest → highest):
-**Agent → Unit Manager → Branch Manager → Sales Manager → Super Admin**
+**Agent → Unit Manager → Branch Manager → Sales Manager → Tenant Admin**
 
 ```
-super_admin (Kyron)  — all access + sensitive system config
+tenant_admin         — all access within tenant + sensitive system config
 sales_manager        — cross-branch visibility, company-wide campaigns
 branch_manager       — full branch, create accounts across all units
 unit_manager         — own unit only, create accounts for own agents
 agent                — own data only
 ```
 Role is stored in Firebase custom claims AND in Firestore `/tenants/{id}/users/{uid}.role`
+
+> **`super_admin` retired in PR-3.** All `super_admin` claim holders and UI branches removed.
+> Bootstrap the first `tenant_admin` for a new tenant via `functions/scripts/seed-first-super-admin.cjs`.
 
 > **Status:** `sales_manager` is recognized as a manager role from PR-1 onward
 > (firestore.rules `isManager`, App.jsx MANAGER_ROLES, etc.). Branch-aware
@@ -226,8 +229,8 @@ Use `extractFields()` in `src/utils/extractFields.js` — single source of truth
 
 ## Sensitive Files — Never Commit
 - `functions/service-account-key.json` — Firebase Admin SDK key
-- `functions/set-super-admin.cjs` — one-time Admin SDK script
-- `functions/seed-super-admin-user.cjs` — one-time seed script
+- `functions/set-super-admin.cjs` — historical bootstrap script (super_admin era, retired PR-3); gitignored
+- `functions/seed-super-admin-user.cjs` — historical seed script (super_admin era, retired PR-3); gitignored
 - `functions/seed-agent-names.cjs` — one-time seed script
 
 All four are confirmed in `.gitignore`.
@@ -254,3 +257,8 @@ All four are confirmed in `.gitignore`.
 6. Push branch, open PR, verify Vercel preview URL in incognito
 7. User merges PR manually — only then does production update
 8. After merge, do a 60-second production smoke test
+
+### Single-branch PR rule
+One worktree branch = one PR. Never extend an open PR by pushing unrelated work to its branch.
+If scope grows mid-PR, open a follow-up PR on a fresh branch after the current one merges.
+Claude Code creates worktree branches automatically — each maps 1:1 to a PR.
