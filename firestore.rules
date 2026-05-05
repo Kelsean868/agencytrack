@@ -15,7 +15,7 @@ service cloud.firestore {
     }
 
     function isManager() {
-      return getRole() in ['unit_manager', 'branch_manager', 'super_admin'];
+      return getRole() in ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'];
     }
 
     function isAgent() {
@@ -35,7 +35,24 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.unitId;
     }
 
+    // PR-1 (user-management): cross-tenant audit log of super_admin creations.
+    // Top-level flat collection. Cloud Function writes via Admin SDK (rules
+    // don't apply); clients can never write. CONTEXT.md uses the shorthand
+    // /audit/superAdminCreations/{auto-id} — actual collection name is
+    // auditSuperAdminCreations to satisfy Firestore's even-segment rule.
+    match /auditSuperAdminCreations/{docId} {
+      allow read: if isSignedIn() && getRole() == 'super_admin';
+      allow write: if false;
+    }
+
     match /tenants/{tenantId} {
+
+      // PR-1 (user-management): tenant metadata (e.g., enumerated branchIds list
+      // for UI dropdowns). Migration script writes via Admin SDK; clients read-only.
+      match /meta/{docId} {
+        allow read: if isSignedIn() && getTenantId() == tenantId;
+        allow write: if false;
+      }
 
       match /users/{userId} {
         allow read: if canManage(tenantId) || (isSignedIn() && request.auth.uid == userId);
