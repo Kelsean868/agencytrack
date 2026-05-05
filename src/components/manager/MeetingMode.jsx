@@ -67,7 +67,7 @@ function StatusBadge({ status }) {
 function StatCard({ label, value, accent }) {
   return (
     <div className="flex flex-col items-center gap-1 rounded-xl p-4 bg-white/5">
-      <p className="text-[0.68rem] uppercase tracking-widest text-white/50 text-center">{label}</p>
+      <p className="text-[0.68rem] uppercase tracking-widest text-white/70 text-center">{label}</p>
       <p className={`text-2xl font-bold ${accent ? 'text-primary' : 'text-white'}`}>{value}</p>
     </div>
   );
@@ -77,11 +77,11 @@ function RatioCard({ ratioKey, value }) {
   const info = RATIO_LABELS[ratioKey];
   return (
     <div className="rounded-xl p-3 bg-white/5 flex flex-col gap-1">
-      <p className="text-[0.62rem] uppercase tracking-widest text-white/40">{info.label}</p>
+      <p className="text-[0.62rem] uppercase tracking-widest text-white/65">{info.label}</p>
       <p className={`text-xl font-bold ${ratioColorClass(ratioKey, value)}`}>
         {formatRatioValue(ratioKey, value)}
       </p>
-      <p className="text-[0.58rem] text-white/30 leading-tight">{info.desc}</p>
+      <p className="text-[0.58rem] text-white/60 leading-tight">{info.desc}</p>
     </div>
   );
 }
@@ -92,7 +92,7 @@ function RatingBar({ label, value }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex justify-between items-baseline">
-        <p className="text-xs text-white/50">{label}</p>
+        <p className="text-xs text-white/70">{label}</p>
         <p className="text-sm font-semibold text-white">{value > 0 ? `${value}/10` : '—'}</p>
       </div>
       <div className="h-1.5 rounded-full bg-white/10">
@@ -238,21 +238,21 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
           </h2>
           <div className="grid grid-cols-2 gap-10 w-full max-w-2xl">
             <div className="flex flex-col items-center gap-2">
-              <p className="text-xs uppercase tracking-widest text-white/50">Total API</p>
+              <p className="text-xs uppercase tracking-widest text-white/70">Total API</p>
               <p className="text-5xl font-bold text-primary">{formatCurrency(totalAPI)}</p>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <p className="text-xs uppercase tracking-widest text-white/50">Apps Sold</p>
+              <p className="text-xs uppercase tracking-widest text-white/70">Apps Sold</p>
               <p className="text-5xl font-bold text-white">{totalApps}</p>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <p className="text-xs uppercase tracking-widest text-white/50">Avg Closing</p>
+              <p className="text-xs uppercase tracking-widest text-white/70">Avg Closing</p>
               <p className="text-5xl font-bold text-white">
                 {avgClosing !== null ? `${avgClosing}%` : '—'}
               </p>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <p className="text-xs uppercase tracking-widest text-white/50">Submissions</p>
+              <p className="text-xs uppercase tracking-widest text-white/70">Submissions</p>
               <p className="text-5xl font-bold text-white">
                 {submittedCount}/{agentSlides.length}
               </p>
@@ -270,7 +270,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
           <p className="text-4xl font-bold text-white">
             {agentSlides.length} agent{agentSlides.length !== 1 ? 's' : ''} reviewed
           </p>
-          <p className="text-white/50">Week of {formatDateLabel(selectedWeek)}</p>
+          <p className="text-white/70">Week of {formatDateLabel(selectedWeek)}</p>
         </div>
       );
     }
@@ -308,7 +308,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
                 </div>
               </div>
             )}
-            <p className="text-sm text-white/50">Week ending {formatDateLabel(selectedWeek)}</p>
+            <p className="text-sm text-white/70">Week ending {formatDateLabel(selectedWeek)}</p>
             <StatusBadge status={agent.status} />
           </div>
 
@@ -332,7 +332,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
           {mode === 'one-on-1' && (
             <>
               <div>
-                <p className="text-xs uppercase tracking-widest text-white/40 mb-3">Coaching Ratios</p>
+                <p className="text-xs uppercase tracking-widest text-white/65 mb-3">Coaching Ratios</p>
                 <div className="grid grid-cols-4 gap-2">
                   {RATIO_KEY_ORDER.map((key) => (
                     <RatioCard key={key} ratioKey={key} value={agent.ratios[key]} />
@@ -342,14 +342,14 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
 
               {/* ONE-ON-ONE — Self-Evaluation */}
               <div>
-                <p className="text-xs uppercase tracking-widest text-white/40 mb-3">Self-Evaluation</p>
+                <p className="text-xs uppercase tracking-widest text-white/65 mb-3">Self-Evaluation</p>
                 <div className="flex flex-col gap-3 rounded-xl bg-white/5 p-4">
                   {ratingBars(agent).map((r) => (
                     <RatingBar key={r.label} label={r.label} value={r.value} />
                   ))}
                 </div>
                 {agent.evaluationNotes && (
-                  <p className="mt-3 text-sm text-white/50 italic leading-relaxed">
+                  <p className="mt-3 text-sm text-white/70 italic leading-relaxed">
                     "{agent.evaluationNotes}"
                   </p>
                 )}
@@ -366,7 +366,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
 
       {/* Top bar — 3-col grid */}
       <header className="grid grid-cols-3 items-center px-6 py-4 shrink-0">
-        <p className="text-sm text-white/40">{slide + 1} / {totalSlides}</p>
+        <p className="text-sm text-white/65">{slide + 1} / {totalSlides}</p>
 
         {/* Mode toggle */}
         <div className="flex justify-center">
@@ -374,7 +374,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
             <button
               onClick={() => setMode('group')}
               className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                mode === 'group' ? 'bg-primary text-white' : 'text-white/50 hover:text-white'
+                mode === 'group' ? 'bg-primary text-white' : 'text-white/70 hover:text-white'
               }`}
             >
               <BarChart2 size={14} className="inline mr-1" /> Group
@@ -382,7 +382,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
             <button
               onClick={() => setMode('one-on-1')}
               className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                mode === 'one-on-1' ? 'bg-primary text-white' : 'text-white/50 hover:text-white'
+                mode === 'one-on-1' ? 'bg-primary text-white' : 'text-white/70 hover:text-white'
               }`}
             >
               <Search size={14} className="inline mr-1" /> 1-on-1

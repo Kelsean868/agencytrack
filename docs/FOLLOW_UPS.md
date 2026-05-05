@@ -64,6 +64,24 @@ requirement, but there is no UI flow for it. Admins currently must use the Fireb
 
 ---
 
+## A11Y PR3 — agent surfaces + lint hardening
+
+**Scope:** PR2 fixed manager surfaces (9 pages, 0 violations post-fix). PR3 covers agent-side
+surfaces and tightens the static analysis rules.
+
+- Run `scripts/a11y-axe-scan.cjs` against a preview URL to get the current agent-side baseline
+  (8 pages: login, dashboard, career, awards, leaderboard, history, profile, wizard_picker)
+- Fix all serious + critical violations found
+- Check `AgentAwardsPanel.jsx` for the same `opacity-60` greyed-card pattern fixed in PR2
+  (`ManagerAwardsPanel.jsx:56`); likely the same root cause
+- Flip `jsx-a11y/label-has-associated-control` from `warn` to `error` in ESLint config once
+  all label associations are clean (PR2 fixed the manager selects; PR3 cleans agent side first)
+- Pre-existing lint errors in `functions/index.js`, `scripts/test-sec10-rule.js`,
+  `src/components/gamification/BadgeGrid.jsx`, `src/components/goals/CommissionPlayground.jsx`,
+  and several other files — document and fix in a lint-cleanup pass (can be a separate PR)
+
+---
+
 ## APP_MANUAL historical references cleanup
 
 **Scope:** Several components contain `// APP_MANUAL` comments that were added during early

@@ -70,7 +70,10 @@ functions/seed-company-minimums.cjs
 .vercel
 
 # Verification artifacts (PDFs, screenshots, exploration reports)
-verification/
+# Use verification/* (not verification/) so a11y scan archives can be re-included
+verification/*
+!verification/a11y/
+!verification/a11y/*.json
 
 # Playwright MCP local state
 .playwright-mcp/
