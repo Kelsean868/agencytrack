@@ -155,11 +155,11 @@ async function cleanup(email) {
 
   // ── Seed caller UIDs ─────────────────────────────────────────────────────
   console.log('── Seeding test callers ──────────────────────────────');
-  const superAdminUid   = await seedUser('test-super-admin@test.local',   'super_admin',    'tatil_south', ['*']);
+  const tenantAdminUid  = await seedUser('test-tenant-admin@test.local',  'tenant_admin',   'tatil_south', ['*']);
   const branchMgrUid    = await seedUser('test-branch-mgr@test.local',    'branch_manager', 'tatil_south', ['tatil_south']);
   const unitMgrUid      = await seedUser('test-unit-mgr@test.local',      'unit_manager',   'tatil_south', ['tatil_south'], 'unit_a');
   const unitMgrBUid     = await seedUser('test-unit-mgr-b@test.local',    'unit_manager',   'tatil_south', ['tatil_south'], 'unit_b');
-  console.log(`  super_admin uid:    ${superAdminUid}`);
+  console.log(`  tenant_admin uid:   ${tenantAdminUid}`);
   console.log(`  branch_manager uid: ${branchMgrUid}`);
   console.log(`  unit_manager uid:   ${unitMgrUid} (unit_a)`);
   console.log(`  unit_manager-b uid: ${unitMgrBUid} (unit_b)`);
@@ -206,22 +206,22 @@ async function cleanup(email) {
     'unauthenticated'
   );
 
-  console.log('\n── createUser: super_admin confirmation guard ─────────');
+  console.log('\n── createUser: tenant_admin confirmation guard ────────');
 
   await expect(
-    'super_admin → super_admin without confirmationPhrase',
+    'tenant_admin → tenant_admin without confirmationPhrase',
     () => fnModule.createUser.run(
-      { role: 'super_admin', name: 'New SA', email: 'new-sa@test.local' },
-      makeCtx('super_admin', superAdminUid, 'tatil_south', ['*'])
+      { role: 'tenant_admin', name: 'New TA', email: 'new-ta@test.local' },
+      makeCtx('tenant_admin', tenantAdminUid, 'tatil_south', ['*'])
     ),
     'invalid-argument'
   );
 
   await expect(
-    'super_admin → super_admin with wrong phrase',
+    'tenant_admin → tenant_admin with wrong phrase',
     () => fnModule.createUser.run(
-      { role: 'super_admin', name: 'New SA', email: 'new-sa@test.local', confirmationPhrase: 'create super admin' },
-      makeCtx('super_admin', superAdminUid, 'tatil_south', ['*'])
+      { role: 'tenant_admin', name: 'New TA', email: 'new-ta@test.local', confirmationPhrase: 'create tenant admin' },
+      makeCtx('tenant_admin', tenantAdminUid, 'tatil_south', ['*'])
     ),
     'invalid-argument'
   );
@@ -237,14 +237,27 @@ async function cleanup(email) {
     'invalid-argument'
   );
 
-  await expect(
-    'unit_manager creation without unitId',
+  const umxResult = await expect(
+    'unit_manager creation without unitId succeeds (CF auto-sets unitId = newUid)',
     () => fnModule.createUser.run(
       { role: 'unit_manager', name: 'UM X', email: 'umx@test.local' },
       makeCtx('branch_manager', branchMgrUid)
     ),
-    'invalid-argument'
+    null
   );
+  if (umxResult?.uid) {
+    const doc = await getUserDoc(umxResult.uid);
+    if (doc?.unitId === umxResult.uid) {
+      passCount++;
+      console.log(`    ✓ unitId auto-set to newUid (${umxResult.uid})`);
+    } else {
+      failCount++;
+      const msg = `unitId not auto-set: ${JSON.stringify(doc)}`;
+      failures.push({ label: 'unit_manager auto-unitId', msg });
+      console.log(`    ✗ unit_manager auto-unitId — ${msg}`);
+    }
+    await cleanup('umx@test.local');
+  }
 
   console.log('\n── createUser: unit scoping ───────────────────────────');
 
@@ -314,79 +327,55 @@ async function cleanup(email) {
     await cleanup(umEmail);
   }
 
-  // super_admin creation by super_admin (full happy path)
-  const saEmail = `new-sa-${Date.now()}@test.local`;
-  const saResult = await expect(
-    'super_admin creates super_admin with correct phrase (happy path)',
+  // tenant_admin creation by tenant_admin (full happy path)
+  const taEmail = `new-ta-${Date.now()}@test.local`;
+  const taResult = await expect(
+    'tenant_admin creates tenant_admin with correct phrase (happy path)',
     () => fnModule.createUser.run(
-      { role: 'super_admin', name: 'New SuperAdmin', email: saEmail, confirmationPhrase: 'CREATE SUPER ADMIN' },
-      makeCtx('super_admin', superAdminUid, 'tatil_south', ['*'])
+      { role: 'tenant_admin', name: 'New TenantAdmin', email: taEmail, confirmationPhrase: 'CREATE TENANT ADMIN' },
+      makeCtx('tenant_admin', tenantAdminUid, 'tatil_south', ['*'])
     ),
     null
   );
-  if (saResult?.uid) {
-    const doc    = await getUserDoc(saResult.uid);
-    const claims = await getAuthClaims(saResult.uid);
+  if (taResult?.uid) {
+    const doc    = await getUserDoc(taResult.uid);
+    const claims = await getAuthClaims(taResult.uid);
     const ownedOk = JSON.stringify(doc?.ownedBranchIds) === JSON.stringify(['*']) &&
                     JSON.stringify(claims?.ownedBranchIds) === JSON.stringify(['*']);
     // Check audit log was written
-    const auditSnap = await testDb.collection('auditSuperAdminCreations')
-      .where('createdUid', '==', saResult.uid).limit(1).get();
+    const auditSnap = await testDb.collection('auditAdminCreations')
+      .where('createdUid', '==', taResult.uid).limit(1).get();
     const auditOk = !auditSnap.empty;
     if (ownedOk && doc.provisioning === undefined && auditOk) {
       passCount++;
-      console.log(`    ✓ super_admin ownedBranchIds=['*'] in doc + claims; provisioning cleared; audit log written`);
+      console.log(`    ✓ tenant_admin ownedBranchIds=['*'] in doc + claims; provisioning cleared; audit log written`);
     } else {
       failCount++;
-      const msg = `SA creation issue: ownedOk=${ownedOk} provisioning=${doc?.provisioning} auditOk=${auditOk}`;
-      failures.push({ label: 'super_admin creation', msg });
-      console.log(`    ✗ super_admin creation — ${msg}`);
+      const msg = `TA creation issue: ownedOk=${ownedOk} provisioning=${doc?.provisioning} auditOk=${auditOk}`;
+      failures.push({ label: 'tenant_admin creation', msg });
+      console.log(`    ✗ tenant_admin creation — ${msg}`);
     }
-    await cleanup(saEmail);
-  }
-
-  // createAgentAccount thin wrapper
-  const wrapEmail = `wrapper-agent-${Date.now()}@test.local`;
-  const wrapResult = await expect(
-    'createAgentAccount thin wrapper creates agent with same shape as createUser',
-    () => fnModule.createAgentAccount.run(
-      { name: 'Wrapper Agent', email: wrapEmail, unitId: 'unit_w' },
-      makeCtx('branch_manager', branchMgrUid)
-    ),
-    null
-  );
-  if (wrapResult?.uid) {
-    const doc = await getUserDoc(wrapResult.uid);
-    if (doc?.role === 'agent' && doc?.provisioning === undefined) {
-      passCount++;
-      console.log(`    ✓ createAgentAccount wrapper: role=agent, provisioning cleared`);
-    } else {
-      failCount++;
-      const msg = `wrapper shape wrong: ${JSON.stringify(doc)}`;
-      failures.push({ label: 'createAgentAccount wrapper', msg });
-      console.log(`    ✗ createAgentAccount wrapper — ${msg}`);
-    }
-    await cleanup(wrapEmail);
+    await cleanup(taEmail);
   }
 
   console.log('\n── setUserClaims: bypass removed ──────────────────────');
 
   // The old SUPER_ADMIN_UID bypass allowed a user with no role claim to call
-  // setUserClaims if their UID matched. After PR-2, only role === 'super_admin' works.
+  // setUserClaims if their UID matched. After PR-2, only role === 'tenant_admin' works.
   await expect(
     'setUserClaims with no role claim (simulates removed bypass path)',
     () => fnModule.setUserClaims.run(
       { uid: 'some-uid', role: 'agent', tenantId: TENANT },
-      { auth: { uid: superAdminUid, token: { tenantId: TENANT } }, rawRequest: {} } // no role in token
+      { auth: { uid: tenantAdminUid, token: { tenantId: TENANT } }, rawRequest: {} } // no role in token
     ),
     'permission-denied'
   );
 
   await expect(
-    'setUserClaims with role=super_admin (normal operator path, still works)',
+    'setUserClaims with role=tenant_admin (normal operator path, still works)',
     () => fnModule.setUserClaims.run(
-      { uid: superAdminUid, role: 'super_admin', tenantId: TENANT, branchId: 'tatil_south', ownedBranchIds: ['*'] },
-      makeCtx('super_admin', superAdminUid, 'tatil_south', ['*'])
+      { uid: tenantAdminUid, role: 'tenant_admin', tenantId: TENANT, branchId: 'tatil_south', ownedBranchIds: ['*'] },
+      makeCtx('tenant_admin', tenantAdminUid, 'tatil_south', ['*'])
     ),
     null
   );
@@ -400,7 +389,7 @@ async function cleanup(email) {
   const targetAgentUid = await seedUser(`target-agent-${Date.now()}@test.local`, 'agent', 'tatil_south', null, 'unit_a');
   const targetUMUid    = await seedUser(`target-um-${Date.now()}@test.local`,    'unit_manager',   'tatil_south', ['tatil_south'], 'unit_a');
   const targetBMUid    = await seedUser(`target-bm-${Date.now()}@test.local`,    'branch_manager', 'tatil_south', ['tatil_south']);
-  const targetSAUid    = await seedUser(`target-sa-${Date.now()}@test.local`,    'super_admin',    'tatil_south', ['*']);
+  const targetTAUid    = await seedUser(`target-ta-${Date.now()}@test.local`,    'tenant_admin',   'tatil_south', ['*']);
 
   await expect(
     'unauthenticated deactivateUser rejected',
@@ -421,10 +410,10 @@ async function cleanup(email) {
   );
 
   await expect(
-    'self-deactivation blocked (super_admin)',
+    'self-deactivation blocked (tenant_admin)',
     () => fnModule.deactivateUser.run(
-      { targetUid: superAdminUid, active: false },
-      makeCtx('super_admin', superAdminUid, 'tatil_south', ['*'])
+      { targetUid: tenantAdminUid, active: false },
+      makeCtx('tenant_admin', tenantAdminUid, 'tatil_south', ['*'])
     ),
     'permission-denied'
   );
@@ -501,13 +490,13 @@ async function cleanup(email) {
   );
 
   await expect(
-    'super_admin deactivates another super_admin',
+    'tenant_admin deactivates another tenant_admin',
     async () => {
       const result = await fnModule.deactivateUser.run(
-        { targetUid: targetSAUid, active: false },
-        makeCtx('super_admin', superAdminUid, 'tatil_south', ['*'])
+        { targetUid: targetTAUid, active: false },
+        makeCtx('tenant_admin', tenantAdminUid, 'tatil_south', ['*'])
       );
-      const doc = await getUserDoc(targetSAUid);
+      const doc = await getUserDoc(targetTAUid);
       if (doc?.active !== false) throw Object.assign(new Error('active not false'), { code: 'assertion-failed' });
       return result;
     },
@@ -518,13 +507,13 @@ async function cleanup(email) {
     'deactivateUser on non-existent uid returns not-found',
     () => fnModule.deactivateUser.run(
       { targetUid: 'nonexistent-uid-xyz', active: false },
-      makeCtx('super_admin', superAdminUid, 'tatil_south', ['*'])
+      makeCtx('tenant_admin', tenantAdminUid, 'tatil_south', ['*'])
     ),
     'not-found'
   );
 
   // ── Cleanup ───────────────────────────────────────────────────────────
-  const allTestUids = [superAdminUid, branchMgrUid, unitMgrUid, unitMgrBUid, targetAgentUid, targetUMUid, targetBMUid, targetSAUid];
+  const allTestUids = [tenantAdminUid, branchMgrUid, unitMgrUid, unitMgrBUid, targetAgentUid, targetUMUid, targetBMUid, targetTAUid];
   for (const uid of allTestUids) {
     try {
       await testAuth.deleteUser(uid);
