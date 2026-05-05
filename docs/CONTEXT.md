@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-05` |
-| Current main HEAD | `3cca307` (user-mgmt PR-1 squash, PR #24) |
-| Active track | User-management PR-2 — polymorphic createUser + bypass removal + bootstrap deletion (in PR review) |
-| Next track | User-management PR-3 (UI matrix: typed-confirmation, deactivate/reactivate UI, createUser call sites) |
+| Current main HEAD | `75f09d1` (user-mgmt PR-2 squash, PR #26) |
+| Active track | User-management PR-3 — plan-first session (UI matrix: typed-confirmation, deactivate/reactivate UI, createUser call sites) |
+| Next track | Track A remaining (WizardForm debounce, AgentDashboard dead-mount cleanup) |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -30,7 +30,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 - `tenantId` is sourced from auth claims at runtime via `getTenantId()` runtime holder in `src/firebase.js`.
 - `AuthContext` populates the holder after claims resolve, clears on sign-out.
 - 18 files migrated: 13 components use `useAuth().tenantId`, 5 services use `getTenantId()`.
-- One inline `import.meta.env.VITE_TENANT_ID` read remains at the AuthContext bootstrap site only — tracked by SEC-11.
+- ~~One inline `import.meta.env.VITE_TENANT_ID` read remains at the AuthContext bootstrap site only — tracked by SEC-11.~~ **Resolved in PR-2:** bootstrap block deleted, SEC-11 closed.
 - `firebase.js` no longer exports `tenantId` as a const.
 
 ### User-management hierarchy matrix (next track, plan approved)
@@ -99,7 +99,7 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 - **Test agent:** `kelsean@gmail.com` / password in `.env.local` as `A11Y_AGENT_PASSWORD`. UID: `J0j4uBqzTPcfm1IlGCPyDzo27RP2`.
 - **Vercel bypass:** token in `.env.local` as `VERCEL_BYPASS_TOKEN`. Usage: `?x-vercel-protection-bypass=<TOKEN>&x-vercel-set-bypass-cookie=true` on first request, sets cookie. **Never echo the value to chat or logs.**
-- **Super Admin (production):** Kyron, UID `4GeeZbhZBwdtGOLoJoggf4MQo142`.
+- **Super Admin (production):** Kyron, UID `4GeeZbhZBwdtGOLoJoggf4MQo142`, Auth email `kyron@tatillife.com`.
 
 ---
 
@@ -107,8 +107,9 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
-| user-mgmt PR-1 | Schema + atomicity foundation | ✅ shipped | Production migration `--apply` run 2026-05-05. Kyron's doc needs seed-script normalization (not manual fix — see pending ops below). |
-| user-mgmt PR-2 | Polymorphic createUser + bypass removal + bootstrap deletion | In PR review | Awaiting review + production sequence (seed → verify → merge → deploy). |
+| user-mgmt PR-1 | Schema + atomicity foundation | ✅ shipped | Production migration `--apply` run 2026-05-05. Kyron normalization resolved by seed script (PR-2 session). |
+| user-mgmt PR-2 | Polymorphic createUser + bypass removal + bootstrap deletion | ✅ shipped | Merged `75f09d1`, functions deployed 2026-05-05. 3-role production smoke ✓. |
+| user-mgmt PR-3 | UI matrix — typed-confirmation, deactivate/reactivate panel, createUser call sites | Plan-first | Opus recommended for planning. Covers: filtered dropdowns, Show deactivated toggle, createAgentAccount wrapper removal. |
 | SEC-9b | Migrate services to explicit `tenantId` parameter | No | ~20 call site refactor; schedule after user-mgmt ships |
 | SEC-11 | Replace AuthContext bootstrap with seed script | **✅ CLOSED in PR-2** | Bootstrap block deleted; seed-first-super-admin.cjs is the provisioning path going forward. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
@@ -121,12 +122,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #26 | `75f09d1` | feat(user-mgmt) — PR-2 polymorphic createUser + deactivateUser + bypass removal (closes SEC-11) |
 | #24 | `3cca307` | feat(user-mgmt) — PR-1 schema + atomicity foundation (branchId, ownedBranchIds, active, saga, migration) |
 | #22 | `b43c023` | fix(tooling) — env loader fails loudly on malformed `.env.local` (TOOLING-N) |
 | #21 | `b07e512` | chore — `docs/CONTEXT.md`, `docs/kickoff-template.md`, ignore `.session-handoffs/` |
 | #16 | `f17e217` | SEC-9 — runtime tenant ID holder, 18 files migrated |
-| #15 | `3784713` | chore(tooling) — production polling path retired |
-| #14 | `83e54ad` | chore(tooling) — verification helpers (exploration-walk, wait-vercel-ready) |
 
 ---
 
@@ -135,34 +135,26 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 These don't block anything, but they need to be resolved or carried forward each session.
 
 - **Empty worktree dir** at `.claude/worktrees/sad-meninsky-278312` — git worktree manifest cleared, but the OS directory remains. Cosmetic, run `rmdir` from any fresh shell whose cwd is not under it.
-- **Last verification artifacts** (post-SEC-9): `verification/sec9_production_console.log` + 3 screenshots `sec9_prod_post_*.png`. Local-only by design.
-- **Kyron (super_admin) record needs seed-script normalization** — PR-1 migration skipped his doc (branchId was `'branch_001'`). Run `seed-first-super-admin.cjs --apply` (see plan §10) BEFORE deploying PR-2 functions. This resolves branchId, ownedBranchIds, active, and Auth claims in one step.
+- **Last verification artifacts** (post-PR-2 smoke): `verification/pr1-postmerge-smoke-*-2026-05-05T1143.*`. Local-only by design.
 - **Orphan user** `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc exists but no Auth user. Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). Do not auto-delete; investigate first.
+- **Node.js 20 Functions runtime** deprecated 2026-04-30, decommission 2026-10-30 — migration to Node 22 is a separate ticket. Not blocking; CLAUDE.md locks v1 runtime for current track.
+- **`firebase-functions` SDK** at 4.9.0 — upgrade to ≥5.1.0 has breaking changes; schedule as own ticket after user-mgmt ships.
 
 ---
 
 ## Where we left off
 
-> **Session boundary:** End of user-mgmt PR-2 implementation (2026-05-05).
+> **Session boundary:** End of user-mgmt PR-2 production sequence (2026-05-05).
 
-PR-1 shipped to production (squash `3cca307`, PR #24). Post-merge smoke completed 2026-05-05.
+PR-2 shipped to production (squash `75f09d1`, PR #26). Full production sequence completed 2026-05-05:
 
-PR-2 delivered (branch `user-mgmt/pr2-polymorphic-create-deactivate`, in review):
-- **`createUser` callable** — polymorphic across all 5 roles; `CREATION_MATRIX` enforces tier permissions; super_admin creation requires `confirmationPhrase: 'CREATE SUPER ADMIN'`; saga generalized with `buildDocFields`/`buildClaims`/`deriveOwnedBranchIds` helpers.
-- **`deactivateUser` callable** — soft-delete + refresh-token revocation; same matrix as creation (can-create ↔ can-deactivate); self-deactivation hard-blocked for all roles.
-- **`createAgentAccount`** refactored to thin wrapper around `createUser` with `role: 'agent'` hardcoded; retained for PR-3 backward compat.
-- **`SUPER_ADMIN_UID` bypass removed** from `setUserClaims`; `SUPER_ADMIN_UID` const deleted.
-- **AuthContext bootstrap block deleted** (L33–49 removed, finalClaims simplified); SEC-11 closed.
-- **`seed-first-super-admin.cjs`** — new operator script for new-tenant provisioning and Kyron normalization.
-- **Audit log** — atomic write inside saga step D for super_admin creations; 10-field doc including tenantId, createdName, confirmationGiven, IP, userAgent.
-- **Emulator tests** — 30/30 passing (`test-pr2-emulator.cjs`).
+1. **Phase 1 — Seed:** `seed-first-super-admin.cjs --apply` run against Kyron's UID (`4GeeZbhZBwdtGOLoJoggf4MQo142`). All 4 fields verified: `role`, `tenantId`, `branchId: 'tatil_south'` (was `'branch_001'`), `ownedBranchIds: ['*']`. Refresh tokens revoked — Kyron must re-login to pick up new claims.
+2. **Phase 3 — Deploy:** `firebase deploy --only functions` — all 9 functions deployed (`createUser` new, `deactivateUser` new, 7 updated).
+3. **Phase 3 — Smoke:** 3-role production smoke ✓ — all loginOk, dashboardOk, 0 console errors, 0 network failures. No bootstrap warn fired. No `setUserClaims` call from AuthContext. SEC-11 and bypass removal confirmed live.
 
-**Production sequence (human-gated, separate authorization):**
-1. `seed-first-super-admin.cjs --apply` for Kyron → verify claims all ✓
-2. Merge PR-2 → `firebase deploy --only functions`
-3. 3-role smoke on production
+Kyron normalization gap (branchId `'branch_001'` → `'tatil_south'`) is **CLOSED**.
 
-**Next:** PR-3 (UI matrix: typed-confirmation dialog, deactivate/reactivate panel, Show deactivated toggle, createUser call sites).
+**Next:** PR-3 — plan-first session (Opus recommended). Covers: typed-confirmation dialog for super_admin creation, deactivate/reactivate UI panel, Show deactivated toggle, `createUser` call sites in `agentManagementService.js` + `AgentManagementPanel.jsx`, `createAgentAccount` wrapper removal.
 
 ---
 
