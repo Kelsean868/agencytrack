@@ -5,8 +5,6 @@ import { createAgent, getUnitManagers, getAgentsForUnit } from '../../services/a
 import { getTenantUsers } from '../../services/managerService';
 import { formatDateDisplay, formatDateFriendly } from '../../utils/formatters';
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID;
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function AgentAvatar({ name }) {
@@ -23,7 +21,7 @@ function AgentAvatar({ name }) {
   );
 }
 
-function CreateAgentDrawer({ onClose, onCreated, role, userProfile }) {
+function CreateAgentDrawer({ onClose, onCreated, role, userProfile, tenantId }) {
   const [form, setForm] = useState({
     name: '', email: '', agentNumber: '', contractStartDate: '', unitId: '',
   });
@@ -39,8 +37,9 @@ function CreateAgentDrawer({ onClose, onCreated, role, userProfile }) {
       setForm((f) => ({ ...f, unitId: userProfile?.unitId ?? '' }));
       return;
     }
-    getUnitManagers(TENANT_ID).then(setUnitManagers).catch(console.error);
-  }, [isUnitManager, userProfile]);
+    if (!tenantId) return;
+    getUnitManagers(tenantId).then(setUnitManagers).catch(console.error);
+  }, [isUnitManager, userProfile, tenantId]);
 
   function validate() {
     if (!form.name.trim()) return 'Full name is required.';
@@ -193,7 +192,7 @@ function CreateAgentDrawer({ onClose, onCreated, role, userProfile }) {
 }
 
 export default function AgentManagementPanel() {
-  const { role, userProfile } = useAuth();
+  const { role, userProfile, tenantId } = useAuth();
 
   const [agents, setAgents]       = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -207,7 +206,8 @@ export default function AgentManagementPanel() {
     try {
       let list;
       if (isUnitManager && userProfile?.unitId) {
-        list = await getAgentsForUnit(TENANT_ID, userProfile.unitId);
+        if (!tenantId) { setAgents([]); return; }
+        list = await getAgentsForUnit(tenantId, userProfile.unitId);
       } else {
         const all = await getTenantUsers();
         list = all.filter((u) => u.role === 'agent');
@@ -219,7 +219,7 @@ export default function AgentManagementPanel() {
     } finally {
       setLoading(false);
     }
-  }, [isUnitManager, userProfile]);
+  }, [isUnitManager, userProfile, tenantId]);
 
   useEffect(() => { loadAgents(); }, [loadAgents]);
 
@@ -306,6 +306,7 @@ export default function AgentManagementPanel() {
           onCreated={handleCreated}
           role={role}
           userProfile={userProfile}
+          tenantId={tenantId}
         />
       )}
     </div>

@@ -9,18 +9,16 @@ import {
   markAllRead as svcMarkAllRead,
 } from '../services/notificationService';
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID;
-
 const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
-  const { user } = useAuth();
+  const { user, tenantId } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!user?.uid) {
+    if (!user?.uid || !tenantId) {
       setNotifications([]);
       setLoading(false);
       return;
@@ -28,7 +26,7 @@ export function NotificationProvider({ children }) {
 
     setLoading(true);
     const q = query(
-      collection(db, `tenants/${TENANT_ID}/notifications`),
+      collection(db, `tenants/${tenantId}/notifications`),
       where('userId', '==', user.uid),
       orderBy('createdAt', 'desc'),
       limit(30)
@@ -48,26 +46,27 @@ export function NotificationProvider({ children }) {
     );
 
     return unsub;
-  }, [user?.uid]);
+  }, [user?.uid, tenantId]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markRead = useCallback(async (notificationId) => {
+    if (!tenantId) return;
     try {
-      await svcMarkRead(TENANT_ID, notificationId);
+      await svcMarkRead(tenantId, notificationId);
     } catch (e) {
       console.error(e);
     }
-  }, []);
+  }, [tenantId]);
 
   const markAllRead = useCallback(async () => {
-    if (!user?.uid) return;
+    if (!user?.uid || !tenantId) return;
     try {
-      await svcMarkAllRead(TENANT_ID, user.uid);
+      await svcMarkAllRead(tenantId, user.uid);
     } catch (e) {
       console.error(e);
     }
-  }, [user?.uid]);
+  }, [user?.uid, tenantId]);
 
   return (
     <NotificationContext.Provider

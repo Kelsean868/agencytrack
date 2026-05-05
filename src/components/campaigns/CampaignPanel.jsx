@@ -9,8 +9,6 @@ import { getTenantUsers } from '../../services/managerService';
 import { computeCampaignProgress } from '../../utils/campaignEngine';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID;
-
 const METRIC_OPTIONS = [
   { value: 'apiSold',          label: 'API'  },
   { value: 'applicationsSold', label: 'Apps' },
@@ -107,7 +105,7 @@ function ProgressTable({ campaign, submissions, allUsers }) {
 }
 
 // ─── Campaign list row ────────────────────────────────────────────────────────
-function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers }) {
+function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId }) {
   const [expanded, setExpanded] = useState(false);
   const [subs, setSubs] = useState([]);
   const [subsLoading, setSubsLoading] = useState(false);
@@ -115,16 +113,16 @@ function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers }) {
   const status = classifyDate(campaign.startDate, campaign.endDate);
 
   const handleExpand = useCallback(async () => {
-    if (!expanded && subs.length === 0) {
+    if (!expanded && subs.length === 0 && tenantId) {
       setSubsLoading(true);
       try {
-        const data = await getCampaignSubmissions(TENANT_ID, campaign.startDate, campaign.endDate);
+        const data = await getCampaignSubmissions(tenantId, campaign.startDate, campaign.endDate);
         setSubs(data);
       } catch (e) { console.error(e); }
       finally { setSubsLoading(false); }
     }
     setExpanded((v) => !v);
-  }, [expanded, subs.length, campaign]);
+  }, [expanded, subs.length, campaign, tenantId]);
 
   return (
     <div className="rounded-xl border border-border bg-[var(--color-surface)] overflow-hidden">
@@ -485,7 +483,7 @@ function CampaignForm({ initial, role, uid, userProfile, allUsers, onSave, onClo
 
 // ─── Main panel ───────────────────────────────────────────────────────────────
 export default function CampaignPanel() {
-  const { user, userProfile, role } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
   const [campaigns, setCampaigns] = useState([]);
   const [allUsers, setAllUsers]   = useState([]);
   const [loading, setLoading]     = useState(true);
@@ -498,16 +496,17 @@ export default function CampaignPanel() {
   const canCreate = ['unit_manager', 'branch_manager', 'super_admin'].includes(role);
 
   const load = useCallback(async () => {
+    if (!tenantId) return;
     try {
       const [camps, users] = await Promise.all([
-        getCampaigns(TENANT_ID),
+        getCampaigns(tenantId),
         getTenantUsers(),
       ]);
       setCampaigns(camps);
       setAllUsers(users);
     } catch (e) { console.error(e); }
     finally { setLoading(false); }
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -523,11 +522,12 @@ export default function CampaignPanel() {
   }, [campaigns]);
 
   const handleSave = async (formData) => {
+    if (!tenantId) return;
     if (editing) {
-      await updateCampaign(TENANT_ID, editing.id, formData);
+      await updateCampaign(tenantId, editing.id, formData);
     } else {
       await createCampaign(
-        TENANT_ID, user.uid,
+        tenantId, user.uid,
         userProfile?.name ?? userProfile?.email ?? '',
         role,
         formData
@@ -540,7 +540,8 @@ export default function CampaignPanel() {
   };
 
   const handleDelete = async (id) => {
-    await deleteCampaign(TENANT_ID, id);
+    if (!tenantId) return;
+    await deleteCampaign(tenantId, id);
     setDeletingId(null);
     showToast('Campaign deleted');
     await load();
@@ -644,6 +645,7 @@ export default function CampaignPanel() {
               onEdit={(camp) => { setEditing(camp); setFormOpen(true); }}
               onDelete={(camp) => setDeletingId(camp.id)}
               allUsers={allUsers}
+              tenantId={tenantId}
             />
           ))}
         </div>

@@ -2,7 +2,7 @@ import {
   doc, setDoc, getDoc, serverTimestamp,
   collection, query, where, orderBy, limit, getDocs,
 } from 'firebase/firestore';
-import { db, tenantId } from '../firebase';
+import { db, getTenantId } from '../firebase';
 
 function submissionDocId(uid, weekStarting) {
   return `${uid}_${weekStarting}`;
@@ -92,7 +92,7 @@ function sanitize(data) {
 }
 
 export async function saveDraft(uid, agentName, weekStarting, data) {
-  const ref = doc(db, `tenants/${tenantId}/submissions/${submissionDocId(uid, weekStarting)}`);
+  const ref = doc(db, `tenants/${getTenantId()}/submissions/${submissionDocId(uid, weekStarting)}`);
   await setDoc(
     ref,
     { ...sanitize(data), userId: uid, agentId: uid, agentName, weekStarting, status: 'draft', updatedAt: serverTimestamp() },
@@ -101,7 +101,7 @@ export async function saveDraft(uid, agentName, weekStarting, data) {
 }
 
 export async function submitReport(uid, agentName, weekStarting, data) {
-  const ref = doc(db, `tenants/${tenantId}/submissions/${submissionDocId(uid, weekStarting)}`);
+  const ref = doc(db, `tenants/${getTenantId()}/submissions/${submissionDocId(uid, weekStarting)}`);
   await setDoc(ref, {
     ...sanitize(data),
     userId: uid,
@@ -115,14 +115,14 @@ export async function submitReport(uid, agentName, weekStarting, data) {
 }
 
 export async function getDraft(uid, weekStarting) {
-  const ref = doc(db, `tenants/${tenantId}/submissions/${submissionDocId(uid, weekStarting)}`);
+  const ref = doc(db, `tenants/${getTenantId()}/submissions/${submissionDocId(uid, weekStarting)}`);
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }
 
 export async function getLastSubmission(uid) {
   const q = query(
-    collection(db, `tenants/${tenantId}/submissions`),
+    collection(db, `tenants/${getTenantId()}/submissions`),
     where('agentId', '==', uid),
     orderBy('weekStarting', 'desc'),
     limit(1)
@@ -133,7 +133,7 @@ export async function getLastSubmission(uid) {
 
 export async function getAgentSubmissions(uid) {
   const q = query(
-    collection(db, `tenants/${tenantId}/submissions`),
+    collection(db, `tenants/${getTenantId()}/submissions`),
     where('agentId', '==', uid),
     orderBy('weekStarting', 'desc')
   );

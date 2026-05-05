@@ -25,8 +25,6 @@ import MotivationalCarousel from './MotivationalCarousel';
 import SyncIndicator from '../ui/SyncIndicator';
 import ProfileScreen from '../profile/ProfileScreen';
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID;
-
 const TABS = [
   { id: 'overview',     label: 'Overview'     },
   { id: 'team',         label: 'Team'         },
@@ -57,7 +55,7 @@ function StatCard({ icon: Icon, label, value, sub, accent = false }) {
 }
 
 export default function ManagerDashboard() {
-  const { user, userProfile, role } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
   const [showWizard, setShowWizard]       = useState(false);
   const [activeTab, setActiveTab]         = useState('overview');
   const [selectedWeek, setSelectedWeek]   = useState(getMostRecentSunday());
@@ -81,9 +79,9 @@ export default function ManagerDashboard() {
   const [unitGoalsData, setUnitGoalsData] = useState({ agents: [], goalsMap: {} });
 
   useEffect(() => {
-    if (!user?.uid) return;
-    getGoals(TENANT_ID, user.uid).then(setManagerGoals).catch(console.error);
-  }, [user?.uid]);
+    if (!user?.uid || !tenantId) return;
+    getGoals(tenantId, user.uid).then(setManagerGoals).catch(console.error);
+  }, [user?.uid, tenantId]);
 
   const handleUnitGoalsLoaded = useCallback((agents, goalsMap) => {
     setUnitGoalsData({ agents, goalsMap });
@@ -302,7 +300,7 @@ export default function ManagerDashboard() {
             agentIds={agentIds}
             currentDate={new Date()}
             role={role}
-            tenantId={TENANT_ID}
+            tenantId={tenantId}
           />
         )}
 
@@ -345,7 +343,7 @@ export default function ManagerDashboard() {
                   agentId={user?.uid}
                   agentName={displayName}
                   isManagerSelf={true}
-                  tenantId={TENANT_ID}
+                  tenantId={tenantId}
                   submissions={[]}
                 />
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, query, orderBy, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { Flame, Trophy, ClipboardList, Zap } from 'lucide-react';
-import { db, tenantId } from '../../firebase';
+import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { computeWeeklyChampions } from '../../utils/weeklyChampions';
@@ -166,7 +166,7 @@ function LeaderRow({ entry, rank, isCurrentUser, photoURL }) {
 }
 
 export default function Leaderboard() {
-  const { user, role } = useAuth();
+  const { user, role, tenantId } = useAuth();
   const [docs, setDocs]                   = useState([]);
   const [photoMap, setPhotoMap]           = useState({});
   const [prevSubs, setPrevSubs]           = useState([]);
@@ -180,6 +180,7 @@ export default function Leaderboard() {
   const prevSunday = useMemo(() => getLastNSundays(2)[1], []);
 
   useEffect(() => {
+    if (!tenantId) return;
     const q = query(
       collection(db, `tenants/${tenantId}/leaderboard`),
       orderBy('points', 'desc')
@@ -197,9 +198,10 @@ export default function Leaderboard() {
       }
     );
     return unsub;
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => {
+    if (!tenantId) return;
     getDocs(collection(db, `tenants/${tenantId}/users`))
       .then((snap) => {
         const map = {};
@@ -209,10 +211,11 @@ export default function Leaderboard() {
         setPhotoMap(map);
       })
       .catch(() => {});
-  }, []);
+  }, [tenantId]);
 
   // Fetch previous week's submitted submissions for champions banner
   useEffect(() => {
+    if (!tenantId) return;
     setChampionsLoading(true);
     getDocs(
       query(
@@ -226,7 +229,7 @@ export default function Leaderboard() {
       })
       .catch(() => {})
       .finally(() => setChampionsLoading(false));
-  }, [prevSunday]);
+  }, [prevSunday, tenantId]);
 
   const champions = useMemo(
     () => computeWeeklyChampions(prevSubs, prevSunday),

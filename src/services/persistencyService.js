@@ -2,7 +2,7 @@ import {
   doc, getDoc, getDocs, setDoc, writeBatch,
   collection, query, where, serverTimestamp,
 } from 'firebase/firestore';
-import { db, tenantId } from '../firebase';
+import { db, getTenantId } from '../firebase';
 
 function persistencyDocId(agentId, year, month) {
   const mm = String(month).padStart(2, '0');
@@ -12,7 +12,7 @@ function persistencyDocId(agentId, year, month) {
 export async function getMonthlyPersistency(year, month) {
   const mm = String(month).padStart(2, '0');
   const q = query(
-    collection(db, `tenants/${tenantId}/persistency`),
+    collection(db, `tenants/${getTenantId()}/persistency`),
     where('year', '==', year),
     where('month', '==', month)
   );
@@ -27,7 +27,7 @@ export async function getMonthlyPersistency(year, month) {
 
 export async function getAgentPersistency(agentId, year) {
   const q = query(
-    collection(db, `tenants/${tenantId}/persistency`),
+    collection(db, `tenants/${getTenantId()}/persistency`),
     where('agentId', '==', agentId),
     where('year', '==', year)
   );
@@ -42,7 +42,7 @@ export async function getAgentPersistency(agentId, year) {
 
 export async function getAllPersistencyForYear(year) {
   const q = query(
-    collection(db, `tenants/${tenantId}/persistency`),
+    collection(db, `tenants/${getTenantId()}/persistency`),
     where('year', '==', year)
   );
   const snap = await getDocs(q);
@@ -59,16 +59,17 @@ export async function getAllPersistencyForYear(year) {
 }
 
 export async function savePersistencyBatch(entries, enteredBy) {
+  const tid = getTenantId();
   const batch = writeBatch(db);
   entries.forEach(({ agentId, agentName, year, month, persistency }) => {
     const ref = doc(
       db,
-      `tenants/${tenantId}/persistency/${persistencyDocId(agentId, year, month)}`
+      `tenants/${tid}/persistency/${persistencyDocId(agentId, year, month)}`
     );
     batch.set(ref, {
       agentId,
       agentName,
-      tenantId,
+      tenantId: tid,
       year,
       month,
       persistency: parseFloat(persistency) || 0,

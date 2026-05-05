@@ -3,7 +3,8 @@ import { collection, getDocs } from 'firebase/firestore';
 import { X, ChevronLeft, ChevronRight, AlertTriangle, BarChart2, Search } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { formatDateLabel } from '../../utils/validators';
-import { db, tenantId } from '../../firebase';
+import { db } from '../../firebase';
+import { useAuth } from '../../context/AuthContext';
 
 function AgentAvatar({ photoURL, name, size = 40 }) {
   const initials = (name ?? 'A')
@@ -102,11 +103,13 @@ function RatingBar({ label, value }) {
 }
 
 export default function MeetingMode({ submissions, selectedWeek, onClose }) {
+  const { tenantId } = useAuth();
   const [slide, setSlide]       = useState(0);
   const [mode, setMode]         = useState('group'); // 'group' | 'one-on-1'
   const [photoMap, setPhotoMap] = useState({});
 
   useEffect(() => {
+    if (!tenantId) return;
     getDocs(collection(db, `tenants/${tenantId}/users`))
       .then((snap) => {
         const map = {};
@@ -114,7 +117,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
         setPhotoMap(map);
       })
       .catch(() => {});
-  }, []);
+  }, [tenantId]);
 
   const agentSlides = useMemo(() => {
     return [...submissions]

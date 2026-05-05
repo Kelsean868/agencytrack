@@ -5,8 +5,6 @@ import { getTenantUsers } from '../../services/managerService';
 import { confirmSettlement, getSettlementsForUnit, deleteSettlement } from '../../services/settlementService';
 import { formatCurrency } from '../../utils/formatters';
 
-const TENANT_ID = import.meta.env.VITE_TENANT_ID;
-
 const MONTHS = [
   'January','February','March','April','May','June',
   'July','August','September','October','November','December',
@@ -32,7 +30,7 @@ function formatTs(ts) {
 const PAGE_SIZE = 20;
 
 export default function SettlementPanel() {
-  const { user, userProfile, role } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
 
   const [agents, setAgents]               = useState([]);
   const [settlements, setSettlements]     = useState([]);
@@ -65,6 +63,7 @@ export default function SettlementPanel() {
   const isReadOnly = role === 'unit_manager' && !Boolean(userProfile?.canConfirmSettlements);
 
   const loadData = useCallback(() => {
+    if (!tenantId) return;
     setLoadingData(true);
     setError('');
     getTenantUsers()
@@ -72,7 +71,7 @@ export default function SettlementPanel() {
         const agentList = userList.filter((u) => u.role === 'agent');
         setAgents(agentList);
         const agentIds = agentList.map((a) => a.id);
-        return getSettlementsForUnit(TENANT_ID, agentIds, CURRENT_YEAR);
+        return getSettlementsForUnit(tenantId, agentIds, CURRENT_YEAR);
       })
       .then((docs) => {
         setSettlements(docs.sort((a, b) => (b.periodKey ?? '').localeCompare(a.periodKey ?? '')));
@@ -82,7 +81,7 @@ export default function SettlementPanel() {
         setError('Failed to load data.');
       })
       .finally(() => setLoadingData(false));
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -116,12 +115,13 @@ export default function SettlementPanel() {
     if (isNaN(api) || api < 0)          { setSaveError('Enter a valid API amount.'); return; }
     if (isNaN(apps) || apps < 0)        { setSaveError('Enter valid Apps count.'); return; }
     if (isNaN(pers) || pers < 0 || pers > 100) { setSaveError('Persistency must be 0–100.'); return; }
+    if (!tenantId) { setSaveError('Tenant context not ready. Please retry.'); return; }
 
     setSaving(true);
     const confirmedByName = userProfile?.name ?? userProfile?.email ?? 'Manager';
     try {
       await confirmSettlement(
-        TENANT_ID, selectedAgent,
+        tenantId, selectedAgent,
         { periodKey: monthKey(selectedYear, selectedMonth), periodType: 'monthly', settledAPI: api, settledApps: apps, persistency: pers, notes },
         user.uid, confirmedByName
       );
@@ -165,6 +165,7 @@ export default function SettlementPanel() {
       return row.api !== '' || row.apps !== '' || row.persist !== '';
     });
     if (rowsToSave.length === 0) { setSaveError('No data entered.'); return; }
+    if (!tenantId) { setSaveError('Tenant context not ready. Please retry.'); return; }
 
     setSaving(true);
     const confirmedByName = userProfile?.name ?? userProfile?.email ?? 'Manager';
@@ -173,7 +174,7 @@ export default function SettlementPanel() {
         rowsToSave.map((a) => {
           const row = bulkRows[a.id];
           return confirmSettlement(
-            TENANT_ID, a.id,
+            tenantId, a.id,
             {
               periodKey: monthKey(selectedYear, selectedMonth),
               periodType: 'monthly',
@@ -198,8 +199,9 @@ export default function SettlementPanel() {
 
   async function handleDelete(settlement) {
     if (deletingId !== settlement.id) { setDeletingId(settlement.id); return; }
+    if (!tenantId) return;
     try {
-      await deleteSettlement(TENANT_ID, settlement.agentId, settlement.periodKey, settlement.year);
+      await deleteSettlement(tenantId, settlement.agentId, settlement.periodKey, settlement.year);
       setDeletingId(null);
       loadData();
     } catch (err) {
