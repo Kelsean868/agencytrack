@@ -275,7 +275,12 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/40" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Close drawer"
+        onClick={onClose}
+        className="flex-1 bg-black/40 border-0 p-0 m-0 cursor-pointer"
+      />
       <div className="w-full max-w-md bg-[var(--color-surface)] flex flex-col overflow-y-auto shadow-xl">
         <header className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <h2 className="text-base font-bold text-ink">{initial ? 'Edit Campaign' : 'New Campaign'}</h2>

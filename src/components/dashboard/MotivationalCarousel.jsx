@@ -331,7 +331,6 @@ export default function MotivationalCarousel({
   currentDate,
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const pausedRef = useRef(false);
   const timerRef  = useRef(null);
 
   const cards = useMemo(() => {
@@ -352,9 +351,7 @@ export default function MotivationalCarousel({
   }
 
   useEffect(() => {
-    timerRef.current = setInterval(() => {
-      if (!pausedRef.current) advance();
-    }, 6000);
+    timerRef.current = setInterval(advance, 6000);
     return () => clearInterval(timerRef.current);
   }, [total]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -363,10 +360,10 @@ export default function MotivationalCarousel({
   const card = cards[currentIndex];
 
   return (
-    <div
+    <section
+      aria-roledescription="carousel"
+      aria-label="Motivational insights"
       className="rounded-xl bg-[#01696f]/8 border border-[#01696f]/15 px-4 py-4 mb-6 relative select-none"
-      onMouseEnter={() => { pausedRef.current = true; }}
-      onMouseLeave={() => { pausedRef.current = false; }}
     >
       {/* Content */}
       <div className="text-center px-8 min-h-[56px] flex flex-col items-center justify-center transition-all duration-300">
@@ -414,6 +411,6 @@ export default function MotivationalCarousel({
           ))}
         </div>
       )}
-    </div>
+    </section>
   );
 }
