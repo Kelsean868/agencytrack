@@ -1,15 +1,11 @@
 /**
- * seed-first-super-admin.cjs — Operator tool: seed or repair a super_admin account.
+ * seed-first-tenant-admin.cjs — Operator tool: seed or repair a tenant_admin account.
  *
  * Sets custom Auth claims AND upserts the Firestore user doc for the target UID.
- * Use this for:
- *   1. New-tenant provisioning — first super_admin has no claims yet.
- *   2. Kyron normalization — PR-1 migration skipped his doc because branchId
- *      was 'branch_001' (not 'tatil_south'). Running --apply for Kyron's UID
- *      overwrites the incorrect branchId, adds missing active:true and
- *      ownedBranchIds:['*'], and mirrors the same to Auth claims via set({merge:true}).
- *      After successful --apply + verify, the "Kyron manual normalization" task
- *      in docs/CONTEXT.md pending operational state can be closed.
+ * Use this for new-tenant provisioning — first tenant_admin has no claims yet.
+ *
+ * Renamed from seed-first-super-admin.cjs (PR-2) to seed-first-tenant-admin.cjs
+ * (PR-3) when super_admin was split into tenant_admin + platform_admin.
  *
  * Modes:
  *   --dry-run   Preview what would change; no writes.
@@ -24,16 +20,16 @@
  *
  * Sample invocations:
  *   # Dry-run first — review output before writing:
- *   node functions/scripts/seed-first-super-admin.cjs \
- *     --uid 4GeeZbhZBwdtGOLoJoggf4MQo142 \
- *     --email kyronmarchan@gmail.com \
+ *   node functions/scripts/seed-first-tenant-admin.cjs \
+ *     --uid <UID> \
+ *     --email <email> \
  *     --tenant tatillife_south \
  *     --dry-run
  *
  *   # Apply:
- *   node functions/scripts/seed-first-super-admin.cjs \
- *     --uid 4GeeZbhZBwdtGOLoJoggf4MQo142 \
- *     --email kyronmarchan@gmail.com \
+ *   node functions/scripts/seed-first-tenant-admin.cjs \
+ *     --uid <UID> \
+ *     --email <email> \
  *     --tenant tatillife_south \
  *     --apply
  *
@@ -44,7 +40,7 @@
  * Safety:
  *   This script must NEVER run against production without explicit operator
  *   authorization separate from any code merge. Code merge ≠ seed run ≠
- *   functions deploy. All three are gated separately per plan §10.
+ *   functions deploy. All three are gated separately.
  */
 
 const path = require('path');
@@ -54,8 +50,8 @@ const admin = require('firebase-admin');
 // ─────────────────────────────────────────────────────────────────────────────
 // Config
 // ─────────────────────────────────────────────────────────────────────────────
-const DEFAULT_BRANCH_ID = 'tatil_south';
-const SUPER_ADMIN_ROLE  = 'super_admin';
+const DEFAULT_BRANCH_ID  = 'tatil_south';
+const TENANT_ADMIN_ROLE  = 'tenant_admin';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CLI arg parsing
@@ -111,7 +107,7 @@ if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
 // ─────────────────────────────────────────────────────────────────────────────
 (async () => {
   const mode = isDryRun ? 'DRY-RUN' : 'APPLY';
-  console.log(`\n=== seed-first-super-admin [${mode}] ===`);
+  console.log(`\n=== seed-first-tenant-admin [${mode}] ===`);
   console.log(`  UID:    ${targetUid}`);
   console.log(`  email:  (verified against auth record)`);
   console.log(`  tenant: ${targetTenant}`);
@@ -140,7 +136,7 @@ if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
   console.log('\nCurrent claims:', JSON.stringify(currentClaims));
 
   const newClaims = {
-    role:           SUPER_ADMIN_ROLE,
+    role:           TENANT_ADMIN_ROLE,
     tenantId:       targetTenant,
     branchId:       DEFAULT_BRANCH_ID,
     ownedBranchIds: ['*'],
@@ -156,7 +152,7 @@ if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
   const upsertPayload = {
     uid:            targetUid,
     email:          targetEmail,
-    role:           SUPER_ADMIN_ROLE,
+    role:           TENANT_ADMIN_ROLE,
     tenantId:       targetTenant,
     branchId:       DEFAULT_BRANCH_ID,
     ownedBranchIds: ['*'],
@@ -197,11 +193,11 @@ if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
   console.log(`  active:         doc=${finalDoc.active}`);
 
   const allOk = (
-    finalClaims.role           === SUPER_ADMIN_ROLE &&
+    finalClaims.role           === TENANT_ADMIN_ROLE &&
     finalClaims.tenantId       === targetTenant &&
     finalClaims.branchId       === DEFAULT_BRANCH_ID &&
     JSON.stringify(finalClaims.ownedBranchIds) === JSON.stringify(['*']) &&
-    finalDoc.role              === SUPER_ADMIN_ROLE &&
+    finalDoc.role              === TENANT_ADMIN_ROLE &&
     finalDoc.branchId          === DEFAULT_BRANCH_ID &&
     finalDoc.active            === true
   );
