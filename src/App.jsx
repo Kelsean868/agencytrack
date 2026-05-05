@@ -5,8 +5,7 @@ import LoginScreen from './components/auth/LoginScreen';
 import AgentDashboard from './components/dashboard/AgentDashboard';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
 
-// TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
-const MANAGER_ROLES = new Set(['unit_manager', 'branch_manager', 'sales_manager', 'super_admin', 'tenant_admin', 'platform_admin']);
+const MANAGER_ROLES = new Set(['unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin']);
 
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-surface">

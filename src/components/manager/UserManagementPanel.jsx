@@ -3,11 +3,13 @@ import { Plus, X, Loader2, UserCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   createUser,
+  deactivateUser,
   getUnitManagers,
   getBranchManagers,
+  getAllUsers,
 } from '../../services/agentManagementService';
-import { getTenantUsers } from '../../services/managerService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
+import DeactivateConfirmDialog from './DeactivateConfirmDialog';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -15,9 +17,6 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CREATABLE_ROLES = {
   platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
   tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
-  // TEMPORARY: super_admin retained for migration window.
-  // Remove in commit 6 after production migration runs.
-  super_admin:    ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
   sales_manager:  ['branch_manager', 'unit_manager', 'agent'],
   branch_manager: ['unit_manager', 'agent'],
   unit_manager:   ['agent'],
@@ -341,19 +340,22 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
 }
 
 export default function UserManagementPanel() {
-  const { role, userProfile, tenantId } = useAuth();
+  const { role, user: currentUser, userProfile, tenantId } = useAuth();
 
-  const [users, setUsers]         = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [showDrawer, setShowDrawer] = useState(false);
-  const [toast, setToast]         = useState('');
+  const [users, setUsers]               = useState([]);
+  const [loading, setLoading]           = useState(true);
+  const [showDrawer, setShowDrawer]     = useState(false);
+  const [showInactive, setShowInactive] = useState(false);
+  const [toast, setToast]               = useState('');
+  const [deactivateTarget, setDeactivateTarget] = useState(null);
+  const [deactivating, setDeactivating] = useState(false);
 
   const canCreate = (CREATABLE_ROLES[role]?.length ?? 0) > 0;
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await getTenantUsers();
+      const list = await getAllUsers({ includeInactive: showInactive });
       list.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
       setUsers(list);
     } catch (err) {
@@ -361,7 +363,7 @@ export default function UserManagementPanel() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showInactive]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
@@ -370,6 +372,27 @@ export default function UserManagementPanel() {
     loadUsers();
     setToast(`${ROLE_DISPLAY[createdRole] ?? 'User'} account created. A password setup email has been sent to ${email}.`);
     setTimeout(() => setToast(''), 6000);
+  }
+
+  async function handleDeactivateConfirm(active) {
+    if (!deactivateTarget) return;
+    setDeactivating(true);
+    const targetName = deactivateTarget.name ?? deactivateTarget.email;
+    try {
+      await deactivateUser(deactivateTarget.uid, active);
+      setDeactivateTarget(null);
+      await loadUsers();
+      setToast(active ? `${targetName} reactivated.` : `${targetName} deactivated.`);
+      setTimeout(() => setToast(''), 4000);
+    } catch (err) {
+      console.error('[UserManagementPanel] deactivate:', err);
+      const msg = err?.message?.includes('permission') ? "You don't have permission to do this." : 'Action failed. Please try again.';
+      setToast(msg);
+      setTimeout(() => setToast(''), 4000);
+      setDeactivateTarget(null);
+    } finally {
+      setDeactivating(false);
+    }
   }
 
   return (
@@ -382,18 +405,28 @@ export default function UserManagementPanel() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
           User Roster{users.length > 0 ? ` — ${users.length} user${users.length !== 1 ? 's' : ''}` : ''}
         </p>
-        {canCreate && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={() => setShowDrawer(true)}
-            className="btn-primary flex items-center gap-1.5 text-sm px-3 h-9"
+            onClick={() => setShowInactive((v) => !v)}
+            className="text-xs h-9 px-2 transition-colors hover:text-ink"
           >
-            <Plus size={15} /> Add User
+            {showInactive
+              ? <span className="font-semibold text-primary">Hide inactive</span>
+              : <span className="text-ink-muted">Show inactive</span>}
           </button>
-        )}
+          {canCreate && (
+            <button
+              onClick={() => setShowDrawer(true)}
+              className="btn-primary flex items-center gap-1.5 text-sm px-3 h-9"
+            >
+              <Plus size={15} /> Add User
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -406,32 +439,60 @@ export default function UserManagementPanel() {
       ) : users.length === 0 ? (
         <div className="card text-center py-10 flex flex-col items-center gap-3">
           <UserCircle size={40} className="text-border" />
-          <p className="text-sm text-ink-muted italic">No users yet — create the first user above.</p>
+          <p className="text-sm text-ink-muted italic">
+            {showInactive ? 'No users found.' : 'No users yet — create the first user above.'}
+          </p>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-[2fr_2fr_1.5fr_1fr] gap-3 px-3 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+          <div className="grid grid-cols-[2fr_2fr_1.5fr_1fr_auto] gap-3 px-3 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
             <span>Name</span>
             <span>Email</span>
             <span>Role</span>
             <span>Joined</span>
+            <span>Actions</span>
           </div>
           {users.map((u) => {
             const joinedDate = u.createdAt?.toDate?.().toISOString().slice(0, 10) ?? '';
+            const isInactive = u.active === false;
+            const canAct = CREATABLE_ROLES[role]?.includes(u.role) && u.uid !== currentUser?.uid;
             return (
               <div
                 key={u.uid ?? u.id}
-                className="grid grid-cols-[2fr_2fr_1.5fr_1fr] gap-3 items-center px-3 py-3 rounded-xl bg-[var(--color-surface)] border border-border"
+                className={`grid grid-cols-[2fr_2fr_1.5fr_1fr_auto] gap-3 items-center px-3 py-3 rounded-xl border ${
+                  isInactive
+                    ? 'bg-border/20 border-border/40 opacity-70'
+                    : 'bg-[var(--color-surface)] border-border'
+                }`}
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <UserAvatar name={u.name} />
-                  <span className="text-sm font-semibold text-ink truncate">{u.name ?? '—'}</span>
+                  <div className="min-w-0">
+                    <span className="text-sm font-semibold text-ink truncate block">{u.name ?? '—'}</span>
+                    {isInactive && (
+                      <span className="text-[10px] font-bold text-danger uppercase tracking-wide">Inactive</span>
+                    )}
+                  </div>
                 </div>
                 <span className="text-xs text-ink-muted truncate">{u.email ?? '—'}</span>
                 <span className="text-xs text-ink-muted">{getRoleLabel(u.role)}</span>
                 <span className="text-xs text-ink-muted">
                   {joinedDate ? formatDateDisplay(joinedDate) : '—'}
                 </span>
+                <div className="flex justify-end">
+                  {canAct && (
+                    <button
+                      onClick={() => setDeactivateTarget(u)}
+                      className={`text-xs font-semibold px-2.5 h-8 rounded-lg transition-colors min-w-[80px] ${
+                        isInactive
+                          ? 'text-primary bg-primary/10 hover:bg-primary/20'
+                          : 'text-danger bg-danger/10 hover:bg-danger/20'
+                      }`}
+                    >
+                      {isInactive ? 'Reactivate' : 'Deactivate'}
+                    </button>
+                  )}
+                </div>
               </div>
             );
           })}
@@ -446,6 +507,16 @@ export default function UserManagementPanel() {
           callerRole={role}
           callerProfile={userProfile}
           tenantId={tenantId}
+        />
+      )}
+
+      {/* Deactivate / Reactivate dialog */}
+      {deactivateTarget && (
+        <DeactivateConfirmDialog
+          user={deactivateTarget}
+          onConfirm={handleDeactivateConfirm}
+          onCancel={() => setDeactivateTarget(null)}
+          loading={deactivating}
         />
       )}
     </div>
