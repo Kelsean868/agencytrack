@@ -183,15 +183,15 @@ Full organisational hierarchy (lowest → highest):
 ```
 super_admin (Kyron)  — all access + sensitive system config
 sales_manager        — cross-branch visibility, company-wide campaigns
-                       (planned Phase 9, NOT YET IMPLEMENTED)
 branch_manager       — full branch, create accounts across all units
 unit_manager         — own unit only, create accounts for own agents
 agent                — own data only
 ```
 Role is stored in Firebase custom claims AND in Firestore `/tenants/{id}/users/{uid}.role`
 
-> **Note:** `sales_manager` role is defined here for planning purposes only.
-> Do not add `sales_manager` checks to any component until Phase 9 begins.
+> **Status:** `sales_manager` is recognized as a manager role from PR-1 onward
+> (firestore.rules `isManager`, App.jsx MANAGER_ROLES, etc.). Branch-aware
+> permission grants and cross-branch UI logic ship in PR-2/PR-3 of the user-mgmt track.
 
 ## Firestore Structure
 ```
@@ -233,14 +233,13 @@ Use `extractFields()` in `src/utils/extractFields.js` — single source of truth
 All four are confirmed in `.gitignore`.
 
 ## Known Open Items (Track A targets)
-1. **firestore.rules**: hardcoded super_admin UID (`4GeeZbhZBwdtGOLoJoggf4MQo142`) bypasses tenant scoping — must remove
-2. **firestore.rules**: leaderboard reads not tenant-scoped (cross-tenant leak risk when 2nd tenant onboards)
-3. **firestore.rules**: notification reads not tenant-scoped (same issue)
-4. **firestore.rules**: unit_managers can write any user in tenant (should be scoped to own unit)
+1. **functions/index.js**: hardcoded `SUPER_ADMIN_UID` bypass at L7 (used in `setUserClaims`) — removed in user-mgmt PR-2
+2. **firestore.rules**: leaderboard reads not tenant-scoped — RESOLVED in SEC-2
+3. **firestore.rules**: notification reads not tenant-scoped — RESOLVED in SEC-3
+4. **firestore.rules**: unit_managers can write any user in tenant — RESOLVED in SEC-4 (callerUnitId helper)
 5. **WizardForm.jsx**: auto-save fires on every keystroke (no debounce) — Firestore cost + battery drain
 6. **WizardForm.jsx**: auto-save errors silently swallowed — agents lose data without warning
 7. **AgentDashboard.jsx**: dead html2canvas off-screen mount + 900ms setTimeout still active
-8. **firebase.js**: `enableIndexedDbPersistence` is deprecated, migrate to `persistentLocalCache`
 
 ## Cosmetic Inconsistencies (low priority, not blocking)
 - `MotivationalCarousel.jsx:367` uses hex literal `bg-[#01696f]/8` instead of CSS var

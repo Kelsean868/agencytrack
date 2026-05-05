@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-04` |
-| Current main HEAD | `b07e512` (kickoff template + .session-handoffs ignore, PR #21) |
-| Active track | User-management hierarchy matrix — plan approved, awaiting PR-1 implementation kickoff |
-| Next track | (after user-mgmt) → provision a11y-scan-manager → resume A11Y PR2+ |
+| Current main HEAD | `b43c023` (TOOLING-N env loader fail-loud, PR #22) |
+| Active track | User-management hierarchy matrix — PR-1 in PR review (schema + atomicity foundation) |
+| Next track | User-management PR-2 (polymorphic createUser + bypass removal + bootstrap deletion) |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -60,7 +60,7 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 - Both fields mirrored to Firebase Auth custom claims for cheap rule reads.
 - No `/branches` collection. Enumerated branch list lives at `/tenants/{tid}/meta/branches`.
 - `active: boolean` field for soft-delete. Missing field treated as truthy (active).
-- `/audit/superAdminCreations/{auto-id}` collection for super_admin creation audit log.
+- `/auditSuperAdminCreations/{auto-id}` top-level collection for super_admin creation audit log. (Originally referenced as `/audit/superAdminCreations/{auto-id}` in plan shorthand; flattened to a single segment to satisfy Firestore's even-segment doc-path rule.)
 
 **Atomicity (memory-locked):**
 - Account creation must write tenantId and branch fields to **both** the user doc **and** the auth custom claim in a single transactional path.
@@ -80,6 +80,12 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 1. **PR-1** — Schema + atomicity foundation: new fields, backfill migration, dual-write saga, sales_manager role added to rules, `/audit` collection rules. Bypass NOT removed yet (circular dependency).
 2. **PR-2** — Polymorphic `createUser` Cloud Function, audit log writes, bootstrap path deletion, `SUPER_ADMIN_UID` removal, `seed-first-super-admin.cjs` script. `createAgent` retained as thin wrapper for backwards compat.
 3. **PR-3** — UI matrix: filtered dropdowns per tier, typed-confirmation field, deactivate/reactivate UI, `Show deactivated` toggle, `createAgent` wrapper removed.
+
+**Audit findings surfaced during PR-1 plan (locked):**
+- **Finding 1** — CLAUDE.md "Known Open Items #1" previously claimed `firestore.rules` had a hardcoded super_admin UID bypass. The bypass actually lives in `functions/index.js:7` (referenced at `:65` in `setUserClaims`). Reworded in CLAUDE.md as part of PR-1.
+- **Finding 2** — CLAUDE.md "Known Open Items #8" claimed `firebase.js` used deprecated `enableIndexedDbPersistence`. The migration to `persistentLocalCache` already shipped at some prior point. Item removed from CLAUDE.md in PR-1.
+- **Finding 3 (SEC-12)** — `firestore.rules:118-120` references `request.auth.token.unitId` for the `unit_manager` write path on `/unitGoals`, but `unitId` is never written as a custom claim by `setUserClaims` or `createAgentAccount` (only `role` and `tenantId`). The `unit_manager` branch always evaluates false; only super_admin/branch_manager actually write unitGoals today. Out of scope for PR-1; tracked as SEC-12.
+- **Q5 UID-header precedent** — Production UIDs are committable in code (e.g., migration script header comment, CONTEXT.md test-environment references). Real names are NOT committable. Pattern: `role: <UID>  [name redacted]`. Established as locked precedent in PR-1.
 
 ### Workflow rules
 
@@ -101,10 +107,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
+| user-mgmt PR-1 | Schema + atomicity foundation | In PR review | Awaiting merge + production migration `--apply` authorization |
 | SEC-9b | Migrate services to explicit `tenantId` parameter | No | ~20 call site refactor; schedule after user-mgmt ships |
 | SEC-11 | Replace AuthContext bootstrap with seed script | Closes in user-mgmt PR-2 | Auto-resolves |
 | SEC-9c | Server-side tenant isolation for scheduled Cloud Functions | No | Scheduled functions still hardcode `TENANT_ID = 'tatillife_south'`; future work |
-| TOOLING-N | env loader silently concatenates keys when `.env.local` lacks trailing newline | No | In progress — fail-loud fix bundled in this PR (3 scripts) |
+| SEC-12 | unitGoals write rule references missing `unitId` claim | No | Discovered during PR-1 audit; rule branch at `firestore.rules:118-120` is dead code today (unit_manager writes always fall through to false). Tracked in [#23](https://github.com/Kelsean868/agencytrack/issues/23). |
 
 ---
 
@@ -112,11 +119,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #22 | `b43c023` | fix(tooling) — env loader fails loudly on malformed `.env.local` (TOOLING-N) |
 | #21 | `b07e512` | chore — `docs/CONTEXT.md`, `docs/kickoff-template.md`, ignore `.session-handoffs/` |
 | #16 | `f17e217` | SEC-9 — runtime tenant ID holder, 18 files migrated |
 | #15 | `3784713` | chore(tooling) — production polling path retired |
 | #14 | `83e54ad` | chore(tooling) — verification helpers (exploration-walk, wait-vercel-ready) |
-| #13 | `fd189a9` | feat(a11y) PR1 — landmark structure, week-picker label, awards heading order |
 
 ---
 
@@ -131,15 +138,21 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** End of SEC-9 cleanup + user-management plan approval (2026-05-04).
+> **Session boundary:** End of user-mgmt PR-1 implementation (2026-05-04).
 
-The user-management plan is fully approved with all 10 open questions answered and three additional flags incorporated:
+PR-1 delivered:
+- Schema fields `branchId`, `ownedBranchIds`, `active`, plus saga `provisioning` flag.
+- Atomicity refactor of `createAgentAccount` — provisioning saga with compensating delete on claim-set failure.
+- One-shot migration script (`functions/scripts/migrate-user-mgmt-pr1.cjs`) with `--apply` / `--undo` / `--dry-run` modes.
+- `sales_manager` added to all manager role enums (firestore.rules + 4 client sites). Specific permission grants untouched (PR-2/PR-3 work).
+- `/audit/superAdminCreations` collection rules (top-level, super_admin read-only, client write-blocked).
+- `/tenants/{tid}/meta/branches` doc rules + initial seed via migration.
+- CLAUDE.md cleanups: Phase 9 deferred note removed; Findings 1 & 2 corrections applied.
+- SEC-12 issue opened for the pre-existing `unitGoals` rule + missing `unitId` claim bug.
 
-1. **Branch dropdown source UX gap** — solved by `/tenants/{tid}/meta/branches` doc in PR-1 schema scope.
-2. **PR-2/PR-3 dependency hazard** — solved by retaining `createAgent` as thin wrapper in PR-2, removing in PR-3.
-3. **Bootstrap deletion + seed script ordering in PR-2** — seed script must be tested before bootstrap deletion in same PR; explicit gate added to PR-2 verification.
+**What's pending:** PR merge, then production migration `--apply` (separate explicit authorization).
 
-**Next session begins with PR-1 implementation kickoff.** Use `docs/kickoff-template.md`. Reference this CONTEXT.md and the user-management plan in chat for the locked decisions.
+**Next session begins with PR-2 implementation kickoff** after PR-1 merges. Use `docs/kickoff-template.md`. Reference this CONTEXT.md and the user-management plan for the locked decisions.
 
 ---
 
