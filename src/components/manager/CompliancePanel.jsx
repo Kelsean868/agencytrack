@@ -223,6 +223,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       {/* Controls */}
       <div className="flex flex-wrap items-center gap-3">
         <select
+          aria-label="Week"
           value={selectedWeek}
           onChange={(e) => setSelectedWeek(e.target.value)}
           className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"

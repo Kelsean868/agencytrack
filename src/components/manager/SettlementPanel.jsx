@@ -322,8 +322,9 @@ export default function SettlementPanel() {
         {/* Period selector (shared) */}
         <div className="grid grid-cols-2 gap-3 mb-4">
           <div>
-            <label className={labelCls}>Month</label>
+            <label htmlFor="settlement-month" className={labelCls}>Month</label>
             <select
+              id="settlement-month"
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(Number(e.target.value))}
               className={inputCls}
@@ -334,8 +335,9 @@ export default function SettlementPanel() {
             </select>
           </div>
           <div>
-            <label className={labelCls}>Year</label>
+            <label htmlFor="settlement-year" className={labelCls}>Year</label>
             <select
+              id="settlement-year"
               value={selectedYear}
               onChange={(e) => setSelectedYear(Number(e.target.value))}
               className={inputCls}
@@ -351,8 +353,9 @@ export default function SettlementPanel() {
         {!bulkMode && (
           <form onSubmit={handleSave} className="flex flex-col gap-3">
             <div>
-              <label className={labelCls}>Agent</label>
+              <label htmlFor="settlement-agent" className={labelCls}>Agent</label>
               <select
+                id="settlement-agent"
                 value={selectedAgent}
                 onChange={(e) => setSelectedAgent(e.target.value)}
                 className={inputCls}
