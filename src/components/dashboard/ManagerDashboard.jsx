@@ -18,7 +18,7 @@ import SettlementPanel from '../manager/SettlementPanel';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
 import CampaignPanel from '../campaigns/CampaignPanel';
-import AgentManagementPanel from '../manager/AgentManagementPanel';
+import UserManagementPanel from '../manager/UserManagementPanel';
 import NotificationBell from '../ui/NotificationBell';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import MotivationalCarousel from './MotivationalCarousel';
@@ -178,7 +178,8 @@ export default function ManagerDashboard() {
             <p className="text-sm text-ink-muted">{roleLabel}</p>
           </div>
           <div className="flex items-center gap-2">
-            {(role === 'branch_manager' || role === 'super_admin') && (
+            {/* TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs. */}
+            {(role === 'branch_manager' || role === 'super_admin' || role === 'tenant_admin' || role === 'platform_admin') && (
               <button
                 onClick={handleExportBranchCSV}
                 className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors"
@@ -291,7 +292,7 @@ export default function ManagerDashboard() {
           </div>
         )}
 
-        {activeTab === 'team' && <AgentManagementPanel />}
+        {activeTab === 'team' && <UserManagementPanel />}
 
         {activeTab === 'campaigns' && <CampaignPanel />}
 

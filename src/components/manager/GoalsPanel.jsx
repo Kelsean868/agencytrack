@@ -3,7 +3,7 @@ import { AlertTriangle, Check } from 'lucide-react';
 import { getTenantUsers } from '../../services/managerService';
 import { getGoals, setGoals, getCompanyMinimums, getUnitGoals, setUnitGoals, getBranchGoals, setBranchGoals } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
-import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
+import { formatCurrency, formatDateDisplay, getUnitDisplayName } from '../../utils/formatters';
 
 function emptyGoals() {
   return {
@@ -84,7 +84,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
     for (const u of allUsers) {
       if (u.role === 'unit_manager' && u.unitId && !seen.has(u.unitId)) {
         seen.add(u.unitId);
-        out.push({ id: u.unitId, label: u.name ?? u.unitId });
+        out.push({ id: u.unitId, label: getUnitDisplayName(u) });
       }
     }
     return out;
@@ -583,7 +583,8 @@ export default function GoalsPanel({ onGoalsLoaded }) {
   const [subTab, setSubTab] = useState('agents');
   const [allUsers, setAllUsers] = useState([]);
 
-  const canSeeBranch = role === 'branch_manager' || role === 'super_admin';
+  // TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
+  const canSeeBranch = role === 'branch_manager' || role === 'super_admin' || role === 'tenant_admin' || role === 'platform_admin';
   const canSeeUnit   = role === 'unit_manager' || canSeeBranch;
 
   useEffect(() => {

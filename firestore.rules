@@ -15,7 +15,7 @@ service cloud.firestore {
     }
 
     function isManager() {
-      return getRole() in ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'];
+      return getRole() in ['unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'];
     }
 
     function isAgent() {
@@ -23,11 +23,11 @@ service cloud.firestore {
     }
 
     function canManage(tenantId) {
-      return isSignedIn() && (getRole() == 'super_admin' || (isManager() && getTenantId() == tenantId));
+      return isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || (isManager() && getTenantId() == tenantId));
     }
 
     function canAccessOwn(tenantId, agentId) {
-      return isSignedIn() && (getRole() == 'super_admin' || (isAgent() && getTenantId() == tenantId && request.auth.uid == agentId));
+      return isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || (isAgent() && getTenantId() == tenantId && request.auth.uid == agentId));
     }
 
     // SEC-4: fetch caller's unitId from Firestore profile (not token — unitId is not a custom claim)
@@ -35,13 +35,15 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.unitId;
     }
 
-    // PR-1 (user-management): cross-tenant audit log of super_admin creations.
+    // PR-3 (role refactor): cross-tenant audit log of admin account creations.
     // Top-level flat collection. Cloud Function writes via Admin SDK (rules
-    // don't apply); clients can never write. CONTEXT.md uses the shorthand
-    // /audit/superAdminCreations/{auto-id} — actual collection name is
-    // auditSuperAdminCreations to satisfy Firestore's even-segment rule.
-    match /auditSuperAdminCreations/{docId} {
-      allow read: if isSignedIn() && getRole() == 'super_admin';
+    // don't apply); clients can never write.
+    // Renamed from auditSuperAdminCreations (PR-1/PR-2) to auditAdminCreations (PR-3).
+    match /auditAdminCreations/{docId} {
+      allow read: if isSignedIn() && (
+        getRole() == 'platform_admin' ||
+        (getRole() == 'tenant_admin' && resource.data.tenantId == getTenantId())
+      );
       allow write: if false;
     }
 
@@ -66,8 +68,14 @@ service cloud.firestore {
             callerUnitId(tenantId) == resource.data.unitId
           )) || (isSignedIn()
             && request.auth.uid == userId
-            && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['hasSeenWelcome', 'photoURL', 'bio', 'phone']));
+            && (
+              (request.auth.token.role == 'unit_manager'
+               && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['unitName', 'hasSeenWelcome', 'photoURL', 'bio', 'phone']))
+              ||
+              request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['hasSeenWelcome', 'photoURL', 'bio', 'phone'])
+            ));
         allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
       }
 
@@ -93,7 +101,7 @@ service cloud.firestore {
 
       match /notifications/{notificationId} {
         // SEC-3: add tenant scope to notification reads
-        allow read:  if isSignedIn() && getTenantId() == tenantId && (getRole() == 'super_admin' || request.auth.uid == resource.data.userId);
+        allow read:  if isSignedIn() && getTenantId() == tenantId && (getRole() in ['platform_admin', 'tenant_admin'] || request.auth.uid == resource.data.userId);
         // SEC-10: recipient can mark their own notification read; field-restricted to read/readAt
         allow update: if (isSignedIn() && getTenantId() == tenantId
                          && request.auth.uid == resource.data.userId
@@ -110,15 +118,15 @@ service cloud.firestore {
 
       match /config/{docId} {
         allow read:  if isSignedIn() && getTenantId() == tenantId;
-        allow write: if isSignedIn() && getRole() == 'super_admin';
+        allow write: if isSignedIn() && getRole() in ['platform_admin', 'tenant_admin'];
       }
 
       match /settlements/{docId} {
-        allow read: if isSignedIn() && (getRole() == 'super_admin' || getTenantId() == tenantId);
-        allow write: if isSignedIn() && (getRole() == 'super_admin'
+        allow read: if isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || getTenantId() == tenantId);
+        allow write: if isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin']
           || getRole() == 'branch_manager'
           || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true);
-        allow delete: if isSignedIn() && (getRole() == 'super_admin'
+        allow delete: if isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin']
           || getRole() == 'branch_manager'
           || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true);
       }
@@ -130,7 +138,7 @@ service cloud.firestore {
         allow write: if request.auth != null
           && request.auth.token.tenantId == tenantId
           && (
-            request.auth.token.role == 'super_admin'
+            request.auth.token.role in ['platform_admin', 'tenant_admin']
             || request.auth.token.role == 'branch_manager'
             || (
               request.auth.token.role == 'unit_manager'
@@ -146,7 +154,7 @@ service cloud.firestore {
         allow write: if request.auth != null
           && request.auth.token.tenantId == tenantId
           && (
-            request.auth.token.role == 'super_admin'
+            request.auth.token.role in ['platform_admin', 'tenant_admin']
             || request.auth.token.role == 'branch_manager'
           );
       }
@@ -158,7 +166,7 @@ service cloud.firestore {
         allow create: if request.auth != null
           && request.auth.token.tenantId == tenantId
           && (
-            request.auth.token.role == 'super_admin'
+            request.auth.token.role in ['platform_admin', 'tenant_admin']
             || request.auth.token.role == 'branch_manager'
             || (
               request.auth.token.role == 'unit_manager'
@@ -169,7 +177,7 @@ service cloud.firestore {
         allow update, delete: if request.auth != null
           && request.auth.token.tenantId == tenantId
           && (
-            request.auth.token.role == 'super_admin'
+            request.auth.token.role in ['platform_admin', 'tenant_admin']
             || request.auth.token.role == 'branch_manager'
             || resource.data.createdBy == request.auth.uid
           );

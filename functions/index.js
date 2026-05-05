@@ -63,19 +63,23 @@ async function getAllAgents() {
 
 // Who can create whom. Deactivation uses the same matrix (can-create ↔ can-deactivate).
 const CREATION_MATRIX = {
-  super_admin:    ['super_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
   sales_manager:  ['branch_manager', 'unit_manager', 'agent'],
   branch_manager: ['unit_manager', 'agent'],
   unit_manager:   ['agent'],
 };
 
 function deriveOwnedBranchIds(targetRole, callerBranchId) {
-  if (targetRole === 'super_admin' || targetRole === 'sales_manager') return ['*'];
+  if (['platform_admin', 'tenant_admin', 'sales_manager'].includes(targetRole)) return ['*'];
   if (targetRole === 'branch_manager' || targetRole === 'unit_manager') return [callerBranchId];
   return null; // agents: field absent
 }
 
 function buildDocFields(targetRole, data, { newUid, callerTenant, derivedBranchId, derivedOwnedBranchIds, callerUid }) {
+  // platform_admin lives outside tenants — no Firestore user doc.
+  if (targetRole === 'platform_admin') return null;
+
   const doc = {
     uid:          newUid,
     tenantId:     callerTenant,
@@ -95,12 +99,15 @@ function buildDocFields(targetRole, data, { newUid, callerTenant, derivedBranchI
     doc.contractStartDate = data.contractStartDate ?? '';
     doc.hasSeenWelcome    = false;
   } else if (targetRole === 'unit_manager') {
-    doc.unitId = data.unitId;
+    doc.unitId = newUid; // unit_manager's own UID is their unit identifier
+    if (data.unitName) doc.unitName = data.unitName;
   }
   return doc;
 }
 
 function buildClaims(targetRole, { callerTenant, derivedBranchId, derivedOwnedBranchIds }) {
+  // platform_admin has no tenant scope — claim shape is { role, tenantId: null }.
+  if (targetRole === 'platform_admin') return { role: 'platform_admin', tenantId: null };
   const claims = { role: targetRole, tenantId: callerTenant, branchId: derivedBranchId };
   if (derivedOwnedBranchIds) claims.ownedBranchIds = derivedOwnedBranchIds;
   return claims;
@@ -127,14 +134,23 @@ async function doCreateUser(data, context) {
     );
   }
 
-  if (targetRole === 'super_admin' && data.confirmationPhrase !== 'CREATE SUPER ADMIN') {
+  // Cross-tenant user creation via CF deferred to SEC-9b.
+  // platform_admin accounts are provisioned via seed-platform-admin.cjs until then.
+  if (callerRole === 'platform_admin') {
     throw new functions.https.HttpsError(
-      'invalid-argument', 'Typed confirmation required to create a super_admin account.'
+      'unimplemented',
+      'Cross-tenant user creation ships in SEC-9b. Use seed-platform-admin.cjs to provision platform_admin accounts.'
     );
   }
 
-  if (['agent', 'unit_manager'].includes(targetRole) && !data.unitId) {
-    throw new functions.https.HttpsError('invalid-argument', 'unitId is required for this role.');
+  if (targetRole === 'tenant_admin' && data.confirmationPhrase !== 'CREATE TENANT ADMIN') {
+    throw new functions.https.HttpsError(
+      'invalid-argument', 'Typed confirmation required to create a tenant_admin account.'
+    );
+  }
+
+  if (targetRole === 'agent' && !data.unitId) {
+    throw new functions.https.HttpsError('invalid-argument', 'unitId is required for agent accounts.');
   }
 
   if (!data.name || !data.email) {
@@ -205,13 +221,14 @@ async function doCreateUser(data, context) {
 
   // ── Saga step D (atomic): clear provisioning flag + audit log ─────────────
   // Atomic for all roles: a stranded provisioning:true doc is data-debt.
-  // For super_admin: audit write failure also rolls back — an un-audited
-  // super_admin account in the system is worse than a caller retry.
+  // For tenant_admin: audit write failure also rolls back — an un-audited
+  // admin account in the system is worse than a caller retry.
   try {
     await docRef.update({ provisioning: admin.firestore.FieldValue.delete() });
 
-    if (targetRole === 'super_admin') {
-      await admin.firestore().collection('auditSuperAdminCreations').add({
+    if (['tenant_admin', 'platform_admin'].includes(targetRole)) {
+      await admin.firestore().collection('auditAdminCreations').add({
+        targetRole,
         tenantId:          callerTenant,
         creatorUid:        callerUid,
         creatorEmail:      callerData?.email ?? null,
@@ -247,13 +264,13 @@ async function doCreateUser(data, context) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EXISTING: Set custom claims — super_admin only, operator escape hatch.
-// SUPER_ADMIN_UID bypass removed in PR-2. Claims are now seeded via
-// seed-first-super-admin.cjs for new tenants and maintained by createUser.
+// EXISTING: Set custom claims — tenant_admin / platform_admin only, operator
+// escape hatch. SUPER_ADMIN_UID bypass removed in PR-2. Claims are now seeded
+// via seed-first-tenant-admin.cjs for new tenants and maintained by createUser.
 // ─────────────────────────────────────────────────────────────────────────────
 exports.setUserClaims = functions.https.onCall(async (data, context) => {
-  if (!context.auth || context.auth.token.role !== 'super_admin') {
-    throw new functions.https.HttpsError('permission-denied', 'Only super_admin can set user claims.');
+  if (!context.auth || !['platform_admin', 'tenant_admin'].includes(context.auth.token.role)) {
+    throw new functions.https.HttpsError('permission-denied', 'Only tenant_admin or platform_admin can set user claims.');
   }
 
   const { uid, role, tenantId, branchId, ownedBranchIds } = data;
@@ -444,16 +461,16 @@ exports.flagMissedDeadlines = functions.pubsub
         return;
       }
 
-      // Get all managers in the tenant (PR-1: include sales_manager, exclude provisioning)
+      // Get all managers in the tenant (PR-3: tenant_admin replaces super_admin, exclude provisioning)
       const managersSnap = await admin.firestore()
         .collection(`tenants/${TENANT_ID}/users`)
-        .where('role', 'in', ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'])
+        .where('role', 'in', ['unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin'])
         .get();
       const managers = managersSnap.docs
         .map((d) => ({ id: d.id, ...d.data() }))
         .filter((u) => u.provisioning !== true);
       const branchManagerIds = new Set(
-        managers.filter((m) => m.role === 'branch_manager' || m.role === 'super_admin').map((m) => m.id)
+        managers.filter((m) => m.role === 'branch_manager' || m.role === 'tenant_admin').map((m) => m.id)
       );
 
       // Notify each missed agent + mark their draft

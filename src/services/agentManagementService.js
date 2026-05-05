@@ -1,10 +1,10 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, getTenantId } from '../firebase';
 
 /**
  * createAgent(agentData)
- * Calls the createAgentAccount Cloud Function.
+ * Legacy wrapper — calls createAgentAccount CF. Deleted in commit 6.
  * agentData: { name, email, agentNumber, unitId, contractStartDate }
  */
 export async function createAgent(agentData) {
@@ -12,6 +12,58 @@ export async function createAgent(agentData) {
   const fn = httpsCallable(fns, 'createAgentAccount');
   const result = await fn(agentData);
   return result.data;
+}
+
+/**
+ * createUser(userData)
+ * Polymorphic wrapper around the createUser Cloud Function.
+ * userData: { role, name, email, ...roleSpecificFields }
+ */
+export async function createUser(userData) {
+  const fns = getFunctions();
+  const fn = httpsCallable(fns, 'createUser');
+  const result = await fn(userData);
+  return result.data;
+}
+
+/**
+ * deactivateUser(targetUid, active)
+ * active: false deactivates; active: true reactivates.
+ */
+export async function deactivateUser(targetUid, active) {
+  const fns = getFunctions();
+  const fn = httpsCallable(fns, 'deactivateUser');
+  const result = await fn({ targetUid, active });
+  return result.data;
+}
+
+/**
+ * getAllUsers({ includeInactive })
+ * All users in the current tenant, minus provisioning docs.
+ * Optionally includes users with active: false.
+ */
+export async function getAllUsers({ includeInactive = false } = {}) {
+  const snap = await getDocs(collection(db, `tenants/${getTenantId()}/users`));
+  return snap.docs
+    .map((d) => ({ uid: d.id, id: d.id, ...d.data() }))
+    .filter((u) => u.provisioning !== true)
+    .filter((u) => includeInactive || u.active !== false);
+}
+
+/**
+ * getBranchManagers(tenantId)
+ * Returns all branch managers — used to populate branch selector.
+ */
+export async function getBranchManagers(tenantId) {
+  const snap = await getDocs(
+    query(
+      collection(db, `tenants/${tenantId}/users`),
+      where('role', '==', 'branch_manager')
+    )
+  );
+  return snap.docs
+    .map((d) => ({ uid: d.id, ...d.data() }))
+    .filter((u) => u.provisioning !== true && u.active !== false);
 }
 
 /**

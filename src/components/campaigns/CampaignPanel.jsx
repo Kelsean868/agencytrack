@@ -7,7 +7,7 @@ import {
 } from '../../services/campaignService';
 import { getTenantUsers } from '../../services/managerService';
 import { computeCampaignProgress } from '../../utils/campaignEngine';
-import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
+import { formatCurrency, formatDateFriendly, getUnitDisplayName } from '../../utils/formatters';
 
 const METRIC_OPTIONS = [
   { value: 'apiSold',          label: 'API'  },
@@ -207,7 +207,7 @@ function CampaignForm({ initial, role, uid, userProfile, allUsers, onSave, onClo
     for (const u of allUsers) {
       if (u.role === 'unit_manager' && u.unitId && !seen.has(u.unitId)) {
         seen.add(u.unitId);
-        out.push({ id: u.unitId, label: u.name ?? u.unitId });
+        out.push({ id: u.unitId, label: getUnitDisplayName(u) });
       }
     }
     return out;
@@ -493,7 +493,8 @@ export default function CampaignPanel() {
   const [deletingId, setDeletingId] = useState(null);
   const [toast, setToast]         = useState('');
 
-  const canCreate = ['unit_manager', 'branch_manager', 'super_admin'].includes(role);
+  // TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
+  const canCreate = ['unit_manager', 'branch_manager', 'super_admin', 'tenant_admin', 'platform_admin'].includes(role);
 
   const load = useCallback(async () => {
     if (!tenantId) return;
@@ -547,8 +548,9 @@ export default function CampaignPanel() {
     await load();
   };
 
+  // TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
   const canEditCampaign = (c) =>
-    role === 'super_admin' || role === 'branch_manager' || c.createdBy === user?.uid;
+    role === 'super_admin' || role === 'tenant_admin' || role === 'platform_admin' || role === 'branch_manager' || c.createdBy === user?.uid;
 
   if (loading) {
     return (

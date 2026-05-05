@@ -335,7 +335,8 @@ export default function MotivationalCarousel({
   const timerRef  = useRef(null);
 
   const cards = useMemo(() => {
-    if (role === 'agent' || role === 'super_admin') {
+    // TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
+    if (role === 'agent' || role === 'super_admin' || role === 'tenant_admin' || role === 'platform_admin') {
       return buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, goals, agentProfile, currentDate });
     }
     return buildManagerCards({ submissions, leaderboardDoc, goals, unitAgents, currentDate });

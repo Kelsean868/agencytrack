@@ -13,6 +13,7 @@ export default function ProfileScreen() {
   const [displayName,     setDisplayName]     = useState(userProfile?.name ?? '');
   const [phone,           setPhone]           = useState(userProfile?.phone ?? '');
   const [bio,             setBio]             = useState(userProfile?.bio ?? '');
+  const [unitName,        setUnitName]        = useState(userProfile?.unitName ?? '');
   const [photoURL,        setPhotoURL]        = useState(userProfile?.photoURL ?? null);
   const [uploadProgress,  setUploadProgress]  = useState(null); // null | 0–100
   const [saving,          setSaving]          = useState(false);
@@ -62,11 +63,13 @@ export default function ProfileScreen() {
     setSaving(true);
     setSaved(false);
     try {
-      await updateUserProfile(user.uid, {
+      const fields = {
         name: displayName.trim(),
         phone: phone.trim(),
         bio: bio.trim(),
-      });
+      };
+      if (role === 'unit_manager') fields.unitName = unitName.trim();
+      await updateUserProfile(user.uid, fields);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
@@ -158,6 +161,23 @@ export default function ProfileScreen() {
             placeholder="Your name"
           />
         </div>
+
+        {role === 'unit_manager' && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-ink-muted" htmlFor="profile-unit-name">
+              Unit Name <span className="text-[10px] text-ink-faint">(optional — e.g. "Phoenix Unit")</span>
+            </label>
+            <input
+              id="profile-unit-name"
+              type="text"
+              value={unitName}
+              onChange={(e) => setUnitName(e.target.value.slice(0, 50))}
+              maxLength={50}
+              className="h-11 px-3 rounded-lg border border-border bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="e.g. Phoenix Unit"
+            />
+          </div>
+        )}
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-ink-muted" htmlFor="profile-phone">Phone</label>
