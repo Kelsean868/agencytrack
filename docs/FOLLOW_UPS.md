@@ -5,6 +5,35 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## A11Y PR3 — agent-side surfaces + strict mode flip
+
+**Scope:** Agent-side axe violations (separate scan script: `scripts/a11y-axe-scan.cjs`).
+Also includes the jsx-a11y warn→error flip for rules already fixed in PR1/PR2.
+
+- Run `A11Y_AGENT_EMAIL=... node scripts/a11y-axe-scan.cjs --url=<preview>` to baseline
+- Fix all serious + critical violations on agent surfaces (login, dashboard, career, awards,
+  leaderboard, history, profile, wizard)
+- Check `AgentAwardsPanel.jsx` for `opacity-60` on greyed award cards — likely same
+  `color-contrast × N` pattern fixed in manager awards (PR2)
+- After all agent findings fixed, flip jsx-a11y `label-has-associated-control` and any other
+  rules that are clean to `error` in `eslint.config.js`
+- 35 jsx-a11y warnings currently in lint output — all agent/manager forms; treat as the
+  backlog for this PR
+
+---
+
+## React Compiler adoption (long-term, conditional)
+
+**Scope:** `eslint-plugin-react-hooks` v7 ships React Compiler lint rules disabled in
+`eslint.config.js` (see Lint Policy in CLAUDE.md). If `@babel/plugin-react-compiler` is
+ever adopted, re-enable those rules and refactor the ~19 data-fetch `useEffect` patterns
+they flag.
+
+- Not blocking anything; purely a note for when React Compiler reaches stable adoption
+- No PR needed until the Compiler is intentionally added to the project
+
+---
+
 ## PR-4 — Edit-user flows (user-mgmt track)
 
 **Scope:** UserManagementPanel currently supports create + deactivate/reactivate.
