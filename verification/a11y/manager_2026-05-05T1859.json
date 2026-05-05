@@ -1,0 +1,79 @@
+{
+  "startedAt": "2026-05-05T18:59:04.021Z",
+  "baseUrl": "https://agencytrack.vercel.app",
+  "side": "manager",
+  "pages": {
+    "manager_dashboard": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_agents": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_campaigns": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_awards": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 1,
+      "nodes": 59,
+      "byRule": {
+        "color-contrast": 59
+      }
+    },
+    "manager_compliance": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 1,
+      "nodes": 1,
+      "byRule": {
+        "select-name": 1
+      }
+    },
+    "manager_persistency": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 1,
+      "nodes": 2,
+      "byRule": {
+        "select-name": 2
+      }
+    },
+    "manager_goals": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_settlements": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 1,
+      "nodes": 3,
+      "byRule": {
+        "select-name": 3
+      }
+    },
+    "manager_meeting_mode": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 1,
+      "nodes": 4,
+      "byRule": {
+        "color-contrast": 4
+      }
+    }
+  },
+  "totals": {
+    "byRule": {
+      "color-contrast": 63,
+      "select-name": 6
+    },
+    "nodes": 69,
+    "violations": 5
+  }
+}
