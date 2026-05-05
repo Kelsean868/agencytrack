@@ -369,22 +369,23 @@ export default function SettlementPanel() {
 
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className={labelCls}>Settled API (TTD)</label>
-                <input type="number" min="0" step="0.01" value={settledAPI} onChange={(e) => setSettledAPI(e.target.value)} placeholder="0" className={inputCls} />
+                <label htmlFor="settlement-api" className={labelCls}>Settled API (TTD)</label>
+                <input id="settlement-api" type="number" min="0" step="0.01" value={settledAPI} onChange={(e) => setSettledAPI(e.target.value)} placeholder="0" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Settled Apps</label>
-                <input type="number" min="0" step="1" value={settledApps} onChange={(e) => setSettledApps(e.target.value)} placeholder="0" className={inputCls} />
+                <label htmlFor="settlement-apps" className={labelCls}>Settled Apps</label>
+                <input id="settlement-apps" type="number" min="0" step="1" value={settledApps} onChange={(e) => setSettledApps(e.target.value)} placeholder="0" className={inputCls} />
               </div>
               <div>
-                <label className={labelCls}>Persistency %</label>
-                <input type="number" min="0" max="100" step="0.1" value={persistency} onChange={(e) => setPersistency(e.target.value)} placeholder="0" className={inputCls} />
+                <label htmlFor="settlement-persistency" className={labelCls}>Persistency %</label>
+                <input id="settlement-persistency" type="number" min="0" max="100" step="0.1" value={persistency} onChange={(e) => setPersistency(e.target.value)} placeholder="0" className={inputCls} />
               </div>
             </div>
 
             <div>
-              <label className={labelCls}>Notes (optional)</label>
+              <label htmlFor="settlement-notes" className={labelCls}>Notes (optional)</label>
               <textarea
+                id="settlement-notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}

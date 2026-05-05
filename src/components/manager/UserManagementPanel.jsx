@@ -151,8 +151,9 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
           {/* Role selector — hidden for unit_manager (locked to agent) */}
           {!isUnitManager && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Role *</label>
+              <label htmlFor="create-user-role" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Role *</label>
               <select
+                id="create-user-role"
                 value={targetRole}
                 onChange={(e) => setTargetRole(e.target.value)}
                 className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -180,8 +181,9 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
 
           {/* Full Name */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Full Name *</label>
+            <label htmlFor="create-user-name" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Full Name *</label>
             <input
+              id="create-user-name"
               type="text"
               value={form.name}
               onChange={set('name')}
@@ -192,8 +194,9 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
 
           {/* Email */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Email Address *</label>
+            <label htmlFor="create-user-email" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Email Address *</label>
             <input
+              id="create-user-email"
               type="email"
               value={form.email}
               onChange={set('email')}
@@ -206,8 +209,9 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
           {effectiveRole === 'agent' && (
             <>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Agent Number</label>
+                <label htmlFor="create-user-agent-number" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Agent Number</label>
                 <input
+                  id="create-user-agent-number"
                   type="text"
                   value={form.agentNumber}
                   onChange={set('agentNumber')}
@@ -216,8 +220,9 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Contract Start Date *</label>
+                <label htmlFor="create-user-contract-start" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Contract Start Date *</label>
                 <input
+                  id="create-user-contract-start"
                   type="date"
                   value={form.contractStartDate}
                   onChange={set('contractStartDate')}
@@ -229,13 +234,14 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                 )}
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Unit *</label>
+                <label htmlFor="create-user-unit" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Unit *</label>
                 {isUnitManager ? (
                   <div className="h-10 px-3 rounded-lg border border-border bg-border/30 text-sm text-ink-muted flex items-center">
                     {callerProfile?.name ?? 'Your unit'} (locked)
                   </div>
                 ) : (
                   <select
+                    id="create-user-unit"
                     value={form.unitId}
                     onChange={set('unitId')}
                     className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -256,10 +262,11 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
           {effectiveRole === 'unit_manager' && (
             <>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
+                <label htmlFor="create-user-unit-name" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
                   Unit Name <span className="font-normal normal-case text-ink-faint">(optional)</span>
                 </label>
                 <input
+                  id="create-user-unit-name"
                   type="text"
                   value={form.unitName}
                   onChange={set('unitName')}
@@ -269,13 +276,14 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Branch *</label>
+                <label htmlFor="create-user-um-branch" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Branch *</label>
                 {callerRole === 'branch_manager' ? (
                   <div className="h-10 px-3 rounded-lg border border-border bg-border/30 text-sm text-ink-muted flex items-center">
                     {callerProfile?.branchId ?? 'Your branch'} (locked)
                   </div>
                 ) : (
                   <select
+                    id="create-user-um-branch"
                     value={form.branchId}
                     onChange={set('branchId')}
                     className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
@@ -295,13 +303,14 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
           {/* branch_manager field: branch */}
           {effectiveRole === 'branch_manager' && (
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Branch *</label>
+              <label htmlFor="create-user-bm-branch" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Branch *</label>
               {callerRole === 'branch_manager' ? (
                 <div className="h-10 px-3 rounded-lg border border-border bg-border/30 text-sm text-ink-muted flex items-center">
                   {callerProfile?.branchId ?? 'Your branch'} (locked)
                 </div>
               ) : (
                 <select
+                  id="create-user-bm-branch"
                   value={form.branchId}
                   onChange={set('branchId')}
                   className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
