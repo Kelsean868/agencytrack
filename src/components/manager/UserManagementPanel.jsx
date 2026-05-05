@@ -15,6 +15,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CREATABLE_ROLES = {
   platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
   tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  // TEMPORARY: super_admin retained for migration window.
+  // Remove in commit 6 after production migration runs.
+  super_admin:    ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
   sales_manager:  ['branch_manager', 'unit_manager', 'agent'],
   branch_manager: ['unit_manager', 'agent'],
   unit_manager:   ['agent'],
