@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { CheckCircle, XCircle, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
+import { CheckCircle, XCircle, Info } from 'lucide-react';
 import { computeManagerAwards } from '../../utils/awardsEngine';
 import { getSettlementsForUnit } from '../../services/settlementService';
 import { formatCurrency } from '../../utils/formatters';
@@ -53,7 +53,7 @@ function AwardCard({ award }) {
   const isGreyed = !award.eligible && !award.inContention;
   return (
     <div className={`rounded-xl border p-4 flex flex-col gap-3 ${
-      isGreyed ? 'border-border opacity-60' : award.eligible ? 'border-success/30 bg-success/5' : 'border-primary/20 bg-surface'
+      isGreyed ? 'border-border bg-border/10' : award.eligible ? 'border-success/30 bg-success/5' : 'border-primary/20 bg-surface'
     }`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -108,8 +108,6 @@ function AwardCard({ award }) {
 }
 
 function MonthlyBonusCard({ bonus }) {
-  const tierLabel = bonus.bonusPct === 0 ? 'No tier reached yet' : `${bonus.bonusPct}% bonus tier`;
-
   return (
     <div className="card mb-6">
       <div className="flex items-start justify-between mb-3">
