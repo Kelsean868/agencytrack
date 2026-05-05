@@ -182,7 +182,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
     return { submitted, pending, missing };
   }, [users, usersLoaded, submissions]);
 
-  const handleUnlock = async (submissionId, agentName) => {
+  const handleUnlock = async (submissionId, _agentName) => {
     if (!user?.uid || !tenantId) return;
     const managerName = userProfile?.name ?? userProfile?.email ?? 'Manager';
     await unlockSubmission(tenantId, submissionId, user.uid, managerName);

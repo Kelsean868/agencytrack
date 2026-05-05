@@ -185,7 +185,7 @@ const EMPTY_FORM = {
   status: 'active',
 };
 
-function CampaignForm({ initial, role, uid, userProfile, allUsers, onSave, onClose }) {
+function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onClose }) {
   const [form, setForm] = useState(initial ?? EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');

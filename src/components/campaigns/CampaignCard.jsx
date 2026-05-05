@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Trophy, Gift, CheckCircle2 } from 'lucide-react';
+import { Gift, CheckCircle2 } from 'lucide-react';
 import { computeCampaignProgress, getDaysRemaining } from '../../utils/campaignEngine';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 

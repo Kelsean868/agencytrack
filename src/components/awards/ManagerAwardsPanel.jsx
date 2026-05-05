@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { CheckCircle, XCircle, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
+import { CheckCircle, XCircle, Info } from 'lucide-react';
 import { computeManagerAwards } from '../../utils/awardsEngine';
 import { getSettlementsForUnit } from '../../services/settlementService';
 import { formatCurrency } from '../../utils/formatters';
@@ -108,7 +108,7 @@ function AwardCard({ award }) {
 }
 
 function MonthlyBonusCard({ bonus }) {
-  const tierLabel = bonus.bonusPct === 0 ? 'No tier reached yet' : `${bonus.bonusPct}% bonus tier`;
+  const _tierLabel = bonus.bonusPct === 0 ? 'No tier reached yet' : `${bonus.bonusPct}% bonus tier`;
 
   return (
     <div className="card mb-6">

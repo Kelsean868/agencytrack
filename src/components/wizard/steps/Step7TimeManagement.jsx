@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { Card, NumericField } from '../CardStack';
 
 export default function Step7TimeManagement({ data, onChange }) {

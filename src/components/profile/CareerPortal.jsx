@@ -64,7 +64,7 @@ function commitmentColorClass(value, managerTarget, floor) {
 }
 
 // ── Goals Overview section ────────────────────────────────────────────────────
-function GoalsOverview({ submissions, user, persistencyData }) {
+function GoalsOverview({ _submissions, _user, _persistencyData }) {
   const { user: authUser, userProfile, tenantId } = useAuth();
   const [goals, setGoalsState]       = useState(null);
   const [minimums, setMinimums]      = useState(null);

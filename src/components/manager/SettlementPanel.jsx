@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Trash2, Plus, List, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getTenantUsers } from '../../services/managerService';
 import { confirmSettlement, getSettlementsForUnit, deleteSettlement } from '../../services/settlementService';
@@ -60,7 +60,7 @@ export default function SettlementPanel() {
   const [deletingId, setDeletingId]       = useState(null);
 
   const canAccess = role === 'branch_manager' || role === 'tenant_admin' || role === 'platform_admin' || Boolean(userProfile?.canConfirmSettlements);
-  const isReadOnly = role === 'unit_manager' && !Boolean(userProfile?.canConfirmSettlements);
+  const isReadOnly = role === 'unit_manager' && !userProfile?.canConfirmSettlements;
 
   const loadData = useCallback(() => {
     if (!tenantId) return;

@@ -18,6 +18,38 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // ── React Compiler rules (eslint-plugin-react-hooks v7) ─────────────────
+      // This project does not use @babel/plugin-react-compiler. The v7
+      // flat.recommended preset enables these Compiler-only rules as errors,
+      // but they fire on valid, idiomatic React patterns (e.g. setLoading(true)
+      // inside a data-fetch useEffect). Disable until the Compiler is adopted.
+      // If @babel/plugin-react-compiler is ever added, remove these overrides
+      // and fix the flagged sites.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
+      'react-hooks/preserve-manual-memoization': 'off',
+      'react-hooks/config': 'off',
+      'react-hooks/error-boundaries': 'off',
+      'react-hooks/gating': 'off',
+      'react-hooks/globals': 'off',
+      'react-hooks/immutability': 'off',
+      'react-hooks/incompatible-library': 'off',
+      'react-hooks/refs': 'off',
+      'react-hooks/set-state-in-render': 'off',
+      'react-hooks/static-components': 'off',
+      'react-hooks/unsupported-syntax': 'off',
+      'react-hooks/use-memo': 'off',
+      // Allow _prefixed variables as intentionally unused
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+  // Node.js environment for Cloud Functions and scripts (CommonJS — require/exports/process are valid)
+  {
+    files: ['functions/**/*.{js,cjs}', 'scripts/**/*.{js,cjs}'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
   },
   // jsx-a11y rules at 'warn' pending a11y fix PRs (PR 1 / PR 2 / PR 3 / PR 4).
   // Each fix PR will flip its target rules to 'error' as findings are killed.

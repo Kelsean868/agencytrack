@@ -252,7 +252,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
   return cards;
 }
 
-function buildManagerCards({ submissions, leaderboardDoc, goals, unitAgents, currentDate }) {
+function buildManagerCards({ _submissions, _leaderboardDoc, _goals, unitAgents, _currentDate }) {
   const cards = [];
 
   // 1. Compliance
