@@ -3,8 +3,7 @@ const functions = require('firebase-functions');
 
 admin.initializeApp();
 
-const TENANT_ID  = 'tatillife_south';
-const SUPER_ADMIN_UID = '4GeeZbhZBwdtGOLoJoggf4MQo142';
+const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper — get Sunday date string for a given Date in Trinidad time (UTC-4)
@@ -59,14 +58,201 @@ async function getAllAgents() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EXISTING: Set custom claims
+// PR-2: User-management helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Who can create whom. Deactivation uses the same matrix (can-create ↔ can-deactivate).
+const CREATION_MATRIX = {
+  super_admin:    ['super_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  sales_manager:  ['branch_manager', 'unit_manager', 'agent'],
+  branch_manager: ['unit_manager', 'agent'],
+  unit_manager:   ['agent'],
+};
+
+function deriveOwnedBranchIds(targetRole, callerBranchId) {
+  if (targetRole === 'super_admin' || targetRole === 'sales_manager') return ['*'];
+  if (targetRole === 'branch_manager' || targetRole === 'unit_manager') return [callerBranchId];
+  return null; // agents: field absent
+}
+
+function buildDocFields(targetRole, data, { newUid, callerTenant, derivedBranchId, derivedOwnedBranchIds, callerUid }) {
+  const doc = {
+    uid:          newUid,
+    tenantId:     callerTenant,
+    role:         targetRole,
+    name:         data.name,
+    email:        data.email,
+    branchId:     derivedBranchId,
+    active:       true,
+    provisioning: true,
+    createdAt:    admin.firestore.FieldValue.serverTimestamp(),
+    createdBy:    callerUid,
+  };
+  if (derivedOwnedBranchIds) doc.ownedBranchIds = derivedOwnedBranchIds;
+  if (targetRole === 'agent') {
+    doc.agentNumber       = data.agentNumber ?? '';
+    doc.unitId            = data.unitId;
+    doc.contractStartDate = data.contractStartDate ?? '';
+    doc.hasSeenWelcome    = false;
+  } else if (targetRole === 'unit_manager') {
+    doc.unitId = data.unitId;
+  }
+  return doc;
+}
+
+function buildClaims(targetRole, { callerTenant, derivedBranchId, derivedOwnedBranchIds }) {
+  const claims = { role: targetRole, tenantId: callerTenant, branchId: derivedBranchId };
+  if (derivedOwnedBranchIds) claims.ownedBranchIds = derivedOwnedBranchIds;
+  return claims;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Core user-creation saga — shared by createUser and createAgentAccount.
+// ─────────────────────────────────────────────────────────────────────────────
+async function doCreateUser(data, context) {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
+  }
+
+  const callerRole   = context.auth.token.role;
+  const callerUid    = context.auth.uid;
+  const callerTenant = context.auth.token.tenantId;
+  const targetRole   = data.role;
+
+  // ── Input validation (before any I/O) ─────────────────────────────────────
+
+  if (!CREATION_MATRIX[callerRole]?.includes(targetRole)) {
+    throw new functions.https.HttpsError(
+      'permission-denied', `${callerRole} cannot create ${targetRole}.`
+    );
+  }
+
+  if (targetRole === 'super_admin' && data.confirmationPhrase !== 'CREATE SUPER ADMIN') {
+    throw new functions.https.HttpsError(
+      'invalid-argument', 'Typed confirmation required to create a super_admin account.'
+    );
+  }
+
+  if (['agent', 'unit_manager'].includes(targetRole) && !data.unitId) {
+    throw new functions.https.HttpsError('invalid-argument', 'unitId is required for this role.');
+  }
+
+  if (!data.name || !data.email) {
+    throw new functions.https.HttpsError('invalid-argument', 'name and email are required.');
+  }
+
+  // ── Step 1: read caller profile — branchId derivation + email for audit ───
+  const callerSnap = await admin.firestore()
+    .doc(`tenants/${callerTenant}/users/${callerUid}`)
+    .get();
+  const callerData = callerSnap.exists ? callerSnap.data() : null;
+
+  let derivedBranchId = callerData?.branchId;
+  if (!derivedBranchId) {
+    console.warn('[createUser] caller missing branchId; falling back to tatil_south. Migration may not have run.');
+    derivedBranchId = 'tatil_south';
+  }
+
+  // ── Step 2: unit scoping — unit_manager can only create in their own unit ──
+  if (callerRole === 'unit_manager') {
+    const callerUnitId = callerData?.unitId;
+    if (data.unitId !== callerUnitId) {
+      throw new functions.https.HttpsError(
+        'permission-denied', 'Unit managers can only create users in their own unit.'
+      );
+    }
+  }
+
+  // ── Step 3: email uniqueness ───────────────────────────────────────────────
+  try {
+    await admin.auth().getUserByEmail(data.email);
+    throw new functions.https.HttpsError('already-exists', 'An account with this email already exists.');
+  } catch (err) {
+    if (err.code !== 'auth/user-not-found') throw err;
+  }
+
+  const derivedOwnedBranchIds = deriveOwnedBranchIds(targetRole, derivedBranchId);
+
+  // ── Saga step A: create Auth user ─────────────────────────────────────────
+  const userRecord = await admin.auth().createUser({
+    email:         data.email,
+    displayName:   data.name,
+    emailVerified: false,
+  });
+  const newUid = userRecord.uid;
+
+  const docRef = admin.firestore().doc(`tenants/${callerTenant}/users/${newUid}`);
+
+  // ── Saga step B: first Firestore write — provisioning: true ───────────────
+  // Doc is hidden from all UI list reads by the provisioning !== true filter.
+  await docRef.set(
+    buildDocFields(targetRole, data, { newUid, callerTenant, derivedBranchId, derivedOwnedBranchIds, callerUid })
+  );
+
+  // ── Saga step C: set custom claims ────────────────────────────────────────
+  // On failure: compensating delete of doc + auth user; throw to caller.
+  try {
+    await admin.auth().setCustomUserClaims(
+      newUid,
+      buildClaims(targetRole, { callerTenant, derivedBranchId, derivedOwnedBranchIds })
+    );
+  } catch (claimErr) {
+    console.error('[createUser] setCustomUserClaims failed; running compensating delete:', claimErr);
+    await docRef.delete().catch((e) => console.error('[saga] doc cleanup failed:', e));
+    await admin.auth().deleteUser(newUid).catch((e) => console.error('[saga] auth cleanup failed:', e));
+    throw new functions.https.HttpsError('internal', 'Account provisioning failed; please retry.');
+  }
+
+  // ── Saga step D (atomic): clear provisioning flag + audit log ─────────────
+  // Atomic for all roles: a stranded provisioning:true doc is data-debt.
+  // For super_admin: audit write failure also rolls back — an un-audited
+  // super_admin account in the system is worse than a caller retry.
+  try {
+    await docRef.update({ provisioning: admin.firestore.FieldValue.delete() });
+
+    if (targetRole === 'super_admin') {
+      await admin.firestore().collection('auditSuperAdminCreations').add({
+        tenantId:          callerTenant,
+        creatorUid:        callerUid,
+        creatorEmail:      callerData?.email ?? null,
+        createdUid:        newUid,
+        createdEmail:      data.email,
+        createdName:       data.name,
+        confirmationGiven: data.confirmationPhrase,
+        ip:                context.rawRequest?.ip ?? null,
+        userAgent:         context.rawRequest?.headers?.['user-agent'] ?? null,
+        timestamp:         admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+  } catch (sagaErr) {
+    console.error('[createUser] saga step D failed; running compensating delete:', sagaErr);
+    await docRef.delete().catch((e) => console.error('[saga] doc cleanup failed:', e));
+    await admin.auth().deleteUser(newUid).catch((e) => console.error('[saga] auth cleanup failed:', e));
+    throw new functions.https.HttpsError('internal', 'Account provisioning failed; please retry.');
+  }
+
+  // ── Side effects (best-effort, do not fail the saga) ──────────────────────
+  await admin.auth().generatePasswordResetLink(data.email, {
+    url: 'https://agencytrack.vercel.app',
+  }).catch((err) => console.error('[createUser] Reset link error:', err));
+
+  await createAdminNotification(callerTenant, newUid, {
+    type:  'account_created',
+    title: 'Welcome to AgencyTrack',
+    body:  'Your account has been created. Check your email to set your password and get started.',
+  }).catch(console.error);
+
+  console.log(`[createUser] Created ${targetRole} ${newUid} (${data.email}) by ${callerRole} ${callerUid}`);
+  return { success: true, uid: newUid };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXISTING: Set custom claims — super_admin only, operator escape hatch.
+// SUPER_ADMIN_UID bypass removed in PR-2. Claims are now seeded via
+// seed-first-super-admin.cjs for new tenants and maintained by createUser.
 // ─────────────────────────────────────────────────────────────────────────────
 exports.setUserClaims = functions.https.onCall(async (data, context) => {
-  const callerIsSuperAdmin =
-    (context.auth && context.auth.token.role === 'super_admin') ||
-    (context.auth && context.auth.uid === SUPER_ADMIN_UID);
-
-  if (!callerIsSuperAdmin) {
+  if (!context.auth || context.auth.token.role !== 'super_admin') {
     throw new functions.https.HttpsError('permission-denied', 'Only super_admin can set user claims.');
   }
 
@@ -83,7 +269,7 @@ exports.setUserClaims = functions.https.onCall(async (data, context) => {
   return { success: true };
 });
 
-// EXISTING: Log new users — skip if profile already created by createAgentAccount
+// EXISTING: Log new users — skip if profile already created by createUser
 exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
   const existing = await admin.firestore()
     .doc(`tenants/${TENANT_ID}/users/${user.uid}`)
@@ -98,9 +284,24 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CALLABLE: Create a new agent account (manager-initiated)
+// PR-2: Polymorphic createUser — full creation matrix
 // ─────────────────────────────────────────────────────────────────────────────
-exports.createAgentAccount = functions.https.onCall(async (data, context) => {
+exports.createUser = functions.https.onCall(doCreateUser);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXISTING: createAgentAccount — thin wrapper around createUser with role:
+// 'agent' hardcoded. Retained for backwards compatibility; removed in PR-3
+// after UI call sites migrate to createUser directly.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.createAgentAccount = functions.https.onCall((data, context) =>
+  doCreateUser({ ...data, role: 'agent' }, context)
+);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PR-2: deactivateUser — soft-delete (active: false) with immediate
+// refresh-token revocation, or reactivation (active: true).
+// ─────────────────────────────────────────────────────────────────────────────
+exports.deactivateUser = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
   }
@@ -108,126 +309,60 @@ exports.createAgentAccount = functions.https.onCall(async (data, context) => {
   const callerRole   = context.auth.token.role;
   const callerUid    = context.auth.uid;
   const callerTenant = context.auth.token.tenantId;
+  const { targetUid, active, reason } = data;
 
-  // PR-1: sales_manager joins the caller allow-list. The created role still
-  // hardcoded to 'agent' — polymorphic createUser is PR-2.
-  const allowedRoles = ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'];
-  if (!allowedRoles.includes(callerRole)) {
-    throw new functions.https.HttpsError('permission-denied', 'Only managers can create agent accounts.');
+  if (!targetUid || typeof active !== 'boolean') {
+    throw new functions.https.HttpsError('invalid-argument', 'targetUid and active (boolean) are required.');
   }
 
-  const { name, email, agentNumber, unitId, contractStartDate } = data;
-
-  if (!name || !email || !unitId) {
-    throw new functions.https.HttpsError('invalid-argument', 'name, email, and unitId are required.');
+  // Self-deactivation hard-blocked for any role
+  if (targetUid === callerUid) {
+    throw new functions.https.HttpsError('permission-denied', 'Cannot deactivate your own account.');
   }
 
-  // Read caller profile once — used for unit scoping AND branchId derivation.
-  const callerSnap = await admin.firestore()
-    .doc(`tenants/${callerTenant}/users/${callerUid}`)
-    .get();
-  const callerData = callerSnap.exists ? callerSnap.data() : null;
+  // Read target user doc — establishes tenant isolation + target role
+  const targetRef  = admin.firestore().doc(`tenants/${callerTenant}/users/${targetUid}`);
+  const targetSnap = await targetRef.get();
+  if (!targetSnap.exists) {
+    throw new functions.https.HttpsError('not-found', 'Target user not found in this tenant.');
+  }
+  const targetData = targetSnap.data();
 
-  // Unit Manager can only create agents in their own unit
-  if (callerRole === 'unit_manager') {
-    const callerUnitId = callerData?.unitId;
-    if (unitId !== callerUnitId) {
-      throw new functions.https.HttpsError(
-        'permission-denied',
-        'Unit managers can only create agents in their own unit.'
-      );
-    }
+  // Belt-and-suspenders: doc tenantId must match caller's token tenantId
+  if (targetData.tenantId !== callerTenant) {
+    throw new functions.https.HttpsError('permission-denied', 'Cannot deactivate a user in a different tenant.');
   }
 
-  // PR-1: derive branchId from the caller's profile. Falls back to default if
-  // caller is pre-migration (tripwire warn surfaces if this ever fires post-migration).
-  let derivedBranchId = callerData?.branchId;
-  if (!derivedBranchId) {
-    console.warn('[saga] caller missing branchId; falling back to tatil_south. Migration may not have run.');
-    derivedBranchId = 'tatil_south';
-  }
+  const targetRole = targetData.role;
 
-  // Check email not already in use
-  try {
-    await admin.auth().getUserByEmail(email);
-    throw new functions.https.HttpsError('already-exists', 'An account with this email already exists.');
-  } catch (err) {
-    if (err.code !== 'auth/user-not-found') throw err;
-  }
-
-  // ── Saga step 1: create Auth user ──────────────────────────────────────────
-  const userRecord = await admin.auth().createUser({
-    email,
-    displayName: name,
-    emailVerified: false,
-  });
-  const newUid = userRecord.uid;
-
-  // ── Saga step 2: first Firestore write — provisioning: true ────────────────
-  // The doc exists for rule purposes but is hidden from UI lists by the
-  // `provisioning != true` filter applied at every read site.
-  const docRef = admin.firestore().doc(`tenants/${callerTenant}/users/${newUid}`);
-  await docRef.set({
-    uid:               newUid,
-    tenantId:          callerTenant,
-    role:              'agent',
-    branchId:          derivedBranchId,
-    active:            true,
-    provisioning:      true,
-    name,
-    email,
-    agentNumber:       agentNumber ?? '',
-    unitId,
-    contractStartDate: contractStartDate ?? '',
-    hasSeenWelcome:    false,
-    createdAt:         admin.firestore.FieldValue.serverTimestamp(),
-    createdBy:         callerUid,
-  });
-
-  // ── Saga step 3: set custom claims (with compensating delete on failure) ──
-  try {
-    await admin.auth().setCustomUserClaims(newUid, {
-      role:     'agent',
-      tenantId: callerTenant,
-      branchId: derivedBranchId,
-      // Agents have no ownedBranchIds — only managers do.
-    });
-  } catch (claimErr) {
-    console.error('[createAgentAccount] setCustomUserClaims failed; running compensating delete:', claimErr);
-    await docRef.delete().catch((e) => console.error('[saga] doc cleanup failed:', e));
-    await admin.auth().deleteUser(newUid).catch((e) => console.error('[saga] auth cleanup failed:', e));
+  // Deactivation matrix — same as creation matrix
+  if (!CREATION_MATRIX[callerRole]?.includes(targetRole)) {
     throw new functions.https.HttpsError(
-      'internal',
-      'Account provisioning failed; please retry.'
+      'permission-denied', `${callerRole} cannot deactivate ${targetRole}.`
     );
   }
 
-  // ── Saga step 4: clear provisioning flag ──────────────────────────────────
-  // If THIS fails: log + continue. The user exists with working claims; the
-  // doc lingers as provisioning=true and stays hidden from UI lists. Cleanup
-  // is operator-driven (re-run migration or manual edit) — destroying a
-  // working account would be worse than the lingering flag.
-  try {
-    await docRef.update({
-      provisioning: admin.firestore.FieldValue.delete(),
-    });
-  } catch (clearErr) {
-    console.error('[createAgentAccount] failed to clear provisioning flag (account is functional):', clearErr);
+  const updatePayload = {
+    active,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedBy: callerUid,
+  };
+  if (reason !== undefined) {
+    updatePayload.deactivationReason = active ? null : (reason ?? null);
   }
 
-  // ── Side effects (best-effort, do not fail the saga) ──────────────────────
-  await admin.auth().generatePasswordResetLink(email, {
-    url: 'https://agencytrack.vercel.app',
-  }).catch((err) => console.error('[createAgentAccount] Reset link error:', err));
+  await targetRef.update(updatePayload);
 
-  await createAdminNotification(callerTenant, newUid, {
-    type:  'account_created',
-    title: 'Welcome to AgencyTrack',
-    body:  'Your account has been created. Check your email to set your password and get started.',
-  }).catch(console.error);
+  if (!active) {
+    // Revoke all refresh tokens — forces the deactivated user to sign out immediately.
+    // Their next login attempt will fail because active:false blocks the app UI.
+    await admin.auth().revokeRefreshTokens(targetUid);
+    console.log(`[deactivateUser] Deactivated + revoked tokens for ${targetUid} (${targetRole}) by ${callerRole} ${callerUid}`);
+  } else {
+    console.log(`[deactivateUser] Reactivated ${targetUid} (${targetRole}) by ${callerRole} ${callerUid}`);
+  }
 
-  console.log(`[createAgentAccount] Created agent ${newUid} (${email}) in unit ${unitId} branch ${derivedBranchId}`);
-  return { success: true, uid: newUid };
+  return { success: true };
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -499,15 +634,15 @@ exports.onSubmissionWrite = functions.firestore
       // ── Write leaderboard doc ─────────────────────────────────────────────
       await lbRef.set(
         {
-          userId:      agentId,
+          userId:       agentId,
           tenantId,
-          agentName:   after.agentName ?? lb.agentName ?? agentId,
-          points:      newPoints,
-          level:       LEVELS.indexOf(levelEntry) + 1,
-          levelTitle:  levelEntry.title,
-          badges:      [...existingBadges],
+          agentName:    after.agentName ?? lb.agentName ?? agentId,
+          points:       newPoints,
+          level:        LEVELS.indexOf(levelEntry) + 1,
+          levelTitle:   levelEntry.title,
+          badges:       [...existingBadges],
           weeklyStreak: streak,
-          updatedAt:   admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt:    admin.firestore.FieldValue.serverTimestamp(),
         },
         { merge: true }
       );

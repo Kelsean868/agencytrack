@@ -30,8 +30,10 @@ functions/seed-agent-names.cjs
 functions/seed-company-minimums.cjs
 
 # PR-1 user-management migration script — IS committed (audit trail).
+# PR-2 seed script — IS committed (no credentials embedded; CLI-args only).
 # Other functions/scripts/*.cjs files are tracked unless added to ignores above.
 !functions/scripts/migrate-user-mgmt-pr1.cjs
+!functions/scripts/seed-first-super-admin.cjs
 
 # MCP config — personal, each dev has their own
 .mcp.json
