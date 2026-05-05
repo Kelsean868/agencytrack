@@ -47,13 +47,15 @@ async function getSubmittedAgentIds(weekStarting) {
   return new Set(snap.docs.map((d) => d.data().agentId ?? d.data().userId).filter(Boolean));
 }
 
-// Helper — get all agent user docs in the tenant
+// Helper — get all agent user docs in the tenant (excludes provisioning)
 async function getAllAgents() {
   const snap = await admin.firestore()
     .collection(`tenants/${TENANT_ID}/users`)
     .where('role', '==', 'agent')
     .get();
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((u) => u.provisioning !== true);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,12 +70,16 @@ exports.setUserClaims = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('permission-denied', 'Only super_admin can set user claims.');
   }
 
-  const { uid, role, tenantId } = data;
+  const { uid, role, tenantId, branchId, ownedBranchIds } = data;
   if (!uid || !role || !tenantId) {
     throw new functions.https.HttpsError('invalid-argument', 'uid, role, and tenantId are required.');
   }
 
-  await admin.auth().setCustomUserClaims(uid, { role, tenantId });
+  const claims = { role, tenantId };
+  if (branchId) claims.branchId = branchId;
+  if (Array.isArray(ownedBranchIds)) claims.ownedBranchIds = ownedBranchIds;
+
+  await admin.auth().setCustomUserClaims(uid, claims);
   return { success: true };
 });
 
@@ -103,7 +109,9 @@ exports.createAgentAccount = functions.https.onCall(async (data, context) => {
   const callerUid    = context.auth.uid;
   const callerTenant = context.auth.token.tenantId;
 
-  const allowedRoles = ['unit_manager', 'branch_manager', 'super_admin'];
+  // PR-1: sales_manager joins the caller allow-list. The created role still
+  // hardcoded to 'agent' — polymorphic createUser is PR-2.
+  const allowedRoles = ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'];
   if (!allowedRoles.includes(callerRole)) {
     throw new functions.https.HttpsError('permission-denied', 'Only managers can create agent accounts.');
   }
@@ -114,18 +122,29 @@ exports.createAgentAccount = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('invalid-argument', 'name, email, and unitId are required.');
   }
 
+  // Read caller profile once — used for unit scoping AND branchId derivation.
+  const callerSnap = await admin.firestore()
+    .doc(`tenants/${callerTenant}/users/${callerUid}`)
+    .get();
+  const callerData = callerSnap.exists ? callerSnap.data() : null;
+
   // Unit Manager can only create agents in their own unit
   if (callerRole === 'unit_manager') {
-    const callerSnap = await admin.firestore()
-      .doc(`tenants/${callerTenant}/users/${callerUid}`)
-      .get();
-    const callerUnitId = callerSnap.data()?.unitId;
+    const callerUnitId = callerData?.unitId;
     if (unitId !== callerUnitId) {
       throw new functions.https.HttpsError(
         'permission-denied',
         'Unit managers can only create agents in their own unit.'
       );
     }
+  }
+
+  // PR-1: derive branchId from the caller's profile. Falls back to default if
+  // caller is pre-migration (tripwire warn surfaces if this ever fires post-migration).
+  let derivedBranchId = callerData?.branchId;
+  if (!derivedBranchId) {
+    console.warn('[saga] caller missing branchId; falling back to tatil_south. Migration may not have run.');
+    derivedBranchId = 'tatil_south';
   }
 
   // Check email not already in use
@@ -136,51 +155,78 @@ exports.createAgentAccount = functions.https.onCall(async (data, context) => {
     if (err.code !== 'auth/user-not-found') throw err;
   }
 
-  // Create Firebase Auth user
+  // ── Saga step 1: create Auth user ──────────────────────────────────────────
   const userRecord = await admin.auth().createUser({
     email,
     displayName: name,
     emailVerified: false,
   });
-
   const newUid = userRecord.uid;
 
-  // Set custom claims
-  await admin.auth().setCustomUserClaims(newUid, {
-    role: 'agent',
-    tenantId: callerTenant,
+  // ── Saga step 2: first Firestore write — provisioning: true ────────────────
+  // The doc exists for rule purposes but is hidden from UI lists by the
+  // `provisioning != true` filter applied at every read site.
+  const docRef = admin.firestore().doc(`tenants/${callerTenant}/users/${newUid}`);
+  await docRef.set({
+    uid:               newUid,
+    tenantId:          callerTenant,
+    role:              'agent',
+    branchId:          derivedBranchId,
+    active:            true,
+    provisioning:      true,
+    name,
+    email,
+    agentNumber:       agentNumber ?? '',
+    unitId,
+    contractStartDate: contractStartDate ?? '',
+    hasSeenWelcome:    false,
+    createdAt:         admin.firestore.FieldValue.serverTimestamp(),
+    createdBy:         callerUid,
   });
 
-  // Create Firestore user profile
-  await admin.firestore()
-    .doc(`tenants/${callerTenant}/users/${newUid}`)
-    .set({
-      uid:               newUid,
-      tenantId:          callerTenant,
-      role:              'agent',
-      name,
-      email,
-      agentNumber:       agentNumber ?? '',
-      unitId,
-      contractStartDate: contractStartDate ?? '',
-      hasSeenWelcome:    false,
-      createdAt:         admin.firestore.FieldValue.serverTimestamp(),
-      createdBy:         callerUid,
+  // ── Saga step 3: set custom claims (with compensating delete on failure) ──
+  try {
+    await admin.auth().setCustomUserClaims(newUid, {
+      role:     'agent',
+      tenantId: callerTenant,
+      branchId: derivedBranchId,
+      // Agents have no ownedBranchIds — only managers do.
     });
+  } catch (claimErr) {
+    console.error('[createAgentAccount] setCustomUserClaims failed; running compensating delete:', claimErr);
+    await docRef.delete().catch((e) => console.error('[saga] doc cleanup failed:', e));
+    await admin.auth().deleteUser(newUid).catch((e) => console.error('[saga] auth cleanup failed:', e));
+    throw new functions.https.HttpsError(
+      'internal',
+      'Account provisioning failed; please retry.'
+    );
+  }
 
-  // Send password setup email via Firebase's built-in reset email
+  // ── Saga step 4: clear provisioning flag ──────────────────────────────────
+  // If THIS fails: log + continue. The user exists with working claims; the
+  // doc lingers as provisioning=true and stays hidden from UI lists. Cleanup
+  // is operator-driven (re-run migration or manual edit) — destroying a
+  // working account would be worse than the lingering flag.
+  try {
+    await docRef.update({
+      provisioning: admin.firestore.FieldValue.delete(),
+    });
+  } catch (clearErr) {
+    console.error('[createAgentAccount] failed to clear provisioning flag (account is functional):', clearErr);
+  }
+
+  // ── Side effects (best-effort, do not fail the saga) ──────────────────────
   await admin.auth().generatePasswordResetLink(email, {
     url: 'https://agencytrack.vercel.app',
   }).catch((err) => console.error('[createAgentAccount] Reset link error:', err));
 
-  // Notify the new agent
   await createAdminNotification(callerTenant, newUid, {
     type:  'account_created',
     title: 'Welcome to AgencyTrack',
     body:  'Your account has been created. Check your email to set your password and get started.',
   }).catch(console.error);
 
-  console.log(`[createAgentAccount] Created agent ${newUid} (${email}) in unit ${unitId}`);
+  console.log(`[createAgentAccount] Created agent ${newUid} (${email}) in unit ${unitId} branch ${derivedBranchId}`);
   return { success: true, uid: newUid };
 });
 
@@ -263,12 +309,14 @@ exports.flagMissedDeadlines = functions.pubsub
         return;
       }
 
-      // Get all managers in the tenant
+      // Get all managers in the tenant (PR-1: include sales_manager, exclude provisioning)
       const managersSnap = await admin.firestore()
         .collection(`tenants/${TENANT_ID}/users`)
-        .where('role', 'in', ['unit_manager', 'branch_manager', 'super_admin'])
+        .where('role', 'in', ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'])
         .get();
-      const managers = managersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const managers = managersSnap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .filter((u) => u.provisioning !== true);
       const branchManagerIds = new Set(
         managers.filter((m) => m.role === 'branch_manager' || m.role === 'super_admin').map((m) => m.id)
       );

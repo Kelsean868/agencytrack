@@ -124,9 +124,11 @@ async function notifyCampaignParticipants(tenantId, campaign) {
   }
 
   const snap = await getDocs(agentQuery);
+  // PR-1: exclude provisioning users from campaign notification fan-out.
+  const recipients = snap.docs.filter((d) => d.data().provisioning !== true);
   const body = `A new campaign has launched. Prize: ${prize ?? '—'}. Runs ${formatDateFriendly(startDate)} to ${formatDateFriendly(endDate)}.`;
   await Promise.all(
-    snap.docs.map((d) =>
+    recipients.map((d) =>
       createNotification(tenantId, d.id, {
         type:  'campaign_launched',
         title: `New Campaign: ${name}`,

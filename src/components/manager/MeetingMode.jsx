@@ -113,7 +113,11 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     getDocs(collection(db, `tenants/${tenantId}/users`))
       .then((snap) => {
         const map = {};
-        snap.forEach((d) => { if (d.data().photoURL) map[d.id] = d.data().photoURL; });
+        snap.forEach((d) => {
+          const data = d.data();
+          if (data.provisioning === true) return;
+          if (data.photoURL) map[d.id] = data.photoURL;
+        });
         setPhotoMap(map);
       })
       .catch(() => {});

@@ -7,7 +7,7 @@ import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 
-const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'super_admin'];
+const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'];
 
 function daysSinceSunday(weekStarting) {
   const sunday = new Date(weekStarting + 'T12:00:00Z');

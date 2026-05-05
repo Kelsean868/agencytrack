@@ -174,7 +174,7 @@ export default function Leaderboard() {
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState('');
 
-  const isManager = role && ['unit_manager', 'branch_manager', 'super_admin'].includes(role);
+  const isManager = role && ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'].includes(role);
 
   // Previous week's Sunday — stable across renders
   const prevSunday = useMemo(() => getLastNSundays(2)[1], []);
@@ -206,7 +206,9 @@ export default function Leaderboard() {
       .then((snap) => {
         const map = {};
         snap.forEach((d) => {
-          if (d.data().photoURL) map[d.id] = d.data().photoURL;
+          const data = d.data();
+          if (data.provisioning === true) return;
+          if (data.photoURL) map[d.id] = data.photoURL;
         });
         setPhotoMap(map);
       })

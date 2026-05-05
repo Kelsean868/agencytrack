@@ -2,7 +2,7 @@ import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { createNotification } from './notificationService';
 
-const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'super_admin'];
+const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'];
 
 export async function unlockSubmission(tenantId, submissionId, managerUid, managerName) {
   const userRef = doc(db, `tenants/${tenantId}/users/${managerUid}`);

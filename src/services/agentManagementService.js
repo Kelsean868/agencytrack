@@ -25,7 +25,10 @@ export async function getUnitManagers(tenantId) {
       where('role', '==', 'unit_manager')
     )
   );
-  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+  // PR-1: exclude provisioning users.
+  return snap.docs
+    .map((d) => ({ uid: d.id, ...d.data() }))
+    .filter((u) => u.provisioning !== true);
 }
 
 /**
@@ -40,5 +43,8 @@ export async function getAgentsForUnit(tenantId, unitId) {
       where('unitId', '==', unitId)
     )
   );
-  return snap.docs.map((d) => ({ uid: d.id, ...d.data() }));
+  // PR-1: exclude provisioning users.
+  return snap.docs
+    .map((d) => ({ uid: d.id, ...d.data() }))
+    .filter((u) => u.provisioning !== true);
 }

@@ -3,7 +3,7 @@ import LoginScreen from './components/auth/LoginScreen';
 import AgentDashboard from './components/dashboard/AgentDashboard';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
 
-const MANAGER_ROLES = new Set(['unit_manager', 'branch_manager', 'super_admin']);
+const MANAGER_ROLES = new Set(['unit_manager', 'branch_manager', 'sales_manager', 'super_admin']);
 
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-surface">

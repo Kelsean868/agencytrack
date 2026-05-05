@@ -14,7 +14,10 @@ export async function getWeeklySubmissions(weekStarting) {
 
 export async function getTenantUsers() {
   const snap = await getDocs(collection(db, `tenants/${getTenantId()}/users`));
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // PR-1: hide provisioning users from every list-style UI consumer (9 callers).
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((u) => u.provisioning !== true);
 }
 
 export async function getAllYTDSubmissions() {
