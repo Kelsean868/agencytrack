@@ -11,11 +11,11 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 Also includes the jsx-a11y warn→error flip for rules already fixed in PR1/PR2.
 
 - Run `A11Y_AGENT_EMAIL=... node scripts/a11y-axe-scan.cjs --url=<preview>` to baseline
-- Fix all serious + critical violations on agent surfaces (login, dashboard, career, awards,
-  leaderboard, history, profile, wizard)
-- Check `AgentAwardsPanel.jsx` for `opacity-60` on greyed award cards — likely same
-  `color-contrast × N` pattern fixed in manager awards (PR2)
-- After all agent findings fixed, flip jsx-a11y `label-has-associated-control` and any other
+  (8 pages: login, dashboard, career, awards, leaderboard, history, profile, wizard_picker)
+- Fix all serious + critical violations on agent surfaces
+- Check `AgentAwardsPanel.jsx` for `opacity-60` on greyed award cards — same
+  `color-contrast × N` pattern fixed in PR2 (`ManagerAwardsPanel.jsx:56`)
+- After all agent findings fixed, flip `jsx-a11y/label-has-associated-control` and any other
   rules that are clean to `error` in `eslint.config.js`
 - 35 jsx-a11y warnings currently in lint output — all agent/manager forms; treat as the
   backlog for this PR
