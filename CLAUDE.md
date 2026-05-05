@@ -273,3 +273,9 @@ All four are confirmed in `.gitignore`.
 One worktree branch = one PR. Never extend an open PR by pushing unrelated work to its branch.
 If scope grows mid-PR, open a follow-up PR on a fresh branch after the current one merges.
 Claude Code creates worktree branches automatically — each maps 1:1 to a PR.
+
+- **Always sync before branching:** run `git fetch origin && git pull origin main` before
+  creating a new branch off main. PR #31 (lint cleanup) was cut while A11Y PR2 was still
+  open; PR2 merged first and both had touched `ManagerAwardsPanel.jsx`, producing a
+  conflict that required a manual merge commit. Pulling latest main before branching
+  eliminates this class of conflict entirely.
