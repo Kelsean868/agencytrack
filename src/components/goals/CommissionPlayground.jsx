@@ -105,7 +105,7 @@ function OutputTable({ computed, freqKey, onFreqChange }) {
   );
 }
 
-export default function CommissionPlayground({ submissions = [], agentId, tenantId, agentName, isManagerSelf }) {
+export default function CommissionPlayground({ submissions = [], agentId, tenantId, _agentName, isManagerSelf }) {
   const { user, userProfile } = useAuth();
   const [open, setOpen]                     = useState(false);
   const [inputs, setInputs]                 = useState(DEFAULT_INPUTS);

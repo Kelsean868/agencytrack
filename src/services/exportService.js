@@ -1,7 +1,6 @@
 import { createElement } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { extractFields } from '../utils/extractFields';
-import { formatCurrency } from '../utils/formatters';
 import { AgentReportDocument } from '../components/profile/AgentReportDocument';
 
 // ── generateAgentPDF ──────────────────────────────────────────────────────────

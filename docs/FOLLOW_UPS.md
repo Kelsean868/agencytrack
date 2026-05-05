@@ -5,6 +5,35 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## A11Y PR3 — agent-side surfaces + strict mode flip
+
+**Scope:** Agent-side axe violations (separate scan script: `scripts/a11y-axe-scan.cjs`).
+Also includes the jsx-a11y warn→error flip for rules already fixed in PR1/PR2.
+
+- Run `A11Y_AGENT_EMAIL=... node scripts/a11y-axe-scan.cjs --url=<preview>` to baseline
+  (8 pages: login, dashboard, career, awards, leaderboard, history, profile, wizard_picker)
+- Fix all serious + critical violations on agent surfaces
+- Check `AgentAwardsPanel.jsx` for `opacity-60` on greyed award cards — same
+  `color-contrast × N` pattern fixed in PR2 (`ManagerAwardsPanel.jsx:56`)
+- After all agent findings fixed, flip `jsx-a11y/label-has-associated-control` and any other
+  rules that are clean to `error` in `eslint.config.js`
+- 35 jsx-a11y warnings currently in lint output — all agent/manager forms; treat as the
+  backlog for this PR
+
+---
+
+## React Compiler adoption (long-term, conditional)
+
+**Scope:** `eslint-plugin-react-hooks` v7 ships React Compiler lint rules disabled in
+`eslint.config.js` (see Lint Policy in CLAUDE.md). If `@babel/plugin-react-compiler` is
+ever adopted, re-enable those rules and refactor the ~19 data-fetch `useEffect` patterns
+they flag.
+
+- Not blocking anything; purely a note for when React Compiler reaches stable adoption
+- No PR needed until the Compiler is intentionally added to the project
+
+---
+
 ## PR-4 — Edit-user flows (user-mgmt track)
 
 **Scope:** UserManagementPanel currently supports create + deactivate/reactivate.
@@ -61,24 +90,6 @@ requirement, but there is no UI flow for it. Admins currently must use the Fireb
 - Place at `public/tatil-logo.svg` (or similar)
 - Swap the text wordmark in LoginScreen with the `<img>` tag (or inline SVG)
 - Test in both light and dark mode
-
----
-
-## A11Y PR3 — agent surfaces + lint hardening
-
-**Scope:** PR2 fixed manager surfaces (9 pages, 0 violations post-fix). PR3 covers agent-side
-surfaces and tightens the static analysis rules.
-
-- Run `scripts/a11y-axe-scan.cjs` against a preview URL to get the current agent-side baseline
-  (8 pages: login, dashboard, career, awards, leaderboard, history, profile, wizard_picker)
-- Fix all serious + critical violations found
-- Check `AgentAwardsPanel.jsx` for the same `opacity-60` greyed-card pattern fixed in PR2
-  (`ManagerAwardsPanel.jsx:56`); likely the same root cause
-- Flip `jsx-a11y/label-has-associated-control` from `warn` to `error` in ESLint config once
-  all label associations are clean (PR2 fixed the manager selects; PR3 cleans agent side first)
-- Pre-existing lint errors in `functions/index.js`, `scripts/test-sec10-rule.js`,
-  `src/components/gamification/BadgeGrid.jsx`, `src/components/goals/CommissionPlayground.jsx`,
-  and several other files — document and fix in a lint-cleanup pass (can be a separate PR)
 
 ---
 

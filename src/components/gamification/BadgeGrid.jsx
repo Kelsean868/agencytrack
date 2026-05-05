@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { Target, Flame, Zap, Star, Trophy, CheckCircle, TrendingUp, Crown, Phone } from 'lucide-react';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const BADGES = {
   first_submission: { label: 'First Step',    Icon: Target,      accent: 'text-primary',       desc: 'Submitted your first report' },
   streak_4:         { label: 'On a Roll',      Icon: Flame,       accent: 'text-warning',       desc: '4 consecutive weeks submitted' },
@@ -18,12 +19,14 @@ export const BADGES = {
   consistent:       { label: 'Consistent',     Icon: Star,        accent: 'text-warning',       desc: '12 consecutive months ≥ 90% persistency' },
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const BADGE_KEY_ORDER = [
   'first_submission', 'streak_4', 'streak_8', 'streak_13',
   'mdrt_pace', 'mdrt_qualified', 'top_apps_week', 'big_week', 'century_dials',
   'dial_king', 'sharpshooter', 'mdrt_bound', 'untouchable', 'consistent',
 ];
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function computeEarnedBadges(submissions) {
   const earned = new Set();
   if (!submissions || submissions.length === 0) return earned;

@@ -248,15 +248,26 @@ All four are confirmed in `.gitignore`.
 - `MotivationalCarousel.jsx:367` uses hex literal `bg-[#01696f]/8` instead of CSS var
 - A few components use `bg-[var(--color-surface)]` arbitrary syntax instead of `bg-card` utility — works fine, just inconsistent
 
+## Lint Policy
+
+`npm run lint` must exit 0 before any push. This is enforced by `.github/workflows/ci.yml` (lint + build on every PR to main).
+
+**Baseline:** 0 errors, 35 `jsx-a11y` warnings (all tracked as A11Y PR3 scope in `FOLLOW_UPS.md`).
+
+**React Compiler rules disabled:** `eslint-plugin-react-hooks` v7 ships React Compiler lint rules (`set-state-in-effect`, `purity`, `preserve-manual-memoization`, etc.) in its `flat.recommended` preset. This project does not use `@babel/plugin-react-compiler`, so all Compiler-only rules are set to `off` in `eslint.config.js`. If the Compiler is ever adopted, remove those overrides and fix the flagged sites.
+
+**`_` prefix convention:** Variables that must appear in a destructuring/param list but are intentionally unused should be prefixed with `_` (e.g. `_agentId`, `_ws`). The lint rule is configured to ignore `/^_/` patterns.
+
 ## Session Protocol
 1. Always read this file before writing any code
 2. Run `npm run repomix` to get fresh codebase snapshot before each session
 3. Confirm current phase before writing new files
 4. Work on a feature branch (Claude Code default), never main directly
-5. After all changes, run `npm run dev` and confirm no build errors
-6. Push branch, open PR, verify Vercel preview URL in incognito
-7. User merges PR manually — only then does production update
-8. After merge, do a 60-second production smoke test
+5. After all changes, run `npm run lint && npm run build` — both must pass before pushing
+6. Push branch, open PR — CI will run lint + build automatically on GitHub
+7. Verify Vercel preview URL in incognito
+8. User merges PR manually — only then does production update
+9. After merge, do a 60-second production smoke test
 
 ### Single-branch PR rule
 One worktree branch = one PR. Never extend an open PR by pushing unrelated work to its branch.

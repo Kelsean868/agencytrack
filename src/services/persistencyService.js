@@ -1,5 +1,5 @@
 import {
-  doc, getDoc, getDocs, setDoc, writeBatch,
+  doc, getDocs, writeBatch,
   collection, query, where, serverTimestamp,
 } from 'firebase/firestore';
 import { db, getTenantId } from '../firebase';
@@ -10,7 +10,6 @@ function persistencyDocId(agentId, year, month) {
 }
 
 export async function getMonthlyPersistency(year, month) {
-  const mm = String(month).padStart(2, '0');
   const q = query(
     collection(db, `tenants/${getTenantId()}/persistency`),
     where('year', '==', year),

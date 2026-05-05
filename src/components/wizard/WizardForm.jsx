@@ -177,7 +177,7 @@ export default function WizardForm({ onClose, initialWeek }) {
           setSubmissionData(null);
           return;
         }
-        const { agentId, weekStarting: _ws, status, updatedAt, submittedAt, ...fields } = draft;
+        const { agentId: _agentId, weekStarting: _ws, status, updatedAt: _updatedAt, submittedAt: _submittedAt, ...fields } = draft;
         setDraftStatus(status ?? null);
         if (status === 'submitted') {
           setSubmissionData(draft);
@@ -496,7 +496,7 @@ function ReviewSection({ title, children }) {
   );
 }
 
-function ReviewSummary({ data, weekStarting }) {
+function ReviewSummary({ data, weekStarting: _weekStarting }) {
   const totalCalls =
     (data.referralCalls ?? 0) + (data.followUpCalls ?? 0) + (data.coldCalls ?? 0) +
     (data.seminarTradeshowCalls ?? 0) + (data.serviceCalls ?? 0);
