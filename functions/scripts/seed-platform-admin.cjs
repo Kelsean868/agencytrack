@@ -45,7 +45,7 @@ const admin  = require('firebase-admin');
 // ─────────────────────────────────────────────────────────────────────────────
 // EDIT BEFORE RUNNING — placeholder email; replace with the real address.
 // ─────────────────────────────────────────────────────────────────────────────
-const PLATFORM_ADMIN_EMAIL = 'kyron+platform@gmail.com'; // EDIT BEFORE RUNNING
+const PLATFORM_ADMIN_EMAIL = 'kyronmarchan+platform@gmail.com';
 
 const PLATFORM_ADMIN_ROLE  = 'platform_admin';
 

@@ -7,7 +7,8 @@ import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 
-const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'];
+// TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
+const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin', 'tenant_admin', 'platform_admin'];
 
 function daysSinceSunday(weekStarting) {
   const sunday = new Date(weekStarting + 'T12:00:00Z');

@@ -2,7 +2,8 @@ import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { createNotification } from './notificationService';
 
-const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin'];
+// TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
+const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin', 'tenant_admin', 'platform_admin'];
 
 export async function unlockSubmission(tenantId, submissionId, managerUid, managerName) {
   const userRef = doc(db, `tenants/${tenantId}/users/${managerUid}`);

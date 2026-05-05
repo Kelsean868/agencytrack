@@ -178,7 +178,8 @@ export default function ManagerDashboard() {
             <p className="text-sm text-ink-muted">{roleLabel}</p>
           </div>
           <div className="flex items-center gap-2">
-            {(role === 'branch_manager' || role === 'super_admin') && (
+            {/* TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs. */}
+            {(role === 'branch_manager' || role === 'super_admin' || role === 'tenant_admin' || role === 'platform_admin') && (
               <button
                 onClick={handleExportBranchCSV}
                 className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors"
