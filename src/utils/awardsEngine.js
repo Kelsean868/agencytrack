@@ -525,8 +525,7 @@ export function computeManagerAwards(confirmedData, unitAgentIds, allAgentConfir
     };
   }
 
-  // TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
-  if (role === 'branch_manager' || role === 'super_admin' || role === 'tenant_admin' || role === 'platform_admin') {
+  if (role === 'branch_manager' || role === 'tenant_admin' || role === 'platform_admin') {
     const eligible = totalAPI >= 5000000 && avgAPIPerAdvisor >= 250000 && agentCount >= 15 && newAdvisors >= 3 && avgPersist >= 90;
     awards.agency_of_year = {
       id: 'agency_of_year', name: 'Agency of the Year', category: 'annual',

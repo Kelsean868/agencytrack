@@ -59,8 +59,7 @@ export default function SettlementPanel() {
   // Delete confirm
   const [deletingId, setDeletingId]       = useState(null);
 
-  // TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
-  const canAccess = role === 'branch_manager' || role === 'super_admin' || role === 'tenant_admin' || role === 'platform_admin' || Boolean(userProfile?.canConfirmSettlements);
+  const canAccess = role === 'branch_manager' || role === 'tenant_admin' || role === 'platform_admin' || Boolean(userProfile?.canConfirmSettlements);
   const isReadOnly = role === 'unit_manager' && !Boolean(userProfile?.canConfirmSettlements);
 
   const loadData = useCallback(() => {

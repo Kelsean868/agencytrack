@@ -114,7 +114,7 @@ function buildClaims(targetRole, { callerTenant, derivedBranchId, derivedOwnedBr
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Core user-creation saga — shared by createUser and createAgentAccount.
+// Core user-creation saga — called by createUser.
 // ─────────────────────────────────────────────────────────────────────────────
 async function doCreateUser(data, context) {
   if (!context.auth) {
@@ -304,15 +304,6 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
 // PR-2: Polymorphic createUser — full creation matrix
 // ─────────────────────────────────────────────────────────────────────────────
 exports.createUser = functions.https.onCall(doCreateUser);
-
-// ─────────────────────────────────────────────────────────────────────────────
-// EXISTING: createAgentAccount — thin wrapper around createUser with role:
-// 'agent' hardcoded. Retained for backwards compatibility; removed in PR-3
-// after UI call sites migrate to createUser directly.
-// ─────────────────────────────────────────────────────────────────────────────
-exports.createAgentAccount = functions.https.onCall((data, context) =>
-  doCreateUser({ ...data, role: 'agent' }, context)
-);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PR-2: deactivateUser — soft-delete (active: false) with immediate

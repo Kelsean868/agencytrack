@@ -2,17 +2,6 @@ import { getFunctions, httpsCallable } from 'firebase/functions';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db, getTenantId } from '../firebase';
 
-/**
- * createAgent(agentData)
- * Legacy wrapper — calls createAgentAccount CF. Deleted in commit 6.
- * agentData: { name, email, agentNumber, unitId, contractStartDate }
- */
-export async function createAgent(agentData) {
-  const fns = getFunctions();
-  const fn = httpsCallable(fns, 'createAgentAccount');
-  const result = await fn(agentData);
-  return result.data;
-}
 
 /**
  * createUser(userData)

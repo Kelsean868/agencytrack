@@ -174,8 +174,7 @@ export default function Leaderboard() {
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState('');
 
-  // TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
-  const isManager = role && ['unit_manager', 'branch_manager', 'sales_manager', 'super_admin', 'tenant_admin', 'platform_admin'].includes(role);
+  const isManager = role && ['unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'].includes(role);
 
   // Previous week's Sunday — stable across renders
   const prevSunday = useMemo(() => getLastNSundays(2)[1], []);

@@ -493,8 +493,7 @@ export default function CampaignPanel() {
   const [deletingId, setDeletingId] = useState(null);
   const [toast, setToast]         = useState('');
 
-  // TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
-  const canCreate = ['unit_manager', 'branch_manager', 'super_admin', 'tenant_admin', 'platform_admin'].includes(role);
+  const canCreate = ['unit_manager', 'branch_manager', 'tenant_admin', 'platform_admin'].includes(role);
 
   const load = useCallback(async () => {
     if (!tenantId) return;
@@ -548,9 +547,8 @@ export default function CampaignPanel() {
     await load();
   };
 
-  // TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
   const canEditCampaign = (c) =>
-    role === 'super_admin' || role === 'tenant_admin' || role === 'platform_admin' || role === 'branch_manager' || c.createdBy === user?.uid;
+    role === 'tenant_admin' || role === 'platform_admin' || role === 'branch_manager' || c.createdBy === user?.uid;
 
   if (loading) {
     return (

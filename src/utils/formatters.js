@@ -6,7 +6,6 @@ export const getUnitDisplayName = (unitManagerDoc) => {
 };
 
 export const ROLE_LABELS = {
-  super_admin: 'Super Admin', // TEMPORARY: remove in commit 6 after production migration runs
   tenant_admin: 'Tenant Admin',
   platform_admin: 'Platform Admin',
   branch_manager: 'Branch Manager',

@@ -583,8 +583,7 @@ export default function GoalsPanel({ onGoalsLoaded }) {
   const [subTab, setSubTab] = useState('agents');
   const [allUsers, setAllUsers] = useState([]);
 
-  // TEMPORARY: super_admin retained for migration window. Remove in commit 6 after production migration runs.
-  const canSeeBranch = role === 'branch_manager' || role === 'super_admin' || role === 'tenant_admin' || role === 'platform_admin';
+  const canSeeBranch = role === 'branch_manager' || role === 'tenant_admin' || role === 'platform_admin';
   const canSeeUnit   = role === 'unit_manager' || canSeeBranch;
 
   useEffect(() => {
