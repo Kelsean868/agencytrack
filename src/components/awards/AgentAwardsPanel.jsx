@@ -63,8 +63,8 @@ function AwardCard({ award }) {
   const isGreyed = !award.eligible && !award.inContention;
 
   return (
-    <div className={`rounded-xl border p-4 flex flex-col gap-3 transition-opacity ${
-      isGreyed ? 'border-border opacity-60' : award.eligible ? 'border-success/30 bg-success/5' : 'border-primary/20 bg-surface'
+    <div className={`rounded-xl border p-4 flex flex-col gap-3 ${
+      isGreyed ? 'border-border bg-border/10' : award.eligible ? 'border-success/30 bg-success/5' : 'border-primary/20 bg-surface'
     }`}>
 
       {/* Header */}
