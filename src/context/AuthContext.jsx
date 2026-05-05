@@ -21,37 +21,10 @@ export function AuthProvider({ children }) {
         console.log('[AgencyTrack] Auth claims:', tokenResult.claims);
         console.log('[AgencyTrack] UID:', firebaseUser.uid);
 
-        // ─────────────────────────────────────────────────────────────────────
-        // BOOTSTRAP ONLY — auto-promotes first login to super_admin.
-        // Remove before multi-tenant rollout. Tracked: SEC-11.
-        //
-        // This branch is the ONLY place in the app that reads
-        // import.meta.env.VITE_TENANT_ID at runtime. All other tenant scoping
-        // flows from auth claims (claims.tenantId), set server-side by the
-        // setUserClaims / createAgentAccount Cloud Functions.
-        // ─────────────────────────────────────────────────────────────────────
-        if (!tokenResult.claims.role) {
-          console.warn('[AgencyTrack] No role claim — attempting super_admin bootstrap');
-          try {
-            const bootstrapTenantId = import.meta.env.VITE_TENANT_ID;
-            const { getFunctions, httpsCallable } = await import('firebase/functions');
-            const fns = getFunctions();
-            const setUserClaims = httpsCallable(fns, 'setUserClaims');
-            await setUserClaims({
-              uid: firebaseUser.uid,
-              role: 'super_admin',
-              tenantId: bootstrapTenantId,
-            });
-            await firebaseUser.getIdToken(true);
-            console.log('[AgencyTrack] Super admin claims set successfully');
-          } catch (err) {
-            console.error('[AgencyTrack] Bootstrap failed:', err);
-          }
-        }
-
-        // Re-read claims after potential bootstrap. tenantId is the canonical
-        // runtime tenant scope source for the rest of the app.
-        const finalClaims = (await firebaseUser.getIdTokenResult()).claims;
+        // Claims are set server-side by createUser / seed-first-super-admin.cjs.
+        // Users without a role claim are not authorized — they remain at login.
+        // SEC-11 closed: bootstrap auto-promotion path removed in PR-2.
+        const finalClaims = tokenResult.claims;
         const claimTenantId = finalClaims.tenantId ?? null;
         setTenantId(claimTenantId);
         setRole(finalClaims.role ?? null);

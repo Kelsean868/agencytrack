@@ -233,7 +233,7 @@ Use `extractFields()` in `src/utils/extractFields.js` — single source of truth
 All four are confirmed in `.gitignore`.
 
 ## Known Open Items (Track A targets)
-1. **functions/index.js**: hardcoded `SUPER_ADMIN_UID` bypass at L7 (used in `setUserClaims`) — removed in user-mgmt PR-2
+1. **functions/index.js**: hardcoded `SUPER_ADMIN_UID` bypass — **RESOLVED in user-mgmt PR-2** (bypass removed; `SUPER_ADMIN_UID` const deleted; AuthContext bootstrap deleted; SEC-11 closed; claims seeded via `seed-first-super-admin.cjs`)
 2. **firestore.rules**: leaderboard reads not tenant-scoped — RESOLVED in SEC-2
 3. **firestore.rules**: notification reads not tenant-scoped — RESOLVED in SEC-3
 4. **firestore.rules**: unit_managers can write any user in tenant — RESOLVED in SEC-4 (callerUnitId helper)
