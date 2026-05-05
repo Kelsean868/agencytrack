@@ -1,0 +1,70 @@
+{
+  "startedAt": "2026-05-05T22:28:31.652Z",
+  "baseUrl": "https://agencytrack-git-a11y-pr3-agent-af32de-kyron-marchan-s-projects.vercel.app",
+  "side": "manager",
+  "pages": {
+    "manager_dashboard": {
+      "url": "https://agencytrack-git-a11y-pr3-agent-af32de-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_agents": {
+      "url": "https://agencytrack-git-a11y-pr3-agent-af32de-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_campaigns": {
+      "url": "https://agencytrack-git-a11y-pr3-agent-af32de-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_awards": {
+      "url": "https://agencytrack-git-a11y-pr3-agent-af32de-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_compliance": {
+      "url": "https://agencytrack-git-a11y-pr3-agent-af32de-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_persistency": {
+      "url": "https://agencytrack-git-a11y-pr3-agent-af32de-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_goals": {
+      "url": "https://agencytrack-git-a11y-pr3-agent-af32de-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_settlements": {
+      "url": "https://agencytrack-git-a11y-pr3-agent-af32de-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_meeting_mode": {
+      "url": "https://agencytrack-git-a11y-pr3-agent-af32de-kyron-marchan-s-projects.vercel.app/",
+      "violations": 1,
+      "nodes": 2,
+      "byRule": {
+        "color-contrast": 2
+      }
+    }
+  },
+  "totals": {
+    "byRule": {
+      "color-contrast": 2
+    },
+    "nodes": 2,
+    "violations": 1
+  }
+}
