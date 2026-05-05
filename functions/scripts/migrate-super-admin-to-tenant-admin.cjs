@@ -46,6 +46,19 @@
  *   This script must NEVER run against production without explicit operator
  *   authorization separate from any code merge. Code merge ≠ migration run.
  *
+ * Recovery (if the script fails mid-run):
+ *   This script is idempotent — re-running it is the first recovery action.
+ *   The write order is CLAIM-FIRST, then doc. If only the claim succeeded:
+ *     - User can still log in (claim says tenant_admin, rules accept it).
+ *     - Firestore doc still says super_admin (stale, not a lockout).
+ *     - Re-running finds the doc and retries the doc update.
+ *   If you need to restore manually (e.g., full rollback):
+ *     Firebase Console → Authentication → click the user → Custom Claims →
+ *     paste back: {"role":"super_admin","tenantId":"tatillife_south",
+ *                  "branchId":"tatil_south","ownedBranchIds":["*"]}
+ *   Do NOT use seed-first-tenant-admin.cjs for recovery — that script
+ *   provisions a NEW user and cannot restore an existing account's claim.
+ *
  * Service account:
  *   Reads functions/service-account-key.json (gitignored).
  */
@@ -135,45 +148,49 @@ const auth = admin.auth();
     for (const userDoc of snap.docs) {
       const uid = userDoc.id;
 
-      // Firestore doc — update role field only
-      if (isDryRun) {
-        console.log(`[dry-run] would update Firestore doc: uid=${uid}  role: '${OLD_ROLE}' → '${NEW_ROLE}'`);
-      } else {
-        try {
-          await userDoc.ref.update({ role: NEW_ROLE });
-          console.log(`✓ Firestore doc updated: uid=${uid}`);
-        } catch (err) {
-          console.error(`✗ Firestore update failed for uid=${uid}:`, err.message);
-          errors.push({ uid, phase: 'doc', err: err.message });
-          continue;
-        }
-      }
-
-      // Auth custom claims — preserve all existing claims, rename role only
+      // Step A: read existing claims (safe in both dry-run and apply modes).
       let existingClaims = {};
       try {
         const userRecord = await auth.getUser(uid);
         existingClaims = userRecord.customClaims || {};
       } catch (err) {
-        console.warn(`[warn] Auth user not found for uid=${uid} — skipping claim update.`);
-        updated++;
+        console.warn(`[warn] Auth user not found for uid=${uid} — skipping.`);
         continue;
       }
 
       const newClaims = { ...existingClaims, role: NEW_ROLE };
+
       if (isDryRun) {
-        console.log(`[dry-run] would set claims: uid=${uid}  ${JSON.stringify(newClaims)}`);
-      } else {
-        try {
-          await auth.setCustomUserClaims(uid, newClaims);
-          // Revoke refresh tokens so the user picks up new claims on next login.
-          await auth.revokeRefreshTokens(uid);
-          console.log(`✓ Claims updated + tokens revoked: uid=${uid}`);
-        } catch (err) {
-          console.error(`✗ Claim update failed for uid=${uid}:`, err.message);
-          errors.push({ uid, phase: 'claim', err: err.message });
-          continue;
-        }
+        // Print both planned operations before any writes.
+        console.log(`[dry-run] would set claims:        uid=${uid}  ${JSON.stringify(newClaims)}`);
+        console.log(`[dry-run] would update Firestore:  uid=${uid}  role: '${OLD_ROLE}' → '${NEW_ROLE}'`);
+        updated++;
+        continue;
+      }
+
+      // Step B: set CLAIM first — if this fails, the Firestore doc is unchanged
+      // and the user can still log in normally (their old claim still works).
+      try {
+        await auth.setCustomUserClaims(uid, newClaims);
+        await auth.revokeRefreshTokens(uid);
+        console.log(`✓ Claims updated + tokens revoked: uid=${uid}`);
+      } catch (err) {
+        console.error(`✗ Claim update failed for uid=${uid}:`, err.message);
+        errors.push({ uid, phase: 'claim', err: err.message });
+        continue; // do NOT touch the doc if claim failed
+      }
+
+      // Step C: update Firestore doc SECOND — if this fails, the user has the
+      // correct claim and can still log in. Re-running the script retries the
+      // doc update (query still finds the doc with old role field).
+      try {
+        await userDoc.ref.update({ role: NEW_ROLE });
+        console.log(`✓ Firestore doc updated: uid=${uid}`);
+      } catch (err) {
+        console.error(`✗ Firestore update failed for uid=${uid}:`, err.message);
+        console.warn(`  Claim is correct; only doc field is stale. Re-run to retry.`);
+        errors.push({ uid, phase: 'doc', err: err.message });
+        continue;
       }
 
       updated++;
