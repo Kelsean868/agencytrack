@@ -612,7 +612,7 @@ export default function CampaignPanel() {
         {canCreate && (
           <button
             onClick={() => { setEditing(null); setFormOpen(true); }}
-            className="h-10 px-4 rounded-xl bg-primary text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors"
+            className="h-10 px-4 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 dark:hover:bg-primary transition-colors"
           >
             <Plus size={16} />
             New Campaign

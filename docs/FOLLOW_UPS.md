@@ -52,32 +52,65 @@ Option 1 is the right fix but touches every theme variable + consumer.
 
 ---
 
-## A11Y PR6 — global dark-mode contrast pass (manager pages)
+## A11Y PR7 — agent dark-mode contrast pass
 
-**Scope:** PR5 added the first dark-mode axe scan in the project (manager-side, via
-`scripts/a11y-axe-scan-manager.cjs --dark`). It uncovered 4 pre-existing color-contrast
-nodes that don't manifest in light mode:
+**Scope:** PR6 added the `--dark` flag to `scripts/a11y-axe-scan.cjs` and ran the
+first agent dark baseline. Result: **14 color-contrast nodes across 2 pages** (all
+agent surfaces other than career + leaderboard are clean). Two distinct root causes:
 
-| Page | Nodes |
-|---|---:|
-| `manager_dashboard` | 1 |
-| `manager_agents` | 1 |
-| `manager_persistency` | 1 |
-| `manager_settlements` | 1 |
+### Cause A — locked badges in `BadgeGrid` (career, 11 nodes)
 
-These are NOT regressions from PR5 — they exist on `main` today, just never previously
-exercised. Scope of PR6:
+`src/components/gamification/BadgeGrid.jsx` renders unlocked-but-not-met badges
+with `opacity-40 grayscale bg-surface`. The label is `text-xs font-semibold
+text-ink-muted`. In dark mode the opacity-40 reduces the muted text to an
+effective ~`#60594f` against a ~`#211c16` blended bg → **2.44:1, fails AA 4.5:1**.
 
-- Identify each failing node (use a per-page debug helper: log `axe.violations[].nodes[].html`
-  + `failureSummary` for color-contrast on each page in dark mode)
-- Apply targeted fixes (most likely candidates: `bg-primary/N text-primary` chips
-  rendering against the dark `--color-bg`, similar to the latent bug PR3 found in light mode)
-- Add a similar `--dark` flag to `scripts/a11y-axe-scan.cjs` (agent scan) and run a full
-  agent dark-mode baseline. Any new findings → fold into this PR
-- Acceptance: 0/0 in BOTH light and dark on all 9 manager + 8 agent pages
+Affected labels: On a Roll, Consistent (×2), Unstoppable, MDRT Pace, MDRT
+Qualified, App Machine, Dial King, Sharpshooter, MDRT Bound, Untouchable.
 
-The agent-side may surface additional findings — keep the PR focused; if scope balloons,
-split agent and manager into separate PRs.
+Fix idea: keep the badge graphic dimmed (icon at opacity-40) but lift the
+label opacity back to 100% so contrast is preserved. Or use a separate
+`text-ink` shade with its own dark-mode value chosen to clear AA at the
+opacity level used.
+
+### Cause B — Leaderboard avatar circles (3 nodes)
+
+`src/components/gamification/Leaderboard.jsx` renders avatars as inline-styled
+`<div>` with `background-color: var(--color-primary)` and white text. In dark
+mode `--color-primary` lifts to `#4ab5b8` → white text contrast is **2.44:1**
+(same root cause as the manager fix in PR6).
+
+The PR6 `.dark .btn-primary` token override doesn't catch these because they
+use inline `style={{ backgroundColor: 'var(--color-primary)' }}` rather than
+the Tailwind `bg-primary` utility.
+
+Fix idea: switch the Leaderboard avatar inline style to use
+`var(--color-primary-dark)` in dark mode — easiest path is converting the
+inline style to a Tailwind class (`bg-primary dark:bg-primary-dark`) so
+the existing pattern from PR6 applies.
+
+### Suggested PR7 acceptance
+
+- Agent dark scan: 0 / 0 across all 8 pages
+- Agent light scan: 0 / 0 (PR3 baseline preserved)
+- Manager light + dark: 0 / 0 (PR2/PR4/PR5/PR6 baselines preserved)
+
+---
+
+## A11Y latent — broader `bg-primary text-white` dark-mode contrast
+
+PR6 fixed the 5 specific manager-side `bg-primary text-white` nodes the manager
+dark scan exercised (`.btn-primary` in 3 places + 2 ad-hoc buttons). A grep
+shows ~12 other `bg-primary text-white` sites that the current scan paths
+don't reach (CampaignPanel modal-form submit, GoalsPanel toggle states,
+DeactivateConfirmDialog, WizardForm "Submit Report", ReportRangeModal,
+Step6/Step8 selected states, CommissionPlayground tab states, CareerPortal
+filter button). Each is a latent dark-mode AA failure when exercised.
+
+Cleanest sweep: refactor every `bg-primary text-white` site to use the
+`.btn-primary` utility (which now has the dark-mode override). For sites
+that need different sizing, add a `.btn-primary-sm` variant or extend
+`.btn-primary` with size modifiers. Estimated half-day.
 
 ---
 

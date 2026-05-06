@@ -15,6 +15,7 @@
  * Usage:
  *   node scripts/a11y-axe-scan.cjs
  *   node scripts/a11y-axe-scan.cjs --url=https://agencytrack-git-<branch>.vercel.app
+ *   node scripts/a11y-axe-scan.cjs --dark   # scan in dark mode
  */
 
 const fs = require('fs');
@@ -67,6 +68,10 @@ const BASE_URL = argUrl || process.env.A11Y_BASE_URL || 'http://localhost:5173';
 const EMAIL    = process.env.A11Y_AGENT_EMAIL;
 const PASSWORD = process.env.A11Y_AGENT_PASSWORD;
 const BYPASS   = process.env.VERCEL_BYPASS_TOKEN || '';
+// `--dark`: enables dark mode pre-mount by setting localStorage
+// `agencytrack-dark = '1'`, then reloading. Mirrors the AgencyTrack
+// dark-mode toggle (see src/main.jsx). Mirrors the manager scan script.
+const DARK     = process.argv.includes('--dark');
 
 if (!EMAIL || !PASSWORD) {
   console.error('Missing A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD in .env.local');
@@ -119,6 +124,16 @@ async function signIn(page) {
   await page.getByRole('button', { name: /sign in/i }).click();
   // Wait for the post-login dashboard tab bar.
   await page.waitForSelector('text=Dashboard', { timeout: 15_000 });
+
+  if (DARK) {
+    // Persist the toggle and reload so main.jsx applies the dark
+    // class pre-mount (no FOUC, matches user behavior). Use
+    // domcontentloaded — Firebase listeners keep the network busy
+    // long after the page is interactive, so networkidle would time out.
+    await page.evaluate(() => localStorage.setItem('agencytrack-dark', '1'));
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('text=Dashboard', { timeout: 15_000 });
+  }
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -133,6 +148,7 @@ async function signIn(page) {
     startedAt: startedAt.toISOString(),
     baseUrl: BASE_URL,
     side: 'agent',
+    mode: DARK ? 'dark' : 'light',
     pages: {},
     totals: { byRule: {}, nodes: 0, violations: 0 },
   };
@@ -182,7 +198,7 @@ async function signIn(page) {
   // Save report
   const outDir = path.resolve(process.cwd(), 'verification', 'a11y');
   fs.mkdirSync(outDir, { recursive: true });
-  const outPath = path.join(outDir, `agent_${stamp}.json`);
+  const outPath = path.join(outDir, `agent${DARK ? '-dark' : ''}_${stamp}.json`);
   fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
   console.log(`\nReport saved: ${path.relative(process.cwd(), outPath)}`);
 })().catch((err) => {
