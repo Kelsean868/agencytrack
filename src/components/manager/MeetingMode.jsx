@@ -68,7 +68,7 @@ function StatCard({ label, value, accent }) {
   return (
     <div className="flex flex-col items-center gap-1 rounded-xl p-4 bg-white/5">
       <p className="text-[0.68rem] uppercase tracking-widest text-white/70 text-center">{label}</p>
-      <p className={`text-2xl font-bold ${accent ? 'text-primary' : 'text-white'}`}>{value}</p>
+      <p className={`text-2xl font-bold ${accent ? 'text-[#4ab5b8]' : 'text-white'}`}>{value}</p>
     </div>
   );
 }
@@ -233,13 +233,13 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     if (slide === 0) {
       return (
         <div className="flex flex-col items-center justify-center flex-1 gap-10 px-8 text-center">
-          <h2 className="text-2xl font-semibold text-primary">
+          <h2 className="text-2xl font-semibold text-[#4ab5b8]">
             Week of {formatDateLabel(selectedWeek)}
           </h2>
           <div className="grid grid-cols-2 gap-10 w-full max-w-2xl">
             <div className="flex flex-col items-center gap-2">
               <p className="text-xs uppercase tracking-widest text-white/70">Total API</p>
-              <p className="text-5xl font-bold text-primary">{formatCurrency(totalAPI)}</p>
+              <p className="text-5xl font-bold text-[#4ab5b8]">{formatCurrency(totalAPI)}</p>
             </div>
             <div className="flex flex-col items-center gap-2">
               <p className="text-xs uppercase tracking-widest text-white/70">Apps Sold</p>
@@ -266,7 +266,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     if (isLast) {
       return (
         <div className="flex flex-col items-center justify-center flex-1 gap-6 text-center px-8">
-          <p className="text-xs uppercase tracking-widest text-primary">Meeting Complete</p>
+          <p className="text-xs uppercase tracking-widest text-[#4ab5b8]">Meeting Complete</p>
           <p className="text-4xl font-bold text-white">
             {agentSlides.length} agent{agentSlides.length !== 1 ? 's' : ''} reviewed
           </p>
@@ -322,7 +322,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
           {/* Closing ratio */}
           {agent.ratios.closingRatio !== null && (
             <div className="flex justify-center">
-              <span className="inline-flex px-4 py-1.5 rounded-full text-sm font-semibold bg-primary/25 text-primary">
+              <span className="inline-flex px-4 py-1.5 rounded-full text-sm font-semibold bg-primary/25 text-[#4ab5b8]">
                 {agent.ratios.closingRatio}% closing ratio
               </span>
             </div>

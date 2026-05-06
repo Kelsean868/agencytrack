@@ -1,0 +1,66 @@
+{
+  "startedAt": "2026-05-06T00:29:50.405Z",
+  "baseUrl": "https://agencytrack-git-a11y-pr4-meetin-0dbdf4-kyron-marchan-s-projects.vercel.app",
+  "side": "manager",
+  "pages": {
+    "manager_dashboard": {
+      "url": "https://agencytrack-git-a11y-pr4-meetin-0dbdf4-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_agents": {
+      "url": "https://agencytrack-git-a11y-pr4-meetin-0dbdf4-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_campaigns": {
+      "url": "https://agencytrack-git-a11y-pr4-meetin-0dbdf4-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_awards": {
+      "url": "https://agencytrack-git-a11y-pr4-meetin-0dbdf4-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_compliance": {
+      "url": "https://agencytrack-git-a11y-pr4-meetin-0dbdf4-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_persistency": {
+      "url": "https://agencytrack-git-a11y-pr4-meetin-0dbdf4-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_goals": {
+      "url": "https://agencytrack-git-a11y-pr4-meetin-0dbdf4-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_settlements": {
+      "url": "https://agencytrack-git-a11y-pr4-meetin-0dbdf4-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_meeting_mode": {
+      "url": "https://agencytrack-git-a11y-pr4-meetin-0dbdf4-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    }
+  },
+  "totals": {
+    "byRule": {},
+    "nodes": 0,
+    "violations": 0
+  }
+}
