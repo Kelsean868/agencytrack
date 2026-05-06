@@ -190,7 +190,7 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="h-8 px-3 rounded-lg bg-primary text-white text-xs font-semibold disabled:opacity-60 hover:bg-[color:var(--color-primary-dark)] transition-colors flex items-center gap-1"
+                className="h-8 px-3 rounded-lg bg-primary dark:bg-primary-dark text-white text-xs font-semibold disabled:opacity-60 hover:bg-[color:var(--color-primary-dark)] dark:hover:bg-primary transition-colors flex items-center gap-1"
               >
                 <Check size={12} />
                 {saving ? 'Saving…' : 'Save'}

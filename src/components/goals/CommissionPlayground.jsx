@@ -320,7 +320,7 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
               className={`h-9 px-4 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 ${
                 savedGoals
                   ? 'bg-success/15 text-success'
-                  : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
+                  : 'bg-primary dark:bg-primary-dark text-white hover:bg-[color:var(--color-primary-dark)] dark:hover:bg-primary'
               }`}
             >
               {savedGoals ? <><Check size={13} className="inline mr-1" />Goals Saved</> : 'Save as My Goals'}

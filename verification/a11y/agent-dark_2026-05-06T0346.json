@@ -1,0 +1,61 @@
+{
+  "startedAt": "2026-05-06T03:46:48.466Z",
+  "baseUrl": "https://agencytrack-git-a11y-pr7-dark-m-683d06-kyron-marchan-s-projects.vercel.app",
+  "side": "agent",
+  "mode": "dark",
+  "pages": {
+    "login": {
+      "url": "https://agencytrack-git-a11y-pr7-dark-m-683d06-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "dashboard": {
+      "url": "https://agencytrack-git-a11y-pr7-dark-m-683d06-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "career": {
+      "url": "https://agencytrack-git-a11y-pr7-dark-m-683d06-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "awards": {
+      "url": "https://agencytrack-git-a11y-pr7-dark-m-683d06-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "leaderboard": {
+      "url": "https://agencytrack-git-a11y-pr7-dark-m-683d06-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "history": {
+      "url": "https://agencytrack-git-a11y-pr7-dark-m-683d06-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "profile": {
+      "url": "https://agencytrack-git-a11y-pr7-dark-m-683d06-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "wizard_picker": {
+      "url": "https://agencytrack-git-a11y-pr7-dark-m-683d06-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    }
+  },
+  "totals": {
+    "byRule": {},
+    "nodes": 0,
+    "violations": 0
+  }
+}

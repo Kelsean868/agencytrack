@@ -106,10 +106,19 @@ export default function BadgeGrid({ earnedBadges, submissions }) {
             className={`flex flex-col items-center gap-1.5 rounded-xl p-3 border transition-colors ${
               isEarned
                 ? 'border-primary/30 bg-primary/5'
-                : 'border-border bg-surface opacity-40 grayscale'
+                : 'border-border bg-surface'
             }`}
           >
-            <b.Icon size={20} className={isEarned ? b.accent : 'text-ink-muted'} />
+            {/* Icon carries the "locked" visual via opacity + grayscale.
+             * Previously the wrapper had opacity-40 grayscale which dragged
+             * the label into the bg, producing 2.44:1 contrast in dark mode
+             * (axe color-contrast fails AA). Moving the dim treatment to
+             * the icon only keeps the locked affordance while letting the
+             * label render at full opacity → clean contrast in both modes. */}
+            <b.Icon
+              size={20}
+              className={isEarned ? b.accent : 'text-ink-muted opacity-40 grayscale'}
+            />
             <p className={`text-xs font-semibold text-center leading-tight ${isEarned ? 'text-ink' : 'text-ink-muted'}`}>
               {b.label}
             </p>

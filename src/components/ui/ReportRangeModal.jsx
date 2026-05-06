@@ -34,7 +34,7 @@ export default function ReportRangeModal({ onGenerate, onClose }) {
               onClick={() => setSelected(opt.value)}
               className={`px-4 py-2 rounded-full text-sm font-semibold border transition-colors ${
                 selected === opt.value
-                  ? 'bg-primary text-white border-primary'
+                  ? 'bg-primary dark:bg-primary-dark text-white border-primary'
                   : 'bg-surface-raised text-ink-muted border-border hover:border-primary/40 hover:text-ink'
               }`}
             >
