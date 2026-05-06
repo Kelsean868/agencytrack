@@ -45,6 +45,16 @@ export default {
           DEFAULT: 'var(--color-danger)',
           tint: 'var(--color-danger-tint)',
         },
+        // Presentation surface — theme-independent (defined only in :root,
+        // not overridden in .dark). For full-screen overlays that should
+        // always render as a dark presentation surface, e.g. MeetingMode.
+        presentation: {
+          DEFAULT: 'var(--color-presentation)',
+          text:   'var(--color-presentation-text)',
+          muted:  'var(--color-presentation-muted)',
+          accent: 'var(--color-presentation-accent)',
+          border: 'var(--color-presentation-border)',
+        },
       },
       boxShadow: {
         sm: 'var(--shadow-sm)',

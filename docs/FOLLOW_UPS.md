@@ -5,32 +5,32 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## MeetingMode dark-mode `bg-ink` inversion (latent bug)
+## A11Y PR6 — global dark-mode contrast pass (manager pages)
 
-**Scope:** Discovered while investigating PR4. The `bg-ink` Tailwind utility maps to
-`var(--color-text)`, which inverts between themes:
+**Scope:** PR5 added the first dark-mode axe scan in the project (manager-side, via
+`scripts/a11y-axe-scan-manager.cjs --dark`). It uncovered 4 pre-existing color-contrast
+nodes that don't manifest in light mode:
 
-- light mode: `--color-text = #28251d` (warm near-black) → `bg-ink` paints a dark surface
-- dark mode:  `--color-text = #f0ebe0` (warm off-white)  → `bg-ink` paints a near-white surface
+| Page | Nodes |
+|---|---:|
+| `manager_dashboard` | 1 |
+| `manager_agents` | 1 |
+| `manager_persistency` | 1 |
+| `manager_settlements` | 1 |
 
-MeetingMode's root uses `bg-ink` to force a dark presentation backdrop. This works in
-light mode by accident. In global dark mode the surface flips to off-white while
-`text-white` and `text-white/N` remain pure white — the overlay becomes unreadable.
+These are NOT regressions from PR5 — they exist on `main` today, just never previously
+exercised. Scope of PR6:
 
-The PR4 fix only addresses the reported `text-primary` contrast nodes (which manifest
-in light mode). The dark-mode `bg-ink` flip was deferred because:
+- Identify each failing node (use a per-page debug helper: log `axe.violations[].nodes[].html`
+  + `failureSummary` for color-contrast on each page in dark mode)
+- Apply targeted fixes (most likely candidates: `bg-primary/N text-primary` chips
+  rendering against the dark `--color-bg`, similar to the latent bug PR3 found in light mode)
+- Add a similar `--dark` flag to `scripts/a11y-axe-scan.cjs` (agent scan) and run a full
+  agent dark-mode baseline. Any new findings → fold into this PR
+- Acceptance: 0/0 in BOTH light and dark on all 9 manager + 8 agent pages
 
-- It's not detected by the current axe scans (they run in light mode)
-- Fixing it correctly requires either a stable presentation-surface token (e.g. a new
-  `--color-presentation` CSS var that's always dark) or scoping MeetingMode in a
-  `dark` class with a stable bg utility — both are bigger changes than PR4's scope
-
-Suggested approach for the follow-up PR:
-- Add a new color token `--color-presentation: #1a1612` (same in both themes)
-- Map a Tailwind utility `bg-presentation` to it
-- Replace `bg-ink` on MeetingMode's root with `bg-presentation`
-- Run axe in BOTH light and dark themes (the agent scan script needs a flag to toggle
-  `dark` on `<html>` after login) and confirm 0/0 in both
+The agent-side may surface additional findings — keep the PR focused; if scope balloons,
+split agent and manager into separate PRs.
 
 ---
 

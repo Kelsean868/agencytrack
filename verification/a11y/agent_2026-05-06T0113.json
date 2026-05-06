@@ -1,0 +1,60 @@
+{
+  "startedAt": "2026-05-06T01:13:50.508Z",
+  "baseUrl": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app",
+  "side": "agent",
+  "pages": {
+    "login": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "dashboard": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "career": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "awards": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "leaderboard": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "history": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "profile": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "wizard_picker": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    }
+  },
+  "totals": {
+    "byRule": {},
+    "nodes": 0,
+    "violations": 0
+  }
+}

@@ -39,6 +39,25 @@
   --shadow-sm: 0 1px 2px rgba(40, 37, 29, 0.06);
   --shadow-md: 0 2px 8px rgba(40, 37, 29, 0.08);
   --shadow-lg: 0 8px 24px rgba(40, 37, 29, 0.12);
+
+  /* ── Presentation tokens ──────────────────────────────────────────────
+   * Always-dark surface for full-screen overlays (e.g. MeetingMode).
+   * NOT overridden in .dark — these tokens are intentionally
+   * theme-independent so the presentation surface stays stable
+   * regardless of the user's chosen theme.
+   *
+   * Contrast (verified against --color-presentation #1a1612):
+   *   --color-presentation-text   (#f0ebe0)             15.18:1
+   *   --color-presentation-muted  (#f0ebe0 @ 70%)        7.99:1
+   *   --color-presentation-accent (#4ab5b8)              7.42:1
+   * For text on accent surface (#4ab5b8), use
+   *   --color-presentation        (#1a1612 as text)      7.42:1 (inverted)
+   */
+  --color-presentation:        #1a1612;
+  --color-presentation-text:   #f0ebe0;
+  --color-presentation-muted:  rgba(240, 235, 224, 0.7);
+  --color-presentation-accent: #4ab5b8;
+  --color-presentation-border: rgba(240, 235, 224, 0.15);
 }
 
 .dark {

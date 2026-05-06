@@ -1,0 +1,77 @@
+{
+  "startedAt": "2026-05-06T01:13:19.515Z",
+  "baseUrl": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app",
+  "side": "manager",
+  "mode": "dark",
+  "pages": {
+    "manager_dashboard": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 1,
+      "nodes": 1,
+      "byRule": {
+        "color-contrast": 1
+      }
+    },
+    "manager_agents": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 1,
+      "nodes": 1,
+      "byRule": {
+        "color-contrast": 1
+      }
+    },
+    "manager_campaigns": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_awards": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_compliance": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_persistency": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 1,
+      "nodes": 1,
+      "byRule": {
+        "color-contrast": 1
+      }
+    },
+    "manager_goals": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_settlements": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 1,
+      "nodes": 1,
+      "byRule": {
+        "color-contrast": 1
+      }
+    },
+    "manager_meeting_mode": {
+      "url": "https://agencytrack-git-a11y-pr5-meetin-2483ab-kyron-marchan-s-projects.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    }
+  },
+  "totals": {
+    "byRule": {
+      "color-contrast": 4
+    },
+    "nodes": 4,
+    "violations": 4
+  }
+}
