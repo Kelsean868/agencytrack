@@ -157,7 +157,7 @@ export default function ProfileScreen() {
             type="text"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            className="h-11 px-3 rounded-lg border border-border bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="h-11 px-3 rounded-lg border border-border bg-surface text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/30"
             placeholder="Your name"
           />
         </div>
@@ -173,7 +173,7 @@ export default function ProfileScreen() {
               value={unitName}
               onChange={(e) => setUnitName(e.target.value.slice(0, 50))}
               maxLength={50}
-              className="h-11 px-3 rounded-lg border border-border bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              className="h-11 px-3 rounded-lg border border-border bg-surface text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/30"
               placeholder="e.g. Phoenix Unit"
             />
           </div>
@@ -186,7 +186,7 @@ export default function ProfileScreen() {
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="h-11 px-3 rounded-lg border border-border bg-surface text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="h-11 px-3 rounded-lg border border-border bg-surface text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/30"
             placeholder="+1 868 000 0000"
           />
         </div>
@@ -201,7 +201,7 @@ export default function ProfileScreen() {
             value={bio}
             onChange={(e) => setBio(e.target.value.slice(0, BIO_MAX))}
             rows={3}
-            className="px-3 py-2 rounded-lg border border-border bg-surface text-ink text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
+            className="px-3 py-2 rounded-lg border border-border bg-surface text-ink text-base resize-none focus:outline-none focus:ring-2 focus:ring-primary/30"
             placeholder="A short bio…"
           />
         </div>
