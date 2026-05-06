@@ -1,0 +1,64 @@
+{
+  "startedAt": "2026-05-05T22:09:29.306Z",
+  "baseUrl": "https://agencytrack.vercel.app",
+  "side": "agent",
+  "pages": {
+    "login": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "dashboard": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "career": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "awards": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 1,
+      "nodes": 25,
+      "byRule": {
+        "color-contrast": 25
+      }
+    },
+    "leaderboard": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "history": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "profile": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "wizard_picker": {
+      "url": "https://agencytrack.vercel.app/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    }
+  },
+  "totals": {
+    "byRule": {
+      "color-contrast": 25
+    },
+    "nodes": 25,
+    "violations": 1
+  }
+}

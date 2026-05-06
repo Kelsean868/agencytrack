@@ -561,8 +561,9 @@ function AgentGoalsTab({ onGoalsLoaded }) {
 
             {/* Notes */}
             <div className="flex flex-col gap-0.5">
-              <label className="text-xs text-ink-muted">Notes</label>
+              <label htmlFor={`goals-notes-${agent.id}`} className="text-xs text-ink-muted">Notes</label>
               <textarea
+                id={`goals-notes-${agent.id}`}
                 value={e.notes}
                 onChange={(ev) => handleField(agent.id, 'notes', ev.target.value)}
                 rows={2}

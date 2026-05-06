@@ -72,8 +72,9 @@ function OutputTable({ computed, freqKey, onFreqChange }) {
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <label className="text-xs font-semibold text-ink-muted">View as:</label>
+        <label htmlFor="commission-frequency" className="text-xs font-semibold text-ink-muted">View as:</label>
         <select
+          id="commission-frequency"
           value={freqKey}
           onChange={(e) => onFreqChange(e.target.value)}
           className="h-9 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"

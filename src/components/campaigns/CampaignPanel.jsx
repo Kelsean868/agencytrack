@@ -275,7 +275,12 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
 
   return (
     <div className="fixed inset-0 z-50 flex">
-      <div className="flex-1 bg-black/40" onClick={onClose} />
+      <button
+        type="button"
+        aria-label="Close drawer"
+        onClick={onClose}
+        className="flex-1 bg-black/40 border-0 p-0 m-0 cursor-pointer"
+      />
       <div className="w-full max-w-md bg-[var(--color-surface)] flex flex-col overflow-y-auto shadow-xl">
         <header className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <h2 className="text-base font-bold text-ink">{initial ? 'Edit Campaign' : 'New Campaign'}</h2>
@@ -287,8 +292,9 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
         <div className="flex-1 px-5 py-4 flex flex-col gap-4">
           {/* Name */}
           <div>
-            <label className="block text-xs font-semibold text-ink-muted mb-1">Campaign Name *</label>
+            <label htmlFor="campaign-name" className="block text-xs font-semibold text-ink-muted mb-1">Campaign Name *</label>
             <input
+              id="campaign-name"
               value={form.name}
               onChange={(e) => set('name', e.target.value)}
               placeholder="e.g. Q2 API Sprint"
@@ -298,8 +304,9 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-semibold text-ink-muted mb-1">Description</label>
+            <label htmlFor="campaign-description" className="block text-xs font-semibold text-ink-muted mb-1">Description</label>
             <textarea
+              id="campaign-description"
               value={form.description}
               onChange={(e) => set('description', e.target.value)}
               rows={2}
@@ -310,8 +317,9 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
 
           {/* Prize */}
           <div>
-            <label className="block text-xs font-semibold text-ink-muted mb-1">Prize *</label>
+            <label htmlFor="campaign-prize" className="block text-xs font-semibold text-ink-muted mb-1">Prize *</label>
             <input
+              id="campaign-prize"
               value={form.prize}
               onChange={(e) => set('prize', e.target.value)}
               placeholder="e.g. Weekend Getaway for Two"
@@ -322,8 +330,9 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
           {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-ink-muted mb-1">Start Date *</label>
+              <label htmlFor="campaign-start-date" className="block text-xs font-semibold text-ink-muted mb-1">Start Date *</label>
               <input
+                id="campaign-start-date"
                 type="date"
                 value={form.startDate}
                 onChange={(e) => set('startDate', e.target.value)}
@@ -331,8 +340,9 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-ink-muted mb-1">End Date *</label>
+              <label htmlFor="campaign-end-date" className="block text-xs font-semibold text-ink-muted mb-1">End Date *</label>
               <input
+                id="campaign-end-date"
                 type="date"
                 value={form.endDate}
                 onChange={(e) => set('endDate', e.target.value)}
@@ -343,7 +353,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
 
           {/* Scope */}
           <div>
-            <label className="block text-xs font-semibold text-ink-muted mb-1">Scope</label>
+            <p className="block text-xs font-semibold text-ink-muted mb-1">Scope</p>
             {isUnitManager ? (
               <p className="text-sm text-ink-muted italic">This Unit (your unit only)</p>
             ) : (
@@ -404,7 +414,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
           {/* Targets */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-xs font-semibold text-ink-muted">Metric Targets *</label>
+              <p className="text-xs font-semibold text-ink-muted">Metric Targets *</p>
               {form.targets.length < 4 && (
                 <button onClick={addMetric} className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors">
                   + Add Metric
@@ -446,7 +456,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
 
           {/* Status */}
           <div>
-            <label className="block text-xs font-semibold text-ink-muted mb-1">Status</label>
+            <p className="block text-xs font-semibold text-ink-muted mb-1">Status</p>
             <div className="flex gap-3">
               {['active', 'draft'].map((s) => (
                 <label key={s} className="flex items-center gap-2 cursor-pointer">

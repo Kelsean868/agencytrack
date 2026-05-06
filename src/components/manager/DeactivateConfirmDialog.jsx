@@ -62,10 +62,11 @@ export default function DeactivateConfirmDialog({ user, onConfirm, onCancel, loa
           This signs <span className="font-semibold text-ink">{user?.name ?? user?.email}</span> out immediately, blocks login, and preserves their submissions and settlements.
         </p>
         <div className="flex flex-col gap-1.5">
-          <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
+          <label htmlFor="deactivate-confirm-email" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
             Type their email to confirm
           </label>
           <input
+            id="deactivate-confirm-email"
             type="text"
             value={emailInput}
             onChange={(e) => setEmailInput(e.target.value)}

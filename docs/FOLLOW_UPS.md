@@ -5,20 +5,29 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## A11Y PR3 — agent-side surfaces + strict mode flip
+## A11Y PR4 — MeetingMode contrast + react-hooks cleanup
 
-**Scope:** Agent-side axe violations (separate scan script: `scripts/a11y-axe-scan.cjs`).
-Also includes the jsx-a11y warn→error flip for rules already fixed in PR1/PR2.
+**Scope:** A small follow-up after PR3 closes the agent-side and lint-strict items.
 
-- Run `A11Y_AGENT_EMAIL=... node scripts/a11y-axe-scan.cjs --url=<preview>` to baseline
-  (8 pages: login, dashboard, career, awards, leaderboard, history, profile, wizard_picker)
-- Fix all serious + critical violations on agent surfaces
-- Check `AgentAwardsPanel.jsx` for `opacity-60` on greyed award cards — same
-  `color-contrast × N` pattern fixed in PR2 (`ManagerAwardsPanel.jsx:56`)
-- After all agent findings fixed, flip `jsx-a11y/label-has-associated-control` and any other
-  rules that are clean to `error` in `eslint.config.js`
-- 35 jsx-a11y warnings currently in lint output — all agent/manager forms; treat as the
-  backlog for this PR
+- **MeetingMode `text-primary` on `bg-ink` — color-contrast × 2.** PR3's preview scan
+  surfaced 2 nodes on the manager_meeting_mode page that PR2's localhost scan missed
+  (localhost had no agent data, so the affected slide didn't render). Specifically:
+    - `<h2 class="text-2xl font-semibold text-primary">Week of …</h2>` on `bg-ink`,
+      contrast 2.36:1 (needs 3:1 for large text)
+    - `<p class="text-5xl font-bold text-primary">TTD 0</p>` on `bg-ink`, same issue
+  Fix: replace `text-primary` with the dark-mode-lifted teal (`#4ab5b8` per CLAUDE.md
+  Nexus theme) — either an explicit `text-[#4ab5b8]` or by scoping MeetingMode in a
+  `dark` class so dark-mode tokens activate. Pre-existing on `main` — not a PR3
+  regression.
+
+- **react-hooks/exhaustive-deps × 3** (deferred from PR3 since they're not jsx-a11y):
+    - `src/components/awards/AgentAwardsPanel.jsx:155` — `now` logical expression
+      could change every render; move inside useMemo or wrap in its own useMemo
+    - `src/components/awards/AgentAwardsPanel.jsx:168` — unused eslint-disable
+      directive (downstream of the above)
+    - `src/components/manager/GoalsPanel.jsx:361` — useEffect missing
+      `onGoalsLoaded` dep; either add to deps or wrap parent definition in
+      useCallback
 
 ---
 
