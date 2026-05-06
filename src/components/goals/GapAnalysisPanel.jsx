@@ -59,13 +59,22 @@ function MetricSection({ row }) {
           const targetFmt = formatValue(target, isCurrency);
 
           return (
-            <div key={key} className="flex items-center gap-3">
-              <p className="text-[10px] font-semibold text-ink-muted w-36 shrink-0 truncate">{layerLabel}</p>
-              <div className="flex-1 h-2 rounded-full bg-border/50 overflow-hidden">
-                <div className={`h-2 rounded-full transition-all duration-500 ${barClass}`} style={{ width: `${fillPct}%` }} />
+            <div
+              key={key}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1.5 sm:flex-nowrap"
+            >
+              {/* Label takes its own line < sm so bar/target/badge fit together below */}
+              <p className="text-[10px] font-semibold text-ink-muted w-full sm:w-36 sm:shrink-0 sm:truncate">
+                {layerLabel}
+              </p>
+              <div className="flex-1 min-w-0 h-2 rounded-full bg-border/50 overflow-hidden">
+                <div
+                  className={`h-2 rounded-full transition-all duration-500 ${barClass}`}
+                  style={{ width: `${fillPct}%` }}
+                />
               </div>
-              <p className="text-[10px] text-ink-muted w-24 text-right shrink-0">{targetFmt}</p>
-              <div className="w-24 flex justify-end shrink-0">
+              <p className="text-[10px] text-ink-muted shrink-0 text-right sm:w-24">{targetFmt}</p>
+              <div className="flex justify-end shrink-0 sm:w-24">
                 <GapBadge gap={gapValue} target={target} isCurrency={isCurrency} />
               </div>
             </div>
