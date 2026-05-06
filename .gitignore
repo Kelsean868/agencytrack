@@ -74,6 +74,8 @@ functions/seed-company-minimums.cjs
 verification/*
 !verification/a11y/
 !verification/a11y/*.json
+!verification/a11y/screenshots/
+!verification/a11y/screenshots/*.png
 !verification/mobile/
 !verification/mobile/**
 
