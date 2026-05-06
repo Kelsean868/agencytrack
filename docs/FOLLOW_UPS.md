@@ -5,6 +5,53 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Mobile audit — deferred items (from `mobile-audit-2026-05-06`)
+
+Pilot-critical agent-flow items shipped in PR `mobile-audit-pilot-pass-1`. The
+remaining items below were intentionally deferred. Audit doc: `docs/mobile-audit-2026-05-06.md`.
+
+### Mobile follow-up #1 — Manager surface mobile pass (next-week scope)
+
+`MasterSheet.jsx` (23-column grid wrapped in `overflow-x-auto`),
+`SettlementPanel.jsx` (three grids), `ManagerDashboard.jsx` TabBar (still h-9),
+`ManagerAwardsPanel.jsx` TabBar, `GoalsPanel.jsx` mode-tabs,
+`CampaignPanel.jsx` filter tabs, `MeetingMode.jsx` (mobile-presentation
+behaviour), `UserManagementPanel.jsx` rows. None of these are pilot-blocking
+because Tatil managers will use desktop/tablet, but each has the same
+36px tab-button + horizontally-scrolling-grid pattern that needs the same
+treatment as the agent side. Estimated 1–2 days of focused work.
+
+### Mobile follow-up #2 — Non-core agent surface P1s
+
+- `CareerPortal` "Edit My Goals" button is 32px tall — bump to 44px
+- `History` row eye/preview button is < 44px — bump hit area while preserving icon
+- `CommissionPlayground` accordion toggle — measure and adjust if < 44px
+
+### Mobile follow-up #3 — `bg-primary/N` opacity utilities resolve to transparent
+
+The carousel inactive dot indicators show `bg-primary/30` but the computed
+`background-color` is `rgba(0,0,0,0)` because the project's Tailwind config
+exposes `--color-primary` as a hex string (`#01696f`), not as space-separated
+RGB channels. Tailwind 3 `<color>/<opacity>` modifier silently fails when the
+source color isn't channel-split.
+
+Likely affects every `bg-primary/N`, `text-primary/N`, etc. usage in the
+codebase — needs a one-pass audit. Two options:
+
+1. Convert the CSS variables to channel form: `--color-primary: 1 105 111`
+   and switch all consumers to `rgb(var(--color-primary))`.
+2. Replace `/N` modifiers with explicit `rgba()` literals (loses theming).
+
+Option 1 is the right fix but touches every theme variable + consumer.
+
+### Mobile follow-up #4 — P2 cosmetic items
+
+- Wizard close (X) button is 40×40 — bump to 44×44
+- Leaderboard avatars are 40×40 — leave visual but expand surrounding tap row
+- `MotivationalCarousel.jsx` line 366 hardcoded `bg-[#01696f]/8` — replace with token
+
+---
+
 ## A11Y PR6 — global dark-mode contrast pass (manager pages)
 
 **Scope:** PR5 added the first dark-mode axe scan in the project (manager-side, via
