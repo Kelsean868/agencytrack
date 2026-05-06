@@ -466,7 +466,7 @@ export default function WizardForm({ onClose, initialWeek }) {
             type="button"
             onClick={screen === 'review' ? handleSubmit : handleNext}
             disabled={submitting}
-            className="col-span-3 h-11 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60"
+            className="col-span-3 h-11 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-sm hover:bg-primary/90 dark:hover:bg-primary transition-colors disabled:opacity-60"
           >
             {nextLabel}
           </button>

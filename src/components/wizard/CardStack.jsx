@@ -9,7 +9,7 @@ export function Card({ badge, desc, children, variant = 'default' }) {
     >
       {badge && (
         <div className="mb-2">
-          <span className="inline-flex text-xs font-semibold text-white bg-primary px-2 py-0.5 rounded-full">
+          <span className="inline-flex text-xs font-semibold text-white bg-primary dark:bg-primary-dark px-2 py-0.5 rounded-full">
             {badge}
           </span>
         </div>

@@ -192,7 +192,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
             onClick={handleSave}
             disabled={saving}
             className={`h-10 px-4 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 self-start ${
-              saved ? 'bg-success/15 text-success' : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
+              saved ? 'bg-success/15 text-success' : 'bg-primary dark:bg-primary-dark text-white hover:bg-[color:var(--color-primary-dark)] dark:hover:bg-primary'
             }`}
           >
             {saving ? 'Saving…' : saved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save Unit Goals'}
@@ -284,7 +284,7 @@ function BranchGoalsTab({ userProfile }) {
             onClick={handleSave}
             disabled={saving}
             className={`h-10 px-4 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 self-start ${
-              saved ? 'bg-success/15 text-success' : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
+              saved ? 'bg-success/15 text-success' : 'bg-primary dark:bg-primary-dark text-white hover:bg-[color:var(--color-primary-dark)] dark:hover:bg-primary'
             }`}
           >
             {saving ? 'Saving…' : saved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save Branch Goals'}
@@ -466,7 +466,7 @@ function AgentGoalsTab({ onGoalsLoaded }) {
                 className={`h-9 px-4 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 shrink-0 ${
                   isSaved
                     ? 'bg-success/15 text-success'
-                    : 'bg-primary text-white hover:bg-[color:var(--color-primary-dark)]'
+                    : 'bg-primary dark:bg-primary-dark text-white hover:bg-[color:var(--color-primary-dark)] dark:hover:bg-primary'
                 }`}
               >
                 {isSaving ? 'Saving…' : isSaved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save'}

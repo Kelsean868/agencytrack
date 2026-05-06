@@ -20,7 +20,7 @@ function RatingCard({ badge, label, name, value, onChange, desc, variant = 'defa
               onClick={() => onChange(name, n)}
               className={`w-10 h-11 rounded-lg border font-semibold text-sm transition-colors ${
                 value === n
-                  ? 'border-primary bg-primary text-white'
+                  ? 'border-primary bg-primary dark:bg-primary-dark text-white'
                   : n < value
                   ? 'border-primary/30 bg-primary/10 text-primary'
                   : 'border-border bg-[var(--color-surface)] text-ink hover:border-primary/50'

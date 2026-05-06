@@ -31,7 +31,7 @@ export default function DeactivateConfirmDialog({ user, onConfirm, onCancel, loa
             <button
               onClick={() => onConfirm(true)}
               disabled={loading}
-              className="flex-1 h-11 rounded-xl bg-primary text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="flex-1 h-11 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-60"
             >
               {loading ? 'Reactivating…' : 'Reactivate'}
             </button>

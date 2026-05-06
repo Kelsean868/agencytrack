@@ -481,7 +481,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full h-11 rounded-xl bg-primary text-white font-semibold text-sm hover:bg-primary/90 transition-colors disabled:opacity-60"
+            className="w-full h-11 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-sm hover:bg-primary/90 dark:hover:bg-primary transition-colors disabled:opacity-60"
           >
             {saving ? 'Saving…' : 'Save Campaign'}
           </button>
