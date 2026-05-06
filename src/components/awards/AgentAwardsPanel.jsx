@@ -200,7 +200,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
           <button
             key={t.id}
             onClick={() => setActiveCategory(t.id)}
-            className={`flex-1 min-w-max h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
+            className={`flex-1 min-w-max h-11 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
               activeCategory === t.id
                 ? 'bg-[var(--color-surface)] text-primary shadow-sm'
                 : 'text-ink-muted hover:text-ink'

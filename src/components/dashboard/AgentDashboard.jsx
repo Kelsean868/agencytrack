@@ -56,7 +56,7 @@ function TabBar({ active, onChange }) {
         <button
           key={t.id}
           onClick={() => onChange(t.id)}
-          className={`flex-1 min-w-max h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
+          className={`flex-1 min-w-max h-11 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
             active === t.id
               ? 'bg-[var(--color-surface)] text-primary shadow-sm'
               : 'text-ink-muted hover:text-ink'
