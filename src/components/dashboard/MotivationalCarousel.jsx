@@ -379,14 +379,14 @@ export default function MotivationalCarousel({
         <>
           <button
             onClick={prev}
-            className="absolute left-1 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full text-primary/60 hover:text-primary hover:bg-primary/10 transition-colors"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-full text-primary/60 hover:text-primary hover:bg-primary/10 transition-colors"
             aria-label="Previous"
           >
             <ChevronLeft size={16} />
           </button>
           <button
             onClick={advance}
-            className="absolute right-1 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center rounded-full text-primary/60 hover:text-primary hover:bg-primary/10 transition-colors"
+            className="absolute right-0 top-1/2 -translate-y-1/2 w-11 h-11 flex items-center justify-center rounded-full text-primary/60 hover:text-primary hover:bg-primary/10 transition-colors"
             aria-label="Next"
           >
             <ChevronRight size={16} />
@@ -396,18 +396,23 @@ export default function MotivationalCarousel({
 
       {/* Dot indicators */}
       {total > 1 && (
-        <div className="flex items-center justify-center gap-1.5 mt-3">
+        <div className="flex items-center justify-center mt-1">
           {cards.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrentIndex(i)}
-              className={`rounded-full transition-all duration-200 ${
-                i === currentIndex
-                  ? 'w-4 h-1.5 bg-primary'
-                  : 'w-1.5 h-1.5 bg-primary/30 hover:bg-primary/60'
-              }`}
+              className="w-11 h-11 flex items-center justify-center"
               aria-label={`Go to card ${i + 1}`}
-            />
+            >
+              <span
+                className={`block rounded-full transition-all duration-200 ${
+                  i === currentIndex
+                    ? 'w-4 h-1.5 bg-primary'
+                    : 'w-1.5 h-1.5 bg-primary/30'
+                }`}
+                aria-hidden="true"
+              />
+            </button>
           ))}
         </div>
       )}

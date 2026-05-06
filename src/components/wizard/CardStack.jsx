@@ -35,7 +35,7 @@ export function NumericField({ label, name, value, onChange, desc }) {
           const v = e.target.value.replace(/[^0-9]/g, '');
           onChange(name, v === '' ? 0 : parseInt(v, 10));
         }}
-        className="w-full h-11 px-3 rounded-lg bg-surface border border-border/60 text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        className="w-full h-11 px-3 rounded-lg bg-surface border border-border/60 text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
     </div>
   );
@@ -59,7 +59,7 @@ export function CurrencyField({ label, name, value, onChange, desc }) {
             const v = e.target.value.replace(/[^0-9.]/g, '');
             onChange(name, v === '' ? 0 : parseFloat(v) || 0);
           }}
-          className="flex-1 px-3 bg-transparent text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-r-lg"
+          className="flex-1 px-3 bg-transparent text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/40 rounded-r-lg"
         />
       </div>
     </div>
@@ -93,7 +93,7 @@ export function SuggestedField({ label, name, value, onChange, suggestion, note,
           const v = e.target.value.replace(/[^0-9]/g, '');
           onChange(name, v === '' ? 0 : parseInt(v, 10));
         }}
-        className="w-full h-11 px-3 rounded-lg bg-surface border border-border/60 text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+        className="w-full h-11 px-3 rounded-lg bg-surface border border-border/60 text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
       {suggestion != null && suggestion > 0 && (
         <p className="text-xs text-primary font-medium">
