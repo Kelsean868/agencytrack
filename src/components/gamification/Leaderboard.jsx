@@ -92,11 +92,15 @@ function AgentAvatar({ photoURL, name, size = 36 }) {
       style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
     />
   ) : (
+    // Color delivered via classes so the dark variant kicks in. Inline style
+    // only handles dynamic dimensions — Tailwind can't compile arbitrary `size`.
+    // Without the dark override, white-on-#4ab5b8 (dark --color-primary) is
+    // 2.44:1, fails AA. dark:bg-primary-dark = #01696f → ~6.5:1 vs white.
     <div
+      className="bg-primary dark:bg-primary-dark text-white"
       style={{
         width: size, height: size, borderRadius: '50%', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'var(--color-primary)', color: '#fff',
         fontSize: size * 0.36, fontWeight: 700,
       }}
     >
