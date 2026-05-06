@@ -19,7 +19,7 @@ function AgentAvatar({ photoURL, name, size = 40 }) {
       alt={name}
       style={{
         width: size, height: size, borderRadius: '50%', objectFit: 'cover',
-        border: '2px solid rgba(255,255,255,0.2)', flexShrink: 0,
+        border: '2px solid var(--color-presentation-border)', flexShrink: 0,
       }}
     />
   ) : (
@@ -27,9 +27,10 @@ function AgentAvatar({ photoURL, name, size = 40 }) {
       style={{
         width: size, height: size, borderRadius: '50%', flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        backgroundColor: 'var(--color-primary)', color: '#fff',
+        backgroundColor: 'var(--color-presentation-accent)',
+        color: 'var(--color-presentation)',
         fontSize: size * 0.36, fontWeight: 700,
-        border: '2px solid rgba(255,255,255,0.2)',
+        border: '2px solid var(--color-presentation-border)',
       }}
     >
       {initials}
@@ -66,9 +67,9 @@ function StatusBadge({ status }) {
 
 function StatCard({ label, value, accent }) {
   return (
-    <div className="flex flex-col items-center gap-1 rounded-xl p-4 bg-white/5">
-      <p className="text-[0.68rem] uppercase tracking-widest text-white/70 text-center">{label}</p>
-      <p className={`text-2xl font-bold ${accent ? 'text-[#4ab5b8]' : 'text-white'}`}>{value}</p>
+    <div className="flex flex-col items-center gap-1 rounded-xl p-4 bg-presentation-text/5">
+      <p className="text-[0.68rem] uppercase tracking-widest text-presentation-muted text-center">{label}</p>
+      <p className={`text-2xl font-bold ${accent ? 'text-presentation-accent' : 'text-presentation-text'}`}>{value}</p>
     </div>
   );
 }
@@ -76,26 +77,26 @@ function StatCard({ label, value, accent }) {
 function RatioCard({ ratioKey, value }) {
   const info = RATIO_LABELS[ratioKey];
   return (
-    <div className="rounded-xl p-3 bg-white/5 flex flex-col gap-1">
-      <p className="text-[0.62rem] uppercase tracking-widest text-white/65">{info.label}</p>
+    <div className="rounded-xl p-3 bg-presentation-text/5 flex flex-col gap-1">
+      <p className="text-[0.62rem] uppercase tracking-widest text-presentation-muted">{info.label}</p>
       <p className={`text-xl font-bold ${ratioColorClass(ratioKey, value)}`}>
         {formatRatioValue(ratioKey, value)}
       </p>
-      <p className="text-[0.58rem] text-white/60 leading-tight">{info.desc}</p>
+      <p className="text-[0.58rem] text-presentation-muted leading-tight">{info.desc}</p>
     </div>
   );
 }
 
 function RatingBar({ label, value }) {
   const pct = value > 0 ? (value / 10) * 100 : 0;
-  const barCls = value >= 7 ? 'bg-success' : value >= 4 ? 'bg-warning' : value > 0 ? 'bg-danger' : 'bg-white/20';
+  const barCls = value >= 7 ? 'bg-success' : value >= 4 ? 'bg-warning' : value > 0 ? 'bg-danger' : 'bg-presentation-text/20';
   return (
     <div className="flex flex-col gap-1">
       <div className="flex justify-between items-baseline">
-        <p className="text-xs text-white/70">{label}</p>
-        <p className="text-sm font-semibold text-white">{value > 0 ? `${value}/10` : '—'}</p>
+        <p className="text-xs text-presentation-muted">{label}</p>
+        <p className="text-sm font-semibold text-presentation-text">{value > 0 ? `${value}/10` : '—'}</p>
       </div>
-      <div className="h-1.5 rounded-full bg-white/10">
+      <div className="h-1.5 rounded-full bg-presentation-text/10">
         <div className={`h-1.5 rounded-full transition-all ${barCls}`} style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -233,27 +234,27 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     if (slide === 0) {
       return (
         <div className="flex flex-col items-center justify-center flex-1 gap-10 px-8 text-center">
-          <h2 className="text-2xl font-semibold text-[#4ab5b8]">
+          <h2 className="text-2xl font-semibold text-presentation-accent">
             Week of {formatDateLabel(selectedWeek)}
           </h2>
           <div className="grid grid-cols-2 gap-10 w-full max-w-2xl">
             <div className="flex flex-col items-center gap-2">
-              <p className="text-xs uppercase tracking-widest text-white/70">Total API</p>
-              <p className="text-5xl font-bold text-[#4ab5b8]">{formatCurrency(totalAPI)}</p>
+              <p className="text-xs uppercase tracking-widest text-presentation-muted">Total API</p>
+              <p className="text-5xl font-bold text-presentation-accent">{formatCurrency(totalAPI)}</p>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <p className="text-xs uppercase tracking-widest text-white/70">Apps Sold</p>
-              <p className="text-5xl font-bold text-white">{totalApps}</p>
+              <p className="text-xs uppercase tracking-widest text-presentation-muted">Apps Sold</p>
+              <p className="text-5xl font-bold text-presentation-text">{totalApps}</p>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <p className="text-xs uppercase tracking-widest text-white/70">Avg Closing</p>
-              <p className="text-5xl font-bold text-white">
+              <p className="text-xs uppercase tracking-widest text-presentation-muted">Avg Closing</p>
+              <p className="text-5xl font-bold text-presentation-text">
                 {avgClosing !== null ? `${avgClosing}%` : '—'}
               </p>
             </div>
             <div className="flex flex-col items-center gap-2">
-              <p className="text-xs uppercase tracking-widest text-white/70">Submissions</p>
-              <p className="text-5xl font-bold text-white">
+              <p className="text-xs uppercase tracking-widest text-presentation-muted">Submissions</p>
+              <p className="text-5xl font-bold text-presentation-text">
                 {submittedCount}/{agentSlides.length}
               </p>
             </div>
@@ -266,11 +267,11 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
     if (isLast) {
       return (
         <div className="flex flex-col items-center justify-center flex-1 gap-6 text-center px-8">
-          <p className="text-xs uppercase tracking-widest text-[#4ab5b8]">Meeting Complete</p>
-          <p className="text-4xl font-bold text-white">
+          <p className="text-xs uppercase tracking-widest text-presentation-accent">Meeting Complete</p>
+          <p className="text-4xl font-bold text-presentation-text">
             {agentSlides.length} agent{agentSlides.length !== 1 ? 's' : ''} reviewed
           </p>
-          <p className="text-white/70">Week of {formatDateLabel(selectedWeek)}</p>
+          <p className="text-presentation-muted">Week of {formatDateLabel(selectedWeek)}</p>
         </div>
       );
     }
@@ -287,7 +288,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
             {mode === 'group' ? (
               <>
                 <AgentAvatar photoURL={photoMap[agent.agentId]} name={agent.name} size={40} />
-                <h2 className="text-4xl font-display font-bold text-white leading-tight">
+                <h2 className="text-4xl font-display font-bold text-presentation-text leading-tight">
                   {agent.name}
                 </h2>
               </>
@@ -295,7 +296,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
               <div className="flex items-center gap-4">
                 <AgentAvatar photoURL={photoMap[agent.agentId]} name={agent.name} size={56} />
                 <div className="flex items-center gap-3">
-                  <h2 className="text-4xl font-display font-bold text-white leading-tight">
+                  <h2 className="text-4xl font-display font-bold text-presentation-text leading-tight">
                     {agent.name}
                   </h2>
                   {isOutlier(agent) && (
@@ -308,7 +309,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
                 </div>
               </div>
             )}
-            <p className="text-sm text-white/70">Week ending {formatDateLabel(selectedWeek)}</p>
+            <p className="text-sm text-presentation-muted">Week ending {formatDateLabel(selectedWeek)}</p>
             <StatusBadge status={agent.status} />
           </div>
 
@@ -322,7 +323,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
           {/* Closing ratio */}
           {agent.ratios.closingRatio !== null && (
             <div className="flex justify-center">
-              <span className="inline-flex px-4 py-1.5 rounded-full text-sm font-semibold bg-primary/25 text-[#4ab5b8]">
+              <span className="inline-flex px-4 py-1.5 rounded-full text-sm font-semibold bg-presentation-accent/25 text-presentation-accent">
                 {agent.ratios.closingRatio}% closing ratio
               </span>
             </div>
@@ -332,7 +333,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
           {mode === 'one-on-1' && (
             <>
               <div>
-                <p className="text-xs uppercase tracking-widest text-white/65 mb-3">Coaching Ratios</p>
+                <p className="text-xs uppercase tracking-widest text-presentation-muted mb-3">Coaching Ratios</p>
                 <div className="grid grid-cols-4 gap-2">
                   {RATIO_KEY_ORDER.map((key) => (
                     <RatioCard key={key} ratioKey={key} value={agent.ratios[key]} />
@@ -342,14 +343,14 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
 
               {/* ONE-ON-ONE — Self-Evaluation */}
               <div>
-                <p className="text-xs uppercase tracking-widest text-white/65 mb-3">Self-Evaluation</p>
-                <div className="flex flex-col gap-3 rounded-xl bg-white/5 p-4">
+                <p className="text-xs uppercase tracking-widest text-presentation-muted mb-3">Self-Evaluation</p>
+                <div className="flex flex-col gap-3 rounded-xl bg-presentation-text/5 p-4">
                   {ratingBars(agent).map((r) => (
                     <RatingBar key={r.label} label={r.label} value={r.value} />
                   ))}
                 </div>
                 {agent.evaluationNotes && (
-                  <p className="mt-3 text-sm text-white/70 italic leading-relaxed">
+                  <p className="mt-3 text-sm text-presentation-muted italic leading-relaxed">
                     "{agent.evaluationNotes}"
                   </p>
                 )}
@@ -362,19 +363,21 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-ink">
+    <div className="fixed inset-0 z-50 flex flex-col bg-presentation">
 
       {/* Top bar — 3-col grid */}
       <header className="grid grid-cols-3 items-center px-6 py-4 shrink-0">
-        <p className="text-sm text-white/65">{slide + 1} / {totalSlides}</p>
+        <p className="text-sm text-presentation-muted">{slide + 1} / {totalSlides}</p>
 
         {/* Mode toggle */}
         <div className="flex justify-center">
-          <div className="flex rounded-full bg-white/10 p-0.5">
+          <div className="flex rounded-full bg-presentation-text/10 p-0.5">
             <button
               onClick={() => setMode('group')}
               className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                mode === 'group' ? 'bg-primary text-white' : 'text-white/70 hover:text-white'
+                mode === 'group'
+                  ? 'bg-presentation-accent text-presentation'
+                  : 'text-presentation-muted hover:text-presentation-text'
               }`}
             >
               <BarChart2 size={14} className="inline mr-1" /> Group
@@ -382,7 +385,9 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
             <button
               onClick={() => setMode('one-on-1')}
               className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                mode === 'one-on-1' ? 'bg-primary text-white' : 'text-white/70 hover:text-white'
+                mode === 'one-on-1'
+                  ? 'bg-presentation-accent text-presentation'
+                  : 'text-presentation-muted hover:text-presentation-text'
               }`}
             >
               <Search size={14} className="inline mr-1" /> 1-on-1
@@ -393,7 +398,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
         <div className="flex justify-end">
           <button
             onClick={onClose}
-            className="w-11 h-11 flex items-center justify-center rounded-full text-white/60 hover:text-white transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-full text-presentation-muted hover:text-presentation-text transition-colors"
             aria-label="Exit meeting mode"
           >
             <X size={22} />
@@ -411,7 +416,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
         <button
           onClick={() => go(-1)}
           disabled={isFirst}
-          className="w-14 h-14 flex items-center justify-center rounded-full border border-white/30 bg-white/5 text-white hover:bg-white/10 transition-colors disabled:opacity-20"
+          className="w-14 h-14 flex items-center justify-center rounded-full border border-presentation-border bg-presentation-text/5 text-presentation-text hover:bg-presentation-text/10 transition-colors disabled:opacity-20"
           aria-label="Previous slide"
         >
           <ChevronLeft size={28} />
@@ -425,7 +430,9 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
               onClick={() => setSlide(i)}
               aria-label={`Go to slide ${i + 1}`}
               className={`rounded-full transition-all ${
-                i === slide ? 'w-5 h-1.5 bg-primary' : 'w-1.5 h-1.5 bg-white/25 hover:bg-white/50'
+                i === slide
+                  ? 'w-5 h-1.5 bg-presentation-accent'
+                  : 'w-1.5 h-1.5 bg-presentation-border hover:bg-presentation-text/40'
               }`}
             />
           ))}
@@ -434,7 +441,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
         <button
           onClick={() => go(1)}
           disabled={isLast}
-          className="w-14 h-14 flex items-center justify-center rounded-full border border-white/30 bg-white/5 text-white hover:bg-white/10 transition-colors disabled:opacity-20"
+          className="w-14 h-14 flex items-center justify-center rounded-full border border-presentation-border bg-presentation-text/5 text-presentation-text hover:bg-presentation-text/10 transition-colors disabled:opacity-20"
           aria-label="Next slide"
         >
           <ChevronRight size={28} />
