@@ -5,29 +5,48 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## A11Y PR4 — MeetingMode contrast + react-hooks cleanup
+## MeetingMode dark-mode `bg-ink` inversion (latent bug)
 
-**Scope:** A small follow-up after PR3 closes the agent-side and lint-strict items.
+**Scope:** Discovered while investigating PR4. The `bg-ink` Tailwind utility maps to
+`var(--color-text)`, which inverts between themes:
 
-- **MeetingMode `text-primary` on `bg-ink` — color-contrast × 2.** PR3's preview scan
-  surfaced 2 nodes on the manager_meeting_mode page that PR2's localhost scan missed
-  (localhost had no agent data, so the affected slide didn't render). Specifically:
-    - `<h2 class="text-2xl font-semibold text-primary">Week of …</h2>` on `bg-ink`,
-      contrast 2.36:1 (needs 3:1 for large text)
-    - `<p class="text-5xl font-bold text-primary">TTD 0</p>` on `bg-ink`, same issue
-  Fix: replace `text-primary` with the dark-mode-lifted teal (`#4ab5b8` per CLAUDE.md
-  Nexus theme) — either an explicit `text-[#4ab5b8]` or by scoping MeetingMode in a
-  `dark` class so dark-mode tokens activate. Pre-existing on `main` — not a PR3
-  regression.
+- light mode: `--color-text = #28251d` (warm near-black) → `bg-ink` paints a dark surface
+- dark mode:  `--color-text = #f0ebe0` (warm off-white)  → `bg-ink` paints a near-white surface
 
-- **react-hooks/exhaustive-deps × 3** (deferred from PR3 since they're not jsx-a11y):
-    - `src/components/awards/AgentAwardsPanel.jsx:155` — `now` logical expression
-      could change every render; move inside useMemo or wrap in its own useMemo
-    - `src/components/awards/AgentAwardsPanel.jsx:168` — unused eslint-disable
-      directive (downstream of the above)
-    - `src/components/manager/GoalsPanel.jsx:361` — useEffect missing
-      `onGoalsLoaded` dep; either add to deps or wrap parent definition in
-      useCallback
+MeetingMode's root uses `bg-ink` to force a dark presentation backdrop. This works in
+light mode by accident. In global dark mode the surface flips to off-white while
+`text-white` and `text-white/N` remain pure white — the overlay becomes unreadable.
+
+The PR4 fix only addresses the reported `text-primary` contrast nodes (which manifest
+in light mode). The dark-mode `bg-ink` flip was deferred because:
+
+- It's not detected by the current axe scans (they run in light mode)
+- Fixing it correctly requires either a stable presentation-surface token (e.g. a new
+  `--color-presentation` CSS var that's always dark) or scoping MeetingMode in a
+  `dark` class with a stable bg utility — both are bigger changes than PR4's scope
+
+Suggested approach for the follow-up PR:
+- Add a new color token `--color-presentation: #1a1612` (same in both themes)
+- Map a Tailwind utility `bg-presentation` to it
+- Replace `bg-ink` on MeetingMode's root with `bg-presentation`
+- Run axe in BOTH light and dark themes (the agent scan script needs a flag to toggle
+  `dark` on `<html>` after login) and confirm 0/0 in both
+
+---
+
+## React Compiler adoption — already documented below; left in place for context
+
+## react-hooks/exhaustive-deps × 3 (deferred from PR3)
+
+Not jsx-a11y; left at `warn` rather than flipped. Fix as a small follow-up:
+
+- `src/components/awards/AgentAwardsPanel.jsx:155` — `now` logical expression
+  could change every render; move inside useMemo or wrap in its own useMemo
+- `src/components/awards/AgentAwardsPanel.jsx:168` — unused eslint-disable
+  directive (downstream of the above)
+- `src/components/manager/GoalsPanel.jsx:361` — useEffect missing
+  `onGoalsLoaded` dep; either add to deps or wrap parent definition in
+  useCallback
 
 ---
 
