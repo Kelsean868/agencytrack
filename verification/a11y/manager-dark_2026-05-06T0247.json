@@ -1,0 +1,79 @@
+{
+  "startedAt": "2026-05-06T02:47:08.660Z",
+  "baseUrl": "http://localhost:5180",
+  "side": "manager",
+  "mode": "dark",
+  "pages": {
+    "manager_dashboard": {
+      "url": "http://localhost:5180/",
+      "violations": 1,
+      "nodes": 1,
+      "byRule": {
+        "color-contrast": 1
+      }
+    },
+    "manager_agents": {
+      "url": "http://localhost:5180/",
+      "violations": 1,
+      "nodes": 1,
+      "byRule": {
+        "color-contrast": 1
+      }
+    },
+    "manager_campaigns": {
+      "url": "http://localhost:5180/",
+      "violations": 1,
+      "nodes": 1,
+      "byRule": {
+        "color-contrast": 1
+      }
+    },
+    "manager_awards": {
+      "url": "http://localhost:5180/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_compliance": {
+      "url": "http://localhost:5180/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_persistency": {
+      "url": "http://localhost:5180/",
+      "violations": 1,
+      "nodes": 1,
+      "byRule": {
+        "color-contrast": 1
+      }
+    },
+    "manager_goals": {
+      "url": "http://localhost:5180/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "manager_settlements": {
+      "url": "http://localhost:5180/",
+      "violations": 1,
+      "nodes": 1,
+      "byRule": {
+        "color-contrast": 1
+      }
+    },
+    "manager_meeting_mode": {
+      "url": "http://localhost:5180/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    }
+  },
+  "totals": {
+    "byRule": {
+      "color-contrast": 5
+    },
+    "nodes": 5,
+    "violations": 5
+  }
+}

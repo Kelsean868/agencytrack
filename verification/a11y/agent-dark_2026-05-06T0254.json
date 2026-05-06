@@ -1,0 +1,67 @@
+{
+  "startedAt": "2026-05-06T02:54:36.562Z",
+  "baseUrl": "http://localhost:5180",
+  "side": "agent",
+  "mode": "dark",
+  "pages": {
+    "login": {
+      "url": "http://localhost:5180/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "dashboard": {
+      "url": "http://localhost:5180/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "career": {
+      "url": "http://localhost:5180/",
+      "violations": 1,
+      "nodes": 11,
+      "byRule": {
+        "color-contrast": 11
+      }
+    },
+    "awards": {
+      "url": "http://localhost:5180/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "leaderboard": {
+      "url": "http://localhost:5180/",
+      "violations": 1,
+      "nodes": 3,
+      "byRule": {
+        "color-contrast": 3
+      }
+    },
+    "history": {
+      "url": "http://localhost:5180/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "profile": {
+      "url": "http://localhost:5180/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    },
+    "wizard_picker": {
+      "url": "http://localhost:5180/",
+      "violations": 0,
+      "nodes": 0,
+      "byRule": {}
+    }
+  },
+  "totals": {
+    "byRule": {
+      "color-contrast": 14
+    },
+    "nodes": 14,
+    "violations": 2
+  }
+}
