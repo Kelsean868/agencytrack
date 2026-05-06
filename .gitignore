@@ -74,6 +74,8 @@ functions/seed-company-minimums.cjs
 verification/*
 !verification/a11y/
 !verification/a11y/*.json
+!verification/mobile/
+!verification/mobile/**
 
 # Playwright MCP local state
 .playwright-mcp/
