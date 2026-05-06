@@ -124,6 +124,19 @@ h1, h2, h3, h4 {
       disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px];
   }
 
+  /* Dark-mode override: --color-primary lifts to #4ab5b8 in dark mode for
+   * legibility as a foreground (text-primary on dark surfaces), but white
+   * text on that lifted teal fails AA (2.44:1, needs 4.5:1). Swap the
+   * button surface to --color-primary-dark (which = #01696f in dark mode,
+   * giving ~6.5:1 vs white). Hover lifts back to the bright --color-primary
+   * for a visible hover affordance. */
+  .dark .btn-primary {
+    background-color: var(--color-primary-dark);
+  }
+  .dark .btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary);
+  }
+
   .btn-secondary {
     @apply bg-[color:var(--color-surface)] border border-[color:var(--color-border)] text-[color:var(--color-text)]
       font-medium px-5 py-3 rounded-lg hover:bg-[color:var(--color-surface-muted)] transition-colors duration-150

@@ -132,7 +132,7 @@ export default function PersistencyPanel() {
         <button
           onClick={handleSave}
           disabled={saving || loading}
-          className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-60 ml-auto"
+          className="h-10 px-5 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 dark:hover:bg-primary transition-colors disabled:opacity-60 ml-auto"
         >
           <Save size={14} />
           {saving ? 'Saving…' : 'Save All'}
