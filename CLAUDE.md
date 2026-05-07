@@ -98,6 +98,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 | P8D | Multi-tenancy rollout | ⏳ Deferred to P10 |
 | P8E | Agent Management + Campaign Notifications + Welcome Screen | ✅ COMPLETE |
 | Dark Mode Hotfix | Warm palette + CSS-var theme system + persistence | ✅ COMPLETE |
+| A11y Trilogy + Mobile Audit | PR #30, #33, #34, #35, #36, #37, #38 — agent + manager surfaces + dark mode + mobile pilot pass | ✅ COMPLETE |
 | Track A | Security/perf hardening | 🔄 NEXT |
 | Track B (v2) | Design System v2 — "Concept 4 Complete" redesign (5 sub-PRs B1–B5) | 📋 PLANNED — see `docs/design-v2-PRD.md` |
 | Pilot Prep | End-to-end testing, account setup, mobile audit | ⏸️ DEFERRED (app not at Tatil yet) |
@@ -253,7 +254,7 @@ All four are confirmed in `.gitignore`.
 
 `npm run lint` must exit 0 before any push. This is enforced by `.github/workflows/ci.yml` (lint + build on every PR to main).
 
-**Baseline:** 0 errors, 35 `jsx-a11y` warnings (all tracked as A11Y PR3 scope in `FOLLOW_UPS.md`).
+**Baseline:** 0 errors, 0 `jsx-a11y` warnings (3 deferred `react-hooks/exhaustive-deps` warnings tracked separately, addressed in PR #33 → PR #38).
 
 **React Compiler rules disabled:** `eslint-plugin-react-hooks` v7 ships React Compiler lint rules (`set-state-in-effect`, `purity`, `preserve-manual-memoization`, etc.) in its `flat.recommended` preset. This project does not use `@babel/plugin-react-compiler`, so all Compiler-only rules are set to `off` in `eslint.config.js`. If the Compiler is ever adopted, remove those overrides and fix the flagged sites.
 
