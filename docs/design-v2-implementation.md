@@ -39,8 +39,12 @@ Replace flat solid-color badge tiles in `BadgeGrid.jsx` with the glossy medallio
 **Modify:**
 - `src/components/gamification/BadgeGrid.jsx` — replace tile JSX with medallion markup; extend `BADGES` dict with `gradient` and `tier` props
 - `src/index.css` — add medal gradient tokens (light + dark) and medal CSS classes
-- `src/components/awards/AgentAwardsPanel.jsx` — update if it imports/renders badges directly (verify before editing)
-- `src/components/awards/ManagerAwardsPanel.jsx` — same
+
+**Verified not modified (B1 retrospective, PR #44):**
+- `src/components/awards/AgentAwardsPanel.jsx` — consumes `awardsEngine.js` (production-based awards), does **not** render badges or import `BadgeGrid`. No edit required.
+- `src/components/awards/ManagerAwardsPanel.jsx` — same.
+- `src/utils/awardsEngine.js` — does not read `gradient` or `tier`. No edit required.
+- Only call site for `<BadgeGrid />` is `src/components/profile/CareerPortal.jsx:468`. Component prop signature unchanged → consumer untouched.
 
 **Create:** *(none)*
 
@@ -167,13 +171,15 @@ Update each call site to the new structure or confirm the call site uses `<Badge
 
 ### Acceptance criteria
 - [ ] All 14 entries in `BADGES` have `gradient` and `tier` populated
-- [ ] Visual diff matches mock at 1440px (achievements card on AgentDashboard)
-- [ ] Visual diff matches mock at 390px (mobile achievements grid)
+- [ ] Visual diff matches mock at 1440px (achievements card on **CareerPortal** — the only `<BadgeGrid />` consumer in v1)
+- [ ] Visual diff matches mock at 390px (mobile achievements grid on CareerPortal)
 - [ ] Dark mode tested — gradients hold contrast, tier pips visible
-- [ ] Hover lift + tilt works on earned medals
+- [ ] Hover lift + tilt works on earned medals (motion-guarded via `prefers-reduced-motion: no-preference`)
 - [ ] Locked medals show lock pin + grayscale gradient
 - [ ] `npm run lint && npm run build` exits 0
 - [ ] BadgeGrid component prop signature unchanged (`submissions`, etc.)
+
+> **B1 follow-up (deferred to B3 or a B1.5 PR):** Surface `<BadgeGrid />` on `AgentDashboard.jsx` for full mock parity at 1440px. Mock shows badges on the agent dashboard surface (`mocks/concept-4-complete.html:1141`); current code only renders them in CareerPortal. Naturally fits alongside the activity feed in B3.
 
 ### Rollback
 Single-file revert on `BadgeGrid.jsx` + targeted block revert in `src/index.css`. No data changes, no schema changes, no Cloud Function changes.
