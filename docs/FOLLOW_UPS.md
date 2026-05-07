@@ -193,3 +193,21 @@ comments were never removed.
 - `grep -r "APP_MANUAL" src/` to find all sites
 - For each: verify whether the value is now dynamic (remove comment) or still hardcoded (file a separate ticket)
 - Update this document with findings
+
+---
+
+## Dashboard heading-hierarchy harmonisation
+
+**Scope:** AgentDashboard's existing dashboard-tab sections (KPI Activity grid,
+Goals, Submit Weekly Report) use `<p class="text-xs uppercase">` as fake
+headings instead of real `<h2>`/`<h3>` elements. B3 introduced real
+`<h3>`s for "Recent Activity" and "Achievement Badges" — those two now
+sit alongside `<p>`-styled section headers, which is internally
+inconsistent.
+
+- Convert KPI Activity grid header (`Activity Trend — Last N Weeks`) to `<h3>`
+- Convert Goals card header to `<h3>` and wrap the surrounding `<div class="card">` in `<section aria-labelledby>`
+- Audit the same pattern across `ManagerDashboard.jsx` and the other dashboard surfaces for parity
+- Verify nothing skips heading levels (h1 → h2 → h3 only)
+
+Priority: LOW. A11y-positive but cosmetic; B3 introduced no regressions. Surfaced during the B3 audit.

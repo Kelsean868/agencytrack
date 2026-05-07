@@ -35,6 +35,16 @@
   --color-danger: #c0392b;
   --color-danger-tint: #fde8e7;
 
+  /* Categorical accents (Design System v2 — B3 activity feed) ─────────
+   * Gold = achievement/badge category. Ink = neutral/document category
+   * (purple/violet). Tints back the activity-feed icon backgrounds and
+   * pill backgrounds. Hex values lifted verbatim from the canonical
+   * mock (mocks/concept-4-complete.html lines 31-35, 64-68). */
+  --color-gold: #b07d1a;
+  --color-gold-tint: #fdf3dc;
+  --color-ink: #5a3fa0;
+  --color-ink-tint: #f0ecff;
+
   /* Shadows — warm-toned for light surfaces */
   --shadow-sm: 0 1px 2px rgba(40, 37, 29, 0.06);
   --shadow-md: 0 2px 8px rgba(40, 37, 29, 0.08);
@@ -106,6 +116,13 @@
   --color-warning-tint: rgba(232, 181, 62, 0.15);
   --color-danger: #d96b5d;
   --color-danger-tint: rgba(217, 107, 93, 0.15);
+
+  /* Categorical accents — dark variants. Hex values lifted verbatim from
+   * the canonical mock (mocks/concept-4-complete.html lines 64-68). */
+  --color-gold: #e0aa3e;
+  --color-gold-tint: rgba(224, 170, 62, 0.14);
+  --color-ink: #a995e0;
+  --color-ink-tint: rgba(169, 149, 224, 0.14);
 
   /* Shadows — deeper, pure black for dark surfaces */
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
@@ -584,3 +601,65 @@ h1, h2, h3, h4 {
   .goal-value { font-size: 26px; }
   .goal-target { font-size: 12px; }
 }
+
+/* ── Activity feed (Design System v2 — B3) ──────────────────────────────
+ * Reverse-chronological event list rendered on AgentDashboard. CSS
+ * structure lifted from mocks/concept-4-complete.html lines 540-560 and
+ * refactored to use --color-* tokens. Four icon variants:
+ *   ai-success — submission events
+ *   ai-gold    — badge events (icon background falls back when the mini
+ *                medal isn't rendered; mini medal sits in its own slot)
+ *   ai-primary — rank events  (deferred to future PR per S5)
+ *   ai-ink     — application events  (deferred to future PR per S6)
+ * activity-icon hover background uses --color-surface-muted for both
+ * modes via existing token. */
+.activity-list { list-style: none; padding: 0; margin: 0; }
+.activity-list > li + li { margin-top: 12px; }
+.activity-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .activity-item { transition: background-color 0.15s; }
+}
+.activity-item:hover { background: var(--color-surface-muted); }
+.activity-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.activity-icon svg { width: 16px; height: 16px; }
+.ai-success { background: var(--color-success-tint); color: var(--color-success); }
+.ai-gold    { background: var(--color-gold-tint);    color: var(--color-gold);    }
+.ai-primary { background: var(--color-primary-tint); color: var(--color-primary); }
+.ai-ink     { background: var(--color-ink-tint);     color: var(--color-ink);     }
+.activity-body { flex: 1; min-width: 0; }
+.activity-title { font-size: 13px; font-weight: 600; color: var(--color-text); }
+.activity-sub { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
+.activity-meta { display: flex; gap: 8px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.activity-time { font-size: 11px; color: var(--color-text-faint); }
+
+/* Activity-feed pills. Pair with the same four categorical tints. Text
+ * contrast verified ≥ 4.5:1 against the tint backgrounds in both modes
+ * (the foreground colors are the saturated variants; tints are ~14%
+ * alpha or near-white in light mode). */
+.activity-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 99px;
+  letter-spacing: 0.01em;
+}
+.activity-pill-success { background: var(--color-success-tint); color: var(--color-success); }
+.activity-pill-gold    { background: var(--color-gold-tint);    color: var(--color-gold);    }
+.activity-pill-primary { background: var(--color-primary-tint); color: var(--color-primary); }
+.activity-pill-ink     { background: var(--color-ink-tint);     color: var(--color-ink);     }

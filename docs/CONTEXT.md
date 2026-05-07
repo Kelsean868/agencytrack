@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-07` |
-| Current main HEAD | `93f1244` (docs — add B2 kickoff brief: goal carousel + donut hero, PR #46) |
-| Active track | Track B (v2) — B2 goal carousel + donut hero (in progress on `design-v2-b2-goal-carousel`). B1 medal badges shipped (PR #44), B1 retrospective scope correction shipped (PR #45), B2 kickoff brief landed (PR #46). |
-| Next track | Track B (v2) — B3 activity feed component |
+| Current main HEAD | `f2c3a89` (docs — add B3 kickoff brief: activity feed + BadgeGrid surface + cleanup, PR #48) |
+| Active track | Track B (v2) — B3 activity feed + BadgeGrid surface + cleanup (in progress on `design-v2-b3-activity-feed`). B1 medal badges shipped (PR #44), B1 retrospective scope correction shipped (PR #45), B2 kickoff brief landed (PR #46), B2 goal carousel + donut hero shipped (PR #47), B3 kickoff brief landed (PR #48). |
+| Next track | Track B (v2) — B4 desktop sidebar shell |
 | Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
@@ -126,11 +126,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #48 | `f2c3a89` | docs(design-v2) — add B3 kickoff brief (activity feed + BadgeGrid surface + cleanup) |
+| #47 | `657d25b` | feat(design-v2-b2) — goal carousel + donut hero |
 | #46 | `93f1244` | docs(design-v2) — add B2 kickoff brief (goal carousel + donut hero) |
 | #45 | `52af738` | docs(design-v2-impl) — correct B1 PR scope after PR #44 retrospective |
 | #44 | `3b529a9` | feat(design-v2-b1) — medal badge system |
-| #43 | `9e4e097` | chore(docs) — bump CONTEXT.md Current main HEAD to PR #42 + recently-shipped sync |
-| #42 | `12b256f` | chore(docs) — comprehensive CLAUDE.md staleness audit + kickoff template safeguard |
 
 ---
 
@@ -142,6 +142,7 @@ These don't block anything, but they need to be resolved or carried forward each
 - **Orphan user** `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc exists but no Auth user. Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). Do not auto-delete; investigate first.
 - **Node.js 20 Functions runtime** deprecated 2026-04-30, decommission 2026-10-30 — migration to Node 22 is a separate ticket. Not blocking; CLAUDE.md locks v1 runtime for current track.
 - **`firebase-functions` SDK** at 4.9.0 — upgrade to ≥5.1.0 has breaking changes; schedule as own ticket after Track A ships.
+- **`MotivationalCarousel.jsx` still consumed by `ManagerDashboard.jsx:24,247`** — B2 audit and B3 kickoff both incorrectly assumed the file was orphaned by B2's S3 decision. B3 audit (S1) caught the live consumer in ManagerDashboard's overview tab. Deletion dropped from B3 scope. Decision on Manager-side replacement deferred to manager dashboard redesign work (likely B4 sidebar shell or a follow-up Manager surface PR).
 
 ---
 
@@ -158,6 +159,8 @@ Lint baseline is now 0 errors / 0 jsx-a11y warnings (3 deferred `react-hooks/exh
 2026-05-07 morning: Three docs-only PRs (#40, #41, #42) shipped overnight cleaning up CLAUDE.md/CONTEXT.md staleness drift. CLAUDE.md is now genuinely accurate (Track A marked complete, items 5+6+7+8 all verified shipped, role hierarchy reflects post-PR-3 reality with platform_admin, kickoff template now includes audit-on-arrival staleness safeguard).
 
 2026-05-07 afternoon: B1 medal badges shipped (PR #44) with retrospective scope correction (PR #45 — `awardsEngine.js` and the two awards panels were named in the implementation plan but turned out unrelated; doc fixed). B2 kickoff brief landed (PR #46). **Next: Track B (v2) — B2 goal carousel + donut hero.** B2 audit surfaced two field-name mistakes in the implementation plan (`personalCommitment` should be `personalAnnualAPI`; `extractFields(s).api` should be `extractFields(s).apiSold`) — corrected as commit 2 of B2's PR. Other B2 audit decisions: GoalCarousel takes the top dashboard position, replacing both the YTD API Progress card and `<MotivationalCarousel />` (only the dashboard import + render line removed; the `MotivationalCarousel.jsx` file stays untouched and orphaned, future cleanup PR may delete).
+
+2026-05-07 evening: B2 goal carousel + donut hero shipped (PR #47). B3 kickoff brief landed (PR #48). **Now in flight:** B3 activity feed + BadgeGrid surface + exploration-walk script swap. B3 audit caught a surprise-stop: `MotivationalCarousel.jsx` is **not** orphaned — `ManagerDashboard.jsx:24,247` still consumes it. The B2 audit's "orphaned" assertion missed the manager-side import; B3 kickoff brief inherited the mistake. Per S1 resolution, `MotivationalCarousel.jsx` deletion drops from B3 scope (logged under § Pending operational state). Other B3 audit decisions: 4-event-type vision pared back to **submission events + 3 weekly-criteria badge events** (`big_week`, `top_apps_week`, `century_dials` — only badges with deterministic per-submission trigger dates); rank events dropped (would require new Firestore reads, locked decision wins); application events dropped (no per-application records exist). 2-column g4-mix layout from mock deferred to B4 sidebar shell — B3 stacks vertically. "View all" link in mock activity feed wires to History tab via `setActiveTab('history')`. CareerPortal `<BadgeGrid />` site harmonized to labelled `<section>` for a11y parity.
 
 ---
 

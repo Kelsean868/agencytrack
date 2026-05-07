@@ -463,10 +463,18 @@ export default function CareerPortal({ submissions, user, persistencyData, hiera
       </div>
 
       {/* Badges */}
-      <div className="card">
-        <p className="text-sm font-semibold text-ink mb-3">Achievement Badges</p>
+      <section
+        aria-labelledby="career-portal-achievements-heading"
+        className="card"
+      >
+        <h3
+          id="career-portal-achievements-heading"
+          className="text-sm font-semibold text-ink mb-3"
+        >
+          Achievement Badges
+        </h3>
         <BadgeGrid submissions={submissions} />
-      </div>
+      </section>
     </div>
   );
 }

@@ -193,9 +193,9 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
       if (headers !== 1) throw new Error(`expected 1 header, got ${headers}`);
     });
 
-    // ── 3: KPI cards rendered ────────────────────────────────────────────────
-    await step('3', 'Wait for dashboard (YTD API rendered)', async () => {
-      await page.waitForSelector('text=YTD API', { timeout: 10_000 });
+    // ── 3: Activity feed rendered (post-B3 dashboard heading) ────────────────
+    await step('3', 'Wait for dashboard (Recent Activity rendered)', async () => {
+      await page.waitForSelector('text=Recent Activity', { timeout: 10_000 });
     });
 
     // ── 4: Screenshot light ──────────────────────────────────────────────────
@@ -298,7 +298,7 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
     ['1a',   'LoginScreen has exactly one <main>'],
     ['2',    'Login (auth chain returns 200)'],
     ['2a',   'AgentDashboard has 1 main, 1 nav, 1 header'],
-    ['3',    'Wait for dashboard (YTD API rendered)'],
+    ['3',    'Wait for dashboard (Recent Activity rendered)'],
     ['4',    'Screenshot dashboard (light mode)'],
     ['5',    'Career tab renders'],
     ['5a',   'Career tab — single <main>'],
