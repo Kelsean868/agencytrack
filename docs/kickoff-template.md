@@ -99,6 +99,8 @@ Choose one — only one — based on session scope:
 
 **Surprise-stop:** If anything mid-execution surprises the plan — schema differs from what was audited, additional files surface that weren't in the original scope, a fix is more invasive than analyzed, an architectural decision was made that wasn't in the locked decisions — STOP and write the concern in chat. Do not try to fix unilaterally. Do not absorb the surprise into the plan.
 
+**Audit-on-arrival staleness check.** If Step 0 reading or Step 1 verification reveals state in CLAUDE.md or docs/CONTEXT.md that contradicts actual code (e.g., a "Known Open Item" that's already shipped, a role hierarchy that doesn't match current rules, a referenced file that's been renamed), that's a surprise-stop trigger. Do not proceed past audit until corrected. The fix is its own small docs PR before the planned work begins. This pattern recurred 4-for-4 across Track A PR-1 (CLAUDE.md items 5+6) and the audit immediately after (item 7, role hierarchy, seed-script filename) — assume the docs are stale until proven otherwise.
+
 Both gates are the value of this workflow. They're not friction — they're catching bugs before they ship.
 
 ## Stash / pending state from prior sessions
