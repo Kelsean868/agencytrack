@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-07` |
-| Current main HEAD | `9e4e097` (bump CONTEXT.md Current main HEAD to PR #42 + recently-shipped sync, PR #43) |
-| Active track | None — a11y arc closed (PR3→PR7), mobile pilot pass shipped (PR #36). Track B v2 docs introduced (PR #39). Track A PR-1 audit found items 5+6 already shipped (commit `57828d7`); rescoped to docs-only correction. |
-| Next track | Track B (v2) — B1 medal badge system |
+| Current main HEAD | `93f1244` (docs — add B2 kickoff brief: goal carousel + donut hero, PR #46) |
+| Active track | Track B (v2) — B2 goal carousel + donut hero (in progress on `design-v2-b2-goal-carousel`). B1 medal badges shipped (PR #44), B1 retrospective scope correction shipped (PR #45), B2 kickoff brief landed (PR #46). |
+| Next track | Track B (v2) — B3 activity feed component |
 | Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
@@ -126,11 +126,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #46 | `93f1244` | docs(design-v2) — add B2 kickoff brief (goal carousel + donut hero) |
+| #45 | `52af738` | docs(design-v2-impl) — correct B1 PR scope after PR #44 retrospective |
+| #44 | `3b529a9` | feat(design-v2-b1) — medal badge system |
 | #43 | `9e4e097` | chore(docs) — bump CONTEXT.md Current main HEAD to PR #42 + recently-shipped sync |
 | #42 | `12b256f` | chore(docs) — comprehensive CLAUDE.md staleness audit + kickoff template safeguard |
-| #41 | `eb8139b` | chore(docs) — mark Track A items 5+6 as shipped, file wizard hardening follow-up |
-| #40 | `c6e60b7` | chore(docs) — refresh CONTEXT.md + CLAUDE.md after a11y arc completion |
-| #39 | `8817209` | docs — introduce Track B v2 design system materials (PRD, implementation, B1 kickoff, mocks) |
 
 ---
 
@@ -155,7 +155,9 @@ PR #36 shipped the pilot-critical mobile pass for the agent core flow at 320/375
 
 Lint baseline is now 0 errors / 0 jsx-a11y warnings (3 deferred `react-hooks/exhaustive-deps` warnings tracked separately in `docs/FOLLOW_UPS.md`). Four mobile follow-ups (FU#1–#4) are documented but non-blocking. **Next: Track A PR-1 — WizardForm auto-save hardening (CLAUDE.md known-open-items #5 and #6).**
 
-2026-05-07 morning: Three docs-only PRs (#40, #41, #42) shipped overnight cleaning up CLAUDE.md/CONTEXT.md staleness drift. CLAUDE.md is now genuinely accurate (Track A marked complete, items 5+6+7+8 all verified shipped, role hierarchy reflects post-PR-3 reality with platform_admin, kickoff template now includes audit-on-arrival staleness safeguard). Next: Track B (v2) — B1 medal badge system. Kickoff at docs/design-v2-B1-kickoff.md.
+2026-05-07 morning: Three docs-only PRs (#40, #41, #42) shipped overnight cleaning up CLAUDE.md/CONTEXT.md staleness drift. CLAUDE.md is now genuinely accurate (Track A marked complete, items 5+6+7+8 all verified shipped, role hierarchy reflects post-PR-3 reality with platform_admin, kickoff template now includes audit-on-arrival staleness safeguard).
+
+2026-05-07 afternoon: B1 medal badges shipped (PR #44) with retrospective scope correction (PR #45 — `awardsEngine.js` and the two awards panels were named in the implementation plan but turned out unrelated; doc fixed). B2 kickoff brief landed (PR #46). **Next: Track B (v2) — B2 goal carousel + donut hero.** B2 audit surfaced two field-name mistakes in the implementation plan (`personalCommitment` should be `personalAnnualAPI`; `extractFields(s).api` should be `extractFields(s).apiSold`) — corrected as commit 2 of B2's PR. Other B2 audit decisions: GoalCarousel takes the top dashboard position, replacing both the YTD API Progress card and `<MotivationalCarousel />` (only the dashboard import + render line removed; the `MotivationalCarousel.jsx` file stays untouched and orphaned, future cleanup PR may delete).
 
 ---
 

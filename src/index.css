@@ -366,3 +366,221 @@ h1, h2, h3, h4 {
 @media (max-width: 767px) {
   .badge-medal { --medal-size: 46px; }
 }
+
+/* ── Goal carousel hero (Design System v2 — B2) ─────────────────────────
+ * Lifted from mocks/concept-4-complete.html with token mapping only:
+ *   --primary    → --color-primary
+ *   --primary-dk → --color-primary-dark
+ *   --radius-lg  → 16px (project has no radius token system; equivalent
+ *                  to Tailwind's rounded-2xl)
+ *
+ * Dark-mode override notes:
+ *   .role-hero gradient uses --color-primary which lifts to #4ab5b8 in
+ *   dark mode for legibility on dark surfaces. White text on #4ab5b8
+ *   measures ~2.28:1 — fails AA. To keep this surface always-teal (the
+ *   visual intent) while preserving white-text contrast, .dark .role-hero
+ *   collapses to a solid --color-primary-dark (= #01696f in dark mode,
+ *   white-text contrast 5.83:1). The pseudo-element radial blobs survive
+ *   on the solid surface and still add depth.
+ *   Same logic for .goal-tab.active text colour: light mode uses
+ *   --color-primary on a near-white pill (5.83:1 ✓); dark mode swaps to
+ *   --color-primary-dark for the same teal-on-white contrast.
+ */
+
+/* Hero / role banner — also reused by future B-series PRs (additive primitive) */
+.role-hero {
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: white;
+  border-radius: 16px;
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.dark .role-hero {
+  background: var(--color-primary-dark);
+}
+.role-hero::after {
+  content: '';
+  position: absolute;
+  right: -40px; top: -40px;
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+}
+.role-hero::before {
+  content: '';
+  position: absolute;
+  right: -100px; bottom: -120px;
+  width: 240px; height: 240px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Progress bar primitive — additive, used by goal-bar-wrap and reusable */
+.bar {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+.bar-thick { height: 8px; }
+.bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  background: white;
+  border-radius: inherit;
+}
+
+/* Goal carousel */
+.goal-carousel { position: relative; }
+.goal-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 11px;
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 1;
+}
+.goal-tab {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.78);
+  border-radius: 8px;
+  letter-spacing: 0.01em;
+  font-family: inherit;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+.goal-tab:hover { color: white; }
+.goal-tab:focus-visible {
+  outline: 2px solid white;
+  outline-offset: 2px;
+}
+.goal-tab.active {
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--color-primary);
+}
+.dark .goal-tab.active {
+  color: var(--color-primary-dark);
+}
+
+.goal-slide-wrap {
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+.goal-slide-track {
+  display: flex;
+}
+.goal-slide-track[data-active="0"] { transform: translateX(0%);    }
+.goal-slide-track[data-active="1"] { transform: translateX(-100%); }
+.goal-slide-track[data-active="2"] { transform: translateX(-200%); }
+.goal-slide-track[data-active="3"] { transform: translateX(-300%); }
+.goal-slide {
+  flex: 0 0 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+.goal-content { flex: 1; min-width: 0; }
+.goal-period {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  margin-bottom: 6px;
+}
+.goal-value {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+.goal-target {
+  font-size: 13px;
+  opacity: 0.9;
+  margin-top: 6px;
+}
+.goal-bar-wrap { margin-top: 14px; }
+.goal-status {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.goal-status svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.goal-donut-wrap {
+  width: 124px;
+  height: 124px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+/* Donut SVG */
+.hero-donut {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.hero-donut .donut-bg {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.18);
+  stroke-width: 9;
+}
+.hero-donut .donut-fg {
+  fill: none;
+  stroke: white;
+  stroke-width: 9;
+  stroke-linecap: round;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+.hero-donut text {
+  font-family: 'Cabinet Grotesk', system-ui, sans-serif;
+  font-weight: 800;
+  fill: white;
+}
+
+/* Reduced-motion: skip the slide-track translate animation and the donut
+ * stroke-dashoffset transition. With prefers-reduced-motion: reduce, slides
+ * snap and the donut updates instantly — auto-rotate is also disabled in
+ * the GoalCarousel component so the surface stays still entirely. */
+@media (prefers-reduced-motion: no-preference) {
+  .goal-slide-track {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .hero-donut .donut-fg {
+    transition: stroke-dashoffset 0.45s ease;
+  }
+}
+
+/* Mobile / narrow: shrink donut + value font (mock breakpoint at 1100px;
+ * AgentDashboard caps at max-w-2xl = 672px so this always applies, but
+ * keeping the rule scoped to the mock breakpoint preserves desktop sizing
+ * in B4 sidebar-shell layouts). */
+@media (max-width: 1100px) {
+  .goal-donut-wrap { width: 100px; height: 100px; }
+  .goal-value { font-size: 30px; }
+}
+@media (max-width: 480px) {
+  .goal-slide { gap: 16px; }
+  .goal-donut-wrap { width: 88px; height: 88px; }
+  .goal-value { font-size: 26px; }
+  .goal-target { font-size: 12px; }
+}

@@ -202,6 +202,20 @@ Replace the current AgentDashboard hero KPI section with a 4-tab carousel showin
 - `src/components/dashboard/AgentDashboard.jsx` — replace hero KPI section with `<GoalCarousel data={...} />`
 - `src/index.css` — add carousel + donut styles
 
+### B2 audit corrections (2026-05-07)
+
+The original code snippets in this section referenced field names that don't exist in the codebase. Corrected after the B2 plan-first audit (S1, S2 in the kickoff brief):
+
+| Original snippet | Actual field / approach |
+|---|---|
+| `user?.personalCommitment` | **No such field.** Real schema: `tenants/{tid}/goals/{agentId}.personalAnnualAPI` (see `getGoals` in [`src/services/goalsService.js`](../src/services/goalsService.js)). Set via CareerPortal "Edit My Goals". |
+| Default `personalCommitment = 250000` | Resolved fallback chain: `goals?.personalAnnualAPI \|\| mins?.annualAPI \|\| 200000`. The `200000` is the existing `getCompanyMinimums` default ([goalsService.js:14](../src/services/goalsService.js:14)), not a fresh number. |
+| `extractFields(s).api` | **No such field on the return shape.** Real field: `extractFields(s).apiSold`. Verified at [extractFields.js:91](../src/utils/extractFields.js:91): `apiSold: p(d.apiSold \|\| d.api \|\| d.annualPremium)` — the util reads `d.api` as one of three fallbacks for the *raw* doc field, but always exposes the result on the `apiSold` key. Three schema variants (nested, flat, flat legacy) all unify on `f.apiSold`. |
+
+`aggregateAPI` is a pure function: AgentDashboard fetches `goals` (already does) plus `companyMinimums` (new parallel fetch in the existing `Promise.all`), resolves the fallback chain, and passes a single `personalAnnualAPI` number into the util. The util never reaches into Firestore.
+
+Submissions filter: only `s.status === 'submitted'` count, matching the existing pattern at [AgentDashboard.jsx:147](../src/components/dashboard/AgentDashboard.jsx:147). Drafts are excluded from totals.
+
 ### Step 1 — Build `aggregateAPI.js`
 
 Pure function. No Firestore reads. Takes the already-loaded submissions array and computes period totals.
@@ -210,26 +224,24 @@ Pure function. No Firestore reads. Takes the already-loaded submissions array an
 // src/utils/aggregateAPI.js
 import { extractFields } from './extractFields';
 
-const WEEKLY_TARGET_DEFAULT = 4807; // $250k / 52 weeks (placeholder until personal target lookup)
-
-export function aggregateAPI(submissions, currentDate = new Date(), personalCommitment = 250000) {
-  const week = sumPeriod(submissions, currentDate, 'week');
-  const month = sumPeriod(submissions, currentDate, 'month');
+export function aggregateAPI(submissions, currentDate = new Date(), personalAnnualAPI = 200000) {
+  const week    = sumPeriod(submissions, currentDate, 'week');
+  const month   = sumPeriod(submissions, currentDate, 'month');
   const quarter = sumPeriod(submissions, currentDate, 'quarter');
-  const ytd = sumPeriod(submissions, currentDate, 'ytd');
+  const ytd     = sumPeriod(submissions, currentDate, 'ytd');
 
   return {
-    week:    { current: week,    target: personalCommitment / 52,  /* ... */ },
-    month:   { current: month,   target: personalCommitment / 12,  /* ... */ },
-    quarter: { current: quarter, target: personalCommitment / 4,   /* ... */ },
-    ytd:     { current: ytd,     target: personalCommitment,       /* ... */ },
+    week:    { current: week,    target: personalAnnualAPI / 52,  /* ... */ },
+    month:   { current: month,   target: personalAnnualAPI / 12,  /* ... */ },
+    quarter: { current: quarter, target: personalAnnualAPI / 4,   /* ... */ },
+    ytd:     { current: ytd,     target: personalAnnualAPI,       /* ... */ },
   };
 }
 
 function sumPeriod(submissions, date, period) {
   return submissions
-    .filter((s) => isInPeriod(s.weekStarting, date, period))
-    .reduce((sum, s) => sum + (extractFields(s).api || 0), 0);
+    .filter((s) => s.status === 'submitted' && isInPeriod(s.weekStarting, date, period))
+    .reduce((sum, s) => sum + (extractFields(s).apiSold || 0), 0);
 }
 ```
 
@@ -326,16 +338,21 @@ From `mocks/concept-4-complete.html`, lift the `/* ── Goal carousel (hero ca
 
 ### Step 5 — Wire into `AgentDashboard.jsx`
 
-Find the current hero / KPICard section. Replace with:
+Find the current YTD API Progress card and replace with the carousel. (Per B2's S3 audit decision: the `<MotivationalCarousel />` import + render also gets removed from `AgentDashboard.jsx`. The `MotivationalCarousel.jsx` file is left untouched and orphaned — future cleanup PR may delete.)
 
 ```jsx
-import { GoalCarousel } from './GoalCarousel';
+import GoalCarousel from './GoalCarousel';
 import { aggregateAPI } from '../../utils/aggregateAPI';
+import { getCompanyMinimums } from '../../services/goalsService';
 
-// Inside component:
+// Inside component, alongside existing fetches:
+const personalAnnualAPI = useMemo(
+  () => goals?.personalAnnualAPI || mins?.annualAPI || 200000,
+  [goals?.personalAnnualAPI, mins?.annualAPI]
+);
 const goalData = useMemo(
-  () => aggregateAPI(submissions, new Date(), user?.personalCommitment),
-  [submissions, user?.personalCommitment]
+  () => aggregateAPI(allSubmissions, new Date(), personalAnnualAPI),
+  [allSubmissions, personalAnnualAPI]
 );
 
 // In render:
