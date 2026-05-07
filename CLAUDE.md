@@ -99,7 +99,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 | P8E | Agent Management + Campaign Notifications + Welcome Screen | ✅ COMPLETE |
 | Dark Mode Hotfix | Warm palette + CSS-var theme system + persistence | ✅ COMPLETE |
 | A11y Trilogy + Mobile Audit | PR #30, #33, #34, #35, #36, #37, #38 — agent + manager surfaces + dark mode + mobile pilot pass | ✅ COMPLETE |
-| Track A | Security/perf hardening | 🔄 NEXT |
+| Track A | Security/perf hardening | ✅ COMPLETE — all 4 fixes shipped (see § Track A — Historical Items) |
 | Track B (v2) | Design System v2 — "Concept 4 Complete" redesign (5 sub-PRs B1–B5) | 📋 PLANNED — see `docs/design-v2-PRD.md` |
 | Pilot Prep | End-to-end testing, account setup, mobile audit | ⏸️ DEFERRED (app not at Tatil yet) |
 | P9  | Sales Manager role | ⏳ Planned (post-pilot) |
@@ -108,7 +108,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 ## Current Phase
 **Pre-Tatil-demo polish.** App has not been demoed to Tatil yet. Goal: ship app close to v1.0 because Kyron is also the decision-maker for the branch and wants minimal rework after pilot.
 
-**Active task:** Track A — security & performance hardening (4 fixes across firestore.rules, WizardForm, AgentDashboard, firebase.js).
+**Track A — security & performance hardening — COMPLETE** (all 4 originally-listed fixes shipped: firestore.rules SEC-2/3/4, WizardForm debounce + error UI, AgentDashboard html2canvas mount removed, firebase.js `persistentLocalCache` migration). Next: Track B (v2) — Design System v2.
 
 **Then:** Track B (v2) — Design System v2 redesign. Replaces the original "visible polish" Track B scope. Ships in 5 sub-PRs (B1 medal badges, B2 goal carousel, B3 activity feed, B4 sidebar shell, B5 tenant admin config). Canonical spec: [`docs/design-v2-PRD.md`](docs/design-v2-PRD.md). Phased plan: [`docs/design-v2-implementation.md`](docs/design-v2-implementation.md). Visual source of truth: [`mocks/concept-4-complete.html`](mocks/concept-4-complete.html). Goal is visual parity with the mock at 1440px / 1024px / 768px / 390px in both light and dark mode.
 
@@ -123,7 +123,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 - AgentReportDocument.jsx: HARDCODED HEX colours only. No CSS variables — react-pdf cannot resolve them.
 - extractFields.js: ONLY way to read submission fields. Never access raw Firestore fields directly.
 - Profile photos: Firebase Storage at avatars/{tenantId}/{uid}.jpg. photoURL in Firestore user doc. Shown in ProfileScreen, Leaderboard, MeetingMode.
-- PWA: vite-plugin-pwa + Workbox. Firestore offline persistence via enableIndexedDbPersistence(db) in firebase.js — **TRACK A WILL MIGRATE TO persistentLocalCache (deprecated API)**.
+- PWA: vite-plugin-pwa + Workbox. Firestore offline persistence via `initializeFirestore` + `persistentLocalCache` in `src/firebase.js:23-27` (migrated from deprecated `enableIndexedDbPersistence`).
 - Theme system: Tailwind tokens in `tailwind.config.js` resolve through `var(--color-*)` (NOT hardcoded hex). Adding new utilities requires updating BOTH `:root` and `.dark` blocks in `src/index.css` with the same variable names.
 - Goals system (5 layers, full hierarchy):
   1. **Personal Commitment** — agent sets own target (≥ company floor) — `goals/{goalId}` ✅ built
@@ -180,19 +180,21 @@ src/
 ## Roles & Permissions
 
 Full organisational hierarchy (lowest → highest):
-**Agent → Unit Manager → Branch Manager → Sales Manager → Tenant Admin**
+**Agent → Unit Manager → Branch Manager → Sales Manager → Tenant Admin → Platform Admin**
 
 ```
-tenant_admin         — all access within tenant + sensitive system config
+platform_admin       — cross-tenant. Lives outside any tenant. Kyron only.
+tenant_admin         — all access within a single tenant + sensitive system config
 sales_manager        — cross-branch visibility, company-wide campaigns
 branch_manager       — full branch, create accounts across all units
 unit_manager         — own unit only, create accounts for own agents
 agent                — own data only
 ```
-Role is stored in Firebase custom claims AND in Firestore `/tenants/{id}/users/{uid}.role`
+Role is stored in Firebase custom claims AND in Firestore `/tenants/{id}/users/{uid}.role` (`platform_admin` has no Firestore user doc — claim only, with `tenantId: null`).
 
 > **`super_admin` retired in PR-3.** All `super_admin` claim holders and UI branches removed.
-> Bootstrap the first `tenant_admin` for a new tenant via `functions/scripts/seed-first-super-admin.cjs`.
+> Bootstrap the first `tenant_admin` for a new tenant via `functions/scripts/seed-first-tenant-admin.cjs`.
+> Bootstrap a `platform_admin` (cross-tenant operator) via `functions/scripts/seed-platform-admin.cjs`.
 
 > **Status:** `sales_manager` is recognized as a manager role from PR-1 onward
 > (firestore.rules `isManager`, App.jsx MANAGER_ROLES, etc.). Branch-aware
@@ -237,14 +239,14 @@ Use `extractFields()` in `src/utils/extractFields.js` — single source of truth
 
 All four are confirmed in `.gitignore`.
 
-## Known Open Items (Track A targets)
-1. **functions/index.js**: hardcoded `SUPER_ADMIN_UID` bypass — **RESOLVED in user-mgmt PR-2** (bypass removed; `SUPER_ADMIN_UID` const deleted; AuthContext bootstrap deleted; SEC-11 closed; claims seeded via `seed-first-super-admin.cjs`)
+## Track A — Historical Items (all resolved)
+1. **functions/index.js**: hardcoded `SUPER_ADMIN_UID` bypass — **RESOLVED in user-mgmt PR-2** (bypass removed; `SUPER_ADMIN_UID` const deleted; AuthContext bootstrap deleted; SEC-11 closed; claims seeded via `seed-first-tenant-admin.cjs`)
 2. **firestore.rules**: leaderboard reads not tenant-scoped — RESOLVED in SEC-2
 3. **firestore.rules**: notification reads not tenant-scoped — RESOLVED in SEC-3
 4. **firestore.rules**: unit_managers can write any user in tenant — RESOLVED in SEC-4 (callerUnitId helper)
 5. **WizardForm.jsx**: auto-save fires on every keystroke (no debounce) — **RESOLVED** (commit `57828d7`, 2026-05-02). Auto-save was already debounced at 1500ms in `WizardForm.jsx:194-211` (verified 2026-05-06).
 6. **WizardForm.jsx**: auto-save errors silently swallowed — **RESOLVED** (commit `57828d7`, 2026-05-02). Save errors surfaced via `AlertTriangle` + "Save failed — check connection" inline indicator in `WizardForm.jsx:153, 199-208, 306-311` (verified 2026-05-06). Genuine hardening opportunities (retry button, success indicator, offline-vs-failed distinction, `aria-live`) tracked in `docs/FOLLOW_UPS.md` § Wizard UX + A11y Hardening.
-7. **AgentDashboard.jsx**: dead html2canvas off-screen mount + 900ms setTimeout still active
+7. **AgentDashboard.jsx**: dead html2canvas off-screen mount + 900ms setTimeout — **RESOLVED** (commit `0e9b6f2`, 2026-05-02): `refactor(dashboard): remove dead off-screen AgentReportDocument mount`. Verified: only an innocuous comment reference remains at `AgentReportDocument.jsx:5` (describes why react-pdf is used instead of html2canvas).
 
 ## Cosmetic Inconsistencies (low priority, not blocking)
 - `MotivationalCarousel.jsx:367` uses hex literal `bg-[#01696f]/8` instead of CSS var
