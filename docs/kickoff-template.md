@@ -88,7 +88,7 @@ Choose one — only one — based on session scope:
 
 - **Worktree branch only.** Never push directly to `main`. Branch off `origin/main` HEAD.
 - **No auto-merge.** Push → PR → preview Ready → walkthrough → STOP for human merge.
-- **Post-merge verification:** `git fetch origin && git log origin/main --oneline -5` to confirm squash SHA, then production walkthrough manually via Vercel dashboard + `scripts/exploration-walk.cjs --url=https://agencytrack.vercel.app --label=<label>_production`.
+- **Post-merge verification:** `git fetch origin && git pull origin main && git log origin/main --oneline -5` to confirm squash SHA, then production walkthrough manually via Vercel dashboard + `scripts/exploration-walk.cjs --url=https://agencytrack.vercel.app --label=<label>_production`. The pull is required so worktree-local tooling matches production — fetch alone leaves the working tree at pre-merge state and verification scripts may run stale.
 - **Worktree teardown after merge.** `git worktree remove <path>` then `git worktree prune`.
 - **Never echo `.env.local` values** to chat output, PR comments, logs, or screenshots. Reference by env var name only.
 - **Verification artifacts stay local.** Logs, screenshots, one-off verification scripts — never commit.
