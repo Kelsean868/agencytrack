@@ -242,8 +242,8 @@ All four are confirmed in `.gitignore`.
 2. **firestore.rules**: leaderboard reads not tenant-scoped — RESOLVED in SEC-2
 3. **firestore.rules**: notification reads not tenant-scoped — RESOLVED in SEC-3
 4. **firestore.rules**: unit_managers can write any user in tenant — RESOLVED in SEC-4 (callerUnitId helper)
-5. **WizardForm.jsx**: auto-save fires on every keystroke (no debounce) — Firestore cost + battery drain
-6. **WizardForm.jsx**: auto-save errors silently swallowed — agents lose data without warning
+5. **WizardForm.jsx**: auto-save fires on every keystroke (no debounce) — **RESOLVED** (commit `57828d7`, 2026-05-02). Auto-save was already debounced at 1500ms in `WizardForm.jsx:194-211` (verified 2026-05-06).
+6. **WizardForm.jsx**: auto-save errors silently swallowed — **RESOLVED** (commit `57828d7`, 2026-05-02). Save errors surfaced via `AlertTriangle` + "Save failed — check connection" inline indicator in `WizardForm.jsx:153, 199-208, 306-311` (verified 2026-05-06). Genuine hardening opportunities (retry button, success indicator, offline-vs-failed distinction, `aria-live`) tracked in `docs/FOLLOW_UPS.md` § Wizard UX + A11y Hardening.
 7. **AgentDashboard.jsx**: dead html2canvas off-screen mount + 900ms setTimeout still active
 
 ## Cosmetic Inconsistencies (low priority, not blocking)
