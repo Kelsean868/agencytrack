@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyTrack — Concept 3: Momentum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800;0,14..32,900;1,14..32,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #0d1117;
+    --surface:    #161b22;
+    --surface-2:  #1c2330;
+    --surface-3:  #21283a;
+    --border:     #2a3444;
+    --border-2:   #364055;
+    --text:       #e6edf3;
+    --muted:      #7d8fa8;
+    --faint:      #4a5568;
+    --primary:    #00c9cc;
+    --primary-dk: #009a9d;
+    --primary-glow: rgba(0,201,204,.18);
+    --gold:       #f0b429;
+    --gold-lt:    rgba(240,180,41,.15);
+    --success:    #3fb950;
+    --success-lt: rgba(63,185,80,.14);
+    --warning:    #e3b341;
+    --warning-lt: rgba(227,179,65,.14);
+    --danger:     #f85149;
+    --danger-lt:  rgba(248,81,73,.14);
+    --purple:     #a371f7;
+    --purple-lt:  rgba(163,113,247,.14);
+    --gradient:   linear-gradient(135deg, #00c9cc 0%, #a371f7 100%);
+    --bottom-nav: 70px;
+    --shadow-glow: 0 0 20px rgba(0,201,204,.2), 0 4px 16px rgba(0,0,0,.4);
+  }
+  .light {
+    --bg:         #f0f4f8;
+    --surface:    #ffffff;
+    --surface-2:  #f7f9fc;
+    --surface-3:  #eef2f7;
+    --border:     #dde3ec;
+    --border-2:   #c8d3e0;
+    --text:       #0d1b2e;
+    --muted:      #5a6d84;
+    --faint:      #99aab8;
+    --primary:    #007a7f;
+    --primary-dk: #005a5e;
+    --primary-glow: rgba(0,122,127,.14);
+    --gold:       #d4920a;
+    --gold-lt:    rgba(212,146,10,.12);
+    --success:    #1f8a50;
+    --success-lt: rgba(31,138,80,.12);
+    --warning:    #b45309;
+    --warning-lt: rgba(180,83,9,.12);
+    --danger:     #c0392b;
+    --danger-lt:  rgba(192,57,43,.12);
+    --purple:     #7c3aed;
+    --purple-lt:  rgba(124,58,237,.12);
+    --gradient:   linear-gradient(135deg, #007a7f 0%, #7c3aed 100%);
+    --bottom-nav: 70px;
+    --shadow-glow: 0 0 14px rgba(0,122,127,.15), 0 4px 12px rgba(0,0,0,.08);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-family: 'Inter', system-ui, sans-serif; font-size: 16px; -webkit-font-smoothing: antialiased; }
+  body { background: var(--bg); color: var(--text); min-height: 100dvh; overflow-x: hidden; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+  .concept-banner { background: var(--gradient); color: white; text-align: center; font-size: 11px; font-weight: 800; letter-spacing: .08em; padding: 7px; }
+
+  .app { max-width: 430px; margin: 0 auto; position: relative; min-height: calc(100dvh - 30px); }
+  .screen { display: none; flex-direction: column; min-height: calc(100dvh - 30px); padding-bottom: var(--bottom-nav); }
+  .screen.active { display: flex; }
+
+  /* ── Header ── */
+  .header {
+    padding: 18px 20px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg);
+    position: sticky; top: 30px; z-index: 20;
+  }
+  .header-greeting { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .header-name { font-size: 20px; font-weight: 800; color: var(--text); letter-spacing: -0.4px; margin-top: 1px; }
+  .header-actions { display: flex; align-items: center; gap: 8px; }
+  .hbtn {
+    width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted);
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; cursor: pointer; position: relative;
+  }
+  .hbtn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-glow); }
+  .hbtn-notif { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--danger); border: 2px solid var(--bg); }
+
+  /* ── Scroll ── */
+  .scroll { flex: 1; overflow-y: auto; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 14px; }
+
+  /* ── Rank Hero ── */
+  .rank-hero {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    position: relative; overflow: hidden;
+  }
+  .rank-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: var(--gradient);
+    opacity: .06;
+    pointer-events: none;
+  }
+  .rank-hero-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+  .rank-number { font-size: 64px; font-weight: 900; line-height: 1; letter-spacing: -3px; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+  .rank-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .rank-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .ytd-box { text-align: right; }
+  .ytd-val { font-size: 26px; font-weight: 800; color: var(--text); letter-spacing: -0.8px; line-height: 1; }
+  .ytd-lbl { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 3px; }
+  .rank-progress { display: flex; flex-direction: column; gap: 5px; }
+  .rank-prog-bar { height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
+  .rank-prog-fill { height: 100%; border-radius: 99px; background: var(--gradient); transition: width 1.2s cubic-bezier(.16,1,.3,1); }
+  .rank-prog-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); font-weight: 600; }
+
+  /* ── Chip Row ── */
+  .chip-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+  .chip-row::-webkit-scrollbar { display: none; }
+  .chip {
+    flex-shrink: 0; display: flex; align-items: center; gap: 7px;
+    padding: 8px 14px; border-radius: 99px;
+    background: var(--surface); border: 1px solid var(--border);
+    font-size: 12px; font-weight: 700; color: var(--muted);
+    cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .chip.active { background: var(--primary-glow); border-color: var(--primary); color: var(--primary); }
+  .chip:hover { border-color: var(--primary); color: var(--primary); }
+  .chip-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  /* ── Stat Cards ── */
+  .stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .stat-card:hover { border-color: var(--border-2); box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+  .stat-card-accent { position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
+  .stat-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+  .stat-val { font-size: 28px; font-weight: 900; letter-spacing: -0.8px; color: var(--text); line-height: 1; }
+  .stat-lbl { font-size: 11px; font-weight: 600; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .04em; }
+  .stat-delta { font-size: 11px; font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+  .up { color: var(--success); }
+  .dn { color: var(--danger); }
+  .fl { color: var(--muted); }
+
+  /* ── Week Card ── */
+  .week-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px;
+  }
+  .week-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .week-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 700; }
+  .pill-success { background: var(--success-lt); color: var(--success); }
+  .pill-warning { background: var(--warning-lt); color: var(--warning); }
+  .pill-primary { background: var(--primary-glow); color: var(--primary); }
+  .pill-purple { background: var(--purple-lt); color: var(--purple); }
+  .week-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .week-cell { background: var(--surface-2); border-radius: 10px; padding: 10px 8px; text-align: center; border: 1px solid var(--border); }
+  .week-cell-val { font-size: 20px; font-weight: 800; color: var(--text); line-height: 1; }
+  .week-cell-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-top: 3px; }
+
+  /* ── Activity Feed ── */
+  .feed-item { display: flex; gap: 12px; align-items: flex-start; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .feed-item:last-child { border-bottom: none; }
+  .feed-icon { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .feed-body { flex: 1; }
+  .feed-title { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.3; }
+  .feed-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .feed-time { font-size: 11px; color: var(--faint); font-weight: 600; flex-shrink: 0; }
+
+  /* ── Badge Grid ── */
+  .badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .badge-item { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 6px; border-radius: 14px; border: 1px solid var(--border); background: var(--surface); text-align: center; transition: all 0.2s; }
+  .badge-item.earned { border-color: var(--primary); background: var(--primary-glow); }
+  .badge-item.locked { opacity: .45; filter: grayscale(.8); }
+  .badge-icon { font-size: 24px; line-height: 1; }
+  .badge-name { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  .badge-item.earned .badge-name { color: var(--primary); }
+
+  /* ── Leaderboard ── */
+  .lb-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; transition: background 0.15s; cursor: pointer; }
+  .lb-row:hover { background: var(--surface-2); }
+  .lb-row.me { background: var(--primary-glow); border: 1px solid var(--primary); }
+  .lb-rank { width: 22px; font-size: 13px; font-weight: 800; color: var(--muted); text-align: center; }
+  .lb-avatar { width: 38px; height: 38px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; color: white; flex-shrink: 0; }
+  .lb-info { flex: 1; }
+  .lb-name { font-size: 13px; font-weight: 700; color: var(--text); }
+  .lb-sub { font-size: 11px; color: var(--muted); font-weight: 500; }
+  .lb-api { font-size: 13px; font-weight: 800; color: var(--primary); }
+
+  /* ── Wizard ── */
+  .wiz-header { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .wiz-steps { display: flex; gap: 5px; padding: 12px 16px 0; }
+  .wdot { height: 3px; border-radius: 99px; background: var(--border); transition: all 0.3s; flex: 1; }
+  .wdot.done { background: var(--primary); opacity: .4; }
+  .wdot.active { background: var(--gradient); flex: 2; }
+  .wiz-body { flex: 1; overflow-y: auto; padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; }
+  .wiz-section { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: -4px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 12px; font-weight: 700; color: var(--muted); }
+  .form-input {
+    height: 50px; border-radius: 12px; border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 0 14px; font-size: 16px; font-family: inherit;
+    outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    font-weight: 600;
+  }
+  .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-glow); }
+  .wiz-footer { padding: 14px 16px; border-top: 1px solid var(--border); display: flex; gap: 10px; background: var(--bg); }
+  .btn-ghost { flex: 0 0 100px; height: 50px; border-radius: 14px; border: 1.5px solid var(--border); background: var(--surface); color: var(--muted); font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; transition: all 0.15s; }
+  .btn-ghost:hover { border-color: var(--primary); color: var(--primary); }
+  .btn-cta { flex: 1; height: 50px; border-radius: 14px; background: var(--gradient); color: white; font-size: 15px; font-weight: 800; font-family: inherit; border: none; cursor: pointer; letter-spacing: -0.2px; box-shadow: var(--shadow-glow); transition: opacity 0.15s, transform 0.1s; }
+  .btn-cta:hover { opacity: .9; transform: translateY(-1px); }
+  .btn-cta:active { transform: translateY(0); }
+
+  /* ── Profile ── */
+  .profile-banner {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    overflow: hidden; margin: 0 0 14px;
+  }
+  .profile-banner-top { background: var(--gradient); padding: 28px 20px 56px; text-align: center; }
+  .prof-avatar { width: 76px; height: 76px; border-radius: 24px; background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 900; color: white; margin: 0 auto 10px; border: 3px solid rgba(255,255,255,.3); }
+  .prof-name { font-size: 20px; font-weight: 800; color: white; letter-spacing: -0.3px; }
+  .prof-role { font-size: 12px; color: rgba(255,255,255,.75); margin-top: 3px; }
+  .profile-stats { display: grid; grid-template-columns: repeat(3,1fr); margin: -30px 16px 0; background: var(--surface-2); border-radius: 14px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+  .prof-stat { padding: 14px 10px; text-align: center; border-right: 1px solid var(--border); }
+  .prof-stat:last-child { border-right: none; }
+  .prof-stat-val { font-size: 18px; font-weight: 800; color: var(--primary); }
+  .prof-stat-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin-top: 3px; }
+  .profile-menu { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .menu-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item:hover { background: var(--surface-2); }
+  .menu-icon { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .menu-label { flex: 1; font-size: 14px; font-weight: 600; color: var(--text); }
+  .menu-val { font-size: 12px; color: var(--muted); }
+
+  /* ── Bottom Nav ── */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; z-index: 30;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+    backdrop-filter: blur(12px);
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 10px 4px 10px; gap: 4px;
+    color: var(--faint); transition: color 0.15s; cursor: pointer;
+    border: none; background: none; min-height: 62px;
+  }
+  .nav-btn.active { color: var(--primary); }
+  .nav-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+  .nav-submit-btn {
+    width: 52px; height: 52px; border-radius: 18px;
+    background: var(--gradient); border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow-glow); margin-top: -6px;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .nav-submit-btn:hover { transform: translateY(-2px) scale(1.04); box-shadow: 0 0 28px rgba(0,201,204,.3), 0 8px 20px rgba(0,0,0,.4); }
+
+  /* ── Section header ── */
+  .sec { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+  .sec-title { font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  .sec-link { font-size: 12px; font-weight: 700; color: var(--primary); cursor: pointer; }
+
+  /* ── Dark toggle ── */
+  .mode-toggle { height: 34px; padding: 0 12px; border-radius: 99px; background: var(--surface); border: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; font-family: inherit; }
+  .mode-toggle:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-glow); }
+
+  /* ── Card container ── */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+  .card-body { padding: 14px; }
+
+  /* ── Glow accent ring ── */
+  .glow-ring { width: 100px; height: 100px; position: relative; flex-shrink: 0; }
+  .glow-ring svg { filter: drop-shadow(0 0 8px rgba(0,201,204,.4)); }
+  .glow-ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .glow-ring-pct { font-size: 20px; font-weight: 900; background: var(--gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; }
+  .glow-ring-sub { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<div class="concept-banner">CONCEPT 3 — MOMENTUM &nbsp;·&nbsp; Dark-First + Gamification-Forward + Bold Numbers</div>
+
+<div class="app">
+
+  <!-- ══════════ HOME ══════════ -->
+  <div class="screen active" id="screen-home">
+    <div class="header">
+      <div>
+        <div class="header-greeting">Good morning 👋</div>
+        <div class="header-name">Marcus Thompson</div>
+      </div>
+      <div class="header-actions">
+        <button class="mode-toggle" onclick="toggleMode()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
+          <span id="mode-lbl">Dark</span>
+        </button>
+        <button class="hbtn" onclick="showTab('alerts')">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="hbtn-notif"></span>
+        </button>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <!-- Rank Hero -->
+      <div class="rank-hero">
+        <div class="rank-hero-top">
+          <div>
+            <div class="rank-label">Branch Rank</div>
+            <div class="rank-number">#3</div>
+            <div class="rank-sub">of 12 agents · May 2026</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px">
+            <div class="ytd-box">
+              <div class="ytd-val">$147,300</div>
+              <div class="ytd-lbl">YTD API · TTD</div>
+            </div>
+            <div class="glow-ring">
+              <svg width="100" height="100" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="var(--border)" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="url(#grad1)" stroke-width="8" stroke-linecap="round" stroke-dasharray="263.9" stroke-dashoffset="69.5" transform="rotate(-90 50 50)"/>
+                <defs><linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#00c9cc"/><stop offset="100%" stop-color="#a371f7"/></linearGradient></defs>
+              </svg>
+              <div class="glow-ring-center"><div class="glow-ring-pct">74%</div><div class="glow-ring-sub">of goal</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="rank-progress">
+          <div class="rank-prog-labels"><span>$0</span><span>$52,700 to target</span><span>$200k</span></div>
+          <div class="rank-prog-bar"><div class="rank-prog-fill" style="width:73.6%"></div></div>
+        </div>
+      </div>
+
+      <!-- Chip row -->
+      <div class="chip-row">
+        <div class="chip active"><div class="chip-dot" style="background:var(--primary)"></div>This Week</div>
+        <div class="chip"><div class="chip-dot" style="background:var(--warning)"></div>Monthly</div>
+        <div class="chip"><div class="chip-dot" style="background:var(--purple)"></div>YTD</div>
+        <div class="chip"><div class="chip-dot" style="background:var(--gold)"></div>All Time</div>
+      </div>
+
+      <!-- Stats -->
+      <div>
+        <div class="sec"><div class="sec-title">This Week</div><span class="pill pill-success">✓ Submitted</span></div>
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="stat-card-accent" style="background:linear-gradient(90deg,#00c9cc,#a371f7)"></div>
+            <div class="stat-icon" style="background:var(--primary-glow)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <div class="stat-val">38</div>
+            <div class="stat-lbl">Prospecting</div>
+            <div class="stat-delta up">↑ 6 vs last wk</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-accent" style="background:var(--success)"></div>
+            <div class="stat-icon" style="background:var(--success-lt)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div class="stat-val">26%</div>
+            <div class="stat-lbl">Close Rate</div>
+            <div class="stat-delta up">↑ 4% vs last wk</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-accent" style="background:var(--warning)"></div>
+            <div class="stat-icon" style="background:var(--warning-lt)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="stat-val">4</div>
+            <div class="stat-lbl">FFIs Done</div>
+            <div class="stat-delta fl">→ same as last</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-accent" style="background:var(--purple)"></div>
+            <div class="stat-icon" style="background:var(--purple-lt)">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <div class="stat-val" style="font-size:22px">$3.2k</div>
+            <div class="stat-lbl">API (TTD)</div>
+            <div class="stat-delta up">↑ $800 vs last</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Feed -->
+      <div>
+        <div class="sec"><div class="sec-title">Recent Activity</div><span class="sec-link">See all</span></div>
+        <div class="card">
+          <div class="card-body" style="padding:6px 14px">
+            <div class="feed-item">
+              <div class="feed-icon" style="background:var(--success-lt)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="feed-body"><div class="feed-title">Weekly report submitted</div><div class="feed-sub">Week of May 4 · All fields complete</div></div>
+              <div class="feed-time">Today</div>
+            </div>
+            <div class="feed-item">
+              <div class="feed-icon" style="background:var(--gold-lt)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+              <div class="feed-body"><div class="feed-title">Badge earned: <span style="color:var(--gold)">Closer Pro</span></div><div class="feed-sub">26% closing ratio — above Elite threshold</div></div>
+              <div class="feed-time">Today</div>
+            </div>
+            <div class="feed-item">
+              <div class="feed-icon" style="background:var(--primary-glow)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+              <div class="feed-body"><div class="feed-title">Moved up to <span style="color:var(--primary)">#3</span> on leaderboard</div><div class="feed-sub">Passed Trevor Williams this week</div></div>
+              <div class="feed-time">Mon</div>
+            </div>
+            <div class="feed-item">
+              <div class="feed-icon" style="background:var(--purple-lt)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+              <div class="feed-body"><div class="feed-title">Application sold · $3,200 API</div><div class="feed-sub">Client: J. Ramkissoon · Standard Life Plan</div></div>
+              <div class="feed-time">Wed</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Badges -->
+      <div>
+        <div class="sec"><div class="sec-title">Achievements</div><span class="sec-link" onclick="showTab('profile')">View all</span></div>
+        <div class="badge-grid">
+          <div class="badge-item earned"><div class="badge-icon">🏆</div><div class="badge-name">Closer Pro</div></div>
+          <div class="badge-item earned"><div class="badge-icon">🔥</div><div class="badge-name">On Fire</div></div>
+          <div class="badge-item earned"><div class="badge-icon">📋</div><div class="badge-name">Streak x4</div></div>
+          <div class="badge-item locked"><div class="badge-icon">💎</div><div class="badge-name">MDRT</div></div>
+          <div class="badge-item locked"><div class="badge-icon">⚡</div><div class="badge-name">Elite</div></div>
+          <div class="badge-item locked"><div class="badge-icon">🌟</div><div class="badge-name">Legend</div></div>
+          <div class="badge-item locked"><div class="badge-icon">👑</div><div class="badge-name">King</div></div>
+          <div class="badge-item locked"><div class="badge-icon">🚀</div><div class="badge-name">Rocket</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SUBMIT ══════════ -->
+  <div class="screen" id="screen-submit" style="flex-direction:column">
+    <div class="wiz-header">
+      <div>
+        <div style="font-size:10px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em">Step 2 · Interviews</div>
+        <div style="font-size:17px;font-weight:800;color:var(--text);margin-top:2px">FFI &amp; Closing Activity</div>
+      </div>
+      <button class="hbtn" onclick="showTab('home')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="wiz-steps">
+      <div class="wdot done"></div>
+      <div class="wdot active"></div>
+      <div class="wdot"></div>
+      <div class="wdot"></div>
+      <div class="wdot"></div>
+    </div>
+    <div class="wiz-body">
+      <div style="background:var(--primary-glow);border:1px solid var(--primary);border-radius:12px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <p style="font-size:12px;color:var(--primary);font-weight:600;line-height:1.5">Enter numbers for the 7-day period ending this Sunday. Auto-saved every 30 seconds.</p>
+      </div>
+      <div class="wiz-section">Fact Finding Interviews</div>
+      <div class="form-group"><label class="form-label">FFIs Scheduled</label><input class="form-input" type="number" inputmode="numeric" value="6"></div>
+      <div class="form-group"><label class="form-label">FFIs Conducted</label><input class="form-input" type="number" inputmode="numeric" value="4"></div>
+      <div class="form-group"><label class="form-label">Solution Presentations</label><input class="form-input" type="number" inputmode="numeric" value="4"></div>
+      <div class="wiz-section">Closing Interviews</div>
+      <div class="form-group"><label class="form-label">New CIs Booked</label><input class="form-input" type="number" inputmode="numeric" value="3"></div>
+      <div class="form-group"><label class="form-label">Old CIs Booked</label><input class="form-input" type="number" inputmode="numeric" value="1"></div>
+      <div class="form-group"><label class="form-label">Total CIs Conducted</label><input class="form-input" type="number" inputmode="numeric" value="2"></div>
+    </div>
+    <div class="wiz-footer">
+      <button class="btn-ghost">← Back</button>
+      <button class="btn-cta">Save &amp; Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══════════ LEADERBOARD ══════════ -->
+  <div class="screen" id="screen-leaderboard">
+    <div class="header">
+      <div><div class="header-greeting">Branch Rankings</div><div class="header-name">Leaderboard</div></div>
+      <div class="header-actions"><div class="pill pill-primary">May 2026</div></div>
+    </div>
+    <div class="scroll">
+      <div class="rank-hero" style="text-align:center;padding:28px 20px">
+        <div class="rank-label" style="text-align:center">Your Current Rank</div>
+        <div class="rank-number" style="font-size:88px;text-align:center">#3</div>
+        <div style="display:flex;justify-content:center;gap:8px;margin-top:6px">
+          <span class="pill pill-primary">$18,200 TTD</span>
+          <span class="pill" style="background:var(--gold-lt);color:var(--gold)">Top 25%</span>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding:8px">
+          <div class="lb-row"><div class="lb-rank" style="color:var(--gold);font-size:16px">🥇</div><div class="lb-avatar" style="background:linear-gradient(135deg,#f59e0b,#d97706);border-radius:12px">AK</div><div class="lb-info"><div class="lb-name">Alicia King</div><div class="lb-sub">Elite · 6 apps this month</div></div><div class="lb-api">$28,400</div></div>
+          <div class="lb-row"><div class="lb-rank" style="color:#94a3b8;font-size:16px">🥈</div><div class="lb-avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);border-radius:12px">JP</div><div class="lb-info"><div class="lb-name">James Pierre</div><div class="lb-sub">Pro · 5 apps this month</div></div><div class="lb-api">$21,800</div></div>
+          <div class="lb-row me"><div class="lb-rank" style="color:var(--primary);font-size:16px">🥉</div><div class="lb-avatar" style="background:linear-gradient(135deg,#00c9cc,#009a9d);border-radius:12px">MT</div><div class="lb-info"><div class="lb-name" style="color:var(--primary)">Marcus (You)</div><div class="lb-sub" style="color:var(--primary);opacity:.7">Associate · 3 apps</div></div><div class="lb-api">$18,200</div></div>
+          <div class="lb-row"><div class="lb-rank" style="color:var(--faint)">4</div><div class="lb-avatar" style="background:linear-gradient(135deg,#ec4899,#be185d);border-radius:12px">SR</div><div class="lb-info"><div class="lb-name">Sandra Ramnath</div><div class="lb-sub">Associate · 3 apps</div></div><div class="lb-api" style="color:var(--muted)">$14,600</div></div>
+          <div class="lb-row"><div class="lb-rank" style="color:var(--faint)">5</div><div class="lb-avatar" style="background:linear-gradient(135deg,#84cc16,#4d7c0f);border-radius:12px">TW</div><div class="lb-info"><div class="lb-name">Trevor Williams</div><div class="lb-sub">Rookie · 2 apps</div></div><div class="lb-api" style="color:var(--muted)">$11,300</div></div>
+          <div class="lb-row"><div class="lb-rank" style="color:var(--faint)">6</div><div class="lb-avatar" style="background:linear-gradient(135deg,#f97316,#c2410c);border-radius:12px">NM</div><div class="lb-info"><div class="lb-name">Nadia Mohammed</div><div class="lb-sub">Rookie · 2 apps</div></div><div class="lb-api" style="color:var(--muted)">$9,800</div></div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);text-align:center;font-weight:600;padding:4px 0 8px">Gap to #2: <strong style="color:var(--primary)">$3,600 TTD</strong> · You need 1 more sale to move up</div>
+    </div>
+  </div>
+
+  <!-- ══════════ PROFILE ══════════ -->
+  <div class="screen" id="screen-profile">
+    <div class="header"><div><div class="header-greeting">Account</div><div class="header-name">Profile</div></div></div>
+    <div class="scroll" style="padding-top:0">
+      <div class="profile-banner">
+        <div class="profile-banner-top">
+          <div class="prof-avatar">MT</div>
+          <div class="prof-name">Marcus Thompson</div>
+          <div class="prof-role">Insurance Agent · North Branch</div>
+        </div>
+        <div class="profile-stats">
+          <div class="prof-stat"><div class="prof-stat-val">$147k</div><div class="prof-stat-lbl">YTD API</div></div>
+          <div class="prof-stat"><div class="prof-stat-val">#3</div><div class="prof-stat-lbl">Rank</div></div>
+          <div class="prof-stat"><div class="prof-stat-val">74%</div><div class="prof-stat-lbl">Goal</div></div>
+        </div>
+        <div style="height:30px"></div>
+      </div>
+
+      <div>
+        <div class="sec"><div class="sec-title">Your Badges</div><div class="pill pill-primary">3 earned</div></div>
+        <div class="badge-grid">
+          <div class="badge-item earned"><div class="badge-icon">🏆</div><div class="badge-name">Closer Pro</div></div>
+          <div class="badge-item earned"><div class="badge-icon">🔥</div><div class="badge-name">On Fire</div></div>
+          <div class="badge-item earned"><div class="badge-icon">📋</div><div class="badge-name">Streak x4</div></div>
+          <div class="badge-item locked"><div class="badge-icon">💎</div><div class="badge-name">MDRT</div></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="sec"><div class="sec-title">Career Level</div></div>
+        <div class="card">
+          <div class="card-body">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div><div style="font-size:18px;font-weight:800;color:var(--primary)">Associate</div><div style="font-size:12px;color:var(--muted);margin-top:1px">Level 2 of 7</div></div>
+              <div style="text-align:right"><div style="font-size:12px;color:var(--muted)">Next: Advisor III</div><div style="font-size:13px;font-weight:700;color:var(--warning)">$102k more API</div></div>
+            </div>
+            <div style="height:6px;border-radius:99px;background:var(--border);overflow:hidden"><div style="height:100%;background:var(--gradient);width:42%;border-radius:99px;transition:width 1s"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-menu">
+        <div class="menu-item"><div class="menu-icon" style="background:var(--primary-glow)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><span class="menu-label">Edit Profile</span><span class="menu-val">›</span></div>
+        <div class="menu-item" onclick="toggleMode()"><div class="menu-icon" style="background:var(--surface-2)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg></div><span class="menu-label">Light Mode</span><span class="menu-val" id="mode-status">Off</span></div>
+        <div class="menu-item"><div class="menu-icon" style="background:var(--purple-lt)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><span class="menu-label">Help &amp; Support</span><span class="menu-val">›</span></div>
+        <div class="menu-item"><div class="menu-icon" style="background:var(--danger-lt)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div><span class="menu-label" style="color:var(--danger)">Sign Out</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ BOTTOM NAV ══════════ -->
+  <nav class="bottom-nav">
+    <button class="nav-btn active" id="nav-home" onclick="showTab('home')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span class="nav-lbl">Home</span>
+    </button>
+    <button class="nav-btn" id="nav-leaderboard" onclick="showTab('leaderboard')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span class="nav-lbl">Ranking</span>
+    </button>
+    <button class="nav-btn" id="nav-submit" onclick="showTab('submit')" style="justify-content:flex-start;padding-top:6px">
+      <button class="nav-submit-btn" tabindex="-1">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+      <span class="nav-lbl" style="margin-top:3px">Submit</span>
+    </button>
+    <button class="nav-btn" id="nav-history" onclick="showTab('home')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span class="nav-lbl">History</span>
+    </button>
+    <button class="nav-btn" id="nav-profile" onclick="showTab('profile')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="nav-lbl">Profile</span>
+    </button>
+  </nav>
+
+</div><!-- /app -->
+
+<script>
+  function showTab(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(n => n.classList.remove('active'));
+    const screen = document.getElementById('screen-' + name);
+    const nav = document.getElementById('nav-' + name);
+    if (screen) screen.classList.add('active');
+    if (nav) nav.classList.add('active');
+  }
+
+  let lightMode = false;
+  function toggleMode() {
+    lightMode = !lightMode;
+    document.documentElement.classList.toggle('dark', !lightMode);
+    document.documentElement.classList.toggle('light', lightMode);
+    const lbl = document.getElementById('mode-lbl');
+    const status = document.getElementById('mode-status');
+    if (lbl) lbl.textContent = lightMode ? 'Light' : 'Dark';
+    if (status) status.textContent = lightMode ? 'On' : 'Off';
+  }
+
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.querySelectorAll('.rank-prog-fill').forEach(el => {
+        const w = el.style.width; el.style.width = '0%';
+        setTimeout(() => { el.style.width = w; }, 50);
+      });
+    }, 300);
+  });
+</script>
+</body>
+</html>

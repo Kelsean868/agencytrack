@@ -1,0 +1,2621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyTrack — Concept 4 Complete (All Roles, All Devices)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Design Tokens (Concept 1 warm palette) ──────────────────── */
+:root {
+  --bg:           #f5f3ef;
+  --surface:      #ffffff;
+  --surface-2:    #faf9f6;
+  --surface-muted:#f0efe9;
+  --border:       #e8e4dc;
+  --border-2:     #d8d3ca;
+  --text:         #1c1a15;
+  --muted:        #736d64;
+  --faint:        #a39d94;
+  --primary:      #007a7f;
+  --primary-lt:   #e6f5f5;
+  --primary-dk:   #015a5e;
+  --primary-mid:  rgba(0,122,127,.12);
+  --success:      #1f8a50;
+  --success-lt:   #e8f5ee;
+  --warning:      #b45309;
+  --warning-lt:   #fef3e2;
+  --danger:       #c0392b;
+  --danger-lt:    #fde8e7;
+  --gold:         #b07d1a;
+  --gold-lt:      #fdf3dc;
+  --gold-border:  rgba(176,125,26,.2);
+  --ink:          #5a3fa0;
+  --ink-lt:       #f0ecff;
+  --shadow-sm:    0 1px 3px rgba(28,26,21,.07), 0 1px 2px rgba(28,26,21,.04);
+  --shadow-md:    0 4px 14px rgba(28,26,21,.09), 0 2px 4px rgba(28,26,21,.05);
+  --shadow-lg:    0 12px 32px rgba(28,26,21,.13);
+  --radius-sm:    12px;
+  --radius-md:    16px;
+  --radius-lg:    24px;
+  --radius-xl:    32px;
+}
+.dark {
+  --bg:           #181410;
+  --surface:      #221e18;
+  --surface-2:    #2c271f;
+  --surface-muted:#1f1b15;
+  --border:       #3a322a;
+  --border-2:     #4a4036;
+  --text:         #f4ede0;
+  --muted:        #b3a896;
+  --faint:        #807565;
+  --primary:      #4ec5c8;
+  --primary-lt:   rgba(78,197,200,.12);
+  --primary-dk:   #2ea5a8;
+  --primary-mid:  rgba(78,197,200,.18);
+  --success:      #5ec98a;
+  --success-lt:   rgba(94,201,138,.14);
+  --warning:      #e6a04a;
+  --warning-lt:   rgba(230,160,74,.14);
+  --danger:       #e87063;
+  --danger-lt:    rgba(232,112,99,.14);
+  --gold:         #e0aa3e;
+  --gold-lt:      rgba(224,170,62,.14);
+  --gold-border:  rgba(224,170,62,.3);
+  --ink:          #a995e0;
+  --ink-lt:       rgba(169,149,224,.14);
+  --shadow-sm:    0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
+  --shadow-md:    0 4px 14px rgba(0,0,0,.5), 0 2px 4px rgba(0,0,0,.3);
+  --shadow-lg:    0 12px 32px rgba(0,0,0,.6);
+}
+
+/* ── Reset ───────────────────────────────────────────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  font-size: 16px;
+  line-height: 1.5;
+  transition: background .25s ease, color .25s ease;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+input, textarea, select { font-family: inherit; }
+
+/* ── Demo Header (toolbar) ───────────────────────────────────── */
+.demo-bar {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+  box-shadow: var(--shadow-sm);
+}
+.demo-brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 16px; }
+.demo-brand-mark {
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  background: var(--primary);
+  color: white;
+  display: grid; place-items: center;
+  font-weight: 800;
+  font-size: 14px;
+}
+.demo-tag { font-size: 11px; color: var(--muted); font-weight: 600; padding: 3px 8px; background: var(--surface-muted); border-radius: 99px; letter-spacing: .04em; text-transform: uppercase; }
+.demo-group { display: flex; align-items: center; gap: 8px; }
+.demo-label { font-size: 11px; color: var(--muted); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.demo-chips { display: flex; gap: 4px; padding: 4px; background: var(--surface-muted); border-radius: 12px; }
+.demo-chip {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  display: flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+  transition: all .18s ease;
+}
+.demo-chip:hover { color: var(--text); }
+.demo-chip.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+.demo-chip svg { width: 14px; height: 14px; }
+.demo-spacer { flex: 1; min-width: 8px; }
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  transition: all .18s ease;
+}
+.icon-btn:hover { color: var(--text); border-color: var(--border-2); }
+
+/* ── Frame Shells ────────────────────────────────────────────── */
+.stage {
+  padding: 24px;
+  min-height: calc(100vh - 70px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+.frame { display: none; }
+body[data-device="mobile"] .frame.frame-mobile { display: block; }
+body[data-device="desktop"] .frame.frame-desktop { display: block; }
+
+/* Mobile phone frame */
+.frame-mobile {
+  width: 390px;
+  max-width: 100%;
+  background: var(--surface);
+  border-radius: 36px;
+  border: 8px solid #1c1a15;
+  box-shadow: 0 30px 60px rgba(28,26,21,.18), 0 8px 20px rgba(28,26,21,.1);
+  overflow: hidden;
+  position: relative;
+}
+.dark .frame-mobile { border-color: #0a0805; box-shadow: 0 30px 60px rgba(0,0,0,.6), 0 8px 20px rgba(0,0,0,.4); }
+.phone-notch {
+  position: absolute; top: 6px; left: 50%; transform: translateX(-50%);
+  width: 100px; height: 22px; border-radius: 99px; background: #1c1a15; z-index: 10;
+}
+.dark .phone-notch { background: #0a0805; }
+.phone-status {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 22px 6px; font-size: 13px; font-weight: 700; color: var(--text);
+}
+.phone-status-icons { display: flex; gap: 4px; align-items: center; color: var(--text); }
+.phone-status-icons svg { width: 14px; height: 14px; }
+.phone-screen {
+  height: 760px;
+  overflow-y: auto;
+  background: var(--bg);
+  position: relative;
+}
+.phone-screen::-webkit-scrollbar { width: 0; }
+
+/* Desktop browser frame */
+.frame-desktop {
+  width: 100%;
+  max-width: 1440px;
+  background: var(--surface);
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+.browser-bar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 12px 18px;
+  background: var(--surface-muted);
+  border-bottom: 1px solid var(--border);
+}
+.browser-dots { display: flex; gap: 6px; }
+.browser-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--border-2); }
+.browser-dot:nth-child(1) { background: #ff5f56; }
+.browser-dot:nth-child(2) { background: #ffbd2e; }
+.browser-dot:nth-child(3) { background: #27c93f; }
+.browser-url {
+  flex: 1; max-width: 480px; margin: 0 auto;
+  background: var(--surface);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  border: 1px solid var(--border);
+}
+.desktop-content {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 760px;
+  background: var(--bg);
+}
+
+/* ── Sidebar (desktop) ───────────────────────────────────────── */
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 22px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sidebar-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 10px 22px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+}
+.sidebar-brand-mark {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: white;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 16px;
+}
+.sidebar-brand-name { font-weight: 800; font-size: 15px; letter-spacing: -.01em; }
+.sidebar-section {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--faint);
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 14px 10px 6px;
+}
+.sidebar-link {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all .15s ease;
+}
+.sidebar-link svg { width: 18px; height: 18px; flex-shrink: 0; }
+.sidebar-link:hover { background: var(--surface-muted); color: var(--text); }
+.sidebar-link.active { background: var(--primary-mid); color: var(--primary); }
+.sidebar-link .badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: var(--primary);
+  color: white;
+}
+.sidebar-foot {
+  margin-top: auto;
+  padding: 14px 10px 0;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sidebar-foot-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--primary); color: white; display: grid; place-items: center; font-weight: 700; font-size: 13px; }
+.sidebar-foot-info { flex: 1; min-width: 0; }
+.sidebar-foot-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sidebar-foot-role { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Top bar (desktop) ───────────────────────────────────────── */
+.main-area { display: flex; flex-direction: column; min-width: 0; }
+.topbar {
+  display: flex; align-items: center; gap: 16px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.topbar-title { font-size: 16px; font-weight: 700; }
+.topbar-crumb { font-size: 13px; color: var(--muted); }
+.topbar-search {
+  margin-left: 24px;
+  flex: 1; max-width: 360px;
+  position: relative;
+}
+.topbar-search input {
+  width: 100%;
+  padding: 9px 12px 9px 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  transition: border-color .15s;
+}
+.topbar-search input:focus { border-color: var(--primary); background: var(--surface); }
+.topbar-search svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: var(--muted); }
+.topbar-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.topbar-bell { position: relative; }
+.topbar-bell-dot { position: absolute; top: 6px; right: 8px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); border: 2px solid var(--surface); }
+
+.content { padding: 28px; overflow-y: auto; flex: 1; }
+
+/* ── Reusable Components ─────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+.card-pad-lg { padding: 24px; }
+.card-pad-sm { padding: 14px; }
+.card-head {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-title { font-size: 14px; font-weight: 700; letter-spacing: -.005em; }
+.card-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.link-btn { font-size: 12px; font-weight: 600; color: var(--primary); display: flex; align-items: center; gap: 4px; }
+.link-btn svg { width: 12px; height: 12px; }
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px;
+}
+.stat-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 10px;
+}
+.stat-icon {
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--primary-lt);
+  color: var(--primary);
+}
+.stat-icon svg { width: 16px; height: 16px; }
+.stat-value { font-size: 26px; font-weight: 800; letter-spacing: -.025em; line-height: 1.1; }
+.stat-trend { font-size: 12px; color: var(--muted); margin-top: 6px; display: flex; align-items: center; gap: 5px; }
+.stat-trend.up { color: var(--success); }
+.stat-trend.down { color: var(--danger); }
+.stat-trend svg { width: 12px; height: 12px; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.pill-primary { background: var(--primary-lt); color: var(--primary); }
+.pill-success { background: var(--success-lt); color: var(--success); }
+.pill-warning { background: var(--warning-lt); color: var(--warning); }
+.pill-danger  { background: var(--danger-lt); color: var(--danger); }
+.pill-muted   { background: var(--surface-muted); color: var(--muted); }
+.pill-gold    { background: var(--gold-lt); color: var(--gold); }
+.pill-ink     { background: var(--ink-lt); color: var(--ink); }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 16px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all .18s ease;
+  border: 1px solid transparent;
+}
+.btn svg { width: 14px; height: 14px; }
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-dk); }
+.btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn-secondary:hover { background: var(--surface-muted); }
+.btn-ghost { color: var(--muted); }
+.btn-ghost:hover { color: var(--text); background: var(--surface-muted); }
+.btn-danger { background: var(--danger-lt); color: var(--danger); }
+
+/* Tables */
+.dt {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+}
+.dt th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+.dt th:first-child { border-top-left-radius: 10px; }
+.dt th:last-child { border-top-right-radius: 10px; text-align: right; }
+.dt td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: middle;
+}
+.dt td:last-child { text-align: right; }
+.dt tr:last-child td { border-bottom: none; }
+.dt tr:hover td { background: var(--surface-muted); }
+.dt-num { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.avatar-sm { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: white; display: inline-grid; place-items: center; font-weight: 700; font-size: 11px; flex-shrink: 0; }
+.avatar-md { width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: white; display: inline-grid; place-items: center; font-weight: 700; font-size: 14px; flex-shrink: 0; }
+.avatar-lg { width: 64px; height: 64px; border-radius: 50%; background: var(--primary); color: white; display: inline-grid; place-items: center; font-weight: 700; font-size: 22px; flex-shrink: 0; }
+.avatar-xl { width: 88px; height: 88px; border-radius: 50%; background: var(--primary); color: white; display: inline-grid; place-items: center; font-weight: 800; font-size: 30px; flex-shrink: 0; }
+.avatar-color-2 { background: var(--ink); }
+.avatar-color-3 { background: var(--gold); }
+.avatar-color-4 { background: var(--success); }
+.avatar-color-5 { background: var(--warning); }
+
+/* Progress bars */
+.bar { height: 8px; border-radius: 99px; background: var(--surface-muted); overflow: hidden; }
+.bar-fill { height: 100%; background: var(--primary); border-radius: 99px; transition: width .4s ease; }
+.bar.bar-thin { height: 5px; }
+.bar.bar-thick { height: 12px; }
+.bar-fill.bar-success { background: var(--success); }
+.bar-fill.bar-warning { background: var(--warning); }
+.bar-fill.bar-danger { background: var(--danger); }
+.bar-fill.bar-gold { background: var(--gold); }
+
+/* Mobile bottom nav */
+.bottom-nav {
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding: 8px 4px 14px;
+  position: sticky; bottom: 0;
+}
+.bottom-nav-item {
+  flex: 1;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px;
+  padding: 6px 0;
+  color: var(--muted);
+  border-radius: 10px;
+}
+.bottom-nav-item svg { width: 22px; height: 22px; }
+.bottom-nav-item span { font-size: 10px; font-weight: 600; }
+.bottom-nav-item.active { color: var(--primary); }
+
+/* Mobile screen layouts */
+.m-pad { padding: 18px; }
+.m-pad-h { padding: 0 18px; }
+.m-stack > * + * { margin-top: 18px; }
+.m-h1 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.m-h2 { font-size: 17px; font-weight: 700; letter-spacing: -.015em; }
+.m-h3 { font-size: 14px; font-weight: 700; letter-spacing: -.01em; }
+.m-mute { color: var(--muted); font-size: 13px; }
+.m-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 18px 16px;
+}
+
+/* Hero / role banner */
+.role-hero {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dk) 100%);
+  color: white;
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  position: relative;
+  overflow: hidden;
+}
+.role-hero::after {
+  content: '';
+  position: absolute;
+  right: -40px; top: -40px;
+  width: 180px; height: 180px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.06);
+}
+.role-hero::before {
+  content: '';
+  position: absolute;
+  right: -100px; bottom: -120px;
+  width: 240px; height: 240px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.04);
+}
+.role-hero-label { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; opacity: .85; }
+.role-hero-title { font-size: 20px; font-weight: 800; margin-top: 4px; letter-spacing: -.015em; }
+.role-hero-value { font-size: 36px; font-weight: 800; letter-spacing: -.025em; margin-top: 12px; line-height: 1; }
+.role-hero-sub { font-size: 12px; opacity: .85; margin-top: 6px; }
+.role-hero-progress { position: relative; z-index: 1; margin-top: 14px; }
+.role-hero-progress .bar { background: rgba(255,255,255,.18); }
+.role-hero-progress .bar-fill { background: white; }
+.role-hero-meta { display: flex; gap: 16px; margin-top: 10px; font-size: 12px; opacity: .85; }
+
+/* Compliance dots */
+.dot-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.dot {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+.dot.dot-on  { background: var(--success-lt); color: var(--success); }
+.dot.dot-off { background: var(--surface-muted); color: var(--faint); }
+.dot.dot-warn { background: var(--warning-lt); color: var(--warning); }
+
+/* Mini sparkline */
+.spark { display: block; width: 100%; height: 32px; }
+
+/* Activity feed */
+.activity-list > * + * { margin-top: 12px; }
+.activity-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border-radius: 12px; transition: background .15s; }
+.activity-item:hover { background: var(--surface-muted); }
+.activity-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.activity-icon svg { width: 16px; height: 16px; }
+.ai-success { background: var(--success-lt); color: var(--success); }
+.ai-gold    { background: var(--gold-lt); color: var(--gold); }
+.ai-primary { background: var(--primary-lt); color: var(--primary); }
+.ai-ink     { background: var(--ink-lt); color: var(--ink); }
+.ai-warning { background: var(--warning-lt); color: var(--warning); }
+.activity-body { flex: 1; min-width: 0; }
+.activity-title { font-size: 13px; font-weight: 600; }
+.activity-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.activity-meta { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.activity-time { font-size: 11px; color: var(--faint); }
+
+/* ── Achievement badges (Medal v2 — glossy coin) ─────────────── */
+.badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.badge-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 8px 12px;
+  text-align: center;
+  transition: transform .2s ease, border-color .2s, box-shadow .2s;
+  position: relative;
+}
+.badge-item.earned:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-2);
+  box-shadow: var(--shadow-md);
+}
+.badge-item.locked .badge-name { opacity: .7; }
+.badge-item.locked .badge-sub  { opacity: .55; }
+
+/* The medal — circular layered coin with gloss highlight */
+.badge-medal {
+  --medal-size: 52px;
+  width: var(--medal-size); height: var(--medal-size);
+  border-radius: 50%;
+  margin: 0 auto 6px;
+  display: grid; place-items: center;
+  position: relative;
+  box-shadow:
+    inset 0 -2px 4px rgba(0,0,0,.18),
+    inset 0 2px 4px rgba(255,255,255,.4),
+    0 2px 6px rgba(28,26,21,.08);
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.badge-item.earned:hover .badge-medal { transform: scale(1.08) rotate(-4deg); }
+.badge-medal::before {
+  content: '';
+  position: absolute;
+  top: 6%; left: 18%;
+  width: 38%; height: 24%;
+  border-radius: 50%;
+  background: rgba(255,255,255,.42);
+  filter: blur(2px);
+  pointer-events: none;
+}
+.badge-medal svg.medal-ico {
+  width: calc(var(--medal-size) * .50);
+  height: calc(var(--medal-size) * .50);
+  color: white;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.32));
+  position: relative;
+  z-index: 1;
+}
+
+/* 8 medal palettes — radial gradients mapped to category meaning */
+.medal-1 { background: radial-gradient(circle at 32% 28%, #fde68a 0%, #f59e0b 50%, #b45309 100%); }   /* Closer Pro · gold→bronze */
+.medal-2 { background: radial-gradient(circle at 32% 28%, #fed7aa 0%, #fb923c 45%, #be123c 100%); }   /* On Fire · orange→crimson */
+.medal-3 { background: radial-gradient(circle at 32% 28%, #99f6e4 0%, #14b8a6 50%, #0e7490 100%); }   /* Streak · teal→deep */
+.medal-4 { background: radial-gradient(circle at 32% 28%, #fef9c3 0%, #fbbf24 45%, #92400e 100%); }   /* MDRT · radiant gold */
+.medal-5 { background: radial-gradient(circle at 32% 28%, #ddd6fe 0%, #a78bfa 50%, #5b21b6 100%); }   /* Century · royal purple */
+.medal-6 { background: radial-gradient(circle at 32% 28%, #f1f5f9 0%, #94a3b8 50%, #475569 100%); }   /* Elite · platinum silver */
+.medal-7 { background: radial-gradient(circle at 32% 28%, #a7f3d0 0%, #10b981 50%, #047857 100%); }   /* Perfect · emerald */
+.medal-8 { background: radial-gradient(circle at 32% 28%, #f5d0fe 0%, #c084fc 45%, #581c87 100%); }   /* Legend · mythic violet */
+
+/* Earned glow — colored shadow matching medal hue */
+.medal-1.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,.18), inset 0 2px 4px rgba(255,255,255,.4), 0 4px 16px rgba(245,158,11,.45); }
+.medal-2.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,.18), inset 0 2px 4px rgba(255,255,255,.4), 0 4px 16px rgba(251,113,133,.42); }
+.medal-3.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,.18), inset 0 2px 4px rgba(255,255,255,.4), 0 4px 16px rgba(20,184,166,.42); }
+.medal-4.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,.18), inset 0 2px 4px rgba(255,255,255,.4), 0 4px 18px rgba(251,191,36,.55); }
+.medal-5.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,.18), inset 0 2px 4px rgba(255,255,255,.4), 0 4px 16px rgba(167,139,250,.45); }
+.medal-7.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,.18), inset 0 2px 4px rgba(255,255,255,.4), 0 4px 16px rgba(16,185,129,.42); }
+.medal-8.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,.18), inset 0 2px 4px rgba(255,255,255,.4), 0 4px 18px rgba(192,132,252,.5); }
+
+/* Locked medal — neutral grayscale gradient */
+.medal-locked {
+  background: radial-gradient(circle at 32% 28%, var(--surface) 0%, var(--surface-muted) 45%, var(--border-2) 100%);
+  box-shadow: inset 0 -1px 3px rgba(0,0,0,.06), inset 0 1px 2px rgba(255,255,255,.5), 0 1px 3px rgba(28,26,21,.06);
+}
+.medal-locked svg.medal-ico { color: var(--faint); filter: none; opacity: .8; }
+.dark .medal-locked { background: radial-gradient(circle at 32% 28%, #3a322a 0%, #2c271f 45%, #181410 100%); }
+
+/* Lock pin — small pendant in corner */
+.lock-pin {
+  position: absolute;
+  bottom: -2px; right: -2px;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 2px solid var(--surface);
+  outline: 1px solid var(--border);
+  display: grid; place-items: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,.12);
+}
+.lock-pin svg { width: 10px; height: 10px; color: var(--muted); }
+
+/* Tier pips — rarity dots (1=common, 5=legendary) */
+.tier-pips {
+  display: flex; gap: 3px; justify-content: center;
+  margin: 6px 0 0;
+  height: 7px;
+}
+.tier-pip {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  flex-shrink: 0;
+}
+.tier-pip.dim { background: var(--border-2); }
+.dark .tier-pip.dim { background: var(--border); }
+
+.badge-name { font-size: 11px; font-weight: 700; line-height: 1.25; margin-top: 6px; }
+.badge-sub  { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.2; }
+
+/* Mobile: slightly smaller medal */
+.frame-mobile .badge-medal { --medal-size: 46px; }
+
+/* Status / overview rows */
+.row-flex { display: flex; align-items: center; gap: 12px; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+
+/* Grid utilities */
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.g4-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 18px; }
+.g4-mix { display: grid; grid-template-columns: 1.6fr 1fr; gap: 18px; }
+
+/* Section heading row */
+.section-hd {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 6px 2px 12px;
+}
+.section-hd h3 { font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+
+/* Ranking medal */
+.medal {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-weight: 800;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.medal.medal-1 { background: var(--gold); color: white; }
+.medal.medal-2 { background: var(--faint); color: white; }
+.medal.medal-3 { background: #c08d6b; color: white; }
+
+/* Compact donut */
+.donut-wrap { display: flex; align-items: center; gap: 16px; }
+.donut { width: 72px; height: 72px; flex-shrink: 0; }
+.donut text { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700; }
+
+/* Empty announcement banner */
+.banner-soft {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--primary-lt);
+  border: 1px solid var(--primary-mid);
+  border-radius: var(--radius-md);
+  padding: 14px 16px;
+  color: var(--primary);
+}
+.banner-soft svg { width: 18px; height: 18px; flex-shrink: 0; }
+.banner-soft strong { font-weight: 700; }
+.banner-soft p { font-size: 13px; line-height: 1.4; }
+
+/* Wizard rail (mobile) */
+.wiz-rail { display: flex; gap: 6px; padding: 0 18px 6px; }
+.wiz-step { flex: 1; height: 4px; border-radius: 99px; background: var(--surface-muted); }
+.wiz-step.done { background: var(--primary); }
+.wiz-step.now { background: var(--primary); opacity: .55; }
+
+/* Switching (role/device) — split desktop (grid) from mobile (block)
+   so the role-switching rule doesn't override .desktop-content's grid layout */
+[data-screen] { display: none; }
+body[data-role="agent"]   .desktop-content[data-screen="agent"]   { display: grid; }
+body[data-role="unit"]    .desktop-content[data-screen="unit"]    { display: grid; }
+body[data-role="branch"]  .desktop-content[data-screen="branch"]  { display: grid; }
+body[data-role="sales"]   .desktop-content[data-screen="sales"]   { display: grid; }
+body[data-role="admin"]   .desktop-content[data-screen="admin"]   { display: grid; }
+body[data-role="agent"]   [data-screen="agent"]:not(.desktop-content)   { display: block; }
+body[data-role="unit"]    [data-screen="unit"]:not(.desktop-content)    { display: block; }
+body[data-role="branch"]  [data-screen="branch"]:not(.desktop-content)  { display: block; }
+body[data-role="sales"]   [data-screen="sales"]:not(.desktop-content)   { display: block; }
+body[data-role="admin"]   [data-screen="admin"]:not(.desktop-content)   { display: block; }
+
+/* ── Goal carousel (hero card) ───────────────────────────────── */
+.goal-carousel { position: relative; }
+.goal-tabs {
+  display: inline-flex; gap: 2px;
+  padding: 4px;
+  background: rgba(255,255,255,.14);
+  border-radius: 11px;
+  margin-bottom: 18px;
+  position: relative; z-index: 1;
+}
+.goal-tab {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255,255,255,.78);
+  border-radius: 8px;
+  transition: all .18s ease;
+  letter-spacing: .01em;
+  font-family: inherit;
+}
+.goal-tab:hover { color: white; }
+.goal-tab.active { background: rgba(255,255,255,.96); color: var(--primary); }
+.goal-slide-wrap { overflow: hidden; position: relative; z-index: 1; }
+.goal-slide-track { display: flex; transition: transform .35s cubic-bezier(.4,.0,.2,1); }
+.goal-slide-track[data-active="0"] { transform: translateX(0%); }
+.goal-slide-track[data-active="1"] { transform: translateX(-100%); }
+.goal-slide-track[data-active="2"] { transform: translateX(-200%); }
+.goal-slide-track[data-active="3"] { transform: translateX(-300%); }
+.goal-slide { flex: 0 0 100%; min-width: 0; display: flex; align-items: center; gap: 24px; }
+.goal-content { flex: 1; min-width: 0; }
+.goal-period { font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; opacity: .85; margin-bottom: 6px; }
+.goal-value { font-size: 36px; font-weight: 800; letter-spacing: -.025em; line-height: 1; }
+.goal-target { font-size: 13px; opacity: .9; margin-top: 6px; }
+.goal-bar-wrap { margin-top: 14px; }
+.goal-bar-wrap .bar { background: rgba(255,255,255,.18); }
+.goal-bar-wrap .bar-fill { background: white; }
+.goal-status { font-size: 12px; opacity: .9; margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+.goal-status svg { width: 12px; height: 12px; flex-shrink: 0; }
+.goal-donut-wrap { width: 124px; height: 124px; flex-shrink: 0; position: relative; z-index: 1; }
+.hero-donut { width: 100%; height: 100%; display: block; }
+.hero-donut .donut-bg { fill: none; stroke: rgba(255,255,255,.18); stroke-width: 9; }
+.hero-donut .donut-fg { fill: none; stroke: white; stroke-width: 9; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; transition: stroke-dashoffset .45s ease; }
+.hero-donut text { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; fill: white; }
+@media (max-width: 1100px) {
+  .goal-donut-wrap { width: 100px; height: 100px; }
+  .goal-value { font-size: 30px; }
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .g4 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 900px) {
+  .desktop-content { grid-template-columns: 72px 1fr; }
+  .sidebar { padding: 22px 8px; }
+  .sidebar-link span, .sidebar-brand-name, .sidebar-section, .sidebar-foot-info { display: none; }
+  .sidebar-link { justify-content: center; }
+  .sidebar-foot { justify-content: center; }
+}
+@media (max-width: 680px) {
+  .demo-bar { padding: 12px 14px; gap: 14px; }
+  .stage { padding: 14px; }
+  .frame-desktop { transform: scale(.6); transform-origin: top center; width: 167%; margin-bottom: -40%; }
+  .g4-2, .g4-mix { grid-template-columns: 1fr; }
+}
+
+/* SVG sizing helper */
+.ico-12 svg { width: 12px; height: 12px; }
+.ico-14 svg { width: 14px; height: 14px; }
+.ico-16 svg { width: 16px; height: 16px; }
+.ico-18 svg { width: 18px; height: 18px; }
+
+</style>
+</head>
+<body data-role="agent" data-device="desktop" class="">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     DEMO HEADER — Role / Device / Theme switcher
+     ═══════════════════════════════════════════════════════════════ -->
+<header class="demo-bar">
+  <div class="demo-brand">
+    <div class="demo-brand-mark">A</div>
+    <div>AgencyTrack</div>
+    <span class="demo-tag">Concept 4 · Complete</span>
+  </div>
+
+  <div class="demo-spacer"></div>
+
+  <div class="demo-group">
+    <span class="demo-label">Role</span>
+    <div class="demo-chips" id="role-chips">
+      <button class="demo-chip active" data-role="agent">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Agent
+      </button>
+      <button class="demo-chip" data-role="unit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Unit Manager
+      </button>
+      <button class="demo-chip" data-role="branch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg>
+        Branch Manager
+      </button>
+      <button class="demo-chip" data-role="sales">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        Sales Manager
+      </button>
+      <button class="demo-chip" data-role="admin">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        Tenant Admin
+      </button>
+    </div>
+  </div>
+
+  <div class="demo-group">
+    <span class="demo-label">Device</span>
+    <div class="demo-chips" id="device-chips">
+      <button class="demo-chip" data-device="mobile">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18"/></svg>
+        Mobile
+      </button>
+      <button class="demo-chip active" data-device="desktop">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Desktop
+      </button>
+    </div>
+  </div>
+
+  <button class="icon-btn" id="theme-toggle" aria-label="Toggle theme">
+    <svg id="theme-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    <svg id="theme-moon" style="display:none" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+
+<main class="stage">
+  <!-- ═══════════════════════════════════════════════════════════
+       DESKTOP FRAME — sidebar + main content per role
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="frame frame-desktop">
+    <div class="browser-bar">
+      <div class="browser-dots"><span class="browser-dot"></span><span class="browser-dot"></span><span class="browser-dot"></span></div>
+      <div class="browser-url">agencytrack.vercel.app/dashboard</div>
+      <div style="width:60px"></div>
+    </div>
+
+    <!-- ── AGENT DESKTOP ─────────────────────────────────────── -->
+    <div data-screen="agent" class="desktop-content">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-mark">A</div>
+          <div class="sidebar-brand-name">AgencyTrack</div>
+        </div>
+        <div class="sidebar-section">Workspace</div>
+        <a class="sidebar-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span>Home</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg><span>Submit Report</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg><span>History</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Leaderboard</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg><span>Profile</span></a>
+
+        <div class="sidebar-section">Tools</div>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><span>Commission Calc</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg><span>Goals</span></a>
+
+        <div class="sidebar-foot">
+          <div class="sidebar-foot-avatar">MW</div>
+          <div class="sidebar-foot-info">
+            <div class="sidebar-foot-name">Marcus Williams</div>
+            <div class="sidebar-foot-role">Agent · POS Branch</div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main-area">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">Welcome back, Marcus</div>
+            <div class="topbar-crumb">Week of May 4 — May 10, 2026</div>
+          </div>
+          <div class="topbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search reports, clients, history…">
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn topbar-bell" aria-label="Notifications">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span class="topbar-bell-dot"></span>
+            </button>
+            <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Submit Weekly Report</button>
+          </div>
+        </div>
+
+        <div class="content">
+          <!-- Hero + rank row -->
+          <div class="g4-2" style="margin-bottom:18px">
+            <div class="role-hero" style="border-radius:var(--radius-md); padding:22px 24px">
+              <div class="goal-carousel">
+                <div class="goal-tabs" role="tablist">
+                  <button class="goal-tab active" data-goal="0">Week</button>
+                  <button class="goal-tab" data-goal="1">Month</button>
+                  <button class="goal-tab" data-goal="2">Quarter</button>
+                  <button class="goal-tab" data-goal="3">YTD</button>
+                </div>
+                <div class="goal-slide-wrap">
+                  <div class="goal-slide-track" data-active="0">
+
+                    <!-- Slide 0: This Week -->
+                    <div class="goal-slide">
+                      <div class="goal-content">
+                        <div class="goal-period">Week of May 4 — May 10</div>
+                        <div class="goal-value">$187,500</div>
+                        <div class="goal-target">of $250,000 weekly target</div>
+                        <div class="goal-bar-wrap"><div class="bar bar-thick"><div class="bar-fill" style="width:75%"></div></div></div>
+                        <div class="goal-status">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                          12% above last week · Closes Sunday May 10
+                        </div>
+                      </div>
+                      <div class="goal-donut-wrap">
+                        <svg class="hero-donut" viewBox="0 0 100 100">
+                          <circle class="donut-bg" cx="50" cy="50" r="42"/>
+                          <circle class="donut-fg" cx="50" cy="50" r="42" stroke-dasharray="263.89" stroke-dashoffset="65.97"/>
+                          <text x="50" y="52" text-anchor="middle" font-size="22" dominant-baseline="middle">75%</text>
+                        </svg>
+                      </div>
+                    </div>
+
+                    <!-- Slide 1: This Month -->
+                    <div class="goal-slide">
+                      <div class="goal-content">
+                        <div class="goal-period">May 2026 · Month-to-Date</div>
+                        <div class="goal-value">$612,400</div>
+                        <div class="goal-target">of $1.0M monthly target</div>
+                        <div class="goal-bar-wrap"><div class="bar bar-thick"><div class="bar-fill" style="width:61%"></div></div></div>
+                        <div class="goal-status">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                          On pace · 17 days remaining in month
+                        </div>
+                      </div>
+                      <div class="goal-donut-wrap">
+                        <svg class="hero-donut" viewBox="0 0 100 100">
+                          <circle class="donut-bg" cx="50" cy="50" r="42"/>
+                          <circle class="donut-fg" cx="50" cy="50" r="42" stroke-dasharray="263.89" stroke-dashoffset="102.92"/>
+                          <text x="50" y="52" text-anchor="middle" font-size="22" dominant-baseline="middle">61%</text>
+                        </svg>
+                      </div>
+                    </div>
+
+                    <!-- Slide 2: This Quarter -->
+                    <div class="goal-slide">
+                      <div class="goal-content">
+                        <div class="goal-period">Q2 2026 · Apr — Jun</div>
+                        <div class="goal-value">$1.45M</div>
+                        <div class="goal-target">of $3.0M quarterly target</div>
+                        <div class="goal-bar-wrap"><div class="bar bar-thick"><div class="bar-fill" style="width:48%"></div></div></div>
+                        <div class="goal-status">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                          Ahead of schedule · 56 days remaining
+                        </div>
+                      </div>
+                      <div class="goal-donut-wrap">
+                        <svg class="hero-donut" viewBox="0 0 100 100">
+                          <circle class="donut-bg" cx="50" cy="50" r="42"/>
+                          <circle class="donut-fg" cx="50" cy="50" r="42" stroke-dasharray="263.89" stroke-dashoffset="137.22"/>
+                          <text x="50" y="52" text-anchor="middle" font-size="22" dominant-baseline="middle">48%</text>
+                        </svg>
+                      </div>
+                    </div>
+
+                    <!-- Slide 3: YTD Personal Commitment -->
+                    <div class="goal-slide">
+                      <div class="goal-content">
+                        <div class="goal-period">2026 Year-to-Date</div>
+                        <div class="goal-value">$1.88M</div>
+                        <div class="goal-target">of $2.5M annual personal commitment</div>
+                        <div class="goal-bar-wrap"><div class="bar bar-thick"><div class="bar-fill" style="width:75%"></div></div></div>
+                        <div class="goal-status">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                          On track for Senior Tier · 240 days remaining
+                        </div>
+                      </div>
+                      <div class="goal-donut-wrap">
+                        <svg class="hero-donut" viewBox="0 0 100 100">
+                          <circle class="donut-bg" cx="50" cy="50" r="42"/>
+                          <circle class="donut-fg" cx="50" cy="50" r="42" stroke-dasharray="263.89" stroke-dashoffset="65.97"/>
+                          <text x="50" y="52" text-anchor="middle" font-size="22" dominant-baseline="middle">75%</text>
+                        </svg>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="row-between" style="margin-bottom:14px">
+                <div>
+                  <div class="card-sub">Branch ranking</div>
+                  <div style="font-size:32px;font-weight:800;letter-spacing:-.025em;line-height:1">#3</div>
+                </div>
+                <div class="stat-icon" style="width:42px;height:42px;background:var(--gold-lt);color:var(--gold)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+                </div>
+              </div>
+              <div style="font-size:12px;color:var(--muted);line-height:1.5">$3,600 to overtake <strong style="color:var(--text)">Sarah Chen</strong> at #2.</div>
+              <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+                <span class="pill pill-gold"><svg viewBox="0 0 24 24" fill="currentColor" width="11" height="11"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Associate Tier</span>
+                <span style="font-size:11px;color:var(--muted)">May 2026</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stats row -->
+          <div class="g4" style="margin-bottom:18px">
+            <div class="stat">
+              <div class="stat-label">API <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div>
+              <div class="stat-value">$187.5k</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> +12% w/w</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">FFI <div class="stat-icon" style="background:var(--ink-lt);color:var(--ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div></div>
+              <div class="stat-value">14</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> +3 w/w</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">CI <div class="stat-icon" style="background:var(--gold-lt);color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div></div>
+              <div class="stat-value">9</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> +1 w/w</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">App. Sold <div class="stat-icon" style="background:var(--success-lt);color:var(--success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div>
+              <div class="stat-value">6</div>
+              <div class="stat-trend"><span style="color:var(--muted)">Steady</span></div>
+            </div>
+          </div>
+
+          <!-- Activity + Achievements -->
+          <div class="g4-mix">
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Recent Activity</div>
+                  <div class="card-sub">Your last 7 days</div>
+                </div>
+                <button class="link-btn">View all <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+              </div>
+              <div class="activity-list">
+                <div class="activity-item">
+                  <div class="activity-icon ai-success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+                  <div class="activity-body">
+                    <div class="activity-title">Weekly report submitted</div>
+                    <div class="activity-sub">$187,500 in API · 14 FFI · 9 CI · 6 applications</div>
+                    <div class="activity-meta"><span class="pill pill-success">Submitted</span><span class="activity-time">Today, 9:42 AM</span></div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-icon" style="background:transparent;padding:0;width:36px;height:36px;border-radius:50%;overflow:visible;flex-shrink:0">
+                    <div class="badge-medal medal-1 glow" style="--medal-size:36px;margin:0">
+                      <svg class="medal-ico" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="white"/></svg>
+                    </div>
+                  </div>
+                  <div class="activity-body">
+                    <div class="activity-title">New badge earned: <strong>Closer Pro</strong></div>
+                    <div class="activity-sub">9 closing interviews in a single week — top 8% branch-wide</div>
+                    <div class="activity-meta"><span class="pill pill-gold">Achievement · Rare</span><span class="activity-time">Yesterday, 4:18 PM</span></div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-icon ai-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></div>
+                  <div class="activity-body">
+                    <div class="activity-title">Moved up to <strong>#3</strong> in branch</div>
+                    <div class="activity-sub">Passed Anand Singh by $4,200 in API</div>
+                    <div class="activity-meta"><span class="pill pill-primary">Ranking</span><span class="activity-time">May 4, 11:02 AM</span></div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-icon ai-ink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+                  <div class="activity-body">
+                    <div class="activity-title">Application sold — Persad family</div>
+                    <div class="activity-sub">$32,400 API · 20-pay endowment · 0 month persistency</div>
+                    <div class="activity-meta"><span class="pill pill-ink">Application</span><span class="activity-time">May 3, 2:30 PM</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Achievements</div>
+                  <div class="card-sub">3 of 8 earned · 37%</div>
+                </div>
+              </div>
+              <div class="badge-grid">
+
+                <!-- 1 · Closer Pro · earned · Rare (3/5) -->
+                <div class="badge-item earned">
+                  <div class="badge-medal medal-1 glow">
+                    <svg class="medal-ico" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="white"/>
+                    </svg>
+                  </div>
+                  <div class="tier-pips"><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                  <div class="badge-name">Closer Pro</div>
+                  <div class="badge-sub">9 CI in a week</div>
+                </div>
+
+                <!-- 2 · On Fire · earned · Uncommon (2/5) -->
+                <div class="badge-item earned">
+                  <div class="badge-medal medal-2 glow">
+                    <svg class="medal-ico" viewBox="0 0 24 24" fill="white">
+                      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 0 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+                    </svg>
+                  </div>
+                  <div class="tier-pips"><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                  <div class="badge-name">On Fire</div>
+                  <div class="badge-sub">3 weeks 100%+</div>
+                </div>
+
+                <!-- 3 · Streak ×4 · earned · Common (1/5) -->
+                <div class="badge-item earned">
+                  <div class="badge-medal medal-3 glow">
+                    <svg class="medal-ico" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/>
+                    </svg>
+                  </div>
+                  <div class="tier-pips"><span class="tier-pip"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                  <div class="badge-name">Streak ×4</div>
+                  <div class="badge-sub">4 reports in a row</div>
+                </div>
+
+                <!-- 4 · MDRT · locked · Legendary (5/5) -->
+                <div class="badge-item locked">
+                  <div class="badge-medal medal-locked">
+                    <svg class="medal-ico" viewBox="0 0 24 24" fill="currentColor">
+                      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    <span class="lock-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                  </div>
+                  <div class="tier-pips"><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                  <div class="badge-name">MDRT</div>
+                  <div class="badge-sub">$1M API in a year</div>
+                </div>
+
+                <!-- 5 · Century · locked · Epic (4/5) -->
+                <div class="badge-item locked">
+                  <div class="badge-medal medal-locked">
+                    <svg class="medal-ico" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="3" y="13" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/>
+                    </svg>
+                    <span class="lock-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                  </div>
+                  <div class="tier-pips"><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                  <div class="badge-name">Century</div>
+                  <div class="badge-sub">100 apps sold</div>
+                </div>
+
+                <!-- 6 · Elite · locked · Epic (4/5) -->
+                <div class="badge-item locked">
+                  <div class="badge-medal medal-locked">
+                    <svg class="medal-ico" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M3 17l1-9 4 3 4-7 4 7 4-3 1 9H3zm0 2h18v2H3v-2z"/>
+                    </svg>
+                    <span class="lock-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                  </div>
+                  <div class="tier-pips"><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                  <div class="badge-name">Elite</div>
+                  <div class="badge-sub">Top 5 branch finish</div>
+                </div>
+
+                <!-- 7 · Perfect Month · locked · Rare (3/5) -->
+                <div class="badge-item locked">
+                  <div class="badge-medal medal-locked">
+                    <svg class="medal-ico" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M6 3h12v6c0 3.31-2.69 6-6 6s-6-2.69-6-6V3zm-3 1h2v3a2 2 0 0 0 1 1.73V4H3zm16 0v4.73A2 2 0 0 0 21 7V4h-2zm-9 13h4v3H10v-3zm-3 4h10v1H7v-1z"/>
+                    </svg>
+                    <span class="lock-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                  </div>
+                  <div class="tier-pips"><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                  <div class="badge-name">Perfect Mo</div>
+                  <div class="badge-sub">4 weeks ≥ 100%</div>
+                </div>
+
+                <!-- 8 · Legend · locked · Mythic (5/5) -->
+                <div class="badge-item locked">
+                  <div class="badge-medal medal-locked">
+                    <svg class="medal-ico" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 1L3 5v7c0 5.5 3.84 10.74 9 12 5.16-1.26 9-6.5 9-12V5l-9-4z" opacity=".95"/>
+                      <polygon points="12 7 13.5 11 17.5 11 14.5 14 15.5 18 12 16 8.5 18 9.5 14 6.5 11 10.5 11" fill="white" stroke="none"/>
+                    </svg>
+                    <span class="lock-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                  </div>
+                  <div class="tier-pips"><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                  <div class="badge-name">Legend</div>
+                  <div class="badge-sub">2-yr top 10 finish</div>
+                </div>
+
+              </div>
+              <div style="margin-top:16px;display:flex;align-items:center;gap:10px">
+                <div class="bar" style="flex:1"><div class="bar-fill bar-gold" style="width:37.5%"></div></div>
+                <span style="font-size:11px;color:var(--muted);font-weight:600">3 of 8 earned</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Branch leaderboard -->
+          <div class="card" style="margin-top:18px">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Branch Leaderboard — POS</div>
+                <div class="card-sub">May 2026 · Top 5 in your branch</div>
+              </div>
+              <button class="link-btn">View full <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+            </div>
+            <table class="dt">
+              <thead><tr><th style="width:60px">Rank</th><th>Agent</th><th>Unit</th><th>Apps</th><th>API (TTD)</th></tr></thead>
+              <tbody>
+                <tr><td><div class="medal medal-1">1</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-2">DP</div><span style="font-weight:600">Devika Pillai</span></div></td><td style="color:var(--muted)">Pinnacle</td><td class="dt-num">8</td><td class="dt-num">$214,300</td></tr>
+                <tr><td><div class="medal medal-2">2</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-3">SC</div><span style="font-weight:600">Sarah Chen</span></div></td><td style="color:var(--muted)">Peak Performers</td><td class="dt-num">7</td><td class="dt-num">$191,100</td></tr>
+                <tr style="background:var(--primary-mid)"><td><div class="medal medal-3">3</div></td><td><div class="row-flex"><div class="avatar-sm">MW</div><span style="font-weight:700;color:var(--primary)">Marcus Williams (you)</span></div></td><td style="color:var(--muted)">Peak Performers</td><td class="dt-num">6</td><td class="dt-num">$187,500</td></tr>
+                <tr><td><div class="medal">4</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-4">AS</div><span style="font-weight:600">Anand Singh</span></div></td><td style="color:var(--muted)">Vanguard</td><td class="dt-num">5</td><td class="dt-num">$183,300</td></tr>
+                <tr><td><div class="medal">5</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-5">RJ</div><span style="font-weight:600">Renee Joseph</span></div></td><td style="color:var(--muted)">Pinnacle</td><td class="dt-num">5</td><td class="dt-num">$172,900</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── UNIT MANAGER DESKTOP ──────────────────────────────── -->
+    <div data-screen="unit" class="desktop-content">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-mark">A</div>
+          <div class="sidebar-brand-name">AgencyTrack</div>
+        </div>
+        <div class="sidebar-section">Manage</div>
+        <a class="sidebar-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Dashboard</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>My Team</span><span class="badge">8</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg><span>Reports</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Goals</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg><span>Meeting Mode</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span>Compliance</span><span class="badge" style="background:var(--warning)">3</span></a>
+
+        <div class="sidebar-section">Tools</div>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span>Notifications</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+
+        <div class="sidebar-foot">
+          <div class="sidebar-foot-avatar avatar-color-3">SC</div>
+          <div class="sidebar-foot-info">
+            <div class="sidebar-foot-name">Sarah Chen</div>
+            <div class="sidebar-foot-role">Unit Manager · Peak Performers</div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main-area">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">Peak Performers</div>
+            <div class="topbar-crumb">Unit dashboard · Week of May 4 — May 10, 2026</div>
+          </div>
+          <div class="topbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search agents, reports…">
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn topbar-bell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="topbar-bell-dot"></span></button>
+            <button class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Start Meeting</button>
+            <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add Agent</button>
+          </div>
+        </div>
+
+        <div class="content">
+          <!-- Stats row -->
+          <div class="g4" style="margin-bottom:18px">
+            <div class="stat">
+              <div class="stat-label">Unit API <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div>
+              <div class="stat-value">$1.42M</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> +8.4% w/w</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Goal Progress <div class="stat-icon" style="background:var(--gold-lt);color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div></div>
+              <div class="stat-value">71%</div>
+              <div class="stat-trend"><span style="color:var(--muted)">Target: $2.0M YTD</span></div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Reports In <div class="stat-icon" style="background:var(--success-lt);color:var(--success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div></div>
+              <div class="stat-value">5 / 8</div>
+              <div class="stat-trend down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg> 3 outstanding</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Avg Persistency <div class="stat-icon" style="background:var(--ink-lt);color:var(--ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div></div>
+              <div class="stat-value">94.2%</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> +1.8 pts</div>
+            </div>
+          </div>
+
+          <!-- Compliance + Top performers -->
+          <div class="g4-mix" style="margin-bottom:18px">
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Weekly compliance</div>
+                  <div class="card-sub">Submission status · Week ending May 10</div>
+                </div>
+                <button class="link-btn">Send reminder <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+              </div>
+              <table class="dt">
+                <thead><tr><th>Agent</th><th>API</th><th>FFI/CI</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td><div class="row-flex"><div class="avatar-sm">MW</div><span style="font-weight:600">Marcus Williams</span></div></td><td class="dt-num">$187,500</td><td class="dt-num">14 / 9</td><td><span class="pill pill-success">Submitted</span></td></tr>
+                  <tr><td><div class="row-flex"><div class="avatar-sm avatar-color-2">AS</div><span style="font-weight:600">Anand Singh</span></div></td><td class="dt-num">$152,300</td><td class="dt-num">11 / 7</td><td><span class="pill pill-success">Submitted</span></td></tr>
+                  <tr><td><div class="row-flex"><div class="avatar-sm avatar-color-3">RJ</div><span style="font-weight:600">Renee Joseph</span></div></td><td class="dt-num">$143,800</td><td class="dt-num">9 / 6</td><td><span class="pill pill-success">Submitted</span></td></tr>
+                  <tr><td><div class="row-flex"><div class="avatar-sm avatar-color-4">JM</div><span style="font-weight:600">Jamal Mohammed</span></div></td><td class="dt-num">$118,900</td><td class="dt-num">8 / 5</td><td><span class="pill pill-success">Submitted</span></td></tr>
+                  <tr><td><div class="row-flex"><div class="avatar-sm avatar-color-5">PR</div><span style="font-weight:600">Priya Ramnarine</span></div></td><td class="dt-num">$94,500</td><td class="dt-num">7 / 4</td><td><span class="pill pill-success">Submitted</span></td></tr>
+                  <tr style="background:var(--warning-lt)"><td><div class="row-flex"><div class="avatar-sm avatar-color-2">DH</div><span style="font-weight:600">Daniel Hosein</span></div></td><td class="dt-num" style="color:var(--muted)">—</td><td class="dt-num" style="color:var(--muted)">—</td><td><span class="pill pill-warning">Pending</span></td></tr>
+                  <tr style="background:var(--warning-lt)"><td><div class="row-flex"><div class="avatar-sm avatar-color-3">KA</div><span style="font-weight:600">Krista Alleyne</span></div></td><td class="dt-num" style="color:var(--muted)">—</td><td class="dt-num" style="color:var(--muted)">—</td><td><span class="pill pill-warning">Pending</span></td></tr>
+                  <tr style="background:var(--danger-lt)"><td><div class="row-flex"><div class="avatar-sm avatar-color-4">LS</div><span style="font-weight:600">Liam Sookoo</span></div></td><td class="dt-num" style="color:var(--muted)">—</td><td class="dt-num" style="color:var(--muted)">—</td><td><span class="pill pill-danger">Overdue</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Unit goal · 2026</div>
+                  <div class="card-sub">Cascade view</div>
+                </div>
+              </div>
+              <div style="text-align:center;padding:8px 0 14px">
+                <div style="font-size:32px;font-weight:800;letter-spacing:-.025em;line-height:1">$1.42M</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:4px">of $2.0M YTD target</div>
+              </div>
+              <div class="bar bar-thick" style="margin-bottom:18px"><div class="bar-fill" style="width:71%"></div></div>
+
+              <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Cascade — agent commitments</div>
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div class="row-between" style="font-size:13px"><span>Marcus Williams</span><span style="font-weight:700">$250k <span style="color:var(--success);font-weight:600">✓</span></span></div>
+                <div class="row-between" style="font-size:13px"><span>Anand Singh</span><span style="font-weight:700">$220k <span style="color:var(--success);font-weight:600">✓</span></span></div>
+                <div class="row-between" style="font-size:13px"><span>Renee Joseph</span><span style="font-weight:700">$210k <span style="color:var(--success);font-weight:600">✓</span></span></div>
+                <div class="row-between" style="font-size:13px"><span>Jamal Mohammed</span><span style="font-weight:700">$190k <span style="color:var(--success);font-weight:600">✓</span></span></div>
+                <div class="row-between" style="font-size:13px;color:var(--muted)"><span>Priya Ramnarine</span><span style="font-weight:700;color:var(--warning)">$165k ⚠</span></div>
+                <div class="row-between" style="font-size:13px;color:var(--muted)"><span>Daniel Hosein</span><span style="font-weight:700">— not set</span></div>
+              </div>
+              <button class="btn btn-secondary" style="width:100%;margin-top:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Adjust unit target</button>
+            </div>
+          </div>
+
+          <!-- Master sheet -->
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Master sheet · This week</div>
+                <div class="card-sub">All agents — sortable, exportable</div>
+              </div>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg> Filter</button>
+                <button class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export CSV</button>
+              </div>
+            </div>
+            <table class="dt">
+              <thead><tr><th>Agent</th><th>Calls</th><th>Quotes</th><th>FFI</th><th>CI</th><th>Apps</th><th>API</th></tr></thead>
+              <tbody>
+                <tr><td><div class="row-flex"><div class="avatar-sm">MW</div><span style="font-weight:600">Marcus Williams</span></div></td><td class="dt-num">42</td><td class="dt-num">21</td><td class="dt-num">14</td><td class="dt-num">9</td><td class="dt-num">6</td><td class="dt-num">$187,500</td></tr>
+                <tr><td><div class="row-flex"><div class="avatar-sm avatar-color-2">AS</div><span style="font-weight:600">Anand Singh</span></div></td><td class="dt-num">38</td><td class="dt-num">19</td><td class="dt-num">11</td><td class="dt-num">7</td><td class="dt-num">5</td><td class="dt-num">$152,300</td></tr>
+                <tr><td><div class="row-flex"><div class="avatar-sm avatar-color-3">RJ</div><span style="font-weight:600">Renee Joseph</span></div></td><td class="dt-num">35</td><td class="dt-num">15</td><td class="dt-num">9</td><td class="dt-num">6</td><td class="dt-num">5</td><td class="dt-num">$143,800</td></tr>
+                <tr><td><div class="row-flex"><div class="avatar-sm avatar-color-4">JM</div><span style="font-weight:600">Jamal Mohammed</span></div></td><td class="dt-num">31</td><td class="dt-num">13</td><td class="dt-num">8</td><td class="dt-num">5</td><td class="dt-num">4</td><td class="dt-num">$118,900</td></tr>
+                <tr><td><div class="row-flex"><div class="avatar-sm avatar-color-5">PR</div><span style="font-weight:600">Priya Ramnarine</span></div></td><td class="dt-num">28</td><td class="dt-num">11</td><td class="dt-num">7</td><td class="dt-num">4</td><td class="dt-num">3</td><td class="dt-num">$94,500</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BRANCH MANAGER DESKTOP ────────────────────────────── -->
+    <div data-screen="branch" class="desktop-content">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-mark">A</div>
+          <div class="sidebar-brand-name">AgencyTrack</div>
+        </div>
+        <div class="sidebar-section">Branch</div>
+        <a class="sidebar-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Dashboard</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg><span>Units</span><span class="badge">4</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>All Agents</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Goals</span></a>
+
+        <div class="sidebar-section">Operations</div>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span>Settlements</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Persistency</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span>Campaigns</span><span class="badge">2</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg><span>Users</span></a>
+
+        <div class="sidebar-section">Tools</div>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+
+        <div class="sidebar-foot">
+          <div class="sidebar-foot-avatar avatar-color-2">DP</div>
+          <div class="sidebar-foot-info">
+            <div class="sidebar-foot-name">David Persad</div>
+            <div class="sidebar-foot-role">Branch Mgr · Port of Spain</div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main-area">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">Port of Spain Branch</div>
+            <div class="topbar-crumb">Branch dashboard · 4 units · 32 agents</div>
+          </div>
+          <div class="topbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search units, agents, settlements…">
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn topbar-bell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="topbar-bell-dot"></span></button>
+            <button class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Branch CSV</button>
+            <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New Campaign</button>
+          </div>
+        </div>
+
+        <div class="content">
+          <!-- Stats -->
+          <div class="g4" style="margin-bottom:18px">
+            <div class="stat">
+              <div class="stat-label">Branch API <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div>
+              <div class="stat-value">$5.84M</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> +14% YoY</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">YTD Goal <div class="stat-icon" style="background:var(--gold-lt);color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div></div>
+              <div class="stat-value">73%</div>
+              <div class="stat-trend"><span style="color:var(--muted)">$8.0M target</span></div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Active Campaigns <div class="stat-icon" style="background:var(--ink-lt);color:var(--ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/></svg></div></div>
+              <div class="stat-value">2</div>
+              <div class="stat-trend"><span style="color:var(--muted)">Q2 Sprint · MDRT Push</span></div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Total Agents <div class="stat-icon" style="background:var(--success-lt);color:var(--success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div>
+              <div class="stat-value">32</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> 2 new this month</div>
+            </div>
+          </div>
+
+          <!-- Units comparison cards -->
+          <div class="section-hd">
+            <h3>Units · This week</h3>
+            <button class="link-btn">Compare full <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+          </div>
+          <div class="g4" style="margin-bottom:18px">
+            <div class="card">
+              <div class="row-between" style="margin-bottom:12px">
+                <div>
+                  <div style="font-size:13px;font-weight:700">Pinnacle</div>
+                  <div style="font-size:11px;color:var(--muted)">Mgr: Anita Naidoo · 9 agents</div>
+                </div>
+                <span class="pill pill-gold">#1</span>
+              </div>
+              <div style="font-size:22px;font-weight:800;letter-spacing:-.02em">$1.68M</div>
+              <div class="bar bar-thin" style="margin:8px 0"><div class="bar-fill bar-gold" style="width:84%"></div></div>
+              <div style="font-size:11px;color:var(--muted)">84% of $2.0M target</div>
+            </div>
+            <div class="card">
+              <div class="row-between" style="margin-bottom:12px">
+                <div>
+                  <div style="font-size:13px;font-weight:700">Peak Performers</div>
+                  <div style="font-size:11px;color:var(--muted)">Mgr: Sarah Chen · 8 agents</div>
+                </div>
+                <span class="pill pill-muted">#2</span>
+              </div>
+              <div style="font-size:22px;font-weight:800;letter-spacing:-.02em">$1.42M</div>
+              <div class="bar bar-thin" style="margin:8px 0"><div class="bar-fill" style="width:71%"></div></div>
+              <div style="font-size:11px;color:var(--muted)">71% of $2.0M target</div>
+            </div>
+            <div class="card">
+              <div class="row-between" style="margin-bottom:12px">
+                <div>
+                  <div style="font-size:13px;font-weight:700">Vanguard</div>
+                  <div style="font-size:11px;color:var(--muted)">Mgr: Kevin Bissoondath · 8 agents</div>
+                </div>
+                <span class="pill pill-muted">#3</span>
+              </div>
+              <div style="font-size:22px;font-weight:800;letter-spacing:-.02em">$1.58M</div>
+              <div class="bar bar-thin" style="margin:8px 0"><div class="bar-fill bar-success" style="width:79%"></div></div>
+              <div style="font-size:11px;color:var(--muted)">79% of $2.0M target</div>
+            </div>
+            <div class="card">
+              <div class="row-between" style="margin-bottom:12px">
+                <div>
+                  <div style="font-size:13px;font-weight:700">Horizon</div>
+                  <div style="font-size:11px;color:var(--muted)">Mgr: Maya Cudjoe · 7 agents</div>
+                </div>
+                <span class="pill pill-warning">#4</span>
+              </div>
+              <div style="font-size:22px;font-weight:800;letter-spacing:-.02em">$1.16M</div>
+              <div class="bar bar-thin" style="margin:8px 0"><div class="bar-fill bar-warning" style="width:58%"></div></div>
+              <div style="font-size:11px;color:var(--muted)">58% of $2.0M target</div>
+            </div>
+          </div>
+
+          <!-- Settlements + Campaigns -->
+          <div class="g4-mix" style="margin-bottom:18px">
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Recent settlements</div>
+                  <div class="card-sub">Confirmed production · Last 30 days</div>
+                </div>
+                <button class="link-btn">View all <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+              </div>
+              <table class="dt">
+                <thead><tr><th>Period</th><th>Agent</th><th>Status</th><th>API Confirmed</th></tr></thead>
+                <tbody>
+                  <tr><td style="font-weight:600">Apr 2026</td><td><div class="row-flex"><div class="avatar-sm">MW</div><span>Marcus Williams</span></div></td><td><span class="pill pill-success">Confirmed</span></td><td class="dt-num">$214,800</td></tr>
+                  <tr><td style="font-weight:600">Apr 2026</td><td><div class="row-flex"><div class="avatar-sm avatar-color-3">DP</div><span>Devika Pillai</span></div></td><td><span class="pill pill-success">Confirmed</span></td><td class="dt-num">$258,400</td></tr>
+                  <tr><td style="font-weight:600">Apr 2026</td><td><div class="row-flex"><div class="avatar-sm avatar-color-2">SC</div><span>Sarah Chen</span></div></td><td><span class="pill pill-success">Confirmed</span></td><td class="dt-num">$229,100</td></tr>
+                  <tr><td style="font-weight:600">Apr 2026</td><td><div class="row-flex"><div class="avatar-sm avatar-color-4">AS</div><span>Anand Singh</span></div></td><td><span class="pill pill-warning">Adjustments</span></td><td class="dt-num">$176,500</td></tr>
+                  <tr><td style="font-weight:600">Apr 2026</td><td><div class="row-flex"><div class="avatar-sm avatar-color-5">RJ</div><span>Renee Joseph</span></div></td><td><span class="pill pill-success">Confirmed</span></td><td class="dt-num">$165,200</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Active campaigns</div>
+                  <div class="card-sub">Branch-wide</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div class="row-between" style="margin-bottom:8px">
+                    <div style="font-weight:700;font-size:14px">Q2 Sprint</div>
+                    <span class="pill pill-primary">12 days left</span>
+                  </div>
+                  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Submit 3 weekly reports of $200k+ API</div>
+                  <div class="bar"><div class="bar-fill" style="width:62%"></div></div>
+                  <div class="row-between" style="margin-top:6px;font-size:11px;color:var(--muted)"><span>19 of 32 agents on-track</span><span style="font-weight:700">62%</span></div>
+                </div>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div class="row-between" style="margin-bottom:8px">
+                    <div style="font-weight:700;font-size:14px">MDRT Push</div>
+                    <span class="pill pill-gold">68 days left</span>
+                  </div>
+                  <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Reach $1M API year for MDRT eligibility</div>
+                  <div class="bar"><div class="bar-fill bar-gold" style="width:38%"></div></div>
+                  <div class="row-between" style="margin-top:6px;font-size:11px;color:var(--muted)"><span>4 of 32 on-pace for MDRT</span><span style="font-weight:700">38%</span></div>
+                </div>
+                <button class="btn btn-secondary" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Create campaign</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Persistency snapshot -->
+          <div class="card">
+            <div class="card-head">
+              <div>
+                <div class="card-title">Persistency · Branch trend</div>
+                <div class="card-sub">Monthly average · Last 6 months</div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <span class="pill pill-success">Apr: 93.4%</span>
+                <span class="pill pill-muted">Goal ≥ 90%</span>
+              </div>
+            </div>
+            <svg viewBox="0 0 600 140" preserveAspectRatio="none" style="width:100%;height:140px">
+              <line x1="0" y1="35" x2="600" y2="35" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,4"/>
+              <line x1="0" y1="70" x2="600" y2="70" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,4"/>
+              <line x1="0" y1="105" x2="600" y2="105" stroke="var(--border)" stroke-width="1" stroke-dasharray="3,4"/>
+              <path d="M30,80 L130,72 L230,55 L330,48 L430,38 L530,30" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M30,80 L130,72 L230,55 L330,48 L430,38 L530,30 L530,140 L30,140 Z" fill="var(--primary-mid)"/>
+              <g fill="var(--primary)">
+                <circle cx="30" cy="80" r="4"/><circle cx="130" cy="72" r="4"/><circle cx="230" cy="55" r="4"/>
+                <circle cx="330" cy="48" r="4"/><circle cx="430" cy="38" r="4"/><circle cx="530" cy="30" r="5"/>
+              </g>
+              <g font-family="Plus Jakarta Sans" font-size="11" fill="var(--muted)" font-weight="600">
+                <text x="30" y="135" text-anchor="middle">Nov</text>
+                <text x="130" y="135" text-anchor="middle">Dec</text>
+                <text x="230" y="135" text-anchor="middle">Jan</text>
+                <text x="330" y="135" text-anchor="middle">Feb</text>
+                <text x="430" y="135" text-anchor="middle">Mar</text>
+                <text x="530" y="135" text-anchor="middle">Apr</text>
+              </g>
+            </svg>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SALES MANAGER DESKTOP ─────────────────────────────── -->
+    <div data-screen="sales" class="desktop-content">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-mark">A</div>
+          <div class="sidebar-brand-name">AgencyTrack</div>
+        </div>
+        <div class="sidebar-section">Region</div>
+        <a class="sidebar-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><polyline points="7 14 11 10 15 14 21 8"/></svg><span>Overview</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg><span>Branches</span><span class="badge">3</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Cross-Branch Reports</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Region Leaderboard</span></a>
+
+        <div class="sidebar-section">Programs</div>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></svg><span>Company Campaigns</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Goals</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+
+        <div class="sidebar-foot">
+          <div class="sidebar-foot-avatar avatar-color-4">JR</div>
+          <div class="sidebar-foot-info">
+            <div class="sidebar-foot-name">James Roberts</div>
+            <div class="sidebar-foot-role">Sales Mgr · Caribbean</div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main-area">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">Caribbean Region</div>
+            <div class="topbar-crumb">3 branches · 11 units · 87 agents · YTD 2026</div>
+          </div>
+          <div class="topbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search across branches…">
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn topbar-bell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="topbar-bell-dot"></span></button>
+            <button class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Region Report</button>
+            <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Launch Region Campaign</button>
+          </div>
+        </div>
+
+        <div class="content">
+          <!-- Stats -->
+          <div class="g4" style="margin-bottom:18px">
+            <div class="stat">
+              <div class="stat-label">Region API <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div>
+              <div class="stat-value">$14.7M</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> +18% YoY</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Branches <div class="stat-icon" style="background:var(--ink-lt);color:var(--ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg></div></div>
+              <div class="stat-value">3</div>
+              <div class="stat-trend"><span style="color:var(--muted)">POS · San Fernando · Tobago</span></div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Top Performer <div class="stat-icon" style="background:var(--gold-lt);color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg></div></div>
+              <div class="stat-value" style="font-size:18px">Devika P.</div>
+              <div class="stat-trend"><span style="color:var(--muted)">$2.1M YTD · POS Pinnacle</span></div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">YoY Growth <div class="stat-icon" style="background:var(--success-lt);color:var(--success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div></div>
+              <div class="stat-value">+18.4%</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> Beating $12.4M target</div>
+            </div>
+          </div>
+
+          <!-- Branch comparison cards -->
+          <div class="section-hd">
+            <h3>Branches · 2026 YTD</h3>
+            <button class="link-btn">Compare full <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+          </div>
+          <div class="g3" style="margin-bottom:18px">
+            <div class="card">
+              <div class="row-between" style="margin-bottom:14px">
+                <div>
+                  <div style="font-size:14px;font-weight:700">Port of Spain</div>
+                  <div style="font-size:11px;color:var(--muted)">David Persad · 4 units · 32 agents</div>
+                </div>
+                <span class="pill pill-gold">#1</span>
+              </div>
+              <div style="font-size:28px;font-weight:800;letter-spacing:-.025em">$5.84M</div>
+              <div style="font-size:12px;color:var(--success);margin-top:2px">+14% YoY</div>
+              <div class="bar bar-thin" style="margin:14px 0 6px"><div class="bar-fill bar-gold" style="width:73%"></div></div>
+              <div class="row-between" style="font-size:11px;color:var(--muted)"><span>73% of $8.0M target</span><span style="font-weight:700">2.16M to go</span></div>
+            </div>
+            <div class="card">
+              <div class="row-between" style="margin-bottom:14px">
+                <div>
+                  <div style="font-size:14px;font-weight:700">San Fernando</div>
+                  <div style="font-size:11px;color:var(--muted)">Indra Maharaj · 4 units · 31 agents</div>
+                </div>
+                <span class="pill pill-muted">#2</span>
+              </div>
+              <div style="font-size:28px;font-weight:800;letter-spacing:-.025em">$5.21M</div>
+              <div style="font-size:12px;color:var(--success);margin-top:2px">+22% YoY</div>
+              <div class="bar bar-thin" style="margin:14px 0 6px"><div class="bar-fill bar-success" style="width:69%"></div></div>
+              <div class="row-between" style="font-size:11px;color:var(--muted)"><span>69% of $7.5M target</span><span style="font-weight:700">2.29M to go</span></div>
+            </div>
+            <div class="card">
+              <div class="row-between" style="margin-bottom:14px">
+                <div>
+                  <div style="font-size:14px;font-weight:700">Tobago</div>
+                  <div style="font-size:11px;color:var(--muted)">Carlton Henry · 3 units · 24 agents</div>
+                </div>
+                <span class="pill pill-warning">#3</span>
+              </div>
+              <div style="font-size:28px;font-weight:800;letter-spacing:-.025em">$3.65M</div>
+              <div style="font-size:12px;color:var(--success);margin-top:2px">+11% YoY</div>
+              <div class="bar bar-thin" style="margin:14px 0 6px"><div class="bar-fill bar-warning" style="width:61%"></div></div>
+              <div class="row-between" style="font-size:11px;color:var(--muted)"><span>61% of $6.0M target</span><span style="font-weight:700">2.35M to go</span></div>
+            </div>
+          </div>
+
+          <!-- Cross-branch leaderboard + region API trend -->
+          <div class="g4-mix" style="margin-bottom:18px">
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Region Top 10 · YTD API</div>
+                  <div class="card-sub">Cross-branch ranking · 2026</div>
+                </div>
+                <button class="link-btn">Full board <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+              </div>
+              <table class="dt">
+                <thead><tr><th style="width:50px">#</th><th>Agent</th><th>Branch · Unit</th><th>YTD API</th></tr></thead>
+                <tbody>
+                  <tr><td><div class="medal medal-1">1</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-3">DP</div><span style="font-weight:600">Devika Pillai</span></div></td><td style="color:var(--muted)">POS · Pinnacle</td><td class="dt-num">$2,148,300</td></tr>
+                  <tr><td><div class="medal medal-2">2</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-2">RM</div><span style="font-weight:600">Reshma Mohammed</span></div></td><td style="color:var(--muted)">SF · Apex</td><td class="dt-num">$2,021,500</td></tr>
+                  <tr><td><div class="medal medal-3">3</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-3">SC</div><span style="font-weight:600">Sarah Chen</span></div></td><td style="color:var(--muted)">POS · Peak Performers</td><td class="dt-num">$1,910,800</td></tr>
+                  <tr><td><div class="medal">4</div></td><td><div class="row-flex"><div class="avatar-sm">MW</div><span style="font-weight:600">Marcus Williams</span></div></td><td style="color:var(--muted)">POS · Peak Performers</td><td class="dt-num">$1,875,000</td></tr>
+                  <tr><td><div class="medal">5</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-4">CD</div><span style="font-weight:600">Crystal Dyer</span></div></td><td style="color:var(--muted)">Tobago · Crown</td><td class="dt-num">$1,832,400</td></tr>
+                  <tr><td><div class="medal">6</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-5">AS</div><span style="font-weight:600">Anand Singh</span></div></td><td style="color:var(--muted)">POS · Vanguard</td><td class="dt-num">$1,823,300</td></tr>
+                  <tr><td><div class="medal">7</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-2">VG</div><span style="font-weight:600">Vinod Gosine</span></div></td><td style="color:var(--muted)">SF · Apex</td><td class="dt-num">$1,728,600</td></tr>
+                  <tr><td><div class="medal">8</div></td><td><div class="row-flex"><div class="avatar-sm avatar-color-3">RJ</div><span style="font-weight:600">Renee Joseph</span></div></td><td style="color:var(--muted)">POS · Pinnacle</td><td class="dt-num">$1,729,000</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Region API · YTD trend</div>
+                  <div class="card-sub">Monthly cumulative</div>
+                </div>
+              </div>
+              <svg viewBox="0 0 320 200" style="width:100%;height:200px">
+                <line x1="20" y1="40" x2="310" y2="40" stroke="var(--border)" stroke-dasharray="3,4"/>
+                <line x1="20" y1="90" x2="310" y2="90" stroke="var(--border)" stroke-dasharray="3,4"/>
+                <line x1="20" y1="140" x2="310" y2="140" stroke="var(--border)" stroke-dasharray="3,4"/>
+                <g>
+                  <rect x="30" y="155" width="22" height="20" rx="3" fill="var(--primary)"/>
+                  <rect x="60" y="135" width="22" height="40" rx="3" fill="var(--primary)"/>
+                  <rect x="90" y="118" width="22" height="57" rx="3" fill="var(--primary)"/>
+                  <rect x="120" y="92" width="22" height="83" rx="3" fill="var(--primary)"/>
+                  <rect x="150" y="74" width="22" height="101" rx="3" fill="var(--primary)"/>
+                </g>
+                <g>
+                  <rect x="180" y="60" width="22" height="115" rx="3" fill="var(--primary)" opacity=".6"/>
+                  <rect x="210" y="48" width="22" height="127" rx="3" fill="var(--primary)" opacity=".5"/>
+                  <rect x="240" y="38" width="22" height="137" rx="3" fill="var(--primary)" opacity=".4"/>
+                  <rect x="270" y="30" width="22" height="145" rx="3" fill="var(--primary)" opacity=".3"/>
+                </g>
+                <g font-family="Plus Jakarta Sans" font-size="9" fill="var(--muted)" font-weight="600" text-anchor="middle">
+                  <text x="41" y="190">Jan</text>
+                  <text x="71" y="190">Feb</text>
+                  <text x="101" y="190">Mar</text>
+                  <text x="131" y="190">Apr</text>
+                  <text x="161" y="190" fill="var(--text)" font-weight="800">May</text>
+                  <text x="191" y="190">Jun</text>
+                  <text x="221" y="190">Jul</text>
+                  <text x="251" y="190">Aug</text>
+                  <text x="281" y="190">Sep</text>
+                </g>
+              </svg>
+              <div style="display:flex;gap:14px;margin-top:6px;font-size:11px">
+                <div class="row-flex"><span style="width:10px;height:10px;background:var(--primary);border-radius:3px"></span><span style="color:var(--muted)">Actual</span></div>
+                <div class="row-flex"><span style="width:10px;height:10px;background:var(--primary);opacity:.4;border-radius:3px"></span><span style="color:var(--muted)">Projected</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TENANT ADMIN DESKTOP ──────────────────────────────── -->
+    <div data-screen="admin" class="desktop-content">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="sidebar-brand-mark">A</div>
+          <div class="sidebar-brand-name">AgencyTrack</div>
+        </div>
+        <div class="sidebar-section">Company</div>
+        <a class="sidebar-link active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Dashboard</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-4"/></svg><span>Branches</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>All Users</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg><span>Roles & Permissions</span></a>
+
+        <div class="sidebar-section">Configuration</div>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>Company Config</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/></svg><span>Campaigns</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span>Audit Log</span></a>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span>Billing</span></a>
+
+        <div class="sidebar-section">System</div>
+        <a class="sidebar-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>Settings</span></a>
+
+        <div class="sidebar-foot">
+          <div class="sidebar-foot-avatar avatar-color-5">LK</div>
+          <div class="sidebar-foot-info">
+            <div class="sidebar-foot-name">Lisa Khan</div>
+            <div class="sidebar-foot-role">Tenant Admin · Tatil Life</div>
+          </div>
+        </div>
+      </aside>
+
+      <div class="main-area">
+        <div class="topbar">
+          <div>
+            <div class="topbar-title">Tatil Life</div>
+            <div class="topbar-crumb">Company dashboard · 3 branches · 11 units · 92 users</div>
+          </div>
+          <div class="topbar-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Search users, branches, audit events…">
+          </div>
+          <div class="topbar-actions">
+            <button class="icon-btn topbar-bell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+            <button class="btn btn-secondary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Audit Log</button>
+            <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add User</button>
+          </div>
+        </div>
+
+        <div class="content">
+          <!-- Stats -->
+          <div class="g4" style="margin-bottom:18px">
+            <div class="stat">
+              <div class="stat-label">Total API · YTD <div class="stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div>
+              <div class="stat-value">$14.7M</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg> +18% YoY</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Active Users <div class="stat-icon" style="background:var(--ink-lt);color:var(--ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div></div>
+              <div class="stat-value">87 / 92</div>
+              <div class="stat-trend"><span style="color:var(--muted)">5 inactive · 0 invited</span></div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Active Branches <div class="stat-icon" style="background:var(--success-lt);color:var(--success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/></svg></div></div>
+              <div class="stat-value">3 / 3</div>
+              <div class="stat-trend up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> All operational</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">System Health <div class="stat-icon" style="background:var(--success-lt);color:var(--success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div>
+              <div class="stat-value">99.97%</div>
+              <div class="stat-trend"><span style="color:var(--muted)">Uptime 30d</span></div>
+            </div>
+          </div>
+
+          <!-- Company config + role distribution -->
+          <div class="g4-mix" style="margin-bottom:18px">
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Company configuration</div>
+                  <div class="card-sub">Tenant-wide defaults · Edits trigger audit log</div>
+                </div>
+                <button class="link-btn">Edit all <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+              </div>
+              <div class="g2">
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Company Min · Per Agent</div>
+                  <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;margin-top:6px">$150,000 / yr</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px">All personal commitments must meet this floor</div>
+                </div>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Currency</div>
+                  <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;margin-top:6px">TTD ($)</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px">Trinidad & Tobago Dollar</div>
+                </div>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Fiscal Year</div>
+                  <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;margin-top:6px">Jan – Dec</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px">Calendar year alignment</div>
+                </div>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Persistency Floor</div>
+                  <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;margin-top:6px">90%</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px">Agents below trigger manager review</div>
+                </div>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Week Starts</div>
+                  <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;margin-top:6px">Sunday</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px">Reports submitted Sun – Sat</div>
+                </div>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Self-Registration</div>
+                  <div style="font-size:20px;font-weight:800;letter-spacing:-.02em;margin-top:6px">Disabled</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:4px">Managers create all accounts</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Users by role</div>
+                  <div class="card-sub">Total: 92</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px;margin-top:6px">
+                <div>
+                  <div class="row-between" style="margin-bottom:6px"><span style="font-size:13px;font-weight:600">Agents</span><span style="font-size:13px;font-weight:700">76</span></div>
+                  <div class="bar"><div class="bar-fill" style="width:82.6%"></div></div>
+                </div>
+                <div>
+                  <div class="row-between" style="margin-bottom:6px"><span style="font-size:13px;font-weight:600">Unit Managers</span><span style="font-size:13px;font-weight:700">11</span></div>
+                  <div class="bar"><div class="bar-fill bar-success" style="width:11.9%"></div></div>
+                </div>
+                <div>
+                  <div class="row-between" style="margin-bottom:6px"><span style="font-size:13px;font-weight:600">Branch Managers</span><span style="font-size:13px;font-weight:700">3</span></div>
+                  <div class="bar"><div class="bar-fill bar-warning" style="width:3.3%"></div></div>
+                </div>
+                <div>
+                  <div class="row-between" style="margin-bottom:6px"><span style="font-size:13px;font-weight:600">Sales Managers</span><span style="font-size:13px;font-weight:700">1</span></div>
+                  <div class="bar"><div class="bar-fill bar-gold" style="width:1.1%"></div></div>
+                </div>
+                <div>
+                  <div class="row-between" style="margin-bottom:6px"><span style="font-size:13px;font-weight:600">Tenant Admins</span><span style="font-size:13px;font-weight:700">1</span></div>
+                  <div class="bar"><div class="bar-fill" style="width:1.1%;background:var(--ink)"></div></div>
+                </div>
+              </div>
+              <button class="btn btn-secondary" style="width:100%;margin-top:18px">Manage roles & permissions</button>
+            </div>
+          </div>
+
+          <!-- Audit log + branches -->
+          <div class="g4-mix">
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Recent audit events</div>
+                  <div class="card-sub">Last 24 hours · 12 events</div>
+                </div>
+                <button class="link-btn">View all <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+              </div>
+              <div class="activity-list">
+                <div class="activity-item">
+                  <div class="activity-icon ai-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg></div>
+                  <div class="activity-body">
+                    <div class="activity-title">User created — <strong>Liam Sookoo</strong></div>
+                    <div class="activity-sub">Role: Agent · Unit: Peak Performers · By Sarah Chen</div>
+                    <div class="activity-meta"><span class="pill pill-primary">user.create</span><span class="activity-time">12 min ago</span></div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-icon ai-warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+                  <div class="activity-body">
+                    <div class="activity-title">Company minimum updated</div>
+                    <div class="activity-sub">$140,000 → $150,000 · By Lisa Khan (you)</div>
+                    <div class="activity-meta"><span class="pill pill-warning">config.update</span><span class="activity-time">2h ago</span></div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-icon ai-ink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+                  <div class="activity-body">
+                    <div class="activity-title">Role permissions modified</div>
+                    <div class="activity-sub">Unit Manager: granted persistency.write · By Lisa Khan</div>
+                    <div class="activity-meta"><span class="pill pill-ink">permissions.update</span><span class="activity-time">5h ago</span></div>
+                  </div>
+                </div>
+                <div class="activity-item">
+                  <div class="activity-icon ai-success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/></svg></div>
+                  <div class="activity-body">
+                    <div class="activity-title">Campaign launched — <strong>Q2 Sprint</strong></div>
+                    <div class="activity-sub">Scope: Branch (POS) · By David Persad</div>
+                    <div class="activity-meta"><span class="pill pill-success">campaign.create</span><span class="activity-time">1d ago</span></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-head">
+                <div>
+                  <div class="card-title">Branch overview</div>
+                  <div class="card-sub">Health & activity</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div class="row-between" style="margin-bottom:6px"><div style="font-weight:700;font-size:14px">Port of Spain</div><span class="pill pill-success">Healthy</span></div>
+                  <div style="font-size:11px;color:var(--muted)">32 agents · 4 units · 73% to YTD goal · Last sync: 2 min</div>
+                </div>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div class="row-between" style="margin-bottom:6px"><div style="font-weight:700;font-size:14px">San Fernando</div><span class="pill pill-success">Healthy</span></div>
+                  <div style="font-size:11px;color:var(--muted)">31 agents · 4 units · 69% to YTD goal · Last sync: 4 min</div>
+                </div>
+                <div style="padding:14px;border:1px solid var(--border);border-radius:12px">
+                  <div class="row-between" style="margin-bottom:6px"><div style="font-weight:700;font-size:14px">Tobago</div><span class="pill pill-warning">Below Target</span></div>
+                  <div style="font-size:11px;color:var(--muted)">24 agents · 3 units · 61% to YTD goal · Last sync: 8 min</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       MOBILE FRAME — phone chrome + role screens
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="frame frame-mobile">
+    <div class="phone-notch"></div>
+    <div class="phone-status">
+      <span>9:41</span>
+      <div class="phone-status-icons">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 22h20v-2H2v2zM4 18h2v-2H4v2zm4 0h2v-6H8v6zm4 0h2v-10h-2v10zm4 0h2v-14h-2v14z"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="18" height="10" rx="2" ry="2"/><line x1="22" y1="11" x2="22" y2="13"/><rect x="4" y="9" width="14" height="6" fill="currentColor"/></svg>
+      </div>
+    </div>
+
+    <div class="phone-screen" id="mobile-screen">
+
+      <!-- ── AGENT MOBILE ────────────────────────────────────── -->
+      <div data-screen="agent">
+        <div class="m-topbar">
+          <div>
+            <div style="font-size:13px;color:var(--muted);font-weight:600">Hello,</div>
+            <div class="m-h2">Marcus</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="icon-btn topbar-bell" style="position:relative"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="topbar-bell-dot"></span></button>
+            <div class="avatar-sm">MW</div>
+          </div>
+        </div>
+
+        <div class="m-pad m-stack">
+          <!-- Hero -->
+          <div class="role-hero">
+            <div class="role-hero-label">This Week's API</div>
+            <div class="role-hero-value">$187.5k</div>
+            <div class="role-hero-sub">75% of $250k personal goal · 12% above last week</div>
+            <div class="role-hero-progress"><div class="bar bar-thick"><div class="bar-fill" style="width:75%"></div></div></div>
+          </div>
+
+          <!-- Rank stripe -->
+          <div class="card" style="display:flex;align-items:center;gap:12px;padding:14px">
+            <div class="stat-icon" style="width:40px;height:40px;background:var(--gold-lt);color:var(--gold)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>
+            </div>
+            <div style="flex:1">
+              <div style="font-size:14px;font-weight:700">#3 Branch Ranking</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">$3,600 gap to #2 · May 2026</div>
+            </div>
+            <span class="pill pill-gold">Associate</span>
+          </div>
+
+          <!-- 4 stats -->
+          <div class="g2">
+            <div class="stat" style="padding:14px">
+              <div class="stat-label" style="font-size:10px">API <div class="stat-icon" style="width:24px;height:24px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div></div>
+              <div style="font-size:18px;font-weight:800;letter-spacing:-.02em">$187.5k</div>
+              <div class="stat-trend up" style="font-size:11px">+12% w/w</div>
+            </div>
+            <div class="stat" style="padding:14px">
+              <div class="stat-label" style="font-size:10px">FFI <div class="stat-icon" style="width:24px;height:24px;background:var(--ink-lt);color:var(--ink)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div></div>
+              <div style="font-size:18px;font-weight:800;letter-spacing:-.02em">14</div>
+              <div class="stat-trend up" style="font-size:11px">+3 w/w</div>
+            </div>
+            <div class="stat" style="padding:14px">
+              <div class="stat-label" style="font-size:10px">CI <div class="stat-icon" style="width:24px;height:24px;background:var(--gold-lt);color:var(--gold)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg></div></div>
+              <div style="font-size:18px;font-weight:800;letter-spacing:-.02em">9</div>
+              <div class="stat-trend up" style="font-size:11px">+1 w/w</div>
+            </div>
+            <div class="stat" style="padding:14px">
+              <div class="stat-label" style="font-size:10px">Apps <div class="stat-icon" style="width:24px;height:24px;background:var(--success-lt);color:var(--success)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div></div>
+              <div style="font-size:18px;font-weight:800;letter-spacing:-.02em">6</div>
+              <div class="stat-trend" style="font-size:11px;color:var(--muted)">Steady</div>
+            </div>
+          </div>
+
+          <!-- Recent activity -->
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div class="card-title">Recent Activity</div>
+              <button class="link-btn">All <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+            </div>
+            <div class="activity-list">
+              <div class="activity-item" style="padding:8px">
+                <div class="activity-icon ai-success" style="width:32px;height:32px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="20 6 9 17 4 12"/></svg></div>
+                <div class="activity-body">
+                  <div class="activity-title" style="font-size:12px">Report submitted · $187,500</div>
+                  <div class="activity-time">Today, 9:42 AM</div>
+                </div>
+              </div>
+              <div class="activity-item" style="padding:8px">
+                <div class="activity-icon" style="background:transparent;padding:0;width:32px;height:32px;border-radius:50%;overflow:visible;flex-shrink:0">
+                  <div class="badge-medal medal-1 glow" style="--medal-size:32px;margin:0">
+                    <svg class="medal-ico" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="white"/></svg>
+                  </div>
+                </div>
+                <div class="activity-body">
+                  <div class="activity-title" style="font-size:12px">Earned <strong>Closer Pro</strong> badge</div>
+                  <div class="activity-time">Yesterday, 4:18 PM · Rare</div>
+                </div>
+              </div>
+              <div class="activity-item" style="padding:8px">
+                <div class="activity-icon ai-primary" style="width:32px;height:32px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="18 15 12 9 6 15"/></svg></div>
+                <div class="activity-body">
+                  <div class="activity-title" style="font-size:12px">Moved up to <strong>#3</strong> in branch</div>
+                  <div class="activity-time">May 4, 11:02 AM</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Mini leaderboard -->
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div class="card-title">Branch Top 5 — May</div>
+              <button class="link-btn">Full <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div class="row-flex" style="padding:8px;border-radius:10px"><div class="medal medal-1">1</div><div class="avatar-sm avatar-color-2">DP</div><div style="flex:1;font-size:13px;font-weight:600">Devika Pillai</div><div style="font-size:12px;font-weight:700">$214.3k</div></div>
+              <div class="row-flex" style="padding:8px;border-radius:10px"><div class="medal medal-2">2</div><div class="avatar-sm avatar-color-3">SC</div><div style="flex:1;font-size:13px;font-weight:600">Sarah Chen</div><div style="font-size:12px;font-weight:700">$191.1k</div></div>
+              <div class="row-flex" style="padding:8px;border-radius:10px;background:var(--primary-mid)"><div class="medal medal-3">3</div><div class="avatar-sm">MW</div><div style="flex:1;font-size:13px;font-weight:700;color:var(--primary)">Marcus (you)</div><div style="font-size:12px;font-weight:700">$187.5k</div></div>
+              <div class="row-flex" style="padding:8px;border-radius:10px"><div class="medal">4</div><div class="avatar-sm avatar-color-4">AS</div><div style="flex:1;font-size:13px;font-weight:600">Anand Singh</div><div style="font-size:12px;font-weight:700">$183.3k</div></div>
+              <div class="row-flex" style="padding:8px;border-radius:10px"><div class="medal">5</div><div class="avatar-sm avatar-color-5">RJ</div><div style="flex:1;font-size:13px;font-weight:600">Renee Joseph</div><div style="font-size:12px;font-weight:700">$172.9k</div></div>
+            </div>
+          </div>
+
+          <!-- Achievements teaser -->
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div>
+                <div class="card-title">Achievements</div>
+                <div class="card-sub">3 of 8 earned</div>
+              </div>
+            </div>
+            <div class="badge-grid" style="grid-template-columns:repeat(4,1fr)">
+              <div class="badge-item earned">
+                <div class="badge-medal medal-1 glow">
+                  <svg class="medal-ico" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2" fill="white"/></svg>
+                </div>
+                <div class="tier-pips"><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                <div class="badge-name">Closer</div>
+              </div>
+              <div class="badge-item earned">
+                <div class="badge-medal medal-2 glow">
+                  <svg class="medal-ico" viewBox="0 0 24 24" fill="white"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 0 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>
+                </div>
+                <div class="tier-pips"><span class="tier-pip"></span><span class="tier-pip"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                <div class="badge-name">On Fire</div>
+              </div>
+              <div class="badge-item earned">
+                <div class="badge-medal medal-3 glow">
+                  <svg class="medal-ico" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 16 11 18 15 14"/></svg>
+                </div>
+                <div class="tier-pips"><span class="tier-pip"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                <div class="badge-name">Streak</div>
+              </div>
+              <div class="badge-item locked">
+                <div class="badge-medal medal-locked">
+                  <svg class="medal-ico" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  <span class="lock-pin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+                </div>
+                <div class="tier-pips"><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span><span class="tier-pip dim"></span></div>
+                <div class="badge-name">MDRT</div>
+              </div>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:10px">
+              <div class="bar" style="flex:1"><div class="bar-fill bar-gold" style="width:37.5%"></div></div>
+              <span style="font-size:11px;color:var(--muted);font-weight:600">3 of 8</span>
+            </div>
+          </div>
+
+          <div style="height:80px"></div>
+        </div>
+
+        <div class="bottom-nav">
+          <button class="bottom-nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg><span>Home</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>Submit</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 6-6"/></svg><span>History</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><span>Ranks</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg><span>Profile</span></button>
+        </div>
+      </div>
+
+      <!-- ── UNIT MANAGER MOBILE ─────────────────────────────── -->
+      <div data-screen="unit">
+        <div class="m-topbar">
+          <div>
+            <div style="font-size:13px;color:var(--muted);font-weight:600">Unit</div>
+            <div class="m-h2">Peak Performers</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="icon-btn topbar-bell" style="position:relative"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="topbar-bell-dot"></span></button>
+            <div class="avatar-sm avatar-color-3">SC</div>
+          </div>
+        </div>
+
+        <div class="m-pad m-stack">
+          <div class="role-hero">
+            <div class="role-hero-label">Unit API · This Week</div>
+            <div class="role-hero-value">$1.42M</div>
+            <div class="role-hero-sub">71% of $2.0M YTD target · +8.4% w/w</div>
+            <div class="role-hero-progress"><div class="bar bar-thick"><div class="bar-fill" style="width:71%"></div></div></div>
+          </div>
+
+          <!-- Compliance card -->
+          <div class="card">
+            <div class="row-between" style="margin-bottom:12px">
+              <div>
+                <div class="card-title">Compliance · Week May 4–10</div>
+                <div class="card-sub">5 of 8 reports submitted</div>
+              </div>
+              <span class="pill pill-warning">3 pending</span>
+            </div>
+            <div class="dot-row">
+              <div class="dot dot-on" title="Marcus W"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="dot dot-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="dot dot-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="dot dot-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="dot dot-on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><polyline points="20 6 9 17 4 12"/></svg></div>
+              <div class="dot dot-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg></div>
+              <div class="dot dot-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg></div>
+              <div class="dot" style="background:var(--danger-lt);color:var(--danger)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></div>
+            </div>
+            <button class="btn btn-secondary" style="width:100%;margin-top:14px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send reminder</button>
+          </div>
+
+          <!-- Quick stats -->
+          <div class="g2">
+            <div class="stat" style="padding:14px"><div class="stat-label" style="font-size:10px">Avg API/agent</div><div style="font-size:18px;font-weight:800">$178k</div><div class="stat-trend up" style="font-size:11px">+6%</div></div>
+            <div class="stat" style="padding:14px"><div class="stat-label" style="font-size:10px">Persistency</div><div style="font-size:18px;font-weight:800">94.2%</div><div class="stat-trend up" style="font-size:11px">+1.8 pts</div></div>
+          </div>
+
+          <!-- Team list -->
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div class="card-title">My Team — This Week</div>
+              <button class="link-btn">Sort <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div class="row-flex" style="padding:8px;border-radius:10px;background:var(--surface-muted)"><div class="avatar-sm">MW</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">Marcus Williams</div><div style="font-size:11px;color:var(--muted)">14 FFI · 9 CI · 6 apps</div></div><div style="font-size:13px;font-weight:700">$187.5k</div></div>
+              <div class="row-flex" style="padding:8px;border-radius:10px;background:var(--surface-muted)"><div class="avatar-sm avatar-color-2">AS</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">Anand Singh</div><div style="font-size:11px;color:var(--muted)">11 FFI · 7 CI · 5 apps</div></div><div style="font-size:13px;font-weight:700">$152.3k</div></div>
+              <div class="row-flex" style="padding:8px;border-radius:10px;background:var(--surface-muted)"><div class="avatar-sm avatar-color-3">RJ</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">Renee Joseph</div><div style="font-size:11px;color:var(--muted)">9 FFI · 6 CI · 5 apps</div></div><div style="font-size:13px;font-weight:700">$143.8k</div></div>
+              <div class="row-flex" style="padding:8px;border-radius:10px;background:var(--surface-muted)"><div class="avatar-sm avatar-color-4">JM</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">Jamal Mohammed</div><div style="font-size:11px;color:var(--muted)">8 FFI · 5 CI · 4 apps</div></div><div style="font-size:13px;font-weight:700">$118.9k</div></div>
+              <div class="row-flex" style="padding:8px;border-radius:10px;background:var(--surface-muted)"><div class="avatar-sm avatar-color-5">PR</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">Priya Ramnarine</div><div style="font-size:11px;color:var(--muted)">7 FFI · 4 CI · 3 apps</div></div><div style="font-size:13px;font-weight:700">$94.5k</div></div>
+              <div class="row-flex" style="padding:8px;border-radius:10px;background:var(--warning-lt)"><div class="avatar-sm avatar-color-2">DH</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">Daniel Hosein</div><div style="font-size:11px;color:var(--warning)">Pending submission</div></div><span class="pill pill-warning">⏱</span></div>
+            </div>
+          </div>
+
+          <button class="btn btn-primary" style="width:100%"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Start Unit Meeting</button>
+
+          <div style="height:80px"></div>
+        </div>
+
+        <div class="bottom-nav">
+          <button class="bottom-nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Dashboard</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>Team</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><span>Reports</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg><span>Goals</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg><span>Profile</span></button>
+        </div>
+      </div>
+
+      <!-- ── BRANCH MANAGER MOBILE ───────────────────────────── -->
+      <div data-screen="branch">
+        <div class="m-topbar">
+          <div>
+            <div style="font-size:13px;color:var(--muted);font-weight:600">Branch</div>
+            <div class="m-h2">Port of Spain</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="icon-btn topbar-bell" style="position:relative"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="topbar-bell-dot"></span></button>
+            <div class="avatar-sm avatar-color-2">DP</div>
+          </div>
+        </div>
+
+        <div class="m-pad m-stack">
+          <div class="role-hero">
+            <div class="role-hero-label">Branch API · YTD</div>
+            <div class="role-hero-value">$5.84M</div>
+            <div class="role-hero-sub">73% of $8.0M target · +14% YoY</div>
+            <div class="role-hero-progress"><div class="bar bar-thick"><div class="bar-fill" style="width:73%"></div></div></div>
+          </div>
+
+          <div class="g2">
+            <div class="stat" style="padding:14px"><div class="stat-label" style="font-size:10px">Units</div><div style="font-size:18px;font-weight:800">4</div><div class="stat-trend" style="font-size:11px;color:var(--muted)">All active</div></div>
+            <div class="stat" style="padding:14px"><div class="stat-label" style="font-size:10px">Agents</div><div style="font-size:18px;font-weight:800">32</div><div class="stat-trend up" style="font-size:11px">+2 mo</div></div>
+            <div class="stat" style="padding:14px"><div class="stat-label" style="font-size:10px">Campaigns</div><div style="font-size:18px;font-weight:800">2</div><div class="stat-trend" style="font-size:11px;color:var(--muted)">Active</div></div>
+            <div class="stat" style="padding:14px"><div class="stat-label" style="font-size:10px">Persistency</div><div style="font-size:18px;font-weight:800">93.4%</div><div class="stat-trend up" style="font-size:11px">≥90%</div></div>
+          </div>
+
+          <!-- Units list -->
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div class="card-title">Units · This Week</div>
+              <button class="link-btn">All <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="padding:10px;border:1px solid var(--border);border-radius:10px">
+                <div class="row-between" style="margin-bottom:6px"><div style="font-size:13px;font-weight:700">Pinnacle</div><span class="pill pill-gold">#1</span></div>
+                <div style="font-size:16px;font-weight:800">$1.68M <span style="font-size:11px;color:var(--muted);font-weight:600">· 84% to goal</span></div>
+                <div class="bar bar-thin" style="margin-top:6px"><div class="bar-fill bar-gold" style="width:84%"></div></div>
+              </div>
+              <div style="padding:10px;border:1px solid var(--border);border-radius:10px">
+                <div class="row-between" style="margin-bottom:6px"><div style="font-size:13px;font-weight:700">Vanguard</div><span class="pill pill-muted">#2</span></div>
+                <div style="font-size:16px;font-weight:800">$1.58M <span style="font-size:11px;color:var(--muted);font-weight:600">· 79% to goal</span></div>
+                <div class="bar bar-thin" style="margin-top:6px"><div class="bar-fill bar-success" style="width:79%"></div></div>
+              </div>
+              <div style="padding:10px;border:1px solid var(--border);border-radius:10px">
+                <div class="row-between" style="margin-bottom:6px"><div style="font-size:13px;font-weight:700">Peak Performers</div><span class="pill pill-muted">#3</span></div>
+                <div style="font-size:16px;font-weight:800">$1.42M <span style="font-size:11px;color:var(--muted);font-weight:600">· 71% to goal</span></div>
+                <div class="bar bar-thin" style="margin-top:6px"><div class="bar-fill" style="width:71%"></div></div>
+              </div>
+              <div style="padding:10px;border:1px solid var(--border);border-radius:10px">
+                <div class="row-between" style="margin-bottom:6px"><div style="font-size:13px;font-weight:700">Horizon</div><span class="pill pill-warning">#4</span></div>
+                <div style="font-size:16px;font-weight:800">$1.16M <span style="font-size:11px;color:var(--muted);font-weight:600">· 58% to goal</span></div>
+                <div class="bar bar-thin" style="margin-top:6px"><div class="bar-fill bar-warning" style="width:58%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Active campaigns mini -->
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div class="card-title">Active Campaigns</div>
+            </div>
+            <div style="padding:12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">
+              <div class="row-between" style="margin-bottom:6px"><div style="font-size:13px;font-weight:700">Q2 Sprint</div><span class="pill pill-primary">12d left</span></div>
+              <div class="bar"><div class="bar-fill" style="width:62%"></div></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:6px">19 of 32 agents on-track</div>
+            </div>
+            <div style="padding:12px;border:1px solid var(--border);border-radius:10px">
+              <div class="row-between" style="margin-bottom:6px"><div style="font-size:13px;font-weight:700">MDRT Push</div><span class="pill pill-gold">68d left</span></div>
+              <div class="bar"><div class="bar-fill bar-gold" style="width:38%"></div></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:6px">4 of 32 on-pace for MDRT</div>
+            </div>
+          </div>
+
+          <div style="height:80px"></div>
+        </div>
+
+        <div class="bottom-nav">
+          <button class="bottom-nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Branch</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/></svg><span>Units</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>Agents</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/></svg><span>Campaigns</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg><span>Profile</span></button>
+        </div>
+      </div>
+
+      <!-- ── SALES MANAGER MOBILE ────────────────────────────── -->
+      <div data-screen="sales">
+        <div class="m-topbar">
+          <div>
+            <div style="font-size:13px;color:var(--muted);font-weight:600">Region</div>
+            <div class="m-h2">Caribbean</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="icon-btn topbar-bell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+            <div class="avatar-sm avatar-color-4">JR</div>
+          </div>
+        </div>
+
+        <div class="m-pad m-stack">
+          <div class="role-hero">
+            <div class="role-hero-label">Region API · YTD</div>
+            <div class="role-hero-value">$14.7M</div>
+            <div class="role-hero-sub">+18% YoY · Beating $12.4M target</div>
+            <div class="role-hero-progress"><div class="bar bar-thick"><div class="bar-fill" style="width:81%"></div></div></div>
+          </div>
+
+          <div class="g2">
+            <div class="stat" style="padding:14px"><div class="stat-label" style="font-size:10px">Branches</div><div style="font-size:18px;font-weight:800">3</div><div class="stat-trend" style="font-size:11px;color:var(--muted)">All operational</div></div>
+            <div class="stat" style="padding:14px"><div class="stat-label" style="font-size:10px">Total Agents</div><div style="font-size:18px;font-weight:800">87</div><div class="stat-trend up" style="font-size:11px">+5 YoY</div></div>
+          </div>
+
+          <!-- Branches comparison -->
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div class="card-title">Branches · YTD</div>
+              <button class="link-btn">All <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div style="padding:12px;border:1px solid var(--border);border-radius:10px">
+                <div class="row-between" style="margin-bottom:6px"><div style="font-size:13px;font-weight:700">Port of Spain</div><span class="pill pill-gold">#1</span></div>
+                <div style="font-size:18px;font-weight:800">$5.84M</div>
+                <div style="font-size:11px;color:var(--success);font-weight:600">+14% YoY · 73% of target</div>
+                <div class="bar bar-thin" style="margin-top:6px"><div class="bar-fill bar-gold" style="width:73%"></div></div>
+              </div>
+              <div style="padding:12px;border:1px solid var(--border);border-radius:10px">
+                <div class="row-between" style="margin-bottom:6px"><div style="font-size:13px;font-weight:700">San Fernando</div><span class="pill pill-muted">#2</span></div>
+                <div style="font-size:18px;font-weight:800">$5.21M</div>
+                <div style="font-size:11px;color:var(--success);font-weight:600">+22% YoY · 69% of target</div>
+                <div class="bar bar-thin" style="margin-top:6px"><div class="bar-fill bar-success" style="width:69%"></div></div>
+              </div>
+              <div style="padding:12px;border:1px solid var(--border);border-radius:10px">
+                <div class="row-between" style="margin-bottom:6px"><div style="font-size:13px;font-weight:700">Tobago</div><span class="pill pill-warning">#3</span></div>
+                <div style="font-size:18px;font-weight:800">$3.65M</div>
+                <div style="font-size:11px;color:var(--success);font-weight:600">+11% YoY · 61% of target</div>
+                <div class="bar bar-thin" style="margin-top:6px"><div class="bar-fill bar-warning" style="width:61%"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Top performer card -->
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div class="card-title">Top Performer · YTD</div>
+            </div>
+            <div class="row-flex">
+              <div class="avatar-md avatar-color-3">DP</div>
+              <div style="flex:1">
+                <div style="font-size:14px;font-weight:700">Devika Pillai</div>
+                <div style="font-size:11px;color:var(--muted)">POS · Pinnacle Unit</div>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:16px;font-weight:800">$2.1M</div>
+                <div style="font-size:11px;color:var(--success);font-weight:600">+24% YoY</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="height:80px"></div>
+        </div>
+
+        <div class="bottom-nav">
+          <button class="bottom-nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><polyline points="7 14 11 10 15 14 21 8"/></svg><span>Region</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/></svg><span>Branches</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg><span>Reports</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/></svg><span>Campaigns</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg><span>Profile</span></button>
+        </div>
+      </div>
+
+      <!-- ── TENANT ADMIN MOBILE ─────────────────────────────── -->
+      <div data-screen="admin">
+        <div class="m-topbar">
+          <div>
+            <div style="font-size:13px;color:var(--muted);font-weight:600">Company</div>
+            <div class="m-h2">Tatil Life</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="icon-btn topbar-bell"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></button>
+            <div class="avatar-sm avatar-color-5">LK</div>
+          </div>
+        </div>
+
+        <div class="m-pad m-stack">
+          <div class="role-hero">
+            <div class="role-hero-label">Company API · YTD</div>
+            <div class="role-hero-value">$14.7M</div>
+            <div class="role-hero-sub">3 branches · 92 users · 99.97% uptime</div>
+          </div>
+
+          <div class="g2">
+            <div class="stat" style="padding:14px"><div class="stat-label" style="font-size:10px">Active Users</div><div style="font-size:18px;font-weight:800">87 / 92</div><div class="stat-trend" style="font-size:11px;color:var(--muted)">5 inactive</div></div>
+            <div class="stat" style="padding:14px"><div class="stat-label" style="font-size:10px">Branches</div><div style="font-size:18px;font-weight:800">3 / 3</div><div class="stat-trend up" style="font-size:11px">All healthy</div></div>
+          </div>
+
+          <!-- Quick config -->
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div class="card-title">Company Config</div>
+              <button class="link-btn">All <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></button>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div class="row-between" style="padding:10px;background:var(--surface-muted);border-radius:10px"><span style="font-size:12px;color:var(--muted)">Min API per agent</span><span style="font-size:13px;font-weight:700">$150,000 / yr</span></div>
+              <div class="row-between" style="padding:10px;background:var(--surface-muted);border-radius:10px"><span style="font-size:12px;color:var(--muted)">Persistency floor</span><span style="font-size:13px;font-weight:700">90%</span></div>
+              <div class="row-between" style="padding:10px;background:var(--surface-muted);border-radius:10px"><span style="font-size:12px;color:var(--muted)">Currency</span><span style="font-size:13px;font-weight:700">TTD ($)</span></div>
+              <div class="row-between" style="padding:10px;background:var(--surface-muted);border-radius:10px"><span style="font-size:12px;color:var(--muted)">Self-registration</span><span class="pill pill-danger">Disabled</span></div>
+            </div>
+          </div>
+
+          <!-- Roles distribution -->
+          <div class="card">
+            <div class="card-head" style="margin-bottom:10px">
+              <div class="card-title">Users by Role</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <div><div class="row-between" style="margin-bottom:4px"><span style="font-size:12px;font-weight:600">Agents</span><span style="font-size:12px;font-weight:700">76</span></div><div class="bar bar-thin"><div class="bar-fill" style="width:82.6%"></div></div></div>
+              <div><div class="row-between" style="margin-bottom:4px"><span style="font-size:12px;font-weight:600">Unit Mgrs</span><span style="font-size:12px;font-weight:700">11</span></div><div class="bar bar-thin"><div class="bar-fill bar-success" style="width:11.9%"></div></div></div>
+              <div><div class="row-between" style="margin-bottom:4px"><span style="font-size:12px;font-weight:600">Branch Mgrs</span><span style="font-size:12px;font-weight:700">3</span></div><div class="bar bar-thin"><div class="bar-fill bar-warning" style="width:3.3%"></div></div></div>
+              <div><div class="row-between" style="margin-bottom:4px"><span style="font-size:12px;font-weight:600">Sales Mgrs</span><span style="font-size:12px;font-weight:700">1</span></div><div class="bar bar-thin"><div class="bar-fill bar-gold" style="width:1.1%"></div></div></div>
+              <div><div class="row-between" style="margin-bottom:4px"><span style="font-size:12px;font-weight:600">Tenant Admins</span><span style="font-size:12px;font-weight:700">1</span></div><div class="bar bar-thin"><div class="bar-fill" style="width:1.1%;background:var(--ink)"></div></div></div>
+            </div>
+          </div>
+
+          <!-- Latest audit event -->
+          <div class="banner-soft">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+            <div>
+              <strong style="font-size:13px;display:block">12 audit events · Last 24h</strong>
+              <p style="font-size:12px">Most recent: company minimum updated · 2h ago</p>
+            </div>
+          </div>
+
+          <div style="height:80px"></div>
+        </div>
+
+        <div class="bottom-nav">
+          <button class="bottom-nav-item active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Dashboard</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/></svg><span>Branches</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><span>Users</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span>Config</span></button>
+          <button class="bottom-nav-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg><span>Profile</span></button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<script>
+  // Role + Device + Theme switching
+  const body = document.body;
+
+  document.querySelectorAll('#role-chips .demo-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#role-chips .demo-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      body.setAttribute('data-role', btn.dataset.role);
+      const target = body.querySelector(body.getAttribute('data-device') === 'desktop' ? '.frame-desktop' : '.frame-mobile .phone-screen');
+      if (target) target.scrollTop = 0;
+    });
+  });
+
+  document.querySelectorAll('#device-chips .demo-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#device-chips .demo-chip').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      body.setAttribute('data-device', btn.dataset.device);
+    });
+  });
+
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    body.classList.toggle('dark');
+    const isDark = body.classList.contains('dark');
+    document.getElementById('theme-sun').style.display = isDark ? 'none' : 'block';
+    document.getElementById('theme-moon').style.display = isDark ? 'block' : 'none';
+  });
+
+  // Goal carousel — tabs + auto-advance (pauses on hover/interaction)
+  document.querySelectorAll('.goal-carousel').forEach(carousel => {
+    const tabs = carousel.querySelectorAll('.goal-tab');
+    const track = carousel.querySelector('.goal-slide-track');
+    if (!tabs.length || !track) return;
+    let idx = 0;
+    let autoTimer = null;
+    const total = tabs.length;
+
+    const setActive = (i) => {
+      idx = i;
+      track.dataset.active = i;
+      tabs.forEach((t, ti) => t.classList.toggle('active', ti === i));
+    };
+    const startAuto = () => {
+      stopAuto();
+      autoTimer = setInterval(() => setActive((idx + 1) % total), 6000);
+    };
+    const stopAuto = () => { if (autoTimer) { clearInterval(autoTimer); autoTimer = null; } };
+
+    tabs.forEach((t, i) => t.addEventListener('click', () => { setActive(i); stopAuto(); }));
+    carousel.addEventListener('mouseenter', stopAuto);
+    carousel.addEventListener('mouseleave', startAuto);
+
+    startAuto();
+  });
+</script>
+</body>
+</html>

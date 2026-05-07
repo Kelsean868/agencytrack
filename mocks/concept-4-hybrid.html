@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyTrack — Concept 4: Clarity + Momentum</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Design Tokens (Concept 1 warm palette) ──────────────────── */
+:root {
+  --bg:           #f5f3ef;
+  --surface:      #ffffff;
+  --surface-2:    #faf9f6;
+  --surface-muted:#f0efe9;
+  --border:       #e8e4dc;
+  --border-2:     #d8d3ca;
+  --text:         #1c1a15;
+  --muted:        #736d64;
+  --faint:        #a39d94;
+  --primary:      #007a7f;
+  --primary-lt:   #e6f5f5;
+  --primary-dk:   #015a5e;
+  --primary-mid:  rgba(0,122,127,.12);
+  --success:      #1f8a50;
+  --success-lt:   #e8f5ee;
+  --warning:      #b45309;
+  --warning-lt:   #fef3e2;
+  --danger:       #c0392b;
+  --danger-lt:    #fde8e7;
+  /* Gamification accent — a warm amber-gold that pairs with teal */
+  --gold:         #b07d1a;
+  --gold-lt:      #fdf3dc;
+  --gold-border:  rgba(176,125,26,.2);
+  /* Soft purple for "milestone" badges — won't clash with teal */
+  --ink:          #5a3fa0;
+  --ink-lt:       #f0ecff;
+  --shadow-sm:    0 1px 3px rgba(28,26,21,.07), 0 1px 2px rgba(28,26,21,.04);
+  --shadow-md:    0 4px 14px rgba(28,26,21,.09), 0 2px 4px rgba(28,26,21,.05);
+  --shadow-lg:    0 12px 32px rgba(28,26,21,.13);
+  --radius-sm:    12px;
+  --radius-md:    16px;
+  --radius-lg:    24px;
+  --radius-xl:    32px;
+  --bottom-nav:   72px;
+}
+.dark {
+  --bg:           #181410;
+  --surface:      #221e18;
+  --surface-2:    #2c271f;
+  --surface-muted:#1f1b16;
+  --border:       #38332b;
+  --border-2:     #48433a;
+  --text:         #f0ebe0;
+  --muted:        #b0a898;
+  --faint:        #7a7268;
+  --primary:      #4ab5b8;
+  --primary-lt:   rgba(74,181,184,.14);
+  --primary-dk:   #01696f;
+  --primary-mid:  rgba(74,181,184,.1);
+  --success:      #5db876;
+  --success-lt:   rgba(93,184,118,.14);
+  --warning:      #e8b53e;
+  --warning-lt:   rgba(232,181,62,.14);
+  --danger:       #d96b5d;
+  --danger-lt:    rgba(217,107,93,.14);
+  --gold:         #d4a030;
+  --gold-lt:      rgba(212,160,48,.14);
+  --gold-border:  rgba(212,160,48,.25);
+  --ink:          #9d80f0;
+  --ink-lt:       rgba(157,128,240,.14);
+  --shadow-sm:    0 1px 3px rgba(0,0,0,.32);
+  --shadow-md:    0 4px 14px rgba(0,0,0,.42);
+  --shadow-lg:    0 12px 32px rgba(0,0,0,.55);
+}
+
+/* ── Reset ────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; -webkit-font-smoothing: antialiased; }
+body { background: var(--bg); color: var(--text); min-height: 100dvh; overflow-x: hidden; }
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+/* ── Shell ────────────────────────────────────────────────────── */
+.concept-banner {
+  background: var(--text); color: var(--bg);
+  text-align: center; font-size: 11px; font-weight: 700;
+  letter-spacing: .06em; padding: 6px;
+}
+.app { max-width: 430px; margin: 0 auto; position: relative; min-height: calc(100dvh - 26px); }
+.screen { display: none; flex-direction: column; min-height: calc(100dvh - 26px); padding-bottom: var(--bottom-nav); }
+.screen.active { display: flex; }
+
+/* ── Header ───────────────────────────────────────────────────── */
+.header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 20px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 26px; z-index: 20;
+}
+.header-left h1 { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+.header-left p  { font-size: 12px; color: var(--muted); margin-top: 1px; }
+.header-right   { display: flex; align-items: center; gap: 10px; }
+.icon-btn {
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--muted);
+  transition: background 0.15s, color 0.15s; cursor: pointer;
+  position: relative;
+}
+.icon-btn:hover { background: var(--primary-lt); color: var(--primary); }
+.notif-pip {
+  position: absolute; top: 8px; right: 8px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--danger); border: 2px solid var(--surface);
+}
+.dark-toggle {
+  display: flex; align-items: center; gap: 7px;
+  padding: 6px 12px; border-radius: 99px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  font-size: 12px; font-weight: 600; color: var(--muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.dark-toggle:hover { color: var(--primary); border-color: var(--primary); }
+
+/* ── Scroll ───────────────────────────────────────────────────── */
+.scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 18px; }
+
+/* ── Hero Card (Concept 1 style, ring retained) ────────────────── */
+.hero-card {
+  background: var(--primary); border-radius: var(--radius-xl);
+  padding: 24px; color: white; position: relative; overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+.hero-card::before {
+  content: ''; position: absolute; top: -40px; right: -40px;
+  width: 180px; height: 180px; background: rgba(255,255,255,.08); border-radius: 50%;
+}
+.hero-card::after {
+  content: ''; position: absolute; bottom: -60px; left: -20px;
+  width: 220px; height: 220px; background: rgba(255,255,255,.05); border-radius: 50%;
+}
+.hero-label  { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; opacity: .75; margin-bottom: 6px; }
+.hero-row    { display: flex; justify-content: space-between; align-items: flex-end; }
+.hero-value  { font-size: 40px; font-weight: 800; letter-spacing: -1.5px; line-height: 1; }
+.hero-sub    { font-size: 13px; opacity: .75; margin-top: 6px; }
+.hero-prog-bar { height: 6px; background: rgba(255,255,255,.25); border-radius: 99px; overflow: hidden; margin-top: 20px; }
+.hero-prog-fill { height: 100%; background: white; border-radius: 99px; transition: width 1s cubic-bezier(.16,1,.3,1); }
+.hero-prog-labels { display: flex; justify-content: space-between; margin-top: 5px; font-size: 11px; opacity: .7; }
+.hero-ring   { position: relative; width: 88px; height: 88px; flex-shrink: 0; }
+.hero-ring svg { transform: rotate(-90deg); }
+.hero-ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.hero-ring-pct  { font-size: 18px; font-weight: 800; color: white; line-height: 1; }
+.hero-ring-lbl  { font-size: 9px; color: rgba(255,255,255,.7); margin-top: 1px; }
+
+/* ── Rank Stripe (compact gamification row) ────────────────────── */
+.rank-stripe {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: 14px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.rank-badge {
+  width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--primary-lt);
+}
+.rank-info { flex: 1; }
+.rank-title { font-size: 16px; font-weight: 800; color: var(--primary); letter-spacing: -0.3px; }
+.rank-sub   { font-size: 12px; color: var(--muted); margin-top: 1px; font-weight: 500; }
+.rank-pill  {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 99px;
+  background: var(--gold-lt); color: var(--gold);
+  border: 1px solid var(--gold-border);
+  font-size: 12px; font-weight: 700;
+}
+
+/* ── Section Header ───────────────────────────────────────────── */
+.sec-head { display: flex; align-items: center; justify-content: space-between; }
+.sec-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.sec-link  { font-size: 12px; font-weight: 700; color: var(--primary); cursor: pointer; }
+
+/* ── Activity Feed ─────────────────────────────────────────────── */
+.feed-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.feed-item {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 13px 16px; border-bottom: 1px solid var(--border);
+  transition: background 0.15s; cursor: pointer;
+}
+.feed-item:last-child { border-bottom: none; }
+.feed-item:hover { background: var(--surface-2); }
+.feed-icon {
+  width: 38px; height: 38px; border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.feed-body  { flex: 1; min-width: 0; }
+.feed-title { font-size: 13px; font-weight: 700; color: var(--text); line-height: 1.35; }
+.feed-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; font-weight: 500; }
+.feed-meta  { display: flex; align-items: center; justify-content: space-between; margin-top: 5px; }
+.feed-time  { font-size: 11px; color: var(--faint); font-weight: 600; }
+.feed-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+
+/* ── Badge colours ────────────────────────────────────────────── */
+.c-success   { background: var(--success-lt); color: var(--success); }
+.c-warning   { background: var(--warning-lt); color: var(--warning); }
+.c-primary   { background: var(--primary-lt); color: var(--primary); }
+.c-gold      { background: var(--gold-lt);    color: var(--gold);    }
+.c-ink       { background: var(--ink-lt);     color: var(--ink);     }
+.c-danger    { background: var(--danger-lt);  color: var(--danger);  }
+.c-muted     { background: var(--surface-muted); color: var(--muted); }
+
+/* ── KPI Grid ──────────────────────────────────────────────────── */
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.kpi-card {
+  background: var(--surface); border-radius: var(--radius-md);
+  padding: 16px; box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border);
+  transition: box-shadow 0.2s, transform 0.15s; cursor: default;
+}
+.kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.kpi-icon  { width: 32px; height: 32px; border-radius: 9px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+.kpi-value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); line-height: 1; }
+.kpi-label { font-size: 12px; color: var(--muted); margin-top: 3px; font-weight: 500; }
+.kpi-delta { font-size: 11px; font-weight: 700; margin-top: 6px; display: flex; align-items: center; gap: 3px; }
+.delta-up   { color: var(--success); }
+.delta-dn   { color: var(--danger); }
+.delta-flat { color: var(--muted); }
+
+/* ── This Week card ───────────────────────────────────────────── */
+.week-card {
+  background: var(--surface); border-radius: var(--radius-md);
+  padding: 16px; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+}
+.week-row  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.week-title { font-size: 14px; font-weight: 700; }
+.badge-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: 700;
+}
+.week-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.week-stat  { text-align: center; }
+.week-stat-val { font-size: 18px; font-weight: 800; color: var(--text); }
+.week-stat-lbl { font-size: 10px; color: var(--muted); font-weight: 500; margin-top: 1px; }
+
+/* ── Leaderboard card ─────────────────────────────────────────── */
+.leader-card {
+  background: var(--surface); border-radius: var(--radius-md);
+  overflow: hidden; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+}
+.leader-card-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.leader-card-header h3 { font-size: 14px; font-weight: 700; }
+.lb-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background 0.15s; cursor: pointer; }
+.lb-row:last-child { border-bottom: none; }
+.lb-row:hover { background: var(--surface-2); }
+.lb-row.me { background: var(--primary-lt); border-left: 3px solid var(--primary); padding-left: 13px; }
+.lb-rank { width: 24px; font-size: 13px; font-weight: 700; color: var(--muted); text-align: center; }
+.lb-avatar { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0; }
+.lb-name { flex: 1; font-size: 14px; font-weight: 600; }
+.lb-api  { font-size: 13px; font-weight: 700; color: var(--primary); }
+
+/* ── Achievement Badges (profile) ─────────────────────────────── */
+.badge-section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.badge-section-header { padding: 14px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.badge-section-header h3 { font-size: 14px; font-weight: 700; }
+.badge-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 14px; }
+.badge-item {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 12px 8px; border-radius: 14px;
+  border: 1.5px solid var(--border); background: var(--surface-2);
+  text-align: center; transition: all 0.2s; cursor: default;
+}
+.badge-item.earned {
+  border-color: transparent;
+  box-shadow: var(--shadow-sm);
+}
+.badge-item.locked { opacity: .45; }
+.badge-icon-wrap {
+  width: 40px; height: 40px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.badge-name {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; line-height: 1.25; text-align: center;
+}
+.badge-item.earned .badge-name { color: var(--text); }
+.badge-item.locked .badge-name { color: var(--faint); }
+
+/* Earned badge accent backgrounds */
+.ba-gold   { background: var(--gold-lt);    border-color: var(--gold-border); }
+.ba-gold .badge-icon-wrap { background: var(--gold); }
+.ba-primary { background: var(--primary-lt); border-color: rgba(0,122,127,.2); }
+.ba-primary .badge-icon-wrap { background: var(--primary); }
+.ba-success { background: var(--success-lt); border-color: rgba(31,138,80,.2); }
+.ba-success .badge-icon-wrap { background: var(--success); }
+.ba-ink    { background: var(--ink-lt);     border-color: rgba(90,63,160,.2); }
+.ba-ink .badge-icon-wrap { background: var(--ink); }
+
+/* ── Profile hero ──────────────────────────────────────────────── */
+.profile-hero { background: var(--primary); padding: 32px 20px 40px; text-align: center; color: white; }
+.profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,.18); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; margin: 0 auto 12px; border: 3px solid rgba(255,255,255,.35); }
+.profile-name { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
+.profile-role { font-size: 13px; opacity: .8; margin-top: 4px; }
+.profile-body { padding: 20px; margin-top: -20px; display: flex; flex-direction: column; gap: 14px; }
+.profile-stats-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.p-stat-card {
+  background: var(--surface); border-radius: var(--radius-md); padding: 14px 10px;
+  text-align: center; box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+}
+.p-stat-val { font-size: 20px; font-weight: 800; color: var(--primary); }
+.p-stat-lbl { font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+
+/* ── Profile career card ───────────────────────────────────────── */
+.career-card { background: var(--surface); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow: hidden; }
+.career-body  { padding: 16px; }
+.career-level { font-size: 18px; font-weight: 800; color: var(--primary); }
+.career-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.prog-bar     { height: 8px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.prog-fill    { height: 100%; border-radius: 99px; transition: width 1s cubic-bezier(.16,1,.3,1); }
+
+/* ── Profile menu ──────────────────────────────────────────────── */
+.profile-section { background: var(--surface); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+.profile-section-header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.profile-section-header h3 { font-size: 14px; font-weight: 700; }
+.profile-row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
+.profile-row:last-child { border-bottom: none; }
+.profile-row:hover { background: var(--surface-2); }
+.profile-row-icon { width: 32px; height: 32px; border-radius: 9px; background: var(--primary-lt); display: flex; align-items: center; justify-content: center; color: var(--primary); }
+.profile-row-label { flex: 1; font-size: 14px; font-weight: 600; }
+.profile-row-value { font-size: 13px; color: var(--muted); }
+
+/* ── Motivational banner ───────────────────────────────────────── */
+.motto-card {
+  background: var(--primary-lt); border: 1px solid rgba(0,122,127,.15);
+  border-radius: var(--radius-md); padding: 14px 16px;
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.motto-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.motto-text h4 { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 2px; }
+.motto-text p  { font-size: 12px; color: var(--muted); line-height: 1.55; }
+
+/* ── Wizard ────────────────────────────────────────────────────── */
+.wizard-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: var(--surface); }
+.wizard-steps  { display: flex; gap: 6px; padding: 12px 20px 0; background: var(--surface); }
+.step-dot { height: 4px; border-radius: 99px; background: var(--border); transition: all 0.3s; flex: 1; }
+.step-dot.done   { background: var(--primary); opacity: .4; }
+.step-dot.active { background: var(--primary); flex: 2; }
+.wiz-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.wiz-section { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-bottom: -4px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.form-input {
+  height: 48px; border-radius: var(--radius-sm); border: 1.5px solid var(--border);
+  background: var(--surface); color: var(--text); padding: 0 14px;
+  font-size: 15px; font-family: inherit; outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,122,127,.12); }
+.wizard-footer { padding: 16px 20px; display: flex; gap: 12px; border-top: 1px solid var(--border); background: var(--surface); }
+.btn-secondary { flex: 0 0 110px; height: 50px; border-radius: var(--radius-md); background: var(--surface-2); color: var(--text); font-size: 14px; font-weight: 600; font-family: inherit; border: 1.5px solid var(--border); cursor: pointer; transition: all 0.15s; }
+.btn-secondary:hover { border-color: var(--primary); color: var(--primary); }
+.btn-primary { flex: 1; height: 50px; border-radius: var(--radius-md); background: var(--primary); color: white; font-size: 15px; font-weight: 700; font-family: inherit; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(0,122,127,.35); transition: all 0.15s; }
+.btn-primary:hover { background: var(--primary-dk); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,122,127,.4); }
+.btn-primary:active { transform: translateY(0); }
+
+/* ── Bottom Nav ─────────────────────────────────────────────────── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 430px;
+  background: var(--surface); border-top: 1px solid var(--border);
+  display: flex; z-index: 30;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+.nav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 10px 4px; gap: 3px;
+  color: var(--faint); transition: color 0.15s;
+  cursor: pointer; border: none; background: none; min-height: 62px;
+  position: relative;
+}
+.nav-item.active { color: var(--primary); }
+.nav-item.active .nav-dot { opacity: 1; }
+.nav-lbl { font-size: 10px; font-weight: 600; }
+.nav-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); opacity: 0; position: absolute; bottom: 6px; transition: opacity 0.15s; }
+.nav-pill {
+  width: 52px; height: 52px; border-radius: 16px; background: var(--primary); color: white;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(0,122,127,.4); margin-top: -8px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.nav-pill:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,122,127,.45); }
+</style>
+</head>
+<body>
+
+<div class="concept-banner">CONCEPT 4 — CLARITY + MOMENTUM &nbsp;·&nbsp; Professional · Gamified · No Emojis</div>
+
+<div class="app">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     HOME SCREEN
+════════════════════════════════════════════════════════════════ -->
+<div class="screen active" id="screen-home">
+  <div class="header">
+    <div class="header-left">
+      <h1>Good morning, Marcus</h1>
+      <p>Week of May 4, 2026</p>
+    </div>
+    <div class="header-right">
+      <button class="dark-toggle" onclick="toggleDark()">
+        <!-- sun icon -->
+        <svg id="theme-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <span id="theme-lbl">Light</span>
+      </button>
+      <button class="icon-btn" aria-label="Notifications">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-pip"></span>
+      </button>
+    </div>
+  </div>
+
+  <div class="scroll">
+
+    <!-- YTD Hero -->
+    <div class="hero-card">
+      <div class="hero-label">YTD Annual Premium Income</div>
+      <div class="hero-row">
+        <div>
+          <div class="hero-value">$147,300</div>
+          <div class="hero-sub">TTD &nbsp;·&nbsp; Target $200,000</div>
+          <div style="margin-top:18px;max-width:210px">
+            <div class="hero-prog-bar"><div class="hero-prog-fill" id="hero-fill" style="width:73.6%"></div></div>
+            <div class="hero-prog-labels"><span>0</span><span>73.6% of goal</span><span>100%</span></div>
+          </div>
+        </div>
+        <div class="hero-ring">
+          <svg width="88" height="88" viewBox="0 0 88 88">
+            <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="8"/>
+            <circle cx="44" cy="44" r="36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round"
+              stroke-dasharray="226.2" stroke-dashoffset="59.7"/>
+          </svg>
+          <div class="hero-ring-text">
+            <div class="hero-ring-pct">74%</div>
+            <div class="hero-ring-lbl">of goal</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rank stripe (compact gamification — professional, not flashy) -->
+    <div class="rank-stripe">
+      <div class="rank-badge">
+        <!-- bar-chart icon -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </div>
+      <div class="rank-info">
+        <div class="rank-title">#3 Branch Ranking</div>
+        <div class="rank-sub">$3,600 gap to #2 &nbsp;·&nbsp; May 2026</div>
+      </div>
+      <div class="rank-pill">
+        <!-- award icon -->
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+        Associate
+      </div>
+    </div>
+
+    <!-- Motivational Banner -->
+    <div class="motto-card">
+      <div class="motto-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      </div>
+      <div class="motto-text">
+        <h4>3 more apps to unlock Elite tier</h4>
+        <p>Maintain a 25%+ closing ratio this week. At this pace you'll reach your API target by late October.</p>
+      </div>
+    </div>
+
+    <!-- This Week -->
+    <div>
+      <div class="sec-head" style="margin-bottom:8px">
+        <div class="sec-title">This Week</div>
+        <span class="badge-pill c-success">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+          Submitted
+        </span>
+      </div>
+      <div class="week-card">
+        <div class="week-row">
+          <div class="week-title">May 4 – May 10</div>
+          <span style="font-size:12px;color:var(--muted);font-weight:500">Week 19</span>
+        </div>
+        <div class="week-stats">
+          <div class="week-stat"><div class="week-stat-val">12</div><div class="week-stat-lbl">Approaches</div></div>
+          <div class="week-stat"><div class="week-stat-val">4</div><div class="week-stat-lbl">FFIs Done</div></div>
+          <div class="week-stat"><div class="week-stat-val">2</div><div class="week-stat-lbl">Closings</div></div>
+          <div class="week-stat"><div class="week-stat-val" style="color:var(--primary)">$3,200</div><div class="week-stat-lbl">API TTD</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Activity (from C3, styled with C1 tokens) -->
+    <div>
+      <div class="sec-head" style="margin-bottom:8px">
+        <div class="sec-title">Recent Activity</div>
+        <span class="sec-link">See all</span>
+      </div>
+      <div class="feed-card">
+
+        <!-- Report submitted -->
+        <div class="feed-item">
+          <div class="feed-icon c-success">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          </div>
+          <div class="feed-body">
+            <div class="feed-title">Weekly report submitted</div>
+            <div class="feed-sub">Week of May 4 &nbsp;·&nbsp; All sections complete</div>
+            <div class="feed-meta">
+              <span class="feed-time">Today, 9:14 am</span>
+              <span class="feed-badge c-success">On time</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Badge earned -->
+        <div class="feed-item">
+          <div class="feed-icon c-gold">
+            <!-- shield icon for badge -->
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <div class="feed-body">
+            <div class="feed-title">Badge earned — <span style="color:var(--gold)">Closer Pro</span></div>
+            <div class="feed-sub">26% closing ratio surpassed the 25% Elite threshold</div>
+            <div class="feed-meta">
+              <span class="feed-time">Today, 9:14 am</span>
+              <span class="feed-badge c-gold">Achievement</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Rank moved up -->
+        <div class="feed-item">
+          <div class="feed-icon c-primary">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
+          </div>
+          <div class="feed-body">
+            <div class="feed-title">Moved up to <span style="color:var(--primary)">#3</span> on branch leaderboard</div>
+            <div class="feed-sub">Passed Trevor Williams &nbsp;·&nbsp; North Branch</div>
+            <div class="feed-meta">
+              <span class="feed-time">Mon May 4</span>
+              <span class="feed-badge c-primary">Ranking</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Application sold -->
+        <div class="feed-item">
+          <div class="feed-icon c-ink">
+            <!-- file-text icon -->
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          </div>
+          <div class="feed-body">
+            <div class="feed-title">Application sold &nbsp;·&nbsp; $3,200 API</div>
+            <div class="feed-sub">J. Ramkissoon &nbsp;·&nbsp; Standard Life Plan</div>
+            <div class="feed-meta">
+              <span class="feed-time">Wed Apr 30</span>
+              <span class="feed-badge c-ink">Production</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- KPI Grid -->
+    <div>
+      <div class="sec-head" style="margin-bottom:8px"><div class="sec-title">Key Metrics</div></div>
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon c-primary"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+          <div class="kpi-value">38</div>
+          <div class="kpi-label">Prospecting</div>
+          <div class="kpi-delta delta-up">↑ 6 vs last week</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon c-success"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+          <div class="kpi-value">26%</div>
+          <div class="kpi-label">Closing Ratio</div>
+          <div class="kpi-delta delta-up">↑ 4% vs last week</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon c-warning"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          <div class="kpi-value">14</div>
+          <div class="kpi-label">FFIs Sched.</div>
+          <div class="kpi-delta delta-flat">→ same as last</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon c-danger"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+          <div class="kpi-value">7</div>
+          <div class="kpi-label">Apps Sold</div>
+          <div class="kpi-delta delta-dn">↓ 2 vs last week</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Leaderboard Snapshot -->
+    <div>
+      <div class="sec-head" style="margin-bottom:8px">
+        <div class="sec-title">Branch Leaderboard</div>
+        <span class="sec-link" onclick="showTab('leaderboard')">Full view</span>
+      </div>
+      <div class="leader-card">
+        <div class="leader-card-header"><h3>Top Performers — May 2026</h3><span class="badge-pill c-primary">#3 You</span></div>
+        <div class="lb-row"><div class="lb-rank" style="color:#b07d1a;font-size:15px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--gold)" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div><div class="lb-avatar" style="background:#d97706;border-radius:10px">AK</div><div class="lb-name">Alicia King</div><div class="lb-api">$28,400</div></div>
+        <div class="lb-row"><div class="lb-rank" style="color:#94a3b8;font-size:15px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#94a3b8" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div><div class="lb-avatar" style="background:#6366f1;border-radius:10px">JP</div><div class="lb-name">James Pierre</div><div class="lb-api">$21,800</div></div>
+        <div class="lb-row me"><div class="lb-rank" style="color:#b45309;font-size:15px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="#b45309" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div><div class="lb-avatar" style="background:var(--primary);border-radius:10px">MT</div><div class="lb-name">Marcus (You)</div><div class="lb-api">$18,200</div></div>
+        <div class="lb-row"><div class="lb-rank" style="color:var(--faint);font-weight:500">4</div><div class="lb-avatar" style="background:#ec4899;border-radius:10px">SR</div><div class="lb-name">Sandra Ramnath</div><div class="lb-api" style="color:var(--muted)">$14,600</div></div>
+        <div class="lb-row"><div class="lb-rank" style="color:var(--faint);font-weight:500">5</div><div class="lb-avatar" style="background:#84cc16;border-radius:10px">TW</div><div class="lb-name">Trevor Williams</div><div class="lb-api" style="color:var(--muted)">$11,300</div></div>
+      </div>
+    </div>
+
+  </div><!-- /scroll -->
+</div><!-- /home -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     SUBMIT (WIZARD) SCREEN
+════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-submit" style="flex-direction:column">
+  <div class="wizard-header">
+    <div>
+      <div style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.07em">Step 2 of 5</div>
+      <div style="font-size:17px;font-weight:800;color:var(--text);margin-top:2px">Interviews</div>
+    </div>
+    <button class="icon-btn" onclick="showTab('home')" aria-label="Close wizard">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="wizard-steps">
+    <div class="step-dot done"></div>
+    <div class="step-dot active"></div>
+    <div class="step-dot"></div>
+    <div class="step-dot"></div>
+    <div class="step-dot"></div>
+  </div>
+  <div class="wiz-body">
+    <p style="font-size:13px;color:var(--muted);line-height:1.6;padding-top:4px">Enter your interview numbers for the 7-day period ending this Sunday. Auto-saved every 30 seconds.</p>
+    <div class="wiz-section">Fact Finding Interviews</div>
+    <div class="form-group"><label class="form-label">FFIs Scheduled</label><input class="form-input" type="number" inputmode="numeric" value="6"></div>
+    <div class="form-group"><label class="form-label">FFIs Conducted</label><input class="form-input" type="number" inputmode="numeric" value="4"></div>
+    <div class="form-group"><label class="form-label">Solution Presentations</label><input class="form-input" type="number" inputmode="numeric" value="4"></div>
+    <div class="wiz-section">Closing Interviews</div>
+    <div class="form-group"><label class="form-label">New CIs Booked</label><input class="form-input" type="number" inputmode="numeric" value="3"></div>
+    <div class="form-group"><label class="form-label">Old CIs Booked</label><input class="form-input" type="number" inputmode="numeric" value="1"></div>
+    <div class="form-group"><label class="form-label">Total CIs Conducted</label><input class="form-input" type="number" inputmode="numeric" value="2"></div>
+  </div>
+  <div class="wizard-footer">
+    <button class="btn-secondary">← Back</button>
+    <button class="btn-primary">Save &amp; Continue →</button>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     HISTORY SCREEN
+════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-history">
+  <div class="header">
+    <div class="header-left"><h1>History</h1><p>Your past weekly reports</p></div>
+  </div>
+  <div class="scroll">
+    <div class="sec-head" style="margin-bottom:4px"><div class="sec-title">Recent Weeks</div></div>
+    <div class="leader-card">
+      <div class="lb-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%"><span style="font-size:14px;font-weight:700">Week of Apr 27</span><span class="badge-pill c-success">✓ Submitted</span></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%">
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px">10</div><div class="week-stat-lbl">Apps</div></div>
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px;color:var(--primary)">$4,800</div><div class="week-stat-lbl">API</div></div>
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px">30%</div><div class="week-stat-lbl">Close</div></div>
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px">36</div><div class="week-stat-lbl">Touches</div></div>
+        </div>
+      </div>
+      <div class="lb-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%"><span style="font-size:14px;font-weight:700">Week of Apr 20</span><span class="badge-pill c-success">✓ Submitted</span></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%">
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px">8</div><div class="week-stat-lbl">Apps</div></div>
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px;color:var(--primary)">$3,600</div><div class="week-stat-lbl">API</div></div>
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px">22%</div><div class="week-stat-lbl">Close</div></div>
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px">32</div><div class="week-stat-lbl">Touches</div></div>
+        </div>
+      </div>
+      <div class="lb-row" style="flex-direction:column;align-items:flex-start;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;width:100%"><span style="font-size:14px;font-weight:700">Week of Apr 13</span><span class="badge-pill c-warning">Draft</span></div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%">
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px">5</div><div class="week-stat-lbl">Apps</div></div>
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px;color:var(--warning)">$2,200</div><div class="week-stat-lbl">API</div></div>
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px">18%</div><div class="week-stat-lbl">Close</div></div>
+          <div class="week-stat"><div class="week-stat-val" style="font-size:17px">28</div><div class="week-stat-lbl">Touches</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     LEADERBOARD SCREEN
+════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-leaderboard">
+  <div class="header">
+    <div class="header-left"><h1>Leaderboard</h1><p>Branch rankings — May 2026</p></div>
+  </div>
+  <div class="scroll">
+    <!-- Rank hero adapted to C1 style -->
+    <div class="hero-card" style="background:linear-gradient(135deg,var(--primary),var(--primary-dk));text-align:center">
+      <div class="hero-label">Your Position</div>
+      <div style="font-size:60px;font-weight:800;line-height:1;letter-spacing:-2.5px;margin:6px 0">#3</div>
+      <div style="font-size:13px;opacity:.8">Top 25% of branch &nbsp;·&nbsp; $18,200 TTD this month</div>
+      <div style="margin-top:14px;display:flex;gap:8px;justify-content:center">
+        <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.18);color:white">$6,200 gap to #2</span>
+        <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:99px;background:rgba(255,255,255,.18);color:white">1 sale away</span>
+      </div>
+    </div>
+    <div class="leader-card">
+      <div class="lb-row"><div class="lb-rank" style="color:#b07d1a">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="var(--gold)" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div><div class="lb-avatar" style="background:#d97706;border-radius:10px">AK</div><div class="lb-name">Alicia King<div style="font-size:11px;color:var(--muted);font-weight:500">Elite · 6 apps</div></div><div class="lb-api">$28,400</div></div>
+      <div class="lb-row"><div class="lb-rank" style="color:#94a3b8">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#94a3b8" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div><div class="lb-avatar" style="background:#6366f1;border-radius:10px">JP</div><div class="lb-name">James Pierre<div style="font-size:11px;color:var(--muted);font-weight:500">Pro · 5 apps</div></div><div class="lb-api">$21,800</div></div>
+      <div class="lb-row me"><div class="lb-rank" style="color:#b45309">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="#b45309" stroke="none"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div><div class="lb-avatar" style="background:var(--primary);border-radius:10px">MT</div><div class="lb-name">Marcus (You)<div style="font-size:11px;color:var(--primary);font-weight:600">Associate · 3 apps</div></div><div class="lb-api">$18,200</div></div>
+      <div class="lb-row"><div class="lb-rank" style="color:var(--faint)">4</div><div class="lb-avatar" style="background:#ec4899;border-radius:10px">SR</div><div class="lb-name">Sandra Ramnath<div style="font-size:11px;color:var(--muted);font-weight:500">Associate · 3 apps</div></div><div class="lb-api" style="color:var(--muted)">$14,600</div></div>
+      <div class="lb-row"><div class="lb-rank" style="color:var(--faint)">5</div><div class="lb-avatar" style="background:#84cc16;border-radius:10px">TW</div><div class="lb-name">Trevor Williams<div style="font-size:11px;color:var(--muted);font-weight:500">Rookie · 2 apps</div></div><div class="lb-api" style="color:var(--muted)">$11,300</div></div>
+      <div class="lb-row"><div class="lb-rank" style="color:var(--faint)">6</div><div class="lb-avatar" style="background:#f97316;border-radius:10px">NM</div><div class="lb-name">Nadia Mohammed<div style="font-size:11px;color:var(--muted);font-weight:500">Rookie · 2 apps</div></div><div class="lb-api" style="color:var(--muted)">$9,800</div></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PROFILE SCREEN
+════════════════════════════════════════════════════════════════ -->
+<div class="screen" id="screen-profile">
+  <div class="profile-hero">
+    <div class="profile-avatar">MT</div>
+    <div class="profile-name">Marcus Thompson</div>
+    <div class="profile-role">Insurance Agent &nbsp;·&nbsp; Associate Level</div>
+    <div style="margin-top:12px">
+      <span style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:99px;background:rgba(255,255,255,.18);color:white">Joined Jan 2024 &nbsp;·&nbsp; 16 months</span>
+    </div>
+  </div>
+  <div class="profile-body">
+
+    <!-- Quick stats -->
+    <div class="profile-stats-row">
+      <div class="p-stat-card"><div class="p-stat-val">$147k</div><div class="p-stat-lbl">YTD API</div></div>
+      <div class="p-stat-card"><div class="p-stat-val">74%</div><div class="p-stat-lbl">Goal %</div></div>
+      <div class="p-stat-card"><div class="p-stat-val">#3</div><div class="p-stat-lbl">Branch Rank</div></div>
+    </div>
+
+    <!-- Career level -->
+    <div class="career-card">
+      <div class="career-body">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div class="career-level">Associate</div>
+            <div class="career-sub">Level 2 of 7 &nbsp;·&nbsp; 42% to Advisor III</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:12px;color:var(--muted)">Next milestone</div>
+            <div style="font-size:13px;font-weight:700;color:var(--warning)">$102k more API</div>
+          </div>
+        </div>
+        <div class="prog-bar"><div class="prog-fill" style="width:42%;background:var(--primary)"></div></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">
+          <span style="font-size:11px;font-weight:600;color:var(--muted);display:flex;align-items:center;gap:4px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>API progress on track
+          </span>
+          <span style="font-size:11px;font-weight:600;color:var(--warning);display:flex;align-items:center;gap:4px">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2.5"><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>20 more apps needed
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Achievements / Badges (from C3, redesigned with SVG icons, C1 palette) ══ -->
+    <div class="badge-section">
+      <div class="badge-section-header">
+        <h3>Achievements</h3>
+        <span class="badge-pill c-primary">3 earned &nbsp;·&nbsp; 5 locked</span>
+      </div>
+      <div class="badge-grid">
+
+        <!-- EARNED: Closer Pro — target/crosshair icon -->
+        <div class="badge-item earned ba-gold" title="Closer Pro — 25%+ closing ratio">
+          <div class="badge-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          </div>
+          <span class="badge-name">Closer Pro</span>
+        </div>
+
+        <!-- EARNED: On Fire — zap/lightning icon -->
+        <div class="badge-item earned ba-primary" title="On Fire — 4-week submission streak">
+          <div class="badge-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <span class="badge-name">On Fire</span>
+        </div>
+
+        <!-- EARNED: Streak — check-square icon -->
+        <div class="badge-item earned ba-success" title="Streak Keeper — submitted 4 weeks in a row">
+          <div class="badge-icon-wrap">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          </div>
+          <span class="badge-name">Streak ×4</span>
+        </div>
+
+        <!-- LOCKED: MDRT — star icon -->
+        <div class="badge-item locked" title="MDRT — $500,000 API in a year (locked)">
+          <div class="badge-icon-wrap" style="background:var(--surface-muted)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+          </div>
+          <span class="badge-name">MDRT</span>
+        </div>
+
+        <!-- LOCKED: Century — trending up icon -->
+        <div class="badge-item locked" title="Century — $100,000 API in a single month">
+          <div class="badge-icon-wrap" style="background:var(--surface-muted)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+          </div>
+          <span class="badge-name">Century</span>
+        </div>
+
+        <!-- LOCKED: Elite Advisor — award ribbon -->
+        <div class="badge-item locked" title="Elite Advisor — reach Level 6">
+          <div class="badge-icon-wrap" style="background:var(--surface-muted)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2.5"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+          </div>
+          <span class="badge-name">Elite</span>
+        </div>
+
+        <!-- LOCKED: Perfect Month — calendar icon -->
+        <div class="badge-item locked" title="Perfect Month — submit every week in a month">
+          <div class="badge-icon-wrap" style="background:var(--surface-muted)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <span class="badge-name">Perfect Mo.</span>
+        </div>
+
+        <!-- LOCKED: Legend — crown/shield icon -->
+        <div class="badge-item locked" title="Legend — reach Level 7 (10+ years, $800k+ API)">
+          <div class="badge-icon-wrap" style="background:var(--surface-muted)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <span class="badge-name">Legend</span>
+        </div>
+
+      </div>
+      <!-- Progress hint below badges -->
+      <div style="padding:0 14px 14px;display:flex;align-items:center;gap:8px">
+        <div style="flex:1;height:4px;border-radius:99px;background:var(--border);overflow:hidden"><div style="height:100%;background:var(--primary);width:37.5%;border-radius:99px"></div></div>
+        <span style="font-size:11px;font-weight:600;color:var(--muted);white-space:nowrap">3 of 8 earned</span>
+      </div>
+    </div>
+
+    <!-- Account menu -->
+    <div class="profile-section">
+      <div class="profile-section-header"><h3>Account</h3></div>
+      <div class="profile-row">
+        <div class="profile-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <span class="profile-row-label">Edit Profile</span>
+        <span class="profile-row-value">›</span>
+      </div>
+      <div class="profile-row">
+        <div class="profile-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <span class="profile-row-label">Change Password</span>
+        <span class="profile-row-value">›</span>
+      </div>
+      <div class="profile-row" onclick="toggleDark()">
+        <div class="profile-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg></div>
+        <span class="profile-row-label">Dark Mode</span>
+        <span class="profile-row-value" id="dark-status">Off</span>
+      </div>
+      <div class="profile-row" style="cursor:pointer">
+        <div class="profile-row-icon" style="background:var(--danger-lt)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        </div>
+        <span class="profile-row-label" style="color:var(--danger)">Sign Out</span>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /profile -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     BOTTOM NAVIGATION
+════════════════════════════════════════════════════════════════ -->
+<nav class="bottom-nav">
+  <button class="nav-item active" id="nav-home" onclick="showTab('home')" aria-label="Home">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span class="nav-lbl">Home</span>
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" id="nav-history" onclick="showTab('history')" aria-label="History">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+    <span class="nav-lbl">History</span>
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" id="nav-submit" onclick="showTab('submit')" aria-label="Submit report">
+    <div class="nav-pill" aria-hidden="true">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+    <span class="nav-lbl" style="margin-top:2px">Submit</span>
+  </button>
+  <button class="nav-item" id="nav-leaderboard" onclick="showTab('leaderboard')" aria-label="Leaderboard">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span class="nav-lbl">Ranking</span>
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-item" id="nav-profile" onclick="showTab('profile')" aria-label="Profile">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span class="nav-lbl">Profile</span>
+    <div class="nav-dot"></div>
+  </button>
+</nav>
+
+</div><!-- /app -->
+
+<script>
+  /* ── Tab navigation ── */
+  function showTab(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const screen = document.getElementById('screen-' + name);
+    const nav    = document.getElementById('nav-' + name);
+    if (screen) screen.classList.add('active');
+    if (nav)    nav.classList.add('active');
+    // scroll to top of new screen
+    if (screen) { const s = screen.querySelector('.scroll'); if(s) s.scrollTop = 0; }
+  }
+
+  /* ── Dark mode ── */
+  let dark = false;
+  function toggleDark() {
+    dark = !dark;
+    document.documentElement.classList.toggle('dark', dark);
+    const lbl    = document.getElementById('theme-lbl');
+    const status = document.getElementById('dark-status');
+    if (lbl)    lbl.textContent    = dark ? 'Dark'  : 'Light';
+    if (status) status.textContent = dark ? 'On' : 'Off';
+  }
+
+  /* ── Animate progress fills on load ── */
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.querySelectorAll('.hero-prog-fill, .prog-fill').forEach(el => {
+        const target = el.style.width;
+        el.style.width = '0%';
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => { el.style.width = target; });
+        });
+      });
+    }, 250);
+  });
+</script>
+</body>
+</html>

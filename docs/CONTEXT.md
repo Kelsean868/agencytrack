@@ -16,6 +16,7 @@
 | Current main HEAD | `75f09d1` (user-mgmt PR-2 squash, PR #26) |
 | Active track | User-management PR-3 — plan-first session (UI matrix: typed-confirmation, deactivate/reactivate UI, createUser call sites) |
 | Next track | Track A remaining (WizardForm debounce, AgentDashboard dead-mount cleanup) |
+| Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
