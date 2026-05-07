@@ -13,7 +13,7 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-07` |
-| Current main HEAD | `12b256f` (CLAUDE.md staleness audit + kickoff template safeguard, PR #42) |
+| Current main HEAD | `9e4e097` (bump CONTEXT.md Current main HEAD to PR #42 + recently-shipped sync, PR #43) |
 | Active track | None — a11y arc closed (PR3→PR7), mobile pilot pass shipped (PR #36). Track B v2 docs introduced (PR #39). Track A PR-1 audit found items 5+6 already shipped (commit `57828d7`); rescoped to docs-only correction. |
 | Next track | Track B (v2) — B1 medal badge system |
 | Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. |
@@ -126,11 +126,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #43 | `9e4e097` | chore(docs) — bump CONTEXT.md Current main HEAD to PR #42 + recently-shipped sync |
 | #42 | `12b256f` | chore(docs) — comprehensive CLAUDE.md staleness audit + kickoff template safeguard |
 | #41 | `eb8139b` | chore(docs) — mark Track A items 5+6 as shipped, file wizard hardening follow-up |
 | #40 | `c6e60b7` | chore(docs) — refresh CONTEXT.md + CLAUDE.md after a11y arc completion |
 | #39 | `8817209` | docs — introduce Track B v2 design system materials (PRD, implementation, B1 kickoff, mocks) |
-| #38 | `55e9c27` | fix(a11y) — PR7 dark-mode completion (agent + latent bg-primary sweep, 14+13 sites) |
 
 ---
 
