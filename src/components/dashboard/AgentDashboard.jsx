@@ -24,6 +24,9 @@ import AgentAwardsPanel from '../awards/AgentAwardsPanel';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import GoalCarousel from './GoalCarousel';
 import KPICard from './KPICard';
+import ActivityFeed from './ActivityFeed';
+import BadgeGrid, { computeEarnedBadges } from '../gamification/BadgeGrid';
+import { buildActivityEvents } from '../../utils/buildActivityEvents';
 import SyncIndicator from '../ui/SyncIndicator';
 import WelcomeScreen from '../onboarding/WelcomeScreen';
 
@@ -143,6 +146,18 @@ export default function AgentDashboard() {
   const goalData = useMemo(
     () => aggregateAPI(allSubmissions, new Date(), personalAnnualAPI),
     [allSubmissions, personalAnnualAPI]
+  );
+
+  // Activity feed events (B3). Submission events + 3 weekly-criteria
+  // badge events, derived client-side from already-loaded data. Capped
+  // at 25 items in the last 7 days inside the util.
+  const earnedBadges = useMemo(
+    () => computeEarnedBadges(allSubmissions),
+    [allSubmissions]
+  );
+  const activityEvents = useMemo(
+    () => buildActivityEvents(allSubmissions, earnedBadges, new Date()),
+    [allSubmissions, earnedBadges]
   );
 
   const ytdTotals = useMemo(() => {
@@ -480,6 +495,33 @@ export default function AgentDashboard() {
               </div>
             </div>
           </div>
+
+          {/* Activity feed (B3 — submission + 3 weekly-criteria badge
+              events from the last 7 days, max 25 items, derived
+              client-side). 2-column g4-mix layout from the mock is
+              deferred to B4 sidebar shell — B3 stacks vertically. */}
+          <div className="mb-6">
+            <ActivityFeed
+              events={activityEvents}
+              onViewAll={() => setActiveTab('history')}
+            />
+          </div>
+
+          {/* Achievement badges surfaced on AgentDashboard (B1 follow-up,
+              landed in B3). Mirrors the CareerPortal call site so the
+              two surfaces stay aligned. */}
+          <section
+            aria-labelledby="agent-dashboard-achievements-heading"
+            className="card mb-6"
+          >
+            <h3
+              id="agent-dashboard-achievements-heading"
+              className="text-sm font-semibold text-ink mb-3"
+            >
+              Achievement Badges
+            </h3>
+            <BadgeGrid submissions={allSubmissions} />
+          </section>
 
           {/* Goal hierarchy / gap analysis */}
           <div className="mb-6">
