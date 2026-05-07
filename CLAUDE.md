@@ -99,6 +99,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 | P8E | Agent Management + Campaign Notifications + Welcome Screen | ✅ COMPLETE |
 | Dark Mode Hotfix | Warm palette + CSS-var theme system + persistence | ✅ COMPLETE |
 | Track A | Security/perf hardening | 🔄 NEXT |
+| Track B (v2) | Design System v2 — "Concept 4 Complete" redesign (5 sub-PRs B1–B5) | 📋 PLANNED — see `docs/design-v2-PRD.md` |
 | Pilot Prep | End-to-end testing, account setup, mobile audit | ⏸️ DEFERRED (app not at Tatil yet) |
 | P9  | Sales Manager role | ⏳ Planned (post-pilot) |
 | P10 | Multi-tenancy full rollout | ⏳ Deferred |
@@ -108,9 +109,9 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 
 **Active task:** Track A — security & performance hardening (4 fixes across firestore.rules, WizardForm, AgentDashboard, firebase.js).
 
-**Then:** Track B — visible polish (mobile audit, loading/error states, WelcomeScreen copy, hardcoded color sweep).
+**Then:** Track B (v2) — Design System v2 redesign. Replaces the original "visible polish" Track B scope. Ships in 5 sub-PRs (B1 medal badges, B2 goal carousel, B3 activity feed, B4 sidebar shell, B5 tenant admin config). Canonical spec: [`docs/design-v2-PRD.md`](docs/design-v2-PRD.md). Phased plan: [`docs/design-v2-implementation.md`](docs/design-v2-implementation.md). Visual source of truth: [`mocks/concept-4-complete.html`](mocks/concept-4-complete.html). Goal is visual parity with the mock at 1440px / 1024px / 768px / 390px in both light and dark mode.
 
-**Then:** Track C — configuration & data (real Tatil accounts, company minimums, 2026 goals, persistency historicals).
+**Then:** Track C — configuration & data (real Tatil accounts, company minimums, 2026 goals, persistency historicals). Note: B5 covers the company-minimums UI surface ahead of Track C.
 
 **Then:** Track D — cron + notifications verification.
 

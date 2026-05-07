@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgencyTrack — Concept 1: Clarity</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ── Design Tokens ─────────────────────────────────────────── */
+  :root {
+    --bg:          #f5f3ef;
+    --surface:     #ffffff;
+    --surface-2:   #faf9f6;
+    --border:      #e8e4dc;
+    --text:        #1c1a15;
+    --muted:       #736d64;
+    --faint:       #a39d94;
+    --primary:     #007a7f;
+    --primary-lt:  #e6f5f5;
+    --primary-dk:  #015a5e;
+    --success:     #1f8a50;
+    --success-lt:  #e8f5ee;
+    --warning:     #b45309;
+    --warning-lt:  #fef3e2;
+    --danger:      #c0392b;
+    --danger-lt:   #fde8e7;
+    --shadow-sm:   0 1px 3px rgba(28,26,21,.07), 0 1px 2px rgba(28,26,21,.04);
+    --shadow-md:   0 4px 12px rgba(28,26,21,.08), 0 2px 4px rgba(28,26,21,.05);
+    --shadow-lg:   0 12px 32px rgba(28,26,21,.12);
+    --radius-sm:   12px;
+    --radius-md:   16px;
+    --radius-lg:   24px;
+    --radius-xl:   32px;
+    --bottom-nav:  72px;
+  }
+  .dark {
+    --bg:          #181410;
+    --surface:     #221e18;
+    --surface-2:   #2c271f;
+    --border:      #38332b;
+    --text:        #f0ebe0;
+    --muted:       #b0a898;
+    --faint:       #7a7268;
+    --primary:     #4ab5b8;
+    --primary-lt:  rgba(74,181,184,.14);
+    --primary-dk:  #01696f;
+    --success:     #5db876;
+    --success-lt:  rgba(93,184,118,.14);
+    --warning:     #e8b53e;
+    --warning-lt:  rgba(232,181,62,.14);
+    --danger:      #d96b5d;
+    --danger-lt:   rgba(217,107,93,.14);
+    --shadow-sm:   0 1px 3px rgba(0,0,0,.3);
+    --shadow-md:   0 4px 12px rgba(0,0,0,.4);
+    --shadow-lg:   0 12px 32px rgba(0,0,0,.5);
+  }
+
+  /* ── Reset ─────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 16px; -webkit-font-smoothing: antialiased; }
+  body { background: var(--bg); color: var(--text); min-height: 100dvh; overflow-x: hidden; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; }
+
+  /* ── Layout ─────────────────────────────────────────────────── */
+  .app { max-width: 430px; margin: 0 auto; position: relative; min-height: 100dvh; background: var(--bg); }
+  .screen { display: none; flex-direction: column; min-height: 100dvh; padding-bottom: var(--bottom-nav); }
+  .screen.active { display: flex; }
+
+  /* ── Top Header ──────────────────────────────────────────────── */
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 20px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 20;
+  }
+  .header-left h1 { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.5px; }
+  .header-left p { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .header-right { display: flex; align-items: center; gap: 10px; }
+  .icon-btn {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-2); color: var(--muted);
+    transition: background 0.15s, color 0.15s;
+  }
+  .icon-btn:hover { background: var(--primary-lt); color: var(--primary); }
+  .avatar-sm {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--primary); color: white;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+
+  /* ── Scroll Content ───────────────────────────────────────────── */
+  .scroll { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* ── Hero Card ──────────────────────────────────────────────── */
+  .hero-card {
+    background: var(--primary);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+  }
+  .hero-card::before {
+    content: '';
+    position: absolute; top: -40px; right: -40px;
+    width: 180px; height: 180px;
+    background: rgba(255,255,255,.08);
+    border-radius: 50%;
+  }
+  .hero-card::after {
+    content: '';
+    position: absolute; bottom: -60px; left: -20px;
+    width: 220px; height: 220px;
+    background: rgba(255,255,255,.05);
+    border-radius: 50%;
+  }
+  .hero-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; opacity: .75; margin-bottom: 6px; }
+  .hero-value { font-size: 40px; font-weight: 800; letter-spacing: -1.5px; line-height: 1; }
+  .hero-sub { font-size: 13px; opacity: .75; margin-top: 6px; }
+  .hero-progress { margin-top: 20px; }
+  .hero-progress-bar { height: 6px; background: rgba(255,255,255,.25); border-radius: 99px; overflow: hidden; }
+  .hero-progress-fill { height: 100%; background: white; border-radius: 99px; transition: width 1s ease-out; }
+  .hero-progress-labels { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; opacity: .75; }
+  .hero-row { display: flex; justify-content: space-between; align-items: flex-end; }
+  .hero-ring { position: relative; width: 88px; height: 88px; flex-shrink: 0; }
+  .hero-ring svg { transform: rotate(-90deg); }
+  .hero-ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .hero-ring-pct { font-size: 18px; font-weight: 800; color: white; line-height: 1; }
+  .hero-ring-sub { font-size: 9px; color: rgba(255,255,255,.7); margin-top: 1px; }
+
+  /* ── Section Label ─────────────────────────────────────────── */
+  .section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 4px; }
+
+  /* ── KPI Grid ──────────────────────────────────────────────── */
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .kpi-card {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    transition: box-shadow 0.2s;
+  }
+  .kpi-card:hover { box-shadow: var(--shadow-md); }
+  .kpi-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 10px; }
+  .kpi-value { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); line-height: 1; }
+  .kpi-label { font-size: 12px; color: var(--muted); margin-top: 3px; font-weight: 500; }
+  .kpi-delta { font-size: 11px; font-weight: 600; margin-top: 6px; display: flex; align-items: center; gap: 3px; }
+  .delta-up { color: var(--success); }
+  .delta-down { color: var(--danger); }
+  .delta-flat { color: var(--muted); }
+
+  /* ── Week Strip ────────────────────────────────────────────── */
+  .week-card {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+  }
+  .week-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .week-title { font-size: 14px; font-weight: 700; color: var(--text); }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 99px;
+    font-size: 11px; font-weight: 700;
+  }
+  .badge-success { background: var(--success-lt); color: var(--success); }
+  .badge-warning { background: var(--warning-lt); color: var(--warning); }
+  .badge-primary { background: var(--primary-lt); color: var(--primary); }
+  .badge-muted { background: var(--border); color: var(--muted); }
+  .week-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .week-stat { text-align: center; }
+  .week-stat-val { font-size: 18px; font-weight: 800; color: var(--text); }
+  .week-stat-lbl { font-size: 10px; color: var(--muted); font-weight: 500; margin-top: 1px; }
+
+  /* ── Leaderboard Card ──────────────────────────────────────── */
+  .leader-card {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+  }
+  .leader-card-header { padding: 14px 16px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .leader-card-header h3 { font-size: 14px; font-weight: 700; }
+  .leader-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  .leader-row:last-child { border-bottom: none; }
+  .leader-row:hover { background: var(--surface-2); }
+  .leader-row.me { background: var(--primary-lt); border-left: 3px solid var(--primary); padding-left: 13px; }
+  .leader-rank { width: 24px; font-size: 13px; font-weight: 700; color: var(--muted); text-align: center; }
+  .leader-rank.gold { color: #f59e0b; }
+  .leader-rank.silver { color: #94a3b8; }
+  .leader-rank.bronze { color: #b45309; }
+  .leader-avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: white; flex-shrink: 0; }
+  .leader-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--text); }
+  .leader-api { font-size: 13px; font-weight: 700; color: var(--primary); }
+
+  /* ── Motivational Banner ───────────────────────────────────── */
+  .motto-card {
+    background: var(--primary-lt);
+    border: 1px solid rgba(0,122,127,.15);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex; align-items: flex-start; gap: 12px;
+  }
+  .motto-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--primary); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .motto-text h4 { font-size: 13px; font-weight: 700; color: var(--primary); margin-bottom: 2px; }
+  .motto-text p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* ── Bottom Nav ─────────────────────────────────────────────── */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 30;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 10px 4px 10px;
+    gap: 4px; color: var(--faint); transition: color 0.15s;
+    min-height: 60px; border: none; background: none; cursor: pointer;
+    position: relative;
+  }
+  .nav-item.active { color: var(--primary); }
+  .nav-item.active .nav-dot { opacity: 1; }
+  .nav-label { font-size: 10px; font-weight: 600; }
+  .nav-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--primary); opacity: 0; position: absolute; bottom: 6px; transition: opacity 0.15s; }
+  .nav-pill {
+    background: var(--primary); color: white;
+    width: 52px; height: 52px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,122,127,.4);
+    margin-top: -8px;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .nav-pill:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,122,127,.45); }
+  .nav-badge { position: absolute; top: 6px; right: 50%; transform: translateX(10px); background: var(--danger); color: white; font-size: 9px; font-weight: 800; border-radius: 99px; padding: 1px 5px; min-width: 16px; text-align: center; }
+
+  /* ── Form Styles ─────────────────────────────────────────────── */
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-label { font-size: 13px; font-weight: 600; color: var(--muted); }
+  .form-input {
+    height: 48px; border-radius: var(--radius-sm); border: 1.5px solid var(--border);
+    background: var(--surface); color: var(--text);
+    padding: 0 14px; font-size: 15px; font-family: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+  }
+  .form-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,122,127,.12); }
+  .btn-primary {
+    height: 52px; border-radius: var(--radius-md); background: var(--primary); color: white;
+    font-size: 15px; font-weight: 700; font-family: inherit;
+    border: none; cursor: pointer; width: 100%;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    box-shadow: 0 4px 12px rgba(0,122,127,.35);
+  }
+  .btn-primary:hover { background: var(--primary-dk); transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,122,127,.4); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-secondary {
+    height: 52px; border-radius: var(--radius-md); background: var(--surface); color: var(--text);
+    font-size: 15px; font-weight: 600; font-family: inherit;
+    border: 1.5px solid var(--border); cursor: pointer; width: 100%;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn-secondary:hover { background: var(--surface-2); border-color: var(--primary); color: var(--primary); }
+
+  /* ── Wizard ─────────────────────────────────────────────────── */
+  .wizard-header { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); background: var(--surface); }
+  .wizard-steps { display: flex; gap: 6px; padding: 0 20px 16px; }
+  .step-dot { height: 4px; border-radius: 99px; background: var(--border); transition: all 0.3s; flex: 1; }
+  .step-dot.done { background: var(--primary); opacity: .5; }
+  .step-dot.active { background: var(--primary); flex: 2; }
+  .wizard-step-content { padding: 24px 20px; display: flex; flex-direction: column; gap: 18px; }
+  .step-group-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-bottom: -6px; }
+  .wizard-footer { padding: 16px 20px; display: flex; gap: 12px; border-top: 1px solid var(--border); background: var(--surface); }
+  .wizard-footer .btn-secondary { flex: 0 0 120px; }
+
+  /* ── Profile Screen ──────────────────────────────────────────── */
+  .profile-hero { background: var(--primary); padding: 32px 20px 48px; text-align: center; color: white; }
+  .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; margin: 0 auto 12px; border: 3px solid rgba(255,255,255,.4); }
+  .profile-name { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
+  .profile-role { font-size: 13px; opacity: .8; margin-top: 4px; }
+  .profile-body { padding: 20px; margin-top: -24px; }
+  .profile-cards-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .profile-stat-card { background: var(--surface); border-radius: var(--radius-md); padding: 14px 12px; text-align: center; box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+  .profile-stat-val { font-size: 20px; font-weight: 800; color: var(--primary); }
+  .profile-stat-lbl { font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 2px; }
+  .profile-section { background: var(--surface); border-radius: var(--radius-md); overflow: hidden; box-shadow: var(--shadow-sm); border: 1px solid var(--border); margin-bottom: 12px; }
+  .profile-section-header { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .profile-section-header h3 { font-size: 13px; font-weight: 700; color: var(--text); }
+  .profile-row { display: flex; align-items: center; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.15s; }
+  .profile-row:last-child { border-bottom: none; }
+  .profile-row:hover { background: var(--surface-2); }
+  .profile-row-icon { width: 32px; height: 32px; border-radius: 8px; background: var(--primary-lt); display: flex; align-items: center; justify-content: center; color: var(--primary); }
+  .profile-row-label { flex: 1; font-size: 14px; font-weight: 600; color: var(--text); }
+  .profile-row-value { font-size: 13px; color: var(--muted); }
+
+  /* ── Dark Toggle Pill ───────────────────────────────────────── */
+  .dark-toggle { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 99px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+  .dark-toggle:hover { color: var(--primary); border-color: var(--primary); }
+
+  /* ── Concept Label ──────────────────────────────────────────── */
+  .concept-banner { background: var(--text); color: var(--bg); text-align: center; font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 6px; }
+</style>
+</head>
+<body>
+
+<div class="concept-banner">CONCEPT 1 — CLARITY &nbsp;·&nbsp; Bottom Nav + Hero KPI + Generous Whitespace</div>
+
+<div class="app">
+
+  <!-- ══════════ DASHBOARD SCREEN ══════════ -->
+  <div class="screen active" id="screen-home">
+    <div class="header">
+      <div class="header-left">
+        <h1>Good morning, Marcus 👋</h1>
+        <p>Week of May 4, 2026</p>
+      </div>
+      <div class="header-right">
+        <button class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode">
+          <svg id="sun-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <span>Light</span>
+        </button>
+        <button class="icon-btn" style="position:relative" onclick="showTab('alerts')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><bell/><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="nav-badge">2</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="scroll">
+      <!-- Hero -->
+      <div class="hero-card">
+        <div class="hero-label">YTD Annual Premium Income</div>
+        <div class="hero-row">
+          <div>
+            <div class="hero-value">$147,300</div>
+            <div class="hero-sub">TTD · Target $200,000</div>
+            <div class="hero-progress" style="margin-top:16px;width:200px">
+              <div class="hero-progress-bar"><div class="hero-progress-fill" style="width:73.6%"></div></div>
+              <div class="hero-progress-labels"><span>0%</span><span>73.6% complete</span><span>100%</span></div>
+            </div>
+          </div>
+          <div class="hero-ring">
+            <svg width="88" height="88" viewBox="0 0 88 88">
+              <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="8"/>
+              <circle cx="44" cy="44" r="36" fill="none" stroke="white" stroke-width="8" stroke-linecap="round" stroke-dasharray="226.2" stroke-dashoffset="59.7"/>
+            </svg>
+            <div class="hero-ring-text"><div class="hero-ring-pct">74%</div><div class="hero-ring-sub">of goal</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Motivational -->
+      <div class="motto-card">
+        <div class="motto-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </div>
+        <div class="motto-text">
+          <h4>You're 3 apps away from Elite tier!</h4>
+          <p>Keep your closing ratio above 25% this week to hit the threshold. You've got this.</p>
+        </div>
+      </div>
+
+      <!-- This Week -->
+      <div>
+        <div class="section-label">This Week</div>
+        <div class="week-card">
+          <div class="week-row">
+            <div class="week-title">May 4 – May 10</div>
+            <span class="badge badge-success">✓ Submitted</span>
+          </div>
+          <div class="week-stats">
+            <div class="week-stat"><div class="week-stat-val">12</div><div class="week-stat-lbl">Approaches</div></div>
+            <div class="week-stat"><div class="week-stat-val">4</div><div class="week-stat-lbl">FFIs Done</div></div>
+            <div class="week-stat"><div class="week-stat-val">2</div><div class="week-stat-lbl">Closings</div></div>
+            <div class="week-stat"><div class="week-stat-val" style="color:var(--primary)">$3,200</div><div class="week-stat-lbl">API (TTD)</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KPI Grid -->
+      <div>
+        <div class="section-label">Key Metrics</div>
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--primary-lt)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+            <div class="kpi-value">38</div>
+            <div class="kpi-label">Prospecting</div>
+            <div class="kpi-delta delta-up">↑ 6 vs last week</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--success-lt)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+            <div class="kpi-value">26%</div>
+            <div class="kpi-label">Closing Ratio</div>
+            <div class="kpi-delta delta-up">↑ 4% vs last week</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--warning-lt)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--warning)" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+            <div class="kpi-value">14</div>
+            <div class="kpi-label">FFIs Scheduled</div>
+            <div class="kpi-delta delta-flat">→ same as last</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:var(--danger-lt)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+            <div class="kpi-value">7</div>
+            <div class="kpi-label">Apps Sold</div>
+            <div class="kpi-delta delta-down">↓ 2 vs last week</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Leaderboard Snapshot -->
+      <div>
+        <div class="section-label">Branch Leaderboard</div>
+        <div class="leader-card">
+          <div class="leader-card-header"><h3>Top Performers — May 2026</h3><span class="badge badge-primary">#3 You</span></div>
+          <div class="leader-row"><div class="leader-rank gold">1</div><div class="leader-avatar" style="background:#f59e0b">AK</div><div class="leader-name">Alicia King</div><div class="leader-api">$28,400</div></div>
+          <div class="leader-row"><div class="leader-rank silver">2</div><div class="leader-avatar" style="background:#6366f1">JP</div><div class="leader-name">James Pierre</div><div class="leader-api">$21,800</div></div>
+          <div class="leader-row me"><div class="leader-rank bronze">3</div><div class="leader-avatar" style="background:var(--primary)">MT</div><div class="leader-name">Marcus (You)</div><div class="leader-api">$18,200</div></div>
+          <div class="leader-row"><div class="leader-rank" style="color:var(--faint)">4</div><div class="leader-avatar" style="background:#ec4899">SR</div><div class="leader-name">Sandra Ramnath</div><div class="leader-api">$14,600</div></div>
+          <div class="leader-row"><div class="leader-rank" style="color:var(--faint)">5</div><div class="leader-avatar" style="background:#84cc16">TW</div><div class="leader-name">Trevor Williams</div><div class="leader-api">$11,300</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SUBMIT SCREEN ══════════ -->
+  <div class="screen" id="screen-submit">
+    <div class="wizard-header">
+      <div>
+        <div style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Step 1 of 5</div>
+        <div style="font-size:16px;font-weight:800;color:var(--text);margin-top:2px">Prospecting Activity</div>
+      </div>
+      <button class="icon-btn">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="wizard-steps">
+      <div class="step-dot done"></div>
+      <div class="step-dot active"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+    </div>
+    <div class="scroll" style="padding-top:4px">
+      <div class="wizard-step-content" style="padding:0">
+        <div style="padding:4px 0 8px">
+          <p style="font-size:13px;color:var(--muted);line-height:1.6">Enter your prospecting numbers for this week. All fields are for the 7-day period ending today.</p>
+        </div>
+        <div class="step-group-label">Phone &amp; Face-to-Face</div>
+        <div class="form-group">
+          <label class="form-label">Tel Attempts</label>
+          <input class="form-input" type="number" inputmode="numeric" placeholder="0" value="24">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Persons Reached</label>
+          <input class="form-input" type="number" inputmode="numeric" placeholder="0" value="18">
+        </div>
+        <div class="form-group">
+          <label class="form-label">F2F Attempts</label>
+          <input class="form-input" type="number" inputmode="numeric" placeholder="0" value="8">
+        </div>
+        <div class="step-group-label">Approaches</div>
+        <div class="form-group">
+          <label class="form-label">Qualified Approaches</label>
+          <input class="form-input" type="number" inputmode="numeric" placeholder="0" value="12">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Total Prospecting Touches</label>
+          <input class="form-input" type="number" inputmode="numeric" placeholder="0" value="38">
+        </div>
+      </div>
+    </div>
+    <div class="wizard-footer">
+      <button class="btn-secondary">← Back</button>
+      <button class="btn-primary" style="flex:1">Save &amp; Continue →</button>
+    </div>
+  </div>
+
+  <!-- ══════════ HISTORY SCREEN ══════════ -->
+  <div class="screen" id="screen-history">
+    <div class="header">
+      <div class="header-left"><h1>History</h1><p>Your past weekly reports</p></div>
+    </div>
+    <div class="scroll">
+      <div class="section-label">Recent Weeks</div>
+      <div class="leader-card">
+        <div class="leader-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%"><span style="font-size:14px;font-weight:700">Week of Apr 27</span><span class="badge badge-success">✓ Submitted</span></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%">
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px">10</div><div class="week-stat-lbl">Apps</div></div>
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px;color:var(--primary)">$4,800</div><div class="week-stat-lbl">API</div></div>
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px">30%</div><div class="week-stat-lbl">Close %</div></div>
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px">36</div><div class="week-stat-lbl">Touches</div></div>
+          </div>
+        </div>
+        <div class="leader-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%"><span style="font-size:14px;font-weight:700">Week of Apr 20</span><span class="badge badge-success">✓ Submitted</span></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%">
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px">8</div><div class="week-stat-lbl">Apps</div></div>
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px;color:var(--primary)">$3,600</div><div class="week-stat-lbl">API</div></div>
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px">22%</div><div class="week-stat-lbl">Close %</div></div>
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px">32</div><div class="week-stat-lbl">Touches</div></div>
+          </div>
+        </div>
+        <div class="leader-row" style="flex-direction:column;align-items:flex-start;gap:8px">
+          <div style="display:flex;align-items:center;justify-content:space-between;width:100%"><span style="font-size:14px;font-weight:700">Week of Apr 13</span><span class="badge badge-warning">Draft</span></div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;width:100%">
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px">5</div><div class="week-stat-lbl">Apps</div></div>
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px;color:var(--primary)">$2,200</div><div class="week-stat-lbl">API</div></div>
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px">18%</div><div class="week-stat-lbl">Close %</div></div>
+            <div class="week-stat"><div class="week-stat-val" style="font-size:16px">28</div><div class="week-stat-lbl">Touches</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ LEADERBOARD SCREEN ══════════ -->
+  <div class="screen" id="screen-leaderboard">
+    <div class="header">
+      <div class="header-left"><h1>Leaderboard</h1><p>Branch rankings — May 2026</p></div>
+    </div>
+    <div class="scroll">
+      <div class="hero-card" style="background:linear-gradient(135deg,#01696f,#4ab5b8);text-align:center">
+        <div class="hero-label">Your Position</div>
+        <div style="font-size:56px;font-weight:800;line-height:1;letter-spacing:-2px">#3</div>
+        <div style="font-size:13px;opacity:.8;margin-top:4px">Top 20% of branch · $18,200 TTD this month</div>
+      </div>
+      <div class="leader-card">
+        <div class="leader-row"><div class="leader-rank gold">🥇</div><div class="leader-avatar" style="background:#f59e0b;font-size:15px">AK</div><div class="leader-name">Alicia King<div style="font-size:11px;color:var(--muted);font-weight:500">Elite · 6 apps</div></div><div class="leader-api">$28,400</div></div>
+        <div class="leader-row"><div class="leader-rank silver">🥈</div><div class="leader-avatar" style="background:#6366f1;font-size:15px">JP</div><div class="leader-name">James Pierre<div style="font-size:11px;color:var(--muted);font-weight:500">Pro · 5 apps</div></div><div class="leader-api">$21,800</div></div>
+        <div class="leader-row me"><div class="leader-rank bronze">🥉</div><div class="leader-avatar" style="background:var(--primary);font-size:15px">MT</div><div class="leader-name">Marcus (You)<div style="font-size:11px;color:var(--primary);font-weight:600">Associate · 3 apps</div></div><div class="leader-api">$18,200</div></div>
+        <div class="leader-row"><div class="leader-rank" style="color:var(--faint);font-size:12px">4</div><div class="leader-avatar" style="background:#ec4899;font-size:15px">SR</div><div class="leader-name">Sandra Ramnath<div style="font-size:11px;color:var(--muted);font-weight:500">Associate · 3 apps</div></div><div class="leader-api">$14,600</div></div>
+        <div class="leader-row"><div class="leader-rank" style="color:var(--faint);font-size:12px">5</div><div class="leader-avatar" style="background:#84cc16;font-size:15px">TW</div><div class="leader-name">Trevor Williams<div style="font-size:11px;color:var(--muted);font-weight:500">Rookie · 2 apps</div></div><div class="leader-api">$11,300</div></div>
+        <div class="leader-row"><div class="leader-rank" style="color:var(--faint);font-size:12px">6</div><div class="leader-avatar" style="background:#f97316;font-size:15px">NM</div><div class="leader-name">Nadia Mohammed<div style="font-size:11px;color:var(--muted);font-weight:500">Rookie · 2 apps</div></div><div class="leader-api">$9,800</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ PROFILE SCREEN ══════════ -->
+  <div class="screen" id="screen-profile">
+    <div class="profile-hero">
+      <div class="profile-avatar">MT</div>
+      <div class="profile-name">Marcus Thompson</div>
+      <div class="profile-role">Insurance Agent · Associate Level</div>
+      <div style="margin-top:12px"><span class="badge" style="background:rgba(255,255,255,.2);color:white">Joined Jan 2024 · 16 months</span></div>
+    </div>
+    <div class="profile-body">
+      <div class="profile-cards-row">
+        <div class="profile-stat-card"><div class="profile-stat-val">$147k</div><div class="profile-stat-lbl">YTD API</div></div>
+        <div class="profile-stat-card"><div class="profile-stat-val">74%</div><div class="profile-stat-lbl">Goal %</div></div>
+        <div class="profile-stat-card"><div class="profile-stat-val">#3</div><div class="profile-stat-lbl">Rank</div></div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-section-header"><h3>Career Progress</h3></div>
+        <div style="padding:14px 16px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px"><span style="font-size:13px;font-weight:600;color:var(--text)">Associate → Advisor III</span><span style="font-size:12px;color:var(--muted)">Level 2 of 7</span></div>
+          <div style="height:8px;border-radius:99px;background:var(--border);overflow:hidden"><div style="height:100%;background:var(--primary);border-radius:99px;width:42%"></div></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px">$102,700 more API to unlock Advisor III</div>
+        </div>
+      </div>
+      <div class="profile-section">
+        <div class="profile-section-header"><h3>Account</h3></div>
+        <div class="profile-row"><div class="profile-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="profile-row-label">Edit Profile</div><div class="profile-row-value">›</div></div>
+        <div class="profile-row"><div class="profile-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div class="profile-row-label">Change Password</div><div class="profile-row-value">›</div></div>
+        <div class="profile-row" onclick="toggleDark()"><div class="profile-row-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg></div><div class="profile-row-label">Dark Mode</div><div class="profile-row-value" id="dark-status">Off</div></div>
+        <div class="profile-row" style="color:var(--danger)"><div class="profile-row-icon" style="background:var(--danger-lt)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div><div class="profile-row-label" style="color:var(--danger)">Sign Out</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ BOTTOM NAVIGATION ══════════ -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="showTab('home')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span class="nav-label">Home</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" id="nav-history" onclick="showTab('history')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      <span class="nav-label">History</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" id="nav-submit" onclick="showTab('submit')">
+      <div class="nav-pill">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <span class="nav-label" style="margin-top:2px">Submit</span>
+    </button>
+    <button class="nav-item" id="nav-leaderboard" onclick="showTab('leaderboard')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span class="nav-label">Ranking</span>
+      <div class="nav-dot"></div>
+    </button>
+    <button class="nav-item" id="nav-profile" onclick="showTab('profile')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="nav-label">Profile</span>
+      <div class="nav-dot"></div>
+    </button>
+  </nav>
+</div>
+
+<script>
+  function showTab(name) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const screen = document.getElementById('screen-' + name);
+    const nav = document.getElementById('nav-' + name);
+    if (screen) screen.classList.add('active');
+    if (nav) nav.classList.add('active');
+  }
+
+  let dark = false;
+  function toggleDark() {
+    dark = !dark;
+    document.documentElement.classList.toggle('dark', dark);
+    const toggle = document.querySelector('.dark-toggle');
+    const status = document.getElementById('dark-status');
+    if (toggle) toggle.querySelector('span').textContent = dark ? 'Dark' : 'Light';
+    if (status) status.textContent = dark ? 'On' : 'Off';
+  }
+
+  // Animate progress on load
+  window.addEventListener('load', () => {
+    setTimeout(() => {
+      document.querySelectorAll('.hero-progress-fill').forEach(el => {
+        const w = el.style.width;
+        el.style.width = '0%';
+        setTimeout(() => { el.style.width = w; }, 50);
+      });
+    }, 300);
+  });
+</script>
+</body>
+</html>
