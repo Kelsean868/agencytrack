@@ -92,7 +92,7 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 - **Worktree branches only.** Never push directly to `main`.
 - **Squash merges** via GitHub UI only. No auto-merge.
-- **Post-merge verification mandatory:** `git fetch origin && git log origin/main --oneline -5` AND a production walkthrough via `scripts/exploration-walk.cjs`.
+- **Post-merge verification mandatory:** `git fetch origin && git pull origin main && git log origin/main --oneline -5` AND a production walkthrough via `scripts/exploration-walk.cjs`. The pull is required so worktree-local tooling matches production — fetch alone leaves the working tree at pre-merge state and verification scripts may run stale.
 - **Production polling retired** (PR #15) — production deploy verification is manual via Vercel dashboard.
 - **Verification artifacts stay local** — logs, screenshots, one-off scripts under `verification/` are gitignored by design.
 
