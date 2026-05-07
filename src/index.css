@@ -58,6 +58,23 @@
   --color-presentation-muted:  rgba(240, 235, 224, 0.7);
   --color-presentation-accent: #4ab5b8;
   --color-presentation-border: rgba(240, 235, 224, 0.15);
+
+  /* ── Medal palette (Design System v2 — B1 medal badges) ──────────────
+   * 8 gradient palettes mapped to badge categories. Each palette has a
+   * light center, a mid tone, a deep edge, and a colored glow used by
+   * the .medal-N.glow box-shadow. medal-6 (silver/platinum) is
+   * intentionally unembellished and has no glow rule per mock.
+   * --color-medal-pip-active is the active rarity dot in the tier-pip row.
+   */
+  --color-medal-1-light: #fde68a; --color-medal-1-mid: #f59e0b; --color-medal-1-deep: #b45309; --color-medal-1-glow: rgba(245, 158, 11, 0.45);
+  --color-medal-2-light: #fed7aa; --color-medal-2-mid: #fb923c; --color-medal-2-deep: #be123c; --color-medal-2-glow: rgba(251, 113, 133, 0.42);
+  --color-medal-3-light: #99f6e4; --color-medal-3-mid: #14b8a6; --color-medal-3-deep: #0e7490; --color-medal-3-glow: rgba(20, 184, 166, 0.42);
+  --color-medal-4-light: #fef9c3; --color-medal-4-mid: #fbbf24; --color-medal-4-deep: #92400e; --color-medal-4-glow: rgba(251, 191, 36, 0.55);
+  --color-medal-5-light: #ddd6fe; --color-medal-5-mid: #a78bfa; --color-medal-5-deep: #5b21b6; --color-medal-5-glow: rgba(167, 139, 250, 0.45);
+  --color-medal-6-light: #f1f5f9; --color-medal-6-mid: #94a3b8; --color-medal-6-deep: #475569; /* no glow — silver intentionally unembellished */
+  --color-medal-7-light: #a7f3d0; --color-medal-7-mid: #10b981; --color-medal-7-deep: #047857; --color-medal-7-glow: rgba(16, 185, 129, 0.42);
+  --color-medal-8-light: #f5d0fe; --color-medal-8-mid: #c084fc; --color-medal-8-deep: #581c87; --color-medal-8-glow: rgba(192, 132, 252, 0.5);
+  --color-medal-pip-active: #c08d6b;
 }
 
 .dark {
@@ -94,6 +111,26 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+
+  /* ── Medal palette (dark mode) ────────────────────────────────────────
+   * Medal palettes 1–8 reuse light-mode values: the radial gradient runs
+   * from a light center (e.g. #fde68a) through a mid tone to a deep edge,
+   * which produces a luminous "glowing coin" against the warm dark
+   * surface — desaturating would dull the effect that makes the
+   * medallions read as polished metal. Locked-state dark gradient is
+   * overridden inside .dark .medal-locked further down the file.
+   * --color-medal-pip-active lifts to a warmer bronze for legibility on
+   * dark cards.
+   */
+  --color-medal-1-light: #fde68a; --color-medal-1-mid: #f59e0b; --color-medal-1-deep: #b45309; --color-medal-1-glow: rgba(245, 158, 11, 0.45);
+  --color-medal-2-light: #fed7aa; --color-medal-2-mid: #fb923c; --color-medal-2-deep: #be123c; --color-medal-2-glow: rgba(251, 113, 133, 0.42);
+  --color-medal-3-light: #99f6e4; --color-medal-3-mid: #14b8a6; --color-medal-3-deep: #0e7490; --color-medal-3-glow: rgba(20, 184, 166, 0.42);
+  --color-medal-4-light: #fef9c3; --color-medal-4-mid: #fbbf24; --color-medal-4-deep: #92400e; --color-medal-4-glow: rgba(251, 191, 36, 0.55);
+  --color-medal-5-light: #ddd6fe; --color-medal-5-mid: #a78bfa; --color-medal-5-deep: #5b21b6; --color-medal-5-glow: rgba(167, 139, 250, 0.45);
+  --color-medal-6-light: #f1f5f9; --color-medal-6-mid: #94a3b8; --color-medal-6-deep: #475569; /* no glow — silver intentionally unembellished */
+  --color-medal-7-light: #a7f3d0; --color-medal-7-mid: #10b981; --color-medal-7-deep: #047857; --color-medal-7-glow: rgba(16, 185, 129, 0.42);
+  --color-medal-8-light: #f5d0fe; --color-medal-8-mid: #c084fc; --color-medal-8-deep: #581c87; --color-medal-8-glow: rgba(192, 132, 252, 0.5);
+  --color-medal-pip-active: #d4a373;
 }
 
 * { box-sizing: border-box; }
@@ -158,4 +195,174 @@ h1, h2, h3, h4 {
   .label {
     @apply block text-sm font-medium text-[color:var(--color-text-muted)] mb-1.5;
   }
+}
+
+/* ── Achievement badges (Medal v2 — glossy coin) ─────────────────────────
+ * Lifted from mocks/concept-4-complete.html with two project-policy
+ * adjustments: gradient/glow values reference --color-medal-* tokens, and
+ * hover transforms are guarded by prefers-reduced-motion: no-preference.
+ */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.badge-item {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 14px 8px 12px;
+  text-align: center;
+  transition: transform 0.2s ease, border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+
+.badge-item.locked .badge-name { opacity: 0.7; }
+.badge-item.locked .badge-sub  { opacity: 0.55; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .badge-item.earned:hover {
+    transform: translateY(-2px);
+    border-color: var(--color-border-strong);
+    box-shadow: var(--shadow-md);
+  }
+  .badge-item.earned:hover .badge-medal {
+    transform: scale(1.08) rotate(-4deg);
+  }
+}
+
+/* Medallion — circular layered coin with gloss highlight */
+.badge-medal {
+  --medal-size: 52px;
+  width: var(--medal-size);
+  height: var(--medal-size);
+  border-radius: 50%;
+  margin: 0 auto 6px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  box-shadow:
+    inset 0 -2px 4px rgba(0, 0, 0, 0.18),
+    inset 0 2px 4px rgba(255, 255, 255, 0.4),
+    0 2px 6px rgba(28, 26, 21, 0.08);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.badge-medal::before {
+  content: '';
+  position: absolute;
+  top: 6%;
+  left: 18%;
+  width: 38%;
+  height: 24%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.42);
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.badge-medal svg.medal-ico {
+  width: calc(var(--medal-size) * 0.50);
+  height: calc(var(--medal-size) * 0.50);
+  color: white;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.32));
+  position: relative;
+  z-index: 1;
+}
+
+/* 8 medal palettes — radial gradients mapped to category meaning */
+.medal-1 { background: radial-gradient(circle at 32% 28%, var(--color-medal-1-light) 0%, var(--color-medal-1-mid) 50%, var(--color-medal-1-deep) 100%); }
+.medal-2 { background: radial-gradient(circle at 32% 28%, var(--color-medal-2-light) 0%, var(--color-medal-2-mid) 45%, var(--color-medal-2-deep) 100%); }
+.medal-3 { background: radial-gradient(circle at 32% 28%, var(--color-medal-3-light) 0%, var(--color-medal-3-mid) 50%, var(--color-medal-3-deep) 100%); }
+.medal-4 { background: radial-gradient(circle at 32% 28%, var(--color-medal-4-light) 0%, var(--color-medal-4-mid) 45%, var(--color-medal-4-deep) 100%); }
+.medal-5 { background: radial-gradient(circle at 32% 28%, var(--color-medal-5-light) 0%, var(--color-medal-5-mid) 50%, var(--color-medal-5-deep) 100%); }
+.medal-6 { background: radial-gradient(circle at 32% 28%, var(--color-medal-6-light) 0%, var(--color-medal-6-mid) 50%, var(--color-medal-6-deep) 100%); }
+.medal-7 { background: radial-gradient(circle at 32% 28%, var(--color-medal-7-light) 0%, var(--color-medal-7-mid) 50%, var(--color-medal-7-deep) 100%); }
+.medal-8 { background: radial-gradient(circle at 32% 28%, var(--color-medal-8-light) 0%, var(--color-medal-8-mid) 45%, var(--color-medal-8-deep) 100%); }
+
+/* Earned glow — colored shadow matching medal hue.
+ * medal-6 (silver/platinum) intentionally has no .glow rule per mock —
+ * earned medal-6 falls back to the base .badge-medal box-shadow.
+ */
+.medal-1.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18), inset 0 2px 4px rgba(255,255,255,0.4), 0 4px 16px var(--color-medal-1-glow); }
+.medal-2.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18), inset 0 2px 4px rgba(255,255,255,0.4), 0 4px 16px var(--color-medal-2-glow); }
+.medal-3.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18), inset 0 2px 4px rgba(255,255,255,0.4), 0 4px 16px var(--color-medal-3-glow); }
+.medal-4.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18), inset 0 2px 4px rgba(255,255,255,0.4), 0 4px 18px var(--color-medal-4-glow); }
+.medal-5.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18), inset 0 2px 4px rgba(255,255,255,0.4), 0 4px 16px var(--color-medal-5-glow); }
+.medal-7.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18), inset 0 2px 4px rgba(255,255,255,0.4), 0 4px 16px var(--color-medal-7-glow); }
+.medal-8.glow { box-shadow: inset 0 -2px 4px rgba(0,0,0,0.18), inset 0 2px 4px rgba(255,255,255,0.4), 0 4px 18px var(--color-medal-8-glow); }
+
+/* Locked medal — neutral grayscale gradient */
+.medal-locked {
+  background: radial-gradient(circle at 32% 28%, var(--color-surface) 0%, var(--color-surface-muted) 45%, var(--color-border-strong) 100%);
+  box-shadow:
+    inset 0 -1px 3px rgba(0, 0, 0, 0.06),
+    inset 0 1px 2px rgba(255, 255, 255, 0.5),
+    0 1px 3px rgba(28, 26, 21, 0.06);
+}
+.medal-locked svg.medal-ico {
+  color: var(--color-text-faint);
+  filter: none;
+  opacity: 0.8;
+}
+.dark .medal-locked {
+  background: radial-gradient(circle at 32% 28%, #3a322a 0%, #2c271f 45%, #181410 100%);
+}
+
+/* Lock pin — small pendant in corner */
+.lock-pin {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 2px solid var(--color-surface);
+  outline: 1px solid var(--color-border);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.lock-pin svg {
+  width: 10px;
+  height: 10px;
+  color: var(--color-text-muted);
+}
+
+/* Tier pips — rarity dots (1=common, 5=legendary) */
+.tier-pips {
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  margin: 6px 0 0;
+  height: 7px;
+}
+.tier-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-medal-pip-active);
+  flex-shrink: 0;
+}
+.tier-pip.dim { background: var(--color-border-strong); }
+.dark .tier-pip.dim { background: var(--color-border); }
+
+.badge-name {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 6px;
+}
+.badge-sub {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  line-height: 1.2;
+}
+
+/* Mobile: slightly smaller medal */
+@media (max-width: 767px) {
+  .badge-medal { --medal-size: 46px; }
 }

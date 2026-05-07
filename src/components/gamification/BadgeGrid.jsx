@@ -1,22 +1,26 @@
 import { useMemo } from 'react';
-import { Target, Flame, Zap, Star, Trophy, CheckCircle, TrendingUp, Crown, Phone } from 'lucide-react';
+import {
+  Target, Flame, Zap, Star, Trophy, CheckCircle, TrendingUp, Crown, Phone, Lock,
+} from 'lucide-react';
+
+const TIER_TOTAL = 5;
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const BADGES = {
-  first_submission: { label: 'First Step',    Icon: Target,      accent: 'text-primary',       desc: 'Submitted your first report' },
-  streak_4:         { label: 'On a Roll',      Icon: Flame,       accent: 'text-warning',       desc: '4 consecutive weeks submitted' },
-  streak_8:         { label: 'Consistent',     Icon: Zap,         accent: 'text-warning',       desc: '8 consecutive weeks submitted' },
-  streak_13:        { label: 'Unstoppable',    Icon: Crown,       accent: 'text-danger',        desc: '13 consecutive weeks submitted' },
-  mdrt_pace:        { label: 'MDRT Pace',      Icon: Star,        accent: 'text-warning',       desc: 'On track for MDRT (50%+ of $500k by mid-year)' },
-  mdrt_qualified:   { label: 'MDRT Qualified', Icon: Trophy,      accent: 'text-success',       desc: 'Achieved MDRT threshold ($500k API)' },
-  top_apps_week:    { label: 'App Machine',    Icon: CheckCircle, accent: 'text-primary',       desc: '5+ applications in a single week' },
-  big_week:         { label: 'Big Week',       Icon: TrendingUp,  accent: 'text-success',       desc: 'Over $20,000 API in a single week' },
-  century_dials:    { label: 'Dialler',        Icon: Zap,         accent: 'text-primary',       desc: '100+ dials in a single week' },
-  dial_king:        { label: 'Dial King',      Icon: Phone,       accent: 'text-[#3b82f6]',     desc: 'Highest dials in unit that week' },
-  sharpshooter:     { label: 'Sharpshooter',   Icon: Target,      accent: 'text-[#8b5cf6]',     desc: 'Closing ratio > 80% for a week' },
-  mdrt_bound:       { label: 'MDRT Bound',     Icon: Crown,       accent: 'text-warning',       desc: 'YTD API crosses 50% of MDRT threshold' },
-  untouchable:      { label: 'Untouchable',    Icon: Trophy,      accent: 'text-primary',       desc: '52 consecutive weeks submitted' },
-  consistent:       { label: 'Consistent',     Icon: Star,        accent: 'text-warning',       desc: '12 consecutive months ≥ 90% persistency' },
+  first_submission: { label: 'First Step',     Icon: Target,      desc: 'Submitted your first report',                   gradient: 'medal-3', tier: 1 },
+  streak_4:         { label: 'On a Roll',      Icon: Flame,       desc: '4 consecutive weeks submitted',                 gradient: 'medal-3', tier: 1 },
+  streak_8:         { label: 'Consistent',     Icon: Zap,         desc: '8 consecutive weeks submitted',                 gradient: 'medal-3', tier: 2 },
+  streak_13:        { label: 'Unstoppable',    Icon: Crown,       desc: '13 consecutive weeks submitted',                gradient: 'medal-2', tier: 3 },
+  mdrt_pace:        { label: 'MDRT Pace',      Icon: Star,        desc: 'On track for MDRT (50%+ of $500k by mid-year)', gradient: 'medal-1', tier: 3 },
+  mdrt_qualified:   { label: 'MDRT Qualified', Icon: Trophy,      desc: 'Achieved MDRT threshold ($500k API)',           gradient: 'medal-4', tier: 5 },
+  top_apps_week:    { label: 'App Machine',    Icon: CheckCircle, desc: '5+ applications in a single week',              gradient: 'medal-3', tier: 2 },
+  big_week:         { label: 'Big Week',       Icon: TrendingUp,  desc: 'Over $20,000 API in a single week',             gradient: 'medal-2', tier: 3 },
+  century_dials:    { label: 'Dialler',        Icon: Zap,         desc: '100+ dials in a single week',                   gradient: 'medal-5', tier: 2 },
+  dial_king:        { label: 'Dial King',      Icon: Phone,       desc: 'Highest dials in unit that week',               gradient: 'medal-6', tier: 3 },
+  sharpshooter:     { label: 'Sharpshooter',   Icon: Target,      desc: 'Closing ratio > 80% for a week',                gradient: 'medal-1', tier: 4 },
+  mdrt_bound:       { label: 'MDRT Bound',     Icon: Crown,       desc: 'YTD API crosses 50% of MDRT threshold',         gradient: 'medal-5', tier: 4 },
+  untouchable:      { label: 'Untouchable',    Icon: Trophy,      desc: '52 consecutive weeks submitted',                gradient: 'medal-7', tier: 5 },
+  consistent:       { label: 'Consistent',     Icon: Star,        desc: '12 consecutive months ≥ 90% persistency',       gradient: 'medal-8', tier: 5 },
 };
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -95,33 +99,40 @@ export default function BadgeGrid({ earnedBadges, submissions }) {
   }, [submissions, earnedBadges]);
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="badge-grid">
       {BADGE_KEY_ORDER.map((key) => {
         const b = BADGES[key];
         const isEarned = earned.has(key);
+        const Icon = b.Icon;
         return (
           <div
             key={key}
-            title={b.desc}
-            className={`flex flex-col items-center gap-1.5 rounded-xl p-3 border transition-colors ${
-              isEarned
-                ? 'border-primary/30 bg-primary/5'
-                : 'border-border bg-surface'
-            }`}
+            className={`badge-item ${isEarned ? 'earned' : 'locked'}`}
+            {...(isEarned ? {} : { 'aria-label': `${b.label} — locked` })}
           >
-            {/* Icon carries the "locked" visual via opacity + grayscale.
-             * Previously the wrapper had opacity-40 grayscale which dragged
-             * the label into the bg, producing 2.44:1 contrast in dark mode
-             * (axe color-contrast fails AA). Moving the dim treatment to
-             * the icon only keeps the locked affordance while letting the
-             * label render at full opacity → clean contrast in both modes. */}
-            <b.Icon
-              size={20}
-              className={isEarned ? b.accent : 'text-ink-muted opacity-40 grayscale'}
-            />
-            <p className={`text-xs font-semibold text-center leading-tight ${isEarned ? 'text-ink' : 'text-ink-muted'}`}>
-              {b.label}
-            </p>
+            <div className={`badge-medal ${isEarned ? `${b.gradient} glow` : 'medal-locked'}`}>
+              <Icon className="medal-ico" size={26} strokeWidth={2} aria-hidden="true" />
+              {!isEarned && (
+                <span className="lock-pin">
+                  <Lock size={10} strokeWidth={2.4} aria-hidden="true" />
+                </span>
+              )}
+            </div>
+            <div
+              className="tier-pips"
+              role="img"
+              aria-label={`Tier ${b.tier} of ${TIER_TOTAL}`}
+            >
+              {[1, 2, 3, 4, 5].map((n) => (
+                <span
+                  key={n}
+                  className={`tier-pip ${(n > b.tier || !isEarned) ? 'dim' : ''}`}
+                  aria-hidden="true"
+                />
+              ))}
+            </div>
+            <div className="badge-name">{b.label}</div>
+            <div className="badge-sub">{b.desc}</div>
           </div>
         );
       })}
