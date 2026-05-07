@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | `2026-05-05` |
-| Current main HEAD | `75f09d1` (user-mgmt PR-2 squash, PR #26) |
-| Active track | User-management PR-3 — plan-first session (UI matrix: typed-confirmation, deactivate/reactivate UI, createUser call sites) |
-| Next track | Track A remaining (WizardForm debounce, AgentDashboard dead-mount cleanup) |
+| Last updated | `2026-05-06` |
+| Current main HEAD | `8817209` (Track B v2 design materials, PR #39) |
+| Active track | None — a11y arc closed (PR3→PR7), mobile pilot pass shipped (PR #36). Track B v2 docs introduced (PR #39). Awaiting Track A PR-1 launch. |
+| Next track | Track A PR-1 — WizardForm auto-save hardening (CLAUDE.md known-open-items 5 + 6: debounce + visible error UI) |
 | Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
@@ -108,14 +108,16 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
-| user-mgmt PR-1 | Schema + atomicity foundation | ✅ shipped | Production migration `--apply` run 2026-05-05. Kyron normalization resolved by seed script (PR-2 session). |
-| user-mgmt PR-2 | Polymorphic createUser + bypass removal + bootstrap deletion | ✅ shipped | Merged `75f09d1`, functions deployed 2026-05-05. 3-role production smoke ✓. |
-| user-mgmt PR-3 | UI matrix — typed-confirmation, deactivate/reactivate panel, createUser call sites | Plan-first | Opus recommended for planning. Covers: filtered dropdowns, Show deactivated toggle, createAgentAccount wrapper removal. |
-| SEC-9b | Migrate services to explicit `tenantId` parameter | No | ~20 call site refactor; schedule after user-mgmt ships |
-| SEC-11 | Replace AuthContext bootstrap with seed script | **✅ CLOSED in PR-2** | Bootstrap block deleted; seed-first-super-admin.cjs is the provisioning path going forward. |
+| user-mgmt PR-3 | UI matrix — typed-confirmation, deactivate/reactivate panel, createUser call sites | ✅ shipped | Merged in PR #28 / #29 (deactivate UI + super_admin retirement cleanup). Wrapper removal complete. |
+| A11y arc + Mobile audit | PR3→PR7 dark-mode contrast pass + mobile pilot pass | ✅ shipped | Closed in PR #38. CI gate enforcing 32 jsx-a11y rules at error. |
+| Mobile FU#1 | Manager surface mobile pass (next-week scope) | No | Estimated 1–2 days. `MasterSheet.jsx` 23-column grid, `SettlementPanel.jsx` three grids, `ManagerDashboard.jsx`/`ManagerAwardsPanel.jsx`/`GoalsPanel.jsx`/`CampaignPanel.jsx` tab bars (h-9), `MeetingMode.jsx` mobile presentation, `UserManagementPanel.jsx` rows. Not pilot-blocking — Tatil managers will use desktop/tablet. Source: `docs/FOLLOW_UPS.md`. |
+| Mobile FU#2 | Non-core agent surface P1s | No | `CareerPortal` "Edit My Goals" 32px → 44px, `History` row eye/preview hit area, `CommissionPlayground` accordion toggle measure-and-adjust. Source: `docs/FOLLOW_UPS.md`. |
+| Mobile FU#3 | `bg-primary/N` opacity utilities silently transparent | No | Tailwind 3 `<color>/<opacity>` modifier fails because `--color-primary` is hex, not space-separated RGB channels. Carousel inactive dots are the visible symptom; needs codebase-wide audit. Right fix: convert CSS vars to channel form (`1 105 111`) and switch consumers to `rgb(var(--color-primary))`. Source: `docs/FOLLOW_UPS.md`. |
+| Mobile FU#4 | P2 cosmetic items | No | Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hardcoded `bg-[#01696f]/8` → token. Source: `docs/FOLLOW_UPS.md`. |
+| SEC-9b | Migrate services to explicit `tenantId` parameter | No | ~20 call site refactor; schedule after Track A. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 | SEC-9c | Server-side tenant isolation for scheduled Cloud Functions | No | Scheduled functions still hardcode `TENANT_ID = 'tatillife_south'`; future work |
-| SEC-12 | unitGoals write rule references missing `unitId` claim | No | Discovered during PR-1 audit; rule branch at `firestore.rules:118-120` is dead code today (unit_manager writes always fall through to false). Tracked in [#23](https://github.com/Kelsean868/agencytrack/issues/23). |
+| SEC-12 | unitGoals write rule references missing `unitId` claim | No | Discovered during user-mgmt PR-1 audit; rule branch at `firestore.rules:118-120` is dead code today (unit_manager writes always fall through to false). Tracked in [#23](https://github.com/Kelsean868/agencytrack/issues/23). |
 
 ---
 
@@ -123,11 +125,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
-| #26 | `75f09d1` | feat(user-mgmt) — PR-2 polymorphic createUser + deactivateUser + bypass removal (closes SEC-11) |
-| #24 | `3cca307` | feat(user-mgmt) — PR-1 schema + atomicity foundation (branchId, ownedBranchIds, active, saga, migration) |
-| #22 | `b43c023` | fix(tooling) — env loader fails loudly on malformed `.env.local` (TOOLING-N) |
-| #21 | `b07e512` | chore — `docs/CONTEXT.md`, `docs/kickoff-template.md`, ignore `.session-handoffs/` |
-| #16 | `f17e217` | SEC-9 — runtime tenant ID holder, 18 files migrated |
+| #39 | `8817209` | docs — introduce Track B v2 design system materials (PRD, implementation, B1 kickoff, mocks) |
+| #38 | `55e9c27` | fix(a11y) — PR7 dark-mode completion (agent + latent bg-primary sweep, 14+13 sites) |
+| #37 | `a0a1302` | fix(a11y) — PR6 manager dark-mode contrast (5 nodes) + agent dark scan capability |
+| #36 | `0c13e22` | fix(mobile) — pilot-critical mobile audit pass (agent core flow @ 320/375/768) |
+| #35 | `75b2579` | fix(a11y) — PR5 MeetingMode presentation token system (theme-independent surface) |
 
 ---
 
@@ -135,27 +137,22 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 These don't block anything, but they need to be resolved or carried forward each session.
 
-- **Empty worktree dir** at `.claude/worktrees/sad-meninsky-278312` — git worktree manifest cleared, but the OS directory remains. Cosmetic, run `rmdir` from any fresh shell whose cwd is not under it.
-- **Last verification artifacts** (post-PR-2 smoke): `verification/pr1-postmerge-smoke-*-2026-05-05T1143.*`. Local-only by design.
+- **Untracked legacy doc** at `docs/PR-3-Claude-Code-Brief.md` — stale brief from user-mgmt PR-3 (shipped in PR #28). Intentionally left untracked across PR #39 + #40. Decide separately whether to archive to `docs/archive/` or delete.
 - **Orphan user** `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc exists but no Auth user. Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). Do not auto-delete; investigate first.
 - **Node.js 20 Functions runtime** deprecated 2026-04-30, decommission 2026-10-30 — migration to Node 22 is a separate ticket. Not blocking; CLAUDE.md locks v1 runtime for current track.
-- **`firebase-functions` SDK** at 4.9.0 — upgrade to ≥5.1.0 has breaking changes; schedule as own ticket after user-mgmt ships.
+- **`firebase-functions` SDK** at 4.9.0 — upgrade to ≥5.1.0 has breaking changes; schedule as own ticket after Track A ships.
 
 ---
 
 ## Where we left off
 
-> **Session boundary:** End of user-mgmt PR-2 production sequence (2026-05-05).
+> **Session boundary:** End of a11y trilogy + mobile audit arc (2026-05-06). Track B v2 design materials introduced.
 
-PR-2 shipped to production (squash `75f09d1`, PR #26). Full production sequence completed 2026-05-05:
+Today the a11y arc closed end-to-end. PR #30 brought manager surfaces to 0 serious axe violations, PR #31 took lint from 63 errors → 0 with a CI gate, PR #33 ran the agent surfaces + flipped 32 jsx-a11y rules from `warn` to `error` (the gate now fails any future regression at PR time), PR #34/#35 cleared MeetingMode dark-mode contrast and introduced the presentation token system (a theme-independent surface for the projector view), and PR #37/#38 finished dark-mode contrast across both manager (5 nodes) + agent surfaces (14+13 latent `bg-primary` sites). Both `node scripts/a11y-axe-scan.cjs --dark` and `node scripts/a11y-axe-scan-manager.cjs --dark` now report 0 color-contrast violations.
 
-1. **Phase 1 — Seed:** `seed-first-super-admin.cjs --apply` run against Kyron's UID (`4GeeZbhZBwdtGOLoJoggf4MQo142`). All 4 fields verified: `role`, `tenantId`, `branchId: 'tatil_south'` (was `'branch_001'`), `ownedBranchIds: ['*']`. Refresh tokens revoked — Kyron must re-login to pick up new claims.
-2. **Phase 3 — Deploy:** `firebase deploy --only functions` — all 9 functions deployed (`createUser` new, `deactivateUser` new, 7 updated).
-3. **Phase 3 — Smoke:** 3-role production smoke ✓ — all loginOk, dashboardOk, 0 console errors, 0 network failures. No bootstrap warn fired. No `setUserClaims` call from AuthContext. SEC-11 and bypass removal confirmed live.
+PR #36 shipped the pilot-critical mobile pass for the agent core flow at 320/375/768 (manager-surface mobile pass deferred as Mobile FU#1 — Tatil managers will use desktop/tablet so it's not pilot-blocking). PR #39 introduced the canonical Design System v2 materials (PRD, phased implementation plan, B1 kickoff prompt, 5 visual mocks with `concept-4-complete.html` as source of truth) — that's the queued Track B v2 work, ready to start B1 medal badges whenever Track A is done.
 
-Kyron normalization gap (branchId `'branch_001'` → `'tatil_south'`) is **CLOSED**.
-
-**Next:** PR-3 — plan-first session (Opus recommended). Covers: typed-confirmation dialog for super_admin creation, deactivate/reactivate UI panel, Show deactivated toggle, `createUser` call sites in `agentManagementService.js` + `AgentManagementPanel.jsx`, `createAgentAccount` wrapper removal.
+Lint baseline is now 0 errors / 0 jsx-a11y warnings (3 deferred `react-hooks/exhaustive-deps` warnings tracked separately in `docs/FOLLOW_UPS.md`). Four mobile follow-ups (FU#1–#4) are documented but non-blocking. **Next: Track A PR-1 — WizardForm auto-save hardening (CLAUDE.md known-open-items #5 and #6).**
 
 ---
 
