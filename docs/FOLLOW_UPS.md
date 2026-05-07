@@ -5,6 +5,32 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Wizard UX + A11y Hardening (post-Track-A audit, 2026-05-06)
+
+Discovered during Track A PR-1 audit. Items 5 and 6 of CLAUDE.md
+"Known Open Items" were already resolved (commit `57828d7`, 2026-05-02), but the
+audit surfaced a genuine hardening list for future scoping:
+
+- Add explicit "Try again now" retry button when `saveError === true`
+  (currently auto-retries on next debounce only)
+- Add fading "Saved ✓" success indicator (currently only "Saving…"
+  pulse; no positive confirmation)
+- Distinguish "offline (queued, will retry)" vs "save rejected
+  (action needed)" — Firestore offline persistence queues writes
+  silently; UI should reflect that
+- Add persistent-failure handling: after N consecutive failures,
+  escalate (block submit? force user ack?)
+- Add `role="alert"` / `aria-live="polite"` to the save-error span so
+  screen readers announce the failure (a11y gap, surfaced 2026-05-06)
+- Save errors currently clear silently on next attempt — could mask
+  intermittent failure patterns; consider sticky-until-acknowledged
+  for repeat failures
+
+Priority: MEDIUM. Not pilot-blocking. The `aria-live` item is the
+smallest and highest a11y value; could ship as a single-line micro-PR.
+
+---
+
 ## Mobile audit — deferred items (from `mobile-audit-2026-05-06`)
 
 Pilot-critical agent-flow items shipped in PR `mobile-audit-pilot-pass-1`. The

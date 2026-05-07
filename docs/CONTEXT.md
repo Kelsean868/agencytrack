@@ -14,8 +14,8 @@
 |---|---|
 | Last updated | `2026-05-06` |
 | Current main HEAD | `8817209` (Track B v2 design materials, PR #39) |
-| Active track | None — a11y arc closed (PR3→PR7), mobile pilot pass shipped (PR #36). Track B v2 docs introduced (PR #39). Awaiting Track A PR-1 launch. |
-| Next track | Track A PR-1 — WizardForm auto-save hardening (CLAUDE.md known-open-items 5 + 6: debounce + visible error UI) |
+| Active track | None — a11y arc closed (PR3→PR7), mobile pilot pass shipped (PR #36). Track B v2 docs introduced (PR #39). Track A PR-1 audit found items 5+6 already shipped (commit `57828d7`); rescoped to docs-only correction. |
+| Next track | Track A PR-2 — AgentDashboard html2canvas cleanup (CLAUDE.md known-open-item #7) |
 | Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
@@ -114,6 +114,7 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 | Mobile FU#2 | Non-core agent surface P1s | No | `CareerPortal` "Edit My Goals" 32px → 44px, `History` row eye/preview hit area, `CommissionPlayground` accordion toggle measure-and-adjust. Source: `docs/FOLLOW_UPS.md`. |
 | Mobile FU#3 | `bg-primary/N` opacity utilities silently transparent | No | Tailwind 3 `<color>/<opacity>` modifier fails because `--color-primary` is hex, not space-separated RGB channels. Carousel inactive dots are the visible symptom; needs codebase-wide audit. Right fix: convert CSS vars to channel form (`1 105 111`) and switch consumers to `rgb(var(--color-primary))`. Source: `docs/FOLLOW_UPS.md`. |
 | Mobile FU#4 | P2 cosmetic items | No | Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hardcoded `bg-[#01696f]/8` → token. Source: `docs/FOLLOW_UPS.md`. |
+| Wizard UX + A11y Hardening | Retry button, `aria-live`, success indicator, offline-vs-failed distinction, persistent-failure handling | No | Surfaced during Track A PR-1 audit (2026-05-06). Items 5+6 already shipped in commit `57828d7`, but audit found genuine hardening gaps. `aria-live` is the highest a11y value and could ship as a one-line micro-PR. Source: `docs/FOLLOW_UPS.md`. |
 | SEC-9b | Migrate services to explicit `tenantId` parameter | No | ~20 call site refactor; schedule after Track A. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 | SEC-9c | Server-side tenant isolation for scheduled Cloud Functions | No | Scheduled functions still hardcode `TENANT_ID = 'tatillife_south'`; future work |
