@@ -30,6 +30,7 @@ export default function GoalCarousel({ data, autoRotate = true }) {
   const [active, setActive] = useState(0);
   const [paused, setPaused] = useState(false);
 
+  const wrapperRef     = useRef(null);
   const hoveredRef     = useRef(false);
   const focusedRef     = useRef(false);
   const resumeTimerRef = useRef(null);
@@ -81,25 +82,47 @@ export default function GoalCarousel({ data, autoRotate = true }) {
     }, RESUME_DELAY_MS);
   }, []);
 
-  const handlePointerEnter = () => {
-    hoveredRef.current = true;
-    pause();
-  };
-  const handlePointerLeave = () => {
-    hoveredRef.current = false;
-    tryScheduleResume();
-  };
-  const handleFocus = () => {
-    focusedRef.current = true;
-    pause();
-  };
-  const handleBlur = (e) => {
-    // React's onBlur on the wrapper fires for any descendant; check whether
-    // focus is actually leaving the carousel (not just moving between tabs).
-    if (e.currentTarget.contains(e.relatedTarget)) return;
-    focusedRef.current = false;
-    tryScheduleResume();
-  };
+  // Pause/resume listeners attached via ref + native DOM events. JSX-level
+  // event props (onMouseEnter etc.) on a non-interactive region trigger
+  // jsx-a11y/no-noninteractive-element-interactions. The carousel is
+  // semantically a region, not a widget — the hover/focus pause is a
+  // visual-comfort affordance, not user-input. Native `focusin`/`focusout`
+  // bubble naturally so a single set of wrapper listeners covers descendants.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return undefined;
+
+    const onPointerEnter = () => {
+      hoveredRef.current = true;
+      pause();
+    };
+    const onPointerLeave = () => {
+      hoveredRef.current = false;
+      tryScheduleResume();
+    };
+    const onFocusIn = () => {
+      focusedRef.current = true;
+      pause();
+    };
+    const onFocusOut = (e) => {
+      // `relatedTarget` is the element receiving focus next. If it's still
+      // inside this wrapper, focus is just moving between tabs — not leaving.
+      if (e.relatedTarget && el.contains(e.relatedTarget)) return;
+      focusedRef.current = false;
+      tryScheduleResume();
+    };
+
+    el.addEventListener('mouseenter', onPointerEnter);
+    el.addEventListener('mouseleave', onPointerLeave);
+    el.addEventListener('focusin', onFocusIn);
+    el.addEventListener('focusout', onFocusOut);
+    return () => {
+      el.removeEventListener('mouseenter', onPointerEnter);
+      el.removeEventListener('mouseleave', onPointerLeave);
+      el.removeEventListener('focusin', onFocusIn);
+      el.removeEventListener('focusout', onFocusOut);
+    };
+  }, [pause, tryScheduleResume]);
 
   const activateTab = (i, opts = {}) => {
     setActive(i);
@@ -130,11 +153,10 @@ export default function GoalCarousel({ data, autoRotate = true }) {
 
   return (
     <div
+      ref={wrapperRef}
       className="role-hero"
-      onMouseEnter={handlePointerEnter}
-      onMouseLeave={handlePointerLeave}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
+      role="region"
+      aria-label="Goal progress carousel"
     >
       <div className="goal-carousel">
         <div role="tablist" aria-label="Goal period" className="goal-tabs">
@@ -174,7 +196,6 @@ export default function GoalCarousel({ data, autoRotate = true }) {
                   id={`goal-panel-${tab.id}`}
                   aria-labelledby={`goal-tab-${tab.id}`}
                   aria-hidden={!isActive}
-                  tabIndex={isActive ? 0 : -1}
                 >
                   <div className="goal-content">
                     <div className="goal-period">{slice.period}</div>

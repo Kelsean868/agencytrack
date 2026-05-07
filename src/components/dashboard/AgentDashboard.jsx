@@ -2,16 +2,16 @@ import { useMemo, useState, useEffect } from 'react';
 import { LogOut, Sun, Moon, X, Eye, Download, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
-import { getRoleLabel, formatCurrency, formatPercent, formatDateDisplay } from '../../utils/formatters';
+import { getRoleLabel, formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
-import { getGoals } from '../../services/goalsService';
+import { getGoals, getCompanyMinimums, getGoalHierarchy } from '../../services/goalsService';
 import { getAgentPersistency } from '../../services/persistencyService';
 import { getSettlements } from '../../services/settlementService';
 import { extractFields } from '../../utils/extractFields';
 import { generateAgentPDF } from '../../services/exportService';
 import { getActiveCampaignsForAgent, getCampaignSubmissions } from '../../services/campaignService';
-import { getGoalHierarchy } from '../../services/goalsService';
+import { aggregateAPI } from '../../utils/aggregateAPI';
 import WizardForm from '../wizard/WizardForm';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import CampaignCard from '../campaigns/CampaignCard';
@@ -22,7 +22,7 @@ import ReportRangeModal from '../ui/ReportRangeModal';
 import Leaderboard from '../gamification/Leaderboard';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
 import SubmissionViewer from '../submissions/SubmissionViewer';
-import MotivationalCarousel from './MotivationalCarousel';
+import GoalCarousel from './GoalCarousel';
 import KPICard from './KPICard';
 import SyncIndicator from '../ui/SyncIndicator';
 import WelcomeScreen from '../onboarding/WelcomeScreen';
@@ -69,24 +69,6 @@ function TabBar({ active, onChange }) {
   );
 }
 
-function ProgressRing({ percent, size = 120, stroke = 10 }) {
-  const r    = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ - (percent / 100) * circ;
-  return (
-    <svg width={size} height={size} className="rotate-[-90deg]">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-border)" strokeWidth={stroke} />
-      <circle
-        cx={size / 2} cy={size / 2} r={r} fill="none"
-        stroke="var(--color-primary)" strokeWidth={stroke}
-        strokeDasharray={circ} strokeDashoffset={offset}
-        strokeLinecap="round"
-        style={{ transition: 'stroke-dashoffset 0.6s ease' }}
-      />
-    </svg>
-  );
-}
-
 export default function AgentDashboard() {
   const { user, userProfile, role, tenantId } = useAuth();
 
@@ -99,6 +81,7 @@ export default function AgentDashboard() {
   const [currentWeekSub, setCurrentWeekSub]   = useState(null);
   const [allSubmissions, setAllSubmissions]    = useState([]);
   const [goals, setGoals]                      = useState(null);
+  const [companyMinimums, setCompanyMinimums]  = useState(null);
   const [persistency, setPersistency]          = useState({});
   const [settlements, setSettlements]          = useState([]);
   const [loading, setLoading]                  = useState(true);
@@ -131,27 +114,36 @@ export default function AgentDashboard() {
       getGoals(tenantId, user.uid).catch(() => null),
       getAgentPersistency(user.uid, thisYear).catch(() => ({})),
       getSettlements(tenantId, user.uid, thisYear).catch(() => []),
-    ]).then(([weekSub, subs, agentGoals, pers, setts]) => {
+      getCompanyMinimums(tenantId).catch(() => null),
+    ]).then(([weekSub, subs, agentGoals, pers, setts, mins]) => {
       setCurrentWeekSub(weekSub);
       setAllSubmissions(subs);
       setGoals(agentGoals);
       setPersistency(pers);
       setSettlements(setts);
+      setCompanyMinimums(mins);
     }).catch(console.error).finally(() => setLoading(false));
   }, [user?.uid, tenantId, currentWeek, thisYear]);
 
-  // YTD metrics derived from real submissions
-  const { ytdAPI, ytdAPIGoal, latestSub } = useMemo(() => {
-    const yearSubs = allSubmissions.filter(
-      (s) => s.status === 'submitted' && s.weekStarting?.startsWith(String(thisYear))
-    );
-    const ytdAPI = yearSubs.reduce((sum, s) => sum + (parseFloat(s.apiSold) || 0), 0);
-    const ytdAPIGoal = goals?.targetAnnualAPI ?? 120000;
-    const latestSub = allSubmissions[0] ?? null;
-    return { ytdAPI, ytdAPIGoal, latestSub };
-  }, [allSubmissions, goals, thisYear]);
+  // Most recent submission — surfaced in the Goals "My Commitment" card
+  // so the agent's most recently submitted personal targets stay visible.
+  const latestSub = useMemo(() => allSubmissions[0] ?? null, [allSubmissions]);
 
-  const apiPercent = formatPercent(ytdAPI, ytdAPIGoal);
+  // Resolved personal annual API: agent's own commitment if set, else the
+  // tenant company-floor minimum, else 200000 (matches getCompanyMinimums
+  // default in goalsService.js). The chain mirrors the kickoff brief's S1
+  // resolution.
+  const personalAnnualAPI = useMemo(
+    () => goals?.personalAnnualAPI || companyMinimums?.annualAPI || 200000,
+    [goals?.personalAnnualAPI, companyMinimums?.annualAPI]
+  );
+
+  // Period totals for the goal carousel hero. Pure derivation from
+  // already-loaded submissions — no Firestore reads inside the util.
+  const goalData = useMemo(
+    () => aggregateAPI(allSubmissions, new Date(), personalAnnualAPI),
+    [allSubmissions, personalAnnualAPI]
+  );
 
   const ytdTotals = useMemo(() => {
     const yearSubs = allSubmissions.filter(
@@ -352,15 +344,31 @@ export default function AgentDashboard() {
             <h2 className="text-xl font-bold text-ink">{displayName}</h2>
           </div>
 
-          {/* Motivational carousel */}
-          <MotivationalCarousel
-            role={role}
-            submissions={allSubmissions}
-            confirmedSettlements={settlements}
-            goals={goals}
-            agentProfile={userProfile}
-            currentDate={new Date()}
-          />
+          {/* Goal carousel hero (Design System v2 — B2). Replaces the
+              YTD API Progress card and the previous MotivationalCarousel
+              top-of-dashboard slot. */}
+          <div className="mb-6">
+            {allSubmissions.length === 0 ? (
+              <div className="role-hero">
+                <div className="goal-period">Get Started</div>
+                <div className="goal-value" style={{ fontSize: 24, lineHeight: 1.2 }}>
+                  Welcome to AgencyTrack
+                </div>
+                <div className="goal-target" style={{ marginTop: 10 }}>
+                  Submit your first weekly report to start tracking your goal progress.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowWizard(true)}
+                  className="mt-4 inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-primary dark:text-primary-dark font-semibold text-sm hover:bg-white/95 transition-colors min-h-[44px]"
+                >
+                  Submit your first report
+                </button>
+              </div>
+            ) : (
+              <GoalCarousel data={goalData} />
+            )}
+          </div>
 
           {/* Active Campaigns */}
           {campaignsLoading ? (
@@ -377,25 +385,6 @@ export default function AgentDashboard() {
               ))}
             </div>
           )}
-
-          {/* YTD API Progress */}
-          <div className="card mb-6 flex items-center gap-6">
-            <div className="relative shrink-0">
-              <ProgressRing percent={apiPercent} />
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-xl font-bold text-ink">{apiPercent}%</span>
-                <span className="text-xs text-ink-muted">of goal</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-1">YTD API</p>
-              <p className="text-2xl font-bold text-ink">{formatCurrency(ytdAPI)}</p>
-              <p className="text-sm text-ink-muted">Goal: {formatCurrency(ytdAPIGoal)}</p>
-              <p className="text-sm text-ink-muted mt-0.5">
-                {formatCurrency(Math.max(0, ytdAPIGoal - ytdAPI))} remaining
-              </p>
-            </div>
-          </div>
 
           {/* KPI Activity Grid */}
           {kpiData.length > 0 && (
