@@ -13,10 +13,10 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-08` |
-| Current main HEAD | `2932cfa` (fix(a11y) — remove aria-hidden from modal backdrop wrappers, PR #63) |
-| Active track | None — Track C closed (#62), aria-hidden HIGH#7 shipped (#63). Next: Track E feature scope log per May 8 2026 planning session. |
-| Next track | Track E (E1+E6 pre-pilot per Path B), then Track D — cron + notifications verification |
-| Queued | None |
+| Current main HEAD | `f16b9e8` (docs(context) — HEAD sync post #63, PR #64) |
+| Active track | Track E feature scope logged. Next: E2 Reverse Commission Calculator implementation (E1 + E6 follow). |
+| Next track | Track D — cron + notifications verification (after Track E pre-pilot HIGH items ship) |
+| Queued | E2 implementation kickoff (per docs/Track-E-Specs.md §E2) |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -119,6 +119,7 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 | SEC-9c | Server-side tenant isolation for scheduled Cloud Functions | No | Scheduled functions still hardcode `TENANT_ID = 'tatillife_south'`; future work |
 | SEC-12 | unitGoals write rule references missing `unitId` claim | No | Discovered during user-mgmt PR-1 audit; rule branch at `firestore.rules:118-120` is dead code today (unit_manager writes always fall through to false). Tracked in [#23](https://github.com/Kelsean868/agencytrack/issues/23). |
+| Track E | Agent + Manager Tooling Enhancements (E1–E6) | No | E1+E6 HIGH pre-pilot per Path B; E2–E5 post-pilot. Path B shifts pilot launch back ~2 weeks for agent cadence choice + clean schema at launch. Spec: `docs/Track-E-Specs.md`. Source: `docs/FOLLOW_UPS.md` § Track E. |
 
 ---
 
@@ -126,11 +127,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #64 | `f16b9e8` | docs(context) — HEAD sync post #63 (aria-hidden a11y fix merged) |
 | #63 | `2932cfa` | fix(a11y) — remove aria-hidden from modal backdrop wrappers (HIGH#7) |
 | #62 | `ba41cc6` | feat(track-c-c3) — 2026 personal commitments CSV import |
 | #61 | `f906108` | feat(track-c-c2) — bulk user provisioning via CSV import |
 | #60 | `1d0d9c3` | feat(track-c-c1) — branches schema + tenant admin management UI |
-| #59 | `eb72d59` | docs(track-c) — add implementation plan + C1 kickoff brief |
 
 ---
 
@@ -154,7 +155,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **Aria-hidden fix shipped (HIGH#7, PR #63, squash SHA `2932cfa`):** deleted `aria-hidden="true"` from the outer backdrop wrapper in both `BulkImportUsersModal.jsx` and `BulkImportGoalsModal.jsx`. Regression script `verification/aria-modal-regression.cjs` confirmed 10/10 assertions on preview: no `aria-hidden` on backdrop, `getByRole('dialog')` resolves without CSS fallback, `aria-modal="true"` present. Before screenshot confirmed production had `aria-hidden="true"`; after screenshots confirmed it's gone.
 
-**Aria-hidden HIGH#7 shipped via PR #63. Next: Track E feature scope log + Path B pre-pilot sequencing per May 8 2026 planning session.**
+**Aria-hidden HIGH#7 shipped via PR #63. CONTEXT.md HEAD synced via PR #64 (`f16b9e8`).**
+
+**Track E scope logged from May 8 2026 planning session.** Six items (E1–E6) covering schema split, daily input mode, reverse commission calc, persistency playground, digital leaderboard, TV kiosk mode. Path B sequencing: E1 + E6 promoted to HIGH pre-pilot for agent cadence choice at launch with clean 3-source schema. Full specs in `docs/Track-E-Specs.md`. Pilot launch shifts back ~2 weeks; tradeoff acknowledged.
+
+**Next: E2 (Reverse Commission Calculator) implementation per `docs/Track-E-Specs.md` §E2.** Pre-pilot HIGH order per Path B: E1 → E6 → E2 → PILOT LAUNCH. E2 is pulled forward as the first implementation slot (pure addition, no schema risk, ~1.5–2 days).
 
 ---
 
