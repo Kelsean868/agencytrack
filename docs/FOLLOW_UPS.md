@@ -219,6 +219,25 @@ HIGH#2 or any other open HIGH item — separate PR.
 
 ---
 
+## HIGH#7 — `aria-hidden="true"` on modal backdrop wrappers hides dialog from a11y tree (confirmed C3 verification 2026-05-08)
+
+**Scope:** Two bulk-import modals have `aria-hidden="true"` on their outermost backdrop `<div>`:
+
+- `src/components/admin/BulkImportUsersModal.jsx:288`
+- `src/components/admin/BulkImportGoalsModal.jsx:295`
+
+The outer backdrop being `aria-hidden` hides the entire subtree — including the inner `role="dialog" aria-modal="true"` — from the accessibility tree. Screen reader users cannot navigate into or interact with the dialog at all. The `aria-hidden` attribute was copied from an earlier pattern and is incorrect here; `aria-modal="true"` on the inner dialog is the correct way to communicate modal semantics.
+
+**Fix:** Delete the `aria-hidden="true"` token from both lines — a single-token deletion at each site. No structural changes needed; `aria-modal="true"` on the inner `role="dialog"` already handles the semantics correctly.
+
+**Confirmed by:** extended C3 verification (2026-05-08) — `getByRole('dialog')` returned nothing on the default a11y traversal; only a CSS-selector fallback (`[role="dialog"][aria-labelledby="..."]`) could reach the dialog. Verified in both `BulkImportUsersModal.jsx:288` and `BulkImportGoalsModal.jsx:295`.
+
+**Shipping as:** PR #63 — `fix/aria-hidden-modal-wrappers`. Regression script `verification/aria-modal-regression.cjs`: 10/10 assertions pass on preview. Before/after screenshots at `verification/aria-fix-shots/`. Awaiting merge.
+
+Priority: **HIGH** (pre-pilot — modal is completely inaccessible to screen reader users as-is).
+
+---
+
 ## HIGH#6 — TenantAdminDashboard YTD composite index missing (surfaced during C1 walkthrough)
 
 **Scope:** `TenantAdminDashboard.jsx` aggregates Total API · YTD via
@@ -718,3 +737,28 @@ Adjacent to Mobile FU#4 cosmetic items. Not blocking — the surface is
 reachable as of PR #56.
 
 Priority: **LOW**. Surfaced as a Q2 deferral during the PR #56 triage.
+
+---
+
+## Defaults-warn banner positive-render test (LOW, surfaced 2026-05-08 during C3 extended verification)
+
+**Scope:** `BulkImportGoalsModal.jsx` renders a yellow `<Info>` banner when `usingDefaultMinimums(preflight.minimums)` returns `true` — i.e. when the `companyMinimums` doc is missing `updatedBy`/`updatedAt` fields (heuristic: doc was never explicitly set by an admin, so defaults are in use). The extended C3 verification confirmed the banner does NOT render for the pilot tenant (tatillife_south's `companyMinimums` was set 2026-04-30 and has both fields). The positive-render path (banner shown when minimums are unset) was not exercised in production because the doc already exists.
+
+**Fix:** Add a verification step or unit test (once Vitest lands from the Test Infrastructure MEDIUM item) that exercises `usingDefaultMinimums` with and without `updatedBy`/`updatedAt` fields, and optionally a smoke test that briefly deletes or replaces the `companyMinimums` doc to exercise the banner in staging. Until Vitest lands, the logic is simple enough to reason about directly from source.
+
+Priority: **LOW**. The logic is a one-line helper (`!minimums?.updatedBy && !minimums?.updatedAt`); no known bug. This is a coverage gap, not a defect.
+
+---
+
+## `Bulk Import Goals` CTA label wraps at 390px (LOW, surfaced 2026-05-08 during C3 Q1 design review)
+
+**Scope:** At 390px viewport width, the `UserManagementPanel` header has two sibling buttons — "Bulk Import Users" and "Bulk Import Goals". Both labels wrap onto two visual lines per button at 390px because the header row runs out of horizontal space. The buttons are accessible and legible (tap target exceeds 44px, labels are not truncated), but the two-line wrapping looks slightly unpolished at the smallest breakpoint.
+
+**Options:**
+1. Shorten labels to "Import Users" and "Import Goals" (saves ~35px each, probably enough to stay single-line).
+2. Stack the buttons vertically at ≤640px (clean layout but takes more vertical space in the header).
+3. Move them to an overflow/kebab menu at ≤640px.
+
+**Recommendation:** Option 1 is the cheapest fix — `tenant_admin` context makes "Import" unambiguous. But since the current state is legible and accessible, defer until the manager surface mobile pass (Mobile FU#1) is scoped, so the header layout can be treated holistically.
+
+Priority: **LOW**. Cosmetic at one breakpoint; no accessibility or usability failure.
