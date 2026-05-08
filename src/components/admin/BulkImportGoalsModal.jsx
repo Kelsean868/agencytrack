@@ -1,43 +1,41 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   X, AlertTriangle, Loader2, FileText, Download, CheckCircle2, XCircle,
-  AlertCircle, Upload, Building2,
+  AlertCircle, Upload, Info,
 } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
+import { useAuth } from '../../context/AuthContext';
+import { formatCurrency } from '../../utils/formatters';
 import {
-  parseCSV, prepareImport, runImport, dispatchResetEmails,
-  buildErrorCSV, buildTemplateCSV, downloadCSV, generateBatchId, LIMITS,
-} from '../../services/userImportService';
-import { listBranches } from '../../services/branchService';
+  parseCSV, prepareImport, runImport,
+  buildErrorCSV, buildTemplateCSV, downloadCSV, generateBatchId,
+  usingDefaultMinimums, LIMITS,
+} from '../../services/goalsImportService';
 
 /**
- * BulkImportUsersModal — Track C C2.
+ * BulkImportGoalsModal — Track C C3.
  *
- * Multi-step wizard: file picker → preview → progress → summary. Lifts
- * BranchEditorModal scaffolding via the new useFocusTrap hook. Tenant_admin
- * and platform_admin only — gated upstream in UserManagementPanel.
+ * Multi-step wizard: file picker → preview → progress → summary.
+ * Mirrors BulkImportUsersModal.jsx (copy-from-precedent — third-consumer
+ * threshold for extracting CsvImportModalShell not yet met; deferred
+ * follow-up filed in docs/FOLLOW_UPS.md).
  *
- * Step 1 — file picker, "Download template" CTA, zero-active-branches empty
- *          state (Q10 client guard; server has a `failed-precondition`
- *          backstop).
- * Step 2 — full preview table with status pills, filter toggles
- *          (All / Errors / Warnings / Valid), "Confirm import" CTA disabled
- *          when no valid rows.
- * Step 3 — indeterminate spinner with row count (Q4). Escape mid-flight
- *          opens a confirmation dialog explaining that the import is already
- *          underway server-side and partially-imported users will not be
- *          reverted.
- * Step 4 — summary (success / skipped / failed counts + per-row error
- *          details + "Download error report" CSV CTA, Q8). On Close,
- *          parent reloads the user list.
+ * Tenant_admin and platform_admin only — gated upstream in
+ * UserManagementPanel.
+ *
+ * Step 1 — file picker, "Download template" CTA, defaults-warn banner
+ *          (Q3 — companyMinimums not explicitly set), zero-eligible-
+ *          agents empty state (Q5 — every active agent already has 2026
+ *          commitment).
+ * Step 2 — full preview table with status pills, filter toggles, agent-
+ *          name resolved from email lookup. "Confirm import" CTA
+ *          disabled when no valid rows.
+ * Step 3 — indeterminate spinner with row count. Escape mid-flight
+ *          opens a confirmation dialog explaining that goals already
+ *          written will not be reverted.
+ * Step 4 — summary (set / skipped / failed counts + per-row error
+ *          details + "Download error report" CSV CTA).
  */
-
-const ROLE_DISPLAY = {
-  agent:          'Agent',
-  unit_manager:   'Unit Manager',
-  branch_manager: 'Branch Manager',
-  sales_manager:  'Sales Manager',
-};
 
 function StatusPill({ status }) {
   if (status === 'valid') {
@@ -98,14 +96,11 @@ function StepIndicator({ step }) {
   );
 }
 
-export default function BulkImportUsersModal({ tenantId, onClose, onImported }) {
+export default function BulkImportGoalsModal({ tenantId, onClose, onImported }) {
+  const { user, userProfile } = useAuth();
+
   // — Step state
   const [step, setStep] = useState(1);
-
-  // — Pre-Step-1: branch availability (Q10 guard)
-  const [branchesLoading, setBranchesLoading] = useState(true);
-  const [activeBranchCount, setActiveBranchCount] = useState(0);
-  const [branchLoadError, setBranchLoadError] = useState(null);
 
   // — Step 1: file selection + parse
   const [file, setFile] = useState(null);
@@ -114,8 +109,8 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
   const fileInputRef = useRef(null);
 
   // — Step 2: preview
-  const [preview, setPreview] = useState(null); // { validatedRows, summary, activeBranches }
-  const [filter, setFilter] = useState('all');  // 'all' | 'valid' | 'warning' | 'error'
+  const [preview, setPreview] = useState(null);
+  const [filter, setFilter] = useState('all');
 
   // — Step 3: in-flight import
   const [importing, setImporting] = useState(false);
@@ -123,12 +118,9 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
   const abandonedRef = useRef(false);
 
   // — Step 4: summary
-  const [importResults, setImportResults] = useState(null); // { results: [...] }
-  const [emailDispatch, setEmailDispatch] = useState(null); // [{ email, sent, error? }]
+  const [importResults, setImportResults] = useState(null);
   const [serverError, setServerError] = useState(null);
 
-  // Cancel mid-flight: confirmation opens while step === 3 and importing.
-  // Otherwise Escape just closes the modal.
   function handleEscape() {
     if (step === 3 && importing) {
       setShowCancelConfirm(true);
@@ -139,29 +131,8 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
 
   const modalRef = useFocusTrap({
     onEscape: handleEscape,
-    escapeDisabled: showCancelConfirm, // confirmation sub-dialog owns Escape when open
+    escapeDisabled: showCancelConfirm,
   });
-
-  // Branch availability check on mount (Q10 client guard).
-  useEffect(() => {
-    let cancelled = false;
-    setBranchesLoading(true);
-    listBranches(tenantId)
-      .then((all) => {
-        if (cancelled) return;
-        const active = (all ?? []).filter((b) => b.isActive === true);
-        setActiveBranchCount(active.length);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        console.error('[BulkImportUsersModal] listBranches failed:', err);
-        setBranchLoadError("Couldn't load branches. Check your connection and try again.");
-      })
-      .finally(() => {
-        if (!cancelled) setBranchesLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [tenantId]);
 
   // — Step 1 handlers
   function handleFileSelect(e) {
@@ -200,7 +171,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
       setFilter('all');
       setStep(2);
     } catch (err) {
-      console.error('[BulkImportUsersModal] continueToPreview:', err);
+      console.error('[BulkImportGoalsModal] continueToPreview:', err);
       setParseError(err?.message ?? 'Failed to parse CSV.');
     } finally {
       setParsing(false);
@@ -209,8 +180,45 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
 
   function handleDownloadTemplate() {
     const csv = buildTemplateCSV();
-    downloadCSV('agencytrack-import-template.csv', csv);
+    downloadCSV('agencytrack-2026-commitments-template.csv', csv);
   }
+
+  // — Step 1 pre-flight: load eligibility + minimums signal even before
+  // file is picked, so the empty-state and warn banner render up front.
+  const [preflight, setPreflight] = useState(null);
+  const [preflightLoading, setPreflightLoading] = useState(true);
+  const [preflightError, setPreflightError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setPreflightLoading(true);
+    // We invoke prepareImport with an empty header-only synthetic row
+    // set to pull the eligibility counts and minimums in one round-trip.
+    // But that would throw "No rows" — instead, do the same reads it
+    // does: getAllUsers + per-agent goal docs + companyMinimums.
+    (async () => {
+      try {
+        // Reuse the prepareImport machinery by constructing a sentinel
+        // single empty row; it'll validate as 'error' but we discard the
+        // validatedRows and only consume summary.activeAgentCount /
+        // eligibleAgentCount + minimums.
+        const built = await prepareImport([{ agentemail: '', annualapitarget: '', annualappstarget: '' }], tenantId);
+        if (cancelled) return;
+        setPreflight({
+          activeAgentCount: built.summary.activeAgentCount,
+          eligibleAgentCount: built.summary.eligibleAgentCount,
+          minimums: built.minimums,
+        });
+      } catch (err) {
+        if (cancelled) return;
+        console.error('[BulkImportGoalsModal] preflight failed:', err);
+        setPreflightError(err?.message ?? "Couldn't load tenant goal data.");
+      } finally {
+        if (!cancelled) setPreflightLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [tenantId]);
 
   // — Step 2 → Step 3
   async function handleConfirmImport() {
@@ -224,30 +232,26 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
     setServerError(null);
     abandonedRef.current = false;
 
+    const setBy = user?.uid;
+    const setByName = userProfile?.name ?? userProfile?.email ?? '(unknown)';
+
     try {
-      const callableResult = await runImport(preview, batchId);
-      if (abandonedRef.current) return; // user closed modal mid-flight
-      setImportResults({ ...callableResult, batchId });
-      // Dispatch reset emails per success row.
-      const emails = await dispatchResetEmails(callableResult?.results ?? []);
+      const callableResult = await runImport(preview, batchId, setBy, setByName, tenantId);
       if (abandonedRef.current) return;
-      setEmailDispatch(emails);
+      setImportResults(callableResult);
       setStep(4);
     } catch (err) {
-      console.error('[BulkImportUsersModal] runImport:', err);
+      console.error('[BulkImportGoalsModal] runImport:', err);
       if (abandonedRef.current) return;
       const code = err?.code ?? '';
-      if (code === 'failed-precondition' || /No active branches/i.test(err?.message ?? '')) {
-        setServerError('No active branches in this tenant. Create at least one branch first.');
-      } else if (code === 'permission-denied') {
-        setServerError("You don't have permission to bulk import users.");
+      if (code === 'permission-denied') {
+        setServerError("You don't have permission to bulk import goals.");
       } else if (code === 'unavailable' || code === 'deadline-exceeded' || code === 'cancelled' || code === 'internal') {
-        setServerError("Couldn't reach the server. Some rows may have been imported — refresh the user list to check.");
+        setServerError("Couldn't reach the server. Some rows may have been imported — refresh and check Career Portal.");
       } else {
         setServerError(err?.message ?? 'Bulk import failed.');
       }
       setImporting(false);
-      // Stay on step 3 so the user can read the error; provide Close to exit.
     } finally {
       setImporting(false);
     }
@@ -258,7 +262,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
     if (!preview || !importResults) return;
     const csv = buildErrorCSV(preview.validatedRows, importResults.results ?? []);
     if (!csv) return;
-    downloadCSV(`agencytrack-import-errors-${importResults.batchId ?? 'unknown'}.csv`, csv);
+    downloadCSV(`agencytrack-goals-import-errors-${importResults.batchId ?? 'unknown'}.csv`, csv);
   }
 
   function handleClose() {
@@ -266,22 +270,25 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
     onClose();
   }
 
-  // Mid-flight cancel confirmation
   function confirmCancelMidFlight() {
     abandonedRef.current = true;
     setShowCancelConfirm(false);
-    onImported?.(); // refresh roster — partially-imported users now visible
+    onImported?.();
     onClose();
   }
 
-  // — Filtered preview rows for Step 2 table
   const filteredRows = useMemo(() => {
     if (!preview) return [];
     if (filter === 'all') return preview.validatedRows;
     return preview.validatedRows.filter((r) => r.status === filter);
   }, [preview, filter]);
 
-  // — Render
+  const showDefaultsBanner = preflight && usingDefaultMinimums(preflight.minimums);
+  const zeroEligible =
+    preflight &&
+    preflight.activeAgentCount > 0 &&
+    preflight.eligibleAgentCount === 0;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-6 overflow-y-auto motion-reduce:backdrop-blur-none"
@@ -291,17 +298,17 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
         ref={modalRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="bulk-import-heading"
+        aria-labelledby="bulk-import-goals-heading"
         className="bg-surface-raised rounded-2xl shadow-xl w-full max-w-3xl border border-border my-auto motion-reduce:transition-none"
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-2">
           <div className="flex-1 min-w-0">
-            <h2 id="bulk-import-heading" className="text-lg font-bold text-ink">
-              Bulk import users
+            <h2 id="bulk-import-goals-heading" className="text-lg font-bold text-ink">
+              Bulk import 2026 personal commitments
             </h2>
             <p className="text-sm text-ink-muted mt-1">
-              Upload a CSV to create multiple accounts at once. Each user receives a password-reset email.
+              Upload a CSV to set per-agent annual API + apps targets at once.
             </p>
           </div>
           <button
@@ -318,56 +325,62 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
         <div className="px-6 pb-6">
           <StepIndicator step={step} />
 
-          {/* — Step 1: file picker (or zero-branches empty state) */}
+          {/* — Step 1: file picker (or empty state / banners) */}
           {step === 1 && (
             <div className="flex flex-col gap-4">
-              {branchesLoading && (
+              {preflightLoading && (
                 <div className="flex items-center gap-2 text-sm text-ink-muted py-6">
                   <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-                  Loading branches…
+                  Loading tenant goal data…
                 </div>
               )}
 
-              {!branchesLoading && branchLoadError && (
+              {!preflightLoading && preflightError && (
                 <div role="alert" aria-live="polite" className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger flex items-start gap-2">
                   <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-                  <span>{branchLoadError}</span>
+                  <span>{preflightError}</span>
                 </div>
               )}
 
-              {!branchesLoading && !branchLoadError && activeBranchCount === 0 && (
+              {!preflightLoading && !preflightError && zeroEligible && (
                 <div className="flex flex-col items-center text-center py-6 gap-3">
                   <div className="p-3 rounded-full bg-warning/15 text-warning">
-                    <Building2 size={28} aria-hidden="true" />
+                    <Info size={28} aria-hidden="true" />
                   </div>
                   <h3 className="text-sm font-bold text-ink">
-                    No active branches in this tenant
+                    All active agents already have 2026 personal commitments
                   </h3>
                   <p className="text-sm text-ink-muted max-w-md">
-                    Bulk import requires at least one active branch — every imported user
-                    gets placed into a branch by name. Create a branch first, then come
-                    back to upload your CSV.
+                    Edit individuals via Career Portal. Bulk import is only for agents
+                    who don&apos;t have a 2026 commitment yet.
                   </p>
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="btn-primary mt-2"
-                  >
-                    Open Branches panel
+                  <button type="button" onClick={onClose} className="btn-primary mt-2">
+                    Close
                   </button>
                 </div>
               )}
 
-              {!branchesLoading && !branchLoadError && activeBranchCount > 0 && (
+              {!preflightLoading && !preflightError && !zeroEligible && (
                 <>
+                  {showDefaultsBanner && (
+                    <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-ink flex items-start gap-2">
+                      <Info size={14} className="shrink-0 mt-0.5 text-warning" aria-hidden="true" />
+                      <span>
+                        Using default company minimums ({formatCurrency(200000)} API / 42 apps).
+                        Set explicit minimums in Company Config if your org&apos;s floors are
+                        different. Floors apply regardless.
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-2 p-4 border border-dashed border-border rounded-xl bg-card text-center">
                     <Upload size={28} className="text-ink-muted mx-auto" aria-hidden="true" />
-                    <label htmlFor="bulk-csv-input" className="text-sm font-semibold text-ink">
+                    <label htmlFor="bulk-goals-csv-input" className="text-sm font-semibold text-ink">
                       Choose CSV file
                     </label>
                     <input
                       ref={fileInputRef}
-                      id="bulk-csv-input"
+                      id="bulk-goals-csv-input"
                       type="file"
                       accept=".csv,text/csv"
                       onChange={handleFileSelect}
@@ -385,8 +398,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
                   <div className="flex items-start gap-2 text-xs text-ink-muted">
                     <FileText size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
                     <p>
-                      Required columns: <code className="px-1 rounded bg-border/40 text-ink">email, name, role, branchName, agentNumber</code>.
-                      Optional: <code className="px-1 rounded bg-border/40 text-ink">unitId, contractStartDate, phone, bio, careerLevel</code>.
+                      Required columns: <code className="px-1 rounded bg-border/40 text-ink">agentEmail, annualApiTarget, annualAppsTarget</code>.
                       Headers are case-insensitive. UTF-8 with optional BOM.
                     </p>
                   </div>
@@ -433,8 +445,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
                 <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-ink flex items-start gap-2">
                   <AlertTriangle size={14} className="shrink-0 mt-0.5 text-warning" aria-hidden="true" />
                   <span>
-                    Importing {preview.summary.total} rows. The Cloud Function timeout is
-                    9 minutes; large imports may take a while. The maximum per import is {LIMITS.MAX_BULK_ROWS}.
+                    Importing {preview.summary.total} rows. Maximum per import is {LIMITS.MAX_BULK_ROWS}.
                   </span>
                 </div>
               )}
@@ -463,11 +474,11 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
               </div>
 
               <div className="border border-border rounded-xl overflow-hidden">
-                <div className="grid grid-cols-[2fr_1.5fr_1fr_1.5fr_auto] gap-2 px-3 py-2 bg-card text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+                <div className="grid grid-cols-[2fr_1.5fr_1fr_0.75fr_auto] gap-2 px-3 py-2 bg-card text-[10px] font-bold uppercase tracking-wide text-ink-muted">
                   <span>Email</span>
-                  <span>Name</span>
-                  <span>Role</span>
-                  <span>Branch</span>
+                  <span>Agent</span>
+                  <span>Annual API</span>
+                  <span>Apps</span>
                   <span>Status</span>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
@@ -478,11 +489,13 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
                   ) : (
                     filteredRows.map((row) => {
                       const issues = [...row.errors, ...row.warnings];
+                      const apiNum = parseFloat(row.raw.annualapitarget);
+                      const appsNum = parseFloat(row.raw.annualappstarget);
                       return (
                         <div
                           key={row.rowIndex}
                           aria-invalid={row.status === 'error' ? true : undefined}
-                          className={`grid grid-cols-[2fr_1.5fr_1fr_1.5fr_auto] gap-2 px-3 py-2 items-start border-t border-border text-xs ${
+                          className={`grid grid-cols-[2fr_1.5fr_1fr_0.75fr_auto] gap-2 px-3 py-2 items-start border-t border-border text-xs ${
                             row.status === 'error'
                               ? 'bg-danger/5'
                               : row.status === 'warning'
@@ -491,16 +504,16 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
                           }`}
                         >
                           <span className="text-ink truncate">
-                            {row.raw.email || <span className="italic text-ink-muted">(missing)</span>}
+                            {row.raw.agentemail || <span className="italic text-ink-muted">(missing)</span>}
                           </span>
                           <span className="text-ink truncate">
-                            {row.raw.name || <span className="italic text-ink-muted">(missing)</span>}
+                            {row.resolved.agentName ?? <span className="italic text-ink-muted">—</span>}
                           </span>
                           <span className="text-ink-muted">
-                            {ROLE_DISPLAY[row.resolved.role] ?? row.raw.role ?? '—'}
+                            {Number.isFinite(apiNum) && apiNum > 0 ? formatCurrency(apiNum) : (row.raw.annualapitarget || '—')}
                           </span>
-                          <span className="text-ink-muted truncate">
-                            {row.resolved.branchName ?? row.raw.branchname ?? '—'}
+                          <span className="text-ink-muted">
+                            {Number.isFinite(appsNum) && appsNum > 0 ? appsNum : (row.raw.annualappstarget || '—')}
                           </span>
                           <div className="flex flex-col items-end gap-1">
                             <StatusPill status={row.status} />
@@ -544,11 +557,11 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
                 <>
                   <Loader2 size={48} className="animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
                   <div role="status" aria-live="polite" className="text-sm text-ink">
-                    Importing {preview?.summary.valid ?? 0}{' '}
-                    {(preview?.summary.valid ?? 0) === 1 ? 'user' : 'users'}…
+                    Setting commitments for {preview?.summary.valid ?? 0}{' '}
+                    {(preview?.summary.valid ?? 0) === 1 ? 'agent' : 'agents'}…
                   </div>
                   <p className="text-xs text-ink-muted max-w-md">
-                    Each user is being created server-side and a password-reset email is on its way. Don&apos;t close this window — closing won&apos;t roll back any users already created.
+                    Don&apos;t close this window — closing won&apos;t roll back commitments already written.
                   </p>
                 </>
               )}
@@ -574,14 +587,10 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
           {/* — Step 4: summary */}
           {step === 4 && importResults && (
             <div className="flex flex-col gap-4">
-              <SummaryStats results={importResults.results ?? []} emailDispatch={emailDispatch ?? []} preview={preview} />
+              <SummaryStats results={importResults.results ?? []} preview={preview} />
 
               {(importResults.results ?? []).some((r) => !r.success) && (
                 <FailureList results={importResults.results ?? []} />
-              )}
-
-              {emailDispatch && emailDispatch.some((e) => !e.sent) && (
-                <EmailFailureList dispatch={emailDispatch} />
               )}
 
               <div className="flex justify-between items-center pt-2 border-t border-border mt-2">
@@ -601,7 +610,6 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
           )}
         </div>
 
-        {/* Mid-flight cancel confirmation */}
         {showCancelConfirm && (
           <CancelConfirmDialog
             onCancel={() => setShowCancelConfirm(false)}
@@ -617,31 +625,25 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
 /* Step 4 sub-components                                                    */
 /* ─────────────────────────────────────────────────────────────────────── */
 
-function SummaryStats({ results, emailDispatch, preview }) {
+function SummaryStats({ results, preview }) {
   const success = results.filter((r) => r.success).length;
   const failure = results.filter((r) => !r.success).length;
-  const skipped = (preview?.summary?.warnings ?? 0);
-  const emailFailed = (emailDispatch ?? []).filter((e) => !e.sent).length;
+  const skipped = preview?.summary?.warnings ?? 0;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+    <div className="grid grid-cols-3 gap-2">
       <div className="card p-3">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Created</p>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Set</p>
         <p className="text-2xl font-bold text-success">{success}</p>
       </div>
       <div className="card p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Skipped</p>
         <p className="text-2xl font-bold text-warning">{skipped}</p>
-        <p className="text-[10px] text-ink-muted">duplicate emails</p>
+        <p className="text-[10px] text-ink-muted">existing commitments</p>
       </div>
       <div className="card p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Failed</p>
         <p className="text-2xl font-bold text-danger">{failure}</p>
-      </div>
-      <div className="card p-3">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Email failed</p>
-        <p className="text-2xl font-bold text-warning">{emailFailed}</p>
-        <p className="text-[10px] text-ink-muted">{success > 0 ? `${success - emailFailed} sent` : ''}</p>
       </div>
     </div>
   );
@@ -659,35 +661,17 @@ function FailureList({ results }) {
       </div>
       <ul className="divide-y divide-border max-h-48 overflow-y-auto">
         {failures.map((f) => (
-          <li key={`${f.rowIndex}-${f.email}`} className="px-3 py-2 text-xs flex items-start gap-2">
+          <li key={`${f.rowIndex}-${f.agentEmail}`} className="px-3 py-2 text-xs flex items-start gap-2">
             <AlertCircle size={14} className="text-danger shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-ink truncate">
-                Row {(f.rowIndex ?? 0) + 1}: {f.email || '(no email)'}
+                Row {(f.rowIndex ?? 0) + 1}: {f.agentEmail || '(no email)'}
               </p>
               <p className="text-ink-muted">{f.error ?? 'Unknown error.'}</p>
             </div>
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function EmailFailureList({ dispatch }) {
-  const failed = dispatch.filter((e) => !e.sent);
-  if (failed.length === 0) return null;
-  return (
-    <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-ink flex items-start gap-2">
-      <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" aria-hidden="true" />
-      <div>
-        <p className="font-semibold mb-1">
-          {failed.length} password-reset email{failed.length === 1 ? '' : 's'} failed to dispatch
-        </p>
-        <p className="text-ink-muted">
-          Affected accounts were created server-side. Use the per-user Retry button on the user list, or trigger a fresh reset from the Firebase console.
-        </p>
-      </div>
     </div>
   );
 }
@@ -700,14 +684,14 @@ function CancelConfirmDialog({ onCancel, onConfirm }) {
         ref={ref}
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="cancel-confirm-heading"
+        aria-labelledby="cancel-confirm-goals-heading"
         className="bg-surface-raised rounded-2xl shadow-xl w-full max-w-sm p-6 border border-border"
       >
-        <h3 id="cancel-confirm-heading" className="text-base font-bold text-ink mb-2">
+        <h3 id="cancel-confirm-goals-heading" className="text-base font-bold text-ink mb-2">
           Stop watching the import?
         </h3>
         <p className="text-sm text-ink-muted mb-5">
-          The import is already underway server-side and can&apos;t be aborted. Users created so far will not be reverted, and password-reset emails for those rows have already started dispatching. You can refresh the user list afterwards to see the final result.
+          The import is already underway. Commitments written so far will not be reverted. You can refresh Career Portal afterwards to see the final result.
         </p>
         <div className="flex justify-end gap-2">
           <button type="button" onClick={onCancel} className="h-11 px-4 text-sm text-ink-muted hover:text-ink rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40">

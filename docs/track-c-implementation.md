@@ -187,54 +187,89 @@ Revert the C2 commit. The new Cloud Function (`bulkImportUsers`) is purely addit
 
 ---
 
-## PR C3 — 2026 Personal Annual API Goals Seeding
+## PR C3 — 2026 Personal Commitments CSV Import
+
+> **Cascade-corrected 2026-05-08** to align with `docs/track-c-C3-kickoff.md` and the Q1–Q7 ratifications. Original draft proposed a single-user `GoalsSeederModal.jsx` UI with bulk CSV deferred; locked outcome flips that — bulk CSV import IS the C3 deliverable. Original draft locked the goal doc path as `tenants/{tid}/users/{uid}/goals/{year}` (5 segments — invalid Firestore document path); corrected to `tenants/{tid}/goals/{agentUid}` per audit finding 1a (matches `firestore.rules:96-100` and `goalsService.js:5,45`). Original draft proposed extending `goalsService.js` with a new `setPersonalAnnualAPI` helper; locked outcome reuses the existing `setGoals` (already enforces `companyMinimums` floors and writes audit fields). Apps-count seeding restored (locked Q4 — CSV columns are `agentEmail, annualApiTarget, annualAppsTarget`). Persistency commitment column deferred per Q4. Locked decisions below supersede the original draft.
 
 ### Goal
-Tenant Admin sets per-agent personal annual API goals for 2026. Either single-user via UI or bulk via CSV (audit-phase decision — default recommendation: single-user UI in C3, bulk CSV deferred unless the pilot's user count makes single-user untenable).
+Tenant Admin uploads a CSV of per-agent 2026 personal commitments (`agentEmail, annualApiTarget, annualAppsTarget`) and the app writes to the existing `tenants/{tid}/goals/{agentUid}` doc per row via the existing `setGoals` service (which enforces `companyMinimums` floors). Per-row validation, per-row error reporting, downloadable error CSV for re-import, batch-id audit trail.
 
 ### Dependency
-Can ship in parallel with C2 if both are independently testable. Recommend sequencing **after C2** so the goals seed against users that already exist (avoids the awkward "set goals for users you haven't created yet" sequencing).
+**C2 must merge first.** CSV `agentEmail` values resolve against `getAllUsers({ includeInactive: true })` filtered to `role === 'agent' && active !== false`. Test-importing goals before users exist would fail every row.
 
-### Files (starting hypotheses — audit confirms during C3)
+### Files (post-audit, locked via Q1–Q7 ratification)
 
 **Create:**
-- `src/components/admin/GoalsSeederModal.jsx` — per-agent target editor. Search / select agent, enter `personalAnnualAPI` value for `2026`, save. Reuses B5's modal patterns end-to-end.
+- `src/services/goalsImportService.js` — pure service layer mirroring C2's `userImportService.js` structure verbatim. CSV parse via Papaparse (`transformHeader: lowercase`, `skipEmptyLines: true`), per-row validation (agent identifier lookup → `getAllUsers` filter to active agents, target-vs-`companyMinimums` floor check delegated to `setGoals`, duplicate-existing-goal check), batch invocation (per-row `setGoals` call inside try/catch), error CSV generation via `Papa.unparse`. Exports: `parseCSV`, `prepareImport`, `runImport`, `buildErrorCSV`, `buildTemplateCSV`, `downloadCSV`, `generateBatchId`, `LIMITS`.
+- `src/components/admin/BulkImportGoalsModal.jsx` — multi-step wizard within one modal shell mirroring `BulkImportUsersModal.jsx` (copy-from-precedent — third-consumer threshold for extracting `CsvImportModalShell` not yet met; deferred follow-up filed per Q7). Step 1: file picker + "Download template" CTA + companyMinimums-defaults warn banner (Q3) + zero-eligible-agents empty state (Q5). Step 2: full preview table with valid / warning / error rows distinguished, filter toggles (All / Errors / Warnings / Valid), and "Confirm import" CTA disabled when 0 valid rows. Step 3: indeterminate spinner with row count. Step 4: summary (success / skipped / failed counts + per-row error details + "Download error report" CSV CTA).
 
 **Modify:**
-- `src/services/goalsService.js` — extend with `setPersonalAnnualAPI(agentId, year, value)` if it doesn't already exist. Audit-phase deliverable: confirm the existing write helper signature in `goalsService.js` and either reuse or add the smallest possible new helper.
+- `src/services/goalsService.js`:
+  - Extend `setGoals(tenantId, agentId, data, setBy, setByName)` to accept passthrough audit-trail fields `data.csvImportBatchId` (UUID v4) and `data.importedFromCsv` (boolean). Single-user CareerPortal "Edit My Goals" flow never sets these → behavior unchanged. Floor validation logic untouched. Q6 ratified.
+- `src/components/manager/UserManagementPanel.jsx`:
+  - Rename C2-shipped "Bulk Import" CTA to "Bulk Import Users" for disambiguation. Add sibling "Bulk Import Goals" CTA. Both gated on `role in ['tenant_admin', 'platform_admin']`. Two-button pattern. Q1 ratified. **Surface-stop fallback:** if header can't fit two CTAs at 768px / 390px, STOP and convert to dropdown (chevron + menu of "Users" / "Personal Commitments").
+- `src/components/admin/BulkImportUsersModal.jsx`:
+  - Add `'internal'` to the friendly-message branch of the error-code map at line 244 (closes F3 MEDIUM). 1-line change. Q2 ratified — alongside-fix.
 
-### Validation rules (mirror B5's `companyMinimums` discipline)
-- Numeric. `parseFloat` enforced before write. Never stored as string.
-- `> 0`. Zero or negative values rejected client-side and at the rules layer.
-- `≤ TTD 10,000,000`. Mirrors B5's `companyMinimums.annualAPI` upper bound for consistency. Audit-phase: confirm the cap is at least 2× the highest observed `personalAnnualAPI` in the pilot tenant. Agent-of-the-Year achievement targets in TTD ~1M historically — 10M cap is comfortably higher.
-- TTD currency display via existing `formatCurrency()` from `formatters.js`. Raw number written.
-- Required field — empty submit blocked.
-- **Firestore rules MUST also enforce these constraints.** If the existing `goals` write path in rules doesn't restrict `tenant_admin` (or branch_manager + above per the existing matrix), surface as a SECURITY surprise-stop during C3 audit.
+**No changes:**
+- `firestore.rules` — `match /goals/{goalId}` already gates writes on `canManage(tenantId)` (`firestore.rules:96-100`); tenant_admin satisfies. No rules expansion needed.
+- `functions/index.js` — no Cloud Function for C3. Goal writes are simple Firestore ops covered by existing rules; adding a Callable would split the floor-validation surface (client `setGoals` enforces; Callable would re-enforce) for no security gain.
+
+### CSV contract (locked)
+- **Required headers (case-insensitive):** `agentEmail`, `annualApiTarget`, `annualAppsTarget`.
+- **Optional headers:** none in C3. `personalAnnualPersistency` deferred per Q4 — pilot follow-up if reports indicate need.
+- **No `year` column.** The personal-commitment doc has no `year` field; "2026" is editorial framing only (template/CSV header copy says "2026 personal commitments" for human clarity). Audit finding 1b.
+- **Encoding:** UTF-8 with optional BOM. CRLF tolerated.
+- **Empty rows:** skipped (`skipEmptyLines: true`).
+- **Hard limit:** 500 rows. Soft warn at 100 client-side (mirrors C2).
+
+### Per-row validation (locked)
+- `agentEmail` — required, valid email format (regex from `validators.js`). Lookup against `getAllUsers({ includeInactive: true })` snapshot loaded once before the loop. Match required:
+  - User must exist in tenant
+  - User must have `role === 'agent'` (managers don't have personal commitments via C3)
+  - User must have `active !== false`
+  - No match = row rejected with specific error.
+- `annualApiTarget` — required. `parseFloat`. **Floor validation delegated to `setGoals`** — `runImport` calls `setGoals(...)` per row inside try/catch; the existing service throws `Error("Annual API must be at least TTD X (company minimum).")` which surfaces verbatim as the row's failure message. Single source of truth for floor logic.
+- `annualAppsTarget` — required. `parseFloat`. Same delegation pattern — `setGoals` throws below-floor errors against `companyMinimums.annualApps` (default 42).
+- Duplicate-existing-goal check: per-agent pre-flight `getDoc` of `tenants/{tid}/goals/{agentUid}` to detect existing `personalAnnualAPI`. If present and non-empty: warning, row skipped (mirrors C2 duplicate-email pattern). UI copy: "Agent already has 2026 commitment set."
 
 ### Confirmation copy (locked)
-> "Setting personal annual API for **{agent name}** to **TTD {amount}** for 2026. This affects the agent's goal hierarchy floor — they can override upward with their own personal commitment, but can't go below this." Save / Cancel.
+- companyMinimums-defaults warn banner (Q3) at Step 1 when `getCompanyMinimums` returns built-in defaults:
+  > "Using default company minimums (TTD 200,000 API / 42 apps). Set explicit minimums in Company Config if your org's floors are different. Floors apply regardless."
+- Zero-eligible-agents empty state (Q5) at Step 1 when every active agent already has 2026 personal commitments:
+  > "All active agents already have 2026 personal commitments. Edit individuals via Career Portal."
 
 ### Acceptance criteria
-- [ ] Tenant Admin can set `personalAnnualAPI` for any agent in their tenant for `year: 2026`
-- [ ] Stores under the existing `tenants/{tid}/users/{uid}/goals/{year}` document pattern (audit-phase confirms the exact path — `goalsService.js` arbitrates)
-- [ ] Validation: numeric, `parseFloat`, `> 0`, `≤ 10000000`, required
-- [ ] Confirmation modal shows agent name + amount in formatted TTD before write commits
-- [ ] Save flow: pre-write read of current goal (if any), display delta in confirmation, write `updatedBy` + `updatedAt`, close modal on success only
-- [ ] Save failure paths surface specific errors (permission denied, network failure, validation error) — modal stays open
-- [ ] 8-cell preview matrix for `tenant_admin` (4 breakpoints × 2 themes)
-- [ ] Modal a11y: focus trap, Escape, return focus, live-region for save errors
+- [ ] CSV upload accepts the required headers (case-insensitive); unknown columns ignored
+- [ ] Per-row validation runs client-side for fast preview feedback
+- [ ] Below-floor targets rejected — `setGoals` throws floor error at write time, surfaced as row failure
+- [ ] Step 3 progress UI is an indeterminate spinner with row count + `role="status"`
+- [ ] On any per-row failure, "Download error report" CTA in Step 4 emits a CSV with original input rows + appended `error` column. Re-importable workflow.
+- [ ] Duplicate existing goal: warning in preview, row skipped on import, summary reports under "skipped" — same copy "Agent already has 2026 commitment set."
+- [ ] Modal blocked at Step 1 with empty-state copy when zero eligible agents (Q5)
+- [ ] companyMinimums-defaults warn banner renders when no explicit doc (Q3)
+- [ ] Each written goal doc carries `csvImportBatchId: <UUID v4>` (Q6) and `importedFromCsv: true`, merged into the existing doc (preserves manager-set targets via `merge: true`)
+- [ ] `setBy: <caller_uid>` + `setByName: <caller_name>` + `updatedAt: serverTimestamp()` set by existing `setGoals` (no change to those fields)
+- [ ] 8-cell preview matrix for `tenant_admin` (4 breakpoints × 2 themes) covers: defaults-banner Step 1, file picked, preview valid + mixed + all-error, mid-progress, summary success + partial-failure
+- [ ] Drive-by other-role checks confirm "Bulk Import Goals" CTA is unreachable for `agent` / `unit_manager` / `branch_manager` / `sales_manager`
+- [ ] Modal a11y: focus trap (via `useFocusTrap` hook), Escape (with mid-flight confirmation in Step 3), `role="dialog"` + `aria-modal` + `aria-labelledby`, return focus on close
 - [ ] `npm run lint && npm run build` exits 0
+- [ ] Two-sibling-button CTA pattern verified at 1440 / 1024 / 768 / 390 (or surface-stop if cramped at 768/390 — fall back to dropdown)
 
 ### Out of scope (for C3)
-- **Phase 9 Sales Manager Target layer** (the 5-layer goals system completion per CLAUDE.md). Defer to post-pilot.
-- **Quarterly goals.** Only annual `personalAnnualAPI` in C3.
-- **Persistency goals editing.** Deferred from B5; remains deferred in C3.
-- **Apps-count goal seeding.** B5's `companyMinimums` fallback already includes `annualApps` defaults; agent-level apps goals derive from elsewhere. Not seeded in C3.
-- **Bulk CSV goals upload.** Audit-phase decision — default is "single-user UI only in C3, bulk deferred."
-- **Goal editing UI for agents themselves.** Already exists via `CareerPortal.jsx` "Edit My Goals" — out of scope for C3.
+- **Single-user goal-seeder UI for tenant_admin.** Existing CareerPortal "Edit My Goals" path is for agents to set their own; tenant_admin uses the bulk CSV in C3. Bulk-edit follows in a separate post-pilot ticket if needed.
+- **Phase 9 Sales Manager Target layer.** Defer to post-pilot.
+- **Quarterly goals.** Annual only.
+- **Persistency commitment column** in CSV (Q4 lock). Pilot follow-up if needed.
+- **Goal editing UI for agents themselves.** Already exists via `CareerPortal.jsx` "Edit My Goals" — unchanged.
+- **Bulk personal-commitment EDIT.** C3 is import-only; re-importing same agent = skip with warning.
+- **Year other than 2026.** Locked single-year. Future-year roll-over is a post-pilot ticket.
+- **Hard delete of goal docs.**
+- **New Cloud Function.** Writes are client-side under existing rules.
+- **New Firestore collection.** Existing `goals` only.
 
 ### Rollback
-Revert the C3 commit. Drop the new files. `goalsService.js` extension is additive; no read-path regression risk.
+Revert the C3 commit. Drop the new files. `setGoals` extension is additive — single-user CareerPortal flow never sets `csvImportBatchId` / `importedFromCsv`, so no behavior change to roll back. The C2 modal's `internal` error-code addition is purely additive (1 case in a switch). The UserManagementPanel CTA rename + sibling-button addition reverts cleanly via the commit.
 
 ---
 

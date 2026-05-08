@@ -46,6 +46,16 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
 
   const payload = { agentId, tenantId, setBy, setByName, updatedAt: serverTimestamp() };
 
+  // Track C C3: passthrough audit fields for bulk CSV import. The single-user
+  // CareerPortal "Edit My Goals" flow never sets these — behavior unchanged.
+  // merge: true semantics preserve manager-set targets on the same doc.
+  if (typeof data.csvImportBatchId === 'string' && data.csvImportBatchId) {
+    payload.csvImportBatchId = data.csvImportBatchId;
+  }
+  if (data.importedFromCsv === true) {
+    payload.importedFromCsv = true;
+  }
+
   // Manager target fields — write all if any target* key is present
   if ('targetAnnualAPI' in data || 'targetWeeklyAPI' in data) {
     payload.targetAnnualAPI         = p(data.targetAnnualAPI);
