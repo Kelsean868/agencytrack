@@ -1,5 +1,8 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
-import { LogOut, Users, TrendingUp, FileCheck, AlertCircle, Sun, Moon, Presentation, Download } from 'lucide-react';
+import {
+  Users, TrendingUp, FileCheck, AlertCircle, Presentation, Download,
+  BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency } from '../../utils/formatters';
@@ -19,24 +22,39 @@ import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
 import CampaignPanel from '../campaigns/CampaignPanel';
 import UserManagementPanel from '../manager/UserManagementPanel';
-import NotificationBell from '../ui/NotificationBell';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import MotivationalCarousel from './MotivationalCarousel';
-import SyncIndicator from '../ui/SyncIndicator';
 import ProfileScreen from '../profile/ProfileScreen';
+import Shell from '../shell/Shell';
 
-const TABS = [
-  { id: 'overview',     label: 'Overview'     },
-  { id: 'team',         label: 'Team'         },
-  { id: 'campaigns',    label: 'Campaigns'    },
-  { id: 'awards',       label: 'Awards'       },
-  { id: 'mastersheet',  label: 'Master Sheet' },
-  { id: 'compliance',   label: 'Compliance'   },
-  { id: 'persistency',  label: 'Persistency'  },
-  { id: 'goals',        label: 'Goals'        },
-  { id: 'settlements',  label: 'Settlements'  },
-  { id: 'leaderboard',  label: 'Leaderboard'  },
-  { id: 'profile',      label: 'Profile'      },
+// Sidebar nav items — single layout for all 4 manager roles. Per-role
+// differentiation (tenant_admin: Company Config / Audit Log / Billing;
+// sales_manager: cross-branch surfaces) lands in B5 + P9 alongside per-role
+// dashboard differentiation. This is the explicit B4 boundary and is
+// surfaced in the PR description.
+const NAV_ITEMS = [
+  { id: 'overview',    label: 'Overview',     tabId: 'overview',    Icon: BarChart2,     sectionLabel: 'Manage' },
+  { id: 'team',        label: 'Team',         tabId: 'team',        Icon: Users },
+  { id: 'campaigns',   label: 'Campaigns',    tabId: 'campaigns',   Icon: Gift },
+  { id: 'awards',      label: 'Awards',       tabId: 'awards',      Icon: Trophy },
+  { id: 'mastersheet', label: 'Master Sheet', tabId: 'mastersheet', Icon: ClipboardList },
+  { id: 'compliance',  label: 'Compliance',   tabId: 'compliance',  Icon: CheckCircle2 },
+  { id: 'persistency', label: 'Persistency',  tabId: 'persistency', Icon: TrendingUp,    sectionLabel: 'Operations' },
+  { id: 'goals',       label: 'Goals',        tabId: 'goals',       Icon: Award },
+  { id: 'settlements', label: 'Settlements',  tabId: 'settlements', Icon: FileCheck },
+  { id: 'leaderboard', label: 'Leaderboard',  tabId: 'leaderboard', Icon: Star,          sectionLabel: 'Tools' },
+  { id: 'profile',     label: 'Profile',      tabId: 'profile',     Icon: UserCircle },
+];
+
+// Mobile bottom-nav — 5 items chosen as the most-used manager surfaces.
+// Master Sheet stands in for the mock's "Reports" item (no Reports tab
+// exists today). All 4 manager roles share this layout for B4.
+const BOTTOM_NAV = [
+  { id: 'overview',    label: 'Dashboard', tabId: 'overview',    Icon: BarChart2 },
+  { id: 'team',        label: 'Team',      tabId: 'team',        Icon: Users },
+  { id: 'mastersheet', label: 'Reports',   tabId: 'mastersheet', Icon: ClipboardList },
+  { id: 'campaigns',   label: 'Campaigns', tabId: 'campaigns',   Icon: Gift },
+  { id: 'profile',     label: 'Profile',   tabId: 'profile',     Icon: UserCircle },
 ];
 
 function StatCard({ icon: Icon, label, value, sub, accent = false }) {
@@ -111,11 +129,6 @@ export default function ManagerDashboard() {
     try { await signOut(); } catch (err) { console.error(err); }
   };
 
-  const toggleDark = () => {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('agencytrack-dark', isDark ? '1' : '0');
-  };
-
   const handleStartMeeting = async () => {
     try {
       const [subs, userList] = await Promise.all([
@@ -167,74 +180,46 @@ export default function ManagerDashboard() {
     );
   }
 
-  return (
+  // Topbar action slot — branch-CSV export (gated) + Start Meeting CTA.
+  // Both buttons relocated from the per-dashboard header into the Shell's
+  // topbar actions slot. Dark-mode toggle and sign-out live in TopBar /
+  // sidebar foot respectively.
+  const topbarActions = (
     <>
-      <div className="min-h-screen bg-surface px-4 py-6 max-w-5xl mx-auto">
-
-        {/* Header */}
-        <header className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-display font-bold text-ink">AgencyTrack</h1>
-            <p className="text-sm text-ink-muted">{roleLabel}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            {(role === 'branch_manager' || role === 'tenant_admin' || role === 'platform_admin') && (
-              <button
-                onClick={handleExportBranchCSV}
-                className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors"
-              >
-                <Download size={16} />
-                Export Branch Report
-              </button>
-            )}
-            <button
-              onClick={handleStartMeeting}
-              className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors"
-            >
-              <Presentation size={16} />
-              Start Meeting
-            </button>
-            <SyncIndicator />
-            <NotificationBell />
-            <button
-              onClick={toggleDark}
-              className="w-11 h-11 flex items-center justify-center rounded-full bg-card text-ink-muted hover:text-ink transition-colors"
-              aria-label="Toggle dark mode"
-            >
-              <Sun size={18} className="dark:hidden" />
-              <Moon size={18} className="hidden dark:block" />
-            </button>
-            <button
-              onClick={handleSignOut}
-              className="w-11 h-11 flex items-center justify-center rounded-full bg-card text-ink-muted hover:text-danger transition-colors"
-              aria-label="Sign out"
-            >
-              <LogOut size={18} />
-            </button>
-          </div>
-        </header>
-
-        {/* Tab bar */}
-        <nav
-          aria-label="Manager sections"
-          className="flex gap-1 p-1 rounded-xl bg-surface border border-border mb-6 overflow-x-auto"
+      {(role === 'branch_manager' || role === 'tenant_admin' || role === 'platform_admin') && (
+        <button
+          type="button"
+          onClick={handleExportBranchCSV}
+          className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id)}
-              className={`flex-1 min-w-max h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
-                activeTab === t.id
-                  ? 'bg-[var(--color-surface)] text-primary shadow-sm'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
+          <Download size={16} />
+          <span className="hidden md:inline">Export Branch Report</span>
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={handleStartMeeting}
+        className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <Presentation size={16} />
+        <span className="hidden md:inline">Start Meeting</span>
+      </button>
+    </>
+  );
 
-        <main>
+  return (
+    <Shell
+      navItems={NAV_ITEMS}
+      bottomNavItems={BOTTOM_NAV}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      userProfile={userProfile}
+      roleLabel={roleLabel}
+      topbarTitle={`Welcome back, ${displayName}`}
+      topbarCrumb={roleLabel}
+      topbarActions={topbarActions}
+      onSignOut={handleSignOut}
+    >
         {/* ── Overview ── */}
         {activeTab === 'overview' && (
           <div>
@@ -408,8 +393,6 @@ export default function ManagerDashboard() {
         {activeTab === 'leaderboard' && <Leaderboard />}
 
         {activeTab === 'profile' && <ProfileScreen />}
-        </main>
-      </div>
-    </>
+    </Shell>
   );
 }
