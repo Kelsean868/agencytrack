@@ -13,10 +13,10 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-08` |
-| Current main HEAD | `1d0d9c3` (feat(track-c-c1) — branches schema + tenant admin management UI, PR #60) |
-| Active track | Track C — C2 bulk user provisioning via CSV import (in flight on `feat/track-c-c2-bulk-import`). C1 closed: PR #60 shipped the `tenants/{tid}/branches/{branchId}` collection, `branchService.js`, `BranchesPanel`, `BranchEditorModal`, `DeactivateBranchConfirmDialog`, the `match /branches/{branchId}` rules block, and the `scripts/test-c1-branches-rule.js` emulator regression test. |
-| Next track | Track D — cron + notifications verification (after Track C ships C2 + C3) |
-| Queued | **Track C — C3 (2026 personal annual API goals seeding).** Ships after C2. Single-user UI default per Track C plan; bulk-CSV deferred unless pilot user-count makes single-user untenable. |
+| Current main HEAD | `f906108` (feat(track-c-c2) — bulk user provisioning via CSV import, PR #61) |
+| Active track | Track C — C3 (2026 personal commitments CSV import) in flight on `feat/track-c-c3-bulk-goals`. C2 closed: PR #61 shipped the `bulkImportUsers` Cloud Function, `userImportService.js`, `BulkImportUsersModal.jsx`, `useFocusTrap` hook extraction, `validators.js` `EMAIL_RE` + `isValidEmail` exports, and the `doCreateUser` extension for `branchId` / `csvImportBatchId` / `importedFromCsv` / `phone` / `bio` / `careerLevel`. |
+| Next track | Track D — cron + notifications verification (after Track C closes with C3) |
+| Queued | None within Track C. Track D follows. |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -126,11 +126,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #61 | `f906108` | feat(track-c-c2) — bulk user provisioning via CSV import |
 | #60 | `1d0d9c3` | feat(track-c-c1) — branches schema + tenant admin management UI |
 | #59 | `eb72d59` | docs(track-c) — add implementation plan + C1 kickoff brief |
 | #58 | `63f4b79` | docs(follow-ups) — backfill PR #57 reference |
 | #57 | `a141d9c` | fix(user-creation) — send password reset email (P0 closes HIGH#1) |
-| #56 | `e767798` | fix(sidebar) — expand toggle + sign-out reachable when collapsed (P0) |
 
 ---
 
@@ -148,13 +148,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** C2 in flight — bulk user provisioning via CSV import (2026-05-08).
+> **Session boundary:** C3 in flight — 2026 personal commitments CSV import (2026-05-08).
 
-PR #56 closed the sidebar-collapse P0 (expand-toggle + sign-out reachable when collapsed). PR #57 closed FOLLOW_UPS HIGH#1 by dispatching `sendPasswordResetEmail` client-side from `agentManagementService.createUser` after the Cloud Function saga completes — imported users have a path to first sign-in. PR #58 backfilled the FOLLOW_UPS reference for PR #57. PR #59 landed the Track C foundation docs (implementation plan + C1 kickoff brief). PR #60 shipped C1 — branches as a real Firestore subcollection at `tenants/{tid}/branches/{branchId}` with a tenant-admin management UI (`BranchesPanel`, `BranchEditorModal`, `DeactivateBranchConfirmDialog`), service layer (`branchService.js`), Firestore rules block, and emulator regression test (`scripts/test-c1-branches-rule.js`). The C1 close confirmed three reusable primitives for C2: (1) `doCreateUser(data, context)` is already extracted as a callable helper in `functions/index.js:119` — no extraction needed; (2) `sendPasswordResetEmail` is dispatched client-side in `agentManagementService`, not in the Function — C2 must mirror this; (3) `branchService.listBranches()` returns active + inactive — C2 applies the `isActive` filter for branch-name lookup.
+PR #59 landed the Track C foundation docs. PR #60 shipped C1 — branches as a real Firestore subcollection. PR #61 shipped C2 — bulk user provisioning via CSV import: a new `bulkImportUsers` Callable in `functions/index.js` (with `runWith({ timeoutSeconds: 540 })`) wraps a per-row loop calling the existing `doCreateUser` saga; new `userImportService.js` handles CSV parse via Papaparse, per-row validation, branch-name → branchId resolution, duplicate-email check, batch invocation, post-success client-side `sendPasswordResetEmail` dispatch per row; new `BulkImportUsersModal.jsx` is a 4-step wizard lifting BranchEditorModal scaffolding via a new extracted `useFocusTrap` hook; `doCreateUser` extended to honor optional `data.branchId`, `data.csvImportBatchId`, `data.importedFromCsv`, plus three new buildDocFields entries for `phone`, `bio`, `careerLevel`. CSV `tenant_admin` and `platform_admin` roles rejected server-side. Import limit 500 hard, soft-warn at 100. The C2 close confirmed three reusable primitives for C3: (1) `setGoals(tenantId, agentId, data, setBy, setByName)` in `goalsService.js` already enforces `companyMinimums` floors and writes audit fields — C3 reuses verbatim, no reimplementation; (2) goal docs live at `tenants/{tid}/goals/{agentUid}` (flat subcollection, doc keyed by agent UID), not the 5-segment nested path the implementation plan originally drafted; (3) the personal-commitment doc has no `year` field — "2026" is editorial framing only.
 
-C2 (this session) ships bulk user provisioning via CSV import. New `bulkImportUsers` Callable in `functions/index.js` (with `runWith({ timeoutSeconds: 540 })`) wraps a per-row loop calling the existing `doCreateUser` saga, with a single pre-flight Firestore read of `tenants/{tid}/branches` for branchId Set validation (defense-in-depth against bypassed client). New `userImportService.js` handles CSV parse via Papaparse (the dep was installed but never imported until C2), per-row validation, branch-name → branchId resolution, duplicate-email check, batch invocation, and post-success client-side `sendPasswordResetEmail` dispatch per row. New `BulkImportUsersModal.jsx` is a 4-step wizard (file picker → preview → progress → summary) lifting BranchEditorModal scaffolding via a new extracted `useFocusTrap` hook (SS-2 commitment honored — only the new modal consumes it; EditConfigModal and BranchEditorModal stay on inline duplication, with a follow-up filed). `doCreateUser` extended to honor optional `data.branchId` (only when caller has `ownedBranchIds === ['*']`), `data.csvImportBatchId`, `data.importedFromCsv`, plus three new buildDocFields entries for `phone`, `bio`, `careerLevel`. CSV columns: required `email, name, role, branchName, agentNumber`; optional `unitId, contractStartDate, phone, bio, careerLevel`. `personalApiTarget` deferred to C3 / Goals UI per locked decision. CSV `tenant_admin` and `platform_admin` roles rejected server-side (security). Import limit 500 rows hard, soft-warn at 100 client-side.
+C3 (this session) ships bulk 2026 personal commitments CSV import. New `goalsImportService.js` mirrors C2's CSV-parse / validate / runImport / error-CSV / template-CSV pattern, but delegates per-row writes to the existing `setGoals` (no Cloud Function, no rules changes — `canManage(tenantId)` already covers tenant_admin writes to `goals/*`). New `BulkImportGoalsModal.jsx` is a 4-step wizard (file picker → preview → progress → summary) reusing `useFocusTrap`, `StepIndicator` / `StatusPill` / `CancelConfirmDialog` patterns from `BulkImportUsersModal.jsx` (copy-from-precedent — the 3rd-consumer threshold for extracting `CsvImportModalShell` not yet met; deferred as a MEDIUM follow-up). `setGoals` extended (additive) to accept passthrough `csvImportBatchId` + `importedFromCsv` audit fields. CSV columns: required `agentEmail, annualApiTarget, annualAppsTarget`; no `year` column (editorial framing only). UserManagementPanel header now has two sibling buttons — "Bulk Import Users" (renamed from "Bulk Import" for disambiguation) and "Bulk Import Goals". F3 MEDIUM (`internal` error code) absorbed: added to friendly-message branch in both modals.
 
-**Next: Track C — C3 (2026 personal annual API goals seeding).** After C2 ships, C3 wires per-agent `personalAnnualAPI` for 2026 against the existing goal hierarchy. Track D (cron + notifications verification) follows Track C close.
+**Next: Track D — cron + notifications verification.** After C3 closes Track C, Track D follows.
 
 ---
 
