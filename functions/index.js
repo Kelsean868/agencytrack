@@ -249,10 +249,10 @@ async function doCreateUser(data, context) {
   }
 
   // ── Side effects (best-effort, do not fail the saga) ──────────────────────
-  await admin.auth().generatePasswordResetLink(data.email, {
-    url: 'https://agencytrack.vercel.app',
-  }).catch((err) => console.error('[createUser] Reset link error:', err));
-
+  // Password-reset email is dispatched client-side from agentManagementService.createUser
+  // after this callable returns. The Admin SDK has no equivalent of
+  // sendPasswordResetEmail (generatePasswordResetLink only returns a string with no
+  // delivery), so the email is triggered from the caller's Firebase Auth client.
   await createAdminNotification(callerTenant, newUid, {
     type:  'account_created',
     title: 'Welcome to AgencyTrack',

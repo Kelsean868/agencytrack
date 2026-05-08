@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, X, Loader2, UserCircle, AlertTriangle } from 'lucide-react';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import {
   createUser,
@@ -114,8 +116,8 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
         payload.confirmationPhrase = 'CREATE TENANT ADMIN';
       }
 
-      await createUser(payload);
-      onCreated(payload.email, effectiveRole);
+      const result = await createUser(payload);
+      onCreated(payload.email, effectiveRole, result?.emailSent === true, result?.emailError);
     } catch (err) {
       const code = err?.code ?? '';
       if (code.includes('already-exists')) {
@@ -360,7 +362,10 @@ export default function UserManagementPanel() {
   const [loading, setLoading]           = useState(true);
   const [showDrawer, setShowDrawer]     = useState(false);
   const [showInactive, setShowInactive] = useState(false);
-  const [toast, setToast]               = useState('');
+  // Toast shape: null | { kind: 'success' | 'warning', message: string, email?: string }
+  // 'warning' shows a Retry button and does not auto-dismiss.
+  const [toast, setToast]               = useState(null);
+  const [retryingEmail, setRetryingEmail] = useState(false);
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [deactivating, setDeactivating] = useState(false);
 
@@ -381,11 +386,46 @@ export default function UserManagementPanel() {
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
-  function handleCreated(email, createdRole) {
+  function handleCreated(email, createdRole, emailSent, _emailError) {
     setShowDrawer(false);
     loadUsers();
-    setToast(`${ROLE_DISPLAY[createdRole] ?? 'User'} account created. A password setup email has been sent to ${email}.`);
-    setTimeout(() => setToast(''), 6000);
+    const roleLabel = ROLE_DISPLAY[createdRole] ?? 'User';
+    if (emailSent) {
+      setToast({
+        kind:    'success',
+        message: `${roleLabel} account created. Reset email sent to ${email}.`,
+      });
+      setTimeout(() => setToast(null), 6000);
+    } else {
+      // Account created server-side, but the password reset email failed to dispatch.
+      // Surface a Retry button — user is otherwise stranded with no way to sign in.
+      setToast({
+        kind:    'warning',
+        message: `${roleLabel} account created, but the password reset email failed to send.`,
+        email,
+      });
+      // No auto-dismiss for warning — user must Retry or Dismiss.
+    }
+  }
+
+  async function handleRetryEmail() {
+    const email = toast?.email;
+    if (!email) return;
+    setRetryingEmail(true);
+    try {
+      await sendPasswordResetEmail(auth, email);
+      setToast({ kind: 'success', message: `Reset email sent to ${email}.` });
+      setTimeout(() => setToast(null), 6000);
+    } catch (err) {
+      console.error('[UserManagementPanel] retry sendPasswordResetEmail:', err);
+      setToast({
+        kind:    'warning',
+        message: `Email retry failed${err?.code ? ` (${err.code})` : ''}. Try again or check the address.`,
+        email,
+      });
+    } finally {
+      setRetryingEmail(false);
+    }
   }
 
   async function handleDeactivateConfirm(active) {
@@ -396,13 +436,16 @@ export default function UserManagementPanel() {
       await deactivateUser(deactivateTarget.uid, active);
       setDeactivateTarget(null);
       await loadUsers();
-      setToast(active ? `${targetName} reactivated.` : `${targetName} deactivated.`);
-      setTimeout(() => setToast(''), 4000);
+      setToast({
+        kind:    'success',
+        message: active ? `${targetName} reactivated.` : `${targetName} deactivated.`,
+      });
+      setTimeout(() => setToast(null), 4000);
     } catch (err) {
       console.error('[UserManagementPanel] deactivate:', err);
       const msg = err?.message?.includes('permission') ? "You don't have permission to do this." : 'Action failed. Please try again.';
-      setToast(msg);
-      setTimeout(() => setToast(''), 4000);
+      setToast({ kind: 'warning', message: msg });
+      setTimeout(() => setToast(null), 4000);
       setDeactivateTarget(null);
     } finally {
       setDeactivating(false);
@@ -412,9 +455,44 @@ export default function UserManagementPanel() {
   return (
     <div className="flex flex-col gap-4 relative">
       {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-success text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg max-w-sm text-center">
-          {toast}
+      {toast?.kind === 'success' && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-success text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg max-w-sm text-center"
+        >
+          {toast.message}
+        </div>
+      )}
+      {toast?.kind === 'warning' && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-start gap-3 bg-warning/15 border border-warning/40 text-ink text-xs px-4 py-3 rounded-xl shadow-lg max-w-md"
+        >
+          <AlertTriangle size={16} className="text-warning mt-0.5 shrink-0" />
+          <div className="flex flex-col gap-2 flex-1">
+            <p className="font-semibold leading-snug">{toast.message}</p>
+            <div className="flex items-center gap-2">
+              {toast.email && (
+                <button
+                  onClick={handleRetryEmail}
+                  disabled={retryingEmail}
+                  className="text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-60 px-3 h-8 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  {retryingEmail
+                    ? <><Loader2 size={13} className="animate-spin" /> Retrying…</>
+                    : 'Retry email'}
+                </button>
+              )}
+              <button
+                onClick={() => setToast(null)}
+                className="text-xs font-semibold text-ink-muted hover:text-ink px-2 h-8 rounded-lg transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
