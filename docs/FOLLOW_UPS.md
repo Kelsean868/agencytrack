@@ -5,6 +5,71 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## HIGH-priority — sales_manager onboarding regressions (surfaced 2026-05-07)
+
+Three production-affecting bugs discovered while provisioning the missing test
+accounts for B4's all-roles preview matrix. All three are likely regressions from
+the May 5 roles refactor and should land before the Tatil pilot demo.
+
+### HIGH#1 — User-creation flow does not send password reset email
+
+**Reproducer:** Tenant Admin → Team tab → Add User → fill the form → Save. The
+Firebase Auth user is created (and the Firestore doc is written), but no
+"Set your password" email is dispatched to the new user. The created user has
+no way to set their initial password without intervention.
+
+**Workaround in use today:** Firebase Console → Authentication → click the
+new user → three-dot menu → "Reset password" — this dispatches the email
+manually.
+
+**Likely site:** the `createUser` Cloud Function path (or its successor after
+the polymorphic refactor in user-mgmt PR-2). The original flow likely called
+`generatePasswordResetLink` + `sendEmail` and one of those calls was lost in
+the refactor. Verify against `functions/index.js` and the email transport
+config.
+
+Priority: **HIGH** (pilot-blocking — Tatil cannot onboard managers/agents at
+scale without this). Surfaced during B4 provisioning.
+
+### HIGH#2 — UI role-to-label map is missing `sales_manager` → "Unknown" displayed
+
+**Symptoms:** When logged in as a `sales_manager`, the dashboard header role
+label and the User Roster (Tenant Admin → Team tab) both display "Unknown"
+instead of "Sales Manager." Underlying Firestore data is correct
+(`role: "sales_manager"` is stored properly). This is purely a UI lookup-table
+gap.
+
+**Likely site:** a `getRoleLabel(role)` function or `ROLE_LABELS` map in a UI
+util file (probably `src/utils/formatters.js` or similar). Add
+`sales_manager: "Sales Manager"` to whatever lookup it uses. If the function
+falls through to a default of "Unknown" rather than the role string, also
+audit whether other unhandled roles benefit from a string fallback.
+
+Priority: **HIGH** (visible in TopBar to every sales_manager session).
+Surfaced during B4 provisioning.
+
+### HIGH#3 — Verify whether the role-label map gap also affects `tenant_admin` and `platform_admin`
+
+**Open question:** During B4's all-roles preview matrix (5 roles ×
+4 breakpoints × 2 modes), explicitly verify that `tenant_admin` and
+`platform_admin` render their correct role label in the TopBar, the User
+Roster, and any other surface that calls the role-label map. If either also
+displays "Unknown," extend HIGH#2's fix scope to cover all unhandled roles.
+If only `sales_manager` is affected, HIGH#2 stays narrow and this item
+closes.
+
+Priority: **HIGH** (depends on outcome of B4 walkthrough). The B4 PR
+description records the verification result for each role; this item
+collapses into HIGH#2 or closes accordingly.
+
+> **B4 verification acknowledgment:** the B4 all-roles walkthrough may show
+> "Unknown" in the TopBar role label when logged in as `sales_manager` (and
+> possibly `tenant_admin`/`platform_admin`). This is a pre-existing
+> label-mapping bug, **not** a B4 regression. Documented in the B4 PR
+> description's verification section.
+
+---
+
 ## Wizard UX + A11y Hardening (post-Track-A audit, 2026-05-06)
 
 Discovered during Track A PR-1 audit. Items 5 and 6 of CLAUDE.md
