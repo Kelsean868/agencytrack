@@ -219,6 +219,56 @@ HIGH#2 or any other open HIGH item — separate PR.
 
 ---
 
+## HIGH#6 — TenantAdminDashboard YTD composite index missing (surfaced during C1 walkthrough)
+
+**Scope:** `TenantAdminDashboard.jsx` aggregates Total API · YTD via
+`getAllYTDSubmissions()` in `src/services/managerService.js`. The query
+needs a Firestore composite index that has not been created yet —
+production console logs a `failed-precondition` error with an
+auto-generated index URL the first time tenant_admin loads the
+Dashboard tab. The stat tile renders `—` instead of a value.
+
+Pre-existing from B5 (PR #55), surfaced during C1's preview walkthrough
+(PR #60). Not C1's regression — the surface that exposes the query
+landed before C1.
+
+**Fix:**
+1. Tenant_admin loads `https://agencytrack.vercel.app` in production.
+2. Open browser console, copy the auto-generated index URL from the
+   `failed-precondition` error.
+3. Open the URL in Firebase console; click **Create**.
+4. Wait for index to finish building (~2–5 minutes for the current data
+   volume).
+5. Reload Dashboard; confirm Total API · YTD renders a real value.
+
+No code change required. Acceptance is verified by Dashboard rendering
+the YTD value end-to-end.
+
+Priority: **HIGH** (UX gap on tenant_admin's primary surface; near-zero
+effort fix). Knock out manually whenever convenient — does not require a
+PR.
+
+---
+
+## Migrate EditConfigModal + BranchEditorModal to useFocusTrap (LOW, filed during C2)
+
+**Scope:** C2 introduces `src/hooks/useFocusTrap.js` (extracted per the
+SS-2 commitment from C1's audit — third consumer triggers extraction).
+C2 consumes the hook in `BulkImportUsersModal.jsx` only; `EditConfigModal.jsx`
+(B5) and `BranchEditorModal.jsx` (C1) stay on inline-duplicated focus-trap
+scaffolding to keep C2's blast radius narrow.
+
+**Fix:** When EditConfigModal or BranchEditorModal is next touched for any
+reason (bug fix, behavior change, etc.), migrate it to consume
+`useFocusTrap` in the same PR. Each migration drops ~25 lines of inline
+useEffect scaffolding and replaces with a one-line hook call.
+
+Priority: **LOW**. Both modals are battle-tested; opportunistic refactor
+only. Do not open a standalone PR — fold into the next PR that has a real
+reason to touch the file.
+
+---
+
 ## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix)
 
 **Scope:** Install Vitest + add the first regression test, restoring the
