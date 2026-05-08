@@ -11,24 +11,51 @@ Three production-affecting bugs discovered while provisioning the missing test
 accounts for B4's all-roles preview matrix. All three are likely regressions from
 the May 5 roles refactor and should land before the Tatil pilot demo.
 
-### HIGH#1 — User-creation flow does not send password reset email
+### HIGH#1 — User-creation flow does not send password reset email — RESOLVED in PR #? (2026-05-08)
+
+**Resolved 2026-05-08 in PR #?.** Root cause confirmed: the `createUser`
+Cloud Function called `admin.auth().generatePasswordResetLink(email, ...)`,
+which only returns a link string and does **not** dispatch any email. The
+Admin SDK has no equivalent of `sendPasswordResetEmail`, and no email
+transport (nodemailer, SendGrid, Firebase Trigger Email Extension) was
+wired up — so the link was generated and discarded. The companion
+`functions/index.js:398` Sunday-nudge stub revealed the same gap in a
+different code path.
+
+**Fix shape:** dispatch the password-reset email client-side from
+`src/services/agentManagementService.js` using `sendPasswordResetEmail`
+from the Auth SDK — the same primitive the user-initiated forgot-password
+flow already uses, which hits Firebase's hosted email-template service.
+Server-side `generatePasswordResetLink` deleted. Return shape extended to
+`{ success, uid, emailSent, emailError? }` so the caller distinguishes
+"fully provisioned" from "provisioned but email failed" and offers Retry.
+
+**UI:** `UserManagementPanel.jsx` toast refactored to typed object
+(`{ kind: 'success' | 'warning', ... }`) with a dedicated warning state
+that shows a Retry button when the email dispatch fails post-creation.
+
+**Server-side hardening tracked separately as HIGH#5 below** (Trigger
+Email Extension or transport) — closes the same gap for the Sunday-nudge
+stub and removes the client-side dependency for create-user delivery.
+
+**Test-infra restoration tracked as Test Infrastructure (MEDIUM)** below —
+Vitest install + the regression spec described during the original HIGH#1
+triage was deferred so the P0 fix could ship without expanding scope.
+
+---
+
+**Original triage notes (kept for reference):**
 
 **Reproducer:** Tenant Admin → Team tab → Add User → fill the form → Save. The
 Firebase Auth user is created (and the Firestore doc is written), but no
 "Set your password" email is dispatched to the new user. The created user has
 no way to set their initial password without intervention.
 
-**Workaround in use today:** Firebase Console → Authentication → click the
-new user → three-dot menu → "Reset password" — this dispatches the email
+**Workaround that was in use:** Firebase Console → Authentication → click the
+new user → three-dot menu → "Reset password" — this dispatched the email
 manually.
 
-**Likely site:** the `createUser` Cloud Function path (or its successor after
-the polymorphic refactor in user-mgmt PR-2). The original flow likely called
-`generatePasswordResetLink` + `sendEmail` and one of those calls was lost in
-the refactor. Verify against `functions/index.js` and the email transport
-config.
-
-Priority: **HIGH** (pilot-blocking — Tatil cannot onboard managers/agents at
+Priority was **HIGH** (pilot-blocking — Tatil cannot onboard managers/agents at
 scale without this). Surfaced during B4 provisioning.
 
 ### HIGH#2 — UI role-to-label map is missing `sales_manager` → "Unknown" displayed
@@ -139,6 +166,164 @@ Priority: **HIGH** (a P0 of this exact shape escaped a multi-PR-batch
 verification gate; the next one is unbounded). Not pilot-blocking — PR
 #56 closes the sidebar-specific instance — but the prevention step
 (walkthrough template change) lands before the next big surface PR.
+
+---
+
+## HIGH#5 — Server-side email infrastructure (surfaced 2026-05-08 during HIGH#1 fix)
+
+**Scope:** Wire up a single piece of server-side email infrastructure that
+covers BOTH outstanding email gaps in the codebase:
+
+1. **Create-user reset-email fallback.** HIGH#1 fix dispatches the
+   password-reset email from the client (`agentManagementService.createUser`
+   → `sendPasswordResetEmail`). That works, but it depends on the
+   tenant-admin's browser staying online through the dispatch. A flaky
+   network at the moment of submission means the auth user exists but no
+   email lands; the UI's Retry button is the human-in-the-loop fallback.
+   Server-side dispatch is more reliable.
+2. **Sunday-nudge reminder email** (`functions/index.js:398-399`). Stub
+   left by the original author — `// Email stub — wire up nodemailer or
+   Firebase Extension here when ready` — currently the nudge writes only
+   an in-app notification, no email goes out.
+
+**Recommended approach:** install the **Firebase "Trigger Email" Extension**
+(watches a `mail/{docId}` collection in Firestore; renders templates and
+dispatches via Firebase's SMTP). One install + template config covers both
+flows by writing a `mail/...` doc from each call site:
+
+- `functions/index.js` — replace HIGH#1 fix's client-side dispatch with a
+  `mail/` doc write inside the `createUser` saga (after auth user + claims
+  + Firestore doc are committed). Once verified, remove
+  `sendPasswordResetEmail` from `agentManagementService.createUser` and
+  swap the UI toast back to a single success state.
+- `functions/index.js:398-399` — replace the stub comment with a `mail/`
+  doc write per missing-agent in the Sunday-nudge `Promise.all`.
+
+**Alternatives considered:** nodemailer + SMTP creds (adds dependency +
+secret rotation surface), SendGrid/Resend SDKs (adds vendor + API key).
+The Firebase Extension has the lightest operational footprint for a single-
+tenant SaaS at this scale.
+
+**Acceptance:**
+- `mail/` collection has Firestore rules locked to function writes only.
+- Templates exist for both flows (reset, nudge) with light/dark-aware HTML
+  + plain-text fallback.
+- `agentManagementService.createUser` returns `{ success, uid }` again
+  (no `emailSent` field needed once dispatch is server-side and reliable).
+- `UserManagementPanel.jsx` toast collapses back to a single success state.
+- Sunday-nudge logs include both in-app-notif count and email-dispatch count.
+
+Priority: **HIGH** (post-pilot if pilot succeeds; pre-pilot if Sunday-nudge
+adoption matters). Closes two gaps with one install. Do not bundle with
+HIGH#2 or any other open HIGH item — separate PR.
+
+---
+
+## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix)
+
+**Scope:** Install Vitest + add the first regression test, restoring the
+unit-test layer that was deferred from the HIGH#1 fix (PR #?) so the P0
+could ship without expanding scope. The repo currently has zero unit-test
+infrastructure — only emulator scripts (`functions/scripts/test-pr2-emulator.cjs`,
+`scripts/test-b5-config-rule.js`, `scripts/test-sec10-rule.js`). CI runs
+`lint + build` only.
+
+**Install steps:**
+- Add `vitest` to `devDependencies`.
+- Add `vitest.config.js` at repo root with jsdom env (or node env if no DOM
+  needed for service tests) and path aliases matching Vite config.
+- Add `"test": "vitest"` to `package.json` scripts (and `"test:run": "vitest run"`
+  for one-shot CI).
+- Plumb into `.github/workflows/ci.yml` — add a `test` step running
+  `npm run test:run` after `lint` and `build`.
+- Place tests in `src/services/__tests__/` (or co-located `.test.js` next
+  to source — pick one convention and document in CLAUDE.md).
+
+**First regression spec — `agentManagementService.createUser`:**
+
+Test cases (all mocking the Firebase callable + Auth SDK):
+
+1. **Email-dispatch happy path** — mock `httpsCallable` to return
+   `{ data: { success: true, uid: 'u1' } }`; mock `sendPasswordResetEmail`
+   to resolve. Assert:
+   - `sendPasswordResetEmail` called exactly once with `(auth, 'new@user.com')`.
+   - Return value equals `{ success: true, uid: 'u1', emailSent: true, emailError: undefined }`.
+2. **Email-dispatch failure path** — mock callable to resolve normally;
+   mock `sendPasswordResetEmail` to reject with
+   `Error('auth/network-request-failed')`. Assert:
+   - `sendPasswordResetEmail` still called exactly once.
+   - Return value equals `{ success: true, uid: 'u1', emailSent: false, emailError: 'auth/network-request-failed' }`.
+   - No exception thrown to caller (the auth user IS created — throwing
+     would mislead the UI).
+3. **Callable-rejection path** — mock callable to reject. Assert the
+   error propagates (so the inline drawer error keeps working). Email
+   dispatch is NOT attempted.
+
+**Why this test specifically:** guards the exact silent-failure mode HIGH#1
+masked. If a future refactor removes the `sendPasswordResetEmail` call (or
+swaps it for the dead `generatePasswordResetLink` again), test 1 fails
+loudly. If a future refactor accidentally throws on email failure, test 2
+fails. Cheap to write, high specificity.
+
+Priority: **MEDIUM**. Not pilot-blocking. Cite "surfaced during HIGH#1 fix
+(PR #?)" in the install PR description so future readers can trace the
+scope decision.
+
+---
+
+## Resend invite UI (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix)
+
+**Scope:** Add a per-row "Resend invite" button on the user-management
+list. When the create-user flow's email dispatch fails (or when an admin
+realises a user never got the original email — lost-in-spam case), the
+admin currently has no recourse short of recreating the user. The
+inline Retry button on the post-create toast (HIGH#1 fix, PR #?) only
+covers the immediate post-creation moment; once the toast dismisses, the
+fallback is gone.
+
+**Wiring:**
+- `UserManagementPanel.jsx` — per-row dropdown / overflow menu next to
+  the existing Deactivate button. "Resend invite email" entry visible
+  for any active user (or any user without a `lastSignInTimestamp`).
+- Handler calls the same primitive (`sendPasswordResetEmail(auth, email)`),
+  surfaces success/failure in the existing toast.
+- Once HIGH#5 (server-side email) lands, swap to a `mail/` doc write
+  triggered through a callable wrapper.
+
+**Edge case:** confirm whether re-sending a reset email invalidates the
+previous link. Firebase Auth invalidates each prior reset link when a new
+one is generated for the same user — the UI should clarify "Previous
+reset email link will stop working." in a confirm dialog.
+
+Priority: **MEDIUM**. Not pilot-blocking. Closes the gap when individual
+emails fail. Suggested wiring: same `sendPasswordResetEmail` primitive
+short-term; HIGH#5 server-side path post-migration.
+
+---
+
+## Sunday-nudge actual email send (LOW, surfaced 2026-05-08 during HIGH#1 fix)
+
+**Scope:** When HIGH#5 (server-side email infrastructure) lands, wire the
+existing stub at `functions/index.js:398-399`:
+
+```js
+// Email stub — wire up nodemailer or Firebase Extension here when ready
+// missing.forEach(a => sendReminderEmail(a.email, 'Report Due Tomorrow').catch(console.error));
+```
+
+Replace the commented `forEach` with `mail/` collection writes (one per
+missing agent) using the template installed under HIGH#5. Surface
+dispatch counts in the existing
+`console.log('[sendSundayNudge] Notified ${missing.length} agents ...')`
+log so ops can verify both in-app + email channels delivered.
+
+**Companion Monday-nudge** (`exports.sendMondayNudge` immediately below)
+likely has the same stub structure — apply the same fix there in the
+same PR if it does.
+
+Priority: **LOW**. Sunday-nudge currently functions via in-app
+notifications; email is additive. Strictly downstream of HIGH#5 — do not
+attempt independently.
 
 ---
 
