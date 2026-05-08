@@ -4,8 +4,12 @@ import { signOut } from 'firebase/auth';
 import LoginScreen from './components/auth/LoginScreen';
 import AgentDashboard from './components/dashboard/AgentDashboard';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
+import TenantAdminDashboard from './components/dashboard/TenantAdminDashboard';
 
-const MANAGER_ROLES = new Set(['unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin']);
+// Tenant Admin gets a dedicated dashboard surface from B5 forward — the
+// company config write path lives there. The remaining manager-tier roles
+// still share ManagerDashboard until per-role differentiation lands in P9.
+const MANAGER_ROLES = new Set(['unit_manager', 'branch_manager', 'sales_manager', 'platform_admin']);
 
 const LoadingScreen = () => (
   <div className="min-h-screen flex items-center justify-center bg-surface">
@@ -46,6 +50,7 @@ export default function App() {
   if (loading) return <LoadingScreen />;
   if (!isAuthenticated) return <LoginScreen />;
   if (role === 'platform_admin') return <PlatformAdminStubScreen />;
+  if (role === 'tenant_admin') return <TenantAdminDashboard />;
   if (MANAGER_ROLES.has(role)) return <ManagerDashboard />;
   return <AgentDashboard />;
 }
