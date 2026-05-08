@@ -187,6 +187,19 @@ service cloud.firestore {
           );
       }
 
+      // Track C C1: branches as a real subcollection under each tenant.
+      // tenant_admin / platform_admin CRUD; any signed-in user in the
+      // tenant can read for dropdowns. Soft delete only (isActive flag).
+      // Per-doc updatedBy + updatedAt audit trail; no separate audit
+      // collection until P11. Mirrors the B5 config/{docId} tenant-scope
+      // guard pattern.
+      match /branches/{branchId} {
+        allow read:  if isSignedIn() && getTenantId() == tenantId;
+        allow write: if isSignedIn()
+          && getRole() in ['platform_admin', 'tenant_admin']
+          && (getRole() == 'platform_admin' || getTenantId() == tenantId);
+      }
+
     }
   }
 }
