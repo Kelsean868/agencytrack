@@ -458,15 +458,31 @@ Missing: editing an existing user's fields (name, email, phone, unitId reassignm
 
 ---
 
-## Branches Management UI
+## Branches Management UI — RESOLVED in PR #60 (2026-05-08)
 
-**Scope:** Branches exist as data (branchId strings in user docs) but there is no UI to
-list, create, or rename branches. A branch_manager or tenant_admin cannot currently add a
-new branch without direct Firestore access.
+**Original scope:** Branches existed as data (branchId strings in user docs) but there
+was no UI to list, create, or rename branches. A branch_manager or tenant_admin could
+not add a new branch without direct Firestore access.
 
-- Manager panel tab: "Branches" — lists known branches derived from user docs
-- Create branch (tenant_admin only): reserves a branchId, creates a placeholder doc
-- Rename branch: updates all user docs with the old branchId (batched write)
+**Shipped in PR #60 (Track C — C1):**
+
+- New Firestore subcollection `tenants/{tenantId}/branches/{branchId}` with auto-ID
+  branchIds (opaque random strings; display name only).
+- Service layer `src/services/branchService.js` — `listBranches`, `getBranch`,
+  `createBranch`, `updateBranch`, `setBranchActive`. Active-only branch-name uniqueness.
+- `BranchesPanel` (table-style list, tenant_admin only) + `BranchEditorModal`
+  (create + edit; lifts B5 EditConfigModal a11y patterns) + `DeactivateBranchConfirmDialog`.
+- New `firestore.rules match /branches/{branchId}` block: tenant-scoped read for any
+  signed-in user, write for `tenant_admin` / `platform_admin` only (cross-tenant guard
+  for tenant_admin per B5 lesson).
+- Emulator regression test `scripts/test-c1-branches-rule.js` — covers cross-tenant
+  read denial, role-write denial, tenant_admin self-tenant write, platform_admin
+  cross-tenant write.
+
+**Rename behavior** (originally proposed) was descoped. Renaming a branch updates only
+the branch doc; legacy `user.branchId` strings remain unmigrated. Migration is a
+separate post-pilot ticket — tenant_admins re-target users via Edit User flows once
+those ship (PR-4).
 
 ---
 
