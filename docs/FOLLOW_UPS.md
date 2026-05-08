@@ -497,6 +497,49 @@ attempt independently.
 
 ---
 
+## Track E — Agent + Manager Tooling Enhancements
+
+Source: planning session with Kyron + planning-Claude, May 8 2026.
+Full specs in docs/Track-E-Specs.md.
+
+Path B sequencing chosen: E1 + E6 coupled HIGH pre-pilot. Pilot launch
+shifts back ~2 weeks for clean schema + agent cadence choice at launch.
+
+### E1 — Weekly Report Schema Split [HIGH, pre-pilot]
+Split weeklyReport doc into 3 production sources: newBusiness, pppIncreases,
+lumpsums. Wizard step splits into 3 sub-sections. Migration of existing
+reports + API-usage audit across app. ~5 days total. Spec: Track-E-Specs.md §E1.
+
+### E6 — Daily Input Mode [HIGH, pre-pilot, depends on E1]
+Optional opt-in daily activity log. Sunday Cloud Function aggregates to
+weekly wizard pre-fill. New agent.loggingMode profile field (Weekly/Daily/
+Hybrid). dailyActivity subcollection uses 3-source split from day 1.
+~5-7 days total. Spec: Track-E-Specs.md §E6.
+
+### E2 — Reverse Commission Calculator [SMALL, pre-pilot opportunistic]
+New "Reverse Calc" tab in Commission Playground. "How much API to sell this
+month to be paid $X this month?" — accounts for Tatil modal commission timing
+(annual upfront, semi/quarterly/monthly per modal frequency). New business +
+first-year commissions only in v1. ~1.5-2 days. Spec: Track-E-Specs.md §E2.
+
+### E3 — Persistency Playground [MEDIUM, post-pilot]
+Replicates Kyron's Excel persistency calculator. 3 sections: current state
+(manual input or pre-filled), target setting (with 3 recovery paths), scenario
+builder. Award eligibility flag overlay. Formula validated against source
+spreadsheet — Good/Bad lapse asymmetry preserved. ~4-6 days. Spec: §E3.
+
+### E4 — Digital Production Report / Branch Leaderboard [MEDIUM, post-pilot, depends on E1]
+Three role-based views (Unit Mgr / Branch Mgr / Sales Mgr) replacing the
+weekly Friday whiteboard PDF. Live updating + Friday 4pm snapshot toggle.
+Print export. Cloud Function aggregator. ~4 days. Spec: §E4.
+
+### E5 — TV Display Kiosk Mode [SMALL, post-pilot, depends on E4]
+Kiosk route for office TVs. Auto-rotating slides (production report, top 10,
+agent of week, goals, award watch). Branch-scoped revocable kiosk tokens.
+Privacy controls per branch. ~3 days. Spec: §E5.
+
+---
+
 ## Wizard UX + A11y Hardening (post-Track-A audit, 2026-05-06)
 
 Discovered during Track A PR-1 audit. Items 5 and 6 of CLAUDE.md
