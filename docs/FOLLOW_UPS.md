@@ -39,34 +39,64 @@ instead of "Sales Manager." Underlying Firestore data is correct
 (`role: "sales_manager"` is stored properly). This is purely a UI lookup-table
 gap.
 
-**Likely site:** a `getRoleLabel(role)` function or `ROLE_LABELS` map in a UI
-util file (probably `src/utils/formatters.js` or similar). Add
-`sales_manager: "Sales Manager"` to whatever lookup it uses. If the function
-falls through to a default of "Unknown" rather than the role string, also
-audit whether other unhandled roles benefit from a string fallback.
+**Verified site:** [`src/utils/formatters.js:8-16`](../src/utils/formatters.js).
+The `ROLE_LABELS` dict maps `tenant_admin` / `platform_admin` /
+`branch_manager` / `unit_manager` / `agent` — and **omits** `sales_manager`.
+`getRoleLabel(role)` falls through to the `?? 'Unknown'` default for that
+one role. Fix is a single-line addition:
+
+```js
+export const ROLE_LABELS = {
+  tenant_admin:   'Tenant Admin',
+  platform_admin: 'Platform Admin',
+  branch_manager: 'Branch Manager',
+  unit_manager:   'Unit Manager',
+  sales_manager:  'Sales Manager',  // ← add this line
+  agent:          'Agent',
+};
+```
+
+**Scope verified narrow (per HIGH#3 verification — see below).** Only
+`sales_manager` is missing from the map; no companion "audit other unhandled
+roles" sub-task is needed.
 
 Priority: **HIGH** (visible in TopBar to every sales_manager session).
-Surfaced during B4 provisioning.
+Surfaced during B4 provisioning. Single-line fix; safe to ship as a
+standalone micro-PR before the pilot demo.
 
-### HIGH#3 — Verify whether the role-label map gap also affects `tenant_admin` and `platform_admin`
+### HIGH#3 — Verify whether the role-label map gap also affects `tenant_admin` and `platform_admin` — RESOLVED, scope narrow
 
-**Open question:** During B4's all-roles preview matrix (5 roles ×
-4 breakpoints × 2 modes), explicitly verify that `tenant_admin` and
-`platform_admin` render their correct role label in the TopBar, the User
-Roster, and any other surface that calls the role-label map. If either also
-displays "Unknown," extend HIGH#2's fix scope to cover all unhandled roles.
-If only `sales_manager` is affected, HIGH#2 stays narrow and this item
-closes.
+**Verified during B4 production walkthrough (5 roles × commit `412a681`,
+2026-05-08, `agencytrack.vercel.app`).** All five roles' TopBar role-label
+crumbs were inspected via the captured `verification/walk/design-v2-b4_production_<role>_dashboard-light_*.png`
+screenshots:
 
-Priority: **HIGH** (depends on outcome of B4 walkthrough). The B4 PR
-description records the verification result for each role; this item
-collapses into HIGH#2 or closes accordingly.
+| Role            | TopBar role-label crumb | Status |
+|-----------------|-------------------------|--------|
+| `agent`         | (n/a — agent's crumb shows the week date, not the role label; sidebar foot would render `Agent` from the same map) | ✅ mapped |
+| `unit_manager`  | "Unit Manager"          | ✅ correct |
+| `branch_manager`| "Branch Manager"        | ✅ correct |
+| `sales_manager` | "Unknown"               | ❌ HIGH#2 |
+| `tenant_admin`  | "Tenant Admin"          | ✅ correct |
 
-> **B4 verification acknowledgment:** the B4 all-roles walkthrough may show
-> "Unknown" in the TopBar role label when logged in as `sales_manager` (and
-> possibly `tenant_admin`/`platform_admin`). This is a pre-existing
-> label-mapping bug, **not** a B4 regression. Documented in the B4 PR
-> description's verification section.
+`platform_admin` was not exercised (no test account in the pilot tenant —
+Kyron is the only platform_admin, his account holds the production claim).
+The `ROLE_LABELS` source confirms `platform_admin: 'Platform Admin'` is
+mapped, so it would render correctly when surfaced.
+
+**Outcome: scope confirmed narrow to `sales_manager` only.** HIGH#2 fix
+remains a single-line addition to `ROLE_LABELS`. This item closes; no
+companion follow-up needed.
+
+> **Anomaly observed (does not change HIGH#2's scope):** the agent
+> production walkthrough screenshot shows the sidebar-foot role label as
+> "Unknown" while the agent role IS in the `ROLE_LABELS` map. Likely a
+> transient render where `useAuth().role` is briefly undefined before
+> custom claims hydrate, so `getRoleLabel(undefined)` falls through to the
+> default. Worth a separate small investigation if it persists post-pilot
+> (e.g. add a render-gate on `userProfile?.role` before the sidebar foot
+> renders, or change the default to a more graceful empty-string). Not
+> tracked as a new HIGH item — file separately if it reproduces consistently.
 
 ---
 
