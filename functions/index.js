@@ -1,9 +1,25 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
+const { isValidEmail } = require('./utils/validators');
 
 admin.initializeApp();
 
 const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
+
+// CSV bulk-import allow-list. tenant_admin and platform_admin are explicitly
+// excluded for security — those roles must be provisioned manually via the
+// single-user UI (which has typed-confirmation guards).
+const CSV_IMPORTABLE_ROLES = ['agent', 'unit_manager', 'branch_manager', 'sales_manager'];
+
+// Hard limit on a single bulk-import call. Tatil pilot is ≈ 50–80 rows; the
+// 500 ceiling fits comfortably inside the 540s Callable budget at the slow
+// end of doCreateUser (~600–1200ms/row).
+const MAX_BULK_ROWS = 500;
+
+// Roles that may target a specific branchId on user creation (vs. inheriting
+// the caller's branchId). Used by doCreateUser to decide whether to honor
+// data.branchId. Mirrors the deriveOwnedBranchIds wildcard rule.
+const CROSS_BRANCH_ROLES = ['platform_admin', 'tenant_admin', 'sales_manager'];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper — get Sunday date string for a given Date in Trinidad time (UTC-4)
@@ -93,6 +109,22 @@ function buildDocFields(targetRole, data, { newUid, callerTenant, derivedBranchI
     createdBy:    callerUid,
   };
   if (derivedOwnedBranchIds) doc.ownedBranchIds = derivedOwnedBranchIds;
+
+  // Track C C2 — cross-role optional fields. Single-user flow never sets these,
+  // so its behavior is unchanged. Bulk import populates them from CSV columns.
+  if (typeof data.phone === 'string' && data.phone)             doc.phone = data.phone;
+  if (typeof data.bio === 'string' && data.bio)                 doc.bio = data.bio;
+  if (typeof data.careerLevel === 'string' && data.careerLevel) doc.careerLevel = data.careerLevel;
+
+  // Track C C2 — bulk-import audit trail. Stamped only when the caller passes
+  // them (bulkImportUsers always does; single-user flow never does).
+  if (typeof data.csvImportBatchId === 'string' && data.csvImportBatchId) {
+    doc.csvImportBatchId = data.csvImportBatchId;
+  }
+  if (data.importedFromCsv === true) {
+    doc.importedFromCsv = true;
+  }
+
   if (targetRole === 'agent') {
     doc.agentNumber       = data.agentNumber ?? '';
     doc.unitId            = data.unitId;
@@ -163,10 +195,21 @@ async function doCreateUser(data, context) {
     .get();
   const callerData = callerSnap.exists ? callerSnap.data() : null;
 
-  let derivedBranchId = callerData?.branchId;
-  if (!derivedBranchId) {
-    console.warn('[createUser] caller missing branchId; falling back to tatil_south. Migration may not have run.');
-    derivedBranchId = 'tatil_south';
+  // Track C C2: cross-branch callers (tenant_admin / platform_admin / sales_manager)
+  // may target a specific branchId on the new user — used by bulkImportUsers to
+  // place each row into the branch resolved from its CSV branchName column.
+  // bulkImportUsers validates data.branchId against the active-branch Set
+  // before invoking; this honor is gated on caller role as defense-in-depth.
+  // Single-user UI never passes data.branchId, so its behavior is unchanged.
+  let derivedBranchId;
+  if (data.branchId && CROSS_BRANCH_ROLES.includes(callerRole)) {
+    derivedBranchId = data.branchId;
+  } else {
+    derivedBranchId = callerData?.branchId;
+    if (!derivedBranchId) {
+      console.warn('[createUser] caller missing branchId; falling back to tatil_south. Migration may not have run.');
+      derivedBranchId = 'tatil_south';
+    }
   }
 
   // ── Step 2: unit scoping — unit_manager can only create in their own unit ──
@@ -304,6 +347,159 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
 // PR-2: Polymorphic createUser — full creation matrix
 // ─────────────────────────────────────────────────────────────────────────────
 exports.createUser = functions.https.onCall(doCreateUser);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Track C C2: bulkImportUsers — wraps doCreateUser in a per-row loop.
+//
+// Caller (tenant_admin or platform_admin) uploads a CSV via the
+// BulkImportUsersModal; the client pre-validates, resolves branchName →
+// branchId against the active-branch Set, and POSTs the validated rows
+// here. This Callable re-validates everything as defense-in-depth, then
+// calls doCreateUser per row inside try/catch — a failure in row N does
+// NOT affect row N+1. Returns per-row results; the client renders them
+// in the Step 4 summary and offers a downloadable error CSV for re-import.
+//
+// Timeout extended to 540s (v1 max) to fit the worst-case 500-row import.
+// Pilot CSV size (~ 50–80 rows) lands well under this; the extension is
+// defensive coding for outliers.
+//
+// Password-reset emails dispatched client-side per row after the call
+// returns — mirrors the HIGH#1 single-user path. The Admin SDK has no
+// equivalent of sendPasswordResetEmail (generatePasswordResetLink only
+// returns a string with no delivery), so client-side dispatch is the
+// architectural floor.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.bulkImportUsers = functions
+  .runWith({ timeoutSeconds: 540, memory: '256MB' })
+  .https.onCall(async (data, context) => {
+    if (!context.auth) {
+      throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
+    }
+
+    const callerRole   = context.auth.token.role;
+    const callerUid    = context.auth.uid;
+    const callerTenant = context.auth.token.tenantId;
+
+    if (!['tenant_admin', 'platform_admin'].includes(callerRole)) {
+      throw new functions.https.HttpsError(
+        'permission-denied',
+        'Only tenant_admin or platform_admin can bulk import users.'
+      );
+    }
+
+    // platform_admin cross-tenant import deferred to SEC-9b (parallel to
+    // doCreateUser's existing block). Pilot scope is single-tenant.
+    if (callerRole === 'platform_admin') {
+      throw new functions.https.HttpsError(
+        'unimplemented',
+        'Cross-tenant bulk import via CF deferred to SEC-9b. Use the tenant_admin path.'
+      );
+    }
+
+    const users = Array.isArray(data?.users) ? data.users : null;
+    if (!users) {
+      throw new functions.https.HttpsError('invalid-argument', 'users array required.');
+    }
+    if (users.length === 0) {
+      throw new functions.https.HttpsError('invalid-argument', 'No rows to import.');
+    }
+    if (users.length > MAX_BULK_ROWS) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        `Maximum ${MAX_BULK_ROWS} rows per import.`
+      );
+    }
+
+    const csvImportBatchId = typeof data?.csvImportBatchId === 'string' ? data.csvImportBatchId : null;
+    if (!csvImportBatchId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument',
+        'csvImportBatchId required (UUID v4 from client).'
+      );
+    }
+
+    // ── Pre-flight: load active branches once, build Set, fail fast if empty.
+    //   Single Firestore read for the whole import; per-row validation is
+    //   then a Set.has() lookup. Q10 server backstop — Q10's client-side
+    //   empty-state guard is the friendly path; this is the defense-in-depth.
+    const branchSnap = await admin.firestore()
+      .collection(`tenants/${callerTenant}/branches`)
+      .where('isActive', '==', true)
+      .get();
+
+    if (branchSnap.empty) {
+      throw new functions.https.HttpsError(
+        'failed-precondition',
+        'No active branches in tenant. Create at least one branch first.'
+      );
+    }
+
+    const activeBranchIds = new Set(branchSnap.docs.map((d) => d.id));
+
+    console.log(
+      `[bulkImportUsers] Starting import: ${users.length} rows, ` +
+      `${activeBranchIds.size} active branches, batch ${csvImportBatchId}, ` +
+      `caller ${callerRole} ${callerUid}`
+    );
+
+    // ── Per-row loop with try/catch. Each row's outcome is captured atomically.
+    const results = [];
+    for (let i = 0; i < users.length; i++) {
+      const row = users[i] ?? {};
+      const rowResult = {
+        rowIndex: i,
+        email: typeof row.email === 'string' ? row.email : '',
+      };
+
+      try {
+        // Server-side defense-in-depth re-validation. Mirrors client checks
+        // but cannot be bypassed by a malicious client.
+        if (!isValidEmail(row.email)) {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            'Invalid email format.'
+          );
+        }
+        if (!CSV_IMPORTABLE_ROLES.includes(row.role)) {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            `Role '${row.role ?? '(missing)'}' is not importable via CSV.`
+          );
+        }
+        if (!row.branchId || !activeBranchIds.has(row.branchId)) {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            'branchId is not in the tenant\'s active branches.'
+          );
+        }
+
+        // Hand off to the existing single-user saga. doCreateUser honors
+        // data.branchId for cross-branch callers and stamps csvImportBatchId
+        // + importedFromCsv on the user doc via buildDocFields.
+        const result = await doCreateUser(
+          { ...row, csvImportBatchId, importedFromCsv: true },
+          context
+        );
+
+        rowResult.success = true;
+        rowResult.uid = result.uid;
+      } catch (err) {
+        rowResult.success = false;
+        rowResult.error = err?.message ?? String(err);
+        rowResult.code = err?.code ?? null;
+      }
+      results.push(rowResult);
+    }
+
+    const successCount = results.filter((r) => r.success).length;
+    const failureCount = results.length - successCount;
+    console.log(
+      `[bulkImportUsers] Complete: ${successCount} succeeded, ${failureCount} failed, ` +
+      `batch ${csvImportBatchId}`
+    );
+
+    return { results, csvImportBatchId };
+  });
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PR-2: deactivateUser — soft-delete (active: false) with immediate
