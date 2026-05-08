@@ -13,10 +13,10 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-08` |
-| Current main HEAD | `f906108` (feat(track-c-c2) — bulk user provisioning via CSV import, PR #61) |
-| Active track | Track C — C3 (2026 personal commitments CSV import) in flight on `feat/track-c-c3-bulk-goals`. C2 closed: PR #61 shipped the `bulkImportUsers` Cloud Function, `userImportService.js`, `BulkImportUsersModal.jsx`, `useFocusTrap` hook extraction, `validators.js` `EMAIL_RE` + `isValidEmail` exports, and the `doCreateUser` extension for `branchId` / `csvImportBatchId` / `importedFromCsv` / `phone` / `bio` / `careerLevel`. |
-| Next track | Track D — cron + notifications verification (after Track C closes with C3) |
-| Queued | None within Track C. Track D follows. |
+| Current main HEAD | `ba41cc6` (feat(track-c-c3) — 2026 personal commitments CSV import, PR #62) |
+| Active track | Track C complete (all 3 PRs shipped: C1 #60, C2 #61, C3 #62). Next: aria-hidden modal fix (HIGH#7, Phase 2 of this session). Then Track D — cron + notifications verification. |
+| Next track | Track D — cron + notifications verification |
+| Queued | Phase 2: `fix/aria-hidden-modal-wrappers` — remove `aria-hidden="true"` from outer backdrop in both bulk-import modals (HIGH#7). |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -126,11 +126,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #62 | `ba41cc6` | feat(track-c-c3) — 2026 personal commitments CSV import |
 | #61 | `f906108` | feat(track-c-c2) — bulk user provisioning via CSV import |
 | #60 | `1d0d9c3` | feat(track-c-c1) — branches schema + tenant admin management UI |
 | #59 | `eb72d59` | docs(track-c) — add implementation plan + C1 kickoff brief |
 | #58 | `63f4b79` | docs(follow-ups) — backfill PR #57 reference |
-| #57 | `a141d9c` | fix(user-creation) — send password reset email (P0 closes HIGH#1) |
 
 ---
 
@@ -148,13 +148,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** C3 in flight — 2026 personal commitments CSV import (2026-05-08).
+> **Session boundary:** Track C closed — all 3 PRs shipped (2026-05-08). Phase 2 (aria-hidden fix) queued.
 
-PR #59 landed the Track C foundation docs. PR #60 shipped C1 — branches as a real Firestore subcollection. PR #61 shipped C2 — bulk user provisioning via CSV import: a new `bulkImportUsers` Callable in `functions/index.js` (with `runWith({ timeoutSeconds: 540 })`) wraps a per-row loop calling the existing `doCreateUser` saga; new `userImportService.js` handles CSV parse via Papaparse, per-row validation, branch-name → branchId resolution, duplicate-email check, batch invocation, post-success client-side `sendPasswordResetEmail` dispatch per row; new `BulkImportUsersModal.jsx` is a 4-step wizard lifting BranchEditorModal scaffolding via a new extracted `useFocusTrap` hook; `doCreateUser` extended to honor optional `data.branchId`, `data.csvImportBatchId`, `data.importedFromCsv`, plus three new buildDocFields entries for `phone`, `bio`, `careerLevel`. CSV `tenant_admin` and `platform_admin` roles rejected server-side. Import limit 500 hard, soft-warn at 100. The C2 close confirmed three reusable primitives for C3: (1) `setGoals(tenantId, agentId, data, setBy, setByName)` in `goalsService.js` already enforces `companyMinimums` floors and writes audit fields — C3 reuses verbatim, no reimplementation; (2) goal docs live at `tenants/{tid}/goals/{agentUid}` (flat subcollection, doc keyed by agent UID), not the 5-segment nested path the implementation plan originally drafted; (3) the personal-commitment doc has no `year` field — "2026" is editorial framing only.
+**Track C complete.** PR #59 landed the foundation docs. PR #60 shipped C1 — branches as a real Firestore subcollection (`branchService.js`, `BranchesPanel`, `BranchEditorModal`, `firestore.rules` branches block deployed pre-merge). PR #61 shipped C2 — bulk user provisioning via CSV import: a new `bulkImportUsers` Callable, `userImportService.js`, `BulkImportUsersModal.jsx`, `useFocusTrap` hook extraction. PR #62 shipped C3 — bulk 2026 personal commitments CSV import: new `goalsImportService.js` delegates per-row writes to the existing `setGoals` (no Cloud Function, no rules changes); new `BulkImportGoalsModal.jsx` is a 4-step wizard (file picker → preview → progress → summary) reusing `useFocusTrap` + established patterns from C2; `setGoals` extended (additive) to accept passthrough `csvImportBatchId` + `importedFromCsv` audit fields; UserManagementPanel header gained a sibling "Bulk Import Goals" button alongside the renamed "Bulk Import Users". F3 (`internal` error code) absorbed alongside C3. Extended verification (8 cells × 9 states, 76 PNGs + 2 CSVs) passed on production. All 5 roles pass the exploration-walk production walkthrough against `ba41cc6`.
 
-C3 (this session) ships bulk 2026 personal commitments CSV import. New `goalsImportService.js` mirrors C2's CSV-parse / validate / runImport / error-CSV / template-CSV pattern, but delegates per-row writes to the existing `setGoals` (no Cloud Function, no rules changes — `canManage(tenantId)` already covers tenant_admin writes to `goals/*`). New `BulkImportGoalsModal.jsx` is a 4-step wizard (file picker → preview → progress → summary) reusing `useFocusTrap`, `StepIndicator` / `StatusPill` / `CancelConfirmDialog` patterns from `BulkImportUsersModal.jsx` (copy-from-precedent — the 3rd-consumer threshold for extracting `CsvImportModalShell` not yet met; deferred as a MEDIUM follow-up). `setGoals` extended (additive) to accept passthrough `csvImportBatchId` + `importedFromCsv` audit fields. CSV columns: required `agentEmail, annualApiTarget, annualAppsTarget`; no `year` column (editorial framing only). UserManagementPanel header now has two sibling buttons — "Bulk Import Users" (renamed from "Bulk Import" for disambiguation) and "Bulk Import Goals". F3 MEDIUM (`internal` error code) absorbed: added to friendly-message branch in both modals.
+**Aria-hidden bug confirmed (HIGH#7):** both `BulkImportUsersModal.jsx:288` and `BulkImportGoalsModal.jsx:295` have `aria-hidden="true"` on the outer backdrop div, hiding the inner `role="dialog"` from the a11y tree. Fix is two single-token deletions. Phase 2 of this session on branch `fix/aria-hidden-modal-wrappers`.
 
-**Next: Track D — cron + notifications verification.** After C3 closes Track C, Track D follows.
+**Next: Phase 2 aria-hidden fix, then Track D — cron + notifications verification.**
 
 ---
 
