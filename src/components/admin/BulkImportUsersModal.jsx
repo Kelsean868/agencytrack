@@ -98,7 +98,7 @@ function StepIndicator({ step }) {
   );
 }
 
-export default function BulkImportUsersModal({ tenantId, currentUid, onClose, onImported }) {
+export default function BulkImportUsersModal({ tenantId, onClose, onImported }) {
   // — Step state
   const [step, setStep] = useState(1);
 
@@ -285,11 +285,7 @@ export default function BulkImportUsersModal({ tenantId, currentUid, onClose, on
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4 py-6 overflow-y-auto motion-reduce:backdrop-blur-none"
-      role="presentation"
-      onClick={(e) => {
-        // Click on backdrop closes (only outside step 3 in-flight)
-        if (e.target === e.currentTarget) handleEscape();
-      }}
+      aria-hidden="true"
     >
       <div
         ref={modalRef}
@@ -297,7 +293,6 @@ export default function BulkImportUsersModal({ tenantId, currentUid, onClose, on
         aria-modal="true"
         aria-labelledby="bulk-import-heading"
         className="bg-surface-raised rounded-2xl shadow-xl w-full max-w-3xl border border-border my-auto motion-reduce:transition-none"
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-2">
@@ -582,7 +577,7 @@ export default function BulkImportUsersModal({ tenantId, currentUid, onClose, on
               <SummaryStats results={importResults.results ?? []} emailDispatch={emailDispatch ?? []} preview={preview} />
 
               {(importResults.results ?? []).some((r) => !r.success) && (
-                <FailureList results={importResults.results ?? []} preview={preview} />
+                <FailureList results={importResults.results ?? []} />
               )}
 
               {emailDispatch && emailDispatch.some((e) => !e.sent) && (
@@ -652,7 +647,7 @@ function SummaryStats({ results, emailDispatch, preview }) {
   );
 }
 
-function FailureList({ results, preview }) {
+function FailureList({ results }) {
   const failures = results.filter((r) => !r.success);
   if (failures.length === 0) return null;
   return (
