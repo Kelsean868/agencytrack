@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-08` |
-| Current main HEAD | `f9e6f19` (docs — add B5 kickoff brief: tenant admin config + write path, PR #54) |
-| Active track | Track B (v2) — B5 tenant admin config surface + `companyMinimums` write path (in progress on `design-v2-b5-tenant-admin`). B1 medal badges shipped (PR #44), B2 goal carousel shipped (PR #47), B3 activity feed + BadgeGrid surface shipped (PR #49), PR #50 tightened post-merge cleanup, PR #51 landed B4 kickoff brief, PR #52 shipped B4 desktop sidebar shell + mobile bottom-nav, PR #53 closed FOLLOW_UPS HIGH#3, PR #54 landed B5 kickoff brief. |
-| Next track | Track C — configuration & data (real Tatil accounts, 2026 goals, persistency historicals) |
+| Current main HEAD | `eb72d59` (docs(track-c) — add implementation plan + C1 kickoff brief, PR #59) |
+| Active track | Track C — C1 branches schema + tenant admin management UI (in flight on `feat/track-c-c1-branches`). Track B (v2) closed: PR #54 B5 kickoff brief, PR #55 shipped B5 tenant admin config + `companyMinimums` write path, PR #56 closed sidebar-collapse P0, PR #57 closed FOLLOW_UPS HIGH#1 (user-creation reset email), PR #58 backfilled FOLLOW_UPS PR #57 reference, PR #59 landed Track C foundation docs (implementation plan + C1 kickoff). |
+| Next track | Track D — cron + notifications verification (after Track C ships C2 + C3) |
 | Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. **B5 is the final PR — no B6.** |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
