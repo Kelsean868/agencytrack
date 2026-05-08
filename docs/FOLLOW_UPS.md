@@ -11,9 +11,9 @@ Three production-affecting bugs discovered while provisioning the missing test
 accounts for B4's all-roles preview matrix. All three are likely regressions from
 the May 5 roles refactor and should land before the Tatil pilot demo.
 
-### HIGH#1 — User-creation flow does not send password reset email — RESOLVED in PR #? (2026-05-08)
+### HIGH#1 — User-creation flow does not send password reset email — RESOLVED in PR #57 (2026-05-08)
 
-**Resolved 2026-05-08 in PR #?.** Root cause confirmed: the `createUser`
+**Resolved 2026-05-08 in PR #57.** Root cause confirmed: the `createUser`
 Cloud Function called `admin.auth().generatePasswordResetLink(email, ...)`,
 which only returns a link string and does **not** dispatch any email. The
 Admin SDK has no equivalent of `sendPasswordResetEmail`, and no email
@@ -222,7 +222,7 @@ HIGH#2 or any other open HIGH item — separate PR.
 ## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix)
 
 **Scope:** Install Vitest + add the first regression test, restoring the
-unit-test layer that was deferred from the HIGH#1 fix (PR #?) so the P0
+unit-test layer that was deferred from the HIGH#1 fix (PR #57) so the P0
 could ship without expanding scope. The repo currently has zero unit-test
 infrastructure — only emulator scripts (`functions/scripts/test-pr2-emulator.cjs`,
 `scripts/test-b5-config-rule.js`, `scripts/test-sec10-rule.js`). CI runs
@@ -266,7 +266,7 @@ loudly. If a future refactor accidentally throws on email failure, test 2
 fails. Cheap to write, high specificity.
 
 Priority: **MEDIUM**. Not pilot-blocking. Cite "surfaced during HIGH#1 fix
-(PR #?)" in the install PR description so future readers can trace the
+(PR #57)" in the install PR description so future readers can trace the
 scope decision.
 
 ---
@@ -277,7 +277,7 @@ scope decision.
 list. When the create-user flow's email dispatch fails (or when an admin
 realises a user never got the original email — lost-in-spam case), the
 admin currently has no recourse short of recreating the user. The
-inline Retry button on the post-create toast (HIGH#1 fix, PR #?) only
+inline Retry button on the post-create toast (HIGH#1 fix, PR #57) only
 covers the immediate post-creation moment; once the toast dismisses, the
 fallback is gone.
 
