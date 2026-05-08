@@ -1,18 +1,41 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db, getTenantId } from '../firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
+import { auth, db, getTenantId } from '../firebase';
 
 
 /**
  * createUser(userData)
  * Polymorphic wrapper around the createUser Cloud Function.
+ *
+ * After the server-side saga provisions the Auth user, Firestore doc, and
+ * custom claims, the client dispatches a password-reset email so the new
+ * user can set their initial password. The Admin SDK has no equivalent of
+ * sendPasswordResetEmail (generatePasswordResetLink only returns a string),
+ * so the email must be triggered from a client with Firebase Auth — same
+ * primitive the forgot-password flow uses.
+ *
+ * Returns { success, uid, emailSent, emailError? } so callers can distinguish
+ * "fully provisioned" from "provisioned but email failed" and offer Retry.
+ *
  * userData: { role, name, email, ...roleSpecificFields }
  */
 export async function createUser(userData) {
   const fns = getFunctions();
   const fn = httpsCallable(fns, 'createUser');
   const result = await fn(userData);
-  return result.data;
+
+  let emailSent = false;
+  let emailError;
+  try {
+    await sendPasswordResetEmail(auth, userData.email);
+    emailSent = true;
+  } catch (err) {
+    console.error('[createUser] sendPasswordResetEmail failed:', err);
+    emailError = err?.message ?? String(err);
+  }
+
+  return { ...result.data, emailSent, emailError };
 }
 
 /**
