@@ -100,6 +100,48 @@ companion follow-up needed.
 
 ---
 
+## HIGH#4 — Programmatic walkthroughs miss state-persistence interactions (surfaced 2026-05-08)
+
+**What surfaced:** the post-B4 P0 sidebar-collapse bug (PR #56) — collapse
+toggle and sign-out both `display: none` in the collapsed state, with the
+collapsed state itself persisted via `localStorage.agencytrack-sidebar-collapsed`.
+B4's full preview matrix (5 roles × 4 breakpoints × 2 themes = 40 cells)
+plus the agent walkthrough plus the post-merge production walkthrough all
+PASSED — yet the bug was a one-click reproducer.
+
+**Why every existing check missed it:** every walkthrough exercised
+*default state only* — `localStorage` empty, `html.sidebar-collapsed` not
+set, sidebar always expanded at desktop. The bug lives behind a state
+transition that no automated check ever performed.
+
+**Class of bugs this misses:** any UI failure mode that hides only after a
+toggleable persistent state is set — collapsed sidebar, dark mode (the
+toggle is a different actor; once persisted across reloads, no one had
+verified the toggled-state surfaces don't break in unexpected ways), any
+future `localStorage.agencytrack-*` flag, future tenant-admin "advanced"
+toggles in Track C. Anything reachable only via interaction.
+
+**Lesson and remediation:**
+- The verification template for future Track C/D PRs should include a
+  *persisted-state cycle* step: set the state, reload the page, verify
+  the persisted state behaves correctly (interactive controls reachable,
+  no contrast regressions, focus order intact).
+- The fix for this bug already lands a sidebar-22a/b/c regression block
+  in `scripts/exploration-walk.cjs`. That pattern (cycle + assertions)
+  generalises — adopt it for any new persisted UI state.
+- Consider extending `exploration-walk.cjs` with a `--persisted-state`
+  flag that runs the regular walk twice: once with empty localStorage,
+  once with a baseline of `agencytrack-dark=1` and
+  `agencytrack-sidebar-collapsed=1` pre-seeded. Same role, two passes,
+  surfaces this whole class.
+
+Priority: **HIGH** (a P0 of this exact shape escaped a multi-PR-batch
+verification gate; the next one is unbounded). Not pilot-blocking — PR
+#56 closes the sidebar-specific instance — but the prevention step
+(walkthrough template change) lands before the next big surface PR.
+
+---
+
 ## Wizard UX + A11y Hardening (post-Track-A audit, 2026-05-06)
 
 Discovered during Track A PR-1 audit. Items 5 and 6 of CLAUDE.md
@@ -306,3 +348,21 @@ inconsistent.
 - Verify nothing skips heading levels (h1 → h2 → h3 only)
 
 Priority: LOW. A11y-positive but cosmetic; B3 introduced no regressions. Surfaced during the B3 audit.
+
+---
+
+## Sidebar collapse toggle hit-target (32×32 → 40px+)
+
+**Scope:** `.sidebar-collapse-btn` in `src/index.css:873-876` is a
+32×32 click target. CLAUDE.md domain rules call for a 44×44 minimum,
+primarily aimed at mobile field agents. The collapse toggle is desktop-
+only (≥1024px expanded), so 32×32 is technically acceptable for mouse-
+precision use. But the visual is also small enough that pointer-imprecise
+users (large displays, pen tablets, touch-screen laptops) feel the
+mistarget. Consider bumping to 40×40 or 44×44 to match the project's own
+44px minimum, even though the cohort affected is narrow.
+
+Adjacent to Mobile FU#4 cosmetic items. Not blocking — the surface is
+reachable as of PR #56.
+
+Priority: **LOW**. Surfaced as a Q2 deferral during the PR #56 triage.
