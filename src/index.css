@@ -664,6 +664,22 @@ h1, h2, h3, h4 {
 .activity-pill-primary { background: var(--color-primary-tint); color: var(--color-primary); }
 .activity-pill-ink     { background: var(--color-ink-tint);     color: var(--color-ink);     }
 
+/* ── Layout primitive: g4-mix (Design System v2 — B4 absorption) ────────
+ * Two-column "feature + sidebar" grid (1.6fr 1fr) for the activity feed +
+ * achievements pairing on AgentDashboard. Lifted from
+ * mocks/concept-4-complete.html line 686 with our breakpoint set:
+ * single-column below 1024px, 2-col at desktop. B3 deferred this layout;
+ * B4 absorbs it now that the new shell guarantees enough horizontal room.
+ */
+.g4-mix {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+@media (min-width: 1024px) {
+  .g4-mix { grid-template-columns: 1.6fr 1fr; }
+}
+
 /* ── Shell: sidebar + topbar + bottom-nav (Design System v2 — B4) ────────
  * Wraps every dashboard. Lifted from mocks/concept-4-complete.html with
  * three project-policy adjustments:

@@ -1,5 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
-import { LogOut, Sun, Moon, X, Eye, Download, Loader2 } from 'lucide-react';
+import {
+  X, Eye, Download, Loader2,
+  ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle,
+} from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency, formatDateDisplay } from '../../utils/formatters';
@@ -15,7 +18,6 @@ import { aggregateAPI } from '../../utils/aggregateAPI';
 import WizardForm from '../wizard/WizardForm';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import CampaignCard from '../campaigns/CampaignCard';
-import NotificationBell from '../ui/NotificationBell';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
 import ReportRangeModal from '../ui/ReportRangeModal';
@@ -27,8 +29,8 @@ import KPICard from './KPICard';
 import ActivityFeed from './ActivityFeed';
 import BadgeGrid, { computeEarnedBadges } from '../gamification/BadgeGrid';
 import { buildActivityEvents } from '../../utils/buildActivityEvents';
-import SyncIndicator from '../ui/SyncIndicator';
 import WelcomeScreen from '../onboarding/WelcomeScreen';
+import Shell from '../shell/Shell';
 
 const KPIS = [
   { key: 'dials',    label: 'Dials',         field: 'totalTelAttempts', isCurrency: false },
@@ -40,37 +42,30 @@ const KPIS = [
   { key: 'api',      label: 'API',            field: 'apiSold',          isCurrency: true  },
 ];
 
-const TABS = [
-  { id: 'dashboard',   label: 'Dashboard'   },
-  { id: 'career',      label: 'Career'      },
-  { id: 'awards',      label: 'Awards'      },
-  { id: 'leaderboard', label: 'Leaderboard' },
-  { id: 'history',     label: 'History'     },
-  { id: 'profile',     label: 'Profile'     },
+// Sidebar nav items for the agent role. Mirrors the live dashboard tabs
+// 1:1 — no fabricated items (per kickoff Decisions: "mirrors the existing
+// TabBar TABS array — no fabricated items"). The mock's "Submit Report",
+// "Commission Calc", and standalone "Goals" sidebar items don't map to
+// existing surfaces and are intentionally omitted from the rendered
+// sidebar (Submit Report stays as the bottom-nav action item below).
+const NAV_ITEMS = [
+  { id: 'dashboard',   label: 'Dashboard',   tabId: 'dashboard',   Icon: ClipboardList, sectionLabel: 'Workspace' },
+  { id: 'career',      label: 'Career',      tabId: 'career',      Icon: TrendingUp },
+  { id: 'awards',      label: 'Awards',      tabId: 'awards',      Icon: Trophy },
+  { id: 'leaderboard', label: 'Leaderboard', tabId: 'leaderboard', Icon: Star },
+  { id: 'history',     label: 'History',     tabId: 'history',     Icon: History },
+  { id: 'profile',     label: 'Profile',     tabId: 'profile',     Icon: UserCircle },
 ];
 
-function TabBar({ active, onChange }) {
-  return (
-    <nav
-      aria-label="Dashboard sections"
-      className="flex gap-1 p-1 rounded-xl bg-surface border border-border mb-6 overflow-x-auto"
-    >
-      {TABS.map((t) => (
-        <button
-          key={t.id}
-          onClick={() => onChange(t.id)}
-          className={`flex-1 min-w-max h-11 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
-            active === t.id
-              ? 'bg-[var(--color-surface)] text-primary shadow-sm'
-              : 'text-ink-muted hover:text-ink'
-          }`}
-        >
-          {t.label}
-        </button>
-      ))}
-    </nav>
-  );
-}
+// Mobile bottom-nav per mock (lines 2227-2232). The "Submit" item is an
+// action, not a tab — it triggers the wizard via the onAction callback.
+const BOTTOM_NAV = [
+  { id: 'home',        label: 'Home',     tabId: 'dashboard',   Icon: ClipboardList },
+  { id: 'submit',      label: 'Submit',   action: 'submit',     Icon: FileText      },
+  { id: 'history',     label: 'History',  tabId: 'history',     Icon: History       },
+  { id: 'leaderboard', label: 'Ranks',    tabId: 'leaderboard', Icon: Star          },
+  { id: 'profile',     label: 'Profile',  tabId: 'profile',     Icon: UserCircle    },
+];
 
 export default function AgentDashboard() {
   const { user, userProfile, role, tenantId } = useAuth();
@@ -229,9 +224,10 @@ export default function AgentDashboard() {
     try { await signOut(); } catch (err) { console.error(err); }
   };
 
-  const toggleDark = () => {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('agencytrack-dark', isDark ? '1' : '0');
+  // Bottom-nav action dispatch. The agent's 'submit' item is not a tab;
+  // it opens the wizard at the most-recent Sunday week.
+  const handleAction = (action) => {
+    if (action === 'submit') setShowWizard(true);
   };
 
   const openWizardForWeek = (week) => {
@@ -274,8 +270,18 @@ export default function AgentDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-surface px-4 py-6 max-w-2xl mx-auto">
-
+    <Shell
+      navItems={NAV_ITEMS}
+      bottomNavItems={BOTTOM_NAV}
+      activeTab={activeTab}
+      setActiveTab={setActiveTab}
+      onAction={handleAction}
+      userProfile={userProfile}
+      roleLabel={roleLabel}
+      topbarTitle={`Welcome back, ${displayName}`}
+      topbarCrumb={`Week of ${formatDateDisplay(currentWeek)}`}
+      onSignOut={handleSignOut}
+    >
       {/* Welcome / onboarding overlay */}
       {showWelcome && (
         <WelcomeScreen onComplete={() => setShowWelcome(false)} />
@@ -297,37 +303,6 @@ export default function AgentDashboard() {
         />
       )}
 
-      {/* Header */}
-      <header className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-display font-bold text-ink">AgencyTrack</h1>
-          <p className="text-sm text-ink-muted">{roleLabel}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <SyncIndicator />
-          <NotificationBell />
-          <button
-            onClick={toggleDark}
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-card text-ink-muted hover:text-ink transition-colors"
-            aria-label="Toggle dark mode"
-          >
-            <Sun size={18} className="dark:hidden" />
-            <Moon size={18} className="hidden dark:block" />
-          </button>
-          <button
-            onClick={handleSignOut}
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-card text-ink-muted hover:text-danger transition-colors"
-            aria-label="Sign out"
-          >
-            <LogOut size={18} />
-          </button>
-        </div>
-      </header>
-
-      {/* Tab bar */}
-      <TabBar active={activeTab} onChange={setActiveTab} />
-
-      <main>
       {/* Unlock banner */}
       {showUnlockBanner && (
         <button
@@ -496,32 +471,30 @@ export default function AgentDashboard() {
             </div>
           </div>
 
-          {/* Activity feed (B3 — submission + 3 weekly-criteria badge
-              events from the last 7 days, max 25 items, derived
-              client-side). 2-column g4-mix layout from the mock is
-              deferred to B4 sidebar shell — B3 stacks vertically. */}
-          <div className="mb-6">
+          {/* Activity feed + Achievement badges (B4 — g4-mix 2-col layout
+              absorbed from the deferred B3 deliverable). At ≥1024px these
+              render side-by-side (1.6fr 1fr); below 1024px they stack
+              vertically. ActivityFeed self-wraps as a .card; the badge
+              section keeps its labelled <section> for a11y parity with
+              the CareerPortal call site. */}
+          <div className="g4-mix mb-6">
             <ActivityFeed
               events={activityEvents}
               onViewAll={() => setActiveTab('history')}
             />
-          </div>
-
-          {/* Achievement badges surfaced on AgentDashboard (B1 follow-up,
-              landed in B3). Mirrors the CareerPortal call site so the
-              two surfaces stay aligned. */}
-          <section
-            aria-labelledby="agent-dashboard-achievements-heading"
-            className="card mb-6"
-          >
-            <h3
-              id="agent-dashboard-achievements-heading"
-              className="text-sm font-semibold text-ink mb-3"
+            <section
+              aria-labelledby="agent-dashboard-achievements-heading"
+              className="card"
             >
-              Achievement Badges
-            </h3>
-            <BadgeGrid submissions={allSubmissions} />
-          </section>
+              <h3
+                id="agent-dashboard-achievements-heading"
+                className="text-sm font-semibold text-ink mb-3"
+              >
+                Achievement Badges
+              </h3>
+              <BadgeGrid submissions={allSubmissions} />
+            </section>
+          </div>
 
           {/* Goal hierarchy / gap analysis */}
           <div className="mb-6">
@@ -657,7 +630,6 @@ export default function AgentDashboard() {
             ))}
         </div>
       )}
-      </main>
-    </div>
+    </Shell>
   );
 }
