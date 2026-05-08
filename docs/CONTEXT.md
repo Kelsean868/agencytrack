@@ -13,10 +13,10 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-08` |
-| Current main HEAD | `eb72d59` (docs(track-c) — add implementation plan + C1 kickoff brief, PR #59) |
-| Active track | Track C — C1 branches schema + tenant admin management UI (in flight on `feat/track-c-c1-branches`). Track B (v2) closed: PR #54 B5 kickoff brief, PR #55 shipped B5 tenant admin config + `companyMinimums` write path, PR #56 closed sidebar-collapse P0, PR #57 closed FOLLOW_UPS HIGH#1 (user-creation reset email), PR #58 backfilled FOLLOW_UPS PR #57 reference, PR #59 landed Track C foundation docs (implementation plan + C1 kickoff). |
+| Current main HEAD | `1d0d9c3` (feat(track-c-c1) — branches schema + tenant admin management UI, PR #60) |
+| Active track | Track C — C2 bulk user provisioning via CSV import (in flight on `feat/track-c-c2-bulk-import`). C1 closed: PR #60 shipped the `tenants/{tid}/branches/{branchId}` collection, `branchService.js`, `BranchesPanel`, `BranchEditorModal`, `DeactivateBranchConfirmDialog`, the `match /branches/{branchId}` rules block, and the `scripts/test-c1-branches-rule.js` emulator regression test. |
 | Next track | Track D — cron + notifications verification (after Track C ships C2 + C3) |
-| Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. **B5 is the final PR — no B6.** |
+| Queued | **Track C — C3 (2026 personal annual API goals seeding).** Ships after C2. Single-user UI default per Track C plan; bulk-CSV deferred unless pilot user-count makes single-user untenable. |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -126,11 +126,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
-| #54 | `f9e6f19` | docs(design-v2) — add B5 kickoff brief (tenant admin config + write path) |
-| #53 | `9892ee9` | docs(follow-ups) — close HIGH#3, sales_manager label-map gap confirmed narrow |
-| #52 | `412a681` | feat(design-v2-b4) — desktop sidebar shell + mobile bottom-nav |
-| #51 | `5099019` | docs(design-v2) — add B4 kickoff brief (sidebar shell + mobile drawer) |
-| #50 | `cb21cce` | chore(workflow) — tighten post-merge verification + clean stale remote branches |
+| #60 | `1d0d9c3` | feat(track-c-c1) — branches schema + tenant admin management UI |
+| #59 | `eb72d59` | docs(track-c) — add implementation plan + C1 kickoff brief |
+| #58 | `63f4b79` | docs(follow-ups) — backfill PR #57 reference |
+| #57 | `a141d9c` | fix(user-creation) — send password reset email (P0 closes HIGH#1) |
+| #56 | `e767798` | fix(sidebar) — expand toggle + sign-out reachable when collapsed (P0) |
 
 ---
 
@@ -148,13 +148,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** B5 in flight — tenant admin config surface + `companyMinimums` write path (2026-05-08).
+> **Session boundary:** C2 in flight — bulk user provisioning via CSV import (2026-05-08).
 
-PR #52 shipped B4 (desktop sidebar shell + mobile bottom-nav, wrapping both `AgentDashboard` and `ManagerDashboard`, relocating dark-mode toggle / `NotificationBell` / `SyncIndicator` into a new `TopBar` component, and absorbing the deferred g4-mix 2-col layout). B4 left tenant_admin sidebar items aligned with the manager set as an explicit boundary — the per-role nav differentiation lands in B5. PR #53 closed FOLLOW_UPS HIGH#3 by confirming through the all-roles production walkthrough that the role-label map gap is narrow to `sales_manager` only (other roles render correctly). PR #54 landed the B5 kickoff brief, completing the docs-first cycle for B5.
+PR #56 closed the sidebar-collapse P0 (expand-toggle + sign-out reachable when collapsed). PR #57 closed FOLLOW_UPS HIGH#1 by dispatching `sendPasswordResetEmail` client-side from `agentManagementService.createUser` after the Cloud Function saga completes — imported users have a path to first sign-in. PR #58 backfilled the FOLLOW_UPS reference for PR #57. PR #59 landed the Track C foundation docs (implementation plan + C1 kickoff brief). PR #60 shipped C1 — branches as a real Firestore subcollection at `tenants/{tid}/branches/{branchId}` with a tenant-admin management UI (`BranchesPanel`, `BranchEditorModal`, `DeactivateBranchConfirmDialog`), service layer (`branchService.js`), Firestore rules block, and emulator regression test (`scripts/test-c1-branches-rule.js`). The C1 close confirmed three reusable primitives for C2: (1) `doCreateUser(data, context)` is already extracted as a callable helper in `functions/index.js:119` — no extraction needed; (2) `sendPasswordResetEmail` is dispatched client-side in `agentManagementService`, not in the Function — C2 must mirror this; (3) `branchService.listBranches()` returns active + inactive — C2 applies the `isActive` filter for branch-name lookup.
 
-B5 (this session) ships the editable `config/companyMinimums` write path (the only behavioural deliverable in Track B v2), the tenant_admin-specific sidebar nav diff, the Company Configuration card with 6 tiles (only `annualAPI` editable in B5; the other 5 render display-only), the Users-by-role distribution card, the Branch overview card with derived data (branch ID + agent count; `—` placeholders for `% to YTD goal` and `Last sync`), and the System Health stat tile rendered with a `—` placeholder (no uptime tracker exists). The B5 audit surfaced one SECURITY surprise-stop — `firestore.rules match /config/{docId}` write path missing tenant-scope check (`getTenantId() == tenantId`) — resolved by absorbing a 2-line guard into B5 ahead of the write helper. HIGH#2 (sales_manager label-map fix) absorbed as a tiny standalone commit. The Recent audit events card from the mock is dropped entirely from B5 (would be fabrication without an audit-log infrastructure, which is correctly deferred to P11). Routing decision: tenant_admin gets a new `<TenantAdminDashboard />` component routed from `App.jsx`, NOT a branch inside `ManagerDashboard.jsx` — keeps blast radius small and matches the PRD's "manager dashboard is split per role" direction.
+C2 (this session) ships bulk user provisioning via CSV import. New `bulkImportUsers` Callable in `functions/index.js` (with `runWith({ timeoutSeconds: 540 })`) wraps a per-row loop calling the existing `doCreateUser` saga, with a single pre-flight Firestore read of `tenants/{tid}/branches` for branchId Set validation (defense-in-depth against bypassed client). New `userImportService.js` handles CSV parse via Papaparse (the dep was installed but never imported until C2), per-row validation, branch-name → branchId resolution, duplicate-email check, batch invocation, and post-success client-side `sendPasswordResetEmail` dispatch per row. New `BulkImportUsersModal.jsx` is a 4-step wizard (file picker → preview → progress → summary) lifting BranchEditorModal scaffolding via a new extracted `useFocusTrap` hook (SS-2 commitment honored — only the new modal consumes it; EditConfigModal and BranchEditorModal stay on inline duplication, with a follow-up filed). `doCreateUser` extended to honor optional `data.branchId` (only when caller has `ownedBranchIds === ['*']`), `data.csvImportBatchId`, `data.importedFromCsv`, plus three new buildDocFields entries for `phone`, `bio`, `careerLevel`. CSV columns: required `email, name, role, branchName, agentNumber`; optional `unitId, contractStartDate, phone, bio, careerLevel`. `personalApiTarget` deferred to C3 / Goals UI per locked decision. CSV `tenant_admin` and `platform_admin` roles rejected server-side (security). Import limit 500 rows hard, soft-warn at 100 client-side.
 
-**Next: Track C (configuration & data).** Real Tatil accounts seeded against `companyMinimums`, 2026 goals across the unitGoals/branchGoals/personal hierarchy, persistency historicals backfilled, cron + notifications verification. Track B (v2) closes with B5 — no B6 planned.
+**Next: Track C — C3 (2026 personal annual API goals seeding).** After C2 ships, C3 wires per-agent `personalAnnualAPI` for 2026 against the existing goal hierarchy. Track D (cron + notifications verification) follows Track C close.
 
 ---
 

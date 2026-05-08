@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Loader2, UserCircle, AlertTriangle } from 'lucide-react';
+import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload } from 'lucide-react';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -11,9 +11,9 @@ import {
   getAllUsers,
 } from '../../services/agentManagementService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
+import { EMAIL_RE } from '../../utils/validators';
 import DeactivateConfirmDialog from './DeactivateConfirmDialog';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import BulkImportUsersModal from '../admin/BulkImportUsersModal';
 
 // Mirrors CREATION_MATRIX in functions/index.js
 const CREATABLE_ROLES = {
@@ -361,6 +361,7 @@ export default function UserManagementPanel() {
   const [users, setUsers]               = useState([]);
   const [loading, setLoading]           = useState(true);
   const [showDrawer, setShowDrawer]     = useState(false);
+  const [showBulkImport, setShowBulkImport] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   // Toast shape: null | { kind: 'success' | 'warning', message: string, email?: string }
   // 'warning' shows a Retry button and does not auto-dismiss.
@@ -370,6 +371,7 @@ export default function UserManagementPanel() {
   const [deactivating, setDeactivating] = useState(false);
 
   const canCreate = (CREATABLE_ROLES[role]?.length ?? 0) > 0;
+  const canBulkImport = role === 'tenant_admin' || role === 'platform_admin';
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -510,6 +512,14 @@ export default function UserManagementPanel() {
               ? <span className="font-semibold text-primary">Hide inactive</span>
               : <span className="text-ink-muted">Show inactive</span>}
           </button>
+          {canBulkImport && (
+            <button
+              onClick={() => setShowBulkImport(true)}
+              className="text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 h-9 rounded-lg transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <Upload size={14} /> Bulk Import
+            </button>
+          )}
           {canCreate && (
             <button
               onClick={() => setShowDrawer(true)}
@@ -609,6 +619,15 @@ export default function UserManagementPanel() {
           onConfirm={handleDeactivateConfirm}
           onCancel={() => setDeactivateTarget(null)}
           loading={deactivating}
+        />
+      )}
+
+      {/* Bulk import (tenant_admin / platform_admin only) */}
+      {showBulkImport && (
+        <BulkImportUsersModal
+          tenantId={tenantId}
+          onClose={() => setShowBulkImport(false)}
+          onImported={() => loadUsers()}
         />
       )}
     </div>

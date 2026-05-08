@@ -219,6 +219,56 @@ HIGH#2 or any other open HIGH item — separate PR.
 
 ---
 
+## HIGH#6 — TenantAdminDashboard YTD composite index missing (surfaced during C1 walkthrough)
+
+**Scope:** `TenantAdminDashboard.jsx` aggregates Total API · YTD via
+`getAllYTDSubmissions()` in `src/services/managerService.js`. The query
+needs a Firestore composite index that has not been created yet —
+production console logs a `failed-precondition` error with an
+auto-generated index URL the first time tenant_admin loads the
+Dashboard tab. The stat tile renders `—` instead of a value.
+
+Pre-existing from B5 (PR #55), surfaced during C1's preview walkthrough
+(PR #60). Not C1's regression — the surface that exposes the query
+landed before C1.
+
+**Fix:**
+1. Tenant_admin loads `https://agencytrack.vercel.app` in production.
+2. Open browser console, copy the auto-generated index URL from the
+   `failed-precondition` error.
+3. Open the URL in Firebase console; click **Create**.
+4. Wait for index to finish building (~2–5 minutes for the current data
+   volume).
+5. Reload Dashboard; confirm Total API · YTD renders a real value.
+
+No code change required. Acceptance is verified by Dashboard rendering
+the YTD value end-to-end.
+
+Priority: **HIGH** (UX gap on tenant_admin's primary surface; near-zero
+effort fix). Knock out manually whenever convenient — does not require a
+PR.
+
+---
+
+## Migrate EditConfigModal + BranchEditorModal to useFocusTrap (LOW, filed during C2)
+
+**Scope:** C2 introduces `src/hooks/useFocusTrap.js` (extracted per the
+SS-2 commitment from C1's audit — third consumer triggers extraction).
+C2 consumes the hook in `BulkImportUsersModal.jsx` only; `EditConfigModal.jsx`
+(B5) and `BranchEditorModal.jsx` (C1) stay on inline-duplicated focus-trap
+scaffolding to keep C2's blast radius narrow.
+
+**Fix:** When EditConfigModal or BranchEditorModal is next touched for any
+reason (bug fix, behavior change, etc.), migrate it to consume
+`useFocusTrap` in the same PR. Each migration drops ~25 lines of inline
+useEffect scaffolding and replaces with a one-line hook call.
+
+Priority: **LOW**. Both modals are battle-tested; opportunistic refactor
+only. Do not open a standalone PR — fold into the next PR that has a real
+reason to touch the file.
+
+---
+
 ## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix)
 
 **Scope:** Install Vitest + add the first regression test, restoring the
@@ -458,15 +508,31 @@ Missing: editing an existing user's fields (name, email, phone, unitId reassignm
 
 ---
 
-## Branches Management UI
+## Branches Management UI — RESOLVED in PR #60 (2026-05-08)
 
-**Scope:** Branches exist as data (branchId strings in user docs) but there is no UI to
-list, create, or rename branches. A branch_manager or tenant_admin cannot currently add a
-new branch without direct Firestore access.
+**Original scope:** Branches existed as data (branchId strings in user docs) but there
+was no UI to list, create, or rename branches. A branch_manager or tenant_admin could
+not add a new branch without direct Firestore access.
 
-- Manager panel tab: "Branches" — lists known branches derived from user docs
-- Create branch (tenant_admin only): reserves a branchId, creates a placeholder doc
-- Rename branch: updates all user docs with the old branchId (batched write)
+**Shipped in PR #60 (Track C — C1):**
+
+- New Firestore subcollection `tenants/{tenantId}/branches/{branchId}` with auto-ID
+  branchIds (opaque random strings; display name only).
+- Service layer `src/services/branchService.js` — `listBranches`, `getBranch`,
+  `createBranch`, `updateBranch`, `setBranchActive`. Active-only branch-name uniqueness.
+- `BranchesPanel` (table-style list, tenant_admin only) + `BranchEditorModal`
+  (create + edit; lifts B5 EditConfigModal a11y patterns) + `DeactivateBranchConfirmDialog`.
+- New `firestore.rules match /branches/{branchId}` block: tenant-scoped read for any
+  signed-in user, write for `tenant_admin` / `platform_admin` only (cross-tenant guard
+  for tenant_admin per B5 lesson).
+- Emulator regression test `scripts/test-c1-branches-rule.js` — covers cross-tenant
+  read denial, role-write denial, tenant_admin self-tenant write, platform_admin
+  cross-tenant write.
+
+**Rename behavior** (originally proposed) was descoped. Renaming a branch updates only
+the branch doc; legacy `user.branchId` strings remain unmigrated. Migration is a
+separate post-pilot ticket — tenant_admins re-target users via Edit User flows once
+those ship (PR-4).
 
 ---
 

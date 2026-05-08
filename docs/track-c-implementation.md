@@ -101,50 +101,89 @@ Revert the C1 commit. Drop the new files. The fallback derivation pattern was ne
 
 ## PR C2 — Bulk User Provisioning (CSV import)
 
+> **Cascade-corrected 2026-05-08** to align with `docs/track-c-C2-kickoff.md` and the Q1–Q11 ratifications. Original draft listed `branchId` as the CSV header (locked: `branchName`), proposed a client-side per-row loop calling `createUser` directly (locked: a new server-side `bulkImportUsers` Callable), proposed `BulkUserImportModal` (locked: `BulkImportUsersModal`), and modified `agentManagementService.js` (locked: a new `userImportService.js`). Locked decisions below supersede the original draft.
+
 ### Goal
-Tenant Admin uploads a CSV of users (`email,name,role,branchId`) and the app creates them in bulk via the existing `createUser` callable (post-HIGH#1 fix in PR #57, which now dispatches password-reset emails). Per-row validation, per-row error reporting, downloadable error CSV for re-import. Idempotent on email collisions.
+Tenant Admin uploads a CSV of users (`email,name,role,branchName,agentNumber` required + optional `unitId,contractStartDate,phone,bio,careerLevel`) and the app creates them in bulk via a new server-side `bulkImportUsers` Callable that wraps the existing `doCreateUser` saga in a per-row loop. Per-row validation, per-row error reporting, downloadable error CSV for re-import, and per-row password-reset email dispatch (mirroring the HIGH#1 client-side path).
 
 ### Dependency
-**C1 must merge first.** CSV `branchId` values reference C1's collection. Validation rejects rows whose `branchId` doesn't match an active branch.
+**C1 must merge first.** CSV `branchName` values resolve case-insensitively against `branchService.listBranches(tenantId).filter(b => b.isActive)` to obtain auto-ID branchIds. Validation rejects rows whose `branchName` doesn't match an active branch.
 
-### Files (starting hypotheses — audit confirms during C2)
+### Files (post-audit, locked via Q1–Q11 ratification)
 
 **Create:**
-- `src/components/admin/BulkUserImportModal.jsx` — multi-step modal. Step 1: drop / upload CSV. Step 2: preview first 5 rows + row-count summary. Step 3: progress UI ("Created 7 of 50 — 1 failed: row 12 invalid email"). Step 4: result summary with download-error-CSV affordance.
+- `src/components/admin/BulkImportUsersModal.jsx` — multi-step wizard within one modal shell. Step 1: file picker + "Download template" CTA + zero-active-branches empty state (Q10). Step 2: full preview table (not just first 5 rows) with valid / warning / error rows distinguished, filter toggles (All / Errors / Warnings / Valid), and "Confirm import" CTA disabled when 0 valid rows. Step 3: indeterminate progress spinner with row count (Q4). Step 4: summary (success / skipped / failed counts + per-row error details + "Download error report" CSV CTA).
+- `src/services/userImportService.js` — pure service layer. CSV parse via Papaparse (`transformHeader: lowercase`, `skipEmptyLines: true`), per-row validation, branch-name → branchId resolution against active branches, duplicate-email check via `getAllUsers({ includeInactive: true })`, batch invocation of `bulkImportUsers` Callable, post-success client-side `sendPasswordResetEmail` dispatch per row, error CSV generation via `Papa.unparse`.
+- `src/utils/validators.js` — additive: add `EMAIL_RE` + `isValidEmail` exports (file already contains date helpers).
+- `functions/utils/validators.js` — new: same `EMAIL_RE` regex for the Callable's defense-in-depth re-validation. Header comment: `// MUST stay in sync with the matching file at src/utils/validators.js`. (Same comment in the client copy.)
+- `src/hooks/useFocusTrap.js` — extracted from BranchEditorModal's inline scaffolding per the SS-2 commitment from C1 audit. Consumed by `BulkImportUsersModal` only in C2; existing modals stay on inline duplication (a follow-up is filed for migrating them when next touched).
 
 **Modify:**
-- `src/services/agentManagementService.js` — extend with a thin batch wrapper that re-uses the existing `createUser` callable per row. Sequential, not parallel — Firestore + Auth quotas are conservative, and per-row error reporting needs deterministic ordering. Returns `{ rowIndex, success, uid?, emailSent?, error? }` for each row.
-- `src/components/admin/UserManagementPanel.jsx` — add "Import Users" button next to existing "Add User" button.
+- `functions/index.js`:
+  - Add `bulkImportUsers` Callable with `runWith({ timeoutSeconds: 540 })` (Q1). Auth + role check (`['tenant_admin', 'platform_admin']`). Single pre-flight Firestore read of `tenants/{tid}/branches`, build active-branch Set; fail fast with `failed-precondition` if the Set is empty (Q2 server backstop). Per-row try/catch loop calling `doCreateUser({...row, branchId, csvImportBatchId, importedFromCsv: true}, context)`. Returns `{ results: [{ rowIndex, email, success, uid?, error?, code? }] }`.
+  - Extend `doCreateUser` to honor optional `data.branchId` (only when caller has `ownedBranchIds === ['*']`, i.e. cross-branch authority — Q2), `data.csvImportBatchId`, `data.importedFromCsv`. Single-user flow never sets these, so its behavior is unchanged.
+  - Extend `buildDocFields` for `phone`, `bio`, `careerLevel`, `csvImportBatchId`, `importedFromCsv` (Q3 + Q9). `personalApiTarget` is NOT added — handled by Goals UI per the P6A/P8C path.
+- `src/components/manager/UserManagementPanel.jsx` (note: lives in `manager/`, not `admin/`):
+  - Add "Bulk Import" CTA in the panel header gated on `role in ['tenant_admin', 'platform_admin']`.
+  - Replace inline `EMAIL_RE` regex with import from `src/utils/validators.js`.
 
-### CSV contract
-- Required headers: `email`, `name`, `role`, `branchId`. Other columns ignored (forward-compatible).
-- Row-level validation:
-  - `email` — RFC-ish format check + Firebase Auth uniqueness check (handled by callable; collision = skip row, not error)
-  - `name` — non-empty after trim
-  - `role` — one of `agent`, `unit_manager`, `branch_manager`, `sales_manager`. **Tenant Admin and Platform Admin are NOT bulk-importable** (creation requires elevated checks; surface as inline guard)
-  - `branchId` — must reference an active branch in `tenants/{tid}/branches` (via C1's collection). Inactive or unknown branchId = row error, not silent acceptance.
+**No changes:**
+- `firestore.rules` — Admin SDK bypasses rules; the Callable is the security floor.
+- `src/services/agentManagementService.js` — left unchanged; original draft proposed extending it but the kickoff locks a separate `userImportService.js` to keep concerns isolated.
+
+### CSV contract (locked)
+- **Required headers (case-insensitive):** `email`, `name`, `role`, `branchName`, `agentNumber`.
+- **Optional headers:** `unitId`, `contractStartDate` (ISO YYYY-MM-DD), `phone`, `bio`, `careerLevel`.
+- **Encoding:** UTF-8 with optional BOM. CRLF tolerated.
+- **Empty rows:** skipped (`skipEmptyLines: true`).
+- **`personalApiTarget` is NOT in the C2 CSV** — handled by C3 / Goals UI.
+- **Hard limit:** 500 rows. Soft warn at 100 client-side.
+
+### Per-row validation (locked)
+- `email` — required, valid format (regex from `validators.js`). Tenant-unique check: `getAllUsers({ includeInactive: true })` snapshot loaded once before the loop. Duplicate (active OR deactivated) = warning, row skipped. Same warning copy: "Email already in tenant."
+- `name` — required, trimmed, non-empty, ≤ 100 chars.
+- `role` — required, must be one of: `agent`, `unit_manager`, `branch_manager`, `sales_manager`. **`tenant_admin` and `platform_admin` are forbidden via CSV (security, server-enforced).** Invalid role = row rejected.
+- `branchName` — required, case-insensitive lookup against active branches (`isActive: true` filter applied by service layer). No match = row rejected.
+- `agentNumber` — required for `agent` role; optional for managers (empty string if absent). Trimmed, ≤ 20 chars. No auto-uppercase (mirrors current single-user behavior).
+- `unitId` — optional. If present for non-agent role: warning, field stripped. If agent without unitId: stored as `null`.
+- `contractStartDate` — optional, ISO YYYY-MM-DD. If present and invalid: row rejected.
+- `phone` — optional, ≤ 20 chars. No format enforcement (Q11).
+- `bio`, `careerLevel` — optional, length-only (≤ 500 / ≤ 50 chars respectively).
 
 ### Acceptance criteria
-- [ ] CSV upload accepts the required headers (case-insensitive); other columns ignored
-- [ ] Per-row validation runs before any write; rows with errors are NOT submitted to `createUser`
-- [ ] Progress UI updates row-by-row during processing (sequential, with `aria-live="polite"` announcements)
-- [ ] On any per-row failure, a downloadable error CSV is produced — same headers as input plus an `error` column with a specific message ("invalid email", "branchId not found", "createUser callable failed: ..."). Admin can fix and re-import.
-- [ ] Successfully-created users get reset emails dispatched per the HIGH#1 path (PR #57)
-- [ ] Idempotency — re-importing a CSV with existing emails skips them (the callable already throws on duplicate; bulk flow catches and labels the row as "skipped: email already exists" rather than "error")
-- [ ] 8-cell preview matrix for `tenant_admin` (4 breakpoints × 2 themes) covering: empty state, file picked but not yet validated, preview state, mid-progress, all-success, partial-failure with downloadable error CSV, all-failure
-- [ ] Modal a11y: focus trap, Escape cancels (only when not mid-write), live-region progress announcements, `role="dialog"` + `aria-modal` + `aria-labelledby`
+- [ ] CSV upload accepts the required headers (case-insensitive); optional columns honored; unknown columns ignored
+- [ ] Per-row validation runs client-side for fast preview feedback; server re-validates as defense-in-depth
+- [ ] Server-side check: rows with `role: tenant_admin` or `role: platform_admin` are rejected even if client validation was bypassed
+- [ ] Server-side branchId Set validation: row's resolved `branchId` must be in the active-branch Set; rejected with specific error if not
+- [ ] Server fail-fast with `failed-precondition` if tenant has zero active branches (defense-in-depth backstop for Q10's client empty state)
+- [ ] Step 3 progress UI is an indeterminate spinner with row count + `role="status"` (Q4)
+- [ ] Successful imports trigger client-side `sendPasswordResetEmail` per row (mirrors HIGH#1 path)
+- [ ] On any per-row failure, "Download error report" CTA in Step 4 emits a CSV with original input rows + appended `error` column. Re-importable workflow (Q8).
+- [ ] Duplicate email (active OR deactivated): warning in preview, row skipped on import, summary reports under "skipped (duplicate)" — same copy "Email already in tenant"
+- [ ] Modal blocked at Step 1 with empty-state copy when tenant has zero active branches; link to Branches panel (Q10)
+- [ ] Each created user doc carries `csvImportBatchId: <UUID v4>` (Q9), `importedFromCsv: true`, `phone` / `bio` / `careerLevel` if provided
+- [ ] 8-cell preview matrix for `tenant_admin` (4 breakpoints × 2 themes) covers: empty state, file picked, preview valid + mixed + all-error, mid-progress, summary success + partial-failure + all-failure
+- [ ] Drive-by other-role checks confirm "Bulk Import" CTA is unreachable for `agent` / `unit_manager` / `branch_manager` / `sales_manager`
+- [ ] Modal a11y: focus trap (via `useFocusTrap` hook), Escape cancels in Steps 1/2/4, Step 3 Escape shows confirmation dialog, `role="dialog"` + `aria-modal` + `aria-labelledby`, return focus on close
+- [ ] Cloud Function deployed pre-merge from feature worktree; deploy output captured in PR description (per the additive-deploy rule banked into CLAUDE.md)
 - [ ] `npm run lint && npm run build` exits 0
 
 ### Out of scope (for C2)
-- **User edit flows** (PR-4 Edit-user flows in `docs/FOLLOW_UPS.md`). Audit-phase decision: surface whether C2's scope can absorb these without bloating the PR; default is "keep separate."
-- **Deactivate / reactivate flows.** Already exist in `UserManagementPanel.jsx` from earlier work; no changes in C2.
-- **Bulk reset-email retry after import.** Single dispatch only per row; per-row Retry handled via the downloadable error CSV (admin fixes and re-imports).
-- **CSV templating UI** (downloadable blank template). Defer to a UX hardening pass.
+- **User edit flows** (PR-4 Edit-user flows in `docs/FOLLOW_UPS.md`). Separate ticket.
+- **Deactivate / reactivate flows.** Already exist in `UserManagementPanel.jsx`; no changes in C2.
+- **Bulk reset-email retry after import.** Per-row Retry is via the downloadable error CSV (admin fixes and re-imports). The single-user inline Retry button (UserManagementPanel post-PR #57) covers the single-user path.
+- **`personalApiTarget` per-row import.** Handled by C3 / Goals UI.
 - **Real-time CSV format detection** (e.g., transparent semicolon-delimited support). MVP requires standard comma-separated UTF-8.
-- **Tenant Admin / Platform Admin role bulk-import.** Out of scope for C2; explicitly rejected at the validation layer.
+- **`tenant_admin` / `platform_admin` role bulk-import.** Server-rejected.
+- **Cross-tenant import for platform_admin.** C2 enforces caller's tenant only.
+- **Migrating `EditConfigModal` / `BranchEditorModal` to consume `useFocusTrap`.** Both stay on inline duplication; follow-up filed.
+- **Phone format validation beyond ≤ 20 chars.** Trinidad-format check is a follow-up if pilot reports inconsistencies.
+- **Hard delete of imported users.** Use existing deactivate flow.
+- **Update via CSV.** C2 is import-only; re-importing = skip with warning.
+- **Photo upload via CSV.**
 
 ### Rollback
-Revert the C2 commit. Remove the "Import Users" button. The existing single-user `createUser` flow is untouched.
+Revert the C2 commit. The new Cloud Function (`bulkImportUsers`) is purely additive — leaving it deployed has no effect (no production caller invokes it once the UI is reverted). Optional belt-and-suspenders: redeploy `functions/index.js` from `main` after revert merges to drop the function. The `doCreateUser` extensions are also additive — single-user flow never sets the new optional params, so no behavior change to roll back. The existing single-user `createUser` flow in `UserManagementPanel.jsx` is untouched apart from the `EMAIL_RE` import refactor (cosmetic).
 
 ---
 
