@@ -232,7 +232,7 @@ The outer backdrop being `aria-hidden` hides the entire subtree — including th
 
 **Confirmed by:** extended C3 verification (2026-05-08) — `getByRole('dialog')` returned nothing on the default a11y traversal; only a CSS-selector fallback (`[role="dialog"][aria-labelledby="..."]`) could reach the dialog. Verified in both `BulkImportUsersModal.jsx:288` and `BulkImportGoalsModal.jsx:295`.
 
-**Shipping as:** Phase 2 of the Track C close session — branch `fix/aria-hidden-modal-wrappers`.
+**Shipping as:** PR #63 — `fix/aria-hidden-modal-wrappers`. Regression script `verification/aria-modal-regression.cjs`: 10/10 assertions pass on preview. Before/after screenshots at `verification/aria-fix-shots/`. Awaiting merge.
 
 Priority: **HIGH** (pre-pilot — modal is completely inaccessible to screen reader users as-is).
 

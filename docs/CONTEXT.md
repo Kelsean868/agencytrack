@@ -14,9 +14,9 @@
 |---|---|
 | Last updated | `2026-05-08` |
 | Current main HEAD | `ba41cc6` (feat(track-c-c3) — 2026 personal commitments CSV import, PR #62) |
-| Active track | Track C complete (all 3 PRs shipped: C1 #60, C2 #61, C3 #62). Next: aria-hidden modal fix (HIGH#7, Phase 2 of this session). Then Track D — cron + notifications verification. |
+| Active track | None — Track C closed (#62). aria-hidden fix in review (PR #63, preview verified, 10/10 regression assertions). Next: Track D — cron + notifications verification. |
 | Next track | Track D — cron + notifications verification |
-| Queued | Phase 2: `fix/aria-hidden-modal-wrappers` — remove `aria-hidden="true"` from outer backdrop in both bulk-import modals (HIGH#7). |
+| Queued | PR #63 (`fix/aria-hidden-modal-wrappers`) — preview verified, awaiting merge. |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -152,9 +152,9 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **Track C complete.** PR #59 landed the foundation docs. PR #60 shipped C1 — branches as a real Firestore subcollection (`branchService.js`, `BranchesPanel`, `BranchEditorModal`, `firestore.rules` branches block deployed pre-merge). PR #61 shipped C2 — bulk user provisioning via CSV import: a new `bulkImportUsers` Callable, `userImportService.js`, `BulkImportUsersModal.jsx`, `useFocusTrap` hook extraction. PR #62 shipped C3 — bulk 2026 personal commitments CSV import: new `goalsImportService.js` delegates per-row writes to the existing `setGoals` (no Cloud Function, no rules changes); new `BulkImportGoalsModal.jsx` is a 4-step wizard (file picker → preview → progress → summary) reusing `useFocusTrap` + established patterns from C2; `setGoals` extended (additive) to accept passthrough `csvImportBatchId` + `importedFromCsv` audit fields; UserManagementPanel header gained a sibling "Bulk Import Goals" button alongside the renamed "Bulk Import Users". F3 (`internal` error code) absorbed alongside C3. Extended verification (8 cells × 9 states, 76 PNGs + 2 CSVs) passed on production. All 5 roles pass the exploration-walk production walkthrough against `ba41cc6`.
 
-**Aria-hidden bug confirmed (HIGH#7):** both `BulkImportUsersModal.jsx:288` and `BulkImportGoalsModal.jsx:295` have `aria-hidden="true"` on the outer backdrop div, hiding the inner `role="dialog"` from the a11y tree. Fix is two single-token deletions. Phase 2 of this session on branch `fix/aria-hidden-modal-wrappers`.
+**Aria-hidden fix shipped (HIGH#7, PR #63):** deleted `aria-hidden="true"` from the outer backdrop wrapper in both `BulkImportUsersModal.jsx` and `BulkImportGoalsModal.jsx`. Regression script `verification/aria-modal-regression.cjs` confirms 10/10 assertions on preview: no `aria-hidden` on backdrop, `getByRole('dialog')` resolves without CSS fallback, `aria-modal="true"` present. Before screenshot confirms production had `aria-hidden="true"`; after screenshots confirm it's gone. PR #63 is preview-verified; awaiting merge.
 
-**Next: Phase 2 aria-hidden fix, then Track D — cron + notifications verification.**
+**Next: merge PR #63, then Track D — cron + notifications verification.**
 
 ---
 
