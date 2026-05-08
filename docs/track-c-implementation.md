@@ -33,7 +33,9 @@ Three PRs (C1 through C3), shipped in dependency order. Track C is a chain, not 
 ## PR C1 — Branches Schema + Tenant Admin Management UI
 
 ### Goal
-Make branches a real Firestore collection at `tenants/{tid}/meta/branches/{branchId}` with a tenant-admin UI to create, edit, and deactivate. Replace the "branches derived from user docs" pattern with a proper collection while preserving backwards compatibility (if collection is empty for a tenant, fall back to user-doc derivation so existing dashboards keep working).
+Make branches a real Firestore collection at `tenants/{tid}/branches/{branchId}` with a tenant-admin UI to create, edit, and deactivate. Replace the "branches derived from user docs" pattern with a proper collection while preserving backwards compatibility (if collection is empty for a tenant, fall back to user-doc derivation so existing dashboards keep working).
+
+> **Path correction (C1 audit, SS-1):** the original draft locked the path as `tenants/{tid}/meta/branches/{branchId}` — 5 segments — which is not a valid Firestore document path (segments must alternate collection/doc with even count). Corrected to `tenants/{tid}/branches/{branchId}` — sibling subcollection under tenant, matching `users`, `submissions`, `goals`, `unitGoals`, `branchGoals`, `campaigns`. The existing `match /meta/{docId}` rule (`firestore.rules:54-56`, write-locked) stays untouched — reserved for any future singleton tenant-metadata docs.
 
 ### Files (starting hypotheses — audit confirms during C1)
 
@@ -43,7 +45,7 @@ Make branches a real Firestore collection at `tenants/{tid}/meta/branches/{branc
 - `src/components/admin/BranchEditorModal.jsx` — create + edit form. Lifts B5's `EditConfigModal` patterns (focus trap, Escape, return-focus, reduced-motion guards, `role="dialog"`, `aria-modal`, save-disabled-during-write).
 
 **Modify:**
-- `firestore.rules` — new `match /meta/branches/{branchId}` block scoped under the existing `match /tenants/{tenantId}` parent. Read = any signed-in user in tenant. Write = `tenant_admin` or `platform_admin` (with platform_admin tenant-scope guard, per B5 lesson). **Note:** the existing `match /meta/{docId}` block at `firestore.rules:54-56` is `allow write: if false` (Admin SDK only). C1 introduces the more specific `meta/branches/{branchId}` match; the broader `meta/{docId}` match stays write-locked unless explicitly broken open per the audit.
+- `firestore.rules` — new `match /branches/{branchId}` block scoped under the existing `match /tenants/{tenantId}` parent (sibling to `users`, `submissions`, `config`, etc.). Read = any signed-in user in tenant. Write = `tenant_admin` or `platform_admin` (with platform_admin tenant-scope guard, per B5 lesson). The existing `match /meta/{docId}` block at `firestore.rules:54-56` is unrelated and stays untouched.
 - `src/components/dashboard/TenantAdminDashboard.jsx` (if it exists post-B5) — wire the "Branches" sidebar item to render `<BranchesPanel />`. If routing post-B5 still goes through `ManagerDashboard.jsx`, audit confirms the right surface to plug into.
 - `src/index.css` — additive only. New tokens / classes only if existing semantic tokens don't cover the surface (status pills for active / inactive, list-row hover treatments). Reuse `--color-*` tokens wherever they fit.
 
@@ -55,7 +57,7 @@ Make branches a real Firestore collection at `tenants/{tid}/meta/branches/{branc
 
 ### Schema (locked)
 
-Path: `tenants/{tenantId}/meta/branches/{branchId}`
+Path: `tenants/{tenantId}/branches/{branchId}`
 
 | Field        | Type            | Notes |
 |--------------|-----------------|-------|
@@ -120,7 +122,7 @@ Tenant Admin uploads a CSV of users (`email,name,role,branchId`) and the app cre
   - `email` — RFC-ish format check + Firebase Auth uniqueness check (handled by callable; collision = skip row, not error)
   - `name` — non-empty after trim
   - `role` — one of `agent`, `unit_manager`, `branch_manager`, `sales_manager`. **Tenant Admin and Platform Admin are NOT bulk-importable** (creation requires elevated checks; surface as inline guard)
-  - `branchId` — must reference an active branch in `tenants/{tid}/meta/branches` (via C1's collection). Inactive or unknown branchId = row error, not silent acceptance.
+  - `branchId` — must reference an active branch in `tenants/{tid}/branches` (via C1's collection). Inactive or unknown branchId = row error, not silent acceptance.
 
 ### Acceptance criteria
 - [ ] CSV upload accepts the required headers (case-insensitive); other columns ignored
@@ -293,7 +295,7 @@ Track C is **scoped to data-layer onboarding only.** The following are explicitl
 | Branch-scoped reads (branch_manager sees own only) require either rule-level or query-level filtering | Medium | Medium | Audit confirms during C1. Likely resolved by query-level filter (existing pattern in dashboards) since rules already gate read by tenant scope |
 | Bulk CSV import creates duplicate users on re-import | Low | Medium | Email uniqueness enforced at Firebase Auth (existing); bulk flow catches `auth/email-already-in-use` and labels row as "skipped" not "error" |
 | Goal seeding ships before user provisioning (sequencing slip) | Medium | Low | Track C plan locks C3 after C2; audit gates the dependency check before code starts |
-| Firestore rules for `meta/branches/{branchId}` collide with the existing `meta/{docId}` write-locked match | Medium | High | Existing block at `firestore.rules:54-56` is `allow write: if false`. C1 introduces a more specific match; rules-evaluation precedence handled correctly. Verified via emulator regression test before C1 merges. |
+| Firestore path conflict with the existing `meta/{docId}` write-locked match | Low | Low | **Resolved during C1 audit (SS-1).** Original draft path `tenants/{tid}/meta/branches/{branchId}` was 5 segments — invalid Firestore document path. Corrected to `tenants/{tid}/branches/{branchId}` — sibling subcollection under tenant, no overlap with the unrelated `meta/{docId}` block. Verified via emulator regression test before C1 merges. |
 | Tenant admin imports a CSV referencing branchIds from the legacy string-derived list (not the new collection) | High | Medium | C2 validation rejects rows with unknown `branchId`. Error CSV surfaces the offenders. Tenant admin fixes by either creating the missing branches in C1's UI or correcting the source CSV. |
 | `personalAnnualAPI` cap (TTD 10M) too low for outlier agents | Low | Low | Audit-phase verification in C3; cap revised upward in plan if any existing personal goal exceeds 5M |
 | Bulk import sequential write is too slow for large CSVs (> 200 rows) | Medium | Low | Surface during C2 audit; chunked progress UI absorbed if pilot CSV is large |
