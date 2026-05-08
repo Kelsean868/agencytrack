@@ -1,3 +1,14 @@
+// MUST stay in sync with the matching file at functions/utils/validators.js.
+// Email-format spec is locked across client + server defense-in-depth (Track C
+// C2, Q6 ratification 2026-05-08). If the regex changes here, update the
+// Cloud Function copy in the same PR.
+export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export function isValidEmail(email) {
+  if (typeof email !== 'string') return false;
+  return EMAIL_RE.test(email.trim());
+}
+
 export function validateSundayDate(dateStr) {
   if (!dateStr) return false;
   const date = new Date(dateStr + 'T00:00:00');
