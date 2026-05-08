@@ -13,10 +13,10 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-08` |
-| Current main HEAD | `ba41cc6` (feat(track-c-c3) — 2026 personal commitments CSV import, PR #62) |
-| Active track | None — Track C closed (#62). aria-hidden fix in review (PR #63, preview verified, 10/10 regression assertions). Next: Track D — cron + notifications verification. |
-| Next track | Track D — cron + notifications verification |
-| Queued | PR #63 (`fix/aria-hidden-modal-wrappers`) — preview verified, awaiting merge. |
+| Current main HEAD | `2932cfa` (fix(a11y) — remove aria-hidden from modal backdrop wrappers, PR #63) |
+| Active track | None — Track C closed (#62), aria-hidden HIGH#7 shipped (#63). Next: Track E feature scope log per May 8 2026 planning session. |
+| Next track | Track E (E1+E6 pre-pilot per Path B), then Track D — cron + notifications verification |
+| Queued | None |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -126,11 +126,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #63 | `2932cfa` | fix(a11y) — remove aria-hidden from modal backdrop wrappers (HIGH#7) |
 | #62 | `ba41cc6` | feat(track-c-c3) — 2026 personal commitments CSV import |
 | #61 | `f906108` | feat(track-c-c2) — bulk user provisioning via CSV import |
 | #60 | `1d0d9c3` | feat(track-c-c1) — branches schema + tenant admin management UI |
 | #59 | `eb72d59` | docs(track-c) — add implementation plan + C1 kickoff brief |
-| #58 | `63f4b79` | docs(follow-ups) — backfill PR #57 reference |
 
 ---
 
@@ -152,9 +152,9 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **Track C complete.** PR #59 landed the foundation docs. PR #60 shipped C1 — branches as a real Firestore subcollection (`branchService.js`, `BranchesPanel`, `BranchEditorModal`, `firestore.rules` branches block deployed pre-merge). PR #61 shipped C2 — bulk user provisioning via CSV import: a new `bulkImportUsers` Callable, `userImportService.js`, `BulkImportUsersModal.jsx`, `useFocusTrap` hook extraction. PR #62 shipped C3 — bulk 2026 personal commitments CSV import: new `goalsImportService.js` delegates per-row writes to the existing `setGoals` (no Cloud Function, no rules changes); new `BulkImportGoalsModal.jsx` is a 4-step wizard (file picker → preview → progress → summary) reusing `useFocusTrap` + established patterns from C2; `setGoals` extended (additive) to accept passthrough `csvImportBatchId` + `importedFromCsv` audit fields; UserManagementPanel header gained a sibling "Bulk Import Goals" button alongside the renamed "Bulk Import Users". F3 (`internal` error code) absorbed alongside C3. Extended verification (8 cells × 9 states, 76 PNGs + 2 CSVs) passed on production. All 5 roles pass the exploration-walk production walkthrough against `ba41cc6`.
 
-**Aria-hidden fix shipped (HIGH#7, PR #63):** deleted `aria-hidden="true"` from the outer backdrop wrapper in both `BulkImportUsersModal.jsx` and `BulkImportGoalsModal.jsx`. Regression script `verification/aria-modal-regression.cjs` confirms 10/10 assertions on preview: no `aria-hidden` on backdrop, `getByRole('dialog')` resolves without CSS fallback, `aria-modal="true"` present. Before screenshot confirms production had `aria-hidden="true"`; after screenshots confirm it's gone. PR #63 is preview-verified; awaiting merge.
+**Aria-hidden fix shipped (HIGH#7, PR #63, squash SHA `2932cfa`):** deleted `aria-hidden="true"` from the outer backdrop wrapper in both `BulkImportUsersModal.jsx` and `BulkImportGoalsModal.jsx`. Regression script `verification/aria-modal-regression.cjs` confirmed 10/10 assertions on preview: no `aria-hidden` on backdrop, `getByRole('dialog')` resolves without CSS fallback, `aria-modal="true"` present. Before screenshot confirmed production had `aria-hidden="true"`; after screenshots confirmed it's gone.
 
-**Next: merge PR #63, then Track D — cron + notifications verification.**
+**Aria-hidden HIGH#7 shipped via PR #63. Next: Track E feature scope log + Path B pre-pilot sequencing per May 8 2026 planning session.**
 
 ---
 
