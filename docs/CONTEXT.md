@@ -12,11 +12,11 @@
 
 | Field | Value |
 |---|---|
-| Last updated | `2026-05-07` |
-| Current main HEAD | `5099019` (docs — add B4 kickoff brief: sidebar shell + mobile drawer, PR #51) |
-| Active track | Track B (v2) — B4 desktop sidebar shell + mobile bottom-nav (in progress on `design-v2-b4-shell`). B1 medal badges shipped (PR #44), B2 goal carousel shipped (PR #47), B3 activity feed + BadgeGrid surface shipped (PR #49), PR #50 tightened post-merge cleanup, PR #51 landed B4 kickoff brief. |
-| Next track | Track B (v2) — B5 tenant admin config |
-| Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. |
+| Last updated | `2026-05-08` |
+| Current main HEAD | `f9e6f19` (docs — add B5 kickoff brief: tenant admin config + write path, PR #54) |
+| Active track | Track B (v2) — B5 tenant admin config surface + `companyMinimums` write path (in progress on `design-v2-b5-tenant-admin`). B1 medal badges shipped (PR #44), B2 goal carousel shipped (PR #47), B3 activity feed + BadgeGrid surface shipped (PR #49), PR #50 tightened post-merge cleanup, PR #51 landed B4 kickoff brief, PR #52 shipped B4 desktop sidebar shell + mobile bottom-nav, PR #53 closed FOLLOW_UPS HIGH#3, PR #54 landed B5 kickoff brief. |
+| Next track | Track C — configuration & data (real Tatil accounts, 2026 goals, persistency historicals) |
+| Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. **B5 is the final PR — no B6.** |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -126,11 +126,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #54 | `f9e6f19` | docs(design-v2) — add B5 kickoff brief (tenant admin config + write path) |
+| #53 | `9892ee9` | docs(follow-ups) — close HIGH#3, sales_manager label-map gap confirmed narrow |
+| #52 | `412a681` | feat(design-v2-b4) — desktop sidebar shell + mobile bottom-nav |
 | #51 | `5099019` | docs(design-v2) — add B4 kickoff brief (sidebar shell + mobile drawer) |
 | #50 | `cb21cce` | chore(workflow) — tighten post-merge verification + clean stale remote branches |
-| #49 | `082a6b3` | feat(design-v2-b3) — activity feed + BadgeGrid surface + cleanup |
-| #48 | `f2c3a89` | docs(design-v2) — add B3 kickoff brief (activity feed + BadgeGrid surface + cleanup) |
-| #47 | `657d25b` | feat(design-v2-b2) — goal carousel + donut hero |
 
 ---
 
@@ -148,13 +148,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** B4 in flight — desktop sidebar shell + mobile bottom-nav (2026-05-07).
+> **Session boundary:** B5 in flight — tenant admin config surface + `companyMinimums` write path (2026-05-08).
 
-PR #49 shipped B3 (activity feed + BadgeGrid surface on AgentDashboard, derived client-side from already-loaded submissions, capped at 25 events in last 7 days). B3's audit caught `MotivationalCarousel.jsx` as a live consumer at `ManagerDashboard.jsx:24,247` — not orphaned as B2 had assumed; deletion remains deferred. PR #50 tightened post-merge cleanup: `git fetch origin && git pull origin main` is now mandatory before production walkthrough so worktree-local tooling (especially `scripts/exploration-walk.cjs`) matches origin, and `git branch -D` is the canonical local-branch cleanup since GitHub's `deleteBranchOnMerge` prunes the remote tracking ref before lowercase `-d` can verify merge status. PR #51 landed the B4 kickoff brief.
+PR #52 shipped B4 (desktop sidebar shell + mobile bottom-nav, wrapping both `AgentDashboard` and `ManagerDashboard`, relocating dark-mode toggle / `NotificationBell` / `SyncIndicator` into a new `TopBar` component, and absorbing the deferred g4-mix 2-col layout). B4 left tenant_admin sidebar items aligned with the manager set as an explicit boundary — the per-role nav differentiation lands in B5. PR #53 closed FOLLOW_UPS HIGH#3 by confirming through the all-roles production walkthrough that the role-label map gap is narrow to `sales_manager` only (other roles render correctly). PR #54 landed the B5 kickoff brief, completing the docs-first cycle for B5.
 
-B4 (this session) ships the desktop sidebar shell + mobile bottom-nav, wraps both dashboards, relocates the dark-mode toggle / `NotificationBell` / `SyncIndicator` into a new `TopBar`, and absorbs the deferred g4-mix 2-col layout (activity feed + achievements side-by-side at ≥1024px). B4 audit on arrival surfaced three surprise-stops resolved before any code: (1) only 2 of 5 role test accounts existed in `.env.local` — Kyron provisioned the missing 3 and renamed the existing manager key, so `.env.local` now holds `A11Y_AGENT_*` / `A11Y_BRANCH_MANAGER_*` / `A11Y_UNIT_MANAGER_*` / `A11Y_SALES_MANAGER_*` / `A11Y_TENANT_ADMIN_*`; (2) the mock arbitrates against the kickoff brief's drawer pattern — bottom-nav only at <768px, no hamburger drawer (PRD § 3.1 supports); (3) mock breakpoints (900 / 680) ceded to plan/kickoff (1024 / 768) during the token-swap pass. Provisioning surfaced 3 HIGH-priority pre-existing bugs likely regressed from the May 5 roles refactor (user-creation skips password-reset email; role-label map missing `sales_manager` → "Unknown" in TopBar/User Roster; possible wider mapping gap pending B4 walkthrough verification) — logged in `docs/FOLLOW_UPS.md`. Pre-existing-bug acknowledgment for B4: the all-roles preview matrix may show "Unknown" in the TopBar role label for `sales_manager` (and possibly `tenant_admin`/`platform_admin`); this is **not** a B4 regression and is documented in the PR description.
+B5 (this session) ships the editable `config/companyMinimums` write path (the only behavioural deliverable in Track B v2), the tenant_admin-specific sidebar nav diff, the Company Configuration card with 6 tiles (only `annualAPI` editable in B5; the other 5 render display-only), the Users-by-role distribution card, the Branch overview card with derived data (branch ID + agent count; `—` placeholders for `% to YTD goal` and `Last sync`), and the System Health stat tile rendered with a `—` placeholder (no uptime tracker exists). The B5 audit surfaced one SECURITY surprise-stop — `firestore.rules match /config/{docId}` write path missing tenant-scope check (`getTenantId() == tenantId`) — resolved by absorbing a 2-line guard into B5 ahead of the write helper. HIGH#2 (sales_manager label-map fix) absorbed as a tiny standalone commit. The Recent audit events card from the mock is dropped entirely from B5 (would be fabrication without an audit-log infrastructure, which is correctly deferred to P11). Routing decision: tenant_admin gets a new `<TenantAdminDashboard />` component routed from `App.jsx`, NOT a branch inside `ManagerDashboard.jsx` — keeps blast radius small and matches the PRD's "manager dashboard is split per role" direction.
 
-**Next: B5 (tenant admin config surface).** Reads/writes `config/companyMinimums`, surfaces the 6-tile config grid + role distribution + branch health overview. Largest behavioural deliverable in B5 is the editable `config/companyMinimums` write path. Gates on B4 merge + post-merge production walkthrough.
+**Next: Track C (configuration & data).** Real Tatil accounts seeded against `companyMinimums`, 2026 goals across the unitGoals/branchGoals/personal hierarchy, persistency historicals backfilled, cron + notifications verification. Track B (v2) closes with B5 — no B6 planned.
 
 ---
 

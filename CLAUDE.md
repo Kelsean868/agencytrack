@@ -16,9 +16,10 @@ Firebase project: agencytrack-2a610 | Hosted: agencytrack.vercel.app | Repo: git
 ## Workflow — IMPORTANT
 - **Never push directly to main.** Production auto-deploys from main on every merge.
 - Claude Code uses worktree branches by default. Push branch, open PR, verify Vercel preview, merge manually.
-- Vercel preview URL pattern: `agencytrack-git-{branch}.vercel.app`
+- Vercel preview URL pattern: `agencytrack-git-{branch}-kyron-marchan-s-projects.vercel.app`. The bare `agencytrack-git-{branch}.vercel.app` form is NOT what Vercel emits — per-team URLs include the team slug. Banked from PR #52 retrospective.
 - Always smoke-test the preview URL in incognito before merging
 - After merge, do a 60-second smoke test on production
+- **`.env.local` does NOT auto-propagate to feature worktrees.** Verification scripts that depend on `A11Y_*_EMAIL` / `A11Y_*_PASSWORD` (or `VERCEL_BYPASS_TOKEN`) need explicit setup in each worktree before they will run — the file is gitignored, so `git worktree add` does not copy it. Either copy `.env.local` from the main worktree (`cp ../AgencyTrack/.env.local .`) or run verification scripts from the main worktree against the preview URL. Banked from PR #52 retrospective.
 
 ## Tech Stack
 - React 19 + Vite (not Create React App)
