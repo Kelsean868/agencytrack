@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-07` |
-| Current main HEAD | `f2c3a89` (docs — add B3 kickoff brief: activity feed + BadgeGrid surface + cleanup, PR #48) |
-| Active track | Track B (v2) — B3 activity feed + BadgeGrid surface + cleanup (in progress on `design-v2-b3-activity-feed`). B1 medal badges shipped (PR #44), B1 retrospective scope correction shipped (PR #45), B2 kickoff brief landed (PR #46), B2 goal carousel + donut hero shipped (PR #47), B3 kickoff brief landed (PR #48). |
-| Next track | Track B (v2) — B4 desktop sidebar shell |
+| Current main HEAD | `5099019` (docs — add B4 kickoff brief: sidebar shell + mobile drawer, PR #51) |
+| Active track | Track B (v2) — B4 desktop sidebar shell + mobile bottom-nav (in progress on `design-v2-b4-shell`). B1 medal badges shipped (PR #44), B2 goal carousel shipped (PR #47), B3 activity feed + BadgeGrid surface shipped (PR #49), PR #50 tightened post-merge cleanup, PR #51 landed B4 kickoff brief. |
+| Next track | Track B (v2) — B5 tenant admin config |
 | Queued | **Track B (v2) — Design System v2 redesign.** 5-PR sequence (B1 medal badges → B2 goal carousel → B3 activity feed → B4 sidebar shell → B5 tenant admin config). Specs: `docs/design-v2-PRD.md` + `docs/design-v2-implementation.md`. Visual source of truth: `mocks/concept-4-complete.html`. Replaces original Track B "visible polish" scope. |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
@@ -126,11 +126,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #51 | `5099019` | docs(design-v2) — add B4 kickoff brief (sidebar shell + mobile drawer) |
+| #50 | `cb21cce` | chore(workflow) — tighten post-merge verification + clean stale remote branches |
+| #49 | `082a6b3` | feat(design-v2-b3) — activity feed + BadgeGrid surface + cleanup |
 | #48 | `f2c3a89` | docs(design-v2) — add B3 kickoff brief (activity feed + BadgeGrid surface + cleanup) |
 | #47 | `657d25b` | feat(design-v2-b2) — goal carousel + donut hero |
-| #46 | `93f1244` | docs(design-v2) — add B2 kickoff brief (goal carousel + donut hero) |
-| #45 | `52af738` | docs(design-v2-impl) — correct B1 PR scope after PR #44 retrospective |
-| #44 | `3b529a9` | feat(design-v2-b1) — medal badge system |
 
 ---
 
@@ -148,19 +148,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** End of a11y trilogy + mobile audit arc (2026-05-06). Track B v2 design materials introduced.
+> **Session boundary:** B4 in flight — desktop sidebar shell + mobile bottom-nav (2026-05-07).
 
-Today the a11y arc closed end-to-end. PR #30 brought manager surfaces to 0 serious axe violations, PR #31 took lint from 63 errors → 0 with a CI gate, PR #33 ran the agent surfaces + flipped 32 jsx-a11y rules from `warn` to `error` (the gate now fails any future regression at PR time), PR #34/#35 cleared MeetingMode dark-mode contrast and introduced the presentation token system (a theme-independent surface for the projector view), and PR #37/#38 finished dark-mode contrast across both manager (5 nodes) + agent surfaces (14+13 latent `bg-primary` sites). Both `node scripts/a11y-axe-scan.cjs --dark` and `node scripts/a11y-axe-scan-manager.cjs --dark` now report 0 color-contrast violations.
+PR #49 shipped B3 (activity feed + BadgeGrid surface on AgentDashboard, derived client-side from already-loaded submissions, capped at 25 events in last 7 days). B3's audit caught `MotivationalCarousel.jsx` as a live consumer at `ManagerDashboard.jsx:24,247` — not orphaned as B2 had assumed; deletion remains deferred. PR #50 tightened post-merge cleanup: `git fetch origin && git pull origin main` is now mandatory before production walkthrough so worktree-local tooling (especially `scripts/exploration-walk.cjs`) matches origin, and `git branch -D` is the canonical local-branch cleanup since GitHub's `deleteBranchOnMerge` prunes the remote tracking ref before lowercase `-d` can verify merge status. PR #51 landed the B4 kickoff brief.
 
-PR #36 shipped the pilot-critical mobile pass for the agent core flow at 320/375/768 (manager-surface mobile pass deferred as Mobile FU#1 — Tatil managers will use desktop/tablet so it's not pilot-blocking). PR #39 introduced the canonical Design System v2 materials (PRD, phased implementation plan, B1 kickoff prompt, 5 visual mocks with `concept-4-complete.html` as source of truth) — that's the queued Track B v2 work, ready to start B1 medal badges whenever Track A is done.
+B4 (this session) ships the desktop sidebar shell + mobile bottom-nav, wraps both dashboards, relocates the dark-mode toggle / `NotificationBell` / `SyncIndicator` into a new `TopBar`, and absorbs the deferred g4-mix 2-col layout (activity feed + achievements side-by-side at ≥1024px). B4 audit on arrival surfaced three surprise-stops resolved before any code: (1) only 2 of 5 role test accounts existed in `.env.local` — Kyron provisioned the missing 3 and renamed the existing manager key, so `.env.local` now holds `A11Y_AGENT_*` / `A11Y_BRANCH_MANAGER_*` / `A11Y_UNIT_MANAGER_*` / `A11Y_SALES_MANAGER_*` / `A11Y_TENANT_ADMIN_*`; (2) the mock arbitrates against the kickoff brief's drawer pattern — bottom-nav only at <768px, no hamburger drawer (PRD § 3.1 supports); (3) mock breakpoints (900 / 680) ceded to plan/kickoff (1024 / 768) during the token-swap pass. Provisioning surfaced 3 HIGH-priority pre-existing bugs likely regressed from the May 5 roles refactor (user-creation skips password-reset email; role-label map missing `sales_manager` → "Unknown" in TopBar/User Roster; possible wider mapping gap pending B4 walkthrough verification) — logged in `docs/FOLLOW_UPS.md`. Pre-existing-bug acknowledgment for B4: the all-roles preview matrix may show "Unknown" in the TopBar role label for `sales_manager` (and possibly `tenant_admin`/`platform_admin`); this is **not** a B4 regression and is documented in the PR description.
 
-Lint baseline is now 0 errors / 0 jsx-a11y warnings (3 deferred `react-hooks/exhaustive-deps` warnings tracked separately in `docs/FOLLOW_UPS.md`). Four mobile follow-ups (FU#1–#4) are documented but non-blocking. **Next: Track A PR-1 — WizardForm auto-save hardening (CLAUDE.md known-open-items #5 and #6).**
-
-2026-05-07 morning: Three docs-only PRs (#40, #41, #42) shipped overnight cleaning up CLAUDE.md/CONTEXT.md staleness drift. CLAUDE.md is now genuinely accurate (Track A marked complete, items 5+6+7+8 all verified shipped, role hierarchy reflects post-PR-3 reality with platform_admin, kickoff template now includes audit-on-arrival staleness safeguard).
-
-2026-05-07 afternoon: B1 medal badges shipped (PR #44) with retrospective scope correction (PR #45 — `awardsEngine.js` and the two awards panels were named in the implementation plan but turned out unrelated; doc fixed). B2 kickoff brief landed (PR #46). **Next: Track B (v2) — B2 goal carousel + donut hero.** B2 audit surfaced two field-name mistakes in the implementation plan (`personalCommitment` should be `personalAnnualAPI`; `extractFields(s).api` should be `extractFields(s).apiSold`) — corrected as commit 2 of B2's PR. Other B2 audit decisions: GoalCarousel takes the top dashboard position, replacing both the YTD API Progress card and `<MotivationalCarousel />` (only the dashboard import + render line removed; the `MotivationalCarousel.jsx` file stays untouched and orphaned, future cleanup PR may delete).
-
-2026-05-07 evening: B2 goal carousel + donut hero shipped (PR #47). B3 kickoff brief landed (PR #48). **Now in flight:** B3 activity feed + BadgeGrid surface + exploration-walk script swap. B3 audit caught a surprise-stop: `MotivationalCarousel.jsx` is **not** orphaned — `ManagerDashboard.jsx:24,247` still consumes it. The B2 audit's "orphaned" assertion missed the manager-side import; B3 kickoff brief inherited the mistake. Per S1 resolution, `MotivationalCarousel.jsx` deletion drops from B3 scope (logged under § Pending operational state). Other B3 audit decisions: 4-event-type vision pared back to **submission events + 3 weekly-criteria badge events** (`big_week`, `top_apps_week`, `century_dials` — only badges with deterministic per-submission trigger dates); rank events dropped (would require new Firestore reads, locked decision wins); application events dropped (no per-application records exist). 2-column g4-mix layout from mock deferred to B4 sidebar shell — B3 stacks vertically. "View all" link in mock activity feed wires to History tab via `setActiveTab('history')`. CareerPortal `<BadgeGrid />` site harmonized to labelled `<section>` for a11y parity.
+**Next: B5 (tenant admin config surface).** Reads/writes `config/companyMinimums`, surfaces the 6-tile config grid + role distribution + branch health overview. Largest behavioural deliverable in B5 is the editable `config/companyMinimums` write path. Gates on B4 merge + post-merge production walkthrough.
 
 ---
 

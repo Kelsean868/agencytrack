@@ -274,6 +274,18 @@ All four are confirmed in `.gitignore`.
 9. After merge, do a 60-second production smoke test
 9.5. After merge, before running production verification: `git fetch origin && git pull origin main`. The pull ensures worktree-local tooling (especially `scripts/exploration-walk.cjs` and any other verification scripts) matches the merged state on origin. Fetching alone leaves verification scripts at pre-merge versions and they may run stale (lesson from B3 post-merge — PR #49).
 
+### Post-merge local cleanup (standard sequence, not exception)
+
+After step 9.5's pull and after capturing the squash SHA from `git log origin/main --oneline -5`:
+
+- **Local branch deletion uses `git branch -D <feature-branch>` (force).** With GitHub's `deleteBranchOnMerge: true` enabled on the repo, the remote tracking ref is pruned automatically before local cleanup runs, so `git branch -d` (lowercase) cannot verify merge status and will refuse. `git branch -D` is the correct tool here — the squash SHA captured one step earlier verifies the diff is preserved in main. Reference: PR #50 retrospective, B3 post-merge.
+- **Untracked-doc collision on `git pull`:** If `git pull` aborts with `error: The following untracked working tree files would be overwritten by merge: <path>` for a doc that was drafted in the main worktree before opening its PR from a sibling worktree, this is the expected collision pattern (origin has the merged version, main worktree still has the local untracked draft). Resolve by:
+  1. `git hash-object <local-path>` and compare against `git show origin/main:<path> | git hash-object --stdin`.
+  2. If hashes match, content is identical — `rm <local-path>` and re-run `git pull`.
+  3. If hashes don't match, the local copy has unmerged edits — surface as a real conflict, do not auto-resolve.
+
+  Prevention (preferred): When opening a docs-only PR, draft the file directly inside the PR's feature worktree, not the main worktree. This keeps main's working tree clean and avoids the collision entirely. Reference: PR #51 retrospective, B-series cleanup pattern across PRs #45, #50, #51.
+
 ### Single-branch PR rule
 One worktree branch = one PR. Never extend an open PR by pushing unrelated work to its branch.
 If scope grows mid-PR, open a follow-up PR on a fresh branch after the current one merges.

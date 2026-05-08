@@ -1,24 +1,37 @@
 /**
  * exploration-walk.cjs
  *
- * Programmatic walkthrough of the agent flow that mirrors the manual
- * exploration template in scripts/exploration-template.md. Drives the app
- * with Playwright, captures console errors, network failures, uncaught
- * rejections, and structural-element verification. Saves a filled-out
- * markdown report to verification/exploration_<scope>_<timestamp>.md.
+ * Programmatic walkthrough that mirrors the manual exploration template in
+ * scripts/exploration-template.md. Drives the app with Playwright, captures
+ * console errors, network failures, uncaught rejections, and
+ * structural-element verification. Saves a filled-out markdown report to
+ * verification/exploration_<role>_<scope>_<timestamp>.md.
+ *
+ * Multi-role support (Design System v2 — B4): pass --role=<name> to run the
+ * walkthrough as that role. Each role supplies its own credentials (env
+ * vars) and its own tab plan. Without --role, defaults to agent for
+ * backwards compatibility.
  *
  * Use after every PR merge against production, and against any preview URL
  * during PR verification.
  *
  * Usage:
- *   node scripts/exploration-walk.cjs                                          # uses A11Y_BASE_URL or http://localhost:5173
- *   node scripts/exploration-walk.cjs --url=https://agencytrack.vercel.app     # explicit URL
- *   node scripts/exploration-walk.cjs --url=<preview> --label=pr1_preview      # custom report label
+ *   node scripts/exploration-walk.cjs                                       # default role: agent, uses A11Y_BASE_URL or http://localhost:5173
+ *   node scripts/exploration-walk.cjs --url=https://agencytrack.vercel.app  # explicit URL, default role: agent
+ *   node scripts/exploration-walk.cjs --url=<preview> --label=pr1_preview   # custom report label
+ *   node scripts/exploration-walk.cjs --role=branch_manager --url=<preview> # walk a different role
+ *   node scripts/exploration-walk.cjs --role=tenant_admin --url=<preview>   # ditto
+ *
+ * Roles supported: agent | branch_manager | unit_manager | sales_manager | tenant_admin
  *
  * Env (read from .env.local):
- *   A11Y_AGENT_EMAIL, A11Y_AGENT_PASSWORD  — required
- *   VERCEL_BYPASS_TOKEN                    — required for protected previews
- *   A11Y_BASE_URL                          — fallback if --url not passed
+ *   A11Y_AGENT_EMAIL, A11Y_AGENT_PASSWORD                  — agent walk
+ *   A11Y_BRANCH_MANAGER_EMAIL, A11Y_BRANCH_MANAGER_PASSWORD — branch_manager walk
+ *   A11Y_UNIT_MANAGER_EMAIL, A11Y_UNIT_MANAGER_PASSWORD     — unit_manager walk
+ *   A11Y_SALES_MANAGER_EMAIL, A11Y_SALES_MANAGER_PASSWORD   — sales_manager walk
+ *   A11Y_TENANT_ADMIN_EMAIL, A11Y_TENANT_ADMIN_PASSWORD     — tenant_admin walk
+ *   VERCEL_BYPASS_TOKEN                                     — required for protected previews
+ *   A11Y_BASE_URL                                           — fallback if --url not passed
  *
  * Bypass-cookie auto-detection:
  *   - URL on agencytrack.vercel.app domain with a "-git-" or hashed subdomain → preview, wires bypass
@@ -75,12 +88,82 @@ function arg(name, fallback) {
 
 const BASE_URL = arg('url', process.env.A11Y_BASE_URL || 'http://localhost:5173');
 const LABEL    = arg('label', null);
-const EMAIL    = process.env.A11Y_AGENT_EMAIL;
-const PASSWORD = process.env.A11Y_AGENT_PASSWORD;
+const ROLE     = arg('role', 'agent');
 const BYPASS   = process.env.VERCEL_BYPASS_TOKEN || '';
 
+// ── Role profiles (multi-role walkthrough, B4) ──────────────────────────
+// Each role drives different credentials, a different home-tab name, a
+// different landing-text wait selector, and a different tab plan. The
+// manager profile is shared across all 4 manager-tier roles since they
+// render identical sidebars in B4 — per-role differentiation lands in
+// B5/P9.
+const MANAGER_TABS = [
+  ['5',   'Team'],
+  ['6',   'Campaigns'],
+  ['7',   'Awards'],
+  ['8',   'Master Sheet'],
+  ['9',   'Compliance'],
+  ['10',  'Persistency'],
+  ['11',  'Goals'],
+  ['12',  'Settlements'],
+  ['13',  'Leaderboard'],
+  ['14',  'Profile'],
+];
+const AGENT_TABS = [
+  ['5',   'Career'],
+  ['6',   'Awards'],
+  ['14',  'Leaderboard'],
+  ['15a', 'History'],
+  ['16',  'Profile'],
+];
+const ROLE_PROFILES = {
+  agent: {
+    envEmail: 'A11Y_AGENT_EMAIL',
+    envPassword: 'A11Y_AGENT_PASSWORD',
+    homeTabName: 'Dashboard',
+    landingText: 'Recent Activity',
+    tabs: AGENT_TABS,
+  },
+  branch_manager: {
+    envEmail: 'A11Y_BRANCH_MANAGER_EMAIL',
+    envPassword: 'A11Y_BRANCH_MANAGER_PASSWORD',
+    homeTabName: 'Overview',
+    landingText: 'Team YTD API',
+    tabs: MANAGER_TABS,
+  },
+  unit_manager: {
+    envEmail: 'A11Y_UNIT_MANAGER_EMAIL',
+    envPassword: 'A11Y_UNIT_MANAGER_PASSWORD',
+    homeTabName: 'Overview',
+    landingText: 'Team YTD API',
+    tabs: MANAGER_TABS,
+  },
+  sales_manager: {
+    envEmail: 'A11Y_SALES_MANAGER_EMAIL',
+    envPassword: 'A11Y_SALES_MANAGER_PASSWORD',
+    homeTabName: 'Overview',
+    landingText: 'Team YTD API',
+    tabs: MANAGER_TABS,
+  },
+  tenant_admin: {
+    envEmail: 'A11Y_TENANT_ADMIN_EMAIL',
+    envPassword: 'A11Y_TENANT_ADMIN_PASSWORD',
+    homeTabName: 'Overview',
+    landingText: 'Team YTD API',
+    tabs: MANAGER_TABS,
+  },
+};
+
+const profile = ROLE_PROFILES[ROLE];
+if (!profile) {
+  console.error(`Unknown --role=${ROLE}. Supported: ${Object.keys(ROLE_PROFILES).join(', ')}`);
+  process.exit(1);
+}
+const EMAIL    = process.env[profile.envEmail];
+const PASSWORD = process.env[profile.envPassword];
+
 if (!EMAIL || !PASSWORD) {
-  console.error('Missing A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD in .env.local');
+  console.error(`Missing ${profile.envEmail} / ${profile.envPassword} in .env.local for role=${ROLE}`);
   process.exit(1);
 }
 
@@ -96,7 +179,7 @@ function detectScope(url) {
   }
 }
 const { scope, needsBypass } = detectScope(BASE_URL);
-const REPORT_LABEL = LABEL || scope;
+const REPORT_LABEL = LABEL || `${scope}_${ROLE}`;
 
 // ── Known-harmless console / network patterns (per exploration-template.md) ─
 const HARMLESS_CONSOLE = [
@@ -117,7 +200,7 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
 (async () => {
   const startedAt = new Date();
   const stamp = startedAt.toISOString().replace(/[:.]/g, '').slice(0, 15);
-  console.log(`[exploration-walk] target=${BASE_URL} scope=${scope} bypass=${needsBypass ? 'on' : 'off'}`);
+  console.log(`[exploration-walk] target=${BASE_URL} role=${ROLE} scope=${scope} bypass=${needsBypass ? 'on' : 'off'}`);
 
   const browser = await chromium.launch();
   const ctx = await browser.newContext();
@@ -182,20 +265,22 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
       await page.fill('input[type="email"]', EMAIL);
       await page.fill('input[type="password"]', PASSWORD);
       await page.getByRole('button', { name: /sign in/i }).click();
-      await page.waitForSelector('text=Dashboard', { timeout: 20_000 });
+      await page.waitForSelector(`text=${profile.homeTabName}`, { timeout: 20_000 });
     });
-    await step('2a', 'AgentDashboard has 1 main, 1 nav, 1 header', async () => {
-      const mains   = await page.locator('main').count();
-      const navs    = await page.locator('nav[aria-label="Dashboard sections"]').count();
-      const headers = await page.locator('header').count();
-      if (mains !== 1)   throw new Error(`expected 1 main, got ${mains}`);
-      if (navs !== 1)    throw new Error(`expected 1 nav, got ${navs}`);
-      if (headers !== 1) throw new Error(`expected 1 header, got ${headers}`);
+    await step('2a', 'Dashboard shell: 1 main, 1 header, 1 sidebar nav, 1 bottom-nav (B4)', async () => {
+      const mains       = await page.locator('main').count();
+      const headers     = await page.locator('header').count();
+      const sidebarNavs = await page.locator('nav[aria-label="Primary navigation"]').count();
+      const bottomNavs  = await page.locator('nav[aria-label="Quick navigation"]').count();
+      if (mains !== 1)        throw new Error(`expected 1 main, got ${mains}`);
+      if (headers !== 1)      throw new Error(`expected 1 header, got ${headers}`);
+      if (sidebarNavs !== 1)  throw new Error(`expected 1 sidebar nav, got ${sidebarNavs}`);
+      if (bottomNavs !== 1)   throw new Error(`expected 1 bottom-nav (DOM, hidden via CSS at desktop), got ${bottomNavs}`);
     });
 
-    // ── 3: Activity feed rendered (post-B3 dashboard heading) ────────────────
-    await step('3', 'Wait for dashboard (Recent Activity rendered)', async () => {
-      await page.waitForSelector('text=Recent Activity', { timeout: 10_000 });
+    // ── 3: Landing surface rendered (per-role landmark text) ─────────────────
+    await step('3', `Wait for dashboard (${profile.landingText} rendered)`, async () => {
+      await page.waitForSelector(`text=${profile.landingText}`, { timeout: 10_000 });
     });
 
     // ── 4: Screenshot light ──────────────────────────────────────────────────
@@ -203,14 +288,8 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
       await page.screenshot({ path: path.join(verificationDir, `${REPORT_LABEL}_dashboard-light_${stamp}.png`), fullPage: true });
     });
 
-    // ── 5–10, 14, 15a, 16: tabs ──────────────────────────────────────────────
-    const tabs = [
-      ['5',   'Career'],
-      ['6',   'Awards'],
-      ['14',  'Leaderboard'],
-      ['15a', 'History'],
-      ['16',  'Profile'],
-    ];
+    // ── 5–N: per-role tab walkthrough ────────────────────────────────────────
+    const tabs = profile.tabs;
     for (const [id, name] of tabs) {
       await step(id, `${name} tab renders`, async () => {
         await page.getByRole('button', { name: new RegExp(`^${name}$`, 'i') }).click();
@@ -222,12 +301,15 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
       });
     }
 
-    // ── 7–9: awards subtabs ──────────────────────────────────────────────────
-    await step('6', 'Awards tab', async () => {
-      await page.getByRole('button', { name: /^Awards$/i }).click();
+    // ── awards-pre, 7-9: awards subtabs ──────────────────────────────────────
+    // The tab loop above lands on the last tab in the role's plan (Profile).
+    // Navigate back to Awards before testing subtabs. Both agent and manager
+    // sidebars expose an "Awards" item, so this works across all roles.
+    await step('awards-pre', 'Navigate back to Awards tab', async () => {
+      await page.getByRole('button', { name: /^Awards$/i }).first().click();
       await page.waitForTimeout(400);
     });
-    await step('7-9', 'Awards subtabs (Quarterly/Annual/Club)', async () => {
+    await step('7-9', 'Awards subtabs (Quarterly/Annual/Club, if present)', async () => {
       for (const sub of ['Quarterly', 'Annual', 'Club']) {
         const btn = page.getByRole('button', { name: new RegExp(`^${sub}$`, 'i') }).first();
         if (await btn.isVisible().catch(() => false)) {
@@ -239,7 +321,9 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
 
     // ── 20–22: dark mode ─────────────────────────────────────────────────────
     await step('20', 'Toggle dark mode', async () => {
-      await page.getByRole('button', { name: /^dashboard$/i }).first().click();
+      // Navigate back to home tab (per role) before toggling — the screenshot
+      // in step 21 captures the role's primary surface.
+      await page.getByRole('button', { name: new RegExp(`^${profile.homeTabName}$`, 'i') }).first().click();
       await page.waitForTimeout(300);
       await page.getByRole('button', { name: /toggle dark mode/i }).click();
       await page.waitForTimeout(400);
@@ -256,7 +340,8 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
       if (isDark) throw new Error('html.dark class still present');
     });
 
-    // ── 23, 23a, 26: wizard ──────────────────────────────────────────────────
+    // ── 23, 23a, 26: wizard (both agent and managers expose
+    //  "Submit Weekly Report" on their home tab) ────────────────────────────
     await step('23', 'Open wizard (Select Week renders)', async () => {
       await page.getByRole('button', { name: /Submit Weekly Report/i }).click();
       await page.waitForSelector('text=Select Week', { timeout: 10_000 });
@@ -273,7 +358,7 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
     });
     await step('26', 'Close wizard (returns to dashboard)', async () => {
       await page.getByRole('button', { name: /^close$/i }).click();
-      await page.waitForSelector('text=Dashboard', { timeout: 5_000 });
+      await page.waitForSelector(`text=${profile.homeTabName}`, { timeout: 5_000 });
       const onWizard = await page.locator('text=Select Week').count();
       if (onWizard > 0) throw new Error('still on wizard after close');
     });
@@ -293,32 +378,30 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
   }
 
   // ── Compose report ─────────────────────────────────────────────────────────
+  // Build the action list dynamically from the role's tab plan so the
+  // checklist always matches what was actually exercised.
+  const tabActions = profile.tabs.flatMap(([id, name]) => [
+    [id,         `${name} tab renders`],
+    [`${id}a`,   `${name} tab — single <main>`],
+  ]);
   const allActions = [
-    ['1',    'Navigate to target URL (login screen renders)'],
-    ['1a',   'LoginScreen has exactly one <main>'],
-    ['2',    'Login (auth chain returns 200)'],
-    ['2a',   'AgentDashboard has 1 main, 1 nav, 1 header'],
-    ['3',    'Wait for dashboard (Recent Activity rendered)'],
-    ['4',    'Screenshot dashboard (light mode)'],
-    ['5',    'Career tab renders'],
-    ['5a',   'Career tab — single <main>'],
-    ['6',    'Awards tab renders'],
-    ['6a',   'Awards tab — single <main>'],
-    ['7-9',  'Awards subtabs (Quarterly/Annual/Club)'],
-    ['14',   'Leaderboard tab renders'],
-    ['14a',  'Leaderboard tab — single <main>'],
-    ['15a',  'History tab renders'],
-    ['15aa', 'History tab — single <main>'],
-    ['16',   'Profile tab renders'],
-    ['16a',  'Profile tab — single <main>'],
-    ['20',   'Toggle dark mode'],
-    ['21',   'Screenshot dashboard (dark mode)'],
-    ['22',   'Toggle back to light mode'],
-    ['23',   'Open wizard (Select Week renders)'],
-    ['23a',  'Wizard has header + main + label/select binding'],
-    ['26',   'Close wizard (returns to dashboard)'],
-    ['27',   'Sign out'],
-    ['28',   'Verify login redirect'],
+    ['1',           'Navigate to target URL (login screen renders)'],
+    ['1a',          'LoginScreen has exactly one <main>'],
+    ['2',           'Login (auth chain returns 200)'],
+    ['2a',          'Dashboard shell: 1 main, 1 header, 1 sidebar nav, 1 bottom-nav (B4)'],
+    ['3',           `Wait for dashboard (${profile.landingText} rendered)`],
+    ['4',           'Screenshot dashboard (light mode)'],
+    ...tabActions,
+    ['awards-pre',  'Navigate back to Awards tab'],
+    ['7-9',         'Awards subtabs (Quarterly/Annual/Club, if present)'],
+    ['20',          'Toggle dark mode'],
+    ['21',          'Screenshot dashboard (dark mode)'],
+    ['22',          'Toggle back to light mode'],
+    ['23',          'Open wizard (Select Week renders)'],
+    ['23a',         'Wizard has header + main + label/select binding'],
+    ['26',          'Close wizard (returns to dashboard)'],
+    ['27',          'Sign out'],
+    ['28',          'Verify login redirect'],
   ];
   const completed = allActions.filter(([id]) => actionsCompleted.has(id)).length;
 
@@ -327,8 +410,9 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
   lines.push('');
   lines.push(`**Target:** ${BASE_URL}`);
   lines.push(`**Scope:** ${scope}${needsBypass ? ' (bypass cookie wired)' : ''}`);
+  lines.push(`**Role:** ${ROLE}`);
   lines.push(`**Date:** ${startedAt.toISOString()}`);
-  lines.push(`**Test agent:** ${EMAIL}`);
+  lines.push(`**Test user:** ${EMAIL}`);
   lines.push('');
   lines.push('## Headline');
   lines.push('');
