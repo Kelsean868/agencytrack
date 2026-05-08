@@ -116,6 +116,16 @@ const AGENT_TABS = [
   ['15a', 'History'],
   ['16',  'Profile'],
 ];
+// Design System v2 — B5: tenant_admin renders the new TenantAdminDashboard
+// surface, NOT the manager dashboard. Tab list mirrors the actionable
+// sidebar items only — Branches / Roles & Permissions / Audit Log /
+// Billing / Settings are aria-disabled stubs and intentionally skipped.
+const TENANT_ADMIN_TABS = [
+  ['5', 'Company Config'],
+  ['6', 'All Users'],
+  ['7', 'Campaigns'],
+  ['8', 'Profile'],
+];
 const ROLE_PROFILES = {
   agent: {
     envEmail: 'A11Y_AGENT_EMAIL',
@@ -148,9 +158,13 @@ const ROLE_PROFILES = {
   tenant_admin: {
     envEmail: 'A11Y_TENANT_ADMIN_EMAIL',
     envPassword: 'A11Y_TENANT_ADMIN_PASSWORD',
-    homeTabName: 'Overview',
-    landingText: 'Team YTD API',
-    tabs: MANAGER_TABS,
+    // B5: tenant_admin renders TenantAdminDashboard with the Dashboard
+    // tab as home. Landing text matches the <h2> heading on that tab
+    // (Users by role card) — the Company Config card lives on a separate
+    // tab now per the locked Dashboard / Company Config split.
+    homeTabName: 'Dashboard',
+    landingText: 'Users by role',
+    tabs: TENANT_ADMIN_TABS,
   },
 };
 

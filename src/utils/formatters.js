@@ -10,6 +10,7 @@ export const ROLE_LABELS = {
   platform_admin: 'Platform Admin',
   branch_manager: 'Branch Manager',
   unit_manager: 'Unit Manager',
+  sales_manager: 'Sales Manager',
   agent: 'Agent',
 };
 

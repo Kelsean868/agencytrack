@@ -59,21 +59,28 @@ export default function Sidebar({
           {section.items.map((item) => {
             const Icon = item.Icon;
             const isActive = item.tabId != null && activeTab === item.tabId;
+            const isDisabled = item.disabled === true;
             return (
               <button
                 key={item.id}
                 type="button"
-                className={`sidebar-link${isActive ? ' active' : ''}`}
+                className={`sidebar-link${isActive ? ' active' : ''}${isDisabled ? ' sidebar-link-disabled' : ''}`}
                 onClick={() => {
+                  if (isDisabled) return;
                   if (item.tabId != null) setActiveTab(item.tabId);
                   else if (item.action != null) onAction?.(item.action);
                 }}
                 aria-current={isActive ? 'page' : undefined}
-                title={item.label}
+                aria-disabled={isDisabled || undefined}
+                tabIndex={isDisabled ? -1 : undefined}
+                title={isDisabled ? `${item.label} · Coming soon` : item.label}
               >
                 <Icon size={18} />
                 <span>{item.label}</span>
-                {item.badgeCount != null && item.badgeCount > 0 && (
+                {isDisabled && (
+                  <span className="badge badge-soon" aria-label="Coming soon">Soon</span>
+                )}
+                {!isDisabled && item.badgeCount != null && item.badgeCount > 0 && (
                   <span
                     className={`badge${item.badgeVariant === 'warning' ? ' badge-warning' : ''}`}
                     aria-label={`${item.badgeCount} ${item.badgeCountLabel ?? 'pending'}`}

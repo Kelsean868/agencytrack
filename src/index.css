@@ -1101,3 +1101,106 @@ h1, h2, h3, h4 {
   }
   .bottom-nav { display: flex; }
 }
+/* ── Tenant Admin Company Config + dashboard surfaces (Design System v2 — B5) ─ */
+
+.config-tile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (min-width: 768px) {
+  .config-tile-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.config-tile {
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: var(--color-surface);
+}
+
+.config-tile-editable {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-tint);
+}
+
+.config-tile-label {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.config-tile-value {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-top: 6px;
+  color: var(--color-text);
+}
+
+.config-tile-sub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 4px;
+}
+
+/* Users-by-role distribution bars */
+.role-bar {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--color-surface-muted);
+  overflow: hidden;
+}
+
+.role-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--color-primary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .role-bar-fill { transition: width 0.4s ease; }
+}
+
+.role-bar-fill-primary { background: var(--color-primary); }
+.role-bar-fill-success { background: var(--color-success); }
+.role-bar-fill-warning { background: var(--color-warning); }
+.role-bar-fill-gold    { background: var(--color-gold); }
+.role-bar-fill-ink     { background: var(--color-ink); }
+
+/* Dashboard 2-column layout for Users-by-role + Branch overview */
+.tenant-admin-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+@media (min-width: 1024px) {
+  .tenant-admin-grid-2col {
+    grid-template-columns: 1.6fr 1fr;
+  }
+}
+
+/* Sidebar disabled-item state (stub nav items: Branches, Roles & Permissions,
+   Audit Log, Billing, Settings — surfaces don't exist in B5). */
+.sidebar-link.sidebar-link-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  background: transparent;
+}
+.sidebar-link.sidebar-link-disabled:hover {
+  background: transparent;
+  color: inherit;
+}
+
+.badge.badge-soon {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
