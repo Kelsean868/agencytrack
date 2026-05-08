@@ -1055,32 +1055,55 @@ h1, h2, h3, h4 {
 @media (min-width: 1024px) {
   .sidebar-collapsed .shell { grid-template-columns: 72px 1fr; }
   .sidebar-collapsed .sidebar { padding: 22px 8px; }
+  /* Hide text-only metadata that doesn't fit in the 72px column.
+     The collapse toggle and sign-out button stay visible — they're the
+     only interactive paths out of collapsed-state and out of the app. */
   .sidebar-collapsed .sidebar-brand-name,
   .sidebar-collapsed .sidebar-section,
   .sidebar-collapsed .sidebar-link span,
   .sidebar-collapsed .sidebar-link .badge,
-  .sidebar-collapsed .sidebar-foot-info,
-  .sidebar-collapsed .sidebar-foot-action,
-  .sidebar-collapsed .sidebar-collapse-btn { display: none; }
+  .sidebar-collapsed .sidebar-foot-info { display: none; }
   .sidebar-collapsed .sidebar-link { justify-content: center; padding: 10px 8px; }
-  .sidebar-collapsed .sidebar-foot { justify-content: center; }
-  .sidebar-collapsed .sidebar-brand { justify-content: center; padding: 0 0 22px; }
+  /* Stack brand mark + collapse toggle vertically. The toggle's default
+     `margin-left: auto` pushes it right when expanded; reset for the
+     vertical layout. */
+  .sidebar-collapsed .sidebar-brand {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 0 0 22px;
+  }
+  .sidebar-collapsed .sidebar-collapse-btn { margin-left: 0; }
+  /* Stack avatar + sign-out vertically in the foot. */
+  .sidebar-collapsed .sidebar-foot {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
 }
 
 /* ── Responsive: tablet (768–1023px, force 72px) ─────────────────────── */
 @media (min-width: 768px) and (max-width: 1023px) {
   .shell { grid-template-columns: 72px 1fr; }
   .sidebar { padding: 22px 8px; }
+  /* Same hide-list as the collapsed desktop rule, plus the collapse toggle
+     itself (intentionally hidden — the tablet breakpoint forces 72px so
+     the user has nothing to expand to). Sign-out stays visible — it's the
+     only sign-out path on tablet, no fallback exists elsewhere. */
   .sidebar-brand-name,
   .sidebar-section,
   .sidebar-link span,
   .sidebar-link .badge,
   .sidebar-foot-info,
-  .sidebar-foot-action,
   .sidebar-collapse-btn { display: none; }
   .sidebar-link { justify-content: center; padding: 10px 8px; }
-  .sidebar-foot { justify-content: center; }
   .sidebar-brand { justify-content: center; padding: 0 0 22px; }
+  /* Stack avatar + sign-out vertically — same layout as desktop-collapsed. */
+  .sidebar-foot {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
   .topbar { padding: 16px 20px; }
   .topbar-search { max-width: 240px; }
   .shell-content { padding: 20px 20px; }

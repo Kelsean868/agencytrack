@@ -354,6 +354,59 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
       if (isDark) throw new Error('html.dark class still present');
     });
 
+    // ── sidebar-22a/b/c: collapsed-sidebar regression check ──────────────────
+    //  Permanent guard for the post-B4 P0 (PR #56). When the sidebar
+    //  collapses, both the expand toggle and the sign-out button MUST stay
+    //  reachable — they're the only paths out of the collapsed state and
+    //  out of the app. The bug reproducer becomes a regression check, same
+    //  precedent as scripts/test-b5-config-rule.js.
+    await step('sidebar-22a', 'Collapse sidebar (html.sidebar-collapsed set)', async () => {
+      await page.locator('button[aria-label="Collapse sidebar"]').click();
+      await page.waitForTimeout(300);
+      const collapsed = await page.evaluate(
+        () => document.documentElement.classList.contains('sidebar-collapsed')
+      );
+      if (!collapsed) throw new Error('html.sidebar-collapsed not set after click');
+    });
+    await step('sidebar-22b', 'Toggle + sign-out reachable in collapsed state', async () => {
+      const state = await page.evaluate(() => {
+        const probe = (sel) => {
+          const el = document.querySelector(sel);
+          if (!el) return { exists: false };
+          const cs = getComputedStyle(el);
+          const r  = el.getBoundingClientRect();
+          return {
+            exists: true,
+            display:    cs.display,
+            visibility: cs.visibility,
+            width:  r.width,
+            height: r.height,
+          };
+        };
+        return {
+          toggle:     probe('.sidebar-collapse-btn'),
+          signOut:    probe('.sidebar-foot-action'),
+          sidebarPx:  document.querySelector('.sidebar')?.getBoundingClientRect().width ?? null,
+        };
+      });
+      const reachable = (s) =>
+        s.exists && s.display !== 'none' && s.visibility !== 'hidden' && s.width > 0 && s.height > 0;
+      if (!reachable(state.toggle))
+        throw new Error(`expand toggle not reachable: ${JSON.stringify(state.toggle)}`);
+      if (!reachable(state.signOut))
+        throw new Error(`sign-out not reachable: ${JSON.stringify(state.signOut)}`);
+      if (state.sidebarPx == null || state.sidebarPx > 100)
+        throw new Error(`sidebar not at collapsed width: ${state.sidebarPx}`);
+    });
+    await step('sidebar-22c', 'Re-expand via same toggle (html.sidebar-collapsed cleared)', async () => {
+      await page.locator('button[aria-label="Expand sidebar"]').click();
+      await page.waitForTimeout(300);
+      const collapsed = await page.evaluate(
+        () => document.documentElement.classList.contains('sidebar-collapsed')
+      );
+      if (collapsed) throw new Error('html.sidebar-collapsed still set after expand click');
+    });
+
     // ── 23, 23a, 26: wizard (both agent and managers expose
     //  "Submit Weekly Report" on their home tab) ────────────────────────────
     await step('23', 'Open wizard (Select Week renders)', async () => {
@@ -411,6 +464,9 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
     ['20',          'Toggle dark mode'],
     ['21',          'Screenshot dashboard (dark mode)'],
     ['22',          'Toggle back to light mode'],
+    ['sidebar-22a', 'Collapse sidebar (html.sidebar-collapsed set)'],
+    ['sidebar-22b', 'Toggle + sign-out reachable in collapsed state'],
+    ['sidebar-22c', 'Re-expand via same toggle (html.sidebar-collapsed cleared)'],
     ['23',          'Open wizard (Select Week renders)'],
     ['23a',         'Wizard has header + main + label/select binding'],
     ['26',          'Close wizard (returns to dashboard)'],
