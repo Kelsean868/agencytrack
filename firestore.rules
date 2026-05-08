@@ -118,7 +118,11 @@ service cloud.firestore {
 
       match /config/{docId} {
         allow read:  if isSignedIn() && getTenantId() == tenantId;
-        allow write: if isSignedIn() && getRole() in ['platform_admin', 'tenant_admin'];
+        // SEC: tenant-scope guard. platform_admin is cross-tenant by design;
+        // tenant_admin must be writing into their own tenant's config.
+        allow write: if isSignedIn()
+          && getRole() in ['platform_admin', 'tenant_admin']
+          && (getRole() == 'platform_admin' || getTenantId() == tenantId);
       }
 
       match /settlements/{docId} {
