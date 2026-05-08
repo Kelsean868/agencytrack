@@ -14,6 +14,7 @@ import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName
 import { EMAIL_RE } from '../../utils/validators';
 import DeactivateConfirmDialog from './DeactivateConfirmDialog';
 import BulkImportUsersModal from '../admin/BulkImportUsersModal';
+import BulkImportGoalsModal from '../admin/BulkImportGoalsModal';
 
 // Mirrors CREATION_MATRIX in functions/index.js
 const CREATABLE_ROLES = {
@@ -362,6 +363,7 @@ export default function UserManagementPanel() {
   const [loading, setLoading]           = useState(true);
   const [showDrawer, setShowDrawer]     = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
+  const [showBulkImportGoals, setShowBulkImportGoals] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
   // Toast shape: null | { kind: 'success' | 'warning', message: string, email?: string }
   // 'warning' shows a Retry button and does not auto-dismiss.
@@ -517,7 +519,15 @@ export default function UserManagementPanel() {
               onClick={() => setShowBulkImport(true)}
               className="text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 h-9 rounded-lg transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
             >
-              <Upload size={14} /> Bulk Import
+              <Upload size={14} /> Bulk Import Users
+            </button>
+          )}
+          {canBulkImport && (
+            <button
+              onClick={() => setShowBulkImportGoals(true)}
+              className="text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 px-3 h-9 rounded-lg transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+            >
+              <Upload size={14} /> Bulk Import Goals
             </button>
           )}
           {canCreate && (
@@ -622,12 +632,21 @@ export default function UserManagementPanel() {
         />
       )}
 
-      {/* Bulk import (tenant_admin / platform_admin only) */}
+      {/* Bulk import users (tenant_admin / platform_admin only) */}
       {showBulkImport && (
         <BulkImportUsersModal
           tenantId={tenantId}
           onClose={() => setShowBulkImport(false)}
           onImported={() => loadUsers()}
+        />
+      )}
+
+      {/* Bulk import 2026 personal commitments (tenant_admin / platform_admin only) */}
+      {showBulkImportGoals && (
+        <BulkImportGoalsModal
+          tenantId={tenantId}
+          onClose={() => setShowBulkImportGoals(false)}
+          onImported={() => { /* user list does not change; no reload needed */ }}
         />
       )}
     </div>
