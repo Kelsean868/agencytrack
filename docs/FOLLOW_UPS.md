@@ -269,6 +269,107 @@ reason to touch the file.
 
 ---
 
+## F3 — `BulkImportUsersModal.jsx:244` error-code map missing `internal` — RESOLVED in C3 (alongside-fix)
+
+**Surfaced** during C2 production walkthrough. The error-code → friendly-
+message map at `BulkImportUsersModal.jsx:244` handles `unavailable`,
+`deadline-exceeded`, and `cancelled`, but not `internal`. Firebase
+Functions returns `internal` on aborted / network-failed Callable requests
+that don't hit a more-specific error code, so the user sees the raw
+error string instead of the friendly "Couldn't reach the server" copy.
+
+**Fix:** add `'internal'` to the same friendly-message branch alongside
+`'unavailable'` / `'cancelled'` / `'deadline-exceeded'`. ~3 line change.
+
+**Resolved 2026-05-08 in C3** as an alongside-fix — the new
+`BulkImportGoalsModal.jsx` mirrors the same error-code map shape and
+includes `'internal'` from the start; the C2 modal got the same line
+added.
+
+---
+
+## Permanent test-data cleanup utility (MEDIUM, surfaced 2026-05-08 during C3)
+
+**Scope:** C2's verification used a one-off cleanup script
+(`scripts/cleanup-c2-test-users.cjs`, run by Kyron with `--dry-run` →
+review → live). C3's verification embeds the same pattern directly in
+`verification/c3-goals-shots.cjs` with a built-in batch-id-match guard
+(`csvImportBatchId === TEST_BATCH_ID` check before each `deleteDoc`).
+
+The pattern is reusable enough to formalize as a permanent utility:
+`scripts/cleanup-test-records.cjs` with `--dry-run`, `--collection=<name>`,
+`--batch-id=<uuid>`, and `--email-pattern=<regex>` flags. Defensive
+batch-id-match guard always on. Replaces ad-hoc per-PR cleanup scripts
+(C2 had its own; C3 embedded; future bulk-import PRs would otherwise
+each grow their own).
+
+**Fix shape:** scaffold the script at `scripts/cleanup-test-records.cjs`
+modeled on the C3 verification script's cleanup phase. firebase-admin
+require path follows the CLAUDE.md tooling note
+(`require('../functions/node_modules/firebase-admin')` or run from
+`functions/`). Document at the top of the script: NEVER run without
+`--dry-run` first; NEVER bypass the batch-id-match guard.
+
+Priority: **MEDIUM**. Only useful when the next bulk-import PR ships;
+defer until then. Until then, copy the inline pattern from
+`verification/c3-goals-shots.cjs`.
+
+---
+
+## Extract `CsvImportModalShell` (MEDIUM, surfaced 2026-05-08 during C3)
+
+**Scope:** C3 is the second consumer of the four-step bulk-import wizard
+pattern (Step indicator → file picker → preview table → progress →
+summary). The SS-2 commitment from C1 says wait for the third consumer
+before extracting a shared shell. C3 honors that — copies from
+`BulkImportUsersModal.jsx` precedent — and files this for the third
+consumer threshold.
+
+**Pieces to extract** when the third consumer lands:
+- `StepIndicator` component (4-step `<ol aria-label="Import progress">`
+  with `aria-current="step"` semantics).
+- `StatusPill` component (valid / warning / error pill with Lucide
+  icon + tokenized colors).
+- Four-step state machine wrapper (`step` state + `setStep`).
+- `CancelConfirmDialog` mid-flight pattern (`role="alertdialog"` +
+  Escape-handling delegated via `escapeDisabled` flag on parent's
+  `useFocusTrap`).
+- Template-CSV download CTA wiring (`Papa.unparse` + `downloadCSV`).
+- Error-CSV download CTA wiring (filtered failures + `Papa.unparse`).
+
+**Likely third consumers:** bulk persistency entry, bulk activity
+entry, bulk campaign creation. Until then: copy-from-precedent is
+acceptable.
+
+Priority: **MEDIUM**. Only meaningful when the third consumer
+materializes.
+
+---
+
+## Goal-doc audit-field naming inconsistency (LOW, surfaced 2026-05-08 during C3)
+
+**Scope:** `unitGoals` and `branchGoals` write `setAt` as the audit
+timestamp; the personal-commitment doc (under the same `goals`
+collection) writes `updatedAt`. The inconsistency predates C3 — both
+patterns ship via the existing `goalsService.js`. C3 deliberately keeps
+`updatedAt` for personal commitments to stay consistent with the existing
+`setGoals` write (the field that downstream readers — `getGoalHierarchy`,
+`CareerPortal` — already consume).
+
+**Fix shape (when undertaken):**
+- Pick one canonical name. `updatedAt` is the more conventional Firestore
+  audit field; `setAt` is project-specific.
+- Migrate the `unitGoals` and `branchGoals` writers to write both fields
+  during a transition window, then drop `setAt` after readers are
+  migrated.
+- Or: live with the inconsistency — neither field name is wrong, they
+  just differ.
+
+Priority: **LOW**. Cosmetic. No reader is broken; the inconsistency is
+historical.
+
+---
+
 ## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix)
 
 **Scope:** Install Vitest + add the first regression test, restoring the
