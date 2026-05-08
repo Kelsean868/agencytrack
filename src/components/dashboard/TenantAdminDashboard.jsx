@@ -13,6 +13,7 @@ import Shell from '../shell/Shell';
 import CompanyConfigPanel from '../admin/CompanyConfigPanel';
 import RoleDistributionCard from '../admin/RoleDistributionCard';
 import BranchHealthCards from '../admin/BranchHealthCards';
+import BranchesPanel from '../admin/BranchesPanel';
 import UserManagementPanel from '../manager/UserManagementPanel';
 import CampaignPanel from '../campaigns/CampaignPanel';
 import ProfileScreen from '../profile/ProfileScreen';
@@ -28,14 +29,19 @@ import ProfileScreen from '../profile/ProfileScreen';
  * Dashboard = stats + users-by-role + branch overview. Company Config =
  * config card only.
  *
- * Stub items (Branches, Roles & Permissions, Audit Log, Billing, Settings)
- * render as disabled sidebar links with "Coming soon" affordance — the
- * surfaces don't exist in the codebase, and per the locked stub-vs-defer
- * matrix we don't fabricate routes to non-existent destinations.
+ * Stub items (Roles & Permissions, Audit Log, Billing, Settings) render
+ * as disabled sidebar links with "Coming soon" affordance — the surfaces
+ * don't exist in the codebase, and per the locked stub-vs-defer matrix
+ * we don't fabricate routes to non-existent destinations.
+ *
+ * Branches: stub upgraded to a real surface in Track C C1 — routes to
+ * <BranchesPanel />. Mobile bottom-nav left untouched per the C1 brief
+ * (out-of-scope chrome change); Branches is reachable on mobile via the
+ * sidebar drawer only.
  */
 const NAV_ITEMS = [
   { id: 'dashboard',  label: 'Dashboard',           tabId: 'dashboard',  Icon: LayoutGrid,    sectionLabel: 'Company' },
-  { id: 'branches',   label: 'Branches',            disabled: true,      Icon: Building2 },
+  { id: 'branches',   label: 'Branches',            tabId: 'branches',   Icon: Building2 },
   { id: 'users',      label: 'All Users',           tabId: 'users',      Icon: Users },
   { id: 'roles',      label: 'Roles & Permissions', disabled: true,      Icon: Shield },
 
@@ -175,6 +181,8 @@ export default function TenantAdminDashboard() {
           </div>
         </div>
       )}
+
+      {activeTab === 'branches' && <BranchesPanel />}
 
       {activeTab === 'config' && <CompanyConfigPanel />}
 

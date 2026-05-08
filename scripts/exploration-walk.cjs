@@ -116,15 +116,20 @@ const AGENT_TABS = [
   ['15a', 'History'],
   ['16',  'Profile'],
 ];
-// Design System v2 — B5: tenant_admin renders the new TenantAdminDashboard
-// surface, NOT the manager dashboard. Tab list mirrors the actionable
-// sidebar items only — Branches / Roles & Permissions / Audit Log /
-// Billing / Settings are aria-disabled stubs and intentionally skipped.
+// Design System v2 — B5 + Track C C1: tenant_admin renders the
+// TenantAdminDashboard surface. Tab list mirrors the actionable sidebar
+// items only — Roles & Permissions / Audit Log / Billing / Settings are
+// aria-disabled stubs and intentionally skipped.
+//
+// Track C C1: Branches upgraded from B5 stub to a real tab; included
+// here so the regression walk visits the new surface and verifies the
+// single-<main> invariant for it.
 const TENANT_ADMIN_TABS = [
-  ['5', 'Company Config'],
-  ['6', 'All Users'],
-  ['7', 'Campaigns'],
-  ['8', 'Profile'],
+  ['5',  'Branches'],
+  ['6',  'Company Config'],
+  ['7',  'All Users'],
+  ['8',  'Campaigns'],
+  ['9',  'Profile'],
 ];
 const ROLE_PROFILES = {
   agent: {

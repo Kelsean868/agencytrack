@@ -2,7 +2,7 @@
 
 > **For Kyron:** This is the prompt to paste into a fresh Claude Code session to start PR C1. Copy from the line below all the way down. The prompt is self-contained — Claude Code will read the right files and produce a plan before writing any code.
 >
-> **C1 is the first PR of Track C.** Track B (v2) closed with B5. Track C bridges "code shipped" → "real Tatil pilot agents using real data." C1 is the foundation: branches as a real Firestore collection, with a tenant-admin management UI on top. Smaller surface than B5 in line count, but introduces a NEW Firestore path (`tenants/{tid}/meta/branches/{branchId}`), so security rules + write-path discipline matter as much per line of code as B5 did.
+> **C1 is the first PR of Track C.** Track B (v2) closed with B5. Track C bridges "code shipped" → "real Tatil pilot agents using real data." C1 is the foundation: branches as a real Firestore collection, with a tenant-admin management UI on top. Smaller surface than B5 in line count, but introduces a NEW Firestore path (`tenants/{tid}/branches/{branchId}`), so security rules + write-path discipline matter as much per line of code as B5 did.
 >
 > When C1 ships, C2 (bulk user import) unblocks. C3 (goals seeding) follows.
 
@@ -41,13 +41,13 @@ Working tree must be clean. `origin/main` HEAD must match the SHA in `docs/CONTE
 
 **In scope (PR C1 only):**
 
-- **Branches Firestore collection.** New path: `tenants/{tenantId}/meta/branches/{branchId}`. Schema per `docs/track-c-implementation.md` § PR C1 § Schema (locked).
+- **Branches Firestore collection.** New path: `tenants/{tenantId}/branches/{branchId}`. Schema per `docs/track-c-implementation.md` § PR C1 § Schema (locked).
 - **Tenant Admin Branches Panel** (list view). Sorted active-first then `createdAt` desc. Inactive rows visually de-emphasised with "Inactive" pill. Row actions: Edit, Deactivate / Reactivate.
 - **Branch Editor Modal** (create + edit). Lifts B5's `EditConfigModal` patterns: focus trap, Escape, return-focus, reduced-motion guards, `role="dialog"`, `aria-modal`, save-disabled-during-write. Form fields: `name` (required, trimmed, ≤ 100 chars), `managerId` (optional dropdown of active branch_manager users in tenant + "Unassigned" option).
 - **`branchService.js`** — `listBranches`, `getBranch`, `createBranch`, `updateBranch`, `deactivateBranch`, `reactivateBranch`. Pure service layer; never reads from `users` collection.
 - **Sidebar item upgrade.** The "Branches" sidebar item shipped as a stub in B5 (per `mocks/concept-4-complete.html:1839`) becomes a real link routing to `<BranchesPanel />`.
 - **Backwards compatibility.** Existing dashboards (branch_manager, sales_manager, agent surfaces) must continue to render correctly when the new collection is empty for a tenant. Read paths fall back to the current user-doc-derived branch list. C1 does NOT migrate read paths — that's a separate ticket.
-- **Firestore rules.** New `match /meta/branches/{branchId}` block. Read = any signed-in user in tenant. Write = `tenant_admin` OR `platform_admin` with tenant-scope guard absorbed (per B5 lesson). Emulator regression test analogous to B5's `scripts/test-b5-config-rule.js` — proposed file: `scripts/test-c1-branches-rule.js`.
+- **Firestore rules.** New `match /branches/{branchId}` block scoped under the existing `match /tenants/{tenantId}` parent (sibling to `users`, `submissions`, `config`, etc.). Read = any signed-in user in tenant. Write = `tenant_admin` OR `platform_admin` with tenant-scope guard absorbed (per B5 lesson). Emulator regression test analogous to B5's `scripts/test-b5-config-rule.js` — proposed file: `scripts/test-c1-branches-rule.js`.
 
 **Out of scope (do not expand into):**
 
@@ -69,7 +69,7 @@ Working tree must be clean. `origin/main` HEAD must match the SHA in `docs/CONTE
 These are settled before the session starts. If the audit surfaces a reason to revisit, treat it as a surprise-stop — do not unilaterally override.
 
 ### Schema
-- **Path:** `tenants/{tenantId}/meta/branches/{branchId}`
+- **Path:** `tenants/{tenantId}/branches/{branchId}`
 - **Fields:**
   - `name` — string, required, trimmed, non-empty, ≤ 100 chars
   - `managerId` — string \| null. References a `branch_manager` UID in the same tenant. `null` = "Unassigned"
@@ -163,7 +163,7 @@ Client-side validation runs first for UX, but the source of truth is `firestore.
 - Require tenant-scope match (`getTenantId() == tenantId` for tenant_admin; explicit guard for platform_admin per B5 lesson)
 - Read = any signed-in user in tenant
 
-If the rules currently allow any authenticated user (or any role beyond `tenant_admin` / `platform_admin`) to write `tenants/{tid}/meta/branches/{branchId}`, that is **NOT a surprise-stop in C1's case** — the path is new, so the existing `match /meta/{docId}` block at `firestore.rules:54-56` (which is `allow write: if false`) is the inherited default. C1's rule additions are purely additive. **However:** the new match block must not accidentally widen access. Verify via emulator regression test (`scripts/test-c1-branches-rule.js`) before push.
+If the rules currently allow any authenticated user (or any role beyond `tenant_admin` / `platform_admin`) to write `tenants/{tid}/branches/{branchId}`, that is **NOT a surprise-stop in C1's case** — the path is new, so the existing `match /meta/{docId}` block at `firestore.rules:54-56` (which is `allow write: if false`) is the inherited default. C1's rule additions are purely additive. **However:** the new match block must not accidentally widen access. Verify via emulator regression test (`scripts/test-c1-branches-rule.js`) before push.
 
 ### Audit trail
 `updatedBy: uid` + `updatedAt: serverTimestamp()` on every write (mirror B5). No separate audit-log collection. Per-doc fields are the audit trail until P11's audit-log infrastructure ships.
@@ -174,7 +174,7 @@ If the rules currently allow any authenticated user (or any role beyond `tenant_
 >
 > 1. **Audit current state.** Read the files listed in §Session scope. Confirm:
 >    - Whether `branchService.js` already exists in any form (it shouldn't, but verify). If yes, name it and decide reuse vs replace.
->    - Whether `tenants/{tid}/meta/branches` already exists in the pilot tenant (almost certainly not, but verify via console or by checking any seed scripts).
+>    - Whether `tenants/{tid}/branches` already exists in the pilot tenant (almost certainly not, but verify via console or by checking any seed scripts).
 >    - The exact shape of `user.branchId` values today — are they strings? Slugs? UIDs? Numerics? The fallback display strategy depends on what's actually stored.
 >    - The existing branch-derivation read pattern. Name the file(s), name the function(s) that produce the "list of branches" today. Confirm the audit-phase claim that this is sourced from `users` docs, not from any other path.
 >    - The current `firestore.rules` state for `match /meta/{docId}` (the parent block, lines 54-56). Confirm `allow write: if false`. Quote the block.
@@ -198,7 +198,7 @@ If the rules currently allow any authenticated user (or any role beyond `tenant_
 >
 > 4. **File-by-file change map** with risk per file. Distinguish "additive" (new service, new components, new rules block, new emulator test) from "structural" (sidebar item link / route wiring) from "surface" (CSS additions). For any file in `docs/track-c-implementation.md` § PR C1 that the audit shows is unrelated, drop it from the change set with a one-line justification.
 >
-> 5. **Firestore rules verification + plan.** Quote the existing `match /meta/{docId}` block. Quote the B5 `match /config/{docId}` block. Propose the new `match /meta/branches/{branchId}` block as a code diff. Confirm rules-evaluation precedence (more specific match wins; the broader `meta/{docId}` write-locked match doesn't override the specific branches match). If precedence is uncertain, surface as a discipline gate.
+> 5. **Firestore rules verification + plan.** Quote the existing `match /meta/{docId}` block (unrelated, stays untouched) and the B5 `match /config/{docId}` block (the pattern C1 mirrors). Propose the new `match /branches/{branchId}` block as a code diff, scoped under the existing `match /tenants/{tenantId}` parent.
 >
 > 6. **Emulator test plan.** Sketch `scripts/test-c1-branches-rule.js` cases:
 >    - Cross-tenant read denied
@@ -257,7 +257,7 @@ If the rules currently allow any authenticated user (or any role beyond `tenant_
 - **All new tokens use `--color-*` prefix** (B-series locked).
 - **Implement the mock faithfully where it provides design** — do not redesign. Where the mock is silent (the management UI), reuse B5's tile-and-modal patterns. The only design decisions this session are token-name mappings, layout choice (table vs card grid), and the audit-phase decisions surfaced in the plan.
 - **No new routing library.**
-- **No new Firestore collections beyond `meta/branches`.** The audit-trail decision is per-doc fields only; no separate audit-log collection.
+- **No new Firestore collections beyond `branches`.** The audit-trail decision is per-doc fields only; no separate audit-log collection.
 - **Both light + dark mode tested** before opening PR — for tenant_admin specifically, plus drive-by the other 4 roles.
 - **A11y is not a follow-up.** Form labels, modal focus trap, Escape, return focus, ARIA invalid + live region, reduced-motion guards — all ship in the PR.
 - **Optimistic UI is forbidden** for the write path (per §Write-path discipline gate).
@@ -271,7 +271,7 @@ If the rules currently allow any authenticated user (or any role beyond `tenant_
 
 - **Existing `user.branchId` values aren't strings** — if user docs reference branchIds that are numeric IDs, references, or some other shape, the fallback display strategy needs to handle whatever the actual type is. Surface during audit. Don't guess.
 - **Existing `match /meta/{docId}` write rule already permits writes from a non-Admin-SDK source** — the assumption is `allow write: if false` (lines 54-56). If that's actually wider, surface as a SECURITY surprise-stop and propose a remediation before C1's rule adds.
-- **`tenants/{tid}/meta` path is already used for something else** — if `meta` is already a singleton config doc or has a non-branches sub-doc structure, the path scheme `meta/branches/{branchId}` may collide. Confirm the meta path is available before locking.
+- **`tenants/{tid}/branches` path is already used for something else** — confirm via grep that no existing service or migration script writes to this path. The audit during plan-phase confirmed no matches; if any reference to `tenants/{tid}/branches/...` appears mid-implementation, surface as a SECURITY/data-integrity surprise-stop.
 - **Manager dropdown is empty** — no active `branch_manager` users in the tenant. Confirm with Kyron whether to: (a) allow null managerId (Unassigned default) — current default; (b) hide manager field if no candidates exist; (c) show input but disable save until at least one manager exists. Default is (a).
 - **The mock has a fuller branches management UI somewhere I missed** — surface as a discovery and pivot to mock-faithful implementation rather than designing from scratch.
 - **Branch-name uniqueness validation** turns out to be load-bearing — i.e., the audit reveals downstream code that assumes unique names. Surface as a scope question (enforce in service layer? in rules? skip and rely on admin discipline?).
@@ -279,7 +279,7 @@ If the rules currently allow any authenticated user (or any role beyond `tenant_
 - **B5's modal pattern doesn't transfer** — i.e., the focus-trap hook or modal scaffolding is too tightly coupled to `<EditConfigModal>` to reuse for `<BranchEditorModal>`. Surface as a scope question; reusability vs duplication is a one-line cost decision.
 - **Two-strike trigger** — if the audit hits two ambiguous mock-vs-code disagreements, two unsafe-rules surfaces, or two scope-creep temptations, STOP.
 
-Discipline gates are the value of this workflow. They're not friction — they're catching bugs before they ship. **C1's most likely surprises cluster around: existing `user.branchId` value shape, existing `match /meta/{docId}` rule wider-than-expected, and mock-vs-code parity on a management UI that the mock doesn't actually design.**
+Discipline gates are the value of this workflow. They're not friction — they're catching bugs before they ship. **C1's most likely surprises cluster around: existing `user.branchId` value shape, accidental path collisions, and mock-vs-code parity on a management UI that the mock doesn't actually design.**
 
 ## Stash / pending state from prior sessions
 
@@ -303,7 +303,7 @@ End the session when:
 - Save success path closes modal and the new branch appears in the list with correct sort order
 - Save failure paths each surface a specific error message and keep the modal open: permission denied (rule-blocked from a non-tenant_admin role test), network failure (offline), validation error (client-side empty-name)
 - Deactivate / Reactivate inline actions toggle `isActive` and the row visually updates
-- Firestore rules verified to restrict `meta/branches/{branchId}` writes to `tenant_admin` OR `platform_admin` (quoted in PR description)
+- Firestore rules verified to restrict `branches/{branchId}` writes to `tenant_admin` OR `platform_admin` (quoted in PR description)
 - Emulator regression test (`scripts/test-c1-branches-rule.js`) passes — output captured in PR description
 - Firestore document state confirmed: write succeeds with required fields (`name`, `managerId`, `isActive`, `createdAt`, `updatedAt`, `updatedBy`)
 - Backwards-compat verified: log in as `branch_manager` and `sales_manager` test accounts; confirm dashboards still render branches even when the new collection is empty in the test tenant (or seeded with a single branch)
@@ -325,10 +325,10 @@ Post a summary in chat with: tree state, PR link, what's done (Branches collecti
 ## Notes for Kyron
 
 - **First PR of Track C.** Track B (v2) is closed (no B6). Track C is a sibling track, not an extension. C1 → C2 → C3 in dependency order.
-- **C1 introduces a new Firestore collection** at `tenants/{tid}/meta/branches/{branchId}`. Schema, permissions, and write-path discipline are locked in this brief. Audit-phase decisions are limited to: layout (table vs card grid), uniqueness validation (enforce or skip), inline-vs-modal confirm for Deactivate / Reactivate, and a few other finely-scoped open questions surfaced in the plan output.
+- **C1 introduces a new Firestore collection** at `tenants/{tid}/branches/{branchId}`. Schema, permissions, and write-path discipline are locked in this brief. Audit-phase decisions are limited to: layout (table vs card grid), uniqueness validation (enforce or skip), inline-vs-modal confirm for Deactivate / Reactivate, and a few other finely-scoped open questions surfaced in the plan output.
 - **Mock-vs-code gap on the management UI.** The mock at `mocks/concept-4-complete.html:1839` has a tenant-admin sidebar item "Branches" but the only on-screen surface is the read-only "Branch overview" card at lines 2026-2047. There's no full management UI design. C1 designs from B5's tile-and-modal vocabulary. The brief surfaces this as a discovery during audit (in case I missed a fuller surface in the mock) and locks the design fallback to B5 patterns.
 - **Backwards compat is the load-bearing constraint.** Existing dashboards (branch_manager, sales_manager) derive branches from `users` docs today. C1 introduces the new collection but does NOT migrate read paths. As long as the fallback derivation still works when the new collection is empty for a tenant, C1 ships safely; the read-path migration is a separate ticket.
-- **Firestore rules surprise-stop is rules-precedence, not rules-too-permissive.** The existing `match /meta/{docId}` block is `allow write: if false` (Admin SDK only). C1 introduces a more specific `match /meta/branches/{branchId}` match. The discipline gate verifies precedence: more-specific wins, broader doesn't override. Emulator test confirms before push.
+- **Firestore path corrected from the original draft.** The original locked path `tenants/{tid}/meta/branches/{branchId}` was 5 segments — invalid Firestore document path (segments must alternate collection/doc with even count). Corrected to `tenants/{tid}/branches/{branchId}` — sibling subcollection under tenant. The existing `match /meta/{docId}` block (`firestore.rules:54-56`, write-locked) is unrelated and untouched.
 - **First commit bundles two banked items:** CONTEXT.md SHA bump + CLAUDE.md prune-step addition (banked from PR #57 cleanup). Single docs commit, drafted inside the C1 feature worktree per the PR #51 banking rule.
 - **Audit-trail decision is locked.** No separate audit-log collection. Per-doc `updatedBy` + `updatedAt` is the trail until P11 ships. Mirrors B5.
 - **"Tenant_admin matrix verified before merge" is a hard floor.** 8 render-state cells for the new surface (4 breakpoints × 2 themes) plus 4 drive-by other-role sanity checks. If any cell can't be verified (test account missing, Vercel preview broken), the PR doesn't ship.
