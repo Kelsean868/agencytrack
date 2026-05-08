@@ -14,6 +14,32 @@ export async function getCompanyMinimums(tenantId) {
   return { annualAPI: 200000, annualApps: 42, persistency: 90 };
 }
 
+// Write helper for the tenant_admin Company Config surface (Design System v2 — B5).
+// Only `annualAPI` is editable in B5; other fields on the doc (`annualApps`,
+// `persistency`) are preserved via merge. Validation: positive number, <=
+// 10,000,000 (10x Agent of the Year aspirational individual goal — basis
+// documented in B5 PR description).
+//
+// Audit trail (locked, see B5 plan §7): `updatedBy` (uid) and `updatedAt`
+// (server timestamp) are written on the doc itself. No separate audit
+// collection in B5 — audit log infrastructure is deferred to P11.
+export async function setCompanyMinimums(tenantId, data, updatedBy) {
+  const annualAPI = parseFloat(data.annualAPI);
+  if (!Number.isFinite(annualAPI) || annualAPI <= 0) {
+    throw new Error('Company minimum API must be a positive number.');
+  }
+  if (annualAPI > 10000000) {
+    throw new Error('Company minimum API cannot exceed TTD 10,000,000.');
+  }
+
+  const ref = doc(db, `tenants/${tenantId}/config/companyMinimums`);
+  await setDoc(ref, {
+    annualAPI,
+    updatedBy,
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+}
+
 export async function setGoals(tenantId, agentId, data, setBy, setByName) {
   const p = (v) => parseFloat(v) || 0;
   const ref = doc(db, `tenants/${tenantId}/goals/${agentId}`);
