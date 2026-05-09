@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { pdf } from '@react-pdf/renderer';
-import { extractFields } from '../utils/extractFields';
+import { extractFields, extractTotalProductionCredit } from '../utils/extractFields';
 import { AgentReportDocument } from '../components/profile/AgentReportDocument';
 
 // ── generateAgentPDF ──────────────────────────────────────────────────────────
@@ -84,7 +84,7 @@ export function exportBranchCSV(users, submissions, persistencyMap) {
 
     const fields = agentSubs.map((s) => extractFields(s));
     const weeksSubmitted = agentSubs.length;
-    const ytdAPI  = fields.reduce((sum, f) => sum + f.apiSold, 0);
+    const ytdAPI  = agentSubs.reduce((sum, s) => sum + extractTotalProductionCredit(s), 0);
     const ytdApps = fields.reduce((sum, f) => sum + f.applicationsSold, 0);
     const ytdDials       = fields.reduce((sum, f) => sum + f.totalTelAttempts, 0);
     const ytdContacts    = fields.reduce((sum, f) => sum + f.telContacts, 0);

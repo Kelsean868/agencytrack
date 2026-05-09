@@ -121,6 +121,41 @@ export function extractFields(d) {
   return f;
 }
 
+// Total Production API — NB.api + PPP.apiIncrease + LMPS.apiCredit
+// V2-first: reads the pre-computed stored field when available; derives from sub-objects
+// if stored field is absent; falls back to V1 apiSold alias for legacy docs.
+export function extractTotalProductionCredit(submission) {
+  if (!submission) return 0;
+  if (submission.totalProductionCredit !== undefined) {
+    return Number(submission.totalProductionCredit) || 0;
+  }
+  if (submission.newBusiness !== undefined) {
+    const nb   = Number(submission.newBusiness?.api) || 0;
+    const ppp  = Number(submission.pppIncreases?.apiIncrease) || 0;
+    const lmps = Number(submission.lumpsums?.apiCredit) || 0;
+    return nb + ppp + lmps;
+  }
+  return Number(submission.apiSold) || Number(submission.api) || Number(submission.annualPremium) || 0;
+}
+
+// Total commission earned — NB commission + LMPS commission (PPP excluded per production rules)
+// V2-first: reads stored field when available; derives from sub-objects if not.
+// commissionRate is a percentage integer (e.g. 35 = 35%).
+export function extractTotalCommission(submission, commissionRate = 0) {
+  if (!submission) return 0;
+  if (submission.totalCommission !== undefined) {
+    return Number(submission.totalCommission) || 0;
+  }
+  const rateDecimal = (Number(commissionRate) || 0) / 100;
+  if (submission.newBusiness !== undefined) {
+    const nb       = Number(submission.newBusiness?.api) || 0;
+    const lmpsComm = Number(submission.lumpsums?.commission) || 0;
+    return nb * rateDecimal + lmpsComm;
+  }
+  const v1Api = Number(submission.apiSold) || 0;
+  return v1Api * rateDecimal;
+}
+
 // 8 coaching ratios — returns 0–100 integer or null when denominator is 0
 export function computeRatios(f) {
   const r = (num, den) => (den > 0 ? Math.round((num / den) * 100) : null);

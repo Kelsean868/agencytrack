@@ -3,7 +3,7 @@ import { Download, Search } from 'lucide-react';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
-import { extractFields, computeRatios } from '../../utils/extractFields';
+import { extractFields, computeRatios, extractTotalProductionCredit } from '../../utils/extractFields';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 
 // Column definitions — drives both header and cell rendering
@@ -24,7 +24,7 @@ const COLS = [
   { key: 'ciConducted',         label: 'Total CI',                                                 minW: 'min-w-[80px]'  },
   { key: 'applicationsSold',    label: 'Sales',                                                    minW: 'min-w-[80px]'  },
   { key: 'livesSold',           label: 'Lives',                                                    minW: 'min-w-[80px]'  },
-  { key: 'apiSold',             label: 'API (TTD)',           currency: true, conditional: true,   minW: 'min-w-[110px]' },
+  { key: 'totalProductionCredit', label: 'API (TTD)',         currency: true, conditional: true,   minW: 'min-w-[110px]' },
   { key: 'policiesDelivered',   label: 'Delivered',                                                minW: 'min-w-[80px]'  },
   { key: 'serviceContacts',     label: 'Service',                                                  minW: 'min-w-[80px]'  },
   { key: 'totalNewNames',       label: 'New Names',                                                minW: 'min-w-[80px]'  },
@@ -134,7 +134,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           ciConducted:          f.ciConducted,
           applicationsSold:     f.applicationsSold,
           livesSold:            f.livesSold,
-          apiSold:              f.apiSold,
+          totalProductionCredit: extractTotalProductionCredit(sub),
           targetAPI:            f.targetAPI,
           policiesDelivered:    f.policiesDelivered,
           serviceContacts:      f.serviceContacts,
@@ -185,7 +185,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     }
     if (col.currency && col.conditional) {
       return (
-        <span className={`whitespace-nowrap ${apiColorClass(row.apiSold, row.targetAPI)}`}>
+        <span className={`whitespace-nowrap ${apiColorClass(row.totalProductionCredit, row.targetAPI)}`}>
           {formatCurrency(v)}
         </span>
       );

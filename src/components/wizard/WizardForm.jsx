@@ -4,6 +4,12 @@ import { useAuth } from '../../context/AuthContext';
 import { saveDraft, submitReport, getDraft, getLastSubmission } from '../../services/submissionService';
 import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
 import { formatCurrency, formatDateFriendly, formatDateDisplay } from '../../utils/formatters';
+import {
+  computeLumpsumCredit,
+  computeLumpsumCommission,
+  computeTotalProductionCredit,
+  computeTotalCommission,
+} from '../../lib/schema/weeklyReport.computations';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import Step1Prospecting      from './steps/Step1Prospecting';
 import Step2Telephone        from './steps/Step2Telephone';
@@ -392,6 +398,10 @@ export default function WizardForm({ onClose, initialWeek }) {
         {screen === 'review' && (
           <div className="px-4 py-4 max-w-lg mx-auto">
             <ReviewSummary data={formData} weekStarting={weekStarting} />
+            <ProductionSummaryPanel
+              data={formData}
+              commissionRate={userProfile?.commissionRate ?? 0}
+            />
             {error && <p className="text-sm text-danger mt-4">{error}</p>}
           </div>
         )}
@@ -471,6 +481,104 @@ export default function WizardForm({ onClose, initialWeek }) {
             {nextLabel}
           </button>
         </footer>
+      )}
+    </div>
+  );
+}
+
+// ─── Production summary panel ────────────────────────────────────────────────
+
+function ProductionSummaryPanel({ data, commissionRate }) {
+  const nb   = data.newBusiness  ?? {};
+  const ppp  = data.pppIncreases ?? {};
+  const lmps = data.lumpsums     ?? {};
+
+  const nbApi       = parseFloat(nb.api) || 0;
+  const nbApps      = parseInt(nb.apps, 10) || 0;
+  const pppApps     = parseInt(ppp.apps, 10) || 0;
+  const pppInc      = parseFloat(ppp.apiIncrease) || 0;
+  const lmpsGross   = parseFloat(lmps.grossAmount) || 0;
+  const lmpsCredit  = computeLumpsumCredit(lmpsGross);
+  const lmpsComm    = computeLumpsumCommission(lmpsGross);
+
+  const productionShape = {
+    newBusiness:  { api: nbApi },
+    pppIncreases: { apiIncrease: pppInc },
+    lumpsums:     { apiCredit: lmpsCredit },
+  };
+  const totalCredit = computeTotalProductionCredit(productionShape);
+  const rateDecimal = (parseFloat(commissionRate) || 0) / 100;
+  const totalComm   = computeTotalCommission(
+    { ...productionShape, lumpsums: { apiCredit: lmpsCredit, commission: lmpsComm } },
+    rateDecimal
+  );
+
+  const hasPpp  = pppApps > 0 || pppInc > 0;
+  const hasLmps = lmpsGross > 0;
+
+  return (
+    <div className="bg-[var(--color-surface)] rounded-xl border border-border/60 p-4 mb-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
+        Production this week
+      </h3>
+
+      {/* Production rows */}
+      <div className="flex justify-between py-2 border-b border-border/50">
+        <span className="text-sm text-ink-muted">New Business</span>
+        <span className="text-sm font-semibold text-ink">
+          {nbApps} {nbApps === 1 ? 'app' : 'apps'} · {formatCurrency(nbApi)}
+        </span>
+      </div>
+      {hasPpp && (
+        <div className="flex justify-between py-2 border-b border-border/50">
+          <span className="text-sm text-ink-muted">PPP Increases</span>
+          <span className="text-sm font-semibold text-ink">
+            {pppApps} {pppApps === 1 ? 'increase' : 'increases'} · {formatCurrency(pppInc)}
+          </span>
+        </div>
+      )}
+      {hasLmps && (
+        <div className="flex justify-between py-2 border-b border-border/50">
+          <span className="text-sm text-ink-muted">Lumpsum (10% of {formatCurrency(lmpsGross)})</span>
+          <span className="text-sm font-semibold text-ink">{formatCurrency(lmpsCredit)}</span>
+        </div>
+      )}
+      <div className="flex justify-between py-2">
+        <span className="text-sm font-semibold text-ink">Total Production API</span>
+        <span className="text-sm font-bold text-primary">{formatCurrency(totalCredit)}</span>
+      </div>
+
+      {/* Commission rows */}
+      {commissionRate > 0 && (
+        <>
+          <div className="border-t border-border/60 mt-1 pt-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+              Estimated commission
+            </h3>
+            <div className="flex justify-between py-1.5 border-b border-border/40">
+              <span className="text-sm text-ink-muted">
+                New Business ({commissionRate}%)
+              </span>
+              <span className="text-sm font-semibold text-ink">{formatCurrency(nbApi * rateDecimal)}</span>
+            </div>
+            {hasLmps && (
+              <div className="flex justify-between py-1.5 border-b border-border/40">
+                <span className="text-sm text-ink-muted">Lumpsum (0.5% × {formatCurrency(lmpsGross)})</span>
+                <span className="text-sm font-semibold text-ink">{formatCurrency(lmpsComm)}</span>
+              </div>
+            )}
+            {hasPpp && (
+              <div className="flex justify-between py-1.5 border-b border-border/40">
+                <span className="text-sm text-ink-muted italic">PPP — production credit only</span>
+                <span className="text-sm text-ink-muted">—</span>
+              </div>
+            )}
+            <div className="flex justify-between py-2 mt-0.5">
+              <span className="text-sm font-semibold text-ink">Estimated commission earned</span>
+              <span className="text-sm font-bold text-primary">{formatCurrency(totalComm)}</span>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

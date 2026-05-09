@@ -1,4 +1,5 @@
 // Pure computation engine — zero Firebase imports, zero side effects
+import { extractFields, extractTotalProductionCredit } from './extractFields';
 
 const p = (v) => parseFloat(v) || 0;
 
@@ -75,8 +76,8 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
     const mSubs = submitted.filter(
       (s) => s.status === 'submitted' && (s.weekStarting ?? '').startsWith(curMonthKey)
     );
-    monthlyAPI = mSubs.reduce((s, sub) => s + p(sub.apiSold), 0);
-    monthlyApps = mSubs.reduce((s, sub) => s + p(sub.applicationsSold), 0);
+    monthlyAPI = mSubs.reduce((s, sub) => s + extractTotalProductionCredit(sub), 0);
+    monthlyApps = mSubs.reduce((s, sub) => s + p(extractFields(sub).applicationsSold), 0);
     monthlyPersist = 0;
     monthlySource = 'estimated';
   }
@@ -95,8 +96,8 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
       if (s.status !== 'submitted') return false;
       return quarterMonths.some((mk) => (s.weekStarting ?? '').startsWith(mk));
     });
-    quarterlyAPI = qSubs.reduce((s, sub) => s + p(sub.apiSold), 0);
-    quarterlyApps = qSubs.reduce((s, sub) => s + p(sub.applicationsSold), 0);
+    quarterlyAPI = qSubs.reduce((s, sub) => s + extractTotalProductionCredit(sub), 0);
+    quarterlyApps = qSubs.reduce((s, sub) => s + p(extractFields(sub).applicationsSold), 0);
     quarterlyPersist = 0;
     quarterlySource = 'estimated';
   }
@@ -115,19 +116,24 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
   yearSubs.forEach((s) => {
     const mk = (s.weekStarting ?? '').substring(0, 7);
     if (!mk) return;
-    if (!subsByMonth[mk]) subsByMonth[mk] = { api: 0, apps: 0 };
-    subsByMonth[mk].api += p(s.apiSold);
-    subsByMonth[mk].apps += p(s.applicationsSold);
+    if (!subsByMonth[mk]) subsByMonth[mk] = { api: 0, apps: 0, pppApps: 0 };
+    subsByMonth[mk].api += extractTotalProductionCredit(s);
+    subsByMonth[mk].apps += p(extractFields(s).applicationsSold);
+    subsByMonth[mk].pppApps += parseInt(s.pppIncreases?.apps, 10) || 0;
   });
 
   let annualSource = 'confirmed';
+  let estPppApps = 0;
   yearKeys.forEach((mk) => {
     if (!confirmedMonthKeys.has(mk) && subsByMonth[mk]) {
       annualAPI += subsByMonth[mk].api;
       annualApps += subsByMonth[mk].apps;
+      estPppApps += subsByMonth[mk].pppApps;
       annualSource = 'estimated';
     }
   });
+  // Centurion counts PPP increases as apps, capped at 20 per year
+  const centurionApps = annualApps + Math.min(estPppApps, 20);
 
   const confPersistVals = annualConf.map((d) => p(d.persistency)).filter((v) => v > 0);
   const subPersistVals = yearSubs.map((s) => p(s.persistencyRate)).filter((v) => v > 0);
@@ -257,14 +263,14 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
 
   awards.centurion = makeAward({
     id: 'centurion', name: 'Centurion Award', category: 'annual',
-    eligible: annualApps >= 100 && annualPersist >= 90,
-    inContention: annualApps >= 50 && annualApps < 100,
+    eligible: centurionApps >= 100 && annualPersist >= 90,
+    inContention: centurionApps >= 50 && centurionApps < 100,
     criteria: [
-      criterion('Annual Apps', 100, annualApps, 'apps'),
+      criterion('Annual Apps', 100, centurionApps, 'apps'),
       criterion('Avg Persistency', 90, annualPersist, '%'),
     ],
     prize: 'Centurion Trophy',
-    dataSource: annualSource, progressPercent: (annualApps / 100) * 100, note: annualNote,
+    dataSource: annualSource, progressPercent: (centurionApps / 100) * 100, note: annualNote,
   });
 
   // ── CLUB ──
@@ -561,10 +567,10 @@ export function computeRatioTrends(submissions) {
   const last4  = sorted.slice(0, 4);
   const last12 = sorted.slice(0, 12);
 
-  const getApps  = (s) => p(s.applicationsSold) || p(s.appsSold);
+  const getApps  = (s) => p(extractFields(s).applicationsSold);
   const getCI    = (s) => p(s.ciConducted);
   const getDials = (s) => p(s.referralCalls) + p(s.followUpCalls) + p(s.coldCalls) + p(s.seminarTradeshowCalls);
-  const getAPI   = (s) => p(s.apiSold) || p(s.api) || p(s.annualPremium);
+  const getAPI   = (s) => extractTotalProductionCredit(s);
   const getFFI   = (s) => p(s.ffiConducted);
 
   function avgRatio(subs, numFn, denFn) {
