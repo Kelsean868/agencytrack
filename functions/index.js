@@ -4,6 +4,9 @@ const { isValidEmail } = require('./utils/validators');
 
 admin.initializeApp();
 
+const { aggregateDailyToWeeklyCron } = require('./aggregators/sundayDailyToWeekly');
+exports.aggregateDailyToWeekly = aggregateDailyToWeeklyCron;
+
 const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
 
 // CSV bulk-import allow-list. tenant_admin and platform_admin are explicitly

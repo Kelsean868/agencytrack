@@ -1,8 +1,12 @@
 import { useState, useRef } from 'react';
-import { Camera, Save, Check, AlertCircle, User } from 'lucide-react';
+import { Camera, Save, Check, AlertCircle, User, CalendarClock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleLabel } from '../../utils/formatters';
 import { updateUserProfile, compressImage, uploadProfilePhoto } from '../../services/userService';
+import {
+  aggregateCurrentWeekDaily,
+  catchUpWeeklyToDaily,
+} from '../../services/loggingModeService';
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const BIO_MAX   = 200;
@@ -19,6 +23,13 @@ export default function ProfileScreen() {
   const [saving,          setSaving]          = useState(false);
   const [saved,           setSaved]           = useState(false);
   const [error,           setError]           = useState(null);
+
+  // E6 logging mode panel state
+  const [loggingMode,    setLoggingMode]    = useState(userProfile?.loggingMode ?? 'hybrid');
+  const [dailyNudgeTime, setDailyNudgeTime] = useState(userProfile?.dailyNudgeTime ?? '17:00');
+  const [pendingMode,    setPendingMode]    = useState(null); // 'weekly' | 'daily' | null
+  const [modeSaving,     setModeSaving]     = useState(false);
+  const [modeMessage,    setModeMessage]    = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -55,6 +66,98 @@ export default function ProfileScreen() {
       setUploadProgress(null);
     }
   }
+
+  // ── E6 logging mode save ──────────────────────────────────────────────
+  // Direct save for: hybrid switches, weekly→hybrid, daily→hybrid,
+  // nudge-time-only changes, and any switch that doesn't risk data loss.
+  // Switches involving weekly→daily or daily→weekly mid-week trigger a
+  // confirmation flow (see handleModeSelect / handleConfirmMode).
+  const persistModeSettings = async (modeToSave) => {
+    setModeSaving(true);
+    setModeMessage(null);
+    try {
+      await updateUserProfile(user.uid, {
+        loggingMode: modeToSave,
+        dailyNudgeTime,
+      });
+      setLoggingMode(modeToSave);
+      setPendingMode(null);
+    } catch (err) {
+      console.error(err);
+      setModeMessage({ kind: 'error', text: 'Could not save logging mode.' });
+    } finally {
+      setModeSaving(false);
+    }
+  };
+
+  const todayLocalDate = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  // Called when the agent picks a different radio option.
+  const handleModeSelect = (next) => {
+    if (next === loggingMode) return;
+    // Mid-week catch-up paths require confirmation.
+    if (loggingMode === 'weekly' && next === 'daily') {
+      setPendingMode('daily');
+      return;
+    }
+    if (loggingMode === 'daily' && next === 'weekly') {
+      setPendingMode('weekly');
+      return;
+    }
+    persistModeSettings(next);
+  };
+
+  const handleConfirmMode = async () => {
+    if (!pendingMode) return;
+    setModeSaving(true);
+    setModeMessage(null);
+    const agentName = userProfile?.name ?? userProfile?.email ?? '';
+    try {
+      if (pendingMode === 'daily') {
+        const result = await catchUpWeeklyToDaily(user.uid, agentName, todayLocalDate());
+        if (result.catchUp) {
+          setModeMessage({
+            kind: 'info',
+            text: `Your weekly draft was carried over as a single catch-up entry for today (${result.today}). Future days log per-day.`,
+          });
+        }
+      } else if (pendingMode === 'weekly') {
+        const result = await aggregateCurrentWeekDaily(
+          user.uid,
+          agentName,
+          userProfile?.commissionRate ?? 0
+        );
+        if (result.aggregated) {
+          setModeMessage({
+            kind: 'info',
+            text: `Your ${result.count} daily ${result.count === 1 ? 'entry was' : 'entries were'} summed into the weekly draft for review.`,
+          });
+        } else if (result.alreadySubmitted) {
+          setModeMessage({
+            kind: 'info',
+            text: 'This week was already submitted — no carry-over needed.',
+          });
+        }
+      }
+      await persistModeSettings(pendingMode);
+    } catch (err) {
+      console.error(err);
+      setModeMessage({ kind: 'error', text: 'Mode switch failed. Please try again.' });
+      setModeSaving(false);
+    }
+  };
+
+  const handleCancelModeSwitch = () => {
+    setPendingMode(null);
+    setModeMessage(null);
+  };
+
+  const handleSaveNudgeTime = async () => {
+    await persistModeSettings(loggingMode);
+  };
 
   // ── Profile save ────────────────────────────────────────────────────────
   async function handleSave() {
@@ -220,6 +323,139 @@ export default function ProfileScreen() {
           )}
         </button>
       </div>
+
+      {/* E6 — Logging mode (agents only) */}
+      {role === 'agent' && (
+        <div className="card flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <CalendarClock size={16} className="text-primary" />
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Logging mode</p>
+          </div>
+
+          {pendingMode ? (
+            <div className="flex flex-col gap-3 p-3 rounded-lg bg-warning/10 border border-warning/30">
+              <p className="text-sm font-semibold text-ink">Confirm switch</p>
+              {pendingMode === 'daily' ? (
+                <p className="text-xs text-ink-muted leading-relaxed">
+                  Your current weekly draft will be carried over as a single dated catch-up
+                  entry for today. Future days will log per-day. The weekly draft will be
+                  rebuilt automatically by Sunday's aggregator.
+                </p>
+              ) : (
+                <p className="text-xs text-ink-muted leading-relaxed">
+                  Your existing daily entries for this week will be summed into a weekly draft
+                  so you can review and submit them on Monday. Daily entries stay as-is and the
+                  Sunday aggregator will be a no-op for this week.
+                </p>
+              )}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleCancelModeSwitch}
+                  disabled={modeSaving}
+                  className="flex-1 h-10 rounded-lg border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors disabled:opacity-60"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmMode}
+                  disabled={modeSaving}
+                  className="flex-1 h-10 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60"
+                >
+                  {modeSaving ? 'Switching…' : 'Confirm switch'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <fieldset className="flex flex-col gap-3">
+              <legend className="sr-only">Choose your logging cadence</legend>
+
+              {[
+                {
+                  value: 'weekly',
+                  title: 'Weekly',
+                  desc: 'Submit a single report each week.',
+                },
+                {
+                  value: 'daily',
+                  title: 'Daily',
+                  desc: "Log activity each day, review and submit weekly. Sunday's aggregator rolls up your entries into the weekly draft automatically.",
+                },
+                {
+                  value: 'hybrid',
+                  title: 'Hybrid',
+                  desc: 'Pick whichever fits the week — both buttons stay available.',
+                },
+              ].map((opt) => {
+                const descId = `logging-mode-${opt.value}-desc`;
+                return (
+                  <div
+                    key={opt.value}
+                    className="flex flex-col p-3 rounded-lg border border-border bg-surface hover:border-primary/40 transition-colors"
+                  >
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="logging-mode"
+                        value={opt.value}
+                        checked={loggingMode === opt.value}
+                        onChange={() => handleModeSelect(opt.value)}
+                        aria-describedby={descId}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      <span className="text-sm font-semibold text-ink">{opt.title}</span>
+                    </label>
+                    <p id={descId} className="text-xs text-ink-muted mt-1 ml-6">
+                      {opt.desc}
+                    </p>
+                  </div>
+                );
+              })}
+            </fieldset>
+          )}
+
+          {/* Daily nudge time */}
+          {(loggingMode === 'daily' || loggingMode === 'hybrid') && !pendingMode && (
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-medium text-ink-muted" htmlFor="daily-nudge-time">
+                Daily reminder time
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="daily-nudge-time"
+                  type="time"
+                  value={dailyNudgeTime}
+                  onChange={(e) => setDailyNudgeTime(e.target.value)}
+                  className="h-11 px-3 rounded-lg border border-border bg-surface text-ink text-base focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveNudgeTime}
+                  disabled={modeSaving}
+                  className="h-11 px-4 rounded-lg border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-60"
+                >
+                  {modeSaving ? 'Saving…' : 'Save time'}
+                </button>
+              </div>
+              <p className="text-xs text-ink-muted">
+                We'll prompt you at this time on days you haven't logged yet.
+                Browser push notifications are coming in a follow-up release —
+                for now you'll see a banner on your dashboard.
+              </p>
+            </div>
+          )}
+
+          {modeMessage && (
+            <p
+              role="status"
+              className={`text-xs ${modeMessage.kind === 'error' ? 'text-danger' : 'text-primary'}`}
+            >
+              {modeMessage.text}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Read-only info */}
       <div className="card flex flex-col gap-3">
