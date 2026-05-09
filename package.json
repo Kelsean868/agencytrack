@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "repomix": "npx repomix && echo Done - upload repomix-output.xml to Claude project"
+    "repomix": "npx repomix && echo Done - upload repomix-output.xml to Claude project",
+    "test": "vitest run"
   },
   "dependencies": {
     "@react-pdf/renderer": "^4.5.1",
@@ -42,6 +43,7 @@
     "prettier": "^3.8.3",
     "tailwindcss": "^3.4.19",
     "vite": "^8.0.10",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "vitest": "^3.2.4"
   }
 }

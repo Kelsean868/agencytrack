@@ -110,7 +110,7 @@ Agent commission rate = 50%, target = $5,000:
 - All annual: $10,000 API
 - All monthly: $120,000 API
 - 50/50 annual/semi: $13,333 API
-- 30A/30S/20Q/20M mix: $21,432 API
+- 30A/30S/20Q/20M mix: ~$19,355 API  ← corrected; original spec said $21,432 (formula gives $19,355)
 
 ### UI
 Three vertically stacked panels:
@@ -121,18 +121,24 @@ Three vertically stacked panels:
    + 12-month cash flow chart
 
 ### Component structure
-src/components/playgrounds/CommissionPlayground/
-├── CommissionPlayground.jsx     (existing — add tab structure)
+The existing Commission Playground (`src/components/goals/CommissionPlayground.jsx`)
+is a goal-decomposition tool (income goal → API/activity required), not a forward
+commission solver. E2 adds a "Modal Targeting" tab rather than reworking that math.
+
+The file was refactored to a directory (Path A) so consumers keep the same import path:
+
+src/components/goals/CommissionPlayground/
+├── index.jsx                    (tab shell — Goal Decomposition / Modal Targeting)
 ├── tabs/
-│   ├── ForwardCalcTab.jsx       (existing logic moved here)
-│   └── ReverseCalcTab.jsx       (NEW)
+│   ├── GoalDecompositionTab.jsx (existing goal-decomp logic, verbatim)
+│   └── ModalTargetingTab.jsx    (NEW — §E2 reverse modal calc)
 ├── components/
-│   ├── ModeMixSlider.jsx        (NEW — auto-balancing)
+│   ├── ModeMixSlider.jsx        (auto-balancing sliders)
 │   ├── CommissionBreakdownTable.jsx
-│   ├── CashFlowChart.jsx        (recharts)
+│   ├── CashFlowChart.jsx        (recharts, 12-month cash flow)
 │   └── InsightCard.jsx
 └── utils/
-    ├── commissionMath.js        (pure functions, easy unit test)
+    ├── commissionMath.js        (pure functions, 15 unit tests)
     └── modeMixBalancer.js
 
 ### Pure function signatures (commissionMath.js)
