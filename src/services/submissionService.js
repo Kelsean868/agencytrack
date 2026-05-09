@@ -3,14 +3,34 @@ import {
   collection, query, where, orderBy, limit, getDocs,
 } from 'firebase/firestore';
 import { db, getTenantId } from '../firebase';
+import {
+  computeLumpsumCredit,
+  computeLumpsumCommission,
+  computeTotalProductionCredit,
+  computeTotalCommission,
+} from '../lib/schema/weeklyReport.computations';
 
 function submissionDocId(uid, weekStarting) {
   return `${uid}_${weekStarting}`;
 }
 
-function sanitize(data) {
+export function sanitize(data, commissionRate = 0) {
   const int   = (v) => parseInt(v   ?? 0, 10) || 0;
   const float = (v) => parseFloat(v ?? 0)     || 0;
+
+  const nb   = data.newBusiness  ?? {};
+  const ppp  = data.pppIncreases ?? {};
+  const lmps = data.lumpsums     ?? {};
+
+  const lmpsGross      = float(lmps.grossAmount);
+  const lmpsApiCredit  = computeLumpsumCredit(lmpsGross);
+  const lmpsCommission = computeLumpsumCommission(lmpsGross);
+
+  const productionShape = {
+    newBusiness:  { apps: int(nb.apps),  api: float(nb.api) },
+    pppIncreases: { apps: int(ppp.apps), apiIncrease: float(ppp.apiIncrease) },
+    lumpsums:     { grossAmount: lmpsGross, apiCredit: lmpsApiCredit, commission: lmpsCommission },
+  };
 
   return {
     // Step 1 — Prospecting
@@ -38,14 +58,15 @@ function sanitize(data) {
     ffisScheduled:                 int(data.ffisScheduled),
     ffiConducted:                  int(data.ffiConducted),
     solutionPresentations:         int(data.solutionPresentations),
-    // Step 4 — Closing Interviews & Sales
+    // Step 4 — Closing Interviews & Sales (V2 shape)
     newCIBooked:                   int(data.newCIBooked),
     oldCIBooked:                   int(data.oldCIBooked),
     ciConducted:                   int(data.ciConducted),
-    applicationsSold:              int(data.applicationsSold),
     livesSold:                     int(data.livesSold),
-    apiSold:                       float(data.apiSold),
-    estimatedCommissions:          float(data.estimatedCommissions),
+    ...productionShape,
+    totalProductionCredit:         computeTotalProductionCredit(productionShape),
+    totalCommission:               computeTotalCommission(productionShape, commissionRate / 100),
+    version:                       2,
     // Step 5 — New Names & Pipeline
     referralsSought:               int(data.referralsSought),
     referralsObtained:             int(data.referralsObtained),
@@ -91,19 +112,19 @@ function sanitize(data) {
   };
 }
 
-export async function saveDraft(uid, agentName, weekStarting, data) {
+export async function saveDraft(uid, agentName, weekStarting, data, commissionRate = 0) {
   const ref = doc(db, `tenants/${getTenantId()}/submissions/${submissionDocId(uid, weekStarting)}`);
   await setDoc(
     ref,
-    { ...sanitize(data), userId: uid, agentId: uid, agentName, weekStarting, status: 'draft', updatedAt: serverTimestamp() },
+    { ...sanitize(data, commissionRate), userId: uid, agentId: uid, agentName, weekStarting, status: 'draft', updatedAt: serverTimestamp() },
     { merge: true }
   );
 }
 
-export async function submitReport(uid, agentName, weekStarting, data) {
+export async function submitReport(uid, agentName, weekStarting, data, commissionRate = 0) {
   const ref = doc(db, `tenants/${getTenantId()}/submissions/${submissionDocId(uid, weekStarting)}`);
   await setDoc(ref, {
-    ...sanitize(data),
+    ...sanitize(data, commissionRate),
     userId: uid,
     agentId: uid,
     agentName,

@@ -86,10 +86,10 @@ const INITIAL_DATA = {
   newCIBooked:                  0,
   oldCIBooked:                  0,
   ciConducted:                  0,
-  applicationsSold:             0,
   livesSold:                    0,
-  apiSold:                      0,
-  estimatedCommissions:         0,
+  newBusiness:    { apps: 0, api: 0 },
+  pppIncreases:   { apps: 0, apiIncrease: 0 },
+  lumpsums:       { grossAmount: 0 },
   // Step 5
   referralsSought:              0,
   referralsObtained:            0,
@@ -199,7 +199,7 @@ export default function WizardForm({ onClose, initialWeek }) {
       setSaving(true);
       setSaveError(false);
       try {
-        await saveDraft(user.uid, agentName, weekStarting, formData);
+        await saveDraft(user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0);
       } catch (err) {
         console.error('Auto-save failed:', err);
         setSaveError(true);
@@ -262,7 +262,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     }
     setSubmitting(true);
     try {
-      await submitReport(user.uid, agentName, weekStarting, formData);
+      await submitReport(user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0);
       setDraftStatus('submitted');
       setScreen('done');
     } catch (e) {
@@ -545,10 +545,16 @@ function ReviewSummary({ data, weekStarting: _weekStarting }) {
         <ReviewRow label="New CI Booked"          value={data.newCIBooked} />
         <ReviewRow label="Old CI Booked"          value={data.oldCIBooked} />
         <ReviewRow label="CI Conducted"           value={data.ciConducted} />
-        <ReviewRow label="Applications Sold"      value={data.applicationsSold} />
+        <ReviewRow label="NB Apps Written"          value={data.newBusiness?.apps ?? 0} />
         <ReviewRow label="Lives Sold"             value={data.livesSold} />
-        <ReviewRow label="API Sold"               value={formatCurrency(data.apiSold)} />
-        <ReviewRow label="Est. Commissions"       value={formatCurrency(data.estimatedCommissions)} />
+        <ReviewRow label="NB API (TTD)"           value={formatCurrency(data.newBusiness?.api ?? 0)} />
+        {(data.pppIncreases?.apps > 0 || data.pppIncreases?.apiIncrease > 0) && <>
+          <ReviewRow label="PPP Increases"        value={data.pppIncreases?.apps ?? 0} />
+          <ReviewRow label="PPP Total API Inc."   value={formatCurrency(data.pppIncreases?.apiIncrease ?? 0)} />
+        </>}
+        {(data.lumpsums?.grossAmount > 0) && <>
+          <ReviewRow label="Lumpsum Gross"        value={formatCurrency(data.lumpsums?.grossAmount ?? 0)} />
+        </>}
       </ReviewSection>
 
       <ReviewSection title="Screen 3 — New Names & Service">
