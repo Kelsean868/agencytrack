@@ -78,6 +78,10 @@ verification/*
 !verification/a11y/screenshots/*.png
 !verification/mobile/
 !verification/mobile/**
+!verification/e4/
+!verification/e4/results.json
+!verification/e4/screenshots/
+!verification/e4/screenshots/*.png
 
 # Playwright MCP local state
 .playwright-mcp/
