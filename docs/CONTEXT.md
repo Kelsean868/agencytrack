@@ -13,10 +13,10 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-08` |
-| Current main HEAD | `f16b9e8` (docs(context) — HEAD sync post #63, PR #64) |
-| Active track | Track E feature scope logged. Next: E2 Reverse Commission Calculator implementation (E1 + E6 follow). |
+| Current main HEAD | `54d49d7` (feat(e2) — modal targeting tab — reverse commission calc, PR #66) |
+| Active track | Track E — E2 shipped (PR #66). Next pre-pilot HIGH: E1 (weekly report schema split + wizard restructure + migration, ~5 days). |
 | Next track | Track D — cron + notifications verification (after Track E pre-pilot HIGH items ship) |
-| Queued | E2 implementation kickoff (per docs/Track-E-Specs.md §E2) |
+| Queued | E1 implementation kickoff (per docs/Track-E-Specs.md §E1) |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -119,7 +119,7 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 | SEC-9c | Server-side tenant isolation for scheduled Cloud Functions | No | Scheduled functions still hardcode `TENANT_ID = 'tatillife_south'`; future work |
 | SEC-12 | unitGoals write rule references missing `unitId` claim | No | Discovered during user-mgmt PR-1 audit; rule branch at `firestore.rules:118-120` is dead code today (unit_manager writes always fall through to false). Tracked in [#23](https://github.com/Kelsean868/agencytrack/issues/23). |
-| Track E | Agent + Manager Tooling Enhancements (E1–E6) | No | E1+E6 HIGH pre-pilot per Path B; E2–E5 post-pilot. Path B shifts pilot launch back ~2 weeks for agent cadence choice + clean schema at launch. Spec: `docs/Track-E-Specs.md`. Source: `docs/FOLLOW_UPS.md` § Track E. |
+| Track E | Agent + Manager Tooling Enhancements (E1–E6) | No | E2 shipped PR #66. Pre-pilot HIGH remaining: E1 (weekly report schema split, ~5 days) → E6 (daily input mode). E3–E5 post-pilot. Spec: `docs/Track-E-Specs.md`. Source: `docs/FOLLOW_UPS.md` § Track E. |
 
 ---
 
@@ -127,11 +127,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #66 | `54d49d7` | feat(e2) — modal targeting tab — reverse commission calc |
+| #65 | `48d73ea` | docs(track-e) — feature scope + Path B sequencing (May 8 2026 planning) |
 | #64 | `f16b9e8` | docs(context) — HEAD sync post #63 (aria-hidden a11y fix merged) |
 | #63 | `2932cfa` | fix(a11y) — remove aria-hidden from modal backdrop wrappers (HIGH#7) |
 | #62 | `ba41cc6` | feat(track-c-c3) — 2026 personal commitments CSV import |
-| #61 | `f906108` | feat(track-c-c2) — bulk user provisioning via CSV import |
-| #60 | `1d0d9c3` | feat(track-c-c1) — branches schema + tenant admin management UI |
 
 ---
 
@@ -149,17 +149,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Track C closed — all 3 PRs shipped (2026-05-08). Phase 2 (aria-hidden fix) queued.
+> **Session boundary:** E2 (modal targeting) shipped via PR #66 (2026-05-08). Pre-E1 housekeeping in progress.
 
-**Track C complete.** PR #59 landed the foundation docs. PR #60 shipped C1 — branches as a real Firestore subcollection (`branchService.js`, `BranchesPanel`, `BranchEditorModal`, `firestore.rules` branches block deployed pre-merge). PR #61 shipped C2 — bulk user provisioning via CSV import: a new `bulkImportUsers` Callable, `userImportService.js`, `BulkImportUsersModal.jsx`, `useFocusTrap` hook extraction. PR #62 shipped C3 — bulk 2026 personal commitments CSV import: new `goalsImportService.js` delegates per-row writes to the existing `setGoals` (no Cloud Function, no rules changes); new `BulkImportGoalsModal.jsx` is a 4-step wizard (file picker → preview → progress → summary) reusing `useFocusTrap` + established patterns from C2; `setGoals` extended (additive) to accept passthrough `csvImportBatchId` + `importedFromCsv` audit fields; UserManagementPanel header gained a sibling "Bulk Import Goals" button alongside the renamed "Bulk Import Users". F3 (`internal` error code) absorbed alongside C3. Extended verification (8 cells × 9 states, 76 PNGs + 2 CSVs) passed on production. All 5 roles pass the exploration-walk production walkthrough against `ba41cc6`.
+E2 (Reverse Commission Calculator) shipped via PR #66. `CommissionPlayground.jsx` refactored to a tabbed directory at the same import path. Tab 1 (Goal Decomposition) is the existing calc verbatim. Tab 2 (Modal Targeting) is the new reverse calc: `TotalAPI = TargetCommission / (C × Σ(Mₘ × firstPaymentRatioₘ))`. Four auto-balancing mode-mix sliders, per-mode breakdown table, 12-month cash-flow chart (recharts), insight card. 15 vitest unit tests — all pass (first test infrastructure in the project). Playwright verification: 9/9 checks passed against Vercel preview.
 
-**Aria-hidden fix shipped (HIGH#7, PR #63, squash SHA `2932cfa`):** deleted `aria-hidden="true"` from the outer backdrop wrapper in both `BulkImportUsersModal.jsx` and `BulkImportGoalsModal.jsx`. Regression script `verification/aria-modal-regression.cjs` confirmed 10/10 assertions on preview: no `aria-hidden` on backdrop, `getByRole('dialog')` resolves without CSS fallback, `aria-modal="true"` present. Before screenshot confirmed production had `aria-hidden="true"`; after screenshots confirmed it's gone.
+CI required one fix: `package-lock.json` was not regenerated after vitest was added to `package.json`, causing `npm ci EUSAGE`. Fixed in commit `8e972a3` by running `npm install --package-lock-only` in the worktree. VERCEL_BYPASS_TOKEN was briefly visible in a Playwright error stack trace during verification — token rotation recommended before next preview run.
 
-**Aria-hidden HIGH#7 shipped via PR #63. CONTEXT.md HEAD synced via PR #64 (`f16b9e8`).**
-
-**Track E scope logged from May 8 2026 planning session.** Six items (E1–E6) covering schema split, daily input mode, reverse commission calc, persistency playground, digital leaderboard, TV kiosk mode. Path B sequencing: E1 + E6 promoted to HIGH pre-pilot for agent cadence choice at launch with clean 3-source schema. Full specs in `docs/Track-E-Specs.md`. Pilot launch shifts back ~2 weeks; tradeoff acknowledged.
-
-**Next: E2 (Reverse Commission Calculator) implementation per `docs/Track-E-Specs.md` §E2.** Pre-pilot HIGH order per Path B: E1 → E6 → E2 → PILOT LAUNCH. E2 is pulled forward as the first implementation slot (pure addition, no schema risk, ~1.5–2 days).
+**Pre-pilot HIGH queue remaining: E1 (weekly report schema split) → E6 (daily input mode). E1 is next, ~5 days. Spec: `docs/Track-E-Specs.md` §E1.**
 
 ---
 
