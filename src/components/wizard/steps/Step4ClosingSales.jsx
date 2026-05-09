@@ -53,7 +53,7 @@ export default function Step4ClosingSales({ data, onChange }) {
   return (
     <div className="flex flex-col gap-4">
 
-      {/* Closing Interviews — unchanged */}
+      {/* Closing Interviews */}
       <Card badge="Closing Interviews" desc="A CI is a scheduled meeting where you present the solution and ask for the sale.">
         <div className="flex flex-col gap-4">
           <NumericField
@@ -109,118 +109,104 @@ export default function Step4ClosingSales({ data, onChange }) {
         </div>
       </Card>
 
-      {/* Other production this week */}
-      <div className="flex flex-col gap-3">
-        {(!pppExpanded || !lumpsumsExpanded) && (
-          <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">
-            Other production this week
-          </p>
-        )}
-
-        <div className="flex flex-wrap gap-2">
-          {!pppExpanded && (
-            <button
-              type="button"
-              onClick={() => setPppExpanded(true)}
-              className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-sm font-medium hover:bg-primary/5 transition-colors"
-            >
-              <Plus size={14} />
-              Add PPP increase
-            </button>
-          )}
-          {!lumpsumsExpanded && (
-            <button
-              type="button"
-              onClick={() => setLumpsumsExpanded(true)}
-              className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-sm font-medium hover:bg-primary/5 transition-colors"
-            >
-              <Plus size={14} />
-              Add lumpsum
-            </button>
-          )}
-        </div>
-
-        {/* PPP Increases — expandable */}
-        {pppExpanded && (
-          <Card variant="teal" badge="PPP Increases">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between -mt-1">
-                <p className="text-xs text-ink-muted">
-                  Minimum {formatCurrency(MIN_PPP_INCREASE)} API increase per application.
-                </p>
-                <button
-                  type="button"
-                  onClick={removePPP}
-                  className="flex items-center gap-1 text-xs text-ink-muted hover:text-danger transition-colors"
-                >
-                  <X size={12} />
-                  Remove
-                </button>
-              </div>
-              <NumericField
-                label="Number of PPP increases"
-                name="apps"
-                value={data.pppIncreases?.apps ?? 0}
-                onChange={pppChange}
-                desc="Count of clients whose policy premiums were increased this week."
-              />
-              <CurrencyField
-                label="Total API increase (TTD)"
-                name="apiIncrease"
-                value={data.pppIncreases?.apiIncrease ?? 0}
-                onChange={pppChange}
-                desc="Combined annual premium increase across all PPP transactions."
-              />
-              {pppWarn && (
-                <p className="text-xs text-warning font-medium">
-                  Average {formatCurrency(Math.round(pppAvgPerApp))} per application is below the{' '}
-                  {formatCurrency(MIN_PPP_INCREASE)} minimum — check your figures.
-                </p>
-              )}
+      {/* PPP Increases — always visible; CTA in collapsed state, fields in expanded state */}
+      <Card
+        badge="PPP Increases"
+        desc={`Minimum ${formatCurrency(MIN_PPP_INCREASE)} API increase per application.`}
+      >
+        {!pppExpanded ? (
+          <button
+            type="button"
+            onClick={() => setPppExpanded(true)}
+            className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/30 bg-card-raised text-primary text-sm font-semibold hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          >
+            <Plus size={16} />
+            Add PPP details
+          </button>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-end -mt-1">
+              <button
+                type="button"
+                onClick={removePPP}
+                className="flex items-center gap-1 text-xs text-ink-muted hover:text-danger transition-colors"
+              >
+                <X size={12} />
+                Remove
+              </button>
             </div>
-          </Card>
+            <NumericField
+              label="Number of PPP increases"
+              name="apps"
+              value={data.pppIncreases?.apps ?? 0}
+              onChange={pppChange}
+              desc="Count of clients whose policy premiums were increased this week."
+            />
+            <CurrencyField
+              label="Total API increase (TTD)"
+              name="apiIncrease"
+              value={data.pppIncreases?.apiIncrease ?? 0}
+              onChange={pppChange}
+              desc="Combined annual premium increase across all PPP transactions."
+            />
+            {pppWarn && (
+              <p className="text-xs text-warning font-medium">
+                Average {formatCurrency(Math.round(pppAvgPerApp))} per application is below the{' '}
+                {formatCurrency(MIN_PPP_INCREASE)} minimum — check your figures.
+              </p>
+            )}
+          </div>
         )}
+      </Card>
 
-        {/* Lumpsums — expandable */}
-        {lumpsumsExpanded && (
-          <Card variant="teal" badge="Lumpsums">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between -mt-1">
-                <p className="text-xs text-ink-muted">
-                  10% API credit · 0.5% commission (fixed rates).
-                </p>
-                <button
-                  type="button"
-                  onClick={removeLumpsums}
-                  className="flex items-center gap-1 text-xs text-ink-muted hover:text-danger transition-colors"
-                >
-                  <X size={12} />
-                  Remove
-                </button>
-              </div>
-              <CurrencyField
-                label="Gross lumpsum amount (TTD)"
-                name="grossAmount"
-                value={data.lumpsums?.grossAmount ?? 0}
-                onChange={lmpsChange}
-                desc="Total lumpsum premium collected this week."
-              />
-              {lmpsGross > 0 && (
-                <div className="flex flex-col gap-1.5 pt-1 border-t border-primary/20">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-ink-muted">API credit (10%)</span>
-                    <span className="font-semibold text-primary">{formatCurrency(lmpsCredit)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-ink-muted">Commission (0.5%)</span>
-                    <span className="font-semibold text-primary">{formatCurrency(lmpsComm)}</span>
-                  </div>
+      {/* Lumpsums — always visible; CTA in collapsed state, fields in expanded state */}
+      <Card
+        badge="Lumpsums"
+        desc="10% API credit · 0.5% commission (fixed rates)."
+      >
+        {!lumpsumsExpanded ? (
+          <button
+            type="button"
+            onClick={() => setLumpsumsExpanded(true)}
+            className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/30 bg-card-raised text-primary text-sm font-semibold hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          >
+            <Plus size={16} />
+            Add lumpsum details
+          </button>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-end -mt-1">
+              <button
+                type="button"
+                onClick={removeLumpsums}
+                className="flex items-center gap-1 text-xs text-ink-muted hover:text-danger transition-colors"
+              >
+                <X size={12} />
+                Remove
+              </button>
+            </div>
+            <CurrencyField
+              label="Gross lumpsum amount (TTD)"
+              name="grossAmount"
+              value={data.lumpsums?.grossAmount ?? 0}
+              onChange={lmpsChange}
+              desc="Total lumpsum premium collected this week."
+            />
+            {lmpsGross > 0 && (
+              <div className="flex flex-col gap-1.5 pt-1 border-t border-primary/20">
+                <div className="flex justify-between text-sm">
+                  <span className="text-ink-muted">API credit (10%)</span>
+                  <span className="font-semibold text-primary">{formatCurrency(lmpsCredit)}</span>
                 </div>
-              )}
-            </div>
-          </Card>
+                <div className="flex justify-between text-sm">
+                  <span className="text-ink-muted">Commission (0.5%)</span>
+                  <span className="font-semibold text-primary">{formatCurrency(lmpsComm)}</span>
+                </div>
+              </div>
+            )}
+          </div>
         )}
-      </div>
+      </Card>
 
     </div>
   );
