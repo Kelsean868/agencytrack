@@ -71,12 +71,23 @@ service cloud.firestore {
             && (
               (request.auth.token.role == 'unit_manager'
                && request.resource.data.diff(resource.data).affectedKeys()
-                  .hasOnly(['unitName', 'hasSeenWelcome', 'photoURL', 'bio', 'phone']))
+                  .hasOnly(['unitName', 'hasSeenWelcome', 'photoURL', 'bio', 'phone',
+                            'loggingMode', 'dailyNudgeTime', 'updatedAt']))
               ||
               request.resource.data.diff(resource.data).affectedKeys()
-                 .hasOnly(['hasSeenWelcome', 'photoURL', 'bio', 'phone'])
+                 .hasOnly(['hasSeenWelcome', 'photoURL', 'bio', 'phone',
+                           'loggingMode', 'dailyNudgeTime', 'updatedAt'])
             ));
         allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
+      }
+
+      // E6: per-agent daily entries. Agent-private — managers continue to
+      // see weekly submissions only. Aggregator (Cloud Function) reads via
+      // Admin SDK and bypasses rules.
+      match /users/{userId}/dailyActivity/{date} {
+        allow read, write: if isSignedIn()
+          && getTenantId() == tenantId
+          && request.auth.uid == userId;
       }
 
       match /submissions/{submissionId} {

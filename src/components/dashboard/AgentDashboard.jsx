@@ -16,6 +16,8 @@ import { generateAgentPDF } from '../../services/exportService';
 import { getActiveCampaignsForAgent, getCampaignSubmissions } from '../../services/campaignService';
 import { aggregateAPI } from '../../utils/aggregateAPI';
 import WizardForm from '../wizard/WizardForm';
+import DailyEntryModal from '../daily/DailyEntryModal';
+import { getDailyEntry } from '../../services/dailyActivityService';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import CampaignCard from '../campaigns/CampaignCard';
 import CareerPortal from '../profile/CareerPortal';
@@ -73,8 +75,11 @@ export default function AgentDashboard() {
   const [activeTab, setActiveTab]             = useState('dashboard');
   const [showWizard, setShowWizard]           = useState(false);
   const [wizardWeek, setWizardWeek]           = useState(null);
+  const [showDailyModal, setShowDailyModal]   = useState(false);
   const [unlockDismissed, setUnlockDismissed] = useState(false);
   const [viewingSubmission, setViewingSubmission] = useState(null);
+  const [todayDailyEntry, setTodayDailyEntry] = useState(null);
+  const [todayDailyChecked, setTodayDailyChecked] = useState(false);
 
   const [currentWeekSub, setCurrentWeekSub]   = useState(null);
   const [allSubmissions, setAllSubmissions]    = useState([]);
@@ -200,6 +205,40 @@ export default function AgentDashboard() {
       .finally(() => setCampaignsLoading(false));
   }, [user?.uid, tenantId, userProfile?.unitId]);
 
+  // E6 — logging mode: 'weekly' | 'daily' | 'hybrid'. Existing agents have
+  // no field; default to hybrid per planning decision.
+  const loggingMode = userProfile?.loggingMode ?? 'hybrid';
+  const showDailyCTA = loggingMode === 'daily' || loggingMode === 'hybrid';
+  const showWeeklyCTA = loggingMode === 'weekly' || loggingMode === 'hybrid';
+
+  // Today's date in agent's local time — same convention as the modal.
+  const today = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
+
+  // Pre-flight: is today's daily entry already logged? Drives the
+  // "haven't logged today" dashboard banner (v1 nudge fallback while
+  // push notifications are deferred to a follow-up PR).
+  useEffect(() => {
+    if (!user?.uid || !showDailyCTA) {
+      setTodayDailyChecked(true);
+      return;
+    }
+    getDailyEntry(user.uid, today)
+      .then(setTodayDailyEntry)
+      .catch(() => setTodayDailyEntry(null))
+      .finally(() => setTodayDailyChecked(true));
+  }, [user?.uid, today, showDailyCTA]);
+
+  const refreshDailyEntry = () => {
+    if (!user?.uid) return;
+    getDailyEntry(user.uid, today).then(setTodayDailyEntry).catch(() => {});
+  };
+
   // Fetch goal hierarchy for gap analysis
   useEffect(() => {
     if (!user?.uid || !tenantId) return;
@@ -225,9 +264,18 @@ export default function AgentDashboard() {
   };
 
   // Bottom-nav action dispatch. The agent's 'submit' item is not a tab;
-  // it opens the wizard at the most-recent Sunday week.
+  // it opens the wizard at the most-recent Sunday week. In daily-only mode
+  // it opens the daily entry modal instead.
   const handleAction = (action) => {
-    if (action === 'submit') setShowWizard(true);
+    if (action === 'submit') {
+      if (loggingMode === 'daily') {
+        setShowDailyModal(true);
+      } else {
+        setShowWizard(true);
+      }
+    } else if (action === 'log-today') {
+      setShowDailyModal(true);
+    }
   };
 
   const openWizardForWeek = (week) => {
@@ -267,6 +315,17 @@ export default function AgentDashboard() {
 
   if (showWizard) {
     return <WizardForm initialWeek={wizardWeek} onClose={() => { setShowWizard(false); setWizardWeek(null); }} />;
+  }
+
+  if (showDailyModal) {
+    return (
+      <DailyEntryModal
+        onClose={() => {
+          setShowDailyModal(false);
+          refreshDailyEntry();
+        }}
+      />
+    );
   }
 
   return (
@@ -507,12 +566,47 @@ export default function AgentDashboard() {
             />
           </div>
 
-          <button
-            className="btn-primary w-full"
-            onClick={() => setShowWizard(true)}
-          >
-            Submit Weekly Report
-          </button>
+          {/* E6 daily nudge banner — only when daily/hybrid mode and the
+              agent hasn't logged today yet. v1 fallback until push
+              notifications ship. */}
+          {showDailyCTA && todayDailyChecked && !todayDailyEntry && (
+            <div className="mb-4 flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-ink">You haven't logged today yet</p>
+                <p className="text-xs text-ink-muted mt-0.5">
+                  Capture your activity in 30 seconds. We'll roll it up into your weekly report on Sunday.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDailyModal(true)}
+                className="shrink-0 px-3 h-9 rounded-lg bg-primary dark:bg-primary-dark text-white text-xs font-semibold hover:bg-primary/90 dark:hover:bg-primary transition-colors"
+              >
+                Log today
+              </button>
+            </div>
+          )}
+
+          {/* CTA — adapts to logging mode. weekly: weekly only. daily:
+              daily only. hybrid: both, stacked. */}
+          <div className="flex flex-col gap-2">
+            {showDailyCTA && (
+              <button
+                className={showWeeklyCTA ? 'btn-secondary w-full' : 'btn-primary w-full'}
+                onClick={() => setShowDailyModal(true)}
+              >
+                {todayDailyEntry ? 'Update today’s log' : 'Log today'}
+              </button>
+            )}
+            {showWeeklyCTA && (
+              <button
+                className="btn-primary w-full"
+                onClick={() => setShowWizard(true)}
+              >
+                Submit Weekly Report
+              </button>
+            )}
+          </div>
         </div>
       )}
 

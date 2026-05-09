@@ -39,9 +39,8 @@ const i = (v) => parseInt(v, 10) || 0;
 export function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
   const entries = Array.isArray(dailyEntries) ? dailyEntries : [];
 
-  const sumInt   = (key) => entries.reduce((acc, e) => acc + i(e?.[key]), 0);
-  const sumFloat = (key) => entries.reduce((acc, e) => acc + p(e?.[key]), 0);
-  const sumPath  = (key, sub) => entries.reduce((acc, e) => acc + p(e?.[key]?.[sub]), 0);
+  const sumInt     = (key)      => entries.reduce((acc, e) => acc + i(e?.[key]), 0);
+  const sumPath    = (key, sub) => entries.reduce((acc, e) => acc + p(e?.[key]?.[sub]), 0);
   const sumPathInt = (key, sub) => entries.reduce((acc, e) => acc + i(e?.[key]?.[sub]), 0);
 
   const nbApps  = sumPathInt('newBusiness', 'apps');
