@@ -11,7 +11,7 @@ import { getDraft, getAgentSubmissions } from '../../services/submissionService'
 import { getGoals, getCompanyMinimums, getGoalHierarchy } from '../../services/goalsService';
 import { getAgentPersistency } from '../../services/persistencyService';
 import { getSettlements } from '../../services/settlementService';
-import { extractFields } from '../../utils/extractFields';
+import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 import { generateAgentPDF } from '../../services/exportService';
 import { getActiveCampaignsForAgent, getCampaignSubmissions } from '../../services/campaignService';
 import { aggregateAPI } from '../../utils/aggregateAPI';
@@ -38,8 +38,8 @@ const KPIS = [
   { key: 'f2f',      label: 'F2F Approaches', field: 'f2fAttempts',      isCurrency: false },
   { key: 'ffi',      label: 'FFI',            field: 'ffiConducted',     isCurrency: false },
   { key: 'ci',       label: 'CI',             field: 'ciConducted',      isCurrency: false },
-  { key: 'apps',     label: 'Applications',   field: 'applicationsSold', isCurrency: false },
-  { key: 'api',      label: 'API',            field: 'apiSold',          isCurrency: true  },
+  { key: 'apps',     label: 'Applications',   field: 'applicationsSold',    isCurrency: false },
+  { key: 'api',      label: 'API',            field: 'totalProductionCredit', isCurrency: true  },
 ];
 
 // Sidebar nav items for the agent role. Mirrors the live dashboard tabs
@@ -161,7 +161,7 @@ export default function AgentDashboard() {
     );
     return yearSubs.reduce((acc, s) => {
       const f = extractFields(s);
-      acc.api          += parseFloat(f.apiSold)          || 0;
+      acc.api          += extractTotalProductionCredit(s);
       acc.apps         += parseFloat(f.applicationsSold) || 0;
       acc.ffiConducted += parseFloat(f.ffiConducted)     || 0;
       acc.ciConducted  += parseFloat(f.ciConducted)      || 0;
@@ -177,7 +177,7 @@ export default function AgentDashboard() {
       .sort((a, b) => (b.weekStarting ?? '').localeCompare(a.weekStarting ?? ''))
       .slice(0, 4)
       .reverse()
-      .map((s) => extractFields(s));
+      .map((s) => ({ ...extractFields(s), totalProductionCredit: extractTotalProductionCredit(s) }));
   }, [allSubmissions]);
 
   // Fetch active campaigns for this agent
@@ -612,8 +612,8 @@ export default function AgentDashboard() {
                 <div>
                   <p className="text-sm font-semibold text-ink">Week of {formatDateDisplay(s.weekStarting)}</p>
                   <p className="text-xs text-ink-muted mt-0.5">
-                    {formatCurrency(parseFloat(s.apiSold) || 0)} API &nbsp;·&nbsp;
-                    {s.applicationsSold ?? 0} apps
+                    {formatCurrency(extractTotalProductionCredit(s))} API &nbsp;·&nbsp;
+                    {extractFields(s).applicationsSold} apps
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">

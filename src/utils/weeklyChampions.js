@@ -1,4 +1,4 @@
-import { extractFields } from './extractFields';
+import { extractFields, extractTotalProductionCredit } from './extractFields';
 
 /**
  * computeWeeklyChampions(submissions, weekStarting)
@@ -32,7 +32,7 @@ export function computeWeeklyChampions(submissions, weekStarting) {
     return {
       agentId:   s.agentId ?? s.userId ?? '',
       agentName: s.agentName ?? s.displayName ?? 'Agent',
-      api:      parseFloat(f.apiSold)          || 0,
+      api:      extractTotalProductionCredit(s),
       apps:     parseFloat(f.applicationsSold) || 0,
       activity: (parseFloat(f.ffiConducted)     || 0)
               + (parseFloat(f.ciConducted)       || 0)

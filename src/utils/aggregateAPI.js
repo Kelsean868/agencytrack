@@ -1,4 +1,4 @@
-import { extractFields } from './extractFields';
+import { extractTotalProductionCredit } from './extractFields';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -54,7 +54,7 @@ function isInPeriod(weekStartingISO, currentDate, period) {
 function sumApiSold(submissions, currentDate, period) {
   return submissions
     .filter((s) => s?.status === 'submitted' && isInPeriod(s.weekStarting, currentDate, period))
-    .reduce((sum, s) => sum + (extractFields(s).apiSold || 0), 0);
+    .reduce((sum, s) => sum + extractTotalProductionCredit(s), 0);
 }
 
 function buildSlice(current, target, period, status) {

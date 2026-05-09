@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { computeAgentAwards } from '../../utils/awardsEngine';
-import { extractFields } from '../../utils/extractFields';
+import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -56,7 +56,7 @@ function monthClosingRatio(submissions) {
     (s) => s.status === 'submitted' && (s.weekStarting ?? '').startsWith(curMonthStr)
   );
   const totalCI   = monthSubs.reduce((s, sub) => s + (parseInt(sub.ciConducted) || 0), 0);
-  const totalApps = monthSubs.reduce((s, sub) => s + (parseInt(sub.applicationsSold) || 0), 0);
+  const totalApps = monthSubs.reduce((s, sub) => s + (parseInt(extractFields(sub).applicationsSold) || 0), 0);
   return totalCI > 0 ? Math.round((totalApps / totalCI) * 100) : 0;
 }
 
@@ -113,7 +113,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
     const y = (d.periodKey ?? '').substring(0, 4);
     return y === String(year);
   });
-  const submittedAPI = yearSubs.reduce((s, sub) => s + (parseFloat(sub.apiSold) || 0), 0);
+  const submittedAPI = yearSubs.reduce((s, sub) => s + extractTotalProductionCredit(sub), 0);
   const confirmedAPI = confYear.reduce((s, d) => s + (parseFloat(d.settledAPI) || 0), 0);
   const bestAPI = Math.max(submittedAPI, confirmedAPI);
   const mdrtTarget = 500000;
@@ -157,7 +157,7 @@ function buildAgentCards({ submissions, confirmedSettlements, leaderboardDoc, go
   if (goals?.targetWeeklyAPI) {
     const sortedSubs = [...(submissions ?? [])].sort((a, b) => (b.weekStarting ?? '').localeCompare(a.weekStarting ?? ''));
     const latestSub = sortedSubs[0];
-    const weekAPI = parseFloat(latestSub?.apiSold) || 0;
+    const weekAPI = latestSub ? extractTotalProductionCredit(latestSub) : 0;
     if (latestSub) {
       cards.push({
         id: 'weekly_goal',
