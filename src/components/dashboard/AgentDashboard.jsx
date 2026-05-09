@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   X, Eye, Download, Loader2,
-  ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle,
+  ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle, BarChart2,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -33,6 +33,7 @@ import BadgeGrid, { computeEarnedBadges } from '../gamification/BadgeGrid';
 import { buildActivityEvents } from '../../utils/buildActivityEvents';
 import WelcomeScreen from '../onboarding/WelcomeScreen';
 import Shell from '../shell/Shell';
+import ProductionReportTab from '../productionReport/ProductionReportTab';
 
 const KPIS = [
   { key: 'dials',    label: 'Dials',         field: 'totalTelAttempts', isCurrency: false },
@@ -53,8 +54,9 @@ const KPIS = [
 const NAV_ITEMS = [
   { id: 'dashboard',   label: 'Dashboard',   tabId: 'dashboard',   Icon: ClipboardList, sectionLabel: 'Workspace' },
   { id: 'career',      label: 'Career',      tabId: 'career',      Icon: TrendingUp },
-  { id: 'awards',      label: 'Awards',      tabId: 'awards',      Icon: Trophy },
-  { id: 'leaderboard', label: 'Leaderboard', tabId: 'leaderboard', Icon: Star },
+  { id: 'awards',             label: 'Awards',            tabId: 'awards',             Icon: Trophy },
+  { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: BarChart2 },
+  { id: 'leaderboard',       label: 'Leaderboard',       tabId: 'leaderboard',       Icon: Star },
   { id: 'history',     label: 'History',     tabId: 'history',     Icon: History },
   { id: 'profile',     label: 'Profile',     tabId: 'profile',     Icon: UserCircle },
 ];
@@ -661,6 +663,9 @@ export default function AgentDashboard() {
           </div>
         )
       )}
+
+      {/* ── PRODUCTION REPORT TAB ── */}
+      {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}
 
       {/* ── LEADERBOARD TAB ── */}
       {activeTab === 'leaderboard' && <Leaderboard />}

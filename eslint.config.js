@@ -41,7 +41,7 @@ export default defineConfig([
       'react-hooks/unsupported-syntax': 'off',
       'react-hooks/use-memo': 'off',
       // Allow _prefixed variables as intentionally unused
-      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_|^React$' }],
     },
   },
   // Node.js environment for Cloud Functions and scripts (CommonJS — require/exports/process are valid)

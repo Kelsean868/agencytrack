@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Users, TrendingUp, FileCheck, AlertCircle, Presentation, Download,
-  BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle,
+  BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -26,6 +26,7 @@ import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import MotivationalCarousel from './MotivationalCarousel';
 import ProfileScreen from '../profile/ProfileScreen';
 import Shell from '../shell/Shell';
+import ProductionReportTab from '../productionReport/ProductionReportTab';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -35,8 +36,9 @@ import Shell from '../shell/Shell';
 const NAV_ITEMS = [
   { id: 'overview',    label: 'Overview',     tabId: 'overview',    Icon: BarChart2,     sectionLabel: 'Manage' },
   { id: 'team',        label: 'Team',         tabId: 'team',        Icon: Users },
-  { id: 'campaigns',   label: 'Campaigns',    tabId: 'campaigns',   Icon: Gift },
-  { id: 'awards',      label: 'Awards',       tabId: 'awards',      Icon: Trophy },
+  { id: 'campaigns',          label: 'Campaigns',         tabId: 'campaigns',          Icon: Gift },
+  { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: LineChart },
+  { id: 'awards',            label: 'Awards',            tabId: 'awards',            Icon: Trophy },
   { id: 'mastersheet', label: 'Master Sheet', tabId: 'mastersheet', Icon: ClipboardList },
   { id: 'compliance',  label: 'Compliance',   tabId: 'compliance',  Icon: CheckCircle2 },
   { id: 'persistency', label: 'Persistency',  tabId: 'persistency', Icon: TrendingUp,    sectionLabel: 'Operations' },
@@ -279,6 +281,8 @@ export default function ManagerDashboard() {
         {activeTab === 'team' && <UserManagementPanel />}
 
         {activeTab === 'campaigns' && <CampaignPanel />}
+
+        {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}
 
         {activeTab === 'awards' && (
           <ManagerAwardsPanel

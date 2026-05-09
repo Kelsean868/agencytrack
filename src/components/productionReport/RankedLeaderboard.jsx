@@ -13,7 +13,7 @@ import { formatCurrency } from '../../utils/formatters';
  */
 export default function RankedLeaderboard({
   entries = [],
-  valueLabel = 'API',
+  _valueLabel = 'API',
   secondaryLabel,
   topN,
   currentEntityId,
