@@ -30,6 +30,7 @@ import { createRequire }    from 'module';
 import { resolve, dirname } from 'path';
 import { fileURLToPath }    from 'url';
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { readV1Api, readV1Apps } from '../../src/lib/schema/weeklyReport.computations.js';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT  = resolve(__dir, '../..');
@@ -73,13 +74,28 @@ const db = admin.firestore();
 
 const p = (v) => parseFloat(v) || 0;
 
+/** Which V1 API alias is present — for alias distribution logging. */
+function apiAlias(doc) {
+  if (doc.apiSold    != null) return 'apiSold';
+  if (doc.api        != null) return 'api';
+  if (doc.annualPremium != null) return 'annualPremium';
+  return 'none';
+}
+
+/** Which V1 apps alias is present — for alias distribution logging. */
+function appsAlias(doc) {
+  if (doc.applicationsSold != null) return 'applicationsSold';
+  if (doc.appsSold         != null) return 'appsSold';
+  return 'none';
+}
+
 /**
  * Transform a V1 submission doc into a V2 shape.
  * Preserves all existing fields; adds new 3-source fields + version.
  */
 function transformDoc(docData, agentCommissionRate) {
-  const nbApi  = p(docData.apiSold) || p(docData.api) || p(docData.annualPremium);
-  const nbApps = p(docData.applicationsSold) || p(docData.apps);
+  const nbApi  = readV1Api(docData);
+  const nbApps = readV1Apps(docData);
   const rate   = p(agentCommissionRate) / 100;
 
   const newBusiness  = { apps: nbApps, api: nbApi };
@@ -152,13 +168,15 @@ async function migrateTenant(tenantId) {
   const snap    = await subsRef.get();
 
   const stats = {
-    total:      snap.size,
-    alreadyV2:  0,
+    total:       snap.size,
+    alreadyV2:   0,
     willMigrate: 0,
-    migrated:   0,
-    skipped:    0,
-    warnings:   [],
-    sampleV2:   null,
+    migrated:    0,
+    skipped:     0,
+    warnings:    [],
+    sampleV2:    null,
+    apiAliases:  { apiSold: 0, api: 0, annualPremium: 0, none: 0 },
+    appsAliases: { applicationsSold: 0, appsSold: 0, none: 0 },
   };
 
   const batch = db.batch();
@@ -172,6 +190,10 @@ async function migrateTenant(tenantId) {
       stats.alreadyV2++;
       continue;
     }
+
+    // Track which V1 field-name alias is present on this doc.
+    stats.apiAliases[apiAlias(data)]++;
+    stats.appsAliases[appsAlias(data)]++;
 
     // Warn on data anomalies.
     const rawApi = data.apiSold ?? data.api ?? data.annualPremium;
@@ -240,6 +262,12 @@ async function migrateTenant(tenantId) {
     console.log(`  Warnings (${stats.warnings.length}):`);
     stats.warnings.forEach((w) => console.log(`    ⚠ ${w}`));
   }
+
+  // Alias distribution — confirms which V1 field names are actually in Firestore.
+  const aa = stats.apiAliases;
+  const pa = stats.appsAliases;
+  console.log(`  API alias dist:  apiSold=${aa.apiSold} api=${aa.api} annualPremium=${aa.annualPremium} none=${aa.none}`);
+  console.log(`  Apps alias dist: applicationsSold=${pa.applicationsSold} appsSold=${pa.appsSold} none=${pa.none}`);
 
   if (stats.sampleV2) {
     console.log('\n  Sample V2 doc (first doc to migrate):');

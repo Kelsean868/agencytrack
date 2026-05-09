@@ -78,6 +78,26 @@ export function computeTotalCommission(report, agentRateFraction) {
   return nbApi * rate + lmpsComm;
 }
 
+// ── V1 field-name normalisation ───────────────────────────────────────────────
+// These mirror the priority order in extractFields.js so migration reads
+// match exactly what the production read path does.
+
+/**
+ * Read the V1 API (Annual Premium Income) field from a raw Firestore doc.
+ * Priority: apiSold → api → annualPremium  (matches extractFields.js:91)
+ */
+export function readV1Api(doc) {
+  return p(doc?.apiSold) || p(doc?.api) || p(doc?.annualPremium);
+}
+
+/**
+ * Read the V1 applications-sold count from a raw Firestore doc.
+ * Priority: applicationsSold → appsSold  (matches extractFields.js:89)
+ */
+export function readV1Apps(doc) {
+  return p(doc?.applicationsSold) || p(doc?.appsSold);
+}
+
 // ── Validation ────────────────────────────────────────────────────────────────
 
 /**

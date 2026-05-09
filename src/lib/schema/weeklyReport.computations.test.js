@@ -6,7 +6,53 @@ import {
   computeTotalCommission,
   validatePppIncrease,
   validateReport,
+  readV1Api,
+  readV1Apps,
 } from './weeklyReport.computations.js';
+
+// ── V1 field-name normalisation ───────────────────────────────────────────────
+
+describe('readV1Api', () => {
+  it('apiSold present → uses apiSold', () => {
+    expect(readV1Api({ apiSold: 20000 })).toBe(20000);
+  });
+
+  it('only api present → falls through to api', () => {
+    expect(readV1Api({ api: 15000 })).toBe(15000);
+  });
+
+  it('only annualPremium present → falls through to annualPremium', () => {
+    expect(readV1Api({ annualPremium: 8000 })).toBe(8000);
+  });
+
+  it('apiSold wins over api when both present', () => {
+    expect(readV1Api({ apiSold: 20000, api: 99999 })).toBe(20000);
+  });
+
+  it('missing/null → 0', () => {
+    expect(readV1Api({})).toBe(0);
+    expect(readV1Api(null)).toBe(0);
+  });
+});
+
+describe('readV1Apps', () => {
+  it('applicationsSold present → uses applicationsSold', () => {
+    expect(readV1Apps({ applicationsSold: 3 })).toBe(3);
+  });
+
+  it('only appsSold present → falls through to appsSold', () => {
+    expect(readV1Apps({ appsSold: 2 })).toBe(2);
+  });
+
+  it('applicationsSold wins over appsSold when both present', () => {
+    expect(readV1Apps({ applicationsSold: 3, appsSold: 99 })).toBe(3);
+  });
+
+  it('missing/null → 0', () => {
+    expect(readV1Apps({})).toBe(0);
+    expect(readV1Apps(null)).toBe(0);
+  });
+});
 
 // ── Lumpsum credit ────────────────────────────────────────────────────────────
 

@@ -33,15 +33,37 @@
 Firestore path: `tenants/{tenantId}/submissions/{subId}` — NOT `weeklyReports`.
 The spec's "weeklyReport" is the domain concept; the Firestore collection is `submissions`.
 
-### 2. Actual field names (spec vs code)
+### 2. Actual V1 field names (verified against extractFields.js)
 
-| Spec mentions | Actual Firestore field | Notes |
-|---|---|---|
-| "existing api field" | `apiSold` | Primary field since ~P4; `api` is legacy fallback |
-| "existing apps field" | `applicationsSold` | No `apps` field in current submissions |
-| "agent.commissionRate" | `commissionRate` | On user doc, stored as percentage (35 = 35%) |
+| V1 field | Priority | Alias(es) | Source |
+|---|---|---|---|
+| API (Annual Premium Income) | `apiSold` | `api`, `annualPremium` | `extractFields.js:91` |
+| Applications sold | `applicationsSold` | `appsSold` | `extractFields.js:89` |
+| Agent commission rate | `commissionRate` | — | User doc; stored as percentage (35 = 35%) |
 
-`extractFields.js:91` fallback chain: `d.apiSold \|\| d.api \|\| d.annualPremium`
+Full fallback chains in `extractFields.js`:
+- API:  `d.apiSold \|\| d.api \|\| d.annualPremium`
+- Apps: `d.applicationsSold \|\| d.appsSold`
+
+**Bug fixed in migration script (commit appended to PR #68):**
+The original migration used `p(docData.apps)` as an alias for applications. `apps` is NOT
+a V1 alias per `extractFields.js`. Correct alias is `appsSold`. Fixed by extracting
+`readV1Api` / `readV1Apps` pure functions (in `weeklyReport.computations.js`) that mirror
+the exact `extractFields.js` priority order, then calling those from the migration.
+
+**Schema irregularity noted:** `telContacts` is not saved directly to Firestore in the flat
+schema; `qualifiedApproaches` is the best available proxy (`extractFields.js:80`). Not
+relevant to E1 production fields but documented for completeness.
+
+### 2b. V2 naming decision
+
+**Chosen: clean-break naming** — `newBusiness.api`, `newBusiness.apps` (not `newBusiness.apiSold`).
+
+Rationale: the `extractFields.js` abstraction layer already exists to translate raw Firestore
+field names to normalised output. V2 uses clean internal names (`api`, `apps`) within the
+nested sub-objects; `extractFields.js` gets a Slice 2 update to read from `newBusiness.api`
+when `version === 2`. The "Sold" suffix is redundant inside a sub-object already named
+`newBusiness`. Consistent with PPP (`apiIncrease`) and LMPS (`grossAmount`) naming patterns.
 
 ### 3. `.api` access count: 30 references in 9 files
 
@@ -100,7 +122,7 @@ Wizard has a single "API Sold (TTD)" CurrencyField at `Step4ClosingSales.jsx`. S
 
 | Condition | Status |
 |---|---|
-| Schema diverges from spec assumptions | ✅ Clear — `apiSold` vs `api` is a naming note, not a divergence |
+| Schema diverges from spec assumptions | ⚠️ **Retroactive correction** — `apiSold`/`applicationsSold`/`appsSold` divergence was a real schema-read bug in the original migration (used `apps`, not `appsSold`). Fixed in follow-up commit. See § 2 above. |
 | More than 15 files reference weeklyReport.api directly | ✅ Clear — 9 files, 5 from submissions, 4 from goals/settlements (different schema) |
 | Cloud Functions do complex aggregation needing schema-aware migration | ✅ Clear — `onSubmissionWrite` reads `apiSold` simply; migration preserves it |
 
