@@ -116,19 +116,24 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
   yearSubs.forEach((s) => {
     const mk = (s.weekStarting ?? '').substring(0, 7);
     if (!mk) return;
-    if (!subsByMonth[mk]) subsByMonth[mk] = { api: 0, apps: 0 };
+    if (!subsByMonth[mk]) subsByMonth[mk] = { api: 0, apps: 0, pppApps: 0 };
     subsByMonth[mk].api += extractTotalProductionCredit(s);
     subsByMonth[mk].apps += p(extractFields(s).applicationsSold);
+    subsByMonth[mk].pppApps += parseInt(s.pppIncreases?.apps, 10) || 0;
   });
 
   let annualSource = 'confirmed';
+  let estPppApps = 0;
   yearKeys.forEach((mk) => {
     if (!confirmedMonthKeys.has(mk) && subsByMonth[mk]) {
       annualAPI += subsByMonth[mk].api;
       annualApps += subsByMonth[mk].apps;
+      estPppApps += subsByMonth[mk].pppApps;
       annualSource = 'estimated';
     }
   });
+  // Centurion counts PPP increases as apps, capped at 20 per year
+  const centurionApps = annualApps + Math.min(estPppApps, 20);
 
   const confPersistVals = annualConf.map((d) => p(d.persistency)).filter((v) => v > 0);
   const subPersistVals = yearSubs.map((s) => p(s.persistencyRate)).filter((v) => v > 0);
@@ -258,14 +263,14 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
 
   awards.centurion = makeAward({
     id: 'centurion', name: 'Centurion Award', category: 'annual',
-    eligible: annualApps >= 100 && annualPersist >= 90,
-    inContention: annualApps >= 50 && annualApps < 100,
+    eligible: centurionApps >= 100 && annualPersist >= 90,
+    inContention: centurionApps >= 50 && centurionApps < 100,
     criteria: [
-      criterion('Annual Apps', 100, annualApps, 'apps'),
+      criterion('Annual Apps', 100, centurionApps, 'apps'),
       criterion('Avg Persistency', 90, annualPersist, '%'),
     ],
     prize: 'Centurion Trophy',
-    dataSource: annualSource, progressPercent: (annualApps / 100) * 100, note: annualNote,
+    dataSource: annualSource, progressPercent: (centurionApps / 100) * 100, note: annualNote,
   });
 
   // ── CLUB ──
