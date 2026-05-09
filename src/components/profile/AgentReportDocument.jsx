@@ -12,7 +12,7 @@ import {
   Document, Page, View, Text, StyleSheet,
   Svg, Line, Path,
 } from '@react-pdf/renderer';
-import { extractFields } from '../../utils/extractFields';
+import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 import { computeAgentAwards } from '../../utils/awardsEngine';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 
@@ -389,13 +389,16 @@ export function AgentReportDocument({
     rangeLabel = `Last ${weekRange} Weeks`;
   }
 
-  const fieldsList = selectedSubs.map((s) => extractFields(s));
+  const fieldsList = selectedSubs.map((s) => ({
+    ...extractFields(s),
+    totalProductionCredit: extractTotalProductionCredit(s),
+  }));
   const n = fieldsList.length || 1;
 
   // ── YTD totals ─────────────────────────────────────────────────────────────
   const yearSubs = allSubmitted.filter((s) => (s.weekStarting ?? '').startsWith(String(year)));
-  const ytdAPI   = yearSubs.reduce((sum, s) => sum + (parseFloat(s.apiSold)          || 0), 0);
-  const ytdApps  = yearSubs.reduce((sum, s) => sum + (parseFloat(s.applicationsSold) || 0), 0);
+  const ytdAPI   = yearSubs.reduce((sum, s) => sum + extractTotalProductionCredit(s), 0);
+  const ytdApps  = yearSubs.reduce((sum, s) => sum + (extractFields(s).applicationsSold || 0), 0);
   const ytdAPIGoal = parseFloat(goals?.annualAPI ?? goals?.personalCommitment?.annualAPI) || 0;
   const weeksSubmittedYTD = yearSubs.length;
   const avgAPIperApp      = ytdApps > 0 ? Math.round(ytdAPI / ytdApps) : 0;
@@ -432,8 +435,8 @@ export function AgentReportDocument({
     const mk = (s.weekStarting ?? '').substring(0, 7);
     if (!mk) return;
     if (!subsByMonth[mk]) subsByMonth[mk] = { api: 0, apps: 0 };
-    subsByMonth[mk].api  += parseFloat(s.apiSold)          || 0;
-    subsByMonth[mk].apps += parseFloat(s.applicationsSold) || 0;
+    subsByMonth[mk].api  += extractTotalProductionCredit(s);
+    subsByMonth[mk].apps += extractFields(s).applicationsSold || 0;
   });
 
   let pendingYTD_API = 0;
@@ -450,10 +453,13 @@ export function AgentReportDocument({
   const hasSettlementsForYear = annualConf.length > 0;
 
   // ── Sparklines (last 4 weeks) ─────────────────────────────────────────────
-  const last4 = sorted.slice(0, 4).reverse().map((s) => extractFields(s));
-  const apiSpark   = last4.map((f) => f.apiSold);
+  const last4 = sorted.slice(0, 4).reverse().map((s) => ({
+    ...extractFields(s),
+    totalProductionCredit: extractTotalProductionCredit(s),
+  }));
+  const apiSpark   = last4.map((f) => f.totalProductionCredit);
   const appsSpark  = last4.map((f) => f.applicationsSold);
-  const avgSpark   = last4.map((f) => (f.applicationsSold > 0 ? Math.round(f.apiSold / f.applicationsSold) : 0));
+  const avgSpark   = last4.map((f) => (f.applicationsSold > 0 ? Math.round(f.totalProductionCredit / f.applicationsSold) : 0));
   const weeksSpark = last4.map((_, i) => i + 1);
 
   // ── Activity trend chart ──────────────────────────────────────────────────
@@ -485,7 +491,7 @@ export function AgentReportDocument({
     ffi:      acc.ffi      + f.ffiConducted,
     ci:       acc.ci       + f.ciConducted,
     apps:     acc.apps     + f.applicationsSold,
-    api:      acc.api      + f.apiSold,
+    api:      acc.api      + f.totalProductionCredit,
   }), { dials: 0, contacts: 0, f2f: 0, ffi: 0, ci: 0, apps: 0, api: 0 });
 
   const ratioRows = [
@@ -496,6 +502,32 @@ export function AgentReportDocument({
     { label: 'CI → App',       value: safeRate(tot.apps, tot.ci),           benchmark: 70,   isCurrency: false },
     { label: 'Avg API / App',  value: tot.apps > 0 ? Math.round(tot.api / tot.apps) : null, benchmark: 8000, isCurrency: true },
   ];
+
+  // ── Production breakdown (NB / PPP / LMPS) ───────────────────────────────
+  function sumProdBD(subs) {
+    return subs.reduce((acc, s) => {
+      const nb  = s.newBusiness  ?? {};
+      const ppp = s.pppIncreases ?? {};
+      const lmp = s.lumpsums     ?? {};
+      acc.nbApps  += parseInt(nb.apps, 10)        || 0;
+      acc.nbApi   += parseFloat(nb.api)           || 0;
+      acc.pppApps += parseInt(ppp.apps, 10)       || 0;
+      acc.pppInc  += parseFloat(ppp.apiIncrease)  || 0;
+      acc.lmpsCredit += parseFloat(lmp.apiCredit) || 0;
+      return acc;
+    }, { nbApps: 0, nbApi: 0, pppApps: 0, pppInc: 0, lmpsCredit: 0 });
+  }
+  const curMonth = `${year}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const weeklyBD  = sumProdBD(sorted[0] ? [sorted[0]] : []);
+  const mtdBD     = sumProdBD(yearSubs.filter((s) => (s.weekStarting ?? '').startsWith(curMonth)));
+  const ytdBD     = sumProdBD(yearSubs);
+  const bdRows = [
+    { label: 'Weekly',  ...weeklyBD,  total: weeklyBD.nbApi  + weeklyBD.pppInc  + weeklyBD.lmpsCredit  },
+    { label: 'MTD',     ...mtdBD,     total: mtdBD.nbApi     + mtdBD.pppInc     + mtdBD.lmpsCredit     },
+    { label: 'YTD',     ...ytdBD,     total: ytdBD.nbApi     + ytdBD.pppInc     + ytdBD.lmpsCredit     },
+  ];
+  const hasPppAny  = bdRows.some((r) => r.pppApps > 0 || r.pppInc > 0);
+  const hasLmpsAny = bdRows.some((r) => r.lmpsCredit > 0);
 
   // ── Focus This Week bullets ───────────────────────────────────────────────
   const focusBullets = [];
@@ -658,6 +690,37 @@ export function AgentReportDocument({
               ))}
             </View>
           </View>
+        </View>
+
+        {/* ═══ Production Breakdown ════════════════════════════════════════ */}
+        <View style={styles.section} wrap={false}>
+          <Text style={styles.sectionTitle}>Production Breakdown</Text>
+          {/* Header */}
+          <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: COLORS.border, paddingBottom: 4, marginBottom: 4 }}>
+            <Text style={{ width: 52, fontSize: 7, fontFamily: 'Helvetica-Bold', color: COLORS.textMuted }}> </Text>
+            <Text style={{ flex: 1, fontSize: 7, fontFamily: 'Helvetica-Bold', color: COLORS.textMuted, textAlign: 'right' }}>NB Apps</Text>
+            <Text style={{ flex: 2, fontSize: 7, fontFamily: 'Helvetica-Bold', color: COLORS.textMuted, textAlign: 'right' }}>NB API</Text>
+            {hasPppAny && <Text style={{ flex: 1, fontSize: 7, fontFamily: 'Helvetica-Bold', color: COLORS.textMuted, textAlign: 'right' }}>PPP Apps</Text>}
+            {hasPppAny && <Text style={{ flex: 2, fontSize: 7, fontFamily: 'Helvetica-Bold', color: COLORS.textMuted, textAlign: 'right' }}>PPP Inc.</Text>}
+            {hasLmpsAny && <Text style={{ flex: 2, fontSize: 7, fontFamily: 'Helvetica-Bold', color: COLORS.textMuted, textAlign: 'right' }}>LMPS (10%)</Text>}
+            <Text style={{ flex: 2, fontSize: 7, fontFamily: 'Helvetica-Bold', color: COLORS.primary, textAlign: 'right' }}>Total API</Text>
+          </View>
+          {bdRows.map((row, i) => (
+            <View key={row.label} style={{
+              flexDirection: 'row', alignItems: 'center',
+              backgroundColor: i % 2 === 0 ? COLORS.surfaceRaised : COLORS.surface,
+              paddingVertical: 5, paddingHorizontal: 4,
+              borderRadius: 4,
+            }}>
+              <Text style={{ width: 52, fontSize: 8, fontFamily: 'Helvetica-Bold', color: COLORS.text }}>{row.label}</Text>
+              <Text style={{ flex: 1, fontSize: 8, color: COLORS.text, textAlign: 'right' }}>{row.nbApps}</Text>
+              <Text style={{ flex: 2, fontSize: 8, color: COLORS.text, textAlign: 'right' }}>{formatCurrency(row.nbApi)}</Text>
+              {hasPppAny && <Text style={{ flex: 1, fontSize: 8, color: COLORS.text, textAlign: 'right' }}>{row.pppApps}</Text>}
+              {hasPppAny && <Text style={{ flex: 2, fontSize: 8, color: COLORS.text, textAlign: 'right' }}>{formatCurrency(row.pppInc)}</Text>}
+              {hasLmpsAny && <Text style={{ flex: 2, fontSize: 8, color: COLORS.text, textAlign: 'right' }}>{formatCurrency(row.lmpsCredit)}</Text>}
+              <Text style={{ flex: 2, fontSize: 8, fontFamily: 'Helvetica-Bold', color: COLORS.primary, textAlign: 'right' }}>{formatCurrency(row.total)}</Text>
+            </View>
+          ))}
         </View>
 
         {/* ═══ Career Level Progress ════════════════════════════════════════ */}
