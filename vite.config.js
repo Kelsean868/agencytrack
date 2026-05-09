@@ -4,7 +4,7 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   plugins: [
-    react(),
+    react({ jsxRuntime: 'automatic' }),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png'],
@@ -36,5 +36,9 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.js'],
   },
 })
