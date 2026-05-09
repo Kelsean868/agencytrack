@@ -1,14 +1,59 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { Plus, X } from 'lucide-react';
 import { Card, NumericField, CurrencyField, SuggestedField } from '../CardStack';
+import {
+  computeLumpsumCredit,
+  computeLumpsumCommission,
+  validatePppIncrease,
+} from '../../../lib/schema/weeklyReport.computations';
+import { MIN_PPP_INCREASE } from '../../../lib/schema/weeklyReport';
+import { formatCurrency } from '../../../utils/formatters';
 
 export default function Step4ClosingSales({ data, onChange }) {
+  const [pppExpanded, setPppExpanded] = useState(
+    () => (data.pppIncreases?.apiIncrease > 0 || data.pppIncreases?.apps > 0)
+  );
+  const [lumpsumsExpanded, setLumpsumsExpanded] = useState(
+    () => (data.lumpsums?.grossAmount > 0)
+  );
+
   const suggestedCiConducted = useMemo(
     () => (data.newCIBooked ?? 0) + (data.oldCIBooked ?? 0),
     [data.newCIBooked, data.oldCIBooked]
   );
 
+  const lmpsGross  = data.lumpsums?.grossAmount ?? 0;
+  const lmpsCredit = computeLumpsumCredit(lmpsGross);
+  const lmpsComm   = computeLumpsumCommission(lmpsGross);
+
+  const pppApps = data.pppIncreases?.apps ?? 0;
+  const pppInc  = data.pppIncreases?.apiIncrease ?? 0;
+  const pppAvgPerApp = pppApps > 0 ? pppInc / pppApps : null;
+  const pppWarn = pppInc > 0 && pppAvgPerApp !== null && !validatePppIncrease(pppAvgPerApp);
+
+  function nbChange(field, value) {
+    onChange('newBusiness', { ...data.newBusiness, [field]: value });
+  }
+  function pppChange(field, value) {
+    onChange('pppIncreases', { ...data.pppIncreases, [field]: value });
+  }
+  function lmpsChange(field, value) {
+    onChange('lumpsums', { ...data.lumpsums, [field]: value });
+  }
+
+  function removePPP() {
+    onChange('pppIncreases', { apps: 0, apiIncrease: 0 });
+    setPppExpanded(false);
+  }
+  function removeLumpsums() {
+    onChange('lumpsums', { grossAmount: 0 });
+    setLumpsumsExpanded(false);
+  }
+
   return (
     <div className="flex flex-col gap-4">
+
+      {/* Closing Interviews */}
       <Card badge="Closing Interviews" desc="A CI is a scheduled meeting where you present the solution and ask for the sale.">
         <div className="flex flex-col gap-4">
           <NumericField
@@ -37,13 +82,14 @@ export default function Step4ClosingSales({ data, onChange }) {
         </div>
       </Card>
 
-      <Card badge="Sales Results" desc="Applications sold and lives covered this week.">
+      {/* New Business — always visible, primary production source */}
+      <Card badge="New Business" desc="New policy applications sold this week.">
         <div className="flex flex-col gap-4">
           <NumericField
-            label="Applications Sold"
-            name="applicationsSold"
-            value={data.applicationsSold}
-            onChange={onChange}
+            label="Applications Written"
+            name="apps"
+            value={data.newBusiness?.apps ?? 0}
+            onChange={nbChange}
             desc="Number of new policy applications completed and submitted."
           />
           <NumericField
@@ -53,27 +99,115 @@ export default function Step4ClosingSales({ data, onChange }) {
             onChange={onChange}
             desc="Total lives covered across all applications sold this week."
           />
+          <CurrencyField
+            label="API (TTD)"
+            name="api"
+            value={data.newBusiness?.api ?? 0}
+            onChange={nbChange}
+            desc="Annual Premium Income from new business applications sold this week."
+          />
         </div>
       </Card>
 
-      <Card badge="Production Value" desc="Annual Premium Income and estimated commissions from this week's sales.">
-        <div className="flex flex-col gap-4">
-          <CurrencyField
-            label="API Sold (TTD)"
-            name="apiSold"
-            value={data.apiSold}
-            onChange={onChange}
-            desc="Total Annual Premium Income from all applications sold this week."
-          />
-          <CurrencyField
-            label="Estimated Commissions (TTD)"
-            name="estimatedCommissions"
-            value={data.estimatedCommissions}
-            onChange={onChange}
-            desc="Your estimated commission earnings from this week's sales."
-          />
-        </div>
+      {/* PPP Increases — always visible; CTA in collapsed state, fields in expanded state */}
+      <Card
+        badge="PPP Increases"
+        desc={`Minimum ${formatCurrency(MIN_PPP_INCREASE)} API increase per application.`}
+      >
+        {!pppExpanded ? (
+          <button
+            type="button"
+            onClick={() => setPppExpanded(true)}
+            className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/30 bg-card-raised text-primary text-sm font-semibold hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          >
+            <Plus size={16} />
+            Add PPP details
+          </button>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-end -mt-1">
+              <button
+                type="button"
+                onClick={removePPP}
+                className="flex items-center gap-1 text-xs text-ink-muted hover:text-danger transition-colors"
+              >
+                <X size={12} />
+                Remove
+              </button>
+            </div>
+            <NumericField
+              label="Number of PPP increases"
+              name="apps"
+              value={data.pppIncreases?.apps ?? 0}
+              onChange={pppChange}
+              desc="Count of clients whose policy premiums were increased this week."
+            />
+            <CurrencyField
+              label="Total API increase (TTD)"
+              name="apiIncrease"
+              value={data.pppIncreases?.apiIncrease ?? 0}
+              onChange={pppChange}
+              desc="Combined annual premium increase across all PPP transactions."
+            />
+            {pppWarn && (
+              <p className="text-xs text-warning font-medium">
+                Average {formatCurrency(Math.round(pppAvgPerApp))} per application is below the{' '}
+                {formatCurrency(MIN_PPP_INCREASE)} minimum — check your figures.
+              </p>
+            )}
+          </div>
+        )}
       </Card>
+
+      {/* Lumpsums — always visible; CTA in collapsed state, fields in expanded state */}
+      <Card
+        badge="Lumpsums"
+        desc="10% API credit · 0.5% commission (fixed rates)."
+      >
+        {!lumpsumsExpanded ? (
+          <button
+            type="button"
+            onClick={() => setLumpsumsExpanded(true)}
+            className="w-full min-h-[44px] flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary/30 bg-card-raised text-primary text-sm font-semibold hover:border-primary/50 hover:bg-primary/5 transition-colors"
+          >
+            <Plus size={16} />
+            Add lumpsum details
+          </button>
+        ) : (
+          <div className="flex flex-col gap-4">
+            <div className="flex justify-end -mt-1">
+              <button
+                type="button"
+                onClick={removeLumpsums}
+                className="flex items-center gap-1 text-xs text-ink-muted hover:text-danger transition-colors"
+              >
+                <X size={12} />
+                Remove
+              </button>
+            </div>
+            <CurrencyField
+              label="Gross lumpsum amount (TTD)"
+              name="grossAmount"
+              value={data.lumpsums?.grossAmount ?? 0}
+              onChange={lmpsChange}
+              desc="Total lumpsum premium collected this week."
+            />
+            {lmpsGross > 0 && (
+              <div className="flex flex-col gap-1.5 pt-1 border-t border-primary/20">
+                <div className="flex justify-between text-sm">
+                  <span className="text-ink-muted">API credit (10%)</span>
+                  <span className="font-semibold text-primary">{formatCurrency(lmpsCredit)}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-ink-muted">Commission (0.5%)</span>
+                  <span className="font-semibold text-primary">{formatCurrency(lmpsComm)}</span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+
     </div>
   );
 }

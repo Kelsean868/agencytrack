@@ -12,11 +12,11 @@
 
 | Field | Value |
 |---|---|
-| Last updated | `2026-05-08` |
-| Current main HEAD | `54d49d7` (feat(e2) — modal targeting tab — reverse commission calc, PR #66) |
-| Active track | Track E — E2 shipped (PR #66). Next pre-pilot HIGH: E1 (weekly report schema split + wizard restructure + migration, ~5 days). |
+| Last updated | `2026-05-09` |
+| Current main HEAD | `6ee9898` (feat(e1) slice 1: schema split foundation — utilities + migration + seeder, PR #68) |
+| Active track | Track E — E1 Slice 2A wizard restructure PR open, awaiting Kyron review. Foundation PR #68 merged. |
 | Next track | Track D — cron + notifications verification (after Track E pre-pilot HIGH items ship) |
-| Queued | E1 implementation kickoff (per docs/Track-E-Specs.md §E1) |
+| Queued | E1 Slice 2A merge → E1 Slice 2B kickoff (dashboard/PDF/leaderboard surface updates) → E6 (daily input mode) |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -119,7 +119,7 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 | SEC-9c | Server-side tenant isolation for scheduled Cloud Functions | No | Scheduled functions still hardcode `TENANT_ID = 'tatillife_south'`; future work |
 | SEC-12 | unitGoals write rule references missing `unitId` claim | No | Discovered during user-mgmt PR-1 audit; rule branch at `firestore.rules:118-120` is dead code today (unit_manager writes always fall through to false). Tracked in [#23](https://github.com/Kelsean868/agencytrack/issues/23). |
-| Track E | Agent + Manager Tooling Enhancements (E1–E6) | No | E2 shipped PR #66. Pre-pilot HIGH remaining: E1 (weekly report schema split, ~5 days) → E6 (daily input mode). E3–E5 post-pilot. Spec: `docs/Track-E-Specs.md`. Source: `docs/FOLLOW_UPS.md` § Track E. |
+| Track E | Agent + Manager Tooling Enhancements (E1–E6) | No | E1 Slice 1 shipped PR #68. E1 Slice 2A PR open (wizard restructure, 3-source schema). E1 Slice 2B (dashboard/PDF/leaderboard) to be kicked off after Slice 2A merges. E6 (daily input mode) follows. E3–E5 post-pilot. Spec: `docs/Track-E-Specs.md`. |
 
 ---
 
@@ -127,11 +127,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #68 | `6ee9898` | feat(e1) slice 1: schema split foundation — utilities + migration + seeder |
+| #67 | `fcd6a25` | chore(housekeeping): CONTEXT sync post-E2 + verification script lift |
 | #66 | `54d49d7` | feat(e2) — modal targeting tab — reverse commission calc |
 | #65 | `48d73ea` | docs(track-e) — feature scope + Path B sequencing (May 8 2026 planning) |
 | #64 | `f16b9e8` | docs(context) — HEAD sync post #63 (aria-hidden a11y fix merged) |
-| #63 | `2932cfa` | fix(a11y) — remove aria-hidden from modal backdrop wrappers (HIGH#7) |
-| #62 | `ba41cc6` | feat(track-c-c3) — 2026 personal commitments CSV import |
 
 ---
 
@@ -149,13 +149,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** E2 (modal targeting) shipped via PR #66 (2026-05-08). Pre-E1 housekeeping in progress.
+> **Session boundary:** E1 Slice 2A wizard restructure complete (2026-05-09). PR open, awaiting Kyron review.
 
-E2 (Reverse Commission Calculator) shipped via PR #66. `CommissionPlayground.jsx` refactored to a tabbed directory at the same import path. Tab 1 (Goal Decomposition) is the existing calc verbatim. Tab 2 (Modal Targeting) is the new reverse calc: `TotalAPI = TargetCommission / (C × Σ(Mₘ × firstPaymentRatioₘ))`. Four auto-balancing mode-mix sliders, per-mode breakdown table, 12-month cash-flow chart (recharts), insight card. 15 vitest unit tests — all pass (first test infrastructure in the project). Playwright verification: 9/9 checks passed against Vercel preview.
+**E1 Slice 1 (PR #68) — shipped.** Schema utilities, migration script, and seeder all built and tested. `readV1Api`/`readV1Apps` pure functions fix a schema-divergence bug found during review (original migration used `apps` alias; correct alias per `extractFields.js` is `appsSold`). 21 dev-test submissions in `tatillife_south` confirmed migrated to V2 pre-flight.
 
-CI required one fix: `package-lock.json` was not regenerated after vitest was added to `package.json`, causing `npm ci EUSAGE`. Fixed in commit `8e972a3` by running `npm install --package-lock-only` in the worktree. VERCEL_BYPASS_TOKEN was briefly visible in a Playwright error stack trace during verification — token rotation recommended before next preview run.
+**E1 Slice 2A (PR open) — wizard restructure.** Branch `feat/e1-slice-2a-wizard-restructure`. Step4ClosingSales.jsx restructured to option-b UX: NB always-visible primary card, expandable PPP Increases and Lumpsums cards with "+ Add" dashed-border buttons. LMPS card shows live-computed API credit (10%) and commission (0.5%). PPP below-minimum validation warning. WizardForm INITIAL_DATA now carries `newBusiness/pppIncreases/lumpsums` sub-objects; flat `applicationsSold/apiSold/estimatedCommissions` removed. `submissionService.sanitize` writes V2 shape exclusively (version: 2, three sub-objects, computed totalProductionCredit + totalCommission). `extractFields.js` reads V2-first (when `version === 2`, reads from `newBusiness.api` and `newBusiness.apps`), V1 aliases retained as defensive fallback. 66/66 tests pass. Lint 0 errors. Build green.
 
-**Pre-pilot HIGH queue remaining: E1 (weekly report schema split) → E6 (daily input mode). E1 is next, ~5 days. Spec: `docs/Track-E-Specs.md` §E1.**
+**Awaiting Kyron:** review + spot-check screenshots + manual Vercel preview submit end-to-end. No Playwright walk yet (script planned as `scripts/verification/e1-slice-2a-walk.mjs`, not written). Slice 2B kickoff (dashboard/PDF/leaderboard surface updates) planned after Slice 2A merges.
 
 ---
 
