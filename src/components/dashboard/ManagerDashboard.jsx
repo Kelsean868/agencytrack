@@ -8,12 +8,12 @@ import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency } from '../../utils/formatters';
 import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getWeeklySubmissions, getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
-import { getAllPersistencyForYear } from '../../services/persistencyService';
+import { getPersistencyMapForYear } from '../../services/persistencyService';
 import { exportBranchCSV } from '../../services/exportService';
 import WizardForm from '../wizard/WizardForm';
 import MasterSheet from '../manager/MasterSheet';
 import CompliancePanel from '../manager/CompliancePanel';
-import PersistencyPanel from '../manager/PersistencyPanel';
+import PersistencyTab from '../manager/PersistencyTab';
 import GoalsPanel from '../manager/GoalsPanel';
 import CommissionPlayground from '../goals/CommissionPlayground';
 import { getGoals } from '../../services/goalsService';
@@ -43,7 +43,7 @@ const NAV_ITEMS = [
   { id: 'awards',            label: 'Awards',            tabId: 'awards',            Icon: Trophy },
   { id: 'mastersheet', label: 'Master Sheet', tabId: 'mastersheet', Icon: ClipboardList },
   { id: 'compliance',  label: 'Compliance',   tabId: 'compliance',  Icon: CheckCircle2 },
-  { id: 'persistency', label: 'Persistency',  tabId: 'persistency', Icon: TrendingUp,    sectionLabel: 'Operations' },
+  { id: 'persistency', label: 'Persistency',  tabId: 'persistency', Icon: TrendingUp,    sectionLabel: 'Operations', testId: 'tab-persistency' },
   { id: 'goals',       label: 'Goals',        tabId: 'goals',       Icon: Award },
   { id: 'settlements', label: 'Settlements',  tabId: 'settlements', Icon: FileCheck },
   { id: 'leaderboard', label: 'Leaderboard',  tabId: 'leaderboard', Icon: Star,          sectionLabel: 'Tools' },
@@ -171,7 +171,10 @@ export default function ManagerDashboard() {
       const [userList, subs, persMap] = await Promise.all([
         getTenantUsers().catch(() => []),
         getAllYTDSubmissions().catch(() => []),
-        getAllPersistencyForYear(year).catch(() => ({})),
+        getPersistencyMapForYear(year, {
+          branchId: role === 'branch_manager' ? userProfile?.branchId : undefined,
+          unitId:   role === 'unit_manager'   ? userProfile?.unitId   : undefined,
+        }).catch(() => ({})),
       ]);
       exportBranchCSV(userList, subs, persMap);
     } catch (err) {
@@ -312,7 +315,7 @@ export default function ManagerDashboard() {
           <CompliancePanel selectedWeek={selectedWeek} setSelectedWeek={setSelectedWeek} />
         )}
 
-        {activeTab === 'persistency' && <PersistencyPanel />}
+        {activeTab === 'persistency' && <PersistencyTab />}
 
         {activeTab === 'goals' && (
           <div className="flex flex-col gap-4">

@@ -9,7 +9,7 @@ import { getRoleLabel, formatCurrency, formatDateDisplay } from '../../utils/for
 import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
 import { getGoals, getCompanyMinimums, getGoalHierarchy } from '../../services/goalsService';
-import { getAgentPersistency } from '../../services/persistencyService';
+import { getAgentHistory } from '../../services/persistencyService';
 import { getSettlements } from '../../services/settlementService';
 import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 import { generateAgentPDF } from '../../services/exportService';
@@ -34,6 +34,7 @@ import { buildActivityEvents } from '../../utils/buildActivityEvents';
 import WelcomeScreen from '../onboarding/WelcomeScreen';
 import Shell from '../shell/Shell';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
+import AgentPersistencyTab from '../agent/PersistencyTab';
 
 const KPIS = [
   { key: 'dials',    label: 'Dials',         field: 'totalTelAttempts', isCurrency: false },
@@ -55,6 +56,7 @@ const NAV_ITEMS = [
   { id: 'dashboard',   label: 'Dashboard',   tabId: 'dashboard',   Icon: ClipboardList, sectionLabel: 'Workspace' },
   { id: 'career',      label: 'Career',      tabId: 'career',      Icon: TrendingUp },
   { id: 'awards',             label: 'Awards',            tabId: 'awards',             Icon: Trophy },
+  { id: 'persistency',        label: 'Persistency',       tabId: 'persistency',        Icon: TrendingUp,    testId: 'agent-tab-persistency' },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: BarChart2 },
   { id: 'leaderboard',       label: 'Leaderboard',       tabId: 'leaderboard',       Icon: Star },
   { id: 'history',     label: 'History',     tabId: 'history',     Icon: History },
@@ -87,7 +89,8 @@ export default function AgentDashboard() {
   const [allSubmissions, setAllSubmissions]    = useState([]);
   const [goals, setGoals]                      = useState(null);
   const [companyMinimums, setCompanyMinimums]  = useState(null);
-  const [persistency, setPersistency]          = useState({});
+  // E3: persistency now an array of E3-shaped records (oldest-first, ≤12 months).
+  const [persistency, setPersistency]          = useState([]);
   const [settlements, setSettlements]          = useState([]);
   const [loading, setLoading]                  = useState(true);
   const [activeCampaigns, setActiveCampaigns]   = useState([]);
@@ -117,7 +120,7 @@ export default function AgentDashboard() {
       getDraft(user.uid, currentWeek).catch(() => null),
       getAgentSubmissions(user.uid).catch(() => []),
       getGoals(tenantId, user.uid).catch(() => null),
-      getAgentPersistency(user.uid, thisYear).catch(() => ({})),
+      getAgentHistory(user.uid, 12).catch(() => []),
       getSettlements(tenantId, user.uid, thisYear).catch(() => []),
       getCompanyMinimums(tenantId).catch(() => null),
     ]).then(([weekSub, subs, agentGoals, pers, setts, mins]) => {
@@ -663,6 +666,9 @@ export default function AgentDashboard() {
           </div>
         )
       )}
+
+      {/* ── PERSISTENCY TAB ── */}
+      {activeTab === 'persistency' && <AgentPersistencyTab />}
 
       {/* ── PRODUCTION REPORT TAB ── */}
       {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}

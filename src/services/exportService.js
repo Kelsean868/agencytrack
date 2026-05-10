@@ -1,6 +1,7 @@
 import { createElement } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { extractFields, extractTotalProductionCredit } from '../utils/extractFields';
+import { aggregatePersistency } from '../lib/persistency/calculations';
 import { AgentReportDocument } from '../components/profile/AgentReportDocument';
 
 // ── generateAgentPDF ──────────────────────────────────────────────────────────
@@ -94,13 +95,11 @@ export function exportBranchCSV(users, submissions, persistencyMap) {
     const avgAPIperApp   = ytdApps > 0 ? Math.round(ytdAPI / ytdApps) : '';
     const ciToAppRate    = ytdCI > 0 ? Math.round((ytdApps / ytdCI) * 100) : '';
 
-    // Average persistency for the year
+    // E3: YTD persistency aggregated via sum-then-divide (NEVER average individual
+    // percentages). aggregatedPersistency is a 0–1 decimal — multiply by 100 for CSV.
     const persEntries = (persistencyMap?.[agent.id] ?? []);
-    const persValues  = persEntries
-      .map((e) => parseFloat(e.persistency) || 0)
-      .filter((v) => v > 0);
-    const persistencyAvg = persValues.length > 0
-      ? Math.round(persValues.reduce((s, v) => s + v, 0) / persValues.length)
+    const persistencyAvg = persEntries.length > 0
+      ? Math.round(aggregatePersistency(persEntries).aggregatedPersistency * 100)
       : '';
 
     const lastSub = agentSubs.sort((a, b) =>
