@@ -29,6 +29,20 @@ Firebase project: agencytrack-2a610 | Hosted: agencytrack.vercel.app | Repo: git
   Modifications where existing callers exercise the new behavior → post-merge only. Banked from C1 close (rules block deployed pre-merge for BranchesPanel preview); generalized to Cloud Functions in C2.
 - **Squash SHA ≠ feature-branch SHA.** GitHub generates a fresh SHA on squash-merge (the feature branch's pre-squash final commit is NOT what lands on main). Kickoff briefs and CONTEXT.md `Recently shipped` rows must record the squash SHA captured from `git log origin/main --oneline -1` post-merge, not the feature branch's pre-squash final SHA. Banked from C2 close.
 - **Admin-script firebase-admin require path.** `firebase-admin` is installed only in `functions/node_modules`, not at the repo root. Scripts at `scripts/` or `verification/` that use the Admin SDK must either `require('../functions/node_modules/firebase-admin')` (relative to the script's location) or run from inside `functions/`. Adding `firebase-admin` to repo-root `package.json` is intentionally avoided — Cloud Functions packaging is the canonical install path. Banked from C2 close.
+- **Cloud Functions auth: ambient credentials, not key files.** Functions that mint custom tokens (`admin.auth().createCustomToken(...)`) or otherwise call `signBlob` must use the App Engine default service account's ambient credentials via plain `admin.initializeApp()` — **never ship `service-account-key.json` in the deploy bundle**. Ambient credentials need `roles/iam.serviceAccountTokenCreator` granted to the SA on itself. One-time setup:
+  ```
+  gcloud iam service-accounts add-iam-policy-binding \
+    <project>@appspot.gserviceaccount.com \
+    --member=serviceAccount:<project>@appspot.gserviceaccount.com \
+    --role=roles/iam.serviceAccountTokenCreator
+  ```
+  Why: a checked-in (or bundled-but-gitignored) key file is a long-lived credential leak vector. Ambient credentials rotate automatically and never sit on disk. Reference: PR #78 — `chore(security): remove service-account-key.json from CF deploy, use ambient credentials`.
+- **Order matters when removing key-file workarounds.** Sequence is **non-negotiable** to avoid production downtime:
+  1. **IAM grant first** — verify `roles/iam.serviceAccountTokenCreator` is in place via `gcloud iam service-accounts get-iam-policy`.
+  2. **Code change second** — replace `admin.initializeApp({ credential: admin.credential.cert(...) })` with plain `admin.initializeApp()`.
+  3. **Deploy third** — `firebase deploy --only functions`.
+  4. **Smoke test fourth** — production smoke test in incognito (login, custom-token-minting flows). Mandatory before key removal.
+  5. **Key file deletion last** — only after smoke test passes. Reverse order risks production auth failures with no rollback safety net. Banked from PR #78 retrospective.
 
 ## Tech Stack
 - React 19 + Vite (not Create React App)
