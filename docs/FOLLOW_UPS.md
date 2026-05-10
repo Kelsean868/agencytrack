@@ -31,6 +31,43 @@ those scripts to ADC + impersonation. Not blocking.
 
 ---
 
+## Worktree + branch audit (LOW, banked 2026-05-11)
+
+Five `.claude/worktrees/` directories remain from prior CC sessions, all
+attached to feature branches not yet reconciled with main:
+- feat-e1-schema-split-foundation
+- feat-e1-slice-2a-wizard-restructure
+- feat-e1-slice-2b-surface-adaptation
+- feat-e2-reverse-commission-calc
+- feat-e6-daily-input-mode
+
+Two orphan local branches (no worktree) with unique commits not on main:
+- chore-context-sync-and-verification-script-lift (1 commit, CONTEXT sync
+  + verification script lift, post-E2 housekeeping)
+- chore/housekeeping-followups (6 commits — E5.1 + SPA rewrite work,
+  squash-merged to main under different SHAs; possibly 1-2 docs edits
+  that didn't make the squashed PRs, needs careful diff)
+
+Each needs a quick audit: did the work merge under a different branch
+name? Is it abandoned? Is it WIP that should resume? Not blocking —
+they're inert, just clutter `git worktree list` and `git branch`.
+~30-45 min audit when convenient.
+
+Audit approach (bank for whoever picks this up):
+1. For each worktree-attached branch, run
+   `git diff main..<branch> --stat` to see if there's unmerged content.
+2. For each, check if the equivalent feature was merged under a
+   different name (cross-reference against `gh pr list --state merged
+   --search "<keyword>"`).
+3. If equivalent work is on main: `git worktree remove --force <path>`
+   then `git branch -D <branch>`.
+4. If unmerged work exists: surface for decision (resume? abandon?
+   reconcile?).
+5. For the two orphan branches without worktrees: same diff check,
+   same decision tree.
+
+---
+
 ## HIGH-priority — sales_manager onboarding regressions (surfaced 2026-05-07)
 
 Three production-affecting bugs discovered while provisioning the missing test
