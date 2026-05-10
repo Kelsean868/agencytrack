@@ -217,7 +217,8 @@ service cloud.firestore {
             || request.auth.token.role == 'branch_manager'
             || (
               request.auth.token.role == 'unit_manager'
-              && docId.matches(request.auth.token.unitId + '_.*')
+              // BUG-N fix: use callerUnitId() helper (SEC-4 pattern) — unitId is not a custom claim
+              && docId.matches(callerUnitId(tenantId) + '_.*')
             )
           );
       }
