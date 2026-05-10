@@ -46,36 +46,66 @@ Note: This formula differs from Kelsean's original Excel calculator, which only 
 
 ## Schema
 
+**Collection path:** `/tenants/{tid}/persistency/{agentId}_{YYYY_MM}` (flat doc — matches the existing codebase pattern used everywhere else in AgencyTrack: e.g. `submissions/{agentId}_{weekStarting}`, `settlements/{agentId}_{year}_{periodKey}`. Do NOT introduce a nested subcollection pattern here.)
+
+**Document ID format:** `{agentUid}_{YYYY_MM}` — e.g. `J0j4uBqzTPcfm1IlGCPyDzo27RP2_2026_02`. The `YYYY_MM` portion is the 12-mo period ENDING that month.
+
+**IMPORTANT — backward compatibility:** A legacy persistency doc shape already exists in the codebase (Architecture doc §Persistency Document — fields: `agentId`, `year`, `month`, `value`, `enteredBy`, `enteredAt`, `notes`). E3 extends this same collection. Discovery (Phase 2) MUST inspect `agentOfMonthService.js` AND any existing references to `/tenants/{tid}/persistency/` to confirm no existing service writes the legacy `value` field anywhere we'd be overwriting. Document findings in discovery notes. If legacy docs exist in production, surface to Kelsean before Phase 4.
+
+**Field shape (all required unless noted):**
 ```
-tenants/{tid}/persistency/{monthKey}/agents/{agentUid}
-  monthKey: '2026-02'                  // 12-mo period ENDING this month
-  reportPeriodStart: '2025-03-01'
-  reportPeriodEnd: '2026-02-28'
-  enteredAt: Timestamp
-  enteredBy: uid
-  enteredByRole: 'agent' | 'manager'
-  
-  // Input fields (TTD)
+{
+  // Identity
+  agentId: string              // matches uid portion of doc ID
+  tenantId: string             // for cross-collection queries
+  year: number                 // 2026
+  month: number                // 1-12
+  monthKey: string             // '2026-02' (denormalised for query convenience)
+  reportPeriodStart: string    // '2025-03-01' (12 mo ending monthKey)
+  reportPeriodEnd: string      // '2026-02-28'
+
+  // Audit
+  enteredAt: Timestamp         // first-entry timestamp
+  enteredBy: uid               // first-entry uid
+  enteredByRole: 'agent' | 'unit_manager' | 'branch_manager' | 'sales_manager' | 'tenant_admin'
+  lastEditedAt: Timestamp      // updated on every overwrite
+  lastEditedBy: uid
+  lastEditedByRole: same enum as enteredByRole
+
+  // Input fields (TTD, parseFloat enforced, non-negative)
   businessPlaced: number
   notTakens: number
   incPPPs: number              // 12 Month Inc PPPs total
   lumpsums100: number          // total lumpsums (we apply 10% in calc)
   lapses: number
   reinstatements: number
-  
-  // Calculated and stored for query efficiency
+
+  // Calculated + stored for query efficiency
   grossSettled: number
   netSettled: number
-  persistency: number          // 0-1 decimal
+  persistency: number          // 0-1 decimal (NOT percentage)
   meetsAwardGate: boolean      // persistency >= 0.90
+
+  // Legacy field — DEPRECATED, do not write
+  value?: number               // legacy percentage (92.5 = 92.5%). Read only for migration check.
+  notes?: string               // legacy field, optional
+}
 ```
 
-**Firestore rules:**
-- Agents: read/write own persistency record (any month).
-- Unit Managers: read all agents in their unit.
-- Branch Managers: read AND write all agents in their branch.
-- Tenant Admins: read all in tenant.
-- Validation: all numeric fields non-negative on write.
+**Firestore rules — THIS IS A MODIFICATION, not a new block.** The existing rule for `/tenants/{tenantId}/persistency/{docId}` (in `firestore.rules`) currently reads:
+```
+allow read: if isSignedIn() && isInTenant(tenantId);
+allow write: if isManager() && isInTenant(tenantId);
+```
+**Replace** that block (do not add alongside) with role-scoped rules:
+- Agents: read AND write own persistency doc (where `resource.data.agentId == request.auth.uid`).
+- Unit Managers: read all docs where the agent's unitId matches the manager's unitId.
+- Branch Managers: read AND write all docs where the agent's branchId matches the manager's branchId.
+- Sales Managers: read all docs in tenant.
+- Tenant Admins: read all docs in tenant.
+- Validation on write: all six numeric input fields non-negative; `tenantId == getTenantId()`; `enteredByRole` matches the writer's actual claim role.
+
+CC must show both the OLD and NEW rule blocks in the PR description to confirm the existing rule was replaced, not duplicated.
 
 ---
 
@@ -147,7 +177,17 @@ calculateShortfall({ currentPersistency, targetPersistency, currentGrossSettled,
 
 ### Phase 4 — Service layer
 
-Create `src/services/persistencyService.js`:
+Create `src/services/persistencyService.js`.
+
+**Tenant isolation pattern (NON-NEGOTIABLE, per SEC-9):**
+- All Firestore reads/writes inside this service MUST resolve tenantId by calling `getTenantId()` from `firebase.js`.
+- Do NOT accept tenantId as a parameter from callers.
+- Do NOT read `import.meta.env.VITE_TENANT_ID` directly.
+- Do NOT read tenantId from props, AuthContext, or anywhere else inside the service.
+- If `getTenantId()` returns null (signed-out state), throw an explicit error — do not silently fail or default.
+- Reference implementation: `src/services/managerService.js` and `src/services/persistencyService.js` (if exists in legacy form) — match their pattern.
+
+**Service surface:**
 - `getPersistencyForAgent(monthKey, agentUid)` → record or null
 - `getPersistencyForUnit(monthKey, unitId)` → array of records
 - `getPersistencyForBranch(monthKey, branchId)` → array of records
@@ -155,10 +195,14 @@ Create `src/services/persistencyService.js`:
 - `getAgentHistory(agentUid, lastNMonths)` → array sorted oldest first
 - `savePersistency(monthKey, agentUid, inputs, role)` 
   - Calculates derived fields via calculations.js
-  - Writes record with audit trail
+  - On first write: sets `enteredAt`, `enteredBy`, `enteredByRole`, `lastEditedAt`, `lastEditedBy`, `lastEditedByRole` (last three == first three).
+  - On overwrite: preserves `enteredAt`/`enteredBy`/`enteredByRole`, updates only the `lastEdited*` fields.
+  - `role` parameter is the writer's claim role (must be one of the enum values in Schema).
 - `calculateAndCacheBranchAggregate(monthKey, branchId)` → aggregate doc
 
-Service tests in `src/services/__tests__/persistencyService.test.js`. Mock Firestore. Validate calculations applied on write.
+**Acceptance test (must be in PR description):** Sign in as test agent (uid `J0j4uBqzTPcfm1IlGCPyDzo27RP2`, tenant `tatillife_south`), call `savePersistency`, verify the written doc has `tenantId: 'tatillife_south'`. Then sign in as a user with a different tenantId and verify the read for the first agent's doc is denied by rules. Screenshot both states in PR.
+
+Service tests in `src/services/__tests__/persistencyService.test.js`. Mock Firestore. Validate calculations applied on write. Validate that calling `savePersistency` when `getTenantId()` returns null throws.
 
 ### Phase 5 — Manager UI (PersistencyTab)
 
@@ -326,6 +370,9 @@ DO NOT MERGE. Kelsean reviews and merges manually after smoke test.
 - `npm run lint` fails → fix immediately, don't commit broken state
 - Test suite fails → STOP and surface
 - Walk pass rate below 11/18 → STOP and surface (selector quality issue — re-do discovery)
+- CI gate fails on the PR (lint or build) → STOP and fix before requesting review (the gate blocks merge regardless)
+- Discovery (Phase 2) finds existing services writing to `/tenants/{tid}/persistency/` with the legacy `value` field → STOP and surface to Kelsean before Phase 4 (schema collision risk)
+- Firestore rules deploy fails or rule simulator shows existing agents losing read access they had → STOP and surface (rules MODIFICATION gone wrong)
 - Two strikes hit → STOP
 
 ---
@@ -400,4 +447,4 @@ These numbers MUST match when CC's calculations.js processes the inputs.
 
 ## CC kickoff prompt (one-liner)
 
-> Execute E3 — Persistency Playground per the brief in `AgencyTrack_E3_Persistency_Brief.md` (root of repo). Two-strike counter 0/2. Read the brief in full, then begin Phase 1. Surface before any deviation from locked decisions. Do NOT merge — open PR and stop.
+> Execute E3 — Persistency Playground per the brief at `docs/briefs/e3-persistency-playground-kickoff.md`. Two-strike counter 0/2. Read the brief in full (do not skim — every locked decision matters), then begin Phase 1. Surface before any deviation from locked decisions, especially the Schema section (which is a known modification to an existing collection). Do NOT merge — open PR and stop.
