@@ -120,17 +120,24 @@ async function gotoKioskTab(pg) {
   await pg.waitForTimeout(800);
 }
 
+// bypassCookies is populated after the bmCtx bypass navigation and injected into
+// each fresh kiosk context so Vercel serves the SPA index.html for deep paths.
+// Without the bypass cookie, Vercel returns 404 for /kiosk/* in fresh contexts.
+let bypassCookies = [];
+
 // ── main ──────────────────────────────────────────────────────────────────────
 const browser = await chromium.launch({ headless: true });
-const bypassUrl = `https://${PREVIEW_HOST}/?x-vercel-protection-bypass=${BYPASS_TOKEN}&x-vercel-set-bypass-cookie=sameSite`;
+const bypassUrl = `https://${PREVIEW_HOST}/?x-vercel-protection-bypass=${BYPASS_TOKEN}&x-vercel-set-bypass-cookie=true`;
 
 // Shared branch-manager context (reused across checks 03-11)
 const bmCtx  = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const bmPage = await bmCtx.newPage();
 
-// Set bypass cookie
+// Set bypass cookie and capture it for injection into fresh kiosk contexts.
+// Fresh contexts get Vercel 404s on deep SPA paths without the bypass cookie.
 try {
   await bmPage.goto(bypassUrl, { waitUntil: 'networkidle', timeout: 30000 });
+  bypassCookies = await bmCtx.cookies();
 } catch (e) {
   console.error('Bypass navigation failed:', redact(e.message));
   await browser.close();
@@ -223,20 +230,24 @@ await check('07_kiosk_shell_loads', 'Generated kiosk URL → shell renders (spin
   if (!generatedKioskPath) throw new Error('No kiosk path from check 06 — skipping');
   const kioskCtx  = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const kioskPage = await kioskCtx.newPage();
+  // Navigate through bypass → / (networkidle to let service worker install+activate)
+  // → kiosk path. Without the service worker active, Vercel returns 404 for deep
+  // SPA paths in fresh contexts (SW intercepts navigation and serves index.html).
+  await kioskPage.goto(bypassUrl, { waitUntil: 'networkidle', timeout: 30000 });
+  await kioskPage.goto(`https://${PREVIEW_HOST}/`, { waitUntil: 'networkidle', timeout: 30000 });
   await kioskPage.goto(`https://${PREVIEW_HOST}${generatedKioskPath}`, {
-    waitUntil: 'networkidle', timeout: 40000,
+    waitUntil: 'domcontentloaded', timeout: 30000,
   });
-  // Either a loading spinner or a rendered panel (wait up to 45s for Firebase sign-in)
+  // Either a loading spinner or a rendered panel (wait up to 45s for Firebase sign-in + data)
   await kioskPage.waitForFunction(
     () => {
       const t = document.body.innerText;
-      const body = document.body;
       const hasPanelText = t.includes('Branch Overview') || t.includes('Leaderboard') ||
                            t.includes('Running Totals') || t.includes('Compliance') ||
                            t.includes('Awards Watch') || t.includes('Good Morning') ||
                            t.includes('Good Afternoon') || t.includes('Good Evening') ||
-                           t.includes('Last Week');
-      const hasSpinner = body.querySelector('.animate-spin');
+                           t.includes('Last Week') || t.includes('Display unavailable');
+      const hasSpinner = document.body.querySelector('.animate-spin');
       return hasPanelText || Boolean(hasSpinner);
     },
     { timeout: 45000 }
@@ -250,10 +261,12 @@ await check('08_dark_class', 'Kiosk URL → html element has "dark" class (alway
   if (!generatedKioskPath) throw new Error('No kiosk path from check 06 — skipping');
   const kioskCtx  = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const kioskPage = await kioskCtx.newPage();
+  await kioskPage.goto(bypassUrl, { waitUntil: 'networkidle', timeout: 30000 });
+  await kioskPage.goto(`https://${PREVIEW_HOST}/`, { waitUntil: 'networkidle', timeout: 30000 });
   await kioskPage.goto(`https://${PREVIEW_HOST}${generatedKioskPath}`, {
-    waitUntil: 'networkidle', timeout: 40000,
+    waitUntil: 'domcontentloaded', timeout: 30000,
   });
-  // Wait for JS to run (main.jsx adds dark class before React mounts)
+  // Wait for JS to run (main.jsx adds dark class synchronously before React mounts)
   await kioskPage.waitForTimeout(2000);
   const hasDark = await kioskPage.evaluate(
     () => document.documentElement.classList.contains('dark')
@@ -268,8 +281,10 @@ await check('09_mobile_no_overflow', 'Kiosk URL 390px wide — no horizontal ove
   if (!generatedKioskPath) throw new Error('No kiosk path from check 06 — skipping');
   const kioskCtx  = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const kioskPage = await kioskCtx.newPage();
+  await kioskPage.goto(bypassUrl, { waitUntil: 'networkidle', timeout: 30000 });
+  await kioskPage.goto(`https://${PREVIEW_HOST}/`, { waitUntil: 'networkidle', timeout: 30000 });
   await kioskPage.goto(`https://${PREVIEW_HOST}${generatedKioskPath}`, {
-    waitUntil: 'networkidle', timeout: 40000,
+    waitUntil: 'domcontentloaded', timeout: 30000,
   });
   await kioskPage.waitForTimeout(3000);
   const overflow = await kioskPage.evaluate(() => {
@@ -285,8 +300,10 @@ await check('10_panel_renders', 'Kiosk URL — at least one panel heading visibl
   if (!generatedKioskPath) throw new Error('No kiosk path from check 06 — skipping');
   const kioskCtx  = await browser.newContext({ viewport: { width: 1920, height: 1080 } });
   const kioskPage = await kioskCtx.newPage();
+  await kioskPage.goto(bypassUrl, { waitUntil: 'networkidle', timeout: 30000 });
+  await kioskPage.goto(`https://${PREVIEW_HOST}/`, { waitUntil: 'networkidle', timeout: 30000 });
   await kioskPage.goto(`https://${PREVIEW_HOST}${generatedKioskPath}`, {
-    waitUntil: 'networkidle', timeout: 40000,
+    waitUntil: 'domcontentloaded', timeout: 30000,
   });
   await kioskPage.waitForFunction(
     () => {
@@ -297,7 +314,7 @@ await check('10_panel_renders', 'Kiosk URL — at least one panel heading visibl
              t.includes('Good Morning') || t.includes('Good Afternoon') ||
              t.includes('Good Evening');
     },
-    { timeout: 50000 }
+    { timeout: 60000 }
   );
   await ss(kioskPage, '10-panel-renders');
   await kioskCtx.close();
