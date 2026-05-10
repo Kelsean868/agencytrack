@@ -1,5 +1,6 @@
 export const PANEL_DURATIONS = {
   welcome:           15,
+  agentOfMonth:      45,
   branchOverview:    30,
   branchRunningTotals: 30,
   unitLeaderboard:   30,
@@ -12,10 +13,11 @@ export const PANEL_DURATIONS = {
   awardsWatch:       30,
   compliance:        25,
 };
-// Total cycle: 365s ≈ 6.1 minutes
+// Total cycle: 410s ≈ 6.8 minutes
 
 export const PANEL_ORDER = [
   'welcome',
+  'agentOfMonth',
   'branchOverview',
   'branchRunningTotals',
   'unitLeaderboard',

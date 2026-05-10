@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { PANEL_DURATIONS, PANEL_ORDER, POLL_INTERVAL_MS } from '../../lib/kiosk/kioskConfig';
 import { getAllYTDSubmissions, getTenantUsers } from '../../services/managerService';
+import { getAgentOfMonthForKiosk } from '../../services/agentOfMonthService';
 
+import AgentOfMonthPanel        from './panels/AgentOfMonthPanel';
 import BranchOverviewPanel      from './panels/BranchOverviewPanel';
 import RunningTotalsPanel       from './panels/RunningTotalsPanel';
 import UnitLeaderboardPanel     from './panels/UnitLeaderboardPanel';
@@ -18,6 +20,7 @@ import FullscreenButton         from './FullscreenButton';
 
 const PANEL_COMPONENTS = {
   welcome:             WelcomePanel,
+  agentOfMonth:        AgentOfMonthPanel,
   branchOverview:      BranchOverviewPanel,
   branchRunningTotals: RunningTotalsPanel,
   unitLeaderboard:     UnitLeaderboardPanel,
@@ -35,16 +38,19 @@ export default function KioskShell({ tenantId, branchId }) {
   const [panelIndex, setPanelIndex] = useState(0);
   const [allSubmissions, setAllSubmissions] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const [agentOfMonthData, setAgentOfMonthData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
     try {
-      const [subs, users] = await Promise.all([
+      const [subs, users, aom] = await Promise.all([
         getAllYTDSubmissions(),
         getTenantUsers(),
+        getAgentOfMonthForKiosk().catch(() => null),
       ]);
       setAllSubmissions(subs);
       setAllUsers(users);
+      setAgentOfMonthData(aom);
     } catch {
       // Silent on poll failures — stale data is better than a crash.
     } finally {
@@ -83,6 +89,7 @@ export default function KioskShell({ tenantId, branchId }) {
   const sharedProps = {
     allSubmissions,
     allUsers,
+    agentOfMonthData,
     tenantId,
     branchId,
   };

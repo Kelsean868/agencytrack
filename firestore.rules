@@ -226,6 +226,13 @@ service cloud.firestore {
         allow read, write, delete: if canManage(tenantId);
       }
 
+      // E6: Agent of the Month — manager UI + kiosk display read.
+      // Cloud Function writes via Admin SDK (bypasses rules).
+      match /agentOfMonth/{monthKey} {
+        allow read: if canManage(tenantId) || kioskCanRead(tenantId);
+        allow write: if false;
+      }
+
     }
   }
 }

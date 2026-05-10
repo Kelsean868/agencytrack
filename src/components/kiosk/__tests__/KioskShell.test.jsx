@@ -6,6 +6,7 @@ import { PANEL_ORDER, PANEL_DURATIONS } from '../../../lib/kiosk/kioskConfig';
 
 // Mock all panel components to simple identifiable divs
 vi.mock('../panels/WelcomePanel',          () => ({ default: () => <div data-panel="welcome" /> }));
+vi.mock('../panels/AgentOfMonthPanel',    () => ({ default: () => <div data-panel="agentOfMonth" /> }));
 vi.mock('../panels/BranchOverviewPanel',   () => ({ default: () => <div data-panel="branchOverview" /> }));
 vi.mock('../panels/RunningTotalsPanel',    () => ({ default: () => <div data-panel="branchRunningTotals" /> }));
 vi.mock('../panels/UnitLeaderboardPanel',  () => ({ default: () => <div data-panel="unitLeaderboard" /> }));
@@ -24,6 +25,10 @@ vi.mock('../../../services/managerService', () => ({
   getTenantUsers: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock('../../../services/agentOfMonthService', () => ({
+  getAgentOfMonthForKiosk: vi.fn().mockResolvedValue(null),
+}));
+
 describe('KioskShell', () => {
   beforeEach(() => { vi.useFakeTimers(); });
   afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
@@ -38,7 +43,7 @@ describe('KioskShell', () => {
     return container;
   }
 
-  it('renders all 12 panels in PANEL_ORDER sequence', async () => {
+  it('renders all 13 panels in PANEL_ORDER sequence', async () => {
     await mountShell();
 
     for (const panelKey of PANEL_ORDER) {
@@ -50,12 +55,16 @@ describe('KioskShell', () => {
     }
   });
 
-  it('PANEL_ORDER has exactly 12 entries', () => {
-    expect(PANEL_ORDER.length).toBe(12);
+  it('PANEL_ORDER has exactly 13 entries', () => {
+    expect(PANEL_ORDER.length).toBe(13);
   });
 
-  it('branchRunningTotals is at slot #3 (index 2)', () => {
-    expect(PANEL_ORDER[2]).toBe('branchRunningTotals');
+  it('agentOfMonth is at slot #2 (index 1)', () => {
+    expect(PANEL_ORDER[1]).toBe('agentOfMonth');
+  });
+
+  it('branchRunningTotals is at slot #4 (index 3)', () => {
+    expect(PANEL_ORDER[3]).toBe('branchRunningTotals');
   });
 
   it('FullscreenButton is mounted inside the shell', async () => {

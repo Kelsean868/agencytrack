@@ -21,6 +21,10 @@ exports.validateKioskToken = require('./kiosk/validateToken').validateKioskToken
 exports.createKioskToken   = require('./kiosk/createToken').createKioskToken;
 exports.revokeKioskToken   = require('./kiosk/revokeToken').revokeKioskToken;
 
+// E6: Agent of the Month — manager-approved monthly recognition
+exports.setAgentOfMonth          = require('./agentOfMonth/setAgentOfMonth').setAgentOfMonth;
+exports.getAgentOfMonthCandidates = require('./agentOfMonth/getCandidates').getAgentOfMonthCandidates;
+
 const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
 
 // CSV bulk-import allow-list. tenant_admin and platform_admin are explicitly
