@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Trophy, Award, TrendingUp, AlertCircle, RefreshCw, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
