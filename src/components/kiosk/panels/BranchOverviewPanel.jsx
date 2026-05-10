@@ -3,11 +3,29 @@ import {
   filterSubmissionsByPeriod,
   computeBranchAggregates,
 } from '../../../lib/productionReport/computations';
+import { useCountUp } from '../../../hooks/useCountUp';
 
-function fmtApi(n) {
-  if (n >= 1_000_000) return `TTD ${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `TTD ${(n / 1_000).toFixed(1)}K`;
-  return `TTD ${Math.round(n).toLocaleString()}`;
+function KpiCard({ label, rawValue, accent, isCurrency }) {
+  const display = useCountUp(rawValue, { duration: 1000 });
+
+  const formatted = isCurrency
+    ? (() => {
+        if (display >= 1_000_000) return `TTD ${(display / 1_000_000).toFixed(2)}M`;
+        if (display >= 1_000) return `TTD ${(display / 1_000).toFixed(1)}K`;
+        return `TTD ${Math.round(display).toLocaleString()}`;
+      })()
+    : Math.round(display).toString();
+
+  return (
+    <div className="bg-card rounded-2xl flex flex-col items-center justify-center p-8">
+      <span className="text-ink-muted text-2xl mb-4">{label}</span>
+      <span
+        className={`text-6xl font-display font-bold animate-count-up ${accent ? 'text-primary' : 'text-ink'}`}
+      >
+        {formatted}
+      </span>
+    </div>
+  );
 }
 
 export default function BranchOverviewPanel({ allSubmissions, allUsers }) {
@@ -28,10 +46,10 @@ export default function BranchOverviewPanel({ allSubmissions, allUsers }) {
   }, [allSubmissions, allUsers]);
 
   const kpis = [
-    { label: 'YTD API', value: fmtApi(branch.totalApi), accent: true },
-    { label: 'YTD Apps Sold', value: branch.totalApps.toString(), accent: false },
-    { label: 'Active Agents', value: branch.agentCount.toString(), accent: false },
-    { label: 'Avg API / Agent', value: fmtApi(branch.avgApiPerAgent), accent: true },
+    { label: 'YTD API', rawValue: branch.totalApi, accent: true, isCurrency: true },
+    { label: 'YTD Apps Sold', rawValue: branch.totalApps, accent: false, isCurrency: false },
+    { label: 'Active Agents', rawValue: branch.agentCount, accent: false, isCurrency: false },
+    { label: 'Avg API / Agent', rawValue: branch.avgApiPerAgent, accent: true, isCurrency: true },
   ];
 
   return (
@@ -41,13 +59,8 @@ export default function BranchOverviewPanel({ allSubmissions, allUsers }) {
         <span className="text-ink-muted text-xl">{dateStr}</span>
       </div>
       <div className="grid grid-cols-2 gap-6 flex-1">
-        {kpis.map(({ label, value, accent }) => (
-          <div key={label} className="bg-card rounded-2xl flex flex-col items-center justify-center p-8">
-            <span className="text-ink-muted text-2xl mb-4">{label}</span>
-            <span className={`text-6xl font-display font-bold ${accent ? 'text-primary' : 'text-ink'}`}>
-              {value}
-            </span>
-          </div>
+        {kpis.map((kpi) => (
+          <KpiCard key={kpi.label} {...kpi} />
         ))}
       </div>
     </div>

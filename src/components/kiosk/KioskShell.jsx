@@ -2,25 +2,33 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { PANEL_DURATIONS, PANEL_ORDER, POLL_INTERVAL_MS } from '../../lib/kiosk/kioskConfig';
 import { getAllYTDSubmissions, getTenantUsers } from '../../services/managerService';
 
-// Panel components — wired in Phase 5; imported here so KioskShell owns the layout.
-import BranchOverviewPanel   from './panels/BranchOverviewPanel';
-import UnitLeaderboardPanel  from './panels/UnitLeaderboardPanel';
-import AgentLeaderboardPanel from './panels/AgentLeaderboardPanel';
-import RunningTotalsPanel    from './panels/RunningTotalsPanel';
-import LastWeekRecapPanel    from './panels/LastWeekRecapPanel';
-import AwardsWatchPanel      from './panels/AwardsWatchPanel';
-import CompliancePanel       from './panels/CompliancePanel';
-import WelcomePanel          from './panels/WelcomePanel';
+import BranchOverviewPanel      from './panels/BranchOverviewPanel';
+import RunningTotalsPanel       from './panels/RunningTotalsPanel';
+import UnitLeaderboardPanel     from './panels/UnitLeaderboardPanel';
+import LastWeekRecapPanel       from './panels/LastWeekRecapPanel';
+import AwardsWatchPanel         from './panels/AwardsWatchPanel';
+import CompliancePanel          from './panels/CompliancePanel';
+import WelcomePanel             from './panels/WelcomePanel';
+import YTDLeaderboardsPanel     from './panels/YTDLeaderboardsPanel';
+import QTDLeaderboardsPanel     from './panels/QTDLeaderboardsPanel';
+import MTDLeaderboardsPanel     from './panels/MTDLeaderboardsPanel';
+import WeekLeaderboardsPanel    from './panels/WeekLeaderboardsPanel';
+import WeeklyActivityPanel      from './panels/WeeklyActivityPanel';
+import FullscreenButton         from './FullscreenButton';
 
 const PANEL_COMPONENTS = {
-  branchOverview:   BranchOverviewPanel,
-  unitLeaderboard:  UnitLeaderboardPanel,
-  agentLeaderboard: AgentLeaderboardPanel,
-  runningTotals:    RunningTotalsPanel,
-  lastWeekRecap:    LastWeekRecapPanel,
-  awardsWatch:      AwardsWatchPanel,
-  compliance:       CompliancePanel,
-  welcome:          WelcomePanel,
+  welcome:             WelcomePanel,
+  branchOverview:      BranchOverviewPanel,
+  branchRunningTotals: RunningTotalsPanel,
+  unitLeaderboard:     UnitLeaderboardPanel,
+  lastWeekRecap:       LastWeekRecapPanel,
+  ytdLeaderboards:     YTDLeaderboardsPanel,
+  qtdLeaderboards:     QTDLeaderboardsPanel,
+  mtdLeaderboards:     MTDLeaderboardsPanel,
+  weekLeaderboards:    WeekLeaderboardsPanel,
+  weeklyActivity:      WeeklyActivityPanel,
+  awardsWatch:         AwardsWatchPanel,
+  compliance:          CompliancePanel,
 };
 
 export default function KioskShell({ tenantId, branchId }) {
@@ -88,6 +96,7 @@ export default function KioskShell({ tenantId, branchId }) {
       <div key={panelKey} className="w-full h-full animate-kiosk-fade">
         <PanelComponent {...sharedProps} />
       </div>
+      <FullscreenButton />
     </div>
   );
 }

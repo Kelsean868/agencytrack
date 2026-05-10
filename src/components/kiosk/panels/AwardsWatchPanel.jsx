@@ -1,8 +1,10 @@
 import React, { useMemo } from 'react';
+import { Trophy } from 'lucide-react';
 import {
   filterSubmissionsByPeriod,
   computeAgentTotals,
 } from '../../../lib/productionReport/computations';
+import { useCountUp } from '../../../hooks/useCountUp';
 
 function fmtApi(n) {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
@@ -15,6 +17,22 @@ const MILESTONES = [
   { label: 'MDRT', threshold: 500_000 },
   { label: 'Agent of the Year', threshold: 1_000_000 },
 ];
+
+function ProgressBar({ pct }) {
+  return (
+    <div className="h-3 bg-surface-raised rounded-full overflow-hidden">
+      <div
+        className="h-full bg-primary rounded-full animate-progress-fill"
+        style={{ '--progress-target': `${pct}%` }}
+      />
+    </div>
+  );
+}
+
+function PctDisplay({ value }) {
+  const display = useCountUp(value, { duration: 800 });
+  return <span className="animate-count-up">{Math.round(display)}%</span>;
+}
 
 export default function AwardsWatchPanel({ allSubmissions, allUsers }) {
   const { inContention, achieved } = useMemo(() => {
@@ -76,7 +94,7 @@ export default function AwardsWatchPanel({ allSubmissions, allUsers }) {
                 key={agentId}
                 className="bg-card rounded-xl px-5 py-3 flex items-center gap-3"
               >
-                <span className="text-2xl">🏆</span>
+                <Trophy size={22} className="text-yellow-400 shrink-0" />
                 <span className="text-ink text-xl font-semibold">{agentName}</span>
                 <span className="text-primary text-xl">TTD {fmtApi(totals.totalApi)}</span>
               </div>
@@ -89,7 +107,7 @@ export default function AwardsWatchPanel({ allSubmissions, allUsers }) {
         <h2 className="text-ink-muted text-2xl font-semibold">In Contention</h2>
         {inContention.length === 0 && (
           <p className="text-ink-muted text-xl mt-4">
-            No agents currently between 50–100% of a milestone
+            No agents currently between 50-100% of a milestone
           </p>
         )}
         {inContention.map(({ agentId, milestone, agentName, pct, gap }) => (
@@ -100,21 +118,18 @@ export default function AwardsWatchPanel({ allSubmissions, allUsers }) {
             <div className="flex items-center justify-between mb-3">
               <div>
                 <span className="text-ink text-2xl font-semibold">{agentName}</span>
-                <span className="text-ink-muted text-lg ml-4">→ {milestone.label}</span>
+                <span className="text-ink-muted text-lg ml-4">to {milestone.label}</span>
               </div>
               <div className="text-right">
-                <span className="text-primary text-2xl font-bold">{pct}%</span>
+                <span className="text-primary text-2xl font-bold">
+                  <PctDisplay value={pct} />
+                </span>
                 <span className="text-ink-muted text-lg ml-3">
                   TTD {fmtApi(gap)} to go
                 </span>
               </div>
             </div>
-            <div className="h-3 bg-surface-raised rounded-full overflow-hidden">
-              <div
-                className="h-full bg-primary rounded-full"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+            <ProgressBar pct={pct} />
           </div>
         ))}
       </div>

@@ -1,24 +1,32 @@
 export const PANEL_DURATIONS = {
-  branchOverview:   30, // seconds
-  unitLeaderboard:  35,
-  agentLeaderboard: 50, // longer — all agents
-  runningTotals:    35,
-  lastWeekRecap:    30,
-  awardsWatch:      30,
-  compliance:       25,
-  welcome:          15, // shortest — resting state
+  welcome:           15,
+  branchOverview:    30,
+  branchRunningTotals: 30,
+  unitLeaderboard:   30,
+  lastWeekRecap:     30,
+  ytdLeaderboards:   35,
+  qtdLeaderboards:   35,
+  mtdLeaderboards:   35,
+  weekLeaderboards:  35,
+  weeklyActivity:    35,
+  awardsWatch:       30,
+  compliance:        25,
 };
+// Total cycle: 365s ≈ 6.1 minutes
 
-// Total cycle: 250s ≈ 4.2 minutes
 export const PANEL_ORDER = [
+  'welcome',
   'branchOverview',
+  'branchRunningTotals',
   'unitLeaderboard',
-  'agentLeaderboard',
-  'runningTotals',
   'lastWeekRecap',
+  'ytdLeaderboards',
+  'qtdLeaderboards',
+  'mtdLeaderboards',
+  'weekLeaderboards',
+  'weeklyActivity',
   'awardsWatch',
   'compliance',
-  'welcome',
 ];
 
 export const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes

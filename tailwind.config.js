@@ -67,14 +67,29 @@ export default {
         xl: '1rem',
         '2xl': '1.5rem',
       },
-      // E5: kiosk panel crossfade
+      // E5/E5.1: kiosk animations
       animation: {
-        'kiosk-fade': 'kiosk-fade 0.6s ease-in-out',
+        'kiosk-fade':    'kiosk-fade 0.6s ease-in-out',
+        'count-up':      'count-up 600ms ease-out',
+        'stagger-in':    'stagger-in 400ms ease-out',
+        'progress-fill': 'progress-fill 1500ms ease-out forwards',
       },
       keyframes: {
         'kiosk-fade': {
-          '0%': { opacity: '0' },
+          '0%':   { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        'count-up': {
+          '0%':   { opacity: '0', transform: 'translateY(10px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' },
+        },
+        'stagger-in': {
+          '0%':   { opacity: '0', transform: 'translateX(-20px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
+        'progress-fill': {
+          '0%':   { width: '0%' },
+          '100%': { width: 'var(--progress-target, 100%)' },
         },
       },
     },
