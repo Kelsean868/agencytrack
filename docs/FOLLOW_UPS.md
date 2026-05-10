@@ -878,6 +878,18 @@ script drift only. Knock out next time the kiosk is touched for any
 other reason.
 
 ---
+## e5-1-walk.mjs selector fixes (LOW, banked 2026-05-10)
+
+The Playwright walk for E5.1 (`scripts/verification/e5-1-walk.mjs`) has 4 checks (02/05/10/12) that timeout on internal selectors despite the underlying features rendering correctly per manual smoke verification on 2026-05-10. Specifically:
+
+- 02_kiosk_shell_fullscreen_btn — selector for FullscreenButton
+- 05_ytd_leaderboards — selector for API + Apps columns visibility
+- 10_activity_breakdown — selector for breakdown text beneath totals
+- 12_lucide_icons_render — selector for Trophy/Medal SVG elements
+
+Features were verified visually as working. Fix is selector adjustment only — likely use stable selectors (data-testid attributes, aria-labels, semantic role queries) instead of structural-wait patterns. Target 16/16 walk pass after fix.
+
+~30 min CC session when convenient. Not pilot-blocking.
 
 ## fieldHelpers / extractFields consolidation (LOW, banked 2026-05-10)
 
