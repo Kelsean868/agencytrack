@@ -5,22 +5,13 @@ import { useCountUp } from '../useCountUp';
 describe('useCountUp', () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    // Provide a minimal rAF that fires immediately via microtask in fake-timer mode
-    let rafId = 0;
-    const pending = new Map();
-    vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((cb) => {
-      const id = ++rafId;
-      pending.set(id, cb);
-      Promise.resolve().then(() => {
-        if (pending.has(id)) {
-          pending.delete(id);
-          cb(performance.now());
-        }
-      });
-      return id;
-    });
+    // Route rAF through fake setTimeout so performance.now() advances with each tick.
+    // Promise.resolve() microtasks keep performance.now() frozen → infinite loop.
+    vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((cb) =>
+      setTimeout(() => cb(performance.now()), 16)
+    );
     vi.spyOn(globalThis, 'cancelAnimationFrame').mockImplementation((id) => {
-      pending.delete(id);
+      clearTimeout(id);
     });
   });
 
