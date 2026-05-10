@@ -31,6 +31,7 @@ export default function MobileBottomNav({ items, activeTab, setActiveTab, onActi
               else if (item.action != null) onAction?.(item.action);
             }}
             aria-current={isActive ? 'page' : undefined}
+            data-testid={item.testId ?? `bottomnav-${item.id}`}
           >
             <Icon size={22} />
             <span>{item.label}</span>

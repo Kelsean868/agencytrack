@@ -74,6 +74,7 @@ export default function Sidebar({
                 aria-disabled={isDisabled || undefined}
                 tabIndex={isDisabled ? -1 : undefined}
                 title={isDisabled ? `${item.label} · Coming soon` : item.label}
+                data-testid={item.testId ?? `nav-${item.id}`}
               >
                 <Icon size={18} />
                 <span>{item.label}</span>

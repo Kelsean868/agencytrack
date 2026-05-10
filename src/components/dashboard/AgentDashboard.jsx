@@ -34,6 +34,7 @@ import { buildActivityEvents } from '../../utils/buildActivityEvents';
 import WelcomeScreen from '../onboarding/WelcomeScreen';
 import Shell from '../shell/Shell';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
+import AgentPersistencyTab from '../agent/PersistencyTab';
 
 const KPIS = [
   { key: 'dials',    label: 'Dials',         field: 'totalTelAttempts', isCurrency: false },
@@ -55,6 +56,7 @@ const NAV_ITEMS = [
   { id: 'dashboard',   label: 'Dashboard',   tabId: 'dashboard',   Icon: ClipboardList, sectionLabel: 'Workspace' },
   { id: 'career',      label: 'Career',      tabId: 'career',      Icon: TrendingUp },
   { id: 'awards',             label: 'Awards',            tabId: 'awards',             Icon: Trophy },
+  { id: 'persistency',        label: 'Persistency',       tabId: 'persistency',        Icon: TrendingUp,    testId: 'agent-tab-persistency' },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: BarChart2 },
   { id: 'leaderboard',       label: 'Leaderboard',       tabId: 'leaderboard',       Icon: Star },
   { id: 'history',     label: 'History',     tabId: 'history',     Icon: History },
@@ -664,6 +666,9 @@ export default function AgentDashboard() {
           </div>
         )
       )}
+
+      {/* ── PERSISTENCY TAB ── */}
+      {activeTab === 'persistency' && <AgentPersistencyTab />}
 
       {/* ── PRODUCTION REPORT TAB ── */}
       {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}
