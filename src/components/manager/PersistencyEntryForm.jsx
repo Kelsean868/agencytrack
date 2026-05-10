@@ -5,7 +5,7 @@
 // audit trail (enteredAt/By/ByRole + lastEditedAt/By/ByRole) and the derived
 // fields (grossSettled, netSettled, persistency, meetsAwardGate).
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { X, Save, AlertCircle } from 'lucide-react';
 import { savePersistency } from '../../services/persistencyService';
 import { deriveAll } from '../../lib/persistency/calculations';

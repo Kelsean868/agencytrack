@@ -4,7 +4,7 @@
 // when a manager has already entered for the same month) + a "Open Playground"
 // CTA. Award-gate banner appears when persistency is below 90%.
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   LineChart, Line, ReferenceLine, Tooltip, XAxis, YAxis, ResponsiveContainer,
 } from 'recharts';

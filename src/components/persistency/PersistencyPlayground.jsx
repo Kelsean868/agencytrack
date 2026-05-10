@@ -6,7 +6,7 @@
 // minimum lever value to reach the target, isolated per lever, via
 // calculateShortfall().
 
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { X, Calculator, Target, AlertCircle } from 'lucide-react';
 import { projectPersistency, calculateShortfall } from '../../lib/persistency/calculations';
 import { formatCurrency } from '../../utils/formatters';

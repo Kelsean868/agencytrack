@@ -1,3 +1,4 @@
+import React from 'react';
 import { Edit3, Calculator } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 

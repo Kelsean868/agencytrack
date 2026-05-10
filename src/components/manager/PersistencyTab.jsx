@@ -8,7 +8,7 @@
 // Phase 5 adds the entry form + layout polish + CSV export. Current scope is
 // data loading + branch summary + agent list with edit affordance.
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { TrendingUp, AlertCircle, Calculator, Edit3, Download, Printer } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
