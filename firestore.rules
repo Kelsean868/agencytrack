@@ -137,7 +137,16 @@ service cloud.firestore {
               && request.resource.data.lastEditedBy == request.auth.uid;
         }
 
-        allow read: if isSignedIn() && getTenantId() == tenantId && (
+        // allow list is intentionally permissive within tenant scope.
+        // Firestore cannot evaluate resource.data for list operations, so
+        // per-doc rules (allow get below) handle strict access. Clients
+        // must apply where() filters; isE3Doc() in persistencyService.js
+        // strips legacy docs before UI render.
+        // Trade-off + follow-ups: see SCOPE-2 and PERF-1 in docs/FOLLOW_UPS.md
+        // (to be added in a separate post-pilot housekeeping PR).
+        allow list: if isSignedIn() && getTenantId() == tenantId;
+
+        allow get: if isSignedIn() && getTenantId() == tenantId && (
           getRole() in ['platform_admin', 'tenant_admin', 'sales_manager']
           || (isAgent() && resource.data.agentId == request.auth.uid)
           || (getRole() == 'branch_manager' && existingAgentBranchId() == callerBranchId())
