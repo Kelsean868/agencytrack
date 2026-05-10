@@ -805,3 +805,121 @@ Priority: **LOW**. The logic is a one-line helper (`!minimums?.updatedBy && !min
 **Recommendation:** Option 1 is the cheapest fix — `tenant_admin` context makes "Import" unambiguous. But since the current state is legible and accessible, defer until the manager surface mobile pass (Mobile FU#1) is scoped, so the header layout can be treated holistically.
 
 Priority: **LOW**. Cosmetic at one breakpoint; no accessibility or usability failure.
+
+---
+
+## Kiosk team activity slideshow (MEDIUM, concept locked 2026-05-10)
+
+**Scope:** Manager-uploaded photos from team events (training days, awards
+ceremonies, branch outings, milestone celebrations) rotated as a dedicated
+kiosk panel inside the existing E5 kiosk rotation. Branch-scoped — each
+branch's kiosk shows only its own photos. Firebase Storage backed at
+`team-photos/{tenantId}/{branchId}/{photoId}.jpg` with a Firestore index
+collection for ordering / captions / upload metadata.
+
+**Why this subsumes the earlier "branch hero photo" idea:** the original
+proposal was a single static branch photo (one team shot, swapped manually
+when staffing changed). That carried turnover-staleness risk — a departing
+agent in the photo embarrasses the branch every time it renders. A
+rotating slideshow of recent event photos sidesteps the risk: an outdated
+photo simply ages out of rotation as newer events get uploaded, and the
+staleness pressure becomes implicit (managers naturally swap in fresher
+shots over time).
+
+**Scope estimate:** ~2-3 day Claude Code session. Firebase Storage upload
+UI in manager surface, Firestore index doc + rules, kiosk panel
+component slotted into the existing rotation, branch-scoped query.
+
+Priority: **MEDIUM**. Post-pilot — depends on E5 kiosk shipping first
+(already shipped in PR #75). Genuine adoption signal needed (do branches
+ask for this?) before scoping a PR.
+
+---
+
+## Kiosk per-branch customization (LOW, deferred 2026-05-10)
+
+**Scope:** Allow each Branch Manager to pick which panels appear on their
+kiosk, set the panel rotation order, and adjust KPI emphasis (e.g. show
+unit comparisons vs. only individual leaderboards). Currently the kiosk
+ships a single fixed 12-panel rotation tuned for the pilot branch.
+
+**Why deferred:** premature at pilot scale. The pilot is a single branch
+(tatillife_south); there is no divergent-needs signal yet. Customization
+adds substantial scope (per-branch config schema, admin UI, migration of
+the current fixed rotation into config-driven defaults) for zero current
+benefit. Revisit when 3+ branches show divergent needs — at that point
+the configuration surface justifies its weight.
+
+**Scope estimate:** ~1-2 weeks when the time comes. New
+`tenants/{tenantId}/branches/{branchId}/kioskConfig` doc, BranchEditorModal
+extension or dedicated KioskConfigPanel, kiosk renderer reads config
+instead of hardcoded rotation.
+
+Priority: **LOW**. Concept reviewed 2026-05-10 and explicitly deferred —
+do not pick up until a third branch is onboarded and asks for it.
+
+---
+
+## e5-1-walk.mjs selector fixes (LOW, banked 2026-05-10)
+
+**Scope:** The `verification/e5-1-walk.mjs` script reports timeouts on
+internal selectors for panels 02 / 05 / 10 / 12 even though the features
+themselves render correctly when the kiosk is opened in a browser. The
+walk script's panel-detection selectors drifted from the panel
+implementations during the E5.1 12-panel restructure (PR #75) and were
+not updated alongside.
+
+**Fix:** ~30 minute cleanup. Open the script, walk through each failing
+panel, update the selector to match the rendered DOM (likely a class /
+data-attribute rename from the restructure). No app-code change.
+
+Priority: **LOW**. The kiosk works in production; this is verification-
+script drift only. Knock out next time the kiosk is touched for any
+other reason.
+
+---
+## e5-1-walk.mjs selector fixes (LOW, banked 2026-05-10)
+
+The Playwright walk for E5.1 (`scripts/verification/e5-1-walk.mjs`) has 4 checks (02/05/10/12) that timeout on internal selectors despite the underlying features rendering correctly per manual smoke verification on 2026-05-10. Specifically:
+
+- 02_kiosk_shell_fullscreen_btn — selector for FullscreenButton
+- 05_ytd_leaderboards — selector for API + Apps columns visibility
+- 10_activity_breakdown — selector for breakdown text beneath totals
+- 12_lucide_icons_render — selector for Trophy/Medal SVG elements
+
+Features were verified visually as working. Fix is selector adjustment only — likely use stable selectors (data-testid attributes, aria-labels, semantic role queries) instead of structural-wait patterns. Target 16/16 walk pass after fix.
+
+~30 min CC session when convenient. Not pilot-blocking.
+
+## fieldHelpers / extractFields consolidation (LOW, banked 2026-05-10)
+
+**Scope:** Two duplicate sources of truth for activity-total computation:
+
+- `functions/utils/fieldHelpers.js` — CommonJS, consumed by Cloud
+  Functions (Sunday aggregator, weekly recognition cron, etc.).
+- `src/utils/extractFields.js` — ESM, consumed by the React app
+  (dashboards, leaderboards, PDF report).
+
+Both compute the same numeric fields (FFI count, CI count, API total,
+PPP, lumpsums, new business) from the same submission documents, but
+each maintains its own field-extraction logic. A bug fix or schema
+migration in one easily drifts from the other — exactly the kind of
+duplication that bit P8 when wizard-flat-schema rollout missed
+extractFields and caused historical reports to render zeros.
+
+**Long-term fix shape:**
+- Option A: shared utility at `shared/fieldHelpers.js` compiled to both
+  CJS and ESM via a build step (e.g. tsup or unbuild). Both consumers
+  import from a single source.
+- Option B: keep two files but generate one from the other via a
+  pre-commit script. Source of truth in one location.
+- Option C: migrate Cloud Functions to ESM (Node 20 supports it) and
+  share the ESM file directly.
+
+E1's schema split (Track E, pre-pilot HIGH) will exacerbate the
+duplication — both files will need parallel updates for newBusiness /
+pppIncreases / lumpsums extraction. Worth resolving before E1 lands, or
+as part of E1 itself.
+
+Priority: **LOW**. No active bug; structural risk only. Bank for E1
+scoping conversation.

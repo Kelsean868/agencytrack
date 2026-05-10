@@ -249,6 +249,24 @@ Use `extractFields()` in `src/utils/extractFields.js` — single source of truth
 
 All four are confirmed in `.gitignore`.
 
+## Tool installation policy
+
+CC may install without surfacing:
+- Project-local dev dependencies (npm/pip packages, vitest/eslint plugins, anything in node_modules or project-local)
+
+CC must surface intent then proceed (no per-instance approval needed):
+- Standard CLI tools from official sources (gcloud, gh, gsutil, firebase-tools)
+- IDE extensions, dotfile additions
+- Global npm/pip packages
+
+CC must STOP and surface BEFORE installing:
+- Anything requiring auth/credentials (CC can't complete auth alone — Kelsean must)
+- Paid tools or services with cost implications
+- Tools modifying system PATH or registry beyond standard installer behavior
+- Anything from non-official or unverified sources
+
+When in doubt, surface and ask.
+
 ## Track A — Historical Items (all resolved)
 1. **functions/index.js**: hardcoded `SUPER_ADMIN_UID` bypass — **RESOLVED in user-mgmt PR-2** (bypass removed; `SUPER_ADMIN_UID` const deleted; AuthContext bootstrap deleted; SEC-11 closed; claims seeded via `seed-first-tenant-admin.cjs`)
 2. **firestore.rules**: leaderboard reads not tenant-scoped — RESOLVED in SEC-2
