@@ -148,6 +148,9 @@ service cloud.firestore {
 
         allow get: if isSignedIn() && getTenantId() == tenantId && (
           getRole() in ['platform_admin', 'tenant_admin', 'sales_manager']
+          // Allow reads of non-existent docs so pre-write getDoc() in savePersistency
+          // returns cleanly (doc.exists() === false). No data leakage — resource is null.
+          || resource == null
           || (isAgent() && resource.data.agentId == request.auth.uid)
           || (getRole() == 'branch_manager' && existingAgentBranchId() == callerBranchId())
           || (getRole() == 'unit_manager'   && existingAgentUnitId()   == callerUnitId(tenantId))
