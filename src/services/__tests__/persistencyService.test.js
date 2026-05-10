@@ -40,6 +40,7 @@ import {
   reportPeriodFromMonthKey,
   getPersistencyForAgent,
   getPersistencyForBranch,
+  getPersistencyMapForYear,
   getAvailableMonths,
   getAgentHistory,
   savePersistency,
@@ -385,6 +386,53 @@ describe('savePersistency', () => {
     expect(written.enteredByRole).toBe('branch_manager');
     expect(written.lastEditedBy).toBe('writer-uid');
     expect(written.lastEditedByRole).toBe('branch_manager');
+  });
+});
+
+describe('getPersistencyMapForYear', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('returns map keyed by agentId with E3 records only, scoped by branchId', async () => {
+    getTenantUsers.mockResolvedValueOnce([
+      { id: 'a1', role: 'agent',          branchId: 'b1' },
+      { id: 'a2', role: 'agent',          branchId: 'b2' }, // wrong branch
+      { id: 'm1', role: 'unit_manager',   branchId: 'b1' }, // not an agent
+      { id: 'a3', role: 'agent',          branchId: 'b1' },
+    ]);
+    mockGetDocs
+      .mockResolvedValueOnce({
+        docs: [
+          { data: () => ({ ...E3_INPUTS, agentId: 'a1', year: 2026, monthKey: '2026-01' }) },
+          { data: () => ({ ...E3_INPUTS, agentId: 'a1', year: 2026, monthKey: '2026-02' }) },
+          { data: () => ({                  agentId: 'a1', year: 2026 }) }, // pre-E3 — filtered
+        ],
+      })
+      .mockResolvedValueOnce({ docs: [] });
+
+    const map = await getPersistencyMapForYear(2026, { branchId: 'b1' });
+
+    // Two agents queried (a1, a3), only a1 had records.
+    expect(mockGetDocs).toHaveBeenCalledTimes(2);
+    expect(Object.keys(map)).toEqual(['a1']);
+    expect(map.a1).toHaveLength(2);
+  });
+
+  it('silently skips agents whose query is rejected by rules', async () => {
+    getTenantUsers.mockResolvedValueOnce([
+      { id: 'a1', role: 'agent', branchId: 'b1' },
+      { id: 'a2', role: 'agent', branchId: 'b1' },
+    ]);
+    mockGetDocs
+      .mockRejectedValueOnce(new Error('PERMISSION_DENIED'))
+      .mockResolvedValueOnce({
+        docs: [
+          { data: () => ({ ...E3_INPUTS, agentId: 'a2', year: 2026, monthKey: '2026-01' }) },
+        ],
+      });
+
+    const map = await getPersistencyMapForYear(2026, { branchId: 'b1' });
+    expect(map.a1).toBeUndefined();
+    expect(map.a2).toHaveLength(1);
   });
 });
 

@@ -161,18 +161,34 @@ export async function getAvailableMonths(scopeType, scopeId) {
 // Returns `{ agentId: [E3-records...] }` for the given year. Used by branch
 // CSV export and any other consumer that needs YTD aggregation per agent.
 // Pre-E3 docs are silently filtered out.
-export async function getPersistencyMapForYear(year) {
-  const q = query(persistencyCollection(), where('year', '==', year));
-  const snap = await getDocs(q);
+//
+// `opts` may scope the query to a specific branch/unit so branch_manager and
+// unit_manager callers don't trip the new role-scoped firestore rules. When
+// no scope is passed, the caller must have tenant-wide read (sales_manager
+// or higher) — otherwise the per-agent query for cross-branch agents will be
+// rejected by rules and silently dropped.
+export async function getPersistencyMapForYear(year, opts = {}) {
+  const tenantId = getTenantId();
+  const allUsers = await getTenantUsers();
+  let agents = allUsers.filter((u) => u.role === 'agent');
+  if (opts.branchId) agents = agents.filter((u) => u.branchId === opts.branchId);
+  if (opts.unitId)   agents = agents.filter((u) => u.unitId   === opts.unitId);
+
   const map = {};
-  snap.forEach((d) => {
-    const data = d.data();
-    if (!isE3Doc(data)) return;
-    const agentId = data.agentId;
-    if (!agentId) return;
-    if (!map[agentId]) map[agentId] = [];
-    map[agentId].push(data);
-  });
+  await Promise.all(agents.map(async (u) => {
+    try {
+      const q = query(
+        collection(db, `tenants/${tenantId}/persistency`),
+        where('agentId', '==', u.id),
+        where('year', '==', year),
+      );
+      const snap = await getDocs(q);
+      const recs = snap.docs.map((d) => d.data()).filter(isE3Doc);
+      if (recs.length > 0) map[u.id] = recs;
+    } catch {
+      // Read denied by rules — skip this agent silently.
+    }
+  }));
   return map;
 }
 

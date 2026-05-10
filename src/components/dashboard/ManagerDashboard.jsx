@@ -171,7 +171,10 @@ export default function ManagerDashboard() {
       const [userList, subs, persMap] = await Promise.all([
         getTenantUsers().catch(() => []),
         getAllYTDSubmissions().catch(() => []),
-        getPersistencyMapForYear(year).catch(() => ({})),
+        getPersistencyMapForYear(year, {
+          branchId: role === 'branch_manager' ? userProfile?.branchId : undefined,
+          unitId:   role === 'unit_manager'   ? userProfile?.unitId   : undefined,
+        }).catch(() => ({})),
       ]);
       exportBranchCSV(userList, subs, persMap);
     } catch (err) {

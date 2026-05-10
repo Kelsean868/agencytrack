@@ -107,10 +107,52 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // E3: persistency — role-scoped by agent's branchId/unitId. Replaces the
+      // pre-E3 manager-can-write-anywhere block. Agents can write their own
+      // doc (manager wins on collision via app-layer audit-trail precedence).
+      // Non-negative validation on the six business inputs is enforced here
+      // so the data layer cannot store negative TTD figures.
       match /persistency/{docId} {
-        allow read: if canManage(tenantId) ||
-          (isSignedIn() && isAgent() && getTenantId() == tenantId && resource.data.agentId == request.auth.uid);
-        allow write: if canManage(tenantId);
+        function existingAgentBranchId() {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(resource.data.agentId)).data.branchId;
+        }
+        function existingAgentUnitId() {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(resource.data.agentId)).data.unitId;
+        }
+        function newDocAgentBranchId() {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.resource.data.agentId)).data.branchId;
+        }
+        function callerBranchId() {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
+        }
+        function validE3InputsNonNegative() {
+          return request.resource.data.businessPlaced  >= 0
+              && request.resource.data.notTakens       >= 0
+              && request.resource.data.incPPPs         >= 0
+              && request.resource.data.lumpsums100     >= 0
+              && request.resource.data.lapses          >= 0
+              && request.resource.data.reinstatements  >= 0
+              && request.resource.data.tenantId == tenantId
+              && request.resource.data.lastEditedByRole == getRole()
+              && request.resource.data.lastEditedBy == request.auth.uid;
+        }
+
+        allow read: if isSignedIn() && getTenantId() == tenantId && (
+          getRole() in ['platform_admin', 'tenant_admin', 'sales_manager']
+          || (isAgent() && resource.data.agentId == request.auth.uid)
+          || (getRole() == 'branch_manager' && existingAgentBranchId() == callerBranchId())
+          || (getRole() == 'unit_manager'   && existingAgentUnitId()   == callerUnitId(tenantId))
+        );
+
+        allow create, update: if isSignedIn() && getTenantId() == tenantId
+          && validE3InputsNonNegative()
+          && (
+            getRole() in ['platform_admin', 'tenant_admin']
+            || (isAgent() && request.resource.data.agentId == request.auth.uid)
+            || (getRole() == 'branch_manager' && newDocAgentBranchId() == callerBranchId())
+          );
+
+        allow delete: if false;
       }
 
       match /goals/{goalId} {
