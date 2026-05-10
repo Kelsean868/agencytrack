@@ -13,10 +13,10 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-09` |
-| Current main HEAD | `31d3c3d` (feat(e6): daily input mode — agent cadence choice + Sunday aggregator, PR #71) |
-| Active track | Track E — E4 digital production report in progress (branch `feat/e4-production-report`). E1 + E6 fully shipped. |
-| Next track | Track D — cron + notifications verification (after E4 ships) |
-| Queued | E3–E5 post-pilot |
+| Current main HEAD | `783c07a` (feat(e4): digital production report — three role-based views with time-period toggles, PR #72) |
+| Active track | Track E — E5 TV Display Kiosk Mode in progress (branch `feat/e5-kiosk-mode`). E1 + E4 + E6 fully shipped. |
+| Next track | Track D — cron + notifications verification (after E5 ships) |
+| Queued | E3 post-pilot |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -119,7 +119,7 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 | SEC-9c | Server-side tenant isolation for scheduled Cloud Functions | No | Scheduled functions still hardcode `TENANT_ID = 'tatillife_south'`; future work |
 | SEC-12 | unitGoals write rule references missing `unitId` claim | No | Discovered during user-mgmt PR-1 audit; rule branch at `firestore.rules:118-120` is dead code today (unit_manager writes always fall through to false). Tracked in [#23](https://github.com/Kelsean868/agencytrack/issues/23). |
-| Track E | Agent + Manager Tooling Enhancements (E1–E6) | No | E1 fully shipped (#68–#70). E6 (daily input mode) shipped PR #71. E4 (digital production report) in progress — branch `feat/e4-production-report`. E3/E5 post-pilot. Spec: `docs/Track-E-Specs.md` §E4. Brief: `docs/briefs/e4-production-report-kickoff.md`. |
+| Track E | Agent + Manager Tooling Enhancements (E1–E6) | No | E1 fully shipped (#68–#70). E4 (digital production report) shipped PR #72. E6 (daily input mode) shipped PR #71. E5 (TV kiosk mode) in progress — branch `feat/e5-kiosk-mode`. E3 post-pilot. Spec: `docs/Track-E-Specs.md` §E5. Brief: `docs/briefs/e5-kiosk-mode-kickoff.md`. |
 
 ---
 
@@ -127,11 +127,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #72 | `783c07a` | feat(e4): digital production report — three role-based views with time-period toggles |
 | #71 | `31d3c3d` | feat(e6): daily input mode — agent cadence choice + Sunday aggregator |
 | #70 | `73917fe` | feat(e1) slice 2b: surface adaptation + PDF redesign + awards V2 compat |
 | #69 | `39dec4e` | feat(e1) slice 2a: wizard production step restructure (3-source schema) |
 | #68 | `6ee9898` | feat(e1) slice 1: schema split foundation — utilities + migration + seeder |
-| #67 | `fcd6a25` | chore(housekeeping): CONTEXT sync post-E2 + verification script lift |
 
 ---
 
@@ -149,11 +149,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** E6 shipped (PR #71 / `31d3c3d`). E4 digital production report starting — worktree created, CONTEXT sync is the first commit.
+> **Session boundary:** E4 shipped (PR #72 / `783c07a`). E5 TV Display Kiosk Mode starting — worktree created, CONTEXT sync is the first commit.
 
-**E6 (PR #71) — shipped.** Daily input mode (agent cadence choice + Sunday aggregator). Squash SHA `31d3c3d`. All pre-pilot HIGH Track E items done. E1 fully shipped (Slice 1–2B, PRs #68–#70). E4 now the active Track E item.
+**E4 (PR #72) — shipped.** Digital production report — three role-based views (Agent, Unit Manager, Branch Manager) with Week/MTD/Quarter/YTD toggles. Settled data prioritised with Confirmed/Estimated badge. Squash SHA `783c07a`. New: `src/lib/productionReport/computations.js`, `src/components/productionReport/` directory, Vitest tests, Playwright walk artifacts in `verification/e4/`.
 
-**E4 (in progress) — digital production report.** Branch `feat/e4-production-report`. Three role-based views replacing the Friday whiteboard PDF: Agent self-view (personal totals + ranks), Unit Manager view (unit aggregate + leaderboard + compliance), Branch Manager view (branch aggregate + unit leaderboard + top agents). Time-period toggles: Week / MTD / Quarter / YTD. Data source: settled when available, falls back to submitted (Confirmed/Estimated badge). Spec: `docs/Track-E-Specs.md` §E4. Brief: `docs/briefs/e4-production-report-kickoff.md`. New files: `src/lib/productionReport/computations.js`, `src/components/productionReport/` directory, Vitest tests, Playwright walk. CONTEXT sync bundled into first commit.
+**E5 (in progress) — TV Display Kiosk Mode.** Branch `feat/e5-kiosk-mode`. Token-based public route `/kiosk/:tenantId/:token`. 8-panel auto-rotating display (Branch Overview, Unit Leaderboard, Agent Leaderboard, Running Totals, Last Week Recap, Awards Watch, Compliance, Welcome). Agent avatars with photo/initials fallback. Manager-side URL generation + revoke tab. Three new Cloud Functions: `validateKioskToken`, `createKioskToken`, `revokeKioskToken`. Spec: `docs/Track-E-Specs.md` §E5. Brief: `docs/briefs/e5-kiosk-mode-kickoff.md`. CONTEXT sync bundled into first commit.
 
 ---
 

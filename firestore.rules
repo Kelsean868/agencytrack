@@ -30,6 +30,15 @@ service cloud.firestore {
       return isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || (isAgent() && getTenantId() == tenantId && request.auth.uid == agentId));
     }
 
+    // E5: kiosk display session — read-only, tenant-scoped
+    function isKiosk() {
+      return getRole() == 'kiosk';
+    }
+
+    function kioskCanRead(tenantId) {
+      return isSignedIn() && isKiosk() && getTenantId() == tenantId;
+    }
+
     // SEC-4: fetch caller's unitId from Firestore profile (not token — unitId is not a custom claim)
     function callerUnitId(tenantId) {
       return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.unitId;
@@ -57,7 +66,7 @@ service cloud.firestore {
       }
 
       match /users/{userId} {
-        allow read: if canManage(tenantId) || (isSignedIn() && request.auth.uid == userId);
+        allow read: if canManage(tenantId) || (isSignedIn() && request.auth.uid == userId) || kioskCanRead(tenantId);
         // SEC-4: unit_manager can only create/update users within their own unit
         allow create: if canManage(tenantId) && (
           getRole() != 'unit_manager' ||
@@ -91,7 +100,7 @@ service cloud.firestore {
       }
 
       match /submissions/{submissionId} {
-        allow read:   if canManage(tenantId) || canAccessOwn(tenantId, resource.data.agentId);
+        allow read:   if canManage(tenantId) || canAccessOwn(tenantId, resource.data.agentId) || kioskCanRead(tenantId);
         allow create: if canManage(tenantId) || canAccessOwn(tenantId, request.resource.data.agentId);
         allow update: if canManage(tenantId) ||
           (canAccessOwn(tenantId, resource.data.agentId) && resource.data.status == 'draft');
@@ -209,6 +218,12 @@ service cloud.firestore {
         allow write: if isSignedIn()
           && getRole() in ['platform_admin', 'tenant_admin']
           && (getRole() == 'platform_admin' || getTenantId() == tenantId);
+      }
+
+      // E5: kiosk tokens. Manager-tier roles manage tokens; Cloud Function
+      // validateKioskToken reads via Admin SDK (bypasses rules entirely).
+      match /kioskTokens/{tokenId} {
+        allow read, write, delete: if canManage(tenantId);
       }
 
     }

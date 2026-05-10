@@ -4,20 +4,32 @@ import './index.css';
 import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
+import KioskRoute from './components/kiosk/KioskRoute.jsx';
 
-if (localStorage.getItem('agencytrack-dark') === '1') {
+const isKioskPath = window.location.pathname.startsWith('/kiosk/');
+
+if (isKioskPath) {
+  // Kiosk always renders as dark — ignore user preference
   document.documentElement.classList.add('dark');
-}
-if (localStorage.getItem('agencytrack-sidebar-collapsed') === '1') {
-  document.documentElement.classList.add('sidebar-collapsed');
+} else {
+  if (localStorage.getItem('agencytrack-dark') === '1') {
+    document.documentElement.classList.add('dark');
+  }
+  if (localStorage.getItem('agencytrack-sidebar-collapsed') === '1') {
+    document.documentElement.classList.add('sidebar-collapsed');
+  }
 }
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <AuthProvider>
-      <NotificationProvider>
-        <App />
-      </NotificationProvider>
-    </AuthProvider>
+    {isKioskPath ? (
+      <KioskRoute />
+    ) : (
+      <AuthProvider>
+        <NotificationProvider>
+          <App />
+        </NotificationProvider>
+      </AuthProvider>
+    )}
   </StrictMode>,
 );
