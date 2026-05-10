@@ -7,6 +7,11 @@ admin.initializeApp();
 const { aggregateDailyToWeeklyCron } = require('./aggregators/sundayDailyToWeekly');
 exports.aggregateDailyToWeekly = aggregateDailyToWeeklyCron;
 
+// E5: TV Display Kiosk Mode — token-based public display
+exports.validateKioskToken = require('./kiosk/validateToken').validateKioskToken;
+exports.createKioskToken   = require('./kiosk/createToken').createKioskToken;
+exports.revokeKioskToken   = require('./kiosk/revokeToken').revokeKioskToken;
+
 const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
 
 // CSV bulk-import allow-list. tenant_admin and platform_admin are explicitly

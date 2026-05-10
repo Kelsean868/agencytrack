@@ -211,6 +211,12 @@ service cloud.firestore {
           && (getRole() == 'platform_admin' || getTenantId() == tenantId);
       }
 
+      // E5: kiosk tokens. Manager-tier roles manage tokens; Cloud Function
+      // validateKioskToken reads via Admin SDK (bypasses rules entirely).
+      match /kioskTokens/{tokenId} {
+        allow read, write, delete: if canManage(tenantId);
+      }
+
     }
   }
 }
