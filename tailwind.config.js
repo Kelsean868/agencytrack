@@ -67,6 +67,16 @@ export default {
         xl: '1rem',
         '2xl': '1.5rem',
       },
+      // E5: kiosk panel crossfade
+      animation: {
+        'kiosk-fade': 'kiosk-fade 0.6s ease-in-out',
+      },
+      keyframes: {
+        'kiosk-fade': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+      },
     },
   },
   plugins: [],

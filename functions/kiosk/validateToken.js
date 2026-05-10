@@ -57,7 +57,17 @@ exports.validateKioskToken = functions.https.onRequest(async (req, res) => {
       .update({ lastUsedAt: admin.firestore.FieldValue.serverTimestamp() })
       .catch(() => {});
 
-    res.status(200).json(result);
+    // Generate a Firebase custom token so the kiosk client can sign into
+    // Firebase Auth and read Firestore with role='kiosk' claims.
+    // UID is stable for the token so repeated calls get the same Auth identity.
+    const kioskUid = `kiosk_${tokenId.slice(0, 28)}`;
+    const customToken = await admin.auth().createCustomToken(kioskUid, {
+      role: 'kiosk',
+      tenantId: result.tenantId,
+      branchId: result.branchId,
+    });
+
+    res.status(200).json({ ...result, customToken });
   } catch (err) {
     console.error('validateKioskToken error:', err);
     res.status(500).json({ valid: false, reason: 'invalid' });
