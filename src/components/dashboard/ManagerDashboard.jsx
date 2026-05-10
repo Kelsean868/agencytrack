@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Users, TrendingUp, FileCheck, AlertCircle, Presentation, Download,
-  BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart,
+  BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -27,6 +27,7 @@ import MotivationalCarousel from './MotivationalCarousel';
 import ProfileScreen from '../profile/ProfileScreen';
 import Shell from '../shell/Shell';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
+import KioskModeTab from '../kiosk/KioskModeTab';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -45,6 +46,8 @@ const NAV_ITEMS = [
   { id: 'goals',       label: 'Goals',        tabId: 'goals',       Icon: Award },
   { id: 'settlements', label: 'Settlements',  tabId: 'settlements', Icon: FileCheck },
   { id: 'leaderboard', label: 'Leaderboard',  tabId: 'leaderboard', Icon: Star,          sectionLabel: 'Tools' },
+  // E5: kiosk tab — branch_manager+ only (unit_manager excluded)
+  { id: 'kiosk',       label: 'Kiosk',        tabId: 'kiosk',       Icon: Tv,            roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
   { id: 'profile',     label: 'Profile',      tabId: 'profile',     Icon: UserCircle },
 ];
 
@@ -114,6 +117,11 @@ export default function ManagerDashboard() {
     const avg       = withGoals.length > 0 ? totalAPI / withGoals.length : 0;
     return { totalAPI, avg, count: withGoals.length, total: agents.length };
   }, [unitGoalsData]);
+
+  const filteredNavItems = useMemo(
+    () => NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role)),
+    [role]
+  );
 
   const stats = useMemo(() => ({
     totalAgents: 8,
@@ -211,7 +219,7 @@ export default function ManagerDashboard() {
 
   return (
     <Shell
-      navItems={NAV_ITEMS}
+      navItems={filteredNavItems}
       bottomNavItems={BOTTOM_NAV}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
@@ -395,6 +403,8 @@ export default function ManagerDashboard() {
         {activeTab === 'settlements' && <SettlementPanel />}
 
         {activeTab === 'leaderboard' && <Leaderboard />}
+
+        {activeTab === 'kiosk' && <KioskModeTab />}
 
         {activeTab === 'profile' && <ProfileScreen />}
     </Shell>
