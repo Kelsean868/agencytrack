@@ -28,6 +28,7 @@ import ProfileScreen from '../profile/ProfileScreen';
 import Shell from '../shell/Shell';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
+import AgentOfMonthTab from '../manager/AgentOfMonthTab';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -46,6 +47,8 @@ const NAV_ITEMS = [
   { id: 'goals',       label: 'Goals',        tabId: 'goals',       Icon: Award },
   { id: 'settlements', label: 'Settlements',  tabId: 'settlements', Icon: FileCheck },
   { id: 'leaderboard', label: 'Leaderboard',  tabId: 'leaderboard', Icon: Star,          sectionLabel: 'Tools' },
+  // E6: agent of the month — branch_manager+ only (unit_manager excluded)
+  { id: 'agent-of-month', label: 'Agent of Month', tabId: 'agent-of-month', Icon: Trophy, roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
   // E5: kiosk tab — branch_manager+ only (unit_manager excluded)
   { id: 'kiosk',       label: 'Kiosk',        tabId: 'kiosk',       Icon: Tv,            roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
   { id: 'profile',     label: 'Profile',      tabId: 'profile',     Icon: UserCircle },
@@ -403,6 +406,8 @@ export default function ManagerDashboard() {
         {activeTab === 'settlements' && <SettlementPanel />}
 
         {activeTab === 'leaderboard' && <Leaderboard />}
+
+        {activeTab === 'agent-of-month' && <AgentOfMonthTab />}
 
         {activeTab === 'kiosk' && <KioskModeTab />}
 
