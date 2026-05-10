@@ -5,6 +5,32 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## RESOLVED 2026-05-11 — Service-account-key cleanup (Cloud Functions)
+
+E5 (kiosk) shipped with `functions/service-account-key.json` loaded via
+`admin.credential.cert(...)` because the App Engine default SA lacked
+`iam.serviceAccounts.signBlob` — `createCustomToken` would fail otherwise.
+Cleanup blocked on local `gcloud` install. Resolved in `chore/security-remove-sa-key`:
+
+1. Granted `roles/iam.serviceAccountTokenCreator` on
+   `agencytrack-2a610@appspot.gserviceaccount.com` with the SA itself as
+   member (self-impersonation).
+2. Replaced the cert load in `functions/index.js` with plain `admin.initializeApp()`.
+3. Redeployed `validateKioskToken`, `createKioskToken`, `revokeKioskToken`,
+   `setAgentOfMonth`, `getAgentOfMonthCandidates`. Production kiosk smoke-test
+   confirmed `signBlob` now works under ambient credentials.
+4. Key file remains gitignored (`.gitignore:24-26`); was never committed
+   and is not present in any feature worktree.
+
+Local `.cjs` admin scripts in `functions/scripts/` (`seed-first-tenant-admin`,
+`seed-platform-admin`, `migrate-*`, `restore-super-admin-claim`) and
+`functions/set-agent-password.cjs` still `require('./service-account-key.json')`
+directly. They run on Kelsean's workstation only, never in CI/CF, so the
+local key file in the main worktree stays for now. Future cleanup: refactor
+those scripts to ADC + impersonation. Not blocking.
+
+---
+
 ## HIGH-priority — sales_manager onboarding regressions (surfaced 2026-05-07)
 
 Three production-affecting bugs discovered while provisioning the missing test
