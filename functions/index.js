@@ -2,16 +2,10 @@ const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { isValidEmail } = require('./utils/validators');
 
-// Load service account credentials when available (required for createCustomToken).
-// The App Engine default service account lacks iam.serviceAccounts.signBlob by
-// default; explicit credentials bypass that IAM limitation.
-const saKeyPath = require('path').join(__dirname, 'service-account-key.json');
-try {
-  const serviceAccount = require(saKeyPath);
-  admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
-} catch {
-  admin.initializeApp();
-}
+// Ambient credentials. createCustomToken needs iam.serviceAccounts.signBlob;
+// granted via roles/iam.serviceAccountTokenCreator on the App Engine default SA
+// (self-impersonation). See PR chore/security-remove-sa-key.
+admin.initializeApp();
 
 const { aggregateDailyToWeeklyCron } = require('./aggregators/sundayDailyToWeekly');
 exports.aggregateDailyToWeekly = aggregateDailyToWeeklyCron;
