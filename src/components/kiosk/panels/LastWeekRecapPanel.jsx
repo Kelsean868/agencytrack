@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { Trophy, Medal } from 'lucide-react';
 import {
   filterSubmissionsByPeriod,
   computeAgentTotals,
@@ -6,6 +7,7 @@ import {
   computeComplianceStats,
 } from '../../../lib/productionReport/computations';
 import Avatar from '../Avatar';
+import { useCountUp } from '../../../hooks/useCountUp';
 
 function fmtApi(n) {
   if (n >= 1_000_000) return `TTD ${(n / 1_000_000).toFixed(2)}M`;
@@ -22,7 +24,17 @@ function lastSundayStr(ref) {
   return `${y}-${m}-${day}`;
 }
 
-const MEDALS = ['🥇', '🥈', '🥉'];
+function RankIcon({ rank }) {
+  if (rank === 1) return <Trophy size={28} className="text-yellow-400 shrink-0" />;
+  if (rank === 2) return <Medal size={28} className="text-slate-300 shrink-0" />;
+  if (rank === 3) return <Medal size={28} className="text-amber-600 shrink-0" />;
+  return <span className="text-ink-muted text-xl font-bold w-7 text-center shrink-0">#{rank}</span>;
+}
+
+function CompliancePct({ value }) {
+  const display = useCountUp(value, { duration: 800 });
+  return <span className="animate-count-up">{Math.round(display)}%</span>;
+}
 
 export default function LastWeekRecapPanel({ allSubmissions, allUsers }) {
   const { topAgents, compliance, weekLabel } = useMemo(() => {
@@ -84,13 +96,13 @@ export default function LastWeekRecapPanel({ allSubmissions, allUsers }) {
           {topAgents.length === 0 && (
             <p className="text-ink-muted text-xl">No submissions last week</p>
           )}
-          {topAgents.map(({ agentId, agentName, rank, totals, photoURL }) => (
-            <div key={agentId} className="bg-card rounded-2xl flex items-center gap-5 px-6 py-4">
-              <span className="text-3xl w-10 text-center">
-                {rank <= 3 ? MEDALS[rank - 1] : (
-                  <span className="text-ink-muted text-xl font-bold">#{rank}</span>
-                )}
-              </span>
+          {topAgents.map(({ agentId, agentName, rank, totals, photoURL }, idx) => (
+            <div
+              key={agentId}
+              className="bg-card rounded-2xl flex items-center gap-5 px-6 py-4 animate-stagger-in"
+              style={{ animationDelay: `${idx * 100}ms`, animationFillMode: 'both' }}
+            >
+              <RankIcon rank={rank} />
               <Avatar agent={{ uid: agentId, name: agentName, photoURL }} size="lg" />
               <p className="text-ink text-2xl font-semibold flex-1 truncate">{agentName}</p>
               <p className="text-primary text-2xl font-display font-bold">
@@ -102,7 +114,7 @@ export default function LastWeekRecapPanel({ allSubmissions, allUsers }) {
         <div className="bg-card rounded-2xl flex flex-col items-center justify-center p-10">
           <p className="text-ink-muted text-2xl mb-6">Submission Rate</p>
           <p className={`text-9xl font-display font-bold ${pctColor}`}>
-            {compliance.percent}%
+            <CompliancePct value={compliance.percent} />
           </p>
           <p className="text-ink-muted text-2xl mt-6">
             {compliance.submitted} of {compliance.total} agents

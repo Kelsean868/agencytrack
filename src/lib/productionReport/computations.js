@@ -233,6 +233,24 @@ export function computeBranchAggregates(allSubmissions, allAgents, allUnitIds) {
 }
 
 /**
+ * rankAgentsByApps(agentTotalsArray)
+ *
+ * Same input shape as rankAgentsByApi. Sorts descending by totalApps.
+ * Tie-breaker: API desc, then name asc.
+ */
+export function rankAgentsByApps(agentTotalsArray) {
+  if (!agentTotalsArray || agentTotalsArray.length === 0) return [];
+  const sorted = [...agentTotalsArray].sort((a, b) => {
+    const appsDiff = b.totals.totalApps - a.totals.totalApps;
+    if (appsDiff !== 0) return appsDiff;
+    const apiDiff = b.totals.totalApi - a.totals.totalApi;
+    if (apiDiff !== 0) return apiDiff;
+    return a.agentName.localeCompare(b.agentName);
+  });
+  return sorted.map((entry, i) => ({ ...entry, rank: i + 1 }));
+}
+
+/**
  * computeComplianceStats(submissions, agentRoster, weekStarting)
  *
  * Returns { submitted, total, percent } for the given week.

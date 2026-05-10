@@ -37,8 +37,12 @@ export default function UnitLeaderboardPanel({ allSubmissions, allUsers }) {
         {units.length === 0 && (
           <p className="text-ink-muted text-2xl text-center mt-20">No unit data yet</p>
         )}
-        {units.map(({ rank, unitName, agentCount, totalApi, avgApiPerAgent }) => (
-          <div key={rank} className="bg-card rounded-2xl flex items-center px-8 py-5 gap-6">
+        {units.map(({ rank, unitName, agentCount, totalApi, avgApiPerAgent }, idx) => (
+          <div
+            key={rank}
+            className="bg-card rounded-2xl flex items-center px-8 py-5 gap-6 animate-stagger-in"
+            style={{ animationDelay: `${idx * 100}ms`, animationFillMode: 'both' }}
+          >
             <span
               className={`text-4xl font-display font-bold w-14 text-center ${
                 RANK_COLORS[rank - 1] ?? 'text-ink-muted'
