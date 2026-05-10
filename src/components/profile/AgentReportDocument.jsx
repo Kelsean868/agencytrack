@@ -84,17 +84,22 @@ function buildSparklinePath(values, width, height) {
   }).join(' ');
 }
 
-function latestPersistencyPercent(persistencyMap) {
-  if (!persistencyMap || typeof persistencyMap !== 'object') return null;
-  const entries = Object.values(persistencyMap);
+// E3: persistencyData is an array of E3 records (oldest-first). Pick the most
+// recent entry, return its persistency on the 0–100 scale for display.
+function latestPersistencyPercent(persistencyData) {
+  const entries = Array.isArray(persistencyData)
+    ? persistencyData
+    : (persistencyData && typeof persistencyData === 'object' ? Object.values(persistencyData) : []);
   if (!entries.length) return null;
   const sorted = [...entries].sort((a, b) => {
-    const ka = `${a.year}-${String(a.month).padStart(2, '0')}`;
-    const kb = `${b.year}-${String(b.month).padStart(2, '0')}`;
+    const ka = `${a.year ?? 0}-${String(a.month ?? 0).padStart(2, '0')}`;
+    const kb = `${b.year ?? 0}-${String(b.month ?? 0).padStart(2, '0')}`;
     return kb.localeCompare(ka);
   });
   const v = parseFloat(sorted[0]?.persistency);
-  return Number.isFinite(v) ? v : null;
+  if (!Number.isFinite(v)) return null;
+  // E3 persistency is a 0–1 decimal; legacy stored 0–100. Coerce to 0–100.
+  return v <= 1 ? v * 100 : v;
 }
 
 function periodLabel(periodKey) {

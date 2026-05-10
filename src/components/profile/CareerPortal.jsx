@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Pencil, X, Check, CheckCircle2, XCircle, Trophy, Star } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { getGoals, setGoals, getCompanyMinimums } from '../../services/goalsService';
+import { aggregatePersistency } from '../../lib/persistency/calculations';
 import { useAuth } from '../../context/AuthContext';
 import BadgeGrid from '../gamification/BadgeGrid';
 import CommissionPlayground from '../goals/CommissionPlayground';
@@ -292,11 +293,15 @@ export default function CareerPortal({ submissions, user, persistencyData, hiera
     const ytdAPI  = ytdSubs.reduce((sum, s) => sum + (parseFloat(s.apiSold) || 0), 0);
     const ytdApps = ytdSubs.reduce((sum, s) => sum + (parseFloat(s.applicationsSold || s.appsSold) || 0), 0);
 
-    const persEntries = Object.values(persistencyData ?? {}).filter((p) => p.year === thisYear);
-    const avgPersistency =
-      persEntries.length > 0
-        ? persEntries.reduce((sum, p) => sum + (parseFloat(p.persistency) || 0), 0) / persEntries.length
-        : null;
+    // E3: persistencyData is now an array of E3 records (oldest-first). YTD
+    // aggregation uses sum-then-divide via aggregatePersistency() — fixes the
+    // pre-existing average-of-percentages bug. avgPersistency is kept on the
+    // 0–100 scale so CAREER_LEVELS thresholds (minPersistency: 90) still apply.
+    const persArr = Array.isArray(persistencyData) ? persistencyData : [];
+    const ytdPers = persArr.filter((p) => p.year === thisYear);
+    const avgPersistency = ytdPers.length > 0
+      ? aggregatePersistency(ytdPers).aggregatedPersistency * 100
+      : null;
 
     let yearsOfService = null;
     if (user?.startDate) {

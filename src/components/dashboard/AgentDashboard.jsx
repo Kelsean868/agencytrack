@@ -9,7 +9,7 @@ import { getRoleLabel, formatCurrency, formatDateDisplay } from '../../utils/for
 import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
 import { getGoals, getCompanyMinimums, getGoalHierarchy } from '../../services/goalsService';
-import { getAgentPersistency } from '../../services/persistencyService';
+import { getAgentHistory } from '../../services/persistencyService';
 import { getSettlements } from '../../services/settlementService';
 import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 import { generateAgentPDF } from '../../services/exportService';
@@ -87,7 +87,8 @@ export default function AgentDashboard() {
   const [allSubmissions, setAllSubmissions]    = useState([]);
   const [goals, setGoals]                      = useState(null);
   const [companyMinimums, setCompanyMinimums]  = useState(null);
-  const [persistency, setPersistency]          = useState({});
+  // E3: persistency now an array of E3-shaped records (oldest-first, ≤12 months).
+  const [persistency, setPersistency]          = useState([]);
   const [settlements, setSettlements]          = useState([]);
   const [loading, setLoading]                  = useState(true);
   const [activeCampaigns, setActiveCampaigns]   = useState([]);
@@ -117,7 +118,7 @@ export default function AgentDashboard() {
       getDraft(user.uid, currentWeek).catch(() => null),
       getAgentSubmissions(user.uid).catch(() => []),
       getGoals(tenantId, user.uid).catch(() => null),
-      getAgentPersistency(user.uid, thisYear).catch(() => ({})),
+      getAgentHistory(user.uid, 12).catch(() => []),
       getSettlements(tenantId, user.uid, thisYear).catch(() => []),
       getCompanyMinimums(tenantId).catch(() => null),
     ]).then(([weekSub, subs, agentGoals, pers, setts, mins]) => {
