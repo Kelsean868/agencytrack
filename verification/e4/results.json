@@ -1,0 +1,61 @@
+{
+  "01_agent_tab": {
+    "label": "Agent login; Production Report tab in nav → click → view mounts",
+    "pass": true
+  },
+  "02_agent_breakdown": {
+    "label": "Agent view: breakdown cards + table (or empty state) render",
+    "pass": true
+  },
+  "03_agent_rank": {
+    "label": "Agent view: rank card visible (or agent has no unit — noted)",
+    "pass": true
+  },
+  "04_toggle_mtd": {
+    "label": "Agent view: TimePeriodToggle switches to MTD",
+    "pass": true
+  },
+  "05_toggle_ytd": {
+    "label": "Agent view: TimePeriodToggle switches to YTD",
+    "pass": true
+  },
+  "06_data_source_badge": {
+    "label": "Agent view: DataSourceBadge shows Estimated or Confirmed",
+    "pass": true
+  },
+  "07_um_tab": {
+    "label": "Unit manager: login + Production Report tab ",
+    "pass": true
+  },
+  "08_um_view": {
+    "label": "Unit manager view: unit aggregate + compliance + leaderboard visible",
+    "pass": true
+  },
+  "09_um_toggle": {
+    "label": "Unit manager view: TimePeriodToggle switches to MTD",
+    "pass": false,
+    "error": "locator.waitFor: Timeout 10000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('radio', { name: /^MTD$/i }) to be visible\u001b[22m\n"
+  },
+  "10_bm_tab": {
+    "label": "Branch manager: login + Production Report tab",
+    "pass": false,
+    "error": "page.waitForFunction: Timeout 15000ms exceeded."
+  },
+  "11_bm_view": {
+    "label": "Branch manager view: branch aggregate + unit leaderboard + agent leaderboard",
+    "pass": false,
+    "error": "page.waitForFunction: Timeout 12000ms exceeded."
+  },
+  "12_bm_view_all": {
+    "label": "Branch manager view: \"View all agents\" expands (or ≤10 agents — noted)",
+    "pass": true
+  },
+  "13_mobile": {
+    "label": "Mobile 380px: agent + branch Production Report render without horizontal overflow",
+    "pass": true
+  },
+  "14_dark_mode": {
+    "label": "Dark mode: Production Report renders with .dark on <html> (agent + branch)",
+    "pass": true
+  }
+}

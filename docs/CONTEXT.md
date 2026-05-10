@@ -13,10 +13,10 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-09` |
-| Current main HEAD | `73917fe` (feat(e1) slice 2b: surface adaptation + PDF redesign + awards V2 compat, PR #70) |
-| Active track | Track E — E6 daily input mode in progress (branch `feat/e6-daily-input-mode`). E1 fully shipped. |
-| Next track | Track D — cron + notifications verification (after E6 ships) |
-| Queued | E6 (daily input mode) → E3–E5 post-pilot |
+| Current main HEAD | `31d3c3d` (feat(e6): daily input mode — agent cadence choice + Sunday aggregator, PR #71) |
+| Active track | Track E — E4 digital production report in progress (branch `feat/e4-production-report`). E1 + E6 fully shipped. |
+| Next track | Track D — cron + notifications verification (after E4 ships) |
+| Queued | E3–E5 post-pilot |
 | Two-strike counter | 0 — resets each session |
 | Stash pending | No |
 
@@ -119,7 +119,7 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 | SEC-9c | Server-side tenant isolation for scheduled Cloud Functions | No | Scheduled functions still hardcode `TENANT_ID = 'tatillife_south'`; future work |
 | SEC-12 | unitGoals write rule references missing `unitId` claim | No | Discovered during user-mgmt PR-1 audit; rule branch at `firestore.rules:118-120` is dead code today (unit_manager writes always fall through to false). Tracked in [#23](https://github.com/Kelsean868/agencytrack/issues/23). |
-| Track E | Agent + Manager Tooling Enhancements (E1–E6) | No | E1 fully shipped (Slice 1 #68, Slice 2A #69, Slice 2B #70). E6 (daily input mode) in progress — branch `feat/e6-daily-input-mode`. Last pre-pilot HIGH item per Path B planning. E3–E5 post-pilot. Spec: `docs/Track-E-Specs.md` §E6. Brief: `docs/briefs/e6-daily-input-kickoff.md`. |
+| Track E | Agent + Manager Tooling Enhancements (E1–E6) | No | E1 fully shipped (#68–#70). E6 (daily input mode) shipped PR #71. E4 (digital production report) in progress — branch `feat/e4-production-report`. E3/E5 post-pilot. Spec: `docs/Track-E-Specs.md` §E4. Brief: `docs/briefs/e4-production-report-kickoff.md`. |
 
 ---
 
@@ -127,11 +127,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #71 | `31d3c3d` | feat(e6): daily input mode — agent cadence choice + Sunday aggregator |
 | #70 | `73917fe` | feat(e1) slice 2b: surface adaptation + PDF redesign + awards V2 compat |
 | #69 | `39dec4e` | feat(e1) slice 2a: wizard production step restructure (3-source schema) |
 | #68 | `6ee9898` | feat(e1) slice 1: schema split foundation — utilities + migration + seeder |
 | #67 | `fcd6a25` | chore(housekeeping): CONTEXT sync post-E2 + verification script lift |
-| #66 | `54d49d7` | feat(e2) — modal targeting tab — reverse commission calc |
 
 ---
 
@@ -149,11 +149,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** E1 fully shipped (Slice 1 #68, Slice 2A #69, Slice 2B #70 / `73917fe`). E6 in progress — worktree created, CONTEXT sync is the first commit.
+> **Session boundary:** E6 shipped (PR #71 / `31d3c3d`). E4 digital production report starting — worktree created, CONTEXT sync is the first commit.
 
-**E1 Slice 2B (PR #70) — shipped.** Branch `feat/e1-slice-2b-surface-adaptation`. Adds `extractTotalProductionCredit` + `extractTotalCommission` helpers to `extractFields.js`; AgentDashboard, ManagerDashboard, MasterSheet, `gapAnalysis.js`, `weeklyChampions.js`, `awardsEngine.js`, and `MotivationalCarousel.jsx` migrated to consume V2 fields; wizard review-screen production breakdown panel; PDF redesign. 12/12 Playwright walk green. Lint 0 errors. Build green. Squash SHA `73917fe`. E1 schema-split arc (Slice 1 → 2A → 2B) now complete.
+**E6 (PR #71) — shipped.** Daily input mode (agent cadence choice + Sunday aggregator). Squash SHA `31d3c3d`. All pre-pilot HIGH Track E items done. E1 fully shipped (Slice 1–2B, PRs #68–#70). E4 now the active Track E item.
 
-**E6 (in progress) — daily input mode.** Branch `feat/e6-daily-input-mode`. Spec: `docs/Track-E-Specs.md` §E6. Brief: `docs/briefs/e6-daily-input-kickoff.md`. Last pre-pilot HIGH per Path B planning. Scope: new `dailyActivity` Firestore subcollection per agent (date-keyed); DailyEntryModal UI (numbers required, reflection collapsed/optional); Sunday Cloud Function aggregator that writes to existing wizard draft path; logging-mode profile setting (Weekly / Daily / Hybrid, default Hybrid for new agents, hybrid as read-side fallback for existing); mode-switch logic with weekly→daily catch-up entry pattern; AgentDashboard CTA adapts per mode; browser push notification subscription (Phase 7 has explicit defer permission if PWA complexity exceeds brief scope); Vitest + Playwright walk (13 checks, artifacts in `verification/e6-daily-input/`). CONTEXT sync bundled into first commit.
+**E4 (in progress) — digital production report.** Branch `feat/e4-production-report`. Three role-based views replacing the Friday whiteboard PDF: Agent self-view (personal totals + ranks), Unit Manager view (unit aggregate + leaderboard + compliance), Branch Manager view (branch aggregate + unit leaderboard + top agents). Time-period toggles: Week / MTD / Quarter / YTD. Data source: settled when available, falls back to submitted (Confirmed/Estimated badge). Spec: `docs/Track-E-Specs.md` §E4. Brief: `docs/briefs/e4-production-report-kickoff.md`. New files: `src/lib/productionReport/computations.js`, `src/components/productionReport/` directory, Vitest tests, Playwright walk. CONTEXT sync bundled into first commit.
 
 ---
 
