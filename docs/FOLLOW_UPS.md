@@ -888,24 +888,6 @@ do not pick up until a third branch is onboarded and asks for it.
 
 ## e5-1-walk.mjs selector fixes (LOW, banked 2026-05-10)
 
-**Scope:** The `verification/e5-1-walk.mjs` script reports timeouts on
-internal selectors for panels 02 / 05 / 10 / 12 even though the features
-themselves render correctly when the kiosk is opened in a browser. The
-walk script's panel-detection selectors drifted from the panel
-implementations during the E5.1 12-panel restructure (PR #75) and were
-not updated alongside.
-
-**Fix:** ~30 minute cleanup. Open the script, walk through each failing
-panel, update the selector to match the rendered DOM (likely a class /
-data-attribute rename from the restructure). No app-code change.
-
-Priority: **LOW**. The kiosk works in production; this is verification-
-script drift only. Knock out next time the kiosk is touched for any
-other reason.
-
----
-## e5-1-walk.mjs selector fixes (LOW, banked 2026-05-10)
-
 The Playwright walk for E5.1 (`scripts/verification/e5-1-walk.mjs`) has 4 checks (02/05/10/12) that timeout on internal selectors despite the underlying features rendering correctly per manual smoke verification on 2026-05-10. Specifically:
 
 - 02_kiosk_shell_fullscreen_btn — selector for FullscreenButton
