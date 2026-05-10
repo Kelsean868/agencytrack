@@ -303,6 +303,7 @@ await check('11_bm_view', 'Branch manager view: branch aggregate + unit leaderbo
     },
     undefined,
     { timeout: 25000 } // BM data load from Firestore can be slow on Vercel preview cold starts
+  );
   await ss(bmPage, '11-bm-view');
 });
 
