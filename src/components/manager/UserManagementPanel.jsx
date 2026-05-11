@@ -12,6 +12,7 @@ import {
 } from '../../services/agentManagementService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
+import Avatar from '../ui/Avatar';
 import DeactivateConfirmDialog from './DeactivateConfirmDialog';
 import BulkImportUsersModal from '../admin/BulkImportUsersModal';
 import BulkImportGoalsModal from '../admin/BulkImportGoalsModal';
@@ -34,19 +35,6 @@ const ROLE_DISPLAY = {
   agent:          'Agent',
 };
 
-function UserAvatar({ name }) {
-  const initials = (name ?? '?')
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-  return (
-    <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-      {initials}
-    </div>
-  );
-}
 
 function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenantId }) {
   const creatableRoles = CREATABLE_ROLES[callerRole] ?? ['agent'];
@@ -578,7 +566,7 @@ export default function UserManagementPanel() {
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <UserAvatar name={u.name} />
+                  <Avatar name={u.name} size="sm" />
                   <div className="min-w-0">
                     <span className="text-sm font-semibold text-ink truncate block">{u.name ?? '—'}</span>
                     {isInactive && (

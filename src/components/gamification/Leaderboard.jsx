@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { computeWeeklyChampions } from '../../utils/weeklyChampions';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
+import Avatar from '../ui/Avatar';
 
 function ChampionCard({ Icon, label, champion, format }) {
   return (
@@ -78,36 +79,6 @@ function WeeklyChampionsBanner({ champions, loading }) {
   );
 }
 
-function AgentAvatar({ photoURL, name, size = 36 }) {
-  const initials = (name ?? 'A')
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-  return photoURL ? (
-    <img
-      src={photoURL}
-      alt={name}
-      style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
-    />
-  ) : (
-    // Color delivered via classes so the dark variant kicks in. Inline style
-    // only handles dynamic dimensions — Tailwind can't compile arbitrary `size`.
-    // Without the dark override, white-on-#4ab5b8 (dark --color-primary) is
-    // 2.44:1, fails AA. dark:bg-primary-dark = #01696f → ~6.5:1 vs white.
-    <div
-      className="bg-primary dark:bg-primary-dark text-white"
-      style={{
-        width: size, height: size, borderRadius: '50%', flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: size * 0.36, fontWeight: 700,
-      }}
-    >
-      {initials}
-    </div>
-  );
-}
 
 const LEVEL_COLORS = {
   Rookie:    'bg-border/60 text-ink-muted',
@@ -141,7 +112,7 @@ function LeaderRow({ entry, rank, isCurrentUser, photoURL }) {
         }
       </div>
 
-      <AgentAvatar photoURL={photoURL} name={entry.agentName} size={36} />
+      <Avatar src={photoURL} name={entry.agentName} size="md" />
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -289,7 +260,7 @@ export default function Leaderboard() {
 
         {myRank && (
           <div className="card flex flex-col items-center py-5">
-            <AgentAvatar photoURL={photoMap[user?.uid]} name={myEntry?.agentName} size={48} />
+            <Avatar src={photoMap[user?.uid]} name={myEntry?.agentName} size="xl" />
             <p className="text-xs uppercase tracking-wide text-ink-muted mt-3 mb-1">Your Rank</p>
             <p className="text-4xl font-bold text-primary">#{myRank}</p>
             <p className="text-sm text-ink-muted mt-0.5">of {competition.length} agent{competition.length !== 1 ? 's' : ''}</p>
