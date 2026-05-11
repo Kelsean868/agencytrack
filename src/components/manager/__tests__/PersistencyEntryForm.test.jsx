@@ -90,9 +90,9 @@ describe('PersistencyEntryForm', () => {
         onSaved={() => {}}
       />
     );
-    expect(screen.getByTestId('persistency-save-button')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     fillRicardo();
-    expect(screen.getByTestId('persistency-save-button')).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save' })).not.toBeDisabled();
   });
 
   it('calls savePersistency with monthKey + agentUid + numeric inputs + role', async () => {
@@ -112,7 +112,7 @@ describe('PersistencyEntryForm', () => {
       />
     );
     fillRicardo();
-    fireEvent.click(screen.getByTestId('persistency-save-button'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(hoisted.savePersistency).toHaveBeenCalledTimes(1));
     const [monthKey, agentUid, inputs, role] = hoisted.savePersistency.mock.calls[0];
@@ -140,7 +140,7 @@ describe('PersistencyEntryForm', () => {
       />
     );
     fillRicardo();
-    fireEvent.click(screen.getByTestId('persistency-save-button'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(screen.getByText(/Permission denied/i)).toBeInTheDocument());
     // form still rendered
