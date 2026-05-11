@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { X, Check, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { X, Check, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { saveDraft, submitReport, getDraft, getLastSubmission } from '../../services/submissionService';
 import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
@@ -20,6 +20,8 @@ import Step6DeliveriesService from './steps/Step6DeliveriesService';
 import Step7TimeManagement    from './steps/Step7TimeManagement';
 import Step8SelfEvaluation    from './steps/Step8SelfEvaluation';
 import Step9Goals             from './steps/Step9Goals';
+
+const MAX_AUTOSAVE_RETRIES = 3;
 
 // 9 step components grouped into 5 screens.
 // Each entry in `components` is [Component, needsLastWeekData].
@@ -157,9 +159,15 @@ export default function WizardForm({ onClose, initialWeek }) {
   const [viewingSubmission, setViewingSubmission] = useState(false);
   const [saving, setSaving]             = useState(false);
   const [saveError, setSaveError]       = useState(false);
+  const [savedAt, setSavedAt]           = useState(null);
+  const [isOffline, setIsOffline]       = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
+  const [saveEscalated, setSaveEscalated] = useState(false);
   const [submitting, setSubmitting]     = useState(false);
   const [error, setError]               = useState('');
   const saveTimer = useRef(null);
+  const savedTimer = useRef(null);
+  const consecutiveFailures = useRef(0);
+  const doSave = useRef(null);
 
   const dropdownOptions = useMemo(() => {
     const opts = getLastNSundaysForDropdown(6);
@@ -196,28 +204,60 @@ export default function WizardForm({ onClose, initialWeek }) {
       .catch(console.error);
   }, [weekStarting, user]);
 
-  // Auto-save on formData change AND on screen/step change
+  // Always-current save executor — assigned on every render so the online
+  // handler and the retry button always capture the latest closure values.
+  doSave.current = async () => {
+    if (!weekStarting || !user || draftStatus === 'submitted') return;
+    setSaving(true);
+    setSaveError(false);
+    try {
+      await saveDraft(user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0);
+      consecutiveFailures.current = 0;
+      setSaveEscalated(false);
+      clearTimeout(savedTimer.current);
+      setSavedAt(new Date());
+      savedTimer.current = setTimeout(() => setSavedAt(null), 3000);
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+      consecutiveFailures.current += 1;
+      setSaveError(true);
+      if (consecutiveFailures.current >= MAX_AUTOSAVE_RETRIES) setSaveEscalated(true);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Auto-save on formData change AND on screen/step change (debounced 1500ms)
   useEffect(() => {
     if (!weekStarting || !user || screen === 'date') return;
     clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      if (draftStatus === 'submitted') return;
-      setSaving(true);
-      setSaveError(false);
-      try {
-        await saveDraft(user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0);
-      } catch (err) {
-        console.error('Auto-save failed:', err);
-        setSaveError(true);
-      } finally {
-        setSaving(false);
-      }
-    }, 1500);
+    saveTimer.current = setTimeout(async () => { await doSave.current(); }, 1500);
     return () => clearTimeout(saveTimer.current);
-  }, [formData, step, weekStarting, screen, user, draftStatus]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [formData, step, weekStarting, screen, user, draftStatus]);
+
+  // Online / offline detection — update isOffline and re-fire save on reconnect
+  useEffect(() => {
+    const handleOffline = () => setIsOffline(true);
+    const handleOnline = () => {
+      setIsOffline(false);
+      clearTimeout(saveTimer.current);
+      doSave.current();
+    };
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, []);
 
   const handleChange = useCallback((name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
+  }, []);
+
+  const handleManualSave = useCallback(() => {
+    clearTimeout(saveTimer.current);
+    doSave.current();
   }, []);
 
   const handleDateSelect = (date) => {
@@ -306,15 +346,13 @@ export default function WizardForm({ onClose, initialWeek }) {
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          {saving && (
-            <span className="text-xs text-ink-muted animate-pulse">Saving…</span>
-          )}
-          {!saving && saveError && (
-            <span className="flex items-center gap-1 text-xs text-danger">
-              <AlertTriangle size={13} />
-              Save failed — check connection
-            </span>
-          )}
+          <SaveStatusIndicator
+            saving={saving}
+            savedAt={savedAt}
+            saveError={saveError}
+            isOffline={isOffline}
+            onRetry={handleManualSave}
+          />
           <button
             type="button"
             onClick={onClose}
@@ -341,6 +379,26 @@ export default function WizardForm({ onClose, initialWeek }) {
               }`}
             />
           ))}
+        </div>
+      )}
+
+      {/* Persistent-failure escalation banner */}
+      {saveEscalated && screen !== 'date' && screen !== 'done' && screen !== 'submitted' && (
+        <div
+          role="alert"
+          className="mx-4 mb-2 px-4 py-3 rounded-xl bg-warning-tint border border-warning/30 flex items-start gap-3 shrink-0"
+        >
+          <AlertTriangle size={16} className="text-warning shrink-0 mt-0.5" />
+          <p className="text-sm text-ink flex-1">
+            Couldn&apos;t save your work. Don&apos;t close this window — your typing is safe. Check your connection and try again.
+          </p>
+          <button
+            type="button"
+            onClick={handleManualSave}
+            className="h-11 px-3 rounded-lg bg-warning text-white text-sm font-semibold hover:opacity-90 transition-opacity shrink-0"
+          >
+            Try now
+          </button>
         </div>
       )}
 
@@ -481,6 +539,42 @@ export default function WizardForm({ onClose, initialWeek }) {
             {nextLabel}
           </button>
         </footer>
+      )}
+    </div>
+  );
+}
+
+// ─── Save status indicator ────────────────────────────────────────────────────
+
+function SaveStatusIndicator({ saving, savedAt, saveError, isOffline, onRetry }) {
+  return (
+    <div role="status" aria-live="polite" aria-atomic="true" className="flex items-center">
+      {saving && (
+        <span className="text-xs text-ink-muted animate-pulse">Saving…</span>
+      )}
+      {!saving && savedAt && (
+        <span className="flex items-center gap-1 text-xs text-success">
+          <Check size={13} />
+          Saved
+        </span>
+      )}
+      {!saving && !savedAt && isOffline && (
+        <span className="text-xs text-warning">Offline — will save when reconnected</span>
+      )}
+      {!saving && !savedAt && !isOffline && saveError && (
+        <span role="alert" className="flex items-center gap-1 text-xs text-danger">
+          <AlertTriangle size={13} />
+          Save failed — tap to retry
+          <button
+            type="button"
+            onClick={onRetry}
+            className="h-11 px-2 flex items-center gap-1 text-xs font-semibold text-danger border border-danger/30 rounded-lg hover:bg-danger-tint transition-colors ml-1"
+            aria-label="Retry save"
+          >
+            <RotateCcw size={12} />
+            Retry
+          </button>
+        </span>
       )}
     </div>
   );
