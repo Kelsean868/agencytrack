@@ -79,25 +79,23 @@ function fail(id, label, detail) {
 
 async function login(page) {
   const bypassUrl = buildBypassUrl(BASE_URL, BYPASS_TOKEN);
-  await page.goto(bypassUrl, { waitUntil: 'domcontentloaded' });
-  await waitForFirebaseReady(page);
-  await page.fill('input[type="email"]', BM_EMAIL);
-  await page.fill('input[type="password"]', BM_PASSWORD);
-  await page.click('button[type="submit"]');
-  await waitForFirebaseReady(page);
+  await page.goto(bypassUrl, { waitUntil: 'networkidle', timeout: 30_000 });
+  const emailInput = page.locator('input[type="email"]');
+  await emailInput.waitFor({ timeout: 10_000 });
+  await emailInput.fill(BM_EMAIL);
+  await page.locator('input[type="password"]').fill(BM_PASSWORD);
+  await page.locator('input[type="password"]').press('Enter');
+  await page.waitForSelector('input[type="email"]', { state: 'detached', timeout: 25_000 });
+  await page.waitForSelector('nav[aria-label="Primary navigation"]', { timeout: 15_000 });
 }
 
 async function clickProductionReportTab(page) {
-  // Try the tab by text content — matches both AgentDashboard and ManagerDashboard labels
-  const tab = page.getByRole('tab', { name: /production report/i });
-  if (await tab.count() > 0) {
-    await tab.click();
-  } else {
-    // Fallback: button with matching text
-    await page.click('button:has-text("Production Report")');
-  }
-  // Wait for the Production Report heading to appear
-  await page.waitForSelector('h2:has-text("Production Report")', { timeout: 10_000 });
+  // Sidebar button has data-testid="nav-production-report" (from Shell/Sidebar.jsx)
+  const navBtn = page.locator('[data-testid="nav-production-report"]');
+  await navBtn.waitFor({ timeout: 10_000 });
+  await navBtn.click();
+  // Wait for the Production Report heading inside the content area
+  await page.waitForSelector('h2:has-text("Production Report")', { timeout: 15_000 });
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
