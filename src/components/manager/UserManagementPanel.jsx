@@ -13,7 +13,7 @@ import {
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
 import Avatar from '../ui/Avatar';
-import DeactivateConfirmDialog from './DeactivateConfirmDialog';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import BulkImportUsersModal from '../admin/BulkImportUsersModal';
 import BulkImportGoalsModal from '../admin/BulkImportGoalsModal';
 
@@ -610,15 +610,34 @@ export default function UserManagementPanel() {
         />
       )}
 
-      {/* Deactivate / Reactivate dialog */}
-      {deactivateTarget && (
-        <DeactivateConfirmDialog
-          user={deactivateTarget}
-          onConfirm={handleDeactivateConfirm}
-          onCancel={() => setDeactivateTarget(null)}
-          loading={deactivating}
-        />
-      )}
+      {/* Deactivate dialog */}
+      <ConfirmDialog
+        open={Boolean(deactivateTarget) && deactivateTarget?.active !== false}
+        title="Deactivate account?"
+        message={<>This signs <span className="font-semibold text-ink">{deactivateTarget?.name ?? deactivateTarget?.email}</span> out immediately, blocks login, and preserves their submissions and settlements.</>}
+        variant="danger"
+        confirmLabel="Deactivate"
+        loadingLabel="Deactivating…"
+        confirmValue={deactivateTarget?.email}
+        confirmValueLabel="Type their email to confirm"
+        confirmValuePlaceholder={deactivateTarget?.email ?? ''}
+        loading={deactivating}
+        onConfirm={() => handleDeactivateConfirm(false)}
+        onCancel={() => setDeactivateTarget(null)}
+      />
+
+      {/* Reactivate dialog */}
+      <ConfirmDialog
+        open={Boolean(deactivateTarget) && deactivateTarget?.active === false}
+        title="Reactivate account?"
+        message={<><span className="font-semibold text-ink">{deactivateTarget?.name ?? deactivateTarget?.email}</span> will be able to sign in and use AgencyTrack again immediately.</>}
+        variant="primary"
+        confirmLabel="Reactivate"
+        loadingLabel="Reactivating…"
+        loading={deactivating}
+        onConfirm={() => handleDeactivateConfirm(true)}
+        onCancel={() => setDeactivateTarget(null)}
+      />
 
       {/* Bulk import users (tenant_admin / platform_admin only) */}
       {showBulkImport && (
