@@ -1,20 +1,8 @@
 // @vitest-environment jsdom
-import React, { useState } from 'react';
+import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import ConfirmDialog from '../ConfirmDialog.jsx';
-
-function Wrapper({ initialOpen = true, ...props }) {
-  const [open, setOpen] = useState(initialOpen);
-  return (
-    <ConfirmDialog
-      open={open}
-      onCancel={() => { setOpen(false); props.onCancel?.(); }}
-      onConfirm={() => props.onConfirm?.()}
-      {...props}
-    />
-  );
-}
 
 describe('ConfirmDialog — open/closed', () => {
   it('renders when open=true', () => {

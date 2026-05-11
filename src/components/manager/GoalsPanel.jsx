@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
+import TabPills from '../ui/TabPills';
 import { getTenantUsers } from '../../services/managerService';
 import { getGoals, setGoals, getCompanyMinimums, getUnitGoals, setUnitGoals, getBranchGoals, setBranchGoals } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
@@ -572,21 +573,7 @@ export default function GoalsPanel({ onGoalsLoaded }) {
   return (
     <div className="flex flex-col gap-4">
       {/* Sub-tab bar */}
-      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setSubTab(t.id)}
-            className={`flex-1 h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
-              subTab === t.id
-                ? 'bg-[var(--color-surface)] text-primary shadow-sm'
-                : 'text-ink-muted hover:text-ink'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TabPills tabs={tabs} activeId={subTab} onChange={setSubTab} />
 
       {subTab === 'agents' && <AgentGoalsTab onGoalsLoaded={onGoalsLoaded} />}
       {subTab === 'unit'   && canSeeUnit   && <UnitGoalsTab   role={role} userProfile={userProfile} allUsers={allUsers} />}

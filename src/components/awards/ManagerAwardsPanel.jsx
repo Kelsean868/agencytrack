@@ -4,6 +4,7 @@ import { computeManagerAwards } from '../../utils/awardsEngine';
 import { getSettlementsForUnit } from '../../services/settlementService';
 import { formatCurrency } from '../../utils/formatters';
 import StatusPill from '../ui/StatusPill';
+import TabPills from '../ui/TabPills';
 import DataSourceBadge from '../productionReport/DataSourceBadge';
 
 function formatCriterionValue(c) {
@@ -207,19 +208,7 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
       {bonus && <MonthlyBonusCard bonus={bonus} />}
 
       {/* Annual award tabs */}
-      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border overflow-x-auto mb-1">
-        {ANNUAL_TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex-1 min-w-max h-11 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
-              activeTab === t.id ? 'bg-[var(--color-surface)] text-primary shadow-sm' : 'text-ink-muted hover:text-ink'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TabPills tabs={ANNUAL_TABS} activeId={activeTab} onChange={setActiveTab} className="overflow-x-auto mb-1" />
 
       {activeAwards.length === 0 ? (
         <div className="card text-center py-8">
