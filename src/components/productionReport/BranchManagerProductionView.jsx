@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, getUnitDisplayName } from '../../utils/formatters';
 import {
   filterSubmissionsByPeriod,
   computeAgentTotals,
@@ -71,15 +71,25 @@ export default function BranchManagerProductionView() {
     return rankAgentsByApi(agentTotals);
   }, [activeAgents, allSubmissions, period]);
 
+  const unitsMap = useMemo(
+    () => allUsers
+      .filter((u) => u.role === 'unit_manager')
+      .reduce((map, manager) => {
+        map[manager.id] = getUnitDisplayName(manager);
+        return map;
+      }, {}),
+    [allUsers]
+  );
+
   const unitLeaderboardEntries = useMemo(
     () => branchAggregate.unitBreakdown.map((u, i) => ({
       id: u.unitId,
       rank: i + 1,
-      name: u.unitId,
+      name: unitsMap[u.unitId] ?? 'Unknown Unit',
       value: u.avgApiPerAgent,
       secondaryValue: u.agentCount,
     })),
-    [branchAggregate.unitBreakdown]
+    [branchAggregate.unitBreakdown, unitsMap]
   );
 
   const agentLeaderboardEntries = useMemo(
