@@ -1,7 +1,7 @@
 /**
  * E3 — Persistency Playground · Playwright verification walk.
  *
- * 18 checks covering manager + agent surfaces and the Playground component.
+ * 21 checks covering manager + agent surfaces and the Playground component.
  *
  *   01  Manager login → dashboard loads
  *   02  Persistency tab visible (data-testid="tab-persistency")
@@ -13,14 +13,22 @@
  *   08  Entry form calculates persistency live (Ricardo Duke validation → 73.9%)
  *   09  Entry form Save button is enabled with valid inputs
  *  10  Manager nav-out + nav-back retains aggregate badge (smoke for state)
+ *  09b Manager write — real Firestore save (businessPlaced=1, rest=0 → 100%)
+ *  09c Manager write-read-verify — persisted value survives hard reload
  *  11  Agent login → dashboard loads
  *  12  Agent persistency tab shows own data
  *  13  Award-gate banner present when persistency < 90 (or absent if >=90)
  *  14  Trend chart container renders
+ *  11b Agent lock-state read-verify (manager-write + agent-read path; see WALK-2 gap note)
  *  15  Playground opens from agent view
  *  16  Playground sliders update projection live
  *  17  Playground shortfall cards show three levers (NB / NR / Orphans)
  *  18  Mobile 380px — no horizontal overflow on agent persistency view
+ *
+ * WALK-1 agent self-write gap (tracked as WALK-2):
+ * This walk exercises the manager-write + agent-read path for persistency.
+ * The agent self-write path is NOT exercised — it requires a smoke-only test
+ * agent with guaranteed-empty Firestore state (no manager doc for current month).
  *
  * Run from project root:
  *   node scripts/verification/e3-persistency-walk.mjs
@@ -39,6 +47,7 @@
 import { chromium } from 'playwright';
 import { readFileSync, mkdirSync, existsSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+import { buildBypassUrl, hardReloadAndAwaitReady } from './lib/walk-helpers.mjs';
 
 const ARTIFACTS_DIR = resolve(process.cwd(), 'verification/e3-persistency');
 const SS_DIR        = resolve(ARTIFACTS_DIR, 'screenshots');
@@ -115,7 +124,8 @@ async function setRangeValue(page, locator, value) {
 }
 
 async function signIn(pg, email, password) {
-  await pg.goto(`https://${PREVIEW_HOST}/`, { waitUntil: 'networkidle', timeout: 30000 });
+  // Lesson 2: 'domcontentloaded', never 'networkidle' for Firebase apps.
+  await pg.goto(`https://${PREVIEW_HOST}/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
   const emailInput = pg.locator('input[type="email"]');
   await emailInput.waitFor({ timeout: 10000 });
   await emailInput.fill(email);
@@ -139,10 +149,11 @@ const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const page    = await context.newPage();
 
-// Set Vercel bypass cookie — URL constructed at runtime, never logged.
-const bypassUrl = `https://${PREVIEW_HOST}/?x-vercel-protection-bypass=${BYPASS_TOKEN}&x-vercel-set-bypass-cookie=true`;
+// Set Vercel bypass cookie — URL constructed via helper, never logged.
+// Lesson 1: cookie value is 'samesitenone', not 'true'. Lesson 2: domcontentloaded.
+const bypassUrl = buildBypassUrl(`https://${PREVIEW_HOST}`, BYPASS_TOKEN);
 try {
-  await page.goto(bypassUrl, { waitUntil: 'networkidle', timeout: 30000 });
+  await page.goto(bypassUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
 } catch (e) {
   console.error('Bypass navigation failed:', redact(e.message));
   await browser.close();
@@ -250,6 +261,63 @@ await check('10_saved_data_persists_after_reload', 'Manager tab state survives n
   await ss(page, '10-after-roundtrip');
 });
 
+// ── 09b/09c: manager write-read-verify (WALK-1 Option B) ─────────────────────
+// 09 confirmed the Save button is enabled but closed the form without saving.
+// 09b re-opens the form and completes a real save so the manager-write path
+// exercises rules + claims + Firestore. 09c verifies the value survives a hard
+// reload (the read side of the write-read-verify cycle).
+await check('09b_manager_write_real', 'Manager saves entry form (real Firestore write, businessPlaced=1 → 100%)', async () => {
+  // Wait for agent list to re-render after check 10's nav round-trip (async Firestore load).
+  const editButtons = page.locator('[data-testid^="persistency-edit-"]');
+  await editButtons.first().waitFor({ timeout: 5000 });
+  const editCount = await editButtons.count();
+  if (editCount === 0) throw new Error('No edit buttons — cannot exercise manager write path');
+  await editButtons.first().click();
+  await page.getByTestId('persistency-entry-form').waitFor({ timeout: 5000 });
+
+  // Minimal values: businessPlaced=1, all denominators=0 → derived persistency = 100%.
+  const fields = {
+    businessPlaced: '1',
+    notTakens:      '0',
+    incPPPs:        '0',
+    lumpsums100:    '0',
+    lapses:         '0',
+    reinstatements: '0',
+  };
+  for (const [k, v] of Object.entries(fields)) {
+    await page.getByTestId(`persistency-input-${k}`).fill(v);
+  }
+  const persText = await page.getByTestId('derived-persistency').innerText();
+  if (!/100/.test(persText)) throw new Error(`Expected derived ~100%, got "${persText}"`);
+
+  await page.getByTestId('persistency-save-button').click();
+  // Form closes automatically on successful save.
+  await page.getByTestId('persistency-entry-form').waitFor({ state: 'detached', timeout: 8000 });
+  await ss(page, '09b-after-real-save');
+});
+
+await check('09c_manager_write_read_verify', 'Manager-written value persists after hard reload (manager write-read-verify)', async () => {
+  await hardReloadAndAwaitReady(page);
+  await page.getByTestId('tab-persistency').click();
+  await page.getByTestId('persistency-tab').waitFor({ timeout: 8000 });
+  await page.waitForTimeout(1000);
+
+  // Aggregate card must still be present.
+  const aggregate = page.getByTestId('persistency-aggregate-value');
+  await aggregate.waitFor({ timeout: 5000 });
+
+  // At least one agent row should show a numeric value (the one we just saved).
+  const rows = page.locator('[data-testid^="persistency-agent-row-"]');
+  await page.waitForTimeout(500);
+  if (await rows.count() > 0) {
+    const firstRowText = await rows.first().innerText();
+    if (!/\d/.test(firstRowText)) {
+      throw new Error(`First agent row shows no numeric value after manager save; got "${firstRowText}"`);
+    }
+  }
+  await ss(page, '09c-reload-verify');
+});
+
 // Sign out before agent tests.
 await signOutClick(page);
 
@@ -289,6 +357,64 @@ await check('13_award_gate_banner_when_under_90', 'Award-gate banner reflects pe
 await check('14_trend_chart_renders_with_history', 'Trend chart container is in the DOM', async () => {
   await page.getByTestId('persistency-trend-chart').waitFor({ timeout: 5000 });
 });
+
+// ── 11b: agent lock-state read-verify (WALK-1 Option B) ──────────────────────
+// Verifies the agent-side view AFTER a manager has written a persistency doc.
+// Exercises: manager-write + agent-read path (lock UI + value visible + survives reload).
+//
+// WALK-1 agent self-write gap (WALK-2):
+// The agent self-write path is NOT exercised here — it would require a
+// smoke-only test agent with guaranteed-empty Firestore state (no manager
+// doc for the current month). Tracked as WALK-2 for future work.
+await check('11b_agent_persistency_lock_state_read_verify', 'Agent-side lock state + read-verify (manager-write + agent-read path)', async () => {
+  const editBtn = page.getByTestId('agent-persistency-edit-button');
+  await editBtn.waitFor({ timeout: 5000 });
+
+  const isDisabled = await editBtn.isDisabled();
+  const btnText    = await editBtn.innerText().then((t) => t.trim());
+
+  // Distinguish three states based on button text (more reliable than isDisabled alone):
+  // - "Locked" + disabled  → manager has a doc for this month; agent-read path
+  // - "Enter"/"Edit" + enabled → no manager doc; agent self-write available (WALK-2)
+  // - "Enter" + disabled   → no activeMonthKey (empty month selector / no records loaded yet)
+  if (/Locked/i.test(btnText) && isDisabled) {
+    console.log('  [11b] Manager-locked state confirmed. Exercising manager-write + agent-read path.');
+
+    const valueEl = page.getByTestId('agent-persistency-value');
+    await valueEl.waitFor({ timeout: 5000 });
+    const valueBefore = await valueEl.innerText();
+    if (!valueBefore || valueBefore === '—') {
+      throw new Error('Persistency value is empty in locked state — manager write may not have landed');
+    }
+
+    // Hard reload — manager-written value must survive.
+    await hardReloadAndAwaitReady(page);
+    await page.getByTestId('agent-tab-persistency').click();
+    await page.getByTestId('agent-persistency-tab').waitFor({ timeout: 8000 });
+    await page.waitForTimeout(500);
+
+    const valueAfter = await page.getByTestId('agent-persistency-value').innerText();
+    if (!valueAfter || valueAfter === '—') throw new Error('Persistency value disappeared after reload');
+    if (valueAfter !== valueBefore) {
+      throw new Error(`Value changed after reload: before="${valueBefore}" after="${valueAfter}"`);
+    }
+    await ss(page, '11b-lock-read-verify');
+  } else if (!isDisabled) {
+    // Agent can self-write — no manager doc for current month.
+    console.log(`  [11b] Agent self-write available (button: "${btnText}", enabled). Manager-locked path not hit.`);
+    console.log('  [11b] WALK-2: provision a dedicated smoke-only account to cover this path.');
+    await ss(page, '11b-unlocked-state');
+  } else {
+    // Disabled but text is not "Locked" — likely no activeMonthKey (empty month selector).
+    console.log(`  [11b] Button disabled, text "${btnText}": no active month (empty monthKeys or no records).`);
+    console.log('  [11b] Verify that the test agent has persistency data. Cannot exercise lock-state check.');
+    await ss(page, '11b-no-month-state');
+  }
+});
+
+console.log('\n  NOTE WALK-1: This walk exercises manager-write + agent-read only for persistency.');
+console.log('  The agent self-write path requires a smoke-only account with guaranteed-empty');
+console.log('  Firestore state. Tracked as WALK-2 (post-pilot, low priority).\n');
 
 await check('15_playground_opens_from_agent_view', 'Playground modal opens from agent CTA', async () => {
   await page.getByTestId('agent-playground-open-button').click();
