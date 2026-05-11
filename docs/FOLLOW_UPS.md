@@ -1009,7 +1009,7 @@ Priority: **MEDIUM**. Ideally pre-pilot. Not blocking, but the next rules change
 
 ---
 
-## WALK-1 — Harden walk scripts with real write-read-verify cycles (MEDIUM, ideally pre-pilot)
+## WALK-1 — Harden walk scripts with real write-read-verify cycles (MEDIUM, ideally pre-pilot) — RESOLVED in PR #95 (2026-05-11)
 
 **Scope:** The E3 walk (`scripts/verification/e3-persistency-walk.mjs`) reported 18/18 against both preview and production while PR #85's `allow get` regression was live in production. Walk check 9 (`entry_form_saves_to_firestore`) only verifies the Save button is enabled — it never fires the actual Firestore write. The regression was caught on the first application of the new write-read-verify smoke standard.
 
@@ -1018,6 +1018,18 @@ Priority: **MEDIUM**. Ideally pre-pilot. Not blocking, but the next rules change
 **Apply to `e3-persistency-walk.mjs` first:** replace check 09 (`Save button enabled`) and check 10 (`nav-away/back state`) with a real agent self-entry write, hard reload, and read-back assertion. Same pattern for all future walk scripts.
 
 Priority: **MEDIUM**. Ideally applied before the next rules-touching PR ships.
+
+---
+
+## WALK-2 — Agent self-write path coverage for persistency walks (LOW, post-pilot)
+
+**Scope:** The persistency lock-by-manager mechanism (`PersistencyTab.jsx:77-79`, `lockedByManager` flag) makes the agent self-write path unreachable for the canonical test agent (`kelsean@gmail.com`) once a manager doc exists for the current month — which it does, persistently, after PR #94 and PR #95 smokes. The WALK-1 `e3-persistency-walk.mjs` cycle covers the manager-write + agent-read path (checks 09b/09c/11b), which exercises the full rules + claims + indexes chain. The agent self-write path is currently uncovered by automation.
+
+**Future work:** Provision a dedicated smoke-only test agent (e.g. `smoke-agent-1@agencytrack-test.dev`) reserved for write-path verification, never written to via the manager path. Alternative: Admin-SDK-backed pre-cycle state reset.
+
+Pilot-launch acceptable; real pilot agents exercise the agent self-write path daily, surfacing any regressions through actual use.
+
+Priority: **LOW**. Post-pilot.
 
 ---
 
@@ -1041,7 +1053,7 @@ Priority: **LOW**. Post-pilot polish.
 
 ---
 
-## BUG-N3 — Production Report shows raw Firestore UID instead of unit name (LOW, post-pilot)
+## BUG-N3 — Production Report shows raw Firestore UID instead of unit name (LOW, post-pilot) — RESOLVED in PR #97 (2026-05-11)
 
 **Scope:** When a branch manager opens the Production Report screen, the unit identifier column displays the raw Firestore UID (e.g. `XQhG6awVgaYkCFX7gnd1...`) rather than the human-readable unit name. Functional but unpolished — managers can work around it but the display is confusing.
 
