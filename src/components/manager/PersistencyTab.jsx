@@ -230,7 +230,7 @@ export default function PersistencyTab() {
         <button
           type="button"
           onClick={handleAddNewMonth}
-          className="h-10 px-3 rounded-lg border border-border text-sm font-medium text-ink hover:bg-card-raised transition-colors"
+          className="h-11 px-3 rounded-lg border border-border text-sm font-medium text-ink hover:bg-card-raised transition-colors"
         >
           + Add new month
         </button>
@@ -240,14 +240,14 @@ export default function PersistencyTab() {
             type="button"
             onClick={handleDownloadCSV}
             disabled={records.length === 0}
-            className="h-10 px-3 rounded-lg border border-border text-sm font-medium text-ink flex items-center gap-1.5 hover:bg-card-raised transition-colors disabled:opacity-50"
+            className="h-11 px-3 rounded-lg border border-border text-sm font-medium text-ink flex items-center gap-1.5 hover:bg-card-raised transition-colors disabled:opacity-50"
           >
             <Download size={14} /> CSV
           </button>
           <button
             type="button"
             onClick={() => window.print()}
-            className="h-10 px-3 rounded-lg border border-border text-sm font-medium text-ink flex items-center gap-1.5 hover:bg-card-raised transition-colors"
+            className="h-11 px-3 rounded-lg border border-border text-sm font-medium text-ink flex items-center gap-1.5 hover:bg-card-raised transition-colors"
           >
             <Printer size={14} /> Print
           </button>

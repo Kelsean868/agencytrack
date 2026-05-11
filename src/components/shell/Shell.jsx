@@ -24,6 +24,7 @@ import MobileBottomNav from './MobileBottomNav';
 export default function Shell({
   navItems,
   bottomNavItems,
+  drawerNavItems,
   activeTab,
   setActiveTab,
   onAction,
@@ -74,6 +75,7 @@ export default function Shell({
       </div>
       <MobileBottomNav
         items={bottomNavItems}
+        drawerNavItems={drawerNavItems}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onAction={onAction}

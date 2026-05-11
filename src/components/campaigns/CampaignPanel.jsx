@@ -612,7 +612,7 @@ export default function CampaignPanel() {
         {canCreate && (
           <button
             onClick={() => { setEditing(null); setFormOpen(true); }}
-            className="h-10 px-4 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 dark:hover:bg-primary transition-colors"
+            className="h-11 px-4 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 dark:hover:bg-primary transition-colors"
           >
             <Plus size={16} />
             New Campaign
@@ -626,7 +626,7 @@ export default function CampaignPanel() {
           <button
             key={tab}
             onClick={() => setListTab(tab)}
-            className={`flex-1 h-9 rounded-lg text-sm font-semibold transition-colors capitalize whitespace-nowrap px-3 ${
+            className={`flex-1 h-11 rounded-lg text-sm font-semibold transition-colors capitalize whitespace-nowrap px-3 ${
               listTab === tab ? 'bg-[var(--color-surface)] text-primary shadow-sm' : 'text-ink-muted hover:text-ink'
             }`}
           >
