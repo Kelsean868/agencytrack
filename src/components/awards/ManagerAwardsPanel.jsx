@@ -3,39 +3,9 @@ import { CheckCircle, XCircle, Info } from 'lucide-react';
 import { computeManagerAwards } from '../../utils/awardsEngine';
 import { getSettlementsForUnit } from '../../services/settlementService';
 import { formatCurrency } from '../../utils/formatters';
-
-function DataSourceBadge({ source }) {
-  const confirmed = source === 'confirmed';
-  return (
-    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-      confirmed ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'
-    }`}>
-      {confirmed ? 'Confirmed' : 'Estimated'}
-    </span>
-  );
-}
-
-function AwardState({ eligible, inContention }) {
-  if (eligible) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success/15 text-success">
-        <CheckCircle size={10} /> Qualified
-      </span>
-    );
-  }
-  if (inContention) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warning/15 text-warning">
-        In Contention
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-border/60 text-ink-muted">
-      Not Yet Eligible
-    </span>
-  );
-}
+import StatusPill from '../ui/StatusPill';
+import TabPills from '../ui/TabPills';
+import DataSourceBadge from '../productionReport/DataSourceBadge';
 
 function formatCriterionValue(c) {
   if (c.unit === 'TTD') return formatCurrency(c.current);
@@ -61,7 +31,11 @@ function AwardCard({ award }) {
           <p className="text-xs text-ink-muted mt-0.5">{award.prize}</p>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <AwardState eligible={award.eligible} inContention={award.inContention} />
+          <StatusPill
+            variant={award.eligible ? 'success' : award.inContention ? 'warning' : 'muted'}
+            label={award.eligible ? 'Qualified' : award.inContention ? 'In Contention' : 'Not Yet Eligible'}
+            icon={award.eligible ? <CheckCircle size={10} /> : undefined}
+          />
           {award.dataSource && <DataSourceBadge source={award.dataSource} />}
         </div>
       </div>
@@ -234,19 +208,7 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
       {bonus && <MonthlyBonusCard bonus={bonus} />}
 
       {/* Annual award tabs */}
-      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border overflow-x-auto mb-1">
-        {ANNUAL_TABS.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setActiveTab(t.id)}
-            className={`flex-1 min-w-max h-11 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
-              activeTab === t.id ? 'bg-[var(--color-surface)] text-primary shadow-sm' : 'text-ink-muted hover:text-ink'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <TabPills tabs={ANNUAL_TABS} activeId={activeTab} onChange={setActiveTab} className="overflow-x-auto mb-1" />
 
       {activeAwards.length === 0 ? (
         <div className="card text-center py-8">

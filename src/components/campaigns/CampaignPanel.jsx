@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import StatusPill from '../ui/StatusPill';
+import TabPills from '../ui/TabPills';
 import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -27,18 +29,11 @@ function classifyDate(startDate, endDate) {
   return 'active';
 }
 
-function ScopeBadge({ scope }) {
-  const { type } = scope ?? {};
-  const map = { branch: 'Branch', unit: 'Unit', agent: 'Agent' };
-  const color = type === 'branch' ? 'bg-primary/10 text-primary' : type === 'unit' ? 'bg-warning/15 text-warning' : 'bg-border/60 text-ink-muted';
-  return <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${color}`}>{map[type] ?? type}</span>;
-}
 
-function StatusBadge({ status }) {
-  const map = { active: ['bg-success/15 text-success', 'Active'], upcoming: ['bg-primary/10 text-primary', 'Upcoming'], ended: ['bg-border/60 text-ink-muted', 'Ended'] };
-  const [cls, label] = map[status] ?? ['bg-border/60 text-ink-muted', status];
-  return <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${cls}`}>{label}</span>;
-}
+const SCOPE_VARIANT = { branch: 'primary', unit: 'warning', agent: 'muted' };
+const SCOPE_LABEL   = { branch: 'Branch',  unit: 'Unit',    agent: 'Agent'  };
+const STATUS_VARIANT = { active: 'success', upcoming: 'primary', ended: 'muted' };
+const STATUS_LABEL   = { active: 'Active',  upcoming: 'Upcoming', ended: 'Ended' };
 
 // ─── Progress table inside expanded campaign row ─────────────────────────────
 function ProgressTable({ campaign, submissions, allUsers }) {
@@ -133,8 +128,8 @@ function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId }
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-0.5">
             <span className="text-sm font-semibold text-ink truncate">{campaign.name}</span>
-            <ScopeBadge scope={campaign.scope} />
-            <StatusBadge status={status} />
+            <StatusPill variant={SCOPE_VARIANT[campaign.scope?.type] ?? 'muted'} label={SCOPE_LABEL[campaign.scope?.type] ?? campaign.scope?.type} />
+            <StatusPill variant={STATUS_VARIANT[status] ?? 'muted'} label={STATUS_LABEL[status] ?? status} />
           </div>
           <p className="text-xs text-ink-muted">
             {formatDateFriendly(campaign.startDate)} → {formatDateFriendly(campaign.endDate)}
@@ -531,6 +526,12 @@ export default function CampaignPanel() {
     return out;
   }, [campaigns]);
 
+  const listTabs = useMemo(() => [
+    { id: 'active',   label: 'Active',   badge: grouped.active.length   },
+    { id: 'upcoming', label: 'Upcoming', badge: grouped.upcoming.length },
+    { id: 'ended',    label: 'Ended',    badge: grouped.ended.length    },
+  ], [grouped]);
+
   const handleSave = async (formData) => {
     if (!tenantId) return;
     if (editing) {
@@ -621,22 +622,7 @@ export default function CampaignPanel() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 p-1 rounded-xl bg-surface border border-border">
-        {['active', 'upcoming', 'ended'].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setListTab(tab)}
-            className={`flex-1 h-11 rounded-lg text-sm font-semibold transition-colors capitalize whitespace-nowrap px-3 ${
-              listTab === tab ? 'bg-[var(--color-surface)] text-primary shadow-sm' : 'text-ink-muted hover:text-ink'
-            }`}
-          >
-            {tab}
-            {grouped[tab]?.length > 0 && (
-              <span className="ml-1 text-[10px] font-bold opacity-70">({grouped[tab].length})</span>
-            )}
-          </button>
-        ))}
-      </div>
+      <TabPills tabs={listTabs} activeId={listTab} onChange={setListTab} />
 
       {/* Campaign list */}
       {visibleCampaigns.length === 0 ? (

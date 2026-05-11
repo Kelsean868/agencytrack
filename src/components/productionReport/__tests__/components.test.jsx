@@ -25,11 +25,11 @@ describe('TimePeriodToggle', () => {
     expect(onChange).toHaveBeenCalledWith('mtd');
   });
 
-  it('marks the selected period with aria-checked=true', () => {
+  it('marks the selected period with aria-selected=true', () => {
     render(<TimePeriodToggle selected="ytd" onChange={() => {}} />);
     const ytdBtn = screen.getByText('YTD');
-    expect(ytdBtn).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByText('Week')).toHaveAttribute('aria-checked', 'false');
+    expect(ytdBtn).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Week')).toHaveAttribute('aria-selected', 'false');
   });
 
   it('clicking the already-selected period still fires onChange', () => {

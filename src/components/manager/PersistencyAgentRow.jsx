@@ -1,5 +1,6 @@
 import React from 'react';
 import { Edit3, Calculator } from 'lucide-react';
+import Avatar from '../ui/Avatar';
 import { formatCurrency } from '../../utils/formatters';
 
 function formatPercent(decimal) {
@@ -28,18 +29,13 @@ function formatLastEdited(record) {
 
 export default function PersistencyAgentRow({ user, record, onEdit, onOpenPlayground }) {
   const lastEdited = formatLastEdited(record);
-  const initials = (user.name ?? user.email ?? '?').slice(0, 2).toUpperCase();
 
   return (
     <div
       data-testid={`persistency-agent-row-${user.id}`}
       className="card flex flex-wrap items-center gap-3 sm:gap-4 py-3"
     >
-      <div className="w-10 h-10 rounded-full bg-primary/10 text-primary text-sm font-semibold flex items-center justify-center shrink-0">
-        {user.photoURL
-          ? <img src={user.photoURL} alt="" className="w-10 h-10 rounded-full object-cover" />
-          : <span>{initials}</span>}
-      </div>
+      <Avatar src={user.photoURL} name={user.name ?? user.email ?? '?'} size="lg" />
 
       <div className="flex-1 min-w-0">
         <p className="text-sm font-semibold text-ink truncate">{user.name ?? user.email ?? user.id}</p>

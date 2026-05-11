@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
+import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
 import { getTenantUsers } from '../../services/managerService';
 import { confirmSettlement, getSettlementsForUnit, deleteSettlement } from '../../services/settlementService';
@@ -397,13 +398,11 @@ export default function SettlementPanel() {
             {saveError  && <p className="text-xs text-danger">{saveError}</p>}
             {saveSuccess && <p className="text-xs text-success">{saveSuccess}</p>}
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="btn-primary disabled:opacity-60"
-            >
-              {saving ? 'Saving…' : 'Save Settlement'}
-            </button>
+            <SaveButton
+              onClick={handleSave}
+              saving={saving}
+              label="Save Settlement"
+            />
           </form>
         )}
 
@@ -468,13 +467,11 @@ export default function SettlementPanel() {
             {saveError  && <p className="text-xs text-danger">{saveError}</p>}
             {saveSuccess && <p className="text-xs text-success">{saveSuccess}</p>}
 
-            <button
+            <SaveButton
               onClick={handleBulkSave}
-              disabled={saving}
-              className="btn-primary disabled:opacity-60"
-            >
-              {saving ? 'Saving…' : `Save All (${MONTHS[selectedMonth - 1]} ${selectedYear})`}
-            </button>
+              saving={saving}
+              label={`Save All (${MONTHS[selectedMonth - 1]} ${selectedYear})`}
+            />
           </div>
         )}
       </div>

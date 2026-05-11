@@ -7,6 +7,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { X, Save, AlertCircle } from 'lucide-react';
+import SaveButton from '../ui/SaveButton';
 import { savePersistency } from '../../services/persistencyService';
 import { deriveAll } from '../../lib/persistency/calculations';
 import { formatCurrency } from '../../utils/formatters';
@@ -177,14 +178,13 @@ export default function PersistencyEntryForm({
           >
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={saving || !validation.ok}
-            data-testid="persistency-save-button"
-            className="h-10 px-5 rounded-lg bg-primary text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-60"
-          >
-            <Save size={14} /> {saving ? 'Saving…' : 'Save'}
-          </button>
+          <SaveButton
+            onClick={handleSubmit}
+            saving={saving}
+            disabled={!validation.ok}
+            label="Save"
+            icon={<Save size={14} />}
+          />
         </div>
       </form>
     </div>

@@ -12,7 +12,8 @@ import {
 } from '../../services/agentManagementService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
-import DeactivateConfirmDialog from './DeactivateConfirmDialog';
+import Avatar from '../ui/Avatar';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import BulkImportUsersModal from '../admin/BulkImportUsersModal';
 import BulkImportGoalsModal from '../admin/BulkImportGoalsModal';
 
@@ -34,19 +35,6 @@ const ROLE_DISPLAY = {
   agent:          'Agent',
 };
 
-function UserAvatar({ name }) {
-  const initials = (name ?? '?')
-    .split(' ')
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-  return (
-    <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-      {initials}
-    </div>
-  );
-}
 
 function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenantId }) {
   const creatableRoles = CREATABLE_ROLES[callerRole] ?? ['agent'];
@@ -578,7 +566,7 @@ export default function UserManagementPanel() {
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0">
-                  <UserAvatar name={u.name} />
+                  <Avatar name={u.name} size="sm" />
                   <div className="min-w-0">
                     <span className="text-sm font-semibold text-ink truncate block">{u.name ?? '—'}</span>
                     {isInactive && (
@@ -622,15 +610,34 @@ export default function UserManagementPanel() {
         />
       )}
 
-      {/* Deactivate / Reactivate dialog */}
-      {deactivateTarget && (
-        <DeactivateConfirmDialog
-          user={deactivateTarget}
-          onConfirm={handleDeactivateConfirm}
-          onCancel={() => setDeactivateTarget(null)}
-          loading={deactivating}
-        />
-      )}
+      {/* Deactivate dialog */}
+      <ConfirmDialog
+        open={Boolean(deactivateTarget) && deactivateTarget?.active !== false}
+        title="Deactivate account?"
+        message={<>This signs <span className="font-semibold text-ink">{deactivateTarget?.name ?? deactivateTarget?.email}</span> out immediately, blocks login, and preserves their submissions and settlements.</>}
+        variant="danger"
+        confirmLabel="Deactivate"
+        loadingLabel="Deactivating…"
+        confirmValue={deactivateTarget?.email}
+        confirmValueLabel="Type their email to confirm"
+        confirmValuePlaceholder={deactivateTarget?.email ?? ''}
+        loading={deactivating}
+        onConfirm={() => handleDeactivateConfirm(false)}
+        onCancel={() => setDeactivateTarget(null)}
+      />
+
+      {/* Reactivate dialog */}
+      <ConfirmDialog
+        open={Boolean(deactivateTarget) && deactivateTarget?.active === false}
+        title="Reactivate account?"
+        message={<><span className="font-semibold text-ink">{deactivateTarget?.name ?? deactivateTarget?.email}</span> will be able to sign in and use AgencyTrack again immediately.</>}
+        variant="primary"
+        confirmLabel="Reactivate"
+        loadingLabel="Reactivating…"
+        loading={deactivating}
+        onConfirm={() => handleDeactivateConfirm(true)}
+        onCancel={() => setDeactivateTarget(null)}
+      />
 
       {/* Bulk import users (tenant_admin / platform_admin only) */}
       {showBulkImport && (

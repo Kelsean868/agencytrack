@@ -1,6 +1,7 @@
 import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
+import Avatar from '../ui/Avatar';
 
 function formatValue(category, value) {
   if (category === 'api') return formatCurrency(value || 0);
@@ -8,26 +9,6 @@ function formatValue(category, value) {
   return `${value || 0} pts`;
 }
 
-function AgentAvatar({ photoURL, name, size = 8 }) {
-  const dim = `w-${size} h-${size}`;
-  if (photoURL) {
-    return (
-      <img
-        src={photoURL}
-        alt={name}
-        className={`${dim} rounded-full object-cover shrink-0`}
-      />
-    );
-  }
-  return (
-    <div
-      aria-hidden="true"
-      className={`${dim} rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary shrink-0`}
-    >
-      {name?.[0]?.toUpperCase() ?? '?'}
-    </div>
-  );
-}
 
 export default function AOMCategorySection({
   category,
@@ -51,7 +32,7 @@ export default function AOMCategorySection({
           className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/20"
           aria-label={`Current winner: ${winner.agentName}`}
         >
-          <AgentAvatar photoURL={winner.photoURL} name={winner.agentName} size={10} />
+          <Avatar src={winner.photoURL} name={winner.agentName} size="lg" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-ink truncate">{winner.agentName}</p>
             <p className="text-xs text-primary font-medium">
@@ -76,7 +57,7 @@ export default function AOMCategorySection({
                 <span className="w-5 text-center text-sm font-bold text-ink-muted shrink-0">
                   {c.rank}
                 </span>
-                <AgentAvatar photoURL={c.photoURL} name={c.agentName} size={8} />
+                <Avatar src={c.photoURL} name={c.agentName} size="sm" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-ink truncate">{c.agentName}</p>
                   <p className="text-xs text-ink-muted">{formatValue(category, c.value)}</p>
