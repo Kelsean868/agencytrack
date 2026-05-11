@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
-  Users, TrendingUp, FileCheck, AlertCircle, Presentation, Download,
+  Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -65,21 +66,6 @@ const BOTTOM_NAV = [
   { id: 'profile',     label: 'Profile',   tabId: 'profile',     Icon: UserCircle },
 ];
 
-function StatCard({ icon: Icon, label, value, sub, accent = false }) {
-  return (
-    <div className={`card flex items-start gap-4 ${accent ? 'border-l-4 border-primary' : ''}`}>
-      <div className="p-2 rounded-lg bg-primary/10 text-primary">
-        <Icon size={20} />
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-ink">{value}</p>
-        <p className="text-sm font-medium text-ink">{label}</p>
-        {sub && <p className="text-xs text-ink-muted mt-0.5">{sub}</p>}
-      </div>
-    </div>
-  );
-}
-
 export default function ManagerDashboard() {
   const { user, userProfile, role, tenantId } = useAuth();
   const [showWizard, setShowWizard]       = useState(false);
@@ -131,17 +117,8 @@ export default function ManagerDashboard() {
     [filteredNavItems]
   );
 
-  const stats = useMemo(() => ({
-    totalAgents: 8,
-    submittedThisWeek: 5,
-    pendingSubmissions: 3,
-    teamYTDAPI: 384000,
-    teamAPIGoal: 960000,
-  }), []);
-
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Manager';
   const roleLabel    = getRoleLabel(role);
-  const complianceRate = Math.round((stats.submittedThisWeek / stats.totalAgents) * 100);
 
   const handleSignOut = async () => {
     try { await signOut(); } catch (err) { console.error(err); }
@@ -257,39 +234,18 @@ export default function ManagerDashboard() {
               currentDate={new Date()}
             />
 
-            <div className="card mb-6">
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">Team YTD API</p>
-              <p className="text-3xl font-bold text-ink mb-1">{formatCurrency(stats.teamYTDAPI)}</p>
-              <div className="w-full bg-surface rounded-full h-2 mb-1">
-                <div
-                  className="bg-primary h-2 rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(Math.round((stats.teamYTDAPI / stats.teamAPIGoal) * 100), 100)}%` }}
-                />
+            <div className="card flex items-start gap-4 mb-8">
+              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+                <Sparkles size={20} />
               </div>
-              <p className="text-sm text-ink-muted">
-                {Math.round((stats.teamYTDAPI / stats.teamAPIGoal) * 100)}% of {formatCurrency(stats.teamAPIGoal)} goal
-              </p>
-            </div>
-
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-ink-muted mb-3">This Week</h3>
-            <div className="grid grid-cols-2 gap-3 mb-8">
-              <StatCard icon={Users} label="Total Agents" value={stats.totalAgents} />
-              <StatCard
-                icon={FileCheck} label="Reports Submitted"
-                value={stats.submittedThisWeek}
-                sub={`${complianceRate}% compliance`}
-                accent
-              />
-              <StatCard
-                icon={AlertCircle} label="Pending Reports"
-                value={stats.pendingSubmissions}
-                sub="Not yet submitted"
-              />
-              <StatCard
-                icon={TrendingUp} label="Team API Goal"
-                value={`${Math.round((stats.teamYTDAPI / stats.teamAPIGoal) * 100)}%`}
-                sub="YTD progress"
-              />
+              <div>
+                <p className="font-display text-lg font-semibold text-ink mb-1">
+                  Branch metrics coming soon
+                </p>
+                <p className="text-sm text-ink-muted">
+                  A redesigned dashboard with real-time team metrics is in development. Until then, use Production Report and Master Sheet to track team performance.
+                </p>
+              </div>
             </div>
 
             <button className="btn-primary w-full" onClick={() => setShowWizard(true)}>
