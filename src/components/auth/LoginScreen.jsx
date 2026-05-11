@@ -102,9 +102,13 @@ export default function LoginScreen() {
 
         {/* Brand */}
         <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-primary dark:bg-primary-dark">
-            <span className="text-white text-2xl font-bold font-display">AT</span>
-          </div>
+          <img
+            src="/icons.svg"
+            alt="AgencyTrack"
+            width="64"
+            height="64"
+            className="mx-auto mb-4"
+          />
           <h1 className="text-2xl text-ink mb-1">AgencyTrack</h1>
           <p className="text-sm text-ink-muted">Tatil Life — Sales Portal</p>
         </div>

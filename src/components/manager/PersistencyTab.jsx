@@ -194,7 +194,7 @@ export default function PersistencyTab() {
     return (
       <div className="card flex items-center gap-3 text-sm text-ink-muted">
         <AlertCircle size={16} />
-        Persistency is scoped to a unit, branch, or tenant — your profile has none assigned.
+        Contact your branch manager to be assigned to a unit so you can view your unit&apos;s persistency data.
       </div>
     );
   }

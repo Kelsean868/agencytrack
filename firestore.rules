@@ -218,6 +218,7 @@ service cloud.firestore {
           && (
             request.auth.token.role in ['platform_admin', 'tenant_admin']
             || request.auth.token.role == 'branch_manager'
+            || request.auth.token.role == 'sales_manager' // BUG-N2: sales_manager has at least branch_manager-level scope per 5-tier hierarchy
             || (
               request.auth.token.role == 'unit_manager'
               // BUG-N fix: use callerUnitId() helper (SEC-4 pattern) — unitId is not a custom claim
