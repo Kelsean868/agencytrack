@@ -201,7 +201,7 @@ export default function ProfileScreen() {
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadProgress !== null}
-            className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-md hover:bg-primary-dark transition-colors disabled:opacity-50"
+            className="absolute bottom-0 right-0 w-11 h-11 rounded-full bg-primary flex items-center justify-center shadow-md hover:bg-primary-dark transition-colors disabled:opacity-50"
             aria-label="Upload profile photo"
           >
             <Camera size={14} className="text-white" />

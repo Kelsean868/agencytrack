@@ -1,3 +1,7 @@
+import React, { useState } from 'react';
+import { MoreHorizontal } from 'lucide-react';
+import MobileNavDrawer from './MobileNavDrawer';
+
 /**
  * Mobile bottom-nav (Design System v2 — B4).
  *
@@ -12,32 +16,60 @@
  *
  * Touch targets are >=44px (min-height set in index.css). Active item gets
  * aria-current="page" and the .active class.
+ *
+ * drawerNavItems: optional list of sidebar-only items surfaced via a
+ * slide-up "More" drawer. When provided, a 6th "More" button is appended.
  */
-export default function MobileBottomNav({ items, activeTab, setActiveTab, onAction }) {
+export default function MobileBottomNav({ items, drawerNavItems, activeTab, setActiveTab, onAction }) {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   if (!items || items.length === 0) return null;
 
   return (
-    <nav aria-label="Quick navigation" className="bottom-nav">
-      {items.map((item) => {
-        const Icon = item.Icon;
-        const isActive = item.tabId != null && activeTab === item.tabId;
-        return (
+    <>
+      <nav aria-label="Quick navigation" className="bottom-nav">
+        {items.map((item) => {
+          const Icon = item.Icon;
+          const isActive = item.tabId != null && activeTab === item.tabId;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`bottom-nav-item${isActive ? ' active' : ''}`}
+              onClick={() => {
+                if (item.tabId != null) setActiveTab(item.tabId);
+                else if (item.action != null) onAction?.(item.action);
+              }}
+              aria-current={isActive ? 'page' : undefined}
+              data-testid={item.testId ?? `bottomnav-${item.id}`}
+            >
+              <Icon size={22} />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+        {drawerNavItems && drawerNavItems.length > 0 && (
           <button
-            key={item.id}
             type="button"
-            className={`bottom-nav-item${isActive ? ' active' : ''}`}
-            onClick={() => {
-              if (item.tabId != null) setActiveTab(item.tabId);
-              else if (item.action != null) onAction?.(item.action);
-            }}
-            aria-current={isActive ? 'page' : undefined}
-            data-testid={item.testId ?? `bottomnav-${item.id}`}
+            className="bottom-nav-item"
+            onClick={() => setDrawerOpen(true)}
+            aria-haspopup="dialog"
+            data-testid="bottomnav-more"
           >
-            <Icon size={22} />
-            <span>{item.label}</span>
+            <MoreHorizontal size={22} />
+            <span>More</span>
           </button>
-        );
-      })}
-    </nav>
+        )}
+      </nav>
+
+      {drawerOpen && drawerNavItems && (
+        <MobileNavDrawer
+          items={drawerNavItems}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onClose={() => setDrawerOpen(false)}
+        />
+      )}
+    </>
   );
 }

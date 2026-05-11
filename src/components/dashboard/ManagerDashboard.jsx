@@ -126,6 +126,11 @@ export default function ManagerDashboard() {
     [role]
   );
 
+  const drawerNavItems = useMemo(
+    () => filteredNavItems.filter((item) => !BOTTOM_NAV.find((b) => b.id === item.id)),
+    [filteredNavItems]
+  );
+
   const stats = useMemo(() => ({
     totalAgents: 8,
     submittedThisWeek: 5,
@@ -206,7 +211,7 @@ export default function ManagerDashboard() {
         <button
           type="button"
           onClick={handleExportBranchCSV}
-          className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="h-11 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Download size={16} />
           <span className="hidden md:inline">Export Branch Report</span>
@@ -227,6 +232,7 @@ export default function ManagerDashboard() {
     <Shell
       navItems={filteredNavItems}
       bottomNavItems={BOTTOM_NAV}
+      drawerNavItems={drawerNavItems}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       userProfile={userProfile}
@@ -328,7 +334,7 @@ export default function ManagerDashboard() {
                 <button
                   key={t.id}
                   onClick={() => setGoalsSubTab(t.id)}
-                  className={`flex-1 h-9 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
+                  className={`flex-1 h-11 rounded-lg text-sm font-semibold transition-colors whitespace-nowrap px-3 ${
                     goalsSubTab === t.id
                       ? 'bg-[var(--color-surface)] text-primary shadow-sm'
                       : 'text-ink-muted hover:text-ink'

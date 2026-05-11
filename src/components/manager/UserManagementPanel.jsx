@@ -508,7 +508,7 @@ export default function UserManagementPanel() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowInactive((v) => !v)}
-            className="text-xs h-9 px-2 transition-colors hover:text-ink"
+            className="text-xs h-11 px-2 transition-colors hover:text-ink"
           >
             {showInactive
               ? <span className="font-semibold text-primary">Hide inactive</span>
@@ -595,7 +595,7 @@ export default function UserManagementPanel() {
                   {canAct && (
                     <button
                       onClick={() => setDeactivateTarget(u)}
-                      className={`text-xs font-semibold px-2.5 h-8 rounded-lg transition-colors min-w-[80px] ${
+                      className={`text-xs font-semibold px-2.5 min-h-[44px] rounded-lg transition-colors min-w-[80px] ${
                         isInactive
                           ? 'text-primary bg-primary/10 hover:bg-primary/20'
                           : 'text-danger bg-danger/10 hover:bg-danger/20'

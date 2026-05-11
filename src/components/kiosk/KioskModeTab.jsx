@@ -103,7 +103,7 @@ export default function KioskModeTab() {
             type="button"
             onClick={loadTokens}
             disabled={loading}
-            className="h-9 w-9 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="h-11 w-11 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Refresh"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -112,7 +112,7 @@ export default function KioskModeTab() {
             type="button"
             onClick={handleCreate}
             disabled={creating || loading}
-            className="h-9 px-4 rounded-lg bg-primary text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-11 px-4 rounded-lg bg-primary text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={16} />
             {creating ? 'Generating…' : 'Generate URL'}
@@ -159,7 +159,7 @@ export default function KioskModeTab() {
                     type="button"
                     onClick={() => handleCopy(token.id)}
                     title={copied ? 'Copied!' : 'Copy URL'}
-                    className="h-9 w-9 rounded-lg flex items-center justify-center text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="h-11 w-11 rounded-lg flex items-center justify-center text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <Copy size={15} className={copied ? 'text-success' : ''} />
                   </button>
@@ -168,7 +168,7 @@ export default function KioskModeTab() {
                     target="_blank"
                     rel="noopener noreferrer"
                     title="Open kiosk"
-                    className="h-9 w-9 rounded-lg flex items-center justify-center text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="h-11 w-11 rounded-lg flex items-center justify-center text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     <ExternalLink size={15} />
                   </a>
@@ -177,7 +177,7 @@ export default function KioskModeTab() {
                     onClick={() => handleRevoke(token.id)}
                     disabled={revoking}
                     title="Revoke URL"
-                    className="h-9 w-9 rounded-lg flex items-center justify-center text-ink-muted hover:text-danger hover:bg-danger-tint transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="h-11 w-11 rounded-lg flex items-center justify-center text-ink-muted hover:text-danger hover:bg-danger-tint transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Trash2 size={15} className={revoking ? 'animate-pulse' : ''} />
                   </button>

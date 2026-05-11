@@ -312,7 +312,7 @@ export default function SettlementPanel() {
           <p className="text-sm font-semibold text-ink">Enter Monthly Settlements</p>
           <button
             onClick={() => setBulkMode((v) => !v)}
-            className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-dark transition-colors"
+            className="flex items-center gap-1.5 text-xs font-medium text-primary hover:text-primary-dark transition-colors py-3 min-h-[44px]"
           >
             {bulkMode ? <ToggleRight size={16} /> : <ToggleLeft size={16} />}
             {bulkMode ? 'Single entry' : 'Bulk entry'}
