@@ -41,6 +41,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const { chromium } = require('playwright');
 
 loadDotEnvLocal();
@@ -217,6 +218,12 @@ const HARMLESS_NET = [
 const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
 
 (async () => {
+  // Dynamic import of shared ESM helpers. CJS cannot require() ESM; import() is used
+  // instead. pathToFileURL ensures the path resolves to the correct file regardless of
+  // the working directory from which the script is run.
+  const { buildBypassUrl, hardReloadAndAwaitReady, writeReadVerifyCycle } =
+    await import(pathToFileURL(path.join(__dirname, 'verification', 'lib', 'walk-helpers.mjs')).href);
+
   const startedAt = new Date();
   const stamp = startedAt.toISOString().replace(/[:.]/g, '').slice(0, 15);
   console.log(`[exploration-walk] target=${BASE_URL} role=${ROLE} scope=${scope} bypass=${needsBypass ? 'on' : 'off'}`);
@@ -248,10 +255,8 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
 
   async function applyVercelBypass() {
     if (!needsBypass) return;
-    const u = new URL(BASE_URL);
-    u.searchParams.set('x-vercel-protection-bypass', BYPASS);
-    u.searchParams.set('x-vercel-set-bypass-cookie', 'samesitenone');
-    await page.goto(u.toString(), { waitUntil: 'domcontentloaded' });
+    // buildBypassUrl sets x-vercel-set-bypass-cookie=samesitenone (lesson 1).
+    await page.goto(buildBypassUrl(BASE_URL, BYPASS), { waitUntil: 'domcontentloaded' });
   }
 
   async function step(id, label, fn) {
@@ -270,7 +275,8 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
     // ── 1: Navigate to target URL ────────────────────────────────────────────
     await step('1', 'Navigate to target URL (login screen renders)', async () => {
       await applyVercelBypass();
-      await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+      // Lesson 2: 'domcontentloaded', never 'networkidle' for Firebase apps.
+      await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('text=AgencyTrack', { timeout: 15_000 });
       await page.waitForSelector('input[type="email"]', { timeout: 5_000 });
     });
@@ -435,6 +441,88 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
       if (onWizard > 0) throw new Error('still on wizard after close');
     });
 
+    // ── 26b: agent wizard write-read-verify (agent role only) ────────────────
+    // Re-opens the wizard, types a value into the first NumericField, waits for
+    // the auto-save "Saved" indicator, hard-reloads, re-opens the wizard for the
+    // same week, and asserts the value persisted. Exercises rules + claims + index.
+    // Not run for manager/admin roles — their write surfaces vary too much for a
+    // single canonical cycle (each gets its own WRC in future PRs).
+    if (ROLE === 'agent') {
+      let chosenWeek = null;
+      await step('26b', 'Agent wizard write-read-verify (type → save indicator → reload → persist-verify)', async () => {
+        const { pass, errors } = await writeReadVerifyCycle(page, {
+          description: 'agent-wizard-write-read-verify',
+          screenshotDir: verificationDir,
+
+          writeFn: async (pg) => {
+            await pg.getByRole('button', { name: /Submit Weekly Report/i }).click();
+            await pg.waitForSelector('text=Select Week', { timeout: 10_000 });
+
+            // Try up to 3 weeks until we find one that's not already submitted.
+            const select = pg.locator('select#wizard-week');
+            const options = await select.locator('option').all();
+            if (options.length === 0) throw new Error('No weeks in wizard dropdown');
+
+            let weekReady = false;
+            for (let i = 0; i < Math.min(options.length, 3); i++) {
+              const weekVal = await options[i].getAttribute('value');
+              if (i > 0) await select.selectOption(weekVal);
+              chosenWeek = weekVal;
+              await pg.getByRole('button', { name: /Start Report/i }).click();
+              await pg.waitForTimeout(400);
+              const title = await pg.locator('h1').innerText().catch(() => '');
+              if (/Prospecting|Calls|Interviews|Names|Time|Goals/i.test(title)) {
+                weekReady = true;
+                break;
+              }
+              // Week was submitted — navigate back and try next.
+              const changeBtn = pg.getByRole('button', { name: /Change week|Pick another/i });
+              if (await changeBtn.count() > 0) await changeBtn.first().click();
+              await pg.waitForSelector('text=Select Week', { timeout: 5_000 });
+            }
+            if (!weekReady) throw new Error('All tried weeks are submitted — cannot exercise write path');
+
+            // Lesson 3: CardStack.NumericField is type="text" inputMode="numeric".
+            const numericInput = pg.locator('input[inputmode="numeric"]').first();
+            await numericInput.fill('7');
+
+            // Wait for auto-save debounce (1500ms) + network buffer.
+            await pg.waitForTimeout(2000);
+            // Verify the "Saved" indicator appears (role="status" aria-live="polite").
+            await pg.locator('[role="status"][aria-live="polite"]:has-text("Saved")').waitFor({ timeout: 8000 });
+
+            // Close wizard — returns to dashboard.
+            await pg.getByRole('button', { name: /^close$/i }).click();
+            await pg.waitForSelector(`text=${profile.homeTabName}`, { timeout: 5_000 });
+          },
+
+          verifyFn: async (pg) => {
+            // After hardReloadAndAwaitReady: Firebase auth restores, dashboard appears.
+            await pg.waitForSelector(`text=${profile.homeTabName}`, { timeout: 15_000 });
+
+            // Re-open wizard for the same week.
+            await pg.getByRole('button', { name: /Submit Weekly Report/i }).click();
+            await pg.waitForSelector('text=Select Week', { timeout: 10_000 });
+            if (chosenWeek) await pg.locator('select#wizard-week').selectOption(chosenWeek);
+            await pg.getByRole('button', { name: /Start Report/i }).click();
+            await pg.waitForSelector('text=Prospecting', { timeout: 8000 });
+            await pg.waitForTimeout(600); // allow getDraft to load
+
+            // Assert the value we typed is still there.
+            const numericInput = pg.locator('input[inputmode="numeric"]').first();
+            const savedValue = await numericInput.inputValue();
+            if (savedValue !== '7') throw new Error(`Expected persisted value "7", got "${savedValue}"`);
+
+            // Close wizard.
+            await pg.getByRole('button', { name: /^close$/i }).click();
+            await pg.waitForSelector(`text=${profile.homeTabName}`, { timeout: 5_000 });
+          },
+        });
+
+        if (!pass) throw new Error(`write-read-verify failed: ${errors.join('; ')}`);
+      });
+    }
+
     // ── 27, 28: sign out ─────────────────────────────────────────────────────
     await step('27', 'Sign out', async () => {
       await page.getByRole('button', { name: /sign out/i }).click();
@@ -475,6 +563,7 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
     ['23',          'Open wizard (Select Week renders)'],
     ['23a',         'Wizard has header + main + label/select binding'],
     ['26',          'Close wizard (returns to dashboard)'],
+    ...(ROLE === 'agent' ? [['26b', 'Agent wizard write-read-verify (type → save indicator → reload → persist-verify)']] : []),
     ['27',          'Sign out'],
     ['28',          'Verify login redirect'],
   ];
@@ -491,7 +580,8 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
   lines.push('');
   lines.push('## Headline');
   lines.push('');
-  lines.push(`Programmatic walkthrough completed ${completed}/${allActions.length} checks. Exercises tab navigation, dark-mode toggle, wizard open/close, sign out + login redirect, and structural-element verification per tab. Out-of-scope steps (PDF download, notifications bell, multi-week wizard interstitial flows) require manual verification.`);
+  const wrcNote = ROLE === 'agent' ? ' Real write-read-verify cycle exercised for agent wizard (type → auto-save → reload → persist-verify).' : '';
+  lines.push(`Programmatic walkthrough completed ${completed}/${allActions.length} checks. Exercises tab navigation, dark-mode toggle, wizard open/close, sign out + login redirect, and structural-element verification per tab.${wrcNote} Out-of-scope steps (PDF download, notifications bell, multi-week wizard interstitial flows) require manual verification.`);
   lines.push('');
   lines.push('## Summary');
   lines.push('');
