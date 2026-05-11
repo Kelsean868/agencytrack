@@ -47,7 +47,7 @@
 import { chromium } from 'playwright';
 import { readFileSync, mkdirSync, existsSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
-import { buildBypassUrl, hardReloadAndAwaitReady } from './lib/walk-helpers.mjs';
+import { setupBypassSession, hardReloadAndAwaitReady } from './lib/walk-helpers.mjs';
 
 const ARTIFACTS_DIR = resolve(process.cwd(), 'verification/e3-persistency');
 const SS_DIR        = resolve(ARTIFACTS_DIR, 'screenshots');
@@ -147,18 +147,21 @@ async function signOutClick(pg) {
 // ── main ──────────────────────────────────────────────────────────────────────
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-const page    = await context.newPage();
 
-// Set Vercel bypass cookie — URL constructed via helper, never logged.
-// Lesson 1: cookie value is 'samesitenone', not 'true'. Lesson 2: domcontentloaded.
-const bypassUrl = buildBypassUrl(`https://${PREVIEW_HOST}`, BYPASS_TOKEN);
+// Set Vercel bypass cookie via cookie-after-handshake helper. Lesson 5:
+// the token appears in exactly one URL inside a sanitizing try/catch in
+// setupBypassSession; all subsequent navigation in this context uses bare URLs.
 try {
-  await page.goto(bypassUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await setupBypassSession(context, `https://${PREVIEW_HOST}`, BYPASS_TOKEN);
 } catch (e) {
+  // setupBypassSession's error message is pre-sanitized (name + code only,
+  // no URL, no token). Redaction is belt-and-braces.
   console.error('Bypass navigation failed:', redact(e.message));
   await browser.close();
   process.exit(1);
 }
+
+const page = await context.newPage();
 
 // ── Manager-side checks 01–10 ────────────────────────────────────────────────
 await check('01_manager_login_renders', 'Manager login → dashboard loads', async () => {
