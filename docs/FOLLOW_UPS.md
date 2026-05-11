@@ -585,11 +585,11 @@ month to be paid $X this month?" — accounts for Tatil modal commission timing
 (annual upfront, semi/quarterly/monthly per modal frequency). New business +
 first-year commissions only in v1. ~1.5-2 days. Spec: Track-E-Specs.md §E2.
 
-### E3 — Persistency Playground [MEDIUM, post-pilot]
-Replicates Kyron's Excel persistency calculator. 3 sections: current state
-(manual input or pre-filled), target setting (with 3 recovery paths), scenario
-builder. Award eligibility flag overlay. Formula validated against source
-spreadsheet — Good/Bad lapse asymmetry preserved. ~4-6 days. Spec: §E3.
+### E3 — Persistency Playground — RESOLVED in PR #82 (2026-05-11)
+
+**Resolved 2026-05-11 in PR #82.** Shipped: 6-input manual entry form (businessPlaced / notTakens / incPPPs / lumpsums100 / lapses / reinstatements) with live-derived persistency, 12-month trend chart, award-gate banner, and what-if Playground (3 recovery levers: NB / NR / Orphans). Agent self-entry and manager entry share the same `PersistencyEntryForm`; Firestore rules scoped by role. CareerPortal and `exportService` average-of-percentages bugs fixed in the same PR. Tatil monthly-report manual-entry workflow fully supported.
+
+Rules follow-ups: PR #83 fixed persistency `allow list` list-query denial. PR #85 fixed `allow get` on non-existent docs (blocked first-time agent saves). Open follow-ups from this arc: SCOPE-1, SCOPE-2, PERF-1, TEST-N, WALK-1, BUG-N2, UX-N (all added below, 2026-05-11).
 
 ### E4 — Digital Production Report / Branch Leaderboard [MEDIUM, post-pilot, depends on E1]
 Three role-based views (Unit Mgr / Branch Mgr / Sales Mgr) replacing the
@@ -968,3 +968,73 @@ as part of E1 itself.
 
 Priority: **LOW**. No active bug; structural risk only. Bank for E1
 scoping conversation.
+
+---
+
+## SCOPE-1 — Tenant-wide persistency aggregate helper (MEDIUM, post-pilot)
+
+**Scope:** `getPersistencyMapForYear` in `persistencyService.js` is branch-scoped (`opts.branchId` filter), which is correct for `branch_manager` Firestore rules. Future dashboard surfaces for `sales_manager` and `tenant_admin` roles need a separate tenant-wide helper (e.g. `getPersistencyMapForTenant`) that those roles' `allow get` conditions permit. Adding a new helper rather than extending `opts` keeps the access-control intent explicit.
+
+Not pilot-blocking — those dashboards don't exist yet.
+
+Priority: **MEDIUM**. Post-pilot. Bank for the `sales_manager` dashboard surface (P9).
+
+---
+
+## SCOPE-2 — Tighten persistency `allow list` rule (MEDIUM, post-pilot)
+
+**Scope:** PR #83 added `allow list: if isSignedIn() && getTenantId() == tenantId` — intentionally permissive within tenant scope because Firestore cannot evaluate `resource.data` for list operations (per the inline rules comment). Future hardening: require client queries to include scope filters (`where('branchId','==',callerBranchId)` etc.) and validate via `request.query` in rules. Requires denormalizing `branchId` and `unitId` onto persistency docs (currently absent). Acceptable for the current single-branch pilot.
+
+Coupled to PERF-1 (same denormalization needed).
+
+Priority: **MEDIUM**. Post-pilot. Do not attempt without the doc-denormalization step.
+
+---
+
+## PERF-1 — `getAvailableMonths` tenant-wide unfiltered query (LOW, post-pilot)
+
+**Scope:** `getAvailableMonths` in `persistencyService.js` for non-agent scopes issues an unfiltered `query(persistencyCollection())` against the full tenant collection. Fine for the pilot (one branch, hundreds of docs at most). As tenants grow into thousands of monthly docs, add a `where`-by-scope filter. Coupled to SCOPE-2 (requires `branchId`/`unitId` denormalized onto persistency docs before a scope filter is possible).
+
+Priority: **LOW**. No urgency at pilot scale.
+
+---
+
+## TEST-N — Build Firebase rules-testing harness (MEDIUM, post-pilot)
+
+**Scope:** `@firebase/rules-unit-testing` is in `devDependencies` but no test runner, environment setup, or emulator port config exists. PR #83's emulator-test step was skipped because of this gap. PR #85's `allow get` fix (non-existent-doc regression) would have been caught by automated rules tests before merging rather than discovered in production via the write-read-verify smoke. Future rules changes — especially to the persistency block, which has non-trivial role + null-resource combinations — should have coverage.
+
+**Minimum viable harness:** configure `@firebase/rules-unit-testing` against a local emulator (port 8080), wire into a `test:rules` npm script separate from Vitest unit tests. First test suite: persistency `allow get` — covers null resource (non-existent doc) for agent / branch_manager / unit_manager; existing doc per role; cross-tenant denial.
+
+Priority: **MEDIUM**. Ideally pre-pilot. Not blocking, but the next rules change without this is flying blind.
+
+---
+
+## WALK-1 — Harden walk scripts with real write-read-verify cycles (MEDIUM, ideally pre-pilot)
+
+**Scope:** The E3 walk (`scripts/verification/e3-persistency-walk.mjs`) reported 18/18 against both preview and production while PR #85's `allow get` regression was live in production. Walk check 9 (`entry_form_saves_to_firestore`) only verifies the Save button is enabled — it never fires the actual Firestore write. The regression was caught on the first application of the new write-read-verify smoke standard.
+
+**New standard (memorialized in project memory):** every walk MUST include at least one real write-read-verify cycle with a hard reload between the write step and the verify step, using real auth and real Firestore. Walk pass rate alone is not sufficient verification.
+
+**Apply to `e3-persistency-walk.mjs` first:** replace check 09 (`Save button enabled`) and check 10 (`nav-away/back state`) with a real agent self-entry write, hard reload, and read-back assertion. Same pattern for all future walk scripts.
+
+Priority: **MEDIUM**. Ideally applied before the next rules-touching PR ships.
+
+---
+
+## BUG-N2 — `sales_manager` missing from unitGoals write rule (LOW, escalate if sales managers set unit goals during pilot)
+
+**Scope:** `firestore.rules` `match /unitGoals/{docId}` write block allows `platform_admin`, `tenant_admin`, `branch_manager`, and `unit_manager` (post-BUG-N fix in PR #84). `sales_manager` is NOT in the list. Per the 5-tier hierarchy, `sales_manager` should logically have at least `branch_manager`-level write access to unit goals. Discovered during BUG-N diagnosis.
+
+**Fix:** add `|| request.auth.token.role == 'sales_manager'` to the write condition alongside `branch_manager`.
+
+Priority: **LOW** now; escalate to **HIGH** if sales managers need to set unit goals during the pilot.
+
+---
+
+## UX-N — Improve "no scope assigned" empty-state on Persistency tab (LOW, post-pilot polish)
+
+**Scope:** When an account's profile has no `branchId`, `unitId`, or tenant-level role, the Persistency tab shows: "Persistency is scoped to a unit, branch, or tenant — your profile has none assigned." Accurate but not actionable. More useful copy: "Contact your branch manager to be assigned to a unit so you can view your unit's persistency data."
+
+Not pilot-blocking — all pilot accounts will have scope assigned before login.
+
+Priority: **LOW**. Post-pilot polish.
