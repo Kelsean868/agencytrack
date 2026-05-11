@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
-  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -24,7 +23,7 @@ import Leaderboard from '../gamification/Leaderboard';
 import CampaignPanel from '../campaigns/CampaignPanel';
 import UserManagementPanel from '../manager/UserManagementPanel';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
-import MotivationalCarousel from './MotivationalCarousel';
+import ManagerOverviewTab from './ManagerOverviewTab';
 import ProfileScreen from '../profile/ProfileScreen';
 import Shell from '../shell/Shell';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
@@ -221,37 +220,12 @@ export default function ManagerDashboard() {
     >
         {/* ── Overview ── */}
         {activeTab === 'overview' && (
-          <div>
-            <div className="mb-4">
-              <p className="text-ink-muted text-sm">Welcome back,</p>
-              <h2 className="text-xl font-bold text-ink">{displayName}</h2>
-            </div>
-
-            {/* Motivational carousel */}
-            <MotivationalCarousel
-              role={role}
-              submissions={[]}
-              currentDate={new Date()}
-            />
-
-            <div className="card flex items-start gap-4 mb-8">
-              <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
-                <Sparkles size={20} />
-              </div>
-              <div>
-                <p className="font-display text-lg font-semibold text-ink mb-1">
-                  Branch metrics coming soon
-                </p>
-                <p className="text-sm text-ink-muted">
-                  A redesigned dashboard with real-time team metrics is in development. Until then, use Production Report and Master Sheet to track team performance.
-                </p>
-              </div>
-            </div>
-
-            <button className="btn-primary w-full" onClick={() => setShowWizard(true)}>
-              Submit Weekly Report
-            </button>
-          </div>
+          <ManagerOverviewTab
+            role={role}
+            userProfile={userProfile}
+            tenantId={tenantId}
+            onSubmitReport={() => setShowWizard(true)}
+          />
         )}
 
         {activeTab === 'team' && <UserManagementPanel />}
