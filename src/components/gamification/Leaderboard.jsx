@@ -7,6 +7,7 @@ import { getLastNSundays } from '../../utils/dateHelpers';
 import { computeWeeklyChampions } from '../../utils/weeklyChampions';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 import Avatar from '../ui/Avatar';
+import StatusPill from '../ui/StatusPill';
 
 function ChampionCard({ Icon, label, champion, format }) {
   return (
@@ -80,21 +81,7 @@ function WeeklyChampionsBanner({ champions, loading }) {
 }
 
 
-const LEVEL_COLORS = {
-  Rookie:    'bg-border/60 text-ink-muted',
-  Associate: 'bg-primary/10 text-primary',
-  Pro:       'bg-warning/15 text-warning',
-  Elite:     'bg-success/15 text-success',
-  Legend:    'bg-danger/15 text-danger',
-};
-
-function LevelChip({ title }) {
-  return (
-    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${LEVEL_COLORS[title] ?? LEVEL_COLORS.Rookie}`}>
-      {title ?? 'Rookie'}
-    </span>
-  );
-}
+const LEVEL_VARIANT = { Rookie: 'muted', Associate: 'primary', Pro: 'warning', Elite: 'success', Legend: 'danger' };
 
 function LeaderRow({ entry, rank, isCurrentUser, photoURL }) {
   const badgeCount = (entry.badges ?? []).length;
@@ -119,7 +106,7 @@ function LeaderRow({ entry, rank, isCurrentUser, photoURL }) {
           <p className={`text-sm font-semibold truncate ${isCurrentUser ? 'text-primary' : 'text-ink'}`}>
             {entry.agentName ?? 'Agent'}
           </p>
-          <LevelChip title={entry.levelTitle} />
+          <StatusPill variant={LEVEL_VARIANT[entry.levelTitle] ?? 'muted'} label={entry.levelTitle ?? 'Rookie'} />
           {(entry.weeklyStreak ?? 0) >= 4 && (
             <Flame size={13} className="text-warning shrink-0" title={`${entry.weeklyStreak}-week streak`} />
           )}

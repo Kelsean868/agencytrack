@@ -3,39 +3,8 @@ import { CheckCircle, XCircle, Info } from 'lucide-react';
 import { computeManagerAwards } from '../../utils/awardsEngine';
 import { getSettlementsForUnit } from '../../services/settlementService';
 import { formatCurrency } from '../../utils/formatters';
-
-function DataSourceBadge({ source }) {
-  const confirmed = source === 'confirmed';
-  return (
-    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-      confirmed ? 'bg-primary/10 text-primary' : 'bg-warning/10 text-warning'
-    }`}>
-      {confirmed ? 'Confirmed' : 'Estimated'}
-    </span>
-  );
-}
-
-function AwardState({ eligible, inContention }) {
-  if (eligible) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success/15 text-success">
-        <CheckCircle size={10} /> Qualified
-      </span>
-    );
-  }
-  if (inContention) {
-    return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warning/15 text-warning">
-        In Contention
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-semibold bg-border/60 text-ink-muted">
-      Not Yet Eligible
-    </span>
-  );
-}
+import StatusPill from '../ui/StatusPill';
+import DataSourceBadge from '../productionReport/DataSourceBadge';
 
 function formatCriterionValue(c) {
   if (c.unit === 'TTD') return formatCurrency(c.current);
@@ -61,7 +30,11 @@ function AwardCard({ award }) {
           <p className="text-xs text-ink-muted mt-0.5">{award.prize}</p>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
-          <AwardState eligible={award.eligible} inContention={award.inContention} />
+          <StatusPill
+            variant={award.eligible ? 'success' : award.inContention ? 'warning' : 'muted'}
+            label={award.eligible ? 'Qualified' : award.inContention ? 'In Contention' : 'Not Yet Eligible'}
+            icon={award.eligible ? <CheckCircle size={10} /> : undefined}
+          />
           {award.dataSource && <DataSourceBadge source={award.dataSource} />}
         </div>
       </div>

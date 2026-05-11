@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import StatusPill from '../ui/StatusPill';
 import { Download, Search } from 'lucide-react';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
@@ -42,20 +43,6 @@ function resolveName(sub, userNameMap) {
   return uid ? `Agent ${uid.slice(-6)}` : '—';
 }
 
-function statusBadge(status) {
-  if (status === 'submitted') {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-success/15 text-success whitespace-nowrap">
-        Submitted
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-warning/15 text-warning whitespace-nowrap">
-      Draft
-    </span>
-  );
-}
 
 function apiColorClass(apiSold, targetAPI) {
   if (!targetAPI) return '';
@@ -181,7 +168,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
       return <span className="font-medium text-ink whitespace-nowrap">{v}</span>;
     }
     if (col.key === 'status') {
-      return statusBadge(v);
+      return <StatusPill variant={v === 'submitted' ? 'success' : 'warning'} label={v === 'submitted' ? 'Submitted' : 'Draft'} />;
     }
     if (col.currency && col.conditional) {
       return (

@@ -14,7 +14,7 @@ export default function DataSourceBadge({ source }) {
   }
   return (
     <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warning/10 text-warning"
+      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warning/15 text-warning"
       title="Values computed from submitted reports — not yet confirmed in settlements"
     >
       Estimated
