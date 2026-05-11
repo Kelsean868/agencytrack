@@ -12,7 +12,13 @@ import { BADGES } from '../gamification/BadgeGrid';
  * refactored to JSX with --color-* tokens via the .activity-* classes in
  * src/index.css. Mini-medal for badge events reuses B1 .badge-medal at 36px.
  */
-export default function ActivityFeed({ events, onViewAll }) {
+export default function ActivityFeed({
+  events,
+  onViewAll,
+  heading = 'Recent Activity',
+  subHeading = 'Your last 7 days',
+  emptyMessage = 'No activity in the last 7 days — submit a report to get started',
+}) {
   const isEmpty = !events || events.length === 0;
 
   return (
@@ -26,9 +32,9 @@ export default function ActivityFeed({ events, onViewAll }) {
             id="recent-activity-heading"
             className="text-sm font-semibold text-ink"
           >
-            Recent Activity
+            {heading}
           </h3>
-          <p className="text-xs text-ink-muted mt-0.5">Your last 7 days</p>
+          <p className="text-xs text-ink-muted mt-0.5">{subHeading}</p>
         </div>
         {onViewAll && !isEmpty && (
           <button
@@ -44,7 +50,7 @@ export default function ActivityFeed({ events, onViewAll }) {
 
       {isEmpty ? (
         <p className="text-sm text-ink-muted py-6 text-center">
-          No activity in the last 7 days — submit a report to get started
+          {emptyMessage}
         </p>
       ) : (
         <ol
