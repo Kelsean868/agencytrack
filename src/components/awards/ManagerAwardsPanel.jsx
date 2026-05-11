@@ -1,125 +1,57 @@
-import { useMemo, useState, useEffect } from 'react';
-import { CheckCircle, XCircle, Info } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { computeManagerAwards } from '../../utils/awardsEngine';
 import { getSettlementsForUnit } from '../../services/settlementService';
 import { formatCurrency } from '../../utils/formatters';
-import StatusPill from '../ui/StatusPill';
 import TabPills from '../ui/TabPills';
-import DataSourceBadge from '../productionReport/DataSourceBadge';
+import GoalDonut from '../dashboard/GoalDonut';
+import AwardMedalCard from './AwardMedalCard';
 
-function formatCriterionValue(c) {
-  if (c.unit === 'TTD') return formatCurrency(c.current);
-  if (c.unit === '%') return `${Number(c.current).toFixed(1)}%`;
-  return String(c.current);
-}
+// Bonus tier hero — replaces the old MonthlyBonusCard with a role-hero strip.
+// Headline value = bonusAmount (TTD earned). Bar fill = avgMonthlyAPI / nextTier.threshold.
+function MonthlyBonusHero({ bonus }) {
+  const hasNextTier = bonus.nextTier != null;
+  const fillPercent = hasNextTier
+    ? Math.min(100, Math.round((bonus.avgMonthlyAPI / bonus.nextTier.threshold) * 100))
+    : 100;
 
-function formatCriterionTarget(c) {
-  if (c.unit === 'TTD') return formatCurrency(c.target);
-  if (c.unit === '%') return `${c.target}%`;
-  return String(c.target);
-}
-
-function AwardCard({ award }) {
-  const isGreyed = !award.eligible && !award.inContention;
   return (
-    <div className={`rounded-xl border p-4 flex flex-col gap-3 ${
-      isGreyed ? 'border-border bg-border/10' : award.eligible ? 'border-success/30 bg-success/5' : 'border-primary/20 bg-surface'
-    }`}>
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-ink">{award.name}</p>
-          <p className="text-xs text-ink-muted mt-0.5">{award.prize}</p>
-        </div>
-        <div className="flex flex-col items-end gap-1 shrink-0">
-          <StatusPill
-            variant={award.eligible ? 'success' : award.inContention ? 'warning' : 'muted'}
-            label={award.eligible ? 'Qualified' : award.inContention ? 'In Contention' : 'Not Yet Eligible'}
-            icon={award.eligible ? <CheckCircle size={10} /> : undefined}
-          />
-          {award.dataSource && <DataSourceBadge source={award.dataSource} />}
-        </div>
-      </div>
-
-      <div>
-        <div className="flex justify-between text-[10px] text-ink-muted mb-1">
-          <span>{award.criteria[0]?.label}</span>
-          <span>{Math.round(award.progressPercent ?? 0)}%</span>
-        </div>
-        <div className="w-full h-1.5 bg-border rounded-full overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${
-              award.eligible ? 'bg-success' : award.inContention ? 'bg-primary' : 'bg-border/80'
-            }`}
-            style={{ width: `${award.progressPercent ?? 0}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        {(award.criteria ?? []).map((c) => (
-          <div key={c.label} className="flex items-center gap-2 text-xs">
-            {c.met
-              ? <CheckCircle size={13} className="text-success shrink-0" />
-              : <XCircle    size={13} className="text-danger/60 shrink-0" />
-            }
-            <span className={c.met ? 'text-ink' : 'text-ink-muted'}>
-              {c.label}:&nbsp;
-              <span className="font-semibold">{formatCriterionValue(c)}</span>
-              <span className="text-ink-muted"> / {formatCriterionTarget(c)}</span>
-            </span>
+    <div className="role-hero mb-6">
+      <div className="goal-slide" style={{ alignItems: 'center' }}>
+        <div className="goal-content">
+          <div className="goal-period">Monthly Production Bonus</div>
+          <div className="goal-value">{formatCurrency(bonus.bonusAmount)}</div>
+          <div className="goal-target">
+            {bonus.bonusPct > 0
+              ? `Tier ${bonus.bonusPct}% unlocked`
+              : 'No tier unlocked yet'}
           </div>
-        ))}
-      </div>
 
-      {award.note && (
-        <div className="flex items-start gap-1.5 p-2 rounded-lg bg-warning/8 border border-warning/20">
-          <Info size={11} className="text-warning mt-0.5 shrink-0" />
-          <p className="text-[10px] text-warning leading-snug">{award.note}</p>
-        </div>
-      )}
-    </div>
-  );
-}
+          <div className="goal-bar-wrap">
+            <div className="bar bar-thick">
+              <div className="bar-fill" style={{ width: `${fillPercent}%` }} />
+            </div>
+          </div>
 
-function MonthlyBonusCard({ bonus }) {
-  return (
-    <div className="card mb-6">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-0.5">Monthly Bonus</p>
-          <p className="text-lg font-bold text-ink">{bonus.name}</p>
-        </div>
-        {bonus.bonusPct > 0 && (
-          <span className="inline-flex px-3 py-1 rounded-full text-sm font-bold bg-success/15 text-success">
-            {bonus.bonusPct}%
-          </span>
-        )}
-      </div>
+          <div className="goal-status" style={{ marginTop: 10 }}>
+            {hasNextTier ? (
+              <span>
+                Currently {formatCurrency(bonus.avgMonthlyAPI)} avg/advisor
+                {' · '}Tier {bonus.nextTier.pct}% at {formatCurrency(bonus.nextTier.threshold)}
+              </span>
+            ) : (
+              <span>Top tier achieved</span>
+            )}
+          </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-3">
-        <div>
-          <p className="text-[10px] uppercase tracking-wide text-ink-muted mb-0.5">Avg API / Advisor</p>
-          <p className="text-base font-bold text-ink">{formatCurrency(bonus.avgMonthlyAPI)}</p>
+          {bonus.note && (
+            <p className="text-[11px] mt-2" style={{ opacity: 0.75 }}>{bonus.note}</p>
+          )}
         </div>
-        <div>
-          <p className="text-[10px] uppercase tracking-wide text-ink-muted mb-0.5">Bonus Earned</p>
-          <p className="text-base font-bold text-success">{formatCurrency(bonus.bonusAmount)}</p>
+
+        <div className="goal-donut-wrap">
+          <GoalDonut percent={fillPercent} period="next bonus tier" />
         </div>
       </div>
-
-      {bonus.nextTier && (
-        <div className="p-2 rounded-lg bg-primary/5 border border-primary/20">
-          <p className="text-xs text-primary">
-            Next tier: <span className="font-semibold">{bonus.nextTier.pct}%</span> at{' '}
-            <span className="font-semibold">{formatCurrency(bonus.nextTier.threshold)}</span> avg API/advisor.{' '}
-            <span className="font-semibold">{formatCurrency(bonus.nextTier.threshold - bonus.avgMonthlyAPI)}</span> to go.
-          </p>
-        </div>
-      )}
-
-      {bonus.note && (
-        <p className="text-[10px] text-ink-muted/70 italic mt-2">{bonus.note}</p>
-      )}
     </div>
   );
 }
@@ -129,6 +61,9 @@ const ANNUAL_TABS = [
   { id: 'activity', label: 'Activity'  },
   { id: 'recruit',  label: 'Recruiting' },
 ];
+
+const ACTIVITY_IDS = ['activity_bronze','activity_silver','activity_gold','highest_activity'];
+const RECRUIT_IDS  = ['recruiting_bronze','recruiting_silver','recruiting_gold'];
 
 export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenantId }) {
   const [settlements, setSettlements] = useState([]);
@@ -156,9 +91,9 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
     const all = Object.values(awards);
     return {
       bonus:          awards.agency_monthly_bonus,
-      annualAwards:   all.filter((a) => a.category === 'annual' && !['activity_bronze','activity_silver','activity_gold','highest_activity','recruiting_bronze','recruiting_silver','recruiting_gold'].includes(a.id)),
-      activityAwards: all.filter((a) => ['activity_bronze','activity_silver','activity_gold','highest_activity'].includes(a.id)),
-      recruitAwards:  all.filter((a) => ['recruiting_bronze','recruiting_silver','recruiting_gold'].includes(a.id)),
+      annualAwards:   all.filter((a) => a.category === 'annual' && !ACTIVITY_IDS.includes(a.id) && !RECRUIT_IDS.includes(a.id)),
+      activityAwards: all.filter((a) => ACTIVITY_IDS.includes(a.id)),
+      recruitAwards:  all.filter((a) => RECRUIT_IDS.includes(a.id)),
     };
   }, [awards]);
 
@@ -203,11 +138,8 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
 
   return (
     <div className="flex flex-col gap-4">
+      {bonus && <MonthlyBonusHero bonus={bonus} />}
 
-      {/* Monthly bonus card */}
-      {bonus && <MonthlyBonusCard bonus={bonus} />}
-
-      {/* Annual award tabs */}
       <TabPills tabs={ANNUAL_TABS} activeId={activeTab} onChange={setActiveTab} className="overflow-x-auto mb-1" />
 
       {activeAwards.length === 0 ? (
@@ -215,8 +147,8 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
           <p className="text-sm text-ink-muted">No awards in this category.</p>
         </div>
       ) : (
-        <div className="flex flex-col gap-3">
-          {activeAwards.map((award) => <AwardCard key={award.id} award={award} />)}
+        <div className="badge-grid">
+          {activeAwards.map((award) => <AwardMedalCard key={award.id} award={award} />)}
         </div>
       )}
     </div>
