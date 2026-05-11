@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertTriangle, Check } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
+import SaveButton from '../ui/SaveButton';
 import { getTenantUsers } from '../../services/managerService';
 import { getGoals, setGoals, getCompanyMinimums, getUnitGoals, setUnitGoals, getBranchGoals, setBranchGoals } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
@@ -94,7 +95,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
   const [form, setForm]     = useState({ api: '', apps: '', ffiConducted: '', ciConducted: '', dials: '' });
   const [existing, setExisting] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
   const [loadingGoals, setLoadingGoals] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -133,8 +134,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
       });
       const updated = await getUnitGoals(tenantId, selectedUnit, currentYear);
       setExisting(updated);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setSavedAt(new Date());
     } catch (e) {
       console.error(e);
       setSaveError('Failed to save unit goals. Please try again.');
@@ -188,15 +188,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
               {saveError}
             </div>
           )}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className={`h-10 px-4 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 self-start ${
-              saved ? 'bg-success/15 text-success' : 'bg-primary dark:bg-primary-dark text-white hover:bg-[color:var(--color-primary-dark)] dark:hover:bg-primary'
-            }`}
-          >
-            {saving ? 'Saving…' : saved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save Unit Goals'}
-          </button>
+          <SaveButton onClick={handleSave} saving={saving} savedAt={savedAt} label="Save Unit Goals" className="self-start" />
         </div>
       )}
     </div>
@@ -210,7 +202,7 @@ function BranchGoalsTab({ userProfile }) {
   const [form, setForm]     = useState({ api: '', apps: '', ffiConducted: '', ciConducted: '', dials: '' });
   const [existing, setExisting] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [saved,  setSaved]  = useState(false);
+  const [savedAt, setSavedAt] = useState(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const [saveError, setSaveError] = useState('');
@@ -248,8 +240,7 @@ function BranchGoalsTab({ userProfile }) {
       });
       const updated = await getBranchGoals(tenantId, currentYear);
       setExisting(updated);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setSavedAt(new Date());
     } catch (e) {
       console.error(e);
       setSaveError('Failed to save branch goals. Please try again.');
@@ -280,15 +271,7 @@ function BranchGoalsTab({ userProfile }) {
               {saveError}
             </div>
           )}
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className={`h-10 px-4 rounded-xl text-sm font-semibold transition-colors disabled:opacity-60 self-start ${
-              saved ? 'bg-success/15 text-success' : 'bg-primary dark:bg-primary-dark text-white hover:bg-[color:var(--color-primary-dark)] dark:hover:bg-primary'
-            }`}
-          >
-            {saving ? 'Saving…' : saved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save Branch Goals'}
-          </button>
+          <SaveButton onClick={handleSave} saving={saving} savedAt={savedAt} label="Save Branch Goals" className="self-start" />
         </div>
       )}
     </div>
@@ -302,8 +285,8 @@ function AgentGoalsTab({ onGoalsLoaded }) {
   const [goalsMap, setGoalsMap]   = useState({});
   const [editMap, setEditMap]     = useState({});
   const [minimums, setMinimums]   = useState(null);
-  const [savingId, setSavingId]   = useState(null);
-  const [savedId, setSavedId]     = useState(null);
+  const [savingId, setSavingId]       = useState(null);
+  const [savedAtMap, setSavedAtMap]   = useState({});
   const [saveErrorId, setSaveErrorId] = useState(null);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
@@ -376,8 +359,7 @@ function AgentGoalsTab({ onGoalsLoaded }) {
       await setGoals(tenantId, agent.id, editMap[agent.id], user.uid, managerName);
       const updated = await getGoals(tenantId, agent.id);
       setGoalsMap((prev) => ({ ...prev, [agent.id]: updated }));
-      setSavedId(agent.id);
-      setTimeout(() => setSavedId(null), 2500);
+      setSavedAtMap((prev) => ({ ...prev, [agent.id]: new Date() }));
     } catch (e) {
       console.error('Failed to save goals:', e);
       setSaveErrorId(agent.id);
@@ -432,7 +414,7 @@ function AgentGoalsTab({ onGoalsLoaded }) {
         const g   = goalsMap[agent.id];
         const e   = editMap[agent.id] ?? emptyGoals();
         const isSaving = savingId === agent.id;
-        const isSaved  = savedId  === agent.id;
+        const agentSavedAt = savedAtMap[agent.id] ?? null;
         const isSaveError = saveErrorId === agent.id;
 
         const agentLabel = agent.name ?? agent.displayName ?? agent.email ?? agent.id;
@@ -460,17 +442,7 @@ function AgentGoalsTab({ onGoalsLoaded }) {
                   </p>
                 )}
               </div>
-              <button
-                onClick={() => handleSave(agent)}
-                disabled={isSaving}
-                className={`h-9 px-4 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 shrink-0 ${
-                  isSaved
-                    ? 'bg-success/15 text-success'
-                    : 'bg-primary dark:bg-primary-dark text-white hover:bg-[color:var(--color-primary-dark)] dark:hover:bg-primary'
-                }`}
-              >
-                {isSaving ? 'Saving…' : isSaved ? <><Check size={13} className="inline mr-1" />Saved</> : 'Save'}
-              </button>
+              <SaveButton onClick={() => handleSave(agent)} saving={isSaving} savedAt={agentSavedAt} label="Save" className="shrink-0" />
             </div>
 
             {/* Below-floor warnings — non-blocking */}

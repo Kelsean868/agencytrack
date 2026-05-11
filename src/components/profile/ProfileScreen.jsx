@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
-import { Camera, Save, Check, AlertCircle, User, CalendarClock } from 'lucide-react';
+import { Camera, Save, AlertCircle, User, CalendarClock } from 'lucide-react';
+import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleLabel } from '../../utils/formatters';
 import { updateUserProfile, compressImage, uploadProfilePhoto } from '../../services/userService';
@@ -21,7 +22,7 @@ export default function ProfileScreen() {
   const [photoURL,        setPhotoURL]        = useState(userProfile?.photoURL ?? null);
   const [uploadProgress,  setUploadProgress]  = useState(null); // null | 0–100
   const [saving,          setSaving]          = useState(false);
-  const [saved,           setSaved]           = useState(false);
+  const [savedAt,         setSavedAt]         = useState(null);
   const [error,           setError]           = useState(null);
 
   // E6 logging mode panel state
@@ -164,7 +165,6 @@ export default function ProfileScreen() {
     if (saving) return;
     setError(null);
     setSaving(true);
-    setSaved(false);
     try {
       const fields = {
         name: displayName.trim(),
@@ -173,8 +173,7 @@ export default function ProfileScreen() {
       };
       if (role === 'unit_manager') fields.unitName = unitName.trim();
       await updateUserProfile(user.uid, fields);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
+      setSavedAt(new Date());
     } catch (err) {
       console.error(err);
       setError('Save failed. Please try again.');
@@ -309,19 +308,13 @@ export default function ProfileScreen() {
           />
         </div>
 
-        <button
+        <SaveButton
           onClick={handleSave}
-          disabled={saving}
-          className="btn-primary flex items-center justify-center gap-2 disabled:opacity-60"
-        >
-          {saved ? (
-            <><Check size={16} /> Saved</>
-          ) : saving ? (
-            'Saving…'
-          ) : (
-            <><Save size={16} /> Save Changes</>
-          )}
-        </button>
+          saving={saving}
+          savedAt={savedAt}
+          label="Save Changes"
+          icon={<Save size={16} />}
+        />
       </div>
 
       {/* E6 — Logging mode (agents only) */}
