@@ -634,7 +634,7 @@ smallest and highest a11y value; could ship as a single-line micro-PR.
 Pilot-critical agent-flow items shipped in PR `mobile-audit-pilot-pass-1`. The
 remaining items below were intentionally deferred. Audit doc: `docs/mobile-audit-2026-05-06.md`.
 
-### Mobile follow-up #1 — Manager surface mobile pass (next-week scope)
+### Mobile follow-up #1 — Manager surface mobile pass — RESOLVED in PR #90 (2026-05-11)
 
 `MasterSheet.jsx` (23-column grid wrapped in `overflow-x-auto`),
 `SettlementPanel.jsx` (three grids), `ManagerDashboard.jsx` TabBar (still h-9),
@@ -1021,7 +1021,7 @@ Priority: **MEDIUM**. Ideally applied before the next rules-touching PR ships.
 
 ---
 
-## BUG-N2 — `sales_manager` missing from unitGoals write rule (LOW, escalate if sales managers set unit goals during pilot)
+## BUG-N2 — `sales_manager` missing from unitGoals write rule — RESOLVED in PR #92 (2026-05-11)
 
 **Scope:** `firestore.rules` `match /unitGoals/{docId}` write block allows `platform_admin`, `tenant_admin`, `branch_manager`, and `unit_manager` (post-BUG-N fix in PR #84). `sales_manager` is NOT in the list. Per the 5-tier hierarchy, `sales_manager` should logically have at least `branch_manager`-level write access to unit goals. Discovered during BUG-N diagnosis.
 
@@ -1031,10 +1031,26 @@ Priority: **LOW** now; escalate to **HIGH** if sales managers need to set unit g
 
 ---
 
-## UX-N — Improve "no scope assigned" empty-state on Persistency tab (LOW, post-pilot polish)
+## UX-N — Improve "no scope assigned" empty-state on Persistency tab — RESOLVED in PR #92 (2026-05-11)
 
 **Scope:** When an account's profile has no `branchId`, `unitId`, or tenant-level role, the Persistency tab shows: "Persistency is scoped to a unit, branch, or tenant — your profile has none assigned." Accurate but not actionable. More useful copy: "Contact your branch manager to be assigned to a unit so you can view your unit's persistency data."
 
 Not pilot-blocking — all pilot accounts will have scope assigned before login.
 
 Priority: **LOW**. Post-pilot polish.
+
+---
+
+## BUG-N3 — Production Report shows raw Firestore UID instead of unit name (LOW, post-pilot)
+
+**Scope:** When a branch manager opens the Production Report screen, the unit identifier column displays the raw Firestore UID (e.g. `XQhG6awVgaYkCFX7gnd1...`) rather than the human-readable unit name. Functional but unpolished — managers can work around it but the display is confusing.
+
+**Discovered:** During PR #90 mgr-mobile audit (visible in `verification/mgr-mobile-audit/production-report.png` reference).
+
+**Root cause (likely):** Missing join between persistency docs and unit-name lookup, or a render-time fallback that is incorrectly using the ID field instead of the display name. Persistency docs store `unitId` as an opaque key; the Production Report likely needs to resolve it against the `units` or `users` collection to get the display name.
+
+**Acceptance:** Unit identifier column shows the human-readable unit name (e.g. "Unit A") for all branch managers who have units in their scope.
+
+Pilot-launch acceptable; fix in a dedicated PR before broader rollout. Not pilot-blocking — Tatil pilot is a single branch and the workaround is to recognise the UID prefix.
+
+Priority: **LOW**. Post-pilot data-display fix.
