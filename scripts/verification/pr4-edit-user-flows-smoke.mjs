@@ -216,7 +216,9 @@ async function gotoTeam(page) {
     await bmPage.waitForSelector('[data-testid="edit-user-drawer"]');
     await bmPage.fill('#edit-user-name', '');
     await bmPage.click('[data-testid="edit-user-save"]');
-    await bmPage.waitForSelector('div[role="alert"]', { timeout: 3_000 });
+    // EditUserDrawer renders the validation error in <p role="alert"> — use the
+    // role selector rather than constraining to <div>.
+    await bmPage.waitForSelector('p[role="alert"]', { timeout: 3_000 });
     // Drawer must still be open
     const drawer = await bmPage.$('[data-testid="edit-user-drawer"]');
     if (!drawer) throw new Error('drawer closed despite validation error');
