@@ -120,6 +120,15 @@ async function login(page, email, password) {
 }
 
 async function gotoTeam(page) {
+  // ManagerDashboard exposes nav-team (branch_manager / unit_manager / sales_manager);
+  // TenantAdminDashboard exposes nav-users. Wait for whichever appears first —
+  // page.$() returns null synchronously if the sidebar hasn't mounted yet,
+  // so the previous "try nav-team then fall back to nav-users" pattern raced
+  // the sidebar render.
+  await page.waitForSelector(
+    '[data-testid="nav-team"], [data-testid="nav-users"]',
+    { timeout: 20_000 }
+  );
   const navTeam = await page.$('[data-testid="nav-team"]');
   if (navTeam) await navTeam.click();
   else await page.click('[data-testid="nav-users"]');
