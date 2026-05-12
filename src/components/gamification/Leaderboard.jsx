@@ -1,85 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { collection, query, orderBy, where, onSnapshot, getDocs } from 'firebase/firestore';
-import { Flame, Trophy, ClipboardList, Zap } from 'lucide-react';
+import { Flame, Trophy } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { computeWeeklyChampions } from '../../utils/weeklyChampions';
-import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 import Avatar from '../ui/Avatar';
 import StatusPill from '../ui/StatusPill';
-
-function ChampionCard({ Icon, label, champion, format }) {
-  return (
-    <div className="flex flex-col gap-1 rounded-xl bg-[var(--color-surface)] border border-primary/20 p-3 min-h-[44px]">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-primary flex items-center gap-1">
-        <Icon size={12} />
-        <span>{label}</span>
-      </p>
-      {champion ? (
-        <>
-          <p className="text-sm font-bold text-ink truncate">{champion.agentName}</p>
-          <p className="text-xs text-ink-muted">{format(champion.value)}</p>
-        </>
-      ) : (
-        <p className="text-xs text-ink-muted italic">No data yet</p>
-      )}
-    </div>
-  );
-}
-
-function WeeklyChampionsBanner({ champions, loading }) {
-  if (loading) {
-    return (
-      <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 mb-4">
-        <div className="h-3 w-36 rounded bg-primary/20 animate-pulse mb-3" />
-        <div className="grid grid-cols-3 gap-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="h-20 rounded-xl bg-primary/10 animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!champions) return null;
-
-  const { topAPI, topApps, topActivity, weekStarting } = champions;
-  const weekLabel = weekStarting
-    ? formatDateFriendly(weekStarting)
-    : '';
-
-  const cards = [
-    { Icon: Trophy,        label: 'Top API',      champion: topAPI,      format: (v) => formatCurrency(Math.round(v)) },
-    { Icon: ClipboardList, label: 'Top Apps',     champion: topApps,     format: (v) => String(v) },
-    { Icon: Zap,           label: 'Top Activity', champion: topActivity, format: (v) => String(v) },
-  ];
-
-  const hasAnyData = topAPI || topApps || topActivity;
-
-  return (
-    <div className="rounded-xl bg-primary/10 border border-primary/20 p-4 mb-4">
-      <p className="text-xs font-bold uppercase tracking-wide text-primary mb-0.5">
-        Last Week's Champions
-      </p>
-      <p className="text-[10px] text-ink-muted mb-3">
-        {hasAnyData ? `Week of ${weekLabel}` : 'No submissions recorded last week'}
-      </p>
-      <div className="grid grid-cols-3 gap-3">
-        {cards.map((card) => (
-          <ChampionCard
-            key={card.label}
-            Icon={card.Icon}
-            label={card.label}
-            champion={card.champion}
-            format={card.format}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
+import WeeklyChampionsBanner from './WeeklyChampionsBanner';
 
 const LEVEL_VARIANT = { Rookie: 'muted', Associate: 'primary', Pro: 'warning', Elite: 'success', Legend: 'danger' };
 
