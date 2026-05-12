@@ -1150,3 +1150,43 @@ acceptable for the small number of remaining indexes. Bank for the next
 infrastructure-hygiene PR.
 
 Banked during the 2026-05-12 pilot-readiness audit.
+
+---
+
+## Hardcoded hex literals with opacity modifier bypass the token system (POST-PILOT, LOW, banked 2026-05-12 during PR-C-FU3)
+
+**Scope:** A handful of consumer sites use Tailwind arbitrary-value syntax
+with a hardcoded hex literal AND an opacity modifier — e.g. `bg-[#01696f]/8`
+at `src/components/dashboard/MotivationalCarousel.jsx:366`. Arbitrary hex +
+opacity does render correctly (Tailwind decomposes the literal at build
+time, so it does **not** hit the CSS-var opacity-resolution path that
+PR-C-FU3 fixed). But it bypasses the design-token system entirely: a future
+brand recolor or theme change leaves these sites stranded on the old hex,
+and they don't react to light/dark switching.
+
+**Known sites (approximate, ~5 total):**
+- `MotivationalCarousel.jsx:366` — `bg-[#01696f]/8 border border-[#01696f]/15`
+  (flagged in CLAUDE.md § Cosmetic Inconsistencies)
+- A few additional `bg-[var(--color-surface)]` arbitrary-syntax sites
+  (also flagged in CLAUDE.md). These resolve correctly but are inconsistent
+  with the `bg-card` utility convention.
+
+**Fix:** Migrate to the equivalent token-based utility:
+- `bg-[#01696f]/8`        → `bg-primary/[0.08]` or `bg-primary/10`
+- `border-[#01696f]/15`   → `border-primary/15`
+- `bg-[var(--color-surface)]` → `bg-card`
+
+PR-C-FU3 confirmed that token-based opacity modifiers (`bg-primary/N`) now
+resolve correctly app-wide, so this migration is mechanical.
+
+**Acceptance:**
+- `grep -rn "bg-\[#" src/` returns no hits outside `AgentReportDocument.jsx`
+  (react-pdf exempt — uses hex-only by design).
+- `grep -rn "bg-\[var(--color-" src/` returns no hits — all converted to
+  named utility equivalents.
+
+Priority: **POST-PILOT, LOW**. Not pilot-blocking. The hardcoded hex paths
+currently render correctly; this is design-system hygiene. Bank for the
+next theme-system PR.
+
+Banked during PR-C-FU3 (2026-05-12 pilot-readiness audit).

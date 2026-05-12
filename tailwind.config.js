@@ -12,48 +12,56 @@ export default {
         display: ['Cabinet Grotesk', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'monospace'],
       },
+      // Colors use functional notation `rgb(var(--X-channels) / <alpha-value>)`
+      // so opacity modifiers (bg-primary/30, ring-success/40, etc.) resolve
+      // to real alpha-modulated colors. The --X-channels CSS vars are defined
+      // in src/index.css alongside derived --color-X aliases — see PR-C-FU3.
+      // -tint and presentation-muted/border entries keep their bare var()
+      // form because they are pre-baked rgba designed values, not opacity
+      // modulations of a base color.
       colors: {
         primary: {
-          DEFAULT: 'var(--color-primary)',
-          dark: 'var(--color-primary-dark)',
-          light: 'var(--color-primary-light)',
-          tint: 'var(--color-primary-tint)',
+          DEFAULT: 'rgb(var(--primary-channels) / <alpha-value>)',
+          dark:    'rgb(var(--primary-dark-channels) / <alpha-value>)',
+          light:   'rgb(var(--primary-light-channels) / <alpha-value>)',
+          tint:    'var(--color-primary-tint)',
         },
         surface: {
-          DEFAULT: 'var(--color-bg)',
-          raised: 'var(--color-surface-raised)',
-          muted: 'var(--color-surface-muted)',
+          DEFAULT: 'rgb(var(--bg-channels) / <alpha-value>)',
+          raised:  'rgb(var(--surface-raised-channels) / <alpha-value>)',
+          muted:   'rgb(var(--surface-muted-channels) / <alpha-value>)',
         },
         card: {
-          DEFAULT: 'var(--color-surface)',
-          raised: 'var(--color-surface-raised)',
+          DEFAULT: 'rgb(var(--surface-channels) / <alpha-value>)',
+          raised:  'rgb(var(--surface-raised-channels) / <alpha-value>)',
         },
         ink: {
-          DEFAULT: 'var(--color-text)',
-          muted: 'var(--color-text-muted)',
-          faint: 'var(--color-text-faint)',
+          DEFAULT: 'rgb(var(--text-channels) / <alpha-value>)',
+          muted:   'rgb(var(--text-muted-channels) / <alpha-value>)',
+          faint:   'rgb(var(--text-faint-channels) / <alpha-value>)',
         },
         success: {
-          DEFAULT: 'var(--color-success)',
-          tint: 'var(--color-success-tint)',
+          DEFAULT: 'rgb(var(--success-channels) / <alpha-value>)',
+          tint:    'var(--color-success-tint)',
         },
         warning: {
-          DEFAULT: 'var(--color-warning)',
-          tint: 'var(--color-warning-tint)',
+          DEFAULT: 'rgb(var(--warning-channels) / <alpha-value>)',
+          tint:    'var(--color-warning-tint)',
         },
         danger: {
-          DEFAULT: 'var(--color-danger)',
-          tint: 'var(--color-danger-tint)',
+          DEFAULT: 'rgb(var(--danger-channels) / <alpha-value>)',
+          tint:    'var(--color-danger-tint)',
         },
         // Presentation surface — theme-independent (defined only in :root,
         // not overridden in .dark). For full-screen overlays that should
         // always render as a dark presentation surface, e.g. MeetingMode.
+        // muted + border keep static rgba — no opacity-modifier consumers.
         presentation: {
-          DEFAULT: 'var(--color-presentation)',
-          text:   'var(--color-presentation-text)',
-          muted:  'var(--color-presentation-muted)',
-          accent: 'var(--color-presentation-accent)',
-          border: 'var(--color-presentation-border)',
+          DEFAULT: 'rgb(var(--presentation-channels) / <alpha-value>)',
+          text:    'rgb(var(--presentation-text-channels) / <alpha-value>)',
+          muted:   'var(--color-presentation-muted)',
+          accent:  'rgb(var(--presentation-accent-channels) / <alpha-value>)',
+          border:  'var(--color-presentation-border)',
         },
       },
       boxShadow: {
