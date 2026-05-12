@@ -245,7 +245,10 @@ await check('08_entry_form_calculates_persistency_live', 'Live derived persisten
 });
 
 await check('09_entry_form_saves_to_firestore', 'Save button is enabled with valid inputs', async () => {
-  const save = page.getByTestId('persistency-save-button');
+  // PR #105 (M1 shared primitives) migrated the Save action to the SaveButton
+  // primitive, which doesn't spread props — the data-testid="persistency-save-button"
+  // was dropped. Mirror the unit-test fix from commit 599fdcf: select by role.
+  const save = page.getByRole('button', { name: 'Save' });
   await save.waitFor({ timeout: 3000 });
   const disabled = await save.isDisabled();
   if (disabled) throw new Error('Save button still disabled with valid Ricardo inputs');
@@ -293,7 +296,7 @@ await check('09b_manager_write_real', 'Manager saves entry form (real Firestore 
   const persText = await page.getByTestId('derived-persistency').innerText();
   if (!/100/.test(persText)) throw new Error(`Expected derived ~100%, got "${persText}"`);
 
-  await page.getByTestId('persistency-save-button').click();
+  await page.getByRole('button', { name: 'Save' }).click();
   // Form closes automatically on successful save.
   await page.getByTestId('persistency-entry-form').waitFor({ state: 'detached', timeout: 8000 });
   await ss(page, '09b-after-real-save');
