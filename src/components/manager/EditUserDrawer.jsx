@@ -1,21 +1,38 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, X, AlertTriangle } from 'lucide-react';
 import { getUnitManagers } from '../../services/agentManagementService';
-import { updateUserFields, MANAGER_EDITABLE_FIELDS } from '../../services/userService';
+import { listBranches } from '../../services/branchService';
+import {
+  updateUserFields,
+  callUpdateUser,
+  MANAGER_EDITABLE_FIELDS,
+} from '../../services/userService';
 import { getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import Avatar from '../ui/Avatar';
 import ConfirmDialog from '../ui/ConfirmDialog';
 
-// Editor-role × target-role capability matrix. Mirrors firestore.rules
-// manager-edit allowlist + the Phase 3 permission matrix locked for PR-4.
-// Returns the Set of field keys this caller may edit on this target.
-//
-// unit_manager: only edits agents in their own unit (UI prevents anyone else),
-//   and cannot reassign units — only profile basics.
-// branch_manager / sales_manager: can edit profile + role-specific operational
-//   fields (unitId reassignment, agentNumber, contractStartDate, unitName).
-// tenant_admin / platform_admin: full operational set + canConfirmSettlements
-//   permission overlay (meaningful only on unit_manager targets).
+// Mirror of functions/index.js CREATION_MATRIX. Two-sided gate: caller must be
+// able to create both the target's current role AND the target's new role.
+const CREATION_MATRIX = {
+  platform_admin: ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  tenant_admin:   ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'],
+  sales_manager:  ['branch_manager', 'unit_manager', 'agent'],
+  branch_manager: ['unit_manager', 'agent'],
+  unit_manager:   ['agent'],
+};
+
+const CROSS_BRANCH_ROLES = ['platform_admin', 'tenant_admin', 'sales_manager'];
+
+const ROLE_DISPLAY = {
+  platform_admin: 'Platform Admin',
+  tenant_admin:   'Tenant Admin',
+  sales_manager:  'Sales Manager',
+  branch_manager: 'Branch Manager',
+  unit_manager:   'Unit Manager',
+  agent:          'Agent',
+};
+
+// Editor-role × target-role capability matrix for PR-4 fields (non-claim).
 function getEditableFieldsFor(editorRole, targetRole) {
   const fields = new Set(['name', 'phone', 'bio']);
 
@@ -35,6 +52,16 @@ function getEditableFieldsFor(editorRole, targetRole) {
   return fields;
 }
 
+// Allowed role transitions for an editor on a target. Mirrors CF's two-sided
+// CREATION_MATRIX gate. platform_admin is always excluded (cross-tenant).
+function getAllowedRoleTransitions(editorRole, targetCurrentRole) {
+  const editorCreatable = CREATION_MATRIX[editorRole] ?? [];
+  if (!editorCreatable.includes(targetCurrentRole)) return [];
+  return editorCreatable.filter(
+    (r) => r !== targetCurrentRole && r !== 'platform_admin'
+  );
+}
+
 function normaliseSaveValue(key, raw) {
   if (key === 'canConfirmSettlements') return Boolean(raw);
   if (typeof raw === 'string') return raw.trim();
@@ -42,6 +69,7 @@ function normaliseSaveValue(key, raw) {
 }
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
+const TENANT_ADMIN_PHRASE = 'PROMOTE TO TENANT ADMIN';
 
 export default function EditUserDrawer({
   user,
@@ -56,6 +84,14 @@ export default function EditUserDrawer({
     [callerRole, user?.role]
   );
 
+  const allowedRoleTransitions = useMemo(
+    () => getAllowedRoleTransitions(callerRole, user?.role),
+    [callerRole, user?.role]
+  );
+
+  const canEditBranch = CROSS_BRANCH_ROLES.includes(callerRole)
+    && (CREATION_MATRIX[callerRole]?.includes(user?.role) ?? false);
+
   const [form, setForm] = useState({
     name: user?.name ?? '',
     phone: user?.phone ?? '',
@@ -65,28 +101,49 @@ export default function EditUserDrawer({
     agentNumber: user?.agentNumber ?? '',
     contractStartDate: user?.contractStartDate ?? '',
     canConfirmSettlements: Boolean(user?.canConfirmSettlements),
+    role: user?.role ?? '',
+    branchId: user?.branchId ?? '',
   });
 
   const [unitManagers, setUnitManagers] = useState([]);
   const [loadingUnits, setLoadingUnits] = useState(false);
+  const [branches, setBranches] = useState([]);
+  const [loadingBranches, setLoadingBranches] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [pendingUnitConfirm, setPendingUnitConfirm] = useState(null);
+  const [pendingConfirm, setPendingConfirm] = useState(null);
 
   const firstFieldRef = useRef(null);
 
-  // Load unit-managers list if unitId is editable (agent target).
+  const roleChanged   = form.role !== (user?.role ?? '');
+  const branchChanged = (form.branchId ?? '') !== (user?.branchId ?? '');
+  const demotingToAgent = roleChanged && form.role === 'agent' && user?.role !== 'agent';
+  const promotingToTenantAdmin = roleChanged && form.role === 'tenant_admin';
+
+  // Show unit dropdown when target IS an agent (existing PR-4 behavior) OR
+  // when demoting to agent (PR-4b: Q3 locked — require explicit unit pick).
+  const showUnitDropdown = editable.has('unitId') || demotingToAgent;
+
+  // Load unit-managers list when the unit dropdown is reachable.
   useEffect(() => {
-    if (!editable.has('unitId') || !tenantId) return;
+    if (!showUnitDropdown || !tenantId) return;
     let cancelled = false;
     setLoadingUnits(true);
     getUnitManagers(tenantId)
       .then((list) => {
         if (cancelled) return;
-        // Branch managers see units in their own branch only. tenant_admin+ see all.
-        const filtered = callerRole === 'branch_manager'
-          ? list.filter((u) => u.branchId === callerProfile?.branchId)
-          : list;
+        // Branch managers see units in their own branch only. Cross-branch
+        // callers (sales_manager / tenant_admin / platform_admin) see units
+        // in the user's target branch if one is selected, else all.
+        let filtered = list;
+        if (callerRole === 'branch_manager') {
+          filtered = list.filter((u) => u.branchId === callerProfile?.branchId);
+        } else if (CROSS_BRANCH_ROLES.includes(callerRole)) {
+          const scopeBranchId = form.branchId || user?.branchId;
+          if (scopeBranchId) {
+            filtered = list.filter((u) => u.branchId === scopeBranchId);
+          }
+        }
         setUnitManagers(filtered);
       })
       .catch((err) => {
@@ -97,9 +154,29 @@ export default function EditUserDrawer({
         if (!cancelled) setLoadingUnits(false);
       });
     return () => { cancelled = true; };
-  }, [editable, tenantId, callerRole, callerProfile?.branchId]);
+  }, [showUnitDropdown, tenantId, callerRole, callerProfile?.branchId, form.branchId, user?.branchId]);
 
-  // ESC + initial focus management. Mirrors ConfirmDialog pattern.
+  // Load active branches list when branch is editable.
+  useEffect(() => {
+    if (!canEditBranch || !tenantId) return;
+    let cancelled = false;
+    setLoadingBranches(true);
+    listBranches(tenantId)
+      .then((list) => {
+        if (cancelled) return;
+        setBranches(list.filter((b) => b.isActive === true));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('[EditUserDrawer] listBranches:', err);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingBranches(false);
+      });
+    return () => { cancelled = true; };
+  }, [canEditBranch, tenantId]);
+
+  // ESC + initial focus management.
   useEffect(() => {
     const focusRaf = requestAnimationFrame(() => firstFieldRef.current?.focus());
     const onKey = (e) => {
@@ -119,6 +196,18 @@ export default function EditUserDrawer({
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
+  function branchNameForId(branchId) {
+    if (!branchId) return '—';
+    const b = branches.find((x) => x.id === branchId);
+    return b?.name ?? branchId;
+  }
+
+  function unitNameForId(unitId) {
+    if (!unitId) return '—';
+    const um = unitManagers.find((u) => (u.uid ?? u.id) === unitId);
+    return um ? getUnitDisplayName(um) : unitId;
+  }
+
   function validate() {
     const name = form.name.trim();
     if (!name) return 'Full name is required.';
@@ -136,10 +225,13 @@ export default function EditUserDrawer({
     if (editable.has('unitId') && user?.role === 'agent' && !form.unitId) {
       return 'Unit assignment is required for agents.';
     }
+    if (demotingToAgent && !form.unitId) {
+      return 'Select a unit before demoting to agent.';
+    }
     return null;
   }
 
-  function buildDiff() {
+  function buildPr4Diff() {
     const diff = {};
     for (const key of MANAGER_EDITABLE_FIELDS) {
       if (!editable.has(key)) continue;
@@ -150,26 +242,106 @@ export default function EditUserDrawer({
     return diff;
   }
 
-  function unitNameForId(unitId) {
-    if (!unitId) return '—';
-    const um = unitManagers.find((u) => (u.uid ?? u.id) === unitId);
-    return um ? getUnitDisplayName(um) : unitId;
+  function buildCfUpdates() {
+    const updates = {};
+    if (roleChanged && allowedRoleTransitions.includes(form.role)) {
+      updates.role = form.role;
+    }
+    if (branchChanged && canEditBranch && form.branchId) {
+      updates.branchId = form.branchId;
+    }
+    if (demotingToAgent && form.unitId) {
+      updates.unitId = form.unitId;
+    }
+    return updates;
   }
 
-  async function doSave(diff) {
+  // Map Firebase HttpsError code/message → user-facing copy.
+  function mapCfError(err) {
+    const code = err?.code ?? '';
+    const msg  = err?.message ?? '';
+    if (code.includes('unauthenticated') || /Session/i.test(msg)) {
+      return 'Session expired. Please sign in again.';
+    }
+    if (code.includes('permission-denied') || /permission/i.test(msg)) {
+      return "You don't have permission to make this change.";
+    }
+    if (code.includes('failed-precondition')) {
+      return msg || 'Update blocked by a precondition. Check branch + unit setup.';
+    }
+    if (code.includes('not-found')) {
+      return 'User not found. The roster may be stale — refreshing.';
+    }
+    if (code.includes('unimplemented')) {
+      return 'This change is not supported in this version.';
+    }
+    if (code.includes('invalid-argument')) {
+      if (/typed confirmation/i.test(msg)) return 'Typed confirmation required to promote to Tenant Admin.';
+      if (/already has this role/i.test(msg)) return 'User already has this role.';
+      if (/already in this branch/i.test(msg)) return 'User already in this branch.';
+      if (/unitId is required/i.test(msg)) return 'Select a unit before demoting to agent.';
+      if (/branch.*not active/i.test(msg)) return 'Selected branch is not active.';
+      return msg || 'Update rejected — check the form fields.';
+    }
+    if (code.includes('internal')) {
+      return 'Update failed and was rolled back. Please retry.';
+    }
+    return 'Update failed. Please try again or contact support.';
+  }
+
+  function buildSuccessMessage(pr4Diff, cfUpdates) {
+    const name = form.name.trim() || user?.name || user?.email || 'User';
+    const parts = [];
+    if (cfUpdates.role) {
+      parts.push(`role updated to ${ROLE_DISPLAY[cfUpdates.role] ?? cfUpdates.role}`);
+    }
+    if (cfUpdates.branchId) {
+      parts.push(`reassigned to ${branchNameForId(cfUpdates.branchId)}`);
+    }
+    if (parts.length === 0) return `${name} updated.`;
+    return `${name}'s ${parts.join(' and ')}. They will be signed out and must sign in again.`;
+  }
+
+  async function runSave(pr4Diff, cfUpdates, confirmationPhrase) {
     setSaving(true);
     setError('');
+    const hasPr4 = Object.keys(pr4Diff).length > 0;
+    const hasCf  = Object.keys(cfUpdates).length > 0;
+    // CF rejects unitId when no role change present, so strip it when only
+    // a branch-only edit is being submitted.
+    if (hasCf && !cfUpdates.role && cfUpdates.unitId) {
+      delete cfUpdates.unitId;
+    }
     try {
-      await updateUserFields(user.uid ?? user.id, diff);
-      onSaved?.(form.name.trim());
+      if (hasPr4) {
+        await updateUserFields(user.uid ?? user.id, pr4Diff);
+      }
+      if (hasCf) {
+        await callUpdateUser({
+          uid: user.uid ?? user.id,
+          updates: cfUpdates,
+          confirmationPhrase: confirmationPhrase || undefined,
+        });
+      }
+      // PR-4 path stays 1-arg for backward compat with existing tests +
+      // call sites. PR-4b CF path passes the descriptive sign-out message.
+      if (hasCf) {
+        onSaved?.(form.name.trim(), buildSuccessMessage(pr4Diff, cfUpdates));
+      } else {
+        onSaved?.(form.name.trim());
+      }
     } catch (err) {
-      console.error('[EditUserDrawer] updateUserFields:', err);
-      const message = err?.message?.includes('Missing or insufficient permissions')
-        ? "You don't have permission to make this change."
-        : err?.message?.includes('Disallowed field')
-          ? 'Internal error: tried to save a restricted field.'
-          : 'Update failed. Please try again.';
-      setError(message);
+      console.error('[EditUserDrawer] save failed:', err);
+      if (Object.keys(cfUpdates).length > 0) {
+        setError(mapCfError(err));
+      } else {
+        const message = err?.message?.includes('Missing or insufficient permissions')
+          ? "You don't have permission to make this change."
+          : err?.message?.includes('Disallowed field')
+            ? 'Internal error: tried to save a restricted field.'
+            : 'Update failed. Please try again.';
+        setError(message);
+      }
     } finally {
       setSaving(false);
     }
@@ -180,29 +352,129 @@ export default function EditUserDrawer({
     const validationError = validate();
     if (validationError) { setError(validationError); return; }
 
-    const diff = buildDiff();
-    if (Object.keys(diff).length === 0) {
+    const pr4Diff   = buildPr4Diff();
+    const cfUpdates = buildCfUpdates();
+
+    if (Object.keys(pr4Diff).length === 0 && Object.keys(cfUpdates).length === 0) {
       setError('No changes to save.');
       return;
     }
 
-    // unitId reassignment requires explicit confirmation — agent's submission
-    // history stays attached to their old unit.
-    if ('unitId' in diff && user?.role === 'agent') {
-      setPendingUnitConfirm({
-        diff,
-        oldUnitName: unitNameForId(user.unitId),
-        newUnitName: unitNameForId(diff.unitId),
+    // Confirmation routing. CF changes always require confirmation (sign-out
+    // is destructive). unitId-only reassignment uses the existing PR-4 dialog.
+    if (cfUpdates.role || cfUpdates.branchId) {
+      const newRoleLabel   = cfUpdates.role     ? (ROLE_DISPLAY[cfUpdates.role] ?? cfUpdates.role) : null;
+      const oldRoleLabel   = cfUpdates.role     ? (ROLE_DISPLAY[user?.role] ?? user?.role) : null;
+      const newBranchName  = cfUpdates.branchId ? branchNameForId(cfUpdates.branchId) : null;
+      const oldBranchName  = cfUpdates.branchId ? branchNameForId(user?.branchId) : null;
+      const targetName     = form.name.trim() || user?.name || user?.email || 'this user';
+
+      let variant = 'warning';
+      let title;
+      let message;
+      let confirmLabel;
+      let confirmValue;
+      let confirmValueLabel;
+
+      if (promotingToTenantAdmin) {
+        variant = 'danger';
+        title = 'Promote to Tenant Admin?';
+        confirmLabel = 'Promote';
+        confirmValue = TENANT_ADMIN_PHRASE;
+        confirmValueLabel = `Type "${TENANT_ADMIN_PHRASE}" to confirm`;
+        message = (
+          <>
+            Promote <span className="font-semibold text-ink">{targetName}</span> from{' '}
+            <span className="font-semibold text-ink">{oldRoleLabel}</span> to{' '}
+            <span className="font-semibold text-ink">Tenant Admin</span>. They will gain
+            full access within this tenant — including the ability to create and
+            edit other admins. They will be signed out immediately and must sign
+            in again with the new permissions.
+          </>
+        );
+      } else if (cfUpdates.role && cfUpdates.branchId) {
+        title = 'Change role and branch?';
+        confirmLabel = 'Apply changes';
+        message = (
+          <>
+            Change <span className="font-semibold text-ink">{targetName}</span>&rsquo;s role
+            to <span className="font-semibold text-ink">{newRoleLabel}</span> and reassign
+            to <span className="font-semibold text-ink">{newBranchName}</span>?
+            They will be signed out immediately and must sign in again. Their
+            historical submissions and goals stay attached to their original branch/unit.
+          </>
+        );
+      } else if (cfUpdates.role) {
+        title = 'Change role?';
+        confirmLabel = 'Change role';
+        message = (
+          <>
+            Change <span className="font-semibold text-ink">{targetName}</span>&rsquo;s role
+            from <span className="font-semibold text-ink">{oldRoleLabel}</span> to{' '}
+            <span className="font-semibold text-ink">{newRoleLabel}</span>?
+            They will be signed out immediately and must sign in again with the new
+            permissions. Their submission history stays attached to their account.
+          </>
+        );
+      } else {
+        title = 'Reassign branch?';
+        confirmLabel = 'Reassign';
+        message = (
+          <>
+            Reassign <span className="font-semibold text-ink">{targetName}</span> from{' '}
+            <span className="font-semibold text-ink">{oldBranchName}</span> to{' '}
+            <span className="font-semibold text-ink">{newBranchName}</span>?
+            They will be signed out immediately and must sign in again. Their
+            existing submissions stay attached to {oldBranchName}.
+          </>
+        );
+      }
+
+      setPendingConfirm({
+        kind: 'cf',
+        pr4Diff,
+        cfUpdates,
+        confirmationPhrase: promotingToTenantAdmin ? TENANT_ADMIN_PHRASE : null,
+        title,
+        message,
+        variant,
+        confirmLabel,
+        confirmValue,
+        confirmValueLabel,
       });
       return;
     }
 
-    await doSave(diff);
+    // PR-4 unitId reassignment confirmation (existing behavior — applies when
+    // unitId changes but role does not).
+    if ('unitId' in pr4Diff && user?.role === 'agent') {
+      setPendingConfirm({
+        kind: 'unit',
+        pr4Diff,
+        cfUpdates: {},
+        confirmationPhrase: null,
+        title: 'Reassign unit?',
+        message: (
+          <>
+            Reassign <span className="font-semibold text-ink">{form.name.trim() || user.name}</span> from{' '}
+            <span className="font-semibold text-ink">{unitNameForId(user.unitId)}</span> to{' '}
+            <span className="font-semibold text-ink">{unitNameForId(pr4Diff.unitId)}</span>?
+            Their submission history will remain attached to their old unit.
+          </>
+        ),
+        variant: 'warning',
+        confirmLabel: 'Reassign',
+      });
+      return;
+    }
+
+    await runSave(pr4Diff, cfUpdates, null);
   }
 
   if (!user) return null;
 
   const targetRoleLabel = getRoleLabel(user.role);
+  const showRoleDropdown   = allowedRoleTransitions.length > 0;
 
   return (
     <div className="fixed inset-0 z-40 flex">
@@ -315,9 +587,11 @@ export default function EditUserDrawer({
             </div>
           )}
 
-          {editable.has('unitId') && (
+          {showUnitDropdown && (
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="edit-user-unit" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Unit *</label>
+              <label htmlFor="edit-user-unit" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
+                {demotingToAgent ? 'Assign unit *' : 'Unit *'}
+              </label>
               <select
                 id="edit-user-unit"
                 value={form.unitId}
@@ -332,9 +606,14 @@ export default function EditUserDrawer({
                   </option>
                 ))}
               </select>
-              {form.unitId !== (user.unitId ?? '') && (
+              {form.unitId !== (user.unitId ?? '') && user?.role === 'agent' && !demotingToAgent && (
                 <p className="text-[10px] text-warning leading-snug">
                   Reassigning will require confirmation. Submission history stays with the old unit.
+                </p>
+              )}
+              {demotingToAgent && (
+                <p className="text-[10px] text-warning leading-snug">
+                  Required when demoting to agent. The user will sign in to the selected unit.
                 </p>
               )}
             </div>
@@ -379,14 +658,81 @@ export default function EditUserDrawer({
             </label>
           )}
 
-          {/* Read-only footer note for fields not editable in v1 */}
-          <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-border/20 border border-border">
-            <AlertTriangle size={14} className="text-ink-muted mt-0.5 shrink-0" />
-            <p className="text-[11px] text-ink-muted leading-snug">
-              Role and branch are not editable here. Contact a tenant admin to change them.
-              To deactivate this account, use the Deactivate button on the user list.
-            </p>
-          </div>
+          {/* PR-4b: Role + branchId edit section (claim-keyed; goes through CF) */}
+          {(showRoleDropdown || canEditBranch) && (
+            <div className="flex flex-col gap-3 mt-2 pt-3 border-t border-border">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+                Role &amp; Branch
+              </p>
+
+              {showRoleDropdown && (
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="edit-user-role" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Role</label>
+                  <select
+                    id="edit-user-role"
+                    data-testid="edit-user-role"
+                    value={form.role}
+                    onChange={(e) => setField('role', e.target.value)}
+                    className="h-11 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  >
+                    <option value={user.role}>{ROLE_DISPLAY[user.role] ?? user.role} (current)</option>
+                    {allowedRoleTransitions.map((r) => (
+                      <option key={r} value={r}>{ROLE_DISPLAY[r] ?? r}</option>
+                    ))}
+                  </select>
+                  {roleChanged && (
+                    <p className="text-[10px] text-warning leading-snug">
+                      Changing role will sign the user out. They&rsquo;ll need to sign in again with the new permissions.
+                    </p>
+                  )}
+                  {promotingToTenantAdmin && (
+                    <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-danger/10 border border-danger/30">
+                      <AlertTriangle size={14} className="text-danger mt-0.5 shrink-0" />
+                      <p className="text-[11px] text-ink leading-snug">
+                        Tenant Admin has full power within this company including
+                        creating/editing other admins. Typed confirmation required.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {canEditBranch && (
+                <div className="flex flex-col gap-1.5">
+                  <label htmlFor="edit-user-branch" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Branch</label>
+                  <select
+                    id="edit-user-branch"
+                    data-testid="edit-user-branch"
+                    value={form.branchId}
+                    onChange={(e) => setField('branchId', e.target.value)}
+                    disabled={loadingBranches}
+                    className="h-11 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+                  >
+                    <option value="">{loadingBranches ? 'Loading branches…' : 'Select a branch…'}</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                  {branchChanged && (
+                    <p className="text-[10px] text-warning leading-snug">
+                      Reassigning will sign the user out. Submission history stays attached to the original branch.
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Read-only footer note: only show when neither role nor branch is editable. */}
+          {!showRoleDropdown && !canEditBranch && (
+            <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-border/20 border border-border">
+              <AlertTriangle size={14} className="text-ink-muted mt-0.5 shrink-0" />
+              <p className="text-[11px] text-ink-muted leading-snug">
+                Role and branch are not editable here. Contact a tenant admin to change them.
+                To deactivate this account, use the Deactivate button on the user list.
+              </p>
+            </div>
+          )}
 
           {error && (
             <p
@@ -415,30 +761,26 @@ export default function EditUserDrawer({
         </div>
       </div>
 
-      {/* unitId reassignment confirmation */}
+      {/* Unified confirmation dialog. Routes to CF or PR-4 save based on `kind`. */}
       <ConfirmDialog
-        open={Boolean(pendingUnitConfirm)}
-        title="Reassign unit?"
-        message={
-          pendingUnitConfirm ? (
-            <>
-              Reassign <span className="font-semibold text-ink">{form.name.trim() || user.name}</span> from{' '}
-              <span className="font-semibold text-ink">{pendingUnitConfirm.oldUnitName}</span> to{' '}
-              <span className="font-semibold text-ink">{pendingUnitConfirm.newUnitName}</span>?
-              Their submission history will remain attached to their old unit.
-            </>
-          ) : null
-        }
-        variant="warning"
-        confirmLabel="Reassign"
-        loadingLabel="Reassigning…"
+        open={Boolean(pendingConfirm)}
+        title={pendingConfirm?.title ?? ''}
+        message={pendingConfirm?.message ?? null}
+        variant={pendingConfirm?.variant ?? 'warning'}
+        confirmLabel={pendingConfirm?.confirmLabel ?? 'Confirm'}
+        loadingLabel="Saving…"
         loading={saving}
+        confirmValue={pendingConfirm?.confirmValue}
+        confirmValueLabel={pendingConfirm?.confirmValueLabel ?? 'Type to confirm'}
+        confirmValuePlaceholder={pendingConfirm?.confirmValue ?? ''}
         onConfirm={async () => {
-          const diff = pendingUnitConfirm?.diff;
-          setPendingUnitConfirm(null);
-          if (diff) await doSave(diff);
+          const c = pendingConfirm;
+          setPendingConfirm(null);
+          if (c) {
+            await runSave(c.pr4Diff, c.cfUpdates, c.confirmationPhrase);
+          }
         }}
-        onCancel={() => !saving && setPendingUnitConfirm(null)}
+        onCancel={() => !saving && setPendingConfirm(null)}
       />
     </div>
   );
