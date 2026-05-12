@@ -2,7 +2,7 @@
  * walk-helpers.mjs — shared utilities for AgencyTrack Playwright walk scripts.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * FOUR BANKED LESSONS (learned from manual smoke runs — do not re-learn these)
+ * FIVE BANKED LESSONS (learned from manual smoke runs — do not re-learn these)
  * ─────────────────────────────────────────────────────────────────────────────
  *
  * 1. BYPASS COOKIE VALUE: x-vercel-set-bypass-cookie must be "samesitenone",
@@ -23,6 +23,17 @@
  *    element.dispatchEvent(new Event('click', { bubbles: true })) to bypass
  *    actionability checks when navigating sidebar items at mobile viewport.
  *    See mobileDispatchClick() below.
+ *
+ * 5. COOKIE-AFTER-HANDSHAKE BYPASS: the bypass token must appear in a URL
+ *    exactly once, for exactly one request, inside a function that catches
+ *    and sanitizes errors before they surface. After that single request
+ *    Vercel sets the session cookie and all subsequent navigation uses bare
+ *    URLs — no token in any URL anywhere. The canonical implementation is
+ *    setupBypassSession() below; direct use of buildBypassUrl is forbidden
+ *    from consumer code. Banked from M3-smoke incident: Playwright embeds
+ *    failing URLs in error.message AND in the Call log block, so any
+ *    redaction layer on the consumer side is whack-a-mole — the architecture
+ *    must keep the token out of error paths entirely.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  */
@@ -52,13 +63,26 @@ export function safeLog(message, value) {
   console.log(message, safe);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal use only. Consumer code must use setupBypassSession() instead.
+// Direct use of buildBypassUrl is forbidden — see CLAUDE.md cookie-after-
+// handshake rule. The token embedded in this function's return value can
+// surface through Playwright error paths (error.message + Call log block);
+// keeping it private to this module is the architectural fix.
+// ─────────────────────────────────────────────────────────────────────────────
 /**
  * buildBypassUrl — constructs the Vercel preview bypass URL.
  *
  * LESSON 1: cookie value must be "samesitenone", not "true".
  *
+ * @private — internal to walk-helpers.mjs. Consumer code MUST call
+ *            setupBypassSession() instead. See LESSON 5 above and the
+ *            cookie-after-handshake rule in CLAUDE.md.
+ *
  * The function MUST NOT log its return value — the token is embedded in the
- * URL. Callers that log URLs must redact first via safeLog.
+ * URL. The single legitimate consumer is setupBypassSession() below, which
+ * passes the URL into one tightly-scoped page.goto() inside a sanitizing
+ * try/catch.
  *
  * @param {string} baseUrl - Preview base URL (no trailing slash).
  * @param {string} token   - VERCEL_BYPASS_TOKEN value.
@@ -69,6 +93,49 @@ export function buildBypassUrl(baseUrl, token) {
   u.searchParams.set('x-vercel-protection-bypass', token);
   u.searchParams.set('x-vercel-set-bypass-cookie', 'samesitenone');
   return u.toString();
+}
+
+/**
+ * setupBypassSession — establishes a Vercel preview bypass session on a
+ * Playwright BrowserContext via a single cookie-setting handshake request.
+ *
+ * The token appears in exactly ONE URL, for exactly ONE page.goto(), inside
+ * a try/catch that sanitizes ALL error surfaces before re-throwing. After
+ * the handshake, Vercel has set the session cookie on the context and all
+ * subsequent navigation in any page from this context uses bare URLs — the
+ * token is never reintroduced.
+ *
+ * LESSON 5: this is the canonical bypass mechanism. Consumer code must NOT
+ * call buildBypassUrl directly — the token leaks through Playwright's
+ * error.message + Call log on DNS or network failures, and consumer-side
+ * redaction is whack-a-mole (the next failure mode encodes the token
+ * differently).
+ *
+ * Canonical usage:
+ *
+ *   const browser = await chromium.launch();
+ *   const context = await browser.newContext();
+ *   await setupBypassSession(context, `https://${PREVIEW_HOST}`, process.env.VERCEL_BYPASS_TOKEN);
+ *   const page = await context.newPage();
+ *   await page.goto(`https://${PREVIEW_HOST}/`); // NO token in URL ever again
+ *
+ * @param {import('playwright').BrowserContext} context - Playwright context
+ *        on which to set the bypass session cookie.
+ * @param {string} baseUrl - Preview base URL (no trailing slash).
+ * @param {string} token   - VERCEL_BYPASS_TOKEN value.
+ * @throws {Error} A sanitized error (error name + code only, no URL, no
+ *         token) if the handshake fails for any reason.
+ */
+export async function setupBypassSession(context, baseUrl, token) {
+  const page = await context.newPage();
+  const setupUrl = `${baseUrl}/?x-vercel-protection-bypass=${token}&x-vercel-set-bypass-cookie=samesitenone`;
+  try {
+    await page.goto(setupUrl, { waitUntil: 'domcontentloaded' });
+  } catch (err) {
+    throw new Error(`Bypass session setup failed: ${err.name} (${err.code ?? 'unknown'})`);
+  } finally {
+    await page.close();
+  }
 }
 
 /**

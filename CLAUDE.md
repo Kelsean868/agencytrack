@@ -27,6 +27,7 @@ Firebase project: agencytrack-2a610 | Hosted: agencytrack.vercel.app | Repo: git
     node -e "require('dotenv').config(); console.log({VERCEL_BYPASS_TOKEN: !!process.env.VERCEL_BYPASS_TOKEN})"
     ```
     Output: `{ VERCEL_BYPASS_TOKEN: true }` if present, `false` otherwise. The grep prohibition has no exceptions — "I'm just checking it exists" is not a workaround.
+  - Cookie-after-handshake pattern (banked from M3-smoke incident): sensitive tokens must never appear in URLs that pass through Playwright's standard error paths. The canonical pattern in `scripts/verification/lib/walk-helpers.mjs` is `setupBypassSession()` — a tightly-scoped initial-handshake function that catches and sanitizes all errors before they surface. After session setup, all navigation uses bare URLs. URL-parameter-bypass patterns from consumer code are forbidden — direct calls to `buildBypassUrl` are private to the helper module.
 - **Additive Firestore rules / Cloud Functions — deploy from the feature worktree before the PR merges.** When a PR introduces a *purely additive* change, it is safe to deploy from the feature worktree ahead of merge so the Vercel preview can exercise the new code path against real production rules / functions. Capture the deploy output in the PR description. Pre-merge deploys are permitted for:
   - `firestore.rules`: new `match /...` blocks for new paths (no edits to existing rules).
   - Cloud Functions: new exports (no edits to existing functions).

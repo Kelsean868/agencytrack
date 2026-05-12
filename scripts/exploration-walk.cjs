@@ -221,7 +221,7 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
   // Dynamic import of shared ESM helpers. CJS cannot require() ESM; import() is used
   // instead. pathToFileURL ensures the path resolves to the correct file regardless of
   // the working directory from which the script is run.
-  const { buildBypassUrl, hardReloadAndAwaitReady, writeReadVerifyCycle } =
+  const { setupBypassSession, hardReloadAndAwaitReady, writeReadVerifyCycle } =
     await import(pathToFileURL(path.join(__dirname, 'verification', 'lib', 'walk-helpers.mjs')).href);
 
   const startedAt = new Date();
@@ -255,8 +255,12 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
 
   async function applyVercelBypass() {
     if (!needsBypass) return;
-    // buildBypassUrl sets x-vercel-set-bypass-cookie=samesitenone (lesson 1).
-    await page.goto(buildBypassUrl(BASE_URL, BYPASS), { waitUntil: 'domcontentloaded' });
+    // Lesson 5: cookie-after-handshake. setupBypassSession sets
+    // x-vercel-set-bypass-cookie=samesitenone (lesson 1) on a throwaway page,
+    // catches and sanitizes any errors, and closes the page — the session
+    // cookie is set on `ctx` and all subsequent navigation in `page` (which
+    // shares the context) uses bare URLs with no token reintroduction.
+    await setupBypassSession(ctx, BASE_URL, BYPASS);
   }
 
   async function step(id, label, fn) {

@@ -47,7 +47,7 @@
 import { chromium } from 'playwright';
 import { readFileSync, mkdirSync, existsSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
-import { buildBypassUrl, hardReloadAndAwaitReady } from './lib/walk-helpers.mjs';
+import { setupBypassSession, hardReloadAndAwaitReady } from './lib/walk-helpers.mjs';
 
 const ARTIFACTS_DIR = resolve(process.cwd(), 'verification/e3-persistency');
 const SS_DIR        = resolve(ARTIFACTS_DIR, 'screenshots');
@@ -147,18 +147,21 @@ async function signOutClick(pg) {
 // ── main ──────────────────────────────────────────────────────────────────────
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-const page    = await context.newPage();
 
-// Set Vercel bypass cookie — URL constructed via helper, never logged.
-// Lesson 1: cookie value is 'samesitenone', not 'true'. Lesson 2: domcontentloaded.
-const bypassUrl = buildBypassUrl(`https://${PREVIEW_HOST}`, BYPASS_TOKEN);
+// Set Vercel bypass cookie via cookie-after-handshake helper. Lesson 5:
+// the token appears in exactly one URL inside a sanitizing try/catch in
+// setupBypassSession; all subsequent navigation in this context uses bare URLs.
 try {
-  await page.goto(bypassUrl, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await setupBypassSession(context, `https://${PREVIEW_HOST}`, BYPASS_TOKEN);
 } catch (e) {
+  // setupBypassSession's error message is pre-sanitized (name + code only,
+  // no URL, no token). Redaction is belt-and-braces.
   console.error('Bypass navigation failed:', redact(e.message));
   await browser.close();
   process.exit(1);
 }
+
+const page = await context.newPage();
 
 // ── Manager-side checks 01–10 ────────────────────────────────────────────────
 await check('01_manager_login_renders', 'Manager login → dashboard loads', async () => {
@@ -242,7 +245,10 @@ await check('08_entry_form_calculates_persistency_live', 'Live derived persisten
 });
 
 await check('09_entry_form_saves_to_firestore', 'Save button is enabled with valid inputs', async () => {
-  const save = page.getByTestId('persistency-save-button');
+  // PR #105 (M1 shared primitives) migrated the Save action to the SaveButton
+  // primitive, which doesn't spread props — the data-testid="persistency-save-button"
+  // was dropped. Mirror the unit-test fix from commit 599fdcf: select by role.
+  const save = page.getByRole('button', { name: 'Save' });
   await save.waitFor({ timeout: 3000 });
   const disabled = await save.isDisabled();
   if (disabled) throw new Error('Save button still disabled with valid Ricardo inputs');
@@ -290,7 +296,7 @@ await check('09b_manager_write_real', 'Manager saves entry form (real Firestore 
   const persText = await page.getByTestId('derived-persistency').innerText();
   if (!/100/.test(persText)) throw new Error(`Expected derived ~100%, got "${persText}"`);
 
-  await page.getByTestId('persistency-save-button').click();
+  await page.getByRole('button', { name: 'Save' }).click();
   // Form closes automatically on successful save.
   await page.getByTestId('persistency-entry-form').waitFor({ state: 'detached', timeout: 8000 });
   await ss(page, '09b-after-real-save');
