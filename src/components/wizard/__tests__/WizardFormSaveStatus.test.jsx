@@ -213,6 +213,68 @@ describe('Offline detection', () => {
   });
 });
 
+// ─── 3b. Saved-while-offline copy (R1) ───────────────────────────────────────
+//
+// Firestore's persistentLocalCache resolves setDoc immediately when offline
+// (write queues locally and reaches server on reconnect). Without disambiguation
+// the indicator flashed bare "Saved" while the user was genuinely offline. R1
+// shows "Saved offline — will sync when reconnected" instead.
+
+describe('Saved-while-offline copy (R1)', () => {
+  /** Dispatch offline, then advance the 1500ms debounce timer to fire the save. */
+  const triggerOfflineAutoSave = async () => {
+    act(() => { window.dispatchEvent(new Event('offline')); });
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+  };
+
+  it('shows "Saved offline — will sync" copy when save resolves while offline', async () => {
+    mockSaveDraft.mockResolvedValue(undefined);
+    renderWizard();
+    await flushMount();
+    await triggerOfflineAutoSave();
+
+    expect(
+      screen.getByText('Saved offline — will sync when reconnected')
+    ).toBeInTheDocument();
+  });
+
+  it('does not show bare "Saved" copy when save resolves while offline', async () => {
+    mockSaveDraft.mockResolvedValue(undefined);
+    renderWizard();
+    await flushMount();
+    await triggerOfflineAutoSave();
+
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
+  });
+
+  it('switches to bare "Saved" copy when reconnecting after an offline save', async () => {
+    mockSaveDraft.mockResolvedValue(undefined);
+    renderWizard();
+    await flushMount();
+    await triggerOfflineAutoSave();
+
+    expect(
+      screen.getByText('Saved offline — will sync when reconnected')
+    ).toBeInTheDocument();
+
+    // Online event fires another save (handler calls doSave on reconnect).
+    await act(async () => {
+      window.dispatchEvent(new Event('online'));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(
+      screen.queryByText('Saved offline — will sync when reconnected')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Saved')).toBeInTheDocument();
+  });
+});
+
 // ─── 4. ARIA / role attributes ────────────────────────────────────────────────
 
 describe('ARIA attributes', () => {

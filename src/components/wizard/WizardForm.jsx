@@ -552,7 +552,13 @@ function SaveStatusIndicator({ saving, savedAt, saveError, isOffline, onRetry })
       {saving && (
         <span className="text-xs text-ink-muted animate-pulse">Saving…</span>
       )}
-      {!saving && savedAt && (
+      {!saving && savedAt && isOffline && (
+        <span className="flex items-center gap-1 text-xs text-warning">
+          <Check size={13} />
+          Saved offline — will sync when reconnected
+        </span>
+      )}
+      {!saving && savedAt && !isOffline && (
         <span className="flex items-center gap-1 text-xs text-success">
           <Check size={13} />
           Saved
