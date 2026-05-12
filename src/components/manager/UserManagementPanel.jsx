@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload } from 'lucide-react';
+import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload, Pencil } from 'lucide-react';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { auth } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -12,8 +12,10 @@ import {
 } from '../../services/agentManagementService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
+import useToast from '../../hooks/useToast';
 import Avatar from '../ui/Avatar';
 import ConfirmDialog from '../ui/ConfirmDialog';
+import EditUserDrawer from './EditUserDrawer';
 import BulkImportUsersModal from '../admin/BulkImportUsersModal';
 import BulkImportGoalsModal from '../admin/BulkImportGoalsModal';
 
@@ -346,6 +348,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
 
 export default function UserManagementPanel() {
   const { role, user: currentUser, userProfile, tenantId } = useAuth();
+  const toast = useToast();
 
   const [users, setUsers]               = useState([]);
   const [loading, setLoading]           = useState(true);
@@ -353,10 +356,7 @@ export default function UserManagementPanel() {
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showBulkImportGoals, setShowBulkImportGoals] = useState(false);
   const [showInactive, setShowInactive] = useState(false);
-  // Toast shape: null | { kind: 'success' | 'warning', message: string, email?: string }
-  // 'warning' shows a Retry button and does not auto-dismiss.
-  const [toast, setToast]               = useState(null);
-  const [retryingEmail, setRetryingEmail] = useState(false);
+  const [editTarget, setEditTarget]     = useState(null);
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [deactivating, setDeactivating] = useState(false);
 
@@ -378,46 +378,58 @@ export default function UserManagementPanel() {
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
+  // Polish-1 Toast migration (PR-4): show a sticky warning with a Retry action
+  // for the post-create email-dispatch failure path. The Toast primitive
+  // dismisses on action click — handleRetryEmail re-shows a fresh toast based
+  // on the retry outcome.
+  async function handleRetryEmail(email) {
+    if (!email) return;
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.show({
+        variant: 'success',
+        message: `Reset email sent to ${email}.`,
+        duration: 6000,
+      });
+    } catch (err) {
+      console.error('[UserManagementPanel] retry sendPasswordResetEmail:', err);
+      toast.show({
+        variant: 'warning',
+        message: `Email retry failed${err?.code ? ` (${err.code})` : ''}. Try again or check the address.`,
+        duration: 0,
+        action: { label: 'Retry email', onClick: () => handleRetryEmail(email) },
+      });
+    }
+  }
+
   function handleCreated(email, createdRole, emailSent, _emailError) {
     setShowDrawer(false);
     loadUsers();
     const roleLabel = ROLE_DISPLAY[createdRole] ?? 'User';
     if (emailSent) {
-      setToast({
-        kind:    'success',
+      toast.show({
+        variant: 'success',
         message: `${roleLabel} account created. Reset email sent to ${email}.`,
+        duration: 6000,
       });
-      setTimeout(() => setToast(null), 6000);
     } else {
-      // Account created server-side, but the password reset email failed to dispatch.
-      // Surface a Retry button — user is otherwise stranded with no way to sign in.
-      setToast({
-        kind:    'warning',
+      toast.show({
+        variant: 'warning',
         message: `${roleLabel} account created, but the password reset email failed to send.`,
-        email,
+        duration: 0,
+        action: { label: 'Retry email', onClick: () => handleRetryEmail(email) },
       });
-      // No auto-dismiss for warning — user must Retry or Dismiss.
     }
   }
 
-  async function handleRetryEmail() {
-    const email = toast?.email;
-    if (!email) return;
-    setRetryingEmail(true);
-    try {
-      await sendPasswordResetEmail(auth, email);
-      setToast({ kind: 'success', message: `Reset email sent to ${email}.` });
-      setTimeout(() => setToast(null), 6000);
-    } catch (err) {
-      console.error('[UserManagementPanel] retry sendPasswordResetEmail:', err);
-      setToast({
-        kind:    'warning',
-        message: `Email retry failed${err?.code ? ` (${err.code})` : ''}. Try again or check the address.`,
-        email,
-      });
-    } finally {
-      setRetryingEmail(false);
-    }
+  function handleEditSaved(savedName) {
+    setEditTarget(null);
+    loadUsers();
+    toast.show({
+      variant: 'success',
+      message: `${savedName} updated.`,
+      duration: 4000,
+    });
   }
 
   async function handleDeactivateConfirm(active) {
@@ -428,16 +440,17 @@ export default function UserManagementPanel() {
       await deactivateUser(deactivateTarget.uid, active);
       setDeactivateTarget(null);
       await loadUsers();
-      setToast({
-        kind:    'success',
+      toast.show({
+        variant: 'success',
         message: active ? `${targetName} reactivated.` : `${targetName} deactivated.`,
+        duration: 4000,
       });
-      setTimeout(() => setToast(null), 4000);
     } catch (err) {
       console.error('[UserManagementPanel] deactivate:', err);
-      const msg = err?.message?.includes('permission') ? "You don't have permission to do this." : 'Action failed. Please try again.';
-      setToast({ kind: 'warning', message: msg });
-      setTimeout(() => setToast(null), 4000);
+      const msg = err?.message?.includes('permission')
+        ? "You don't have permission to do this."
+        : 'Action failed. Please try again.';
+      toast.show({ variant: 'error', message: msg, duration: 4000 });
       setDeactivateTarget(null);
     } finally {
       setDeactivating(false);
@@ -446,48 +459,6 @@ export default function UserManagementPanel() {
 
   return (
     <div className="flex flex-col gap-4 relative">
-      {/* Toast */}
-      {toast?.kind === 'success' && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-success text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg max-w-sm text-center"
-        >
-          {toast.message}
-        </div>
-      )}
-      {toast?.kind === 'warning' && (
-        <div
-          role="alert"
-          aria-live="assertive"
-          className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-start gap-3 bg-warning/15 border border-warning/40 text-ink text-xs px-4 py-3 rounded-xl shadow-lg max-w-md"
-        >
-          <AlertTriangle size={16} className="text-warning mt-0.5 shrink-0" />
-          <div className="flex flex-col gap-2 flex-1">
-            <p className="font-semibold leading-snug">{toast.message}</p>
-            <div className="flex items-center gap-2">
-              {toast.email && (
-                <button
-                  onClick={handleRetryEmail}
-                  disabled={retryingEmail}
-                  className="text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 disabled:opacity-60 px-3 h-8 rounded-lg transition-colors flex items-center gap-1.5"
-                >
-                  {retryingEmail
-                    ? <><Loader2 size={13} className="animate-spin" /> Retrying…</>
-                    : 'Retry email'}
-                </button>
-              )}
-              <button
-                onClick={() => setToast(null)}
-                className="text-xs font-semibold text-ink-muted hover:text-ink px-2 h-8 rounded-lg transition-colors"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
@@ -579,9 +550,21 @@ export default function UserManagementPanel() {
                 <span className="text-xs text-ink-muted">
                   {joinedDate ? formatDateDisplay(joinedDate) : '—'}
                 </span>
-                <div className="flex justify-end">
+                <div className="flex justify-end items-center gap-1">
+                  {canAct && !isInactive && (
+                    <button
+                      type="button"
+                      onClick={() => setEditTarget(u)}
+                      aria-label={`Edit ${u.name ?? u.email ?? 'user'}`}
+                      data-testid={`user-edit-${u.uid ?? u.id}`}
+                      className="text-xs font-semibold text-ink-muted hover:text-ink bg-border/20 hover:bg-border/40 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center"
+                    >
+                      <Pencil size={15} />
+                    </button>
+                  )}
                   {canAct && (
                     <button
+                      type="button"
                       onClick={() => setDeactivateTarget(u)}
                       className={`text-xs font-semibold px-2.5 min-h-[44px] rounded-lg transition-colors min-w-[80px] ${
                         isInactive
@@ -607,6 +590,18 @@ export default function UserManagementPanel() {
           callerRole={role}
           callerProfile={userProfile}
           tenantId={tenantId}
+        />
+      )}
+
+      {/* Edit drawer */}
+      {editTarget && (
+        <EditUserDrawer
+          user={editTarget}
+          callerRole={role}
+          callerProfile={userProfile}
+          tenantId={tenantId}
+          onClose={() => setEditTarget(null)}
+          onSaved={handleEditSaved}
         />
       )}
 
