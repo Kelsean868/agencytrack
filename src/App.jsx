@@ -5,6 +5,7 @@ import LoginScreen from './components/auth/LoginScreen';
 import AgentDashboard from './components/dashboard/AgentDashboard';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
 import TenantAdminDashboard from './components/dashboard/TenantAdminDashboard';
+import ToastProvider from './components/ui/ToastProvider';
 
 // Tenant Admin gets a dedicated dashboard surface from B5 forward — the
 // company config write path lives there. The remaining manager-tier roles
@@ -44,7 +45,7 @@ const PlatformAdminStubScreen = () => (
   </div>
 );
 
-export default function App() {
+function AppRoot() {
   const { role, loading, isAuthenticated } = useAuth();
 
   if (loading) return <LoadingScreen />;
@@ -53,4 +54,12 @@ export default function App() {
   if (role === 'tenant_admin') return <TenantAdminDashboard />;
   if (MANAGER_ROLES.has(role)) return <ManagerDashboard />;
   return <AgentDashboard />;
+}
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <AppRoot />
+    </ToastProvider>
+  );
 }
