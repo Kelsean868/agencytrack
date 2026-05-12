@@ -19,6 +19,11 @@ vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({ userProfile: { branchId: 'branch1' } }),
 }));
 
+const mockShowToast = vi.fn();
+vi.mock('../../../hooks/useToast', () => ({
+  default: () => ({ show: mockShowToast, dismiss: vi.fn() }),
+}));
+
 vi.mock('../../../utils/formatters', () => ({
   formatCurrency: (v) => `$${v}`,
 }));
@@ -91,6 +96,20 @@ describe('AgentOfMonthTab', () => {
         monthKey: '2026-05',
         category: 'api',
         agentUid: 'u1',
+      });
+    });
+  });
+
+  it('fires success toast after Approve succeeds', async () => {
+    render(<AgentOfMonthTab />);
+    await waitFor(() => screen.getAllByText('Approve'));
+    await act(async () => {
+      fireEvent.click(screen.getAllByText('Approve')[0]);
+    });
+    await waitFor(() => {
+      expect(mockShowToast).toHaveBeenCalledWith({
+        variant: 'success',
+        message: 'Winner approved for May 2026',
       });
     });
   });

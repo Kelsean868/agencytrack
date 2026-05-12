@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Trophy, Award, TrendingUp, AlertCircle, RefreshCw, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useToast from '../../hooks/useToast';
 import {
   getCurrentMonthKey,
   getPrevMonthKey,
@@ -11,6 +12,17 @@ import {
 } from '../../services/agentOfMonthService';
 import AOMCategorySection from './AOMCategorySection';
 
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+function formatMonthKey(monthKey) {
+  const [year, month] = monthKey.split('-');
+  const idx = parseInt(month, 10) - 1;
+  return `${MONTH_NAMES[idx] ?? month} ${year}`;
+}
+
 const CATEGORIES = [
   { key: 'api',      label: 'API Champion',    Icon: Trophy },
   { key: 'apps',     label: 'Apps Leader',     Icon: Award },
@@ -19,6 +31,7 @@ const CATEGORIES = [
 
 export default function AgentOfMonthTab() {
   const { userProfile } = useAuth();
+  const toast = useToast();
   const branchId = userProfile?.branchId;
 
   const currentKey  = getCurrentMonthKey();
@@ -59,6 +72,10 @@ export default function AgentOfMonthTab() {
     setError(null);
     try {
       await setAgentOfMonth({ branchId, monthKey, category, agentUid });
+      toast.show({
+        variant: 'success',
+        message: `Winner approved for ${formatMonthKey(monthKey)}`,
+      });
       await load();
     } catch (err) {
       setError(err.message || 'Failed to save winner.');
