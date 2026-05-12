@@ -1,18 +1,21 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 
 /**
- * Branch overview card (Design System v2 — B5).
+ * Branch overview card (Design System v2 — B5, TA-CLEANUP).
  *
  * Renders one inner card per branch derived from the users collection
- * (group by `branchId`). Per the locked Q9 decision, only branch ID and
- * agent count render with derived data. `% to YTD goal` and `Last sync`
- * render as `—` with a "Coming soon" sub-text — those metrics require
- * branch-level aggregations (settlements + submissions.updatedAt per
- * branch) that aren't built yet and would expand B5's scope.
+ * (group by `branchId`). Only branch ID and agent count render with
+ * derived data today.
+ *
+ * TA-CLEANUP removed the prior per-branch placeholder line ("— % to YTD
+ * goal · — Last sync · Coming soon") per the manager-portal audit's "no
+ * placeholder text in production" guidance. Branch-level aggregations
+ * (settlements + submissions.updatedAt per branch) can re-introduce those
+ * metrics when the data is real.
  *
  * Branch ID → display name mapping is best-effort: if a humanised name is
  * available on a manager's user doc it could be used in a future PR, but
- * for B5 we render the branchId verbatim with simple title-casing.
+ * here we render the branchId verbatim with simple title-casing.
  */
 function humaniseBranchId(branchId) {
   if (!branchId) return 'Unassigned';
@@ -44,7 +47,7 @@ export default function BranchHealthCards({ users, loading }) {
             Branch overview
           </h2>
           <p className="text-sm text-ink-muted mt-0.5">
-            Health &amp; activity · Goal &amp; sync metrics coming in a future release
+            Branches &amp; agent assignment
           </p>
         </div>
       </div>
@@ -62,19 +65,12 @@ export default function BranchHealthCards({ users, loading }) {
               key={b.branchId}
               className="p-3.5 rounded-xl border border-border bg-card"
             >
-              <div className="flex items-center justify-between gap-2 mb-1.5">
+              <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-bold text-ink">{humaniseBranchId(b.branchId)}</h3>
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-ink-muted/10 text-ink-muted">
                   {b.agentCount} {b.agentCount === 1 ? 'agent' : 'agents'}
                 </span>
               </div>
-              <p className="text-xs text-ink-muted">
-                <span aria-hidden="true">— </span>
-                <span>% to YTD goal</span>
-                <span aria-hidden="true"> · — </span>
-                <span>Last sync</span>
-                <span> · Coming soon</span>
-              </p>
             </article>
           ))}
         </div>
