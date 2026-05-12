@@ -106,6 +106,17 @@ export default function AgentDashboard() {
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Agent';
   const roleLabel    = getRoleLabel(role);
 
+  // Mobile More-drawer items: every NAV_ITEMS entry whose tabId isn't already
+  // in BOTTOM_NAV. Filtered by tabId (not id) because BOTTOM_NAV's 'home'
+  // item maps to the 'dashboard' tabId — id-only filtering would wrongly
+  // include Dashboard in the drawer.
+  const drawerNavItems = useMemo(
+    () => NAV_ITEMS.filter(
+      (item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)
+    ),
+    []
+  );
+
   // Show welcome screen on first login (agents only)
   useEffect(() => {
     if (userProfile && userProfile.hasSeenWelcome === false && role === 'agent') {
@@ -337,6 +348,7 @@ export default function AgentDashboard() {
     <Shell
       navItems={NAV_ITEMS}
       bottomNavItems={BOTTOM_NAV}
+      drawerNavItems={drawerNavItems}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       onAction={handleAction}

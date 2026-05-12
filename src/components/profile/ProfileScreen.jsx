@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
-import { Camera, Save, AlertCircle, User, CalendarClock } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Camera, Save, AlertCircle, User, CalendarClock, LogOut } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleLabel } from '../../utils/formatters';
 import { updateUserProfile, compressImage, uploadProfilePhoto } from '../../services/userService';
+import { signOut } from '../../services/authService';
 import {
   aggregateCurrentWeekDaily,
   catchUpWeeklyToDaily,
@@ -468,6 +469,20 @@ export default function ProfileScreen() {
           <span className="text-sm text-ink-muted">Member Since</span>
           <span className="text-sm font-medium text-ink">{joinDate}</span>
         </div>
+      </div>
+
+      {/* Account — sign out (mobile parity with desktop sidebar footer) */}
+      <div className="card flex flex-col gap-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Account</p>
+        <button
+          type="button"
+          onClick={() => { signOut().catch((err) => console.error(err)); }}
+          className="w-full inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-lg border border-danger/40 text-danger text-sm font-semibold hover:bg-danger/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+          data-testid="profile-sign-out"
+        >
+          <LogOut size={16} />
+          Sign Out
+        </button>
       </div>
     </div>
   );
