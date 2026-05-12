@@ -1,3 +1,9 @@
+> **⚠️ SUPERSEDED** — the 5 hardening items in this brief were already shipped in [PR #88](https://github.com/Kelsean868/agencytrack/pull/88) on 2026-05-11. This brief is retained as historical reference only. The R1 micro-fix (Saved-while-offline semantic copy) shipped via [PR #124](https://github.com/Kelsean868/agencytrack/pull/124). R2-R5 deferred polish items are tracked in `docs/FOLLOW_UPS.md` under "Wizard polish (post-pilot)".
+>
+> **Process lesson:** this brief was drafted from a stale FOLLOW_UPS.md state without verifying actual codebase state. Future brief drafting from FOLLOW_UPS.md items must verify topic state via `git log --all --grep="<topic>"` as step 0.
+
+---
+
 # WIZARD-UX — Weekly Wizard UX + A11y hardening — kickoff brief
 
 **Status:** Third post-M-series PR. Path (A) HIGH-priority sequence, 3 of 3 (final HIGH item).

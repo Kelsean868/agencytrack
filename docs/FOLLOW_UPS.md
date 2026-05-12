@@ -605,27 +605,15 @@ Privacy controls per branch. ~3 days. Spec: §E5.
 
 ## Wizard UX + A11y Hardening (post-Track-A audit, 2026-05-06)
 
-Discovered during Track A PR-1 audit. Items 5 and 6 of CLAUDE.md
-"Known Open Items" were already resolved (commit `57828d7`, 2026-05-02), but the
-audit surfaced a genuine hardening list for future scoping:
+- ✅ **Wizard UX hardening — CLOSED** by PR #88 (2026-05-11): retry button, Saved✓ indicator, offline-vs-failed distinction, role=alert/aria-live, persistent-failure handling. PR #124 added R1 micro-fix (Saved-while-offline semantic copy).
 
-- Add explicit "Try again now" retry button when `saveError === true`
-  (currently auto-retries on next debounce only)
-- Add fading "Saved ✓" success indicator (currently only "Saving…"
-  pulse; no positive confirmation)
-- Distinguish "offline (queued, will retry)" vs "save rejected
-  (action needed)" — Firestore offline persistence queues writes
-  silently; UI should reflect that
-- Add persistent-failure handling: after N consecutive failures,
-  escalate (block submit? force user ack?)
-- Add `role="alert"` / `aria-live="polite"` to the save-error span so
-  screen readers announce the failure (a11y gap, surfaced 2026-05-06)
-- Save errors currently clear silently on next attempt — could mask
-  intermittent failure patterns; consider sticky-until-acknowledged
-  for repeat failures
+### Wizard polish (post-pilot)
+Deferred refinement items from R1 surface analysis (2026-05-14). All low-severity polish; none pilot-blocking.
 
-Priority: MEDIUM. Not pilot-blocking. The `aria-live` item is the
-smallest and highest a11y value; could ship as a single-line micro-PR.
+- **R2** — Nested role="alert" inside role="status" container (WizardForm.jsx). Some screen readers ignore nested live regions per ARIA spec. Fix: split into two siblings (outer polite + separate assertive).
+- **R3** — animate-pulse at WizardForm.jsx:553 missing motion-reduce guard. Add `motion-reduce:animate-none`.
+- **R4** — Retry button has no throttle; rapid taps could double-increment failure counter. Add 2s throttle or `disabled while saving`.
+- **R5** — Intermittent-failure visibility: brief save failures get cleared by subsequent successful saves, masking flaky patterns. Either keep last failure visible for fixed window, or expose failure-count badge.
 
 ---
 
