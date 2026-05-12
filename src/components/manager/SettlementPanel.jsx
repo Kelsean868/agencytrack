@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
+import useToast from '../../hooks/useToast';
 import { getTenantUsers } from '../../services/managerService';
 import { confirmSettlement, getSettlementsForUnit, deleteSettlement } from '../../services/settlementService';
 import { formatCurrency } from '../../utils/formatters';
@@ -32,6 +33,7 @@ const PAGE_SIZE = 20;
 
 export default function SettlementPanel() {
   const { user, userProfile, role, tenantId } = useAuth();
+  const toast = useToast();
 
   const [agents, setAgents]               = useState([]);
   const [settlements, setSettlements]     = useState([]);
@@ -48,8 +50,8 @@ export default function SettlementPanel() {
   const [persistency, setPersistency]     = useState('');
   const [notes, setNotes]                 = useState('');
   const [saving, setSaving]               = useState(false);
-  const [saveError, setSaveError]         = useState('');
-  const [saveSuccess, setSaveSuccess]     = useState('');
+  // Inline validation errors (pre-submit). Post-submit success/failure fires toast.
+  const [validationError, setValidationError] = useState('');
 
   // Bulk form: { [agentId]: { api, apps, persist, error } }
   const [bulkRows, setBulkRows]           = useState({});
@@ -107,16 +109,15 @@ export default function SettlementPanel() {
   // Single save
   async function handleSave(e) {
     e.preventDefault();
-    setSaveError('');
-    setSaveSuccess('');
-    if (!selectedAgent) { setSaveError('Select an agent.'); return; }
+    setValidationError('');
+    if (!selectedAgent) { setValidationError('Select an agent.'); return; }
     const api = parseFloat(settledAPI);
     const apps = parseFloat(settledApps);
     const pers = parseFloat(persistency);
-    if (isNaN(api) || api < 0)          { setSaveError('Enter a valid API amount.'); return; }
-    if (isNaN(apps) || apps < 0)        { setSaveError('Enter valid Apps count.'); return; }
-    if (isNaN(pers) || pers < 0 || pers > 100) { setSaveError('Persistency must be 0–100.'); return; }
-    if (!tenantId) { setSaveError('Tenant context not ready. Please retry.'); return; }
+    if (isNaN(api) || api < 0)          { setValidationError('Enter a valid API amount.'); return; }
+    if (isNaN(apps) || apps < 0)        { setValidationError('Enter valid Apps count.'); return; }
+    if (isNaN(pers) || pers < 0 || pers > 100) { setValidationError('Persistency must be 0–100.'); return; }
+    if (!tenantId) { setValidationError('Tenant context not ready. Please retry.'); return; }
 
     setSaving(true);
     const confirmedByName = userProfile?.name ?? userProfile?.email ?? 'Manager';
@@ -126,12 +127,15 @@ export default function SettlementPanel() {
         { periodKey: monthKey(selectedYear, selectedMonth), periodType: 'monthly', settledAPI: api, settledApps: apps, persistency: pers, notes },
         user.uid, confirmedByName
       );
-      setSaveSuccess(`Settlement saved for ${agentName(selectedAgent)} — ${MONTHS[selectedMonth - 1]} ${selectedYear}.`);
+      toast.show({
+        variant: 'success',
+        message: `Settlement saved for ${agentName(selectedAgent)} — ${MONTHS[selectedMonth - 1]} ${selectedYear}.`,
+      });
       setSettledAPI(''); setSettledApps(''); setPersistency(''); setNotes('');
       loadData();
     } catch (err) {
       console.error(err);
-      setSaveError('Failed to save. Please try again.');
+      toast.show({ variant: 'error', message: "Couldn't save settlement. Please retry." });
     } finally {
       setSaving(false);
     }
@@ -139,8 +143,7 @@ export default function SettlementPanel() {
 
   // Bulk save
   async function handleBulkSave() {
-    setSaveError('');
-    setSaveSuccess('');
+    setValidationError('');
 
     // Validate all rows
     let hasError = false;
@@ -158,15 +161,15 @@ export default function SettlementPanel() {
       if (errors.length) hasError = true;
     });
     setBulkRows(updated);
-    if (hasError) { setSaveError('Fix row errors before saving.'); return; }
+    if (hasError) { setValidationError('Fix row errors before saving.'); return; }
 
     // Only save rows with at least one value
     const rowsToSave = agents.filter((a) => {
       const row = bulkRows[a.id] ?? {};
       return row.api !== '' || row.apps !== '' || row.persist !== '';
     });
-    if (rowsToSave.length === 0) { setSaveError('No data entered.'); return; }
-    if (!tenantId) { setSaveError('Tenant context not ready. Please retry.'); return; }
+    if (rowsToSave.length === 0) { setValidationError('No data entered.'); return; }
+    if (!tenantId) { setValidationError('Tenant context not ready. Please retry.'); return; }
 
     setSaving(true);
     const confirmedByName = userProfile?.name ?? userProfile?.email ?? 'Manager';
@@ -188,11 +191,14 @@ export default function SettlementPanel() {
           );
         })
       );
-      setSaveSuccess(`Saved ${rowsToSave.length} settlements for ${MONTHS[selectedMonth - 1]} ${selectedYear}.`);
+      toast.show({
+        variant: 'success',
+        message: `Saved ${rowsToSave.length} settlements for ${MONTHS[selectedMonth - 1]} ${selectedYear}.`,
+      });
       loadData();
     } catch (err) {
       console.error(err);
-      setSaveError('Failed to save some rows. Please retry.');
+      toast.show({ variant: 'error', message: "Couldn't save some rows. Please retry." });
     } finally {
       setSaving(false);
     }
@@ -395,8 +401,7 @@ export default function SettlementPanel() {
               />
             </div>
 
-            {saveError  && <p className="text-xs text-danger">{saveError}</p>}
-            {saveSuccess && <p className="text-xs text-success">{saveSuccess}</p>}
+            {validationError && <p className="text-xs text-danger">{validationError}</p>}
 
             <SaveButton
               onClick={handleSave}
@@ -464,8 +469,7 @@ export default function SettlementPanel() {
               </div>
             )}
 
-            {saveError  && <p className="text-xs text-danger">{saveError}</p>}
-            {saveSuccess && <p className="text-xs text-success">{saveSuccess}</p>}
+            {validationError && <p className="text-xs text-danger">{validationError}</p>}
 
             <SaveButton
               onClick={handleBulkSave}

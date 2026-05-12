@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Plus, Building2, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useToast from '../../hooks/useToast';
 import {
   listBranches,
   getBranch,
@@ -35,6 +36,7 @@ import DeactivateBranchConfirmDialog from './DeactivateBranchConfirmDialog';
  */
 export default function BranchesPanel() {
   const { tenantId, user } = useAuth();
+  const toast = useToast();
 
   const [branches, setBranches] = useState([]);
   const [users, setUsers] = useState([]);
@@ -48,7 +50,6 @@ export default function BranchesPanel() {
 
   const [confirmTarget, setConfirmTarget] = useState(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [confirmError, setConfirmError] = useState(null);
 
   const reload = useCallback(async () => {
     if (!tenantId) return;
@@ -132,7 +133,6 @@ export default function BranchesPanel() {
   async function handleConfirm(shouldBeActive) {
     if (!confirmTarget) return;
     setConfirmLoading(true);
-    setConfirmError(null);
     try {
       await setBranchActive(tenantId, confirmTarget.id, shouldBeActive, user?.uid ?? null);
       setConfirmTarget(null);
@@ -153,7 +153,7 @@ export default function BranchesPanel() {
       } else {
         message = 'Action failed. Please try again.';
       }
-      setConfirmError(message);
+      toast.show({ variant: 'error', message });
     } finally {
       setConfirmLoading(false);
     }
@@ -252,7 +252,7 @@ export default function BranchesPanel() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setConfirmError(null); setConfirmTarget(b); }}
+                    onClick={() => setConfirmTarget(b)}
                     className={`text-xs font-semibold px-2.5 h-8 rounded-lg transition-colors min-w-[80px] ${
                       inactive
                         ? 'text-primary bg-primary/10 hover:bg-primary/20'
@@ -281,24 +281,12 @@ export default function BranchesPanel() {
       )}
 
       {confirmTarget && (
-        <>
-          {confirmError && (
-            <div
-              role="alert"
-              aria-live="polite"
-              className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] flex items-start gap-2 bg-danger/10 border border-danger/30 text-danger text-xs px-4 py-3 rounded-xl shadow-lg max-w-md"
-            >
-              <AlertCircle size={14} className="shrink-0 mt-0.5" aria-hidden="true" />
-              <span>{confirmError}</span>
-            </div>
-          )}
-          <DeactivateBranchConfirmDialog
-            branch={confirmTarget}
-            onConfirm={handleConfirm}
-            onCancel={() => { setConfirmTarget(null); setConfirmError(null); }}
-            loading={confirmLoading}
-          />
-        </>
+        <DeactivateBranchConfirmDialog
+          branch={confirmTarget}
+          onConfirm={handleConfirm}
+          onCancel={() => setConfirmTarget(null)}
+          loading={confirmLoading}
+        />
       )}
     </section>
   );

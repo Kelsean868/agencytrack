@@ -11,6 +11,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { TrendingUp, AlertCircle, Calculator, Edit3, Download, Printer } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useToast from '../../hooks/useToast';
 import {
   getPersistencyForBranch,
   getPersistencyForUnit,
@@ -68,6 +69,7 @@ function buildCSV(rows) {
 
 export default function PersistencyTab() {
   const { user, userProfile, role } = useAuth();
+  const toast = useToast();
   const scopeType = SCOPE_BY_ROLE[role] ?? 'tenant';
   const scopeId = scopeType === 'unit'   ? userProfile?.unitId
                 : scopeType === 'branch' ? userProfile?.branchId
@@ -350,7 +352,15 @@ export default function PersistencyTab() {
           writerRole={role}
           writerUid={user?.uid}
           onClose={() => setEditingAgentUid(null)}
-          onSaved={() => { setEditingAgentUid(null); loadRecords(); }}
+          onSaved={() => {
+            const savedName = editingUser?.name ?? editingUser?.email ?? 'agent';
+            setEditingAgentUid(null);
+            toast.show({
+              variant: 'success',
+              message: `Persistency saved for ${savedName}`,
+            });
+            loadRecords();
+          }}
         />
       )}
 

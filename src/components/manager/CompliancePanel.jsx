@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { CheckCircle, Clock, AlertTriangle, LockOpen, Eye } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useToast from '../../hooks/useToast';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { unlockSubmission } from '../../services/unlockService';
 import { getLastNSundays } from '../../utils/dateHelpers';
@@ -113,6 +114,7 @@ function SubmittedAgentRow({ name, submittedAt, submissionId, onUnlock, onView }
 
 export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   const { user, userProfile, role, tenantId } = useAuth();
+  const toast = useToast();
   const [submissions, setSubmissions]           = useState([]);
   const [users, setUsers]                       = useState([]);
   const [usersLoaded, setUsersLoaded]           = useState(false);
@@ -182,12 +184,22 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
     return { submitted, pending, missing };
   }, [users, usersLoaded, submissions]);
 
-  const handleUnlock = async (submissionId, _agentName) => {
+  const handleUnlock = async (submissionId, agentName) => {
     if (!user?.uid || !tenantId) return;
     const managerName = userProfile?.name ?? userProfile?.email ?? 'Manager';
-    await unlockSubmission(tenantId, submissionId, user.uid, managerName);
-    // Reload to reflect status change
-    loadData();
+    try {
+      await unlockSubmission(tenantId, submissionId, user.uid, managerName);
+      toast.show({
+        variant: 'success',
+        message: `${agentName}'s report unlocked.`,
+      });
+      // Reload to reflect status change
+      loadData();
+    } catch (err) {
+      console.error('[CompliancePanel] unlock failed:', err);
+      toast.show({ variant: 'error', message: "Couldn't unlock report. Please retry." });
+      throw err;
+    }
   };
 
   const days       = daysSinceSunday(selectedWeek);
