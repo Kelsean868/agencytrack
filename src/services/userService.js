@@ -1,5 +1,6 @@
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 import { auth, db, storage, getTenantId } from '../firebase';
 
 export async function updateUserProfile(uid, fields) {
@@ -57,6 +58,42 @@ export async function updateUserFields(uid, fields) {
     updatedAt: serverTimestamp(),
     updatedBy: callerUid,
   });
+}
+
+// PR-4b: claim-keyed fields that flow through the updateUser CF, NOT through
+// updateUserFields. Kept separate from MANAGER_EDITABLE_FIELDS because the
+// CF performs server-side validation + claim+doc atomicity that direct
+// Firestore writes cannot.
+export const CLAIM_KEYED_FIELDS = Object.freeze(['role', 'branchId']);
+
+/**
+ * callUpdateUser({ uid, updates, confirmationPhrase? })
+ *
+ * Invokes the updateUser Cloud Function for role/branchId edits. The CF
+ * writes the new custom claims and Firestore doc atomically, then revokes
+ * the target user's refresh tokens so the new permissions take effect on
+ * their next sign-in (immediate forced sign-out, per Q1 lock).
+ *
+ * `updates` may include `role`, `branchId`, and optionally `unitId` (required
+ * when demoting to agent). Other field names are rejected server-side.
+ *
+ * `confirmationPhrase` is required and must equal "PROMOTE TO TENANT ADMIN"
+ * when updates.role === 'tenant_admin'.
+ *
+ * Returns the CF response: { success: true, updatedFields: [...] }.
+ * Throws Firebase HttpsError on validation, permission, or saga failure;
+ * EditUserDrawer maps the error codes to user-facing toast copy.
+ */
+export async function callUpdateUser({ uid, updates, confirmationPhrase } = {}) {
+  if (!uid) throw new Error('uid is required.');
+  if (!updates || typeof updates !== 'object') throw new Error('updates object is required.');
+
+  const fns = getFunctions();
+  const fn = httpsCallable(fns, 'updateUser');
+  const payload = { uid, updates };
+  if (confirmationPhrase) payload.confirmationPhrase = confirmationPhrase;
+  const result = await fn(payload);
+  return result.data;
 }
 
 // Compress an image File/Blob to maxDim × maxDim, returns a Blob (image/jpeg)

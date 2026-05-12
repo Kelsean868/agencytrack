@@ -422,13 +422,15 @@ export default function UserManagementPanel() {
     }
   }
 
-  function handleEditSaved(savedName) {
+  function handleEditSaved(savedName, customMessage) {
     setEditTarget(null);
     loadUsers();
+    // PR-4b: role/branch changes pass a custom message describing the sign-out
+    // side effect. PR-4 field edits fall through to the generic "updated" copy.
     toast.show({
       variant: 'success',
-      message: `${savedName} updated.`,
-      duration: 4000,
+      message: customMessage ?? `${savedName} updated.`,
+      duration: customMessage ? 6000 : 4000,
     });
   }
 

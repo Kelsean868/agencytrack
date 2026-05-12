@@ -585,6 +585,292 @@ exports.deactivateUser = functions.https.onCall(async (data, context) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PR-4b: updateUser — claim-atomic role + branchId edits.
+//
+// Saga (decision Q4 locked: claim-first → doc-second):
+//   1. snapshot prior state from target doc
+//   2. validate permission matrix + role/branch transition
+//   3. write new custom claims via Admin SDK
+//   4. write new Firestore doc fields (role / branchId / ownedBranchIds / unitId)
+//   5. revoke refresh tokens (immediate sign-out, Q1 locked)
+//
+// On step 3 failure: no Firestore mutation occurred — caller can retry safely.
+// On step 4 failure: roll back claim to prior state; if rollback also fails,
+//   log loudly for operator intervention (divergence is unrecoverable in CF).
+// On step 5 failure: doc + claim already aligned; revoke is best-effort.
+//
+// Permission matrix (Q2 locked): two-sided gate using CREATION_MATRIX.
+//   Caller must be able to create both the target's CURRENT role AND the
+//   target's PROPOSED role. This produces the matrix from PR-4b kickoff §
+//   Permission Matrix without introducing a separate const.
+//
+// Out of scope: cross-tenant edits (platform_admin path → SEC-9b), email,
+// active toggle (deactivateUser), audit-trail Firestore collection (Q5:
+// structured console.log only for v1).
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ALL_NON_PLATFORM_ROLES = ['tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager', 'agent'];
+
+function buildClaimsForUpdate(role, { tenantId, branchId, ownedBranchIds }) {
+  if (role === 'platform_admin') return { role: 'platform_admin', tenantId: null };
+  const c = { role, tenantId, branchId };
+  if (ownedBranchIds) c.ownedBranchIds = ownedBranchIds;
+  return c;
+}
+
+exports.updateUser = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
+  }
+
+  const callerRole   = context.auth.token.role;
+  const callerUid    = context.auth.uid;
+  const callerTenant = context.auth.token.tenantId;
+  const targetUid    = data?.uid;
+  const updates      = data?.updates;
+  const confirmationPhrase = data?.confirmationPhrase;
+
+  // ── Input validation ──────────────────────────────────────────────────────
+  if (!targetUid || typeof targetUid !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'uid is required.');
+  }
+  if (!updates || typeof updates !== 'object') {
+    throw new functions.https.HttpsError('invalid-argument', 'updates object is required.');
+  }
+  const hasRoleChange   = typeof updates.role === 'string';
+  const hasBranchChange = typeof updates.branchId === 'string';
+  if (!hasRoleChange && !hasBranchChange) {
+    throw new functions.https.HttpsError(
+      'invalid-argument', 'updates must include role or branchId.'
+    );
+  }
+
+  // Self-edit hard-block (Q8 locked — mirrors deactivateUser).
+  if (targetUid === callerUid) {
+    throw new functions.https.HttpsError(
+      'permission-denied', 'Cannot change your own role or branch.'
+    );
+  }
+
+  // ── Read target doc — tenant isolation + prior-state snapshot for rollback ─
+  const targetRef  = admin.firestore().doc(`tenants/${callerTenant}/users/${targetUid}`);
+  const targetSnap = await targetRef.get();
+  if (!targetSnap.exists) {
+    throw new functions.https.HttpsError('not-found', 'Target user not found in this tenant.');
+  }
+  const targetData = targetSnap.data();
+  if (targetData.tenantId !== callerTenant) {
+    throw new functions.https.HttpsError(
+      'permission-denied', 'Cannot edit a user in a different tenant.'
+    );
+  }
+
+  const oldRole           = targetData.role;
+  const oldBranchId       = targetData.branchId ?? null;
+  const oldOwnedBranchIds = targetData.ownedBranchIds ?? null;
+  const oldUnitId         = targetData.unitId ?? null;
+
+  const newRole     = hasRoleChange   ? updates.role     : oldRole;
+  const newBranchId = hasBranchChange ? updates.branchId : oldBranchId;
+
+  // ── Role-transition validation ────────────────────────────────────────────
+  if (hasRoleChange) {
+    if (!ALL_NON_PLATFORM_ROLES.includes(newRole)) {
+      if (newRole === 'platform_admin') {
+        throw new functions.https.HttpsError(
+          'unimplemented',
+          'Promoting to platform_admin is cross-tenant; provision via seed-platform-admin.cjs.'
+        );
+      }
+      throw new functions.https.HttpsError('invalid-argument', `Unknown role: ${newRole}`);
+    }
+    if (newRole === oldRole) {
+      throw new functions.https.HttpsError(
+        'invalid-argument', 'Target user already has this role.'
+      );
+    }
+    // Two-sided CREATION_MATRIX gate (Q2 locked).
+    if (!CREATION_MATRIX[callerRole]?.includes(oldRole)) {
+      throw new functions.https.HttpsError(
+        'permission-denied', `${callerRole} cannot edit a user with role ${oldRole}.`
+      );
+    }
+    if (!CREATION_MATRIX[callerRole]?.includes(newRole)) {
+      throw new functions.https.HttpsError(
+        'permission-denied', `${callerRole} cannot assign role ${newRole}.`
+      );
+    }
+    if (newRole === 'tenant_admin' && confirmationPhrase !== 'PROMOTE TO TENANT ADMIN') {
+      throw new functions.https.HttpsError(
+        'invalid-argument', 'Typed confirmation required to promote to tenant_admin.'
+      );
+    }
+  } else {
+    // branchId-only edit — still need edit authority on the target's current role.
+    if (!CREATION_MATRIX[callerRole]?.includes(oldRole)) {
+      throw new functions.https.HttpsError(
+        'permission-denied', `${callerRole} cannot edit a user with role ${oldRole}.`
+      );
+    }
+  }
+
+  // ── branchId validation (Q2: only cross-branch roles may reassign) ────────
+  if (hasBranchChange) {
+    if (!CROSS_BRANCH_ROLES.includes(callerRole)) {
+      throw new functions.https.HttpsError(
+        'permission-denied', `${callerRole} cannot reassign users to a different branch.`
+      );
+    }
+    if (newBranchId === oldBranchId) {
+      throw new functions.https.HttpsError(
+        'invalid-argument', 'Target user already in this branch.'
+      );
+    }
+    const branchSnap = await admin.firestore()
+      .doc(`tenants/${callerTenant}/branches/${newBranchId}`)
+      .get();
+    if (!branchSnap.exists || branchSnap.data().isActive !== true) {
+      throw new functions.https.HttpsError(
+        'invalid-argument', `Branch ${newBranchId} is not active in this tenant.`
+      );
+    }
+  }
+
+  // Precondition: any role that requires ownedBranchIds must have a branchId.
+  if ((newRole === 'branch_manager' || newRole === 'unit_manager') && !newBranchId) {
+    throw new functions.https.HttpsError(
+      'failed-precondition',
+      `Cannot assign role ${newRole} without a branchId. Target user has no branchId.`
+    );
+  }
+
+  // ── Demotion-to-agent unitId requirement (Q3 locked) ──────────────────────
+  const demotingToAgent   = hasRoleChange && newRole === 'agent' && oldRole !== 'agent';
+  const promotingFromAgent = hasRoleChange && oldRole === 'agent' && newRole !== 'agent';
+  let newUnitId = oldUnitId;
+  if (demotingToAgent) {
+    if (!updates.unitId || typeof updates.unitId !== 'string') {
+      throw new functions.https.HttpsError(
+        'invalid-argument', 'unitId is required when demoting to agent.'
+      );
+    }
+    newUnitId = updates.unitId;
+  } else if (promotingFromAgent) {
+    // unit_manager's unitId becomes their own UID by convention (see buildDocFields);
+    // for branch_manager / sales_manager / tenant_admin, unitId is no longer meaningful.
+    newUnitId = newRole === 'unit_manager' ? targetUid : null;
+  }
+
+  // ── Compute derived claim/doc fields ──────────────────────────────────────
+  const newOwnedBranchIds = deriveOwnedBranchIds(newRole, newBranchId);
+  const newClaims = buildClaimsForUpdate(newRole, {
+    tenantId:       callerTenant,
+    branchId:       newBranchId,
+    ownedBranchIds: newOwnedBranchIds,
+  });
+  const oldClaims = buildClaimsForUpdate(oldRole, {
+    tenantId:       callerTenant,
+    branchId:       oldBranchId,
+    ownedBranchIds: oldOwnedBranchIds,
+  });
+
+  // ── Saga step 1: write claim first (Q4 locked) ────────────────────────────
+  try {
+    await admin.auth().setCustomUserClaims(targetUid, newClaims);
+  } catch (claimErr) {
+    console.error('[updateUser] setCustomUserClaims failed before any Firestore write:', claimErr);
+    throw new functions.https.HttpsError(
+      'internal', 'Permission update failed. Please retry.'
+    );
+  }
+
+  // ── Saga step 2: write Firestore doc; on failure, roll back claim ─────────
+  const docPatch = {
+    role:      newRole,
+    branchId:  newBranchId,
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedBy: callerUid,
+  };
+  if (newOwnedBranchIds) {
+    docPatch.ownedBranchIds = newOwnedBranchIds;
+  } else if (oldOwnedBranchIds) {
+    docPatch.ownedBranchIds = admin.firestore.FieldValue.delete();
+  }
+  if (demotingToAgent) {
+    docPatch.unitId = newUnitId;
+  } else if (promotingFromAgent) {
+    if (newUnitId === null) {
+      docPatch.unitId = admin.firestore.FieldValue.delete();
+    } else {
+      docPatch.unitId = newUnitId;
+    }
+  }
+
+  try {
+    await targetRef.update(docPatch);
+  } catch (docErr) {
+    console.error('[updateUser] Firestore update failed AFTER claim write; rolling back claim:', docErr);
+    try {
+      await admin.auth().setCustomUserClaims(targetUid, oldClaims);
+      console.log('[updateUser] Claim rollback succeeded for', targetUid);
+    } catch (rollbackErr) {
+      // Claim succeeded for new state but rollback failed — divergence the CF
+      // cannot self-heal. Operator must run setUserClaims to restore.
+      console.error(
+        '[updateUser] CRITICAL: claim rollback failed; user has new claim with old doc state. Manual setUserClaims required.',
+        { targetUid, callerUid, oldClaims, newClaims, rollbackErr }
+      );
+    }
+    throw new functions.https.HttpsError(
+      'internal', 'Update failed and was rolled back. Please retry.'
+    );
+  }
+
+  // ── Saga step 3: revoke refresh tokens (Q1 locked: immediate revoke) ──────
+  try {
+    await admin.auth().revokeRefreshTokens(targetUid);
+  } catch (revokeErr) {
+    // Doc + claim already aligned; revoke is best-effort. User keeps current
+    // session until natural refresh (≤ 1hr). Soft failure.
+    console.error('[updateUser] revokeRefreshTokens failed (doc + claim aligned):', revokeErr);
+  }
+
+  // ── Audit log (Q5 locked: structured console.log only for v1) ─────────────
+  // Caller email pulled from caller's Firestore doc (token.email is unreliable
+  // across providers). Mirrors createUser's audit-shape pattern.
+  let callerEmail = null;
+  try {
+    const callerSnap = await admin.firestore()
+      .doc(`tenants/${callerTenant}/users/${callerUid}`)
+      .get();
+    callerEmail = callerSnap.exists ? (callerSnap.data().email ?? null) : null;
+  } catch (e) {
+    // best-effort — log only
+    console.warn('[updateUser] caller email lookup failed:', e?.message ?? e);
+  }
+  console.log('[updateUser]', JSON.stringify({
+    event:       'updateUser',
+    targetUid,
+    targetEmail: targetData.email ?? null,
+    oldRole,
+    newRole,
+    oldBranchId,
+    newBranchId,
+    callerUid,
+    callerRole,
+    callerEmail,
+    ip:          context.rawRequest?.ip ?? null,
+    userAgent:   context.rawRequest?.headers?.['user-agent'] ?? null,
+    timestamp:   new Date().toISOString(),
+  }));
+
+  return {
+    success: true,
+    updatedFields: Object.keys(updates),
+  };
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // SCHEDULED: Sunday 6 PM Trinidad time (22:00 UTC) — submission reminder
 // ─────────────────────────────────────────────────────────────────────────────
 exports.sendSundayNudge = functions.pubsub

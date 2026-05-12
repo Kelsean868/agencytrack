@@ -6,6 +6,8 @@ const hoisted = vi.hoisted(() => ({
   mockGetTenantId: vi.fn(() => 'tenant1'),
   mockAuth: { currentUser: { uid: 'caller-uid' } },
   mockUpdateDoc: vi.fn(),
+  mockCallable: vi.fn(),
+  mockHttpsCallable: vi.fn(),
 }));
 
 vi.mock('../../firebase', () => ({
@@ -27,7 +29,17 @@ vi.mock('firebase/storage', () => ({
   getDownloadURL: vi.fn(),
 }));
 
-import { updateUserFields, MANAGER_EDITABLE_FIELDS } from '../userService';
+vi.mock('firebase/functions', () => ({
+  getFunctions: () => ({ __fns: true }),
+  httpsCallable: (...args) => hoisted.mockHttpsCallable(...args),
+}));
+
+import {
+  updateUserFields,
+  callUpdateUser,
+  MANAGER_EDITABLE_FIELDS,
+  CLAIM_KEYED_FIELDS,
+} from '../userService';
 
 describe('userService.updateUserFields', () => {
   beforeEach(() => {
@@ -107,5 +119,103 @@ describe('userService.updateUserFields', () => {
       'agentNumber', 'contractStartDate',
       'canConfirmSettlements',
     ]);
+  });
+});
+
+describe('userService.callUpdateUser', () => {
+  beforeEach(() => {
+    hoisted.mockCallable.mockReset();
+    hoisted.mockHttpsCallable.mockReset();
+    hoisted.mockCallable.mockResolvedValue({ data: { success: true, updatedFields: ['role'] } });
+    hoisted.mockHttpsCallable.mockImplementation(() => hoisted.mockCallable);
+  });
+
+  it('invokes the updateUser CF with uid + updates payload', async () => {
+    const result = await callUpdateUser({
+      uid: 'target-uid',
+      updates: { role: 'unit_manager' },
+    });
+    expect(hoisted.mockHttpsCallable).toHaveBeenCalledTimes(1);
+    expect(hoisted.mockHttpsCallable.mock.calls[0][1]).toBe('updateUser');
+    expect(hoisted.mockCallable).toHaveBeenCalledWith({
+      uid: 'target-uid',
+      updates: { role: 'unit_manager' },
+    });
+    expect(result).toEqual({ success: true, updatedFields: ['role'] });
+  });
+
+  it('threads confirmationPhrase through to the CF when provided', async () => {
+    await callUpdateUser({
+      uid: 'target-uid',
+      updates: { role: 'tenant_admin' },
+      confirmationPhrase: 'PROMOTE TO TENANT ADMIN',
+    });
+    expect(hoisted.mockCallable).toHaveBeenCalledWith({
+      uid: 'target-uid',
+      updates: { role: 'tenant_admin' },
+      confirmationPhrase: 'PROMOTE TO TENANT ADMIN',
+    });
+  });
+
+  it('omits confirmationPhrase when not provided', async () => {
+    await callUpdateUser({
+      uid: 'target-uid',
+      updates: { branchId: 'branch-x' },
+    });
+    const payload = hoisted.mockCallable.mock.calls[0][0];
+    expect('confirmationPhrase' in payload).toBe(false);
+  });
+
+  it('threads branchId-only updates', async () => {
+    await callUpdateUser({
+      uid: 'target-uid',
+      updates: { branchId: 'branch-y' },
+    });
+    expect(hoisted.mockCallable).toHaveBeenCalledWith({
+      uid: 'target-uid',
+      updates: { branchId: 'branch-y' },
+    });
+  });
+
+  it('threads combined role + branchId + unitId updates (demotion-to-agent shape)', async () => {
+    await callUpdateUser({
+      uid: 'target-uid',
+      updates: { role: 'agent', branchId: 'branch-z', unitId: 'unit-1' },
+    });
+    expect(hoisted.mockCallable).toHaveBeenCalledWith({
+      uid: 'target-uid',
+      updates: { role: 'agent', branchId: 'branch-z', unitId: 'unit-1' },
+    });
+  });
+
+  it('throws when uid is missing without invoking the CF', async () => {
+    await expect(callUpdateUser({ updates: { role: 'agent' } }))
+      .rejects.toThrow(/uid is required/);
+    expect(hoisted.mockHttpsCallable).not.toHaveBeenCalled();
+  });
+
+  it('throws when updates is missing without invoking the CF', async () => {
+    await expect(callUpdateUser({ uid: 'target-uid' }))
+      .rejects.toThrow(/updates object is required/);
+    expect(hoisted.mockHttpsCallable).not.toHaveBeenCalled();
+  });
+
+  it('throws when updates is not an object without invoking the CF', async () => {
+    await expect(callUpdateUser({ uid: 'target-uid', updates: 'role=agent' }))
+      .rejects.toThrow(/updates object is required/);
+    expect(hoisted.mockHttpsCallable).not.toHaveBeenCalled();
+  });
+
+  it('propagates Firebase HttpsError from the CF', async () => {
+    const cfErr = Object.assign(new Error('permission-denied: caller cannot edit'), {
+      code: 'permission-denied',
+    });
+    hoisted.mockCallable.mockRejectedValueOnce(cfErr);
+    await expect(callUpdateUser({ uid: 'target-uid', updates: { role: 'agent' } }))
+      .rejects.toBe(cfErr);
+  });
+
+  it('CLAIM_KEYED_FIELDS contains exactly the v1 claim-keyed field set', () => {
+    expect(Array.from(CLAIM_KEYED_FIELDS)).toEqual(['role', 'branchId']);
   });
 });
