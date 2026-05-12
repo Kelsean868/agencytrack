@@ -121,7 +121,17 @@ manually.
 Priority was **HIGH** (pilot-blocking — Tatil cannot onboard managers/agents at
 scale without this). Surfaced during B4 provisioning.
 
-### HIGH#2 — UI role-to-label map is missing `sales_manager` → "Unknown" displayed
+### HIGH#2 — UI role-to-label map is missing `sales_manager` → "Unknown" displayed — RESOLVED in PR #55 (2026-05-08)
+
+**Resolved 2026-05-08 in PR #55** (commit `7264cc2`, shipped as part of the
+B5 tenant-admin company-config surface). Single-line addition to
+`src/utils/formatters.js:13` — `sales_manager: 'Sales Manager'` now lives
+in `ROLE_LABELS` and `getRoleLabel('sales_manager')` returns the correct
+label across TopBar, User Roster, and any other consumer.
+
+---
+
+**Original triage notes (kept for reference):**
 
 **Symptoms:** When logged in as a `sales_manager`, the dashboard header role
 label and the User Roster (Tenant Admin → Team tab) both display "Unknown"
@@ -282,7 +292,16 @@ HIGH#2 or any other open HIGH item — separate PR.
 
 ---
 
-## HIGH#7 — `aria-hidden="true"` on modal backdrop wrappers hides dialog from a11y tree (confirmed C3 verification 2026-05-08)
+## HIGH#7 — `aria-hidden="true"` on modal backdrop wrappers hides dialog from a11y tree — RESOLVED in PR #63 (2026-05-08)
+
+**Resolved 2026-05-08 in PR #63** (commit `2932cfa`,
+`fix(a11y): remove aria-hidden from modal backdrop wrappers`). Single-token
+deletion at each site; `aria-modal="true"` on the inner `role="dialog"`
+correctly carries modal semantics on its own.
+
+---
+
+**Original triage notes (kept for reference):**
 
 **Scope:** Two bulk-import modals have `aria-hidden="true"` on their outermost backdrop `<div>`:
 
@@ -295,7 +314,7 @@ The outer backdrop being `aria-hidden` hides the entire subtree — including th
 
 **Confirmed by:** extended C3 verification (2026-05-08) — `getByRole('dialog')` returned nothing on the default a11y traversal; only a CSS-selector fallback (`[role="dialog"][aria-labelledby="..."]`) could reach the dialog. Verified in both `BulkImportUsersModal.jsx:288` and `BulkImportGoalsModal.jsx:295`.
 
-**Shipping as:** PR #63 — `fix/aria-hidden-modal-wrappers`. Regression script `verification/aria-modal-regression.cjs`: 10/10 assertions pass on preview. Before/after screenshots at `verification/aria-fix-shots/`. Awaiting merge.
+**Shipped as:** PR #63 — `fix/aria-hidden-modal-wrappers`. Regression script `verification/aria-modal-regression.cjs`: 10/10 assertions pass on preview. Before/after screenshots at `verification/aria-fix-shots/`.
 
 Priority: **HIGH** (pre-pilot — modal is completely inaccessible to screen reader users as-is).
 
@@ -452,7 +471,30 @@ historical.
 
 ---
 
-## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix)
+## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix) — MOSTLY RESOLVED (re-classified POST-PILOT)
+
+**Mostly resolved.** The infrastructure half of this item shipped
+incrementally across the M-series, Track-C, kiosk, persistency, and
+production-report PRs. As of `5645100`:
+
+- `vitest ^3.2.4`, `@testing-library/react`, `@testing-library/jest-dom`,
+  `@testing-library/dom`, `jsdom`, `@firebase/rules-unit-testing` all in
+  `package.json:51` devDependencies.
+- `"test": "vitest run"` wired in `package.json` scripts.
+- 30+ `*.test.{js,jsx}` files in `src/` covering kiosk panels, persistency
+  playground, awards, UI primitives, tenant-admin dashboard, manager
+  surfaces, production-report routing/computations, weekly-report schema,
+  Goals/PersistencyTab, and more.
+
+**Outstanding piece (re-classified POST-PILOT):** the named regression
+spec for `agentManagementService.createUser` (the silent-failure mode
+HIGH#1 masked) is not yet written. Opportunistic — ship it the next time
+`createUser` is touched. Three test cases per the original triage below
+(happy path, email-dispatch failure, callable-rejection).
+
+---
+
+**Original triage notes (kept for reference):**
 
 **Scope:** Install Vitest + add the first regression test, restoring the
 unit-test layer that was deferred from the HIGH#1 fix (PR #57) so the P0
@@ -710,9 +752,28 @@ they flag.
 
 ---
 
-## PR-4 — Edit-user flows (user-mgmt track)
+## PR-4 — Edit-user flows (user-mgmt track) — RESOLVED in PR #122 + PR #129 (2026-05-12)
 
-**Scope:** UserManagementPanel currently supports create + deactivate/reactivate.
+**Resolved 2026-05-12.** Shipped in two PRs:
+
+- **PR #122 (`f62955e`, `feat(users): PR-4 — edit-user flows + permission matrix`)** —
+  EditUserDrawer + permission matrix for non-claim-keyed fields (name, phone,
+  bio, etc.). `updateUserFields` service + Firestore rule allowlist; UI
+  affordance in `UserManagementPanel`; reassignment-confirm dialog scaffolding.
+- **PR #129 (`5645100`, `feat(users): PR-4b — role + branchId edits via updateUser Cloud Function`)** —
+  Role and branchId edits via the polymorphic `updateUser` Cloud Function
+  (claim-atomic, server-side permission matrix). EditUserDrawer wired with
+  role/branchId dropdowns + permission-gated UI; `callUpdateUser` client
+  wrapper with unit tests; PR-4b smoke walk.
+
+Email changes and unitId reassignment-for-agents were deliberately deferred —
+they belong to the post-pilot scope.
+
+---
+
+**Original scope (kept for reference):**
+
+UserManagementPanel currently supports create + deactivate/reactivate.
 Missing: editing an existing user's fields (name, email, phone, unitId reassignment).
 
 - Add an Edit button/drawer to each user row (branch_manager and above)
@@ -1054,3 +1115,38 @@ Priority: **LOW**. Post-pilot polish.
 Pilot-launch acceptable; fix in a dedicated PR before broader rollout. Not pilot-blocking — Tatil pilot is a single branch and the workaround is to recognise the UID prefix.
 
 Priority: **LOW**. Post-pilot data-display fix.
+
+---
+
+## Add CI step for Firestore index deployment (POST-PILOT, banked 2026-05-12 during pilot-readiness audit)
+
+**Scope:** No automation surrounds `firestore.indexes.json`. Today the
+flow for a new composite index is: production query fails → developer
+copies auto-generated URL from console error → opens it in Firebase
+console → clicks Create → waits 2–5 min → reloads. HIGH#6 (the
+`TenantAdminDashboard` YTD composite index) is the canonical example of
+this pattern; future indexes will hit it again unless we automate.
+
+**Fix:** Add a CI step that runs
+`firebase deploy --only firestore:indexes` from `firestore.indexes.json`
+on merges to main. Already partially in place for `firestore.rules` via
+the pre-merge deploy pattern (CLAUDE.md). Closes two issues with one
+step:
+
+1. Removes the "find the URL in the console error" manual loop. A new
+   index in source becomes a deployed index automatically.
+2. Catches index-source drift — if production has indexes that aren't
+   in `firestore.indexes.json`, the CI deploy reveals the divergence.
+
+**Acceptance:**
+- `.github/workflows/ci.yml` (or a separate workflow) runs
+  `firebase deploy --only firestore:indexes` on push to `main`.
+- Workflow has a `FIREBASE_TOKEN` (or service-account JSON) repo secret,
+  scoped narrowly to the indexes resource.
+- Document in CLAUDE.md alongside the existing rules-deploy convention.
+
+Priority: **POST-PILOT**. Not blocking pilot launch; manual click is
+acceptable for the small number of remaining indexes. Bank for the next
+infrastructure-hygiene PR.
+
+Banked during the 2026-05-12 pilot-readiness audit.
