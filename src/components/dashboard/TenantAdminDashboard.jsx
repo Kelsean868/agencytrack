@@ -1,8 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  LayoutGrid, Building2, Users, Shield, BookOpen, Send,
-  ClipboardCheck, CreditCard, Settings as SettingsIcon, UserCircle,
-  TrendingUp, Activity,
+  LayoutGrid, Building2, Users, BookOpen, Send, UserCircle, TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -19,39 +17,35 @@ import CampaignPanel from '../campaigns/CampaignPanel';
 import ProfileScreen from '../profile/ProfileScreen';
 
 /**
- * TenantAdminDashboard (Design System v2 — B5).
+ * TenantAdminDashboard (Design System v2 — B5, TA-CLEANUP).
  *
  * Routed to from App.jsx for `role === 'tenant_admin'`. Owns the tenant-
  * admin-specific sidebar nav, mobile bottom-nav, top-bar title/crumb, and
  * tab content. Wraps everything in <Shell> (B4-shipped).
  *
- * Per locked Q5: Dashboard tab and Company Config tab are split surfaces.
- * Dashboard = stats + users-by-role + branch overview. Company Config =
- * config card only.
+ * Dashboard tab and Company Config tab are split surfaces. Dashboard =
+ * stats + users-by-role + branch overview. Company Config = config card
+ * only.
  *
- * Stub items (Roles & Permissions, Audit Log, Billing, Settings) render
- * as disabled sidebar links with "Coming soon" affordance — the surfaces
- * don't exist in the codebase, and per the locked stub-vs-defer matrix
- * we don't fabricate routes to non-existent destinations.
+ * TA-CLEANUP overrides B5's "stub link with Coming soon affordance"
+ * decision for Roles & Permissions / Audit Log / Billing / Settings.
+ * Per the manager-portal audit's "no placeholder text in production"
+ * recommendation, those four items are now removed from NAV_ITEMS
+ * entirely. They can be re-introduced when real surfaces ship.
  *
- * Branches: stub upgraded to a real surface in Track C C1 — routes to
- * <BranchesPanel />. Mobile bottom-nav left untouched per the C1 brief
- * (out-of-scope chrome change); Branches is reachable on mobile via the
- * sidebar drawer only.
+ * Branches: real surface (Track C C1) — routes to <BranchesPanel />.
+ * Mobile bottom-nav still omits Branches; mobile coverage tracked as
+ * a separate TA-MOBILE follow-up.
  */
 const NAV_ITEMS = [
-  { id: 'dashboard',  label: 'Dashboard',           tabId: 'dashboard',  Icon: LayoutGrid,    sectionLabel: 'Company' },
-  { id: 'branches',   label: 'Branches',            tabId: 'branches',   Icon: Building2 },
-  { id: 'users',      label: 'All Users',           tabId: 'users',      Icon: Users },
-  { id: 'roles',      label: 'Roles & Permissions', disabled: true,      Icon: Shield },
+  { id: 'dashboard', label: 'Dashboard',      tabId: 'dashboard', Icon: LayoutGrid, sectionLabel: 'Company' },
+  { id: 'branches',  label: 'Branches',       tabId: 'branches',  Icon: Building2 },
+  { id: 'users',     label: 'All Users',      tabId: 'users',     Icon: Users },
 
-  { id: 'config',     label: 'Company Config',      tabId: 'config',     Icon: BookOpen,      sectionLabel: 'Configuration' },
-  { id: 'campaigns',  label: 'Campaigns',           tabId: 'campaigns',  Icon: Send },
-  { id: 'audit',      label: 'Audit Log',           disabled: true,      Icon: ClipboardCheck },
-  { id: 'billing',    label: 'Billing',             disabled: true,      Icon: CreditCard },
+  { id: 'config',    label: 'Company Config', tabId: 'config',    Icon: BookOpen,   sectionLabel: 'Configuration' },
+  { id: 'campaigns', label: 'Campaigns',      tabId: 'campaigns', Icon: Send },
 
-  { id: 'settings',   label: 'Settings',            disabled: true,      Icon: SettingsIcon,  sectionLabel: 'System' },
-  { id: 'profile',    label: 'Profile',             tabId: 'profile',    Icon: UserCircle },
+  { id: 'profile',   label: 'Profile',        tabId: 'profile',   Icon: UserCircle, sectionLabel: 'Account' },
 ];
 
 const BOTTOM_NAV = [
@@ -148,7 +142,7 @@ export default function TenantAdminDashboard() {
     >
       {activeTab === 'dashboard' && (
         <div className="flex flex-col gap-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <StatCard
               label="Total API · YTD"
               value={ytdLoading ? '—' : (ytdAPI != null ? formatCurrency(ytdAPI) : '—')}
@@ -163,15 +157,9 @@ export default function TenantAdminDashboard() {
             />
             <StatCard
               label="Active Branches"
-              value={usersLoading ? '—' : `${userStats.branchCount} / ${userStats.branchCount}`}
-              sub={usersLoading ? 'Loading…' : 'All operational'}
+              value={usersLoading ? '—' : `${userStats.branchCount}`}
+              sub={usersLoading ? 'Loading…' : (userStats.branchCount === 1 ? 'Active branch' : 'Active branches')}
               Icon={Building2}
-            />
-            <StatCard
-              label="System Health"
-              value="—"
-              sub="Uptime monitoring · Coming soon"
-              Icon={Activity}
             />
           </div>
 

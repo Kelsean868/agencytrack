@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 
 /**
- * Users-by-role distribution card (Design System v2 — B5).
+ * Users-by-role distribution card (Design System v2 — B5, TA-CLEANUP).
  *
  * Renders 5 horizontal bars matching the mock — Agents, Unit Managers,
  * Branch Managers, Sales Managers, Tenant Admins — sized proportionally
@@ -11,10 +11,10 @@ import { useMemo } from 'react';
  * fetch (TenantAdminDashboard calls getTenantUsers() once and shares the
  * result with this card and BranchHealthCards).
  *
- * The "Manage roles & permissions" CTA in the mock points to a surface
- * that does not yet exist in the codebase. Per the locked stub-vs-defer
- * matrix, this is rendered as a disabled button with a "Coming soon"
- * affordance — NOT a route to a 404.
+ * TA-CLEANUP removed the previous "Manage roles & permissions · Coming
+ * soon" disabled CTA per the manager-portal audit's "no placeholder text
+ * in production" guidance. The CTA can return once a real Roles &
+ * Permissions surface exists.
  */
 const ROLES = [
   { key: 'agent',          label: 'Agents',          variant: 'primary' },
@@ -71,15 +71,6 @@ export default function RoleDistributionCard({ users, loading }) {
         })}
       </div>
 
-      <button
-        type="button"
-        disabled
-        aria-disabled="true"
-        className="mt-5 w-full h-11 rounded-lg border border-border text-sm font-semibold text-ink-muted opacity-60 cursor-not-allowed"
-        title="Roles & Permissions surface is coming in a future release"
-      >
-        Manage roles &amp; permissions · Coming soon
-      </button>
     </section>
   );
 }
