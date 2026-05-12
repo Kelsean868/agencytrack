@@ -1,10 +1,62 @@
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { db, storage, getTenantId } from '../firebase';
+import { auth, db, storage, getTenantId } from '../firebase';
 
 export async function updateUserProfile(uid, fields) {
   const docRef = doc(db, `tenants/${getTenantId()}/users/${uid}`);
   await updateDoc(docRef, { ...fields, updatedAt: serverTimestamp() });
+}
+
+// PR-4: client-side allowlist mirroring the tightened manager-update rule in
+// firestore.rules. Defense-in-depth — the rules layer is authoritative, but
+// catching disallowed fields client-side surfaces accidental misuse with a
+// clear error message instead of a Firestore PERMISSION_DENIED. Keep this
+// list in lockstep with firestore.rules `allow update` manager-path allowlist.
+export const MANAGER_EDITABLE_FIELDS = Object.freeze([
+  'name', 'phone', 'bio',
+  'unitId', 'unitName',
+  'agentNumber', 'contractStartDate',
+  'canConfirmSettlements',
+]);
+
+/**
+ * updateUserFields(uid, fields)
+ *
+ * Manager-edit pathway for non-claim, non-lifecycle user fields. Writes
+ * directly to the user doc with the standard updatedAt/updatedBy audit
+ * stamp. Throws if any field outside the allowlist is included so the UI
+ * cannot accidentally try to set role/branchId/active/email here.
+ *
+ * Role + branchId + ownedBranchIds: PR-4b (updateUser Cloud Function with
+ * claim-refresh atomicity). Until that ships, those fields remain a
+ * Firebase Console workaround.
+ * `active` toggle: continues to flow through agentManagementService.deactivateUser.
+ * `email` changes: deferred entirely.
+ */
+export async function updateUserFields(uid, fields) {
+  if (!uid) throw new Error('uid is required.');
+  if (!fields || typeof fields !== 'object') throw new Error('fields object is required.');
+
+  const keys = Object.keys(fields);
+  if (keys.length === 0) throw new Error('No fields to update.');
+
+  const disallowed = keys.filter((k) => !MANAGER_EDITABLE_FIELDS.includes(k));
+  if (disallowed.length > 0) {
+    throw new Error(
+      `Disallowed field(s) for manager edit: ${disallowed.join(', ')}. ` +
+      `Editable: ${MANAGER_EDITABLE_FIELDS.join(', ')}.`
+    );
+  }
+
+  const callerUid = auth.currentUser?.uid;
+  if (!callerUid) throw new Error('Not signed in.');
+
+  const docRef = doc(db, `tenants/${getTenantId()}/users/${uid}`);
+  await updateDoc(docRef, {
+    ...fields,
+    updatedAt: serverTimestamp(),
+    updatedBy: callerUid,
+  });
 }
 
 // Compress an image File/Blob to maxDim × maxDim, returns a Blob (image/jpeg)

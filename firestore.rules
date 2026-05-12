@@ -72,10 +72,31 @@ service cloud.firestore {
           getRole() != 'unit_manager' ||
           callerUnitId(tenantId) == request.resource.data.unitId
         );
-        allow update: if (canManage(tenantId) && (
-            getRole() != 'unit_manager' ||
-            callerUnitId(tenantId) == resource.data.unitId
-          )) || (isSignedIn()
+        // PR-4: manager-edit path enforces a field allowlist. Closes a pre-existing
+        // privilege-laundering vector where any tenant manager could write claim-keyed
+        // fields (role, branchId, ownedBranchIds) or audit-immutable fields
+        // (createdAt, createdBy, tenantId, email) via direct Firestore updateDoc(),
+        // creating divergence between the Firestore role/branchId and the custom
+        // claim. Allowlist matches the v1 EditUserDrawer field set.
+        //
+        // Excluded from this path (must go through Admin SDK / Cloud Functions):
+        //   - role, branchId, ownedBranchIds  → custom-claim divergence (PR-4b CF)
+        //   - active                          → deactivateUser CF (token revocation)
+        //   - email                           → auth-keyed
+        //   - uid, tenantId                   → identity / tenant isolation
+        //   - createdAt, createdBy, provisioning, csvImportBatchId, importedFromCsv
+        //                                     → audit immutability
+        allow update: if (canManage(tenantId)
+            && (getRole() != 'unit_manager' || callerUnitId(tenantId) == resource.data.unitId)
+            && request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly([
+                  'name', 'phone', 'bio',
+                  'unitId', 'unitName',
+                  'agentNumber', 'contractStartDate',
+                  'canConfirmSettlements',
+                  'updatedAt', 'updatedBy'
+                ])
+          ) || (isSignedIn()
             && request.auth.uid == userId
             && (
               (request.auth.token.role == 'unit_manager'
