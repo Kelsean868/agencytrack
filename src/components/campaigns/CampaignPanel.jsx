@@ -3,6 +3,7 @@ import StatusPill from '../ui/StatusPill';
 import TabPills from '../ui/TabPills';
 import { Plus, Pencil, Trash2, X, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useToast from '../../hooks/useToast';
 import {
   getCampaigns, createCampaign, updateCampaign, deleteCampaign,
   getCampaignSubmissions,
@@ -496,7 +497,7 @@ export default function CampaignPanel() {
   const [formOpen, setFormOpen]   = useState(false);
   const [editing, setEditing]     = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-  const [toast, setToast]         = useState('');
+  const toast = useToast();
 
   const canCreate = ['unit_manager', 'branch_manager', 'tenant_admin', 'platform_admin'].includes(role);
 
@@ -515,11 +516,6 @@ export default function CampaignPanel() {
 
   useEffect(() => { load(); }, [load]);
 
-  const showToast = (msg) => {
-    setToast(msg);
-    setTimeout(() => setToast(''), 3000);
-  };
-
   const grouped = useMemo(() => {
     const out = { active: [], upcoming: [], ended: [] };
     for (const c of campaigns) out[classifyDate(c.startDate, c.endDate)]?.push(c);
@@ -534,28 +530,38 @@ export default function CampaignPanel() {
 
   const handleSave = async (formData) => {
     if (!tenantId) return;
-    if (editing) {
-      await updateCampaign(tenantId, editing.id, formData);
-    } else {
-      await createCampaign(
-        tenantId, user.uid,
-        userProfile?.name ?? userProfile?.email ?? '',
-        role,
-        formData
-      );
+    try {
+      if (editing) {
+        await updateCampaign(tenantId, editing.id, formData);
+      } else {
+        await createCampaign(
+          tenantId, user.uid,
+          userProfile?.name ?? userProfile?.email ?? '',
+          role,
+          formData
+        );
+      }
+      setFormOpen(false);
+      setEditing(null);
+      toast.show({ variant: 'success', message: 'Campaign saved' });
+      await load();
+    } catch (err) {
+      console.error('[CampaignPanel] save failed:', err);
+      toast.show({ variant: 'error', message: "Couldn't save campaign" });
     }
-    setFormOpen(false);
-    setEditing(null);
-    showToast('Campaign saved');
-    await load();
   };
 
   const handleDelete = async (id) => {
     if (!tenantId) return;
-    await deleteCampaign(tenantId, id);
-    setDeletingId(null);
-    showToast('Campaign deleted');
-    await load();
+    try {
+      await deleteCampaign(tenantId, id);
+      setDeletingId(null);
+      toast.show({ variant: 'success', message: 'Campaign deleted' });
+      await load();
+    } catch (err) {
+      console.error('[CampaignPanel] delete failed:', err);
+      toast.show({ variant: 'error', message: "Couldn't delete campaign" });
+    }
   };
 
   const canEditCampaign = (c) =>
@@ -573,13 +579,6 @@ export default function CampaignPanel() {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-success text-white text-sm font-semibold shadow-lg">
-          {toast}
-        </div>
-      )}
-
       {/* Delete confirm dialog */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
