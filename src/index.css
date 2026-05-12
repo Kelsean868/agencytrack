@@ -6,33 +6,62 @@
 @tailwind utilities;
 
 :root {
+  /* ── Channel-split tokens + derived aliases (PR-C-FU3) ─────────────────
+   * Each migrated color is defined in two forms:
+   *   --X-channels: R G B   space-separated triplet, for Tailwind opacity
+   *   --color-X:    rgb(var(--X-channels))   derived alias, valid CSS
+   * Bare `var(--color-X)` references in CSS keep working byte-for-byte.
+   * Tailwind config uses `rgb(var(--X-channels) / <alpha-value>)` so
+   * opacity modifiers like bg-primary/30 resolve to a real alpha-modulated
+   * color instead of rgba(0, 0, 0, 0).
+   * `-tint` tokens and other pre-baked rgba tokens (presentation-muted /
+   * presentation-border) are kept static — they are designed values with
+   * intentionally different light/dark forms, not opacity modulations.
+   * Medal palettes are kept static — used only by CSS gradients.
+   */
+
   /* Backgrounds */
-  --color-bg: #f7f6f2;
-  --color-surface: #ffffff;
-  --color-surface-raised: #fafaf8;
-  --color-surface-muted: #f0efe9;
+  --bg-channels: 247 246 242;
+  --color-bg: rgb(var(--bg-channels));
+  --surface-channels: 255 255 255;
+  --color-surface: rgb(var(--surface-channels));
+  --surface-raised-channels: 250 250 248;
+  --color-surface-raised: rgb(var(--surface-raised-channels));
+  --surface-muted-channels: 240 239 233;
+  --color-surface-muted: rgb(var(--surface-muted-channels));
 
   /* Text */
-  --color-text: #28251d;
-  --color-text-muted: #6b6560;
-  --color-text-faint: #a8a39c;
+  --text-channels: 40 37 29;
+  --color-text: rgb(var(--text-channels));
+  --text-muted-channels: 107 101 96;
+  --color-text-muted: rgb(var(--text-muted-channels));
+  --text-faint-channels: 168 163 156;
+  --color-text-faint: rgb(var(--text-faint-channels));
 
   /* Borders */
-  --color-border: #e5e2db;
-  --color-border-strong: #ccc8c0;
+  --border-channels: 229 226 219;
+  --color-border: rgb(var(--border-channels));
+  --border-strong-channels: 204 200 192;
+  --color-border-strong: rgb(var(--border-strong-channels));
 
   /* Brand */
-  --color-primary: #01696f;
-  --color-primary-dark: #014e52;
-  --color-primary-light: #018a91;
+  --primary-channels: 1 105 111;
+  --color-primary: rgb(var(--primary-channels));
+  --primary-dark-channels: 1 78 82;
+  --color-primary-dark: rgb(var(--primary-dark-channels));
+  --primary-light-channels: 1 138 145;
+  --color-primary-light: rgb(var(--primary-light-channels));
   --color-primary-tint: #e6f4f4;
 
   /* Status */
-  --color-success: #2d7a4f;
+  --success-channels: 45 122 79;
+  --color-success: rgb(var(--success-channels));
   --color-success-tint: #e8f5ee;
-  --color-warning: #b45309;
+  --warning-channels: 180 83 9;
+  --color-warning: rgb(var(--warning-channels));
   --color-warning-tint: #fef3e2;
-  --color-danger: #c0392b;
+  --danger-channels: 192 57 43;
+  --color-danger: rgb(var(--danger-channels));
   --color-danger-tint: #fde8e7;
 
   /* Categorical accents (Design System v2 — B3 activity feed) ─────────
@@ -40,9 +69,11 @@
    * (purple/violet). Tints back the activity-feed icon backgrounds and
    * pill backgrounds. Hex values lifted verbatim from the canonical
    * mock (mocks/concept-4-complete.html lines 31-35, 64-68). */
-  --color-gold: #b07d1a;
+  --gold-channels: 176 125 26;
+  --color-gold: rgb(var(--gold-channels));
   --color-gold-tint: #fdf3dc;
-  --color-ink: #5a3fa0;
+  --ink-channels: 90 63 160;
+  --color-ink: rgb(var(--ink-channels));
   --color-ink-tint: #f0ecff;
 
   /* Shadows — warm-toned for light surfaces */
@@ -54,7 +85,8 @@
    * Always-dark surface for full-screen overlays (e.g. MeetingMode).
    * NOT overridden in .dark — these tokens are intentionally
    * theme-independent so the presentation surface stays stable
-   * regardless of the user's chosen theme.
+   * regardless of the user's chosen theme. Channels vars live in :root
+   * only; PR-C-FU3 does not duplicate them into .dark.
    *
    * Contrast (verified against --color-presentation #1a1612):
    *   --color-presentation-text   (#f0ebe0)             15.18:1
@@ -62,11 +94,17 @@
    *   --color-presentation-accent (#4ab5b8)              7.42:1
    * For text on accent surface (#4ab5b8), use
    *   --color-presentation        (#1a1612 as text)      7.42:1 (inverted)
+   *
+   * presentation-muted / presentation-border keep their pre-baked rgba
+   * form — no consumer applies an opacity modifier to them.
    */
-  --color-presentation:        #1a1612;
-  --color-presentation-text:   #f0ebe0;
+  --presentation-channels: 26 22 18;
+  --color-presentation: rgb(var(--presentation-channels));
+  --presentation-text-channels: 240 235 224;
+  --color-presentation-text: rgb(var(--presentation-text-channels));
+  --presentation-accent-channels: 74 181 184;
+  --color-presentation-accent: rgb(var(--presentation-accent-channels));
   --color-presentation-muted:  rgba(240, 235, 224, 0.7);
-  --color-presentation-accent: #4ab5b8;
   --color-presentation-border: rgba(240, 235, 224, 0.15);
 
   /* ── Medal palette (Design System v2 — B1 medal badges) ──────────────
@@ -88,40 +126,61 @@
 }
 
 .dark {
+  /* Channel-split + derived aliases — see :root header for the dual-form
+   * rationale (PR-C-FU3). Presentation tokens are theme-independent and
+   * live only in :root; do not redeclare them here. */
+
   /* Backgrounds — warm dark, strong layered contrast for visual depth */
-  --color-bg: #1a1612;
-  --color-surface: #252019;
-  --color-surface-raised: #302a23;
-  --color-surface-muted: #1f1b16;
+  --bg-channels: 26 22 18;
+  --color-bg: rgb(var(--bg-channels));
+  --surface-channels: 37 32 25;
+  --color-surface: rgb(var(--surface-channels));
+  --surface-raised-channels: 48 42 35;
+  --color-surface-raised: rgb(var(--surface-raised-channels));
+  --surface-muted-channels: 31 27 22;
+  --color-surface-muted: rgb(var(--surface-muted-channels));
 
   /* Text — warm off-white, easier on eyes than cool whites */
-  --color-text: #f0ebe0;
-  --color-text-muted: #b8aea0;
-  --color-text-faint: #8a8074;
+  --text-channels: 240 235 224;
+  --color-text: rgb(var(--text-channels));
+  --text-muted-channels: 184 174 160;
+  --color-text-muted: rgb(var(--text-muted-channels));
+  --text-faint-channels: 138 128 116;
+  --color-text-faint: rgb(var(--text-faint-channels));
 
   /* Borders — warm dark with enough definition to delineate cards */
-  --color-border: #3a3530;
-  --color-border-strong: #4a4540;
+  --border-channels: 58 53 48;
+  --color-border: rgb(var(--border-channels));
+  --border-strong-channels: 74 69 64;
+  --color-border-strong: rgb(var(--border-strong-channels));
 
   /* Brand — warmer teal, blends with warm tones, lighter for contrast */
-  --color-primary: #4ab5b8;
-  --color-primary-dark: #01696f;
-  --color-primary-light: #6dc8cb;
+  --primary-channels: 74 181 184;
+  --color-primary: rgb(var(--primary-channels));
+  --primary-dark-channels: 1 105 111;
+  --color-primary-dark: rgb(var(--primary-dark-channels));
+  --primary-light-channels: 109 200 203;
+  --color-primary-light: rgb(var(--primary-light-channels));
   --color-primary-tint: rgba(74, 181, 184, 0.15);
 
   /* Status — desaturated bright variants, warm-toned */
-  --color-success: #5db876;
+  --success-channels: 93 184 118;
+  --color-success: rgb(var(--success-channels));
   --color-success-tint: rgba(93, 184, 118, 0.15);
-  --color-warning: #e8b53e;
+  --warning-channels: 232 181 62;
+  --color-warning: rgb(var(--warning-channels));
   --color-warning-tint: rgba(232, 181, 62, 0.15);
-  --color-danger: #d96b5d;
+  --danger-channels: 217 107 93;
+  --color-danger: rgb(var(--danger-channels));
   --color-danger-tint: rgba(217, 107, 93, 0.15);
 
   /* Categorical accents — dark variants. Hex values lifted verbatim from
    * the canonical mock (mocks/concept-4-complete.html lines 64-68). */
-  --color-gold: #e0aa3e;
+  --gold-channels: 224 170 62;
+  --color-gold: rgb(var(--gold-channels));
   --color-gold-tint: rgba(224, 170, 62, 0.14);
-  --color-ink: #a995e0;
+  --ink-channels: 169 149 224;
+  --color-ink: rgb(var(--ink-channels));
   --color-ink-tint: rgba(169, 149, 224, 0.14);
 
   /* Shadows — deeper, pure black for dark surfaces */
