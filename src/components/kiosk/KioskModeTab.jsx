@@ -4,6 +4,7 @@ import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { Copy, ExternalLink, Trash2, Plus, RefreshCw } from 'lucide-react';
 import { db, getTenantId } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
+import useToast from '../../hooks/useToast';
 
 const KIOSK_BASE = 'https://agencytrack.vercel.app/kiosk';
 
@@ -19,6 +20,7 @@ function formatDate(ts) {
 
 export default function KioskModeTab() {
   const { tenantId } = useAuth();
+  const { show: showToast } = useToast();
   const [tokens, setTokens]     = useState([]);
   const [loading, setLoading]   = useState(true);
   const [creating, setCreating] = useState(false);
@@ -57,7 +59,12 @@ export default function KioskModeTab() {
       // Reload to get the new token from Firestore
       await loadTokens();
       // Auto-copy the new URL
-      await navigator.clipboard.writeText(result.data.kioskUrl).catch(() => {});
+      try {
+        await navigator.clipboard.writeText(result.data.kioskUrl);
+        showToast({ message: 'Kiosk URL generated and copied', variant: 'success' });
+      } catch {
+        showToast({ message: 'URL generated — copy failed, use the copy button', variant: 'warning' });
+      }
       setCopiedId(result.data.tokenId);
       setTimeout(() => setCopiedId(null), 3000);
     } catch (err) {
@@ -83,7 +90,12 @@ export default function KioskModeTab() {
 
   const handleCopy = async (tokenId) => {
     const url = kioskUrl(tenantId, tokenId);
-    await navigator.clipboard.writeText(url).catch(() => {});
+    try {
+      await navigator.clipboard.writeText(url);
+      showToast({ message: 'Link copied', variant: 'success' });
+    } catch {
+      showToast({ message: 'Copy failed', variant: 'error' });
+    }
     setCopiedId(tokenId);
     setTimeout(() => setCopiedId(null), 2000);
   };
