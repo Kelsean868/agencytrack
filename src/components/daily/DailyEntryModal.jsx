@@ -31,7 +31,7 @@ function formatDateLong(dateStr) {
 }
 
 export default function DailyEntryModal({ onClose }) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, tenantId } = useAuth();
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
   const today = useMemo(() => getTodayLocalDate(), []);
 
@@ -49,7 +49,7 @@ export default function DailyEntryModal({ onClose }) {
   useEffect(() => {
     if (!user?.uid) return;
     setLoading(true);
-    getDailyEntry(user.uid, today)
+    getDailyEntry(tenantId, user.uid, today)
       .then((existing) => {
         if (existing) {
           setData((prev) => ({ ...prev, ...existing }));
@@ -114,7 +114,7 @@ export default function DailyEntryModal({ onClose }) {
     setSaving(true);
     setError('');
     try {
-      await saveDailyEntry(user.uid, agentName, today, data);
+      await saveDailyEntry(tenantId, user.uid, agentName, today, data);
       setSavedAt(new Date());
       setTimeout(() => onClose?.(), 600);
     } catch (e) {

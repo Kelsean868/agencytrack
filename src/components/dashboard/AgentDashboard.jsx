@@ -244,7 +244,7 @@ export default function AgentDashboard() {
       setTodayDailyChecked(true);
       return;
     }
-    getDailyEntry(user.uid, today)
+    getDailyEntry(tenantId, user.uid, today)
       .then(setTodayDailyEntry)
       .catch(() => setTodayDailyEntry(null))
       .finally(() => setTodayDailyChecked(true));
@@ -252,7 +252,7 @@ export default function AgentDashboard() {
 
   const refreshDailyEntry = () => {
     if (!user?.uid) return;
-    getDailyEntry(user.uid, today).then(setTodayDailyEntry).catch(() => {});
+    getDailyEntry(tenantId, user.uid, today).then(setTodayDailyEntry).catch(() => {});
   };
 
   // Fetch goal hierarchy for gap analysis
