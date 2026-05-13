@@ -1,0 +1,9 @@
+Hi {{userName}},
+
+2 hours left! Your AgencyTrack weekly report for {{weekStarting}} is due at 9:00 AM today.
+
+Submit now before the deadline:
+https://agencytrack.vercel.app
+
+—
+AgencyTrack · Tatil Life

@@ -1,0 +1,11 @@
+Hi {{userName}},
+
+Your AgencyTrack weekly activity report for the week of {{weekStarting}} is due by Monday 9:00 AM.
+
+Log in to submit now:
+https://agencytrack.vercel.app
+
+It only takes 5 minutes. Staying on track keeps your numbers accurate and your manager informed.
+
+—
+AgencyTrack · Tatil Life
