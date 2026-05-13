@@ -119,7 +119,7 @@ export default function ProfileScreen() {
     const agentName = userProfile?.name ?? userProfile?.email ?? '';
     try {
       if (pendingMode === 'daily') {
-        const result = await catchUpWeeklyToDaily(user.uid, agentName, todayLocalDate());
+        const result = await catchUpWeeklyToDaily(tenantId, user.uid, agentName, todayLocalDate());
         if (result.catchUp) {
           setModeMessage({
             kind: 'info',
@@ -128,6 +128,7 @@ export default function ProfileScreen() {
         }
       } else if (pendingMode === 'weekly') {
         const result = await aggregateCurrentWeekDaily(
+          tenantId,
           user.uid,
           agentName,
           userProfile?.commissionRate ?? 0
