@@ -13,8 +13,8 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-13` |
-| Current main HEAD | `e86ed3f` (docs(briefs): cron timezone fix kickoff) |
-| Active track | **Cron timezone fix in flight** — fix/cron-timezone PR open, pre-merge deploy done, gcloud verified. Closes Track D cron portion. |
+| Current main HEAD | `5f1c2c6` (docs(briefs): test infra cleanup kickoff) |
+| Active track | **Test infra cleanup** — agentManagementService 5-test regression spec + CI test step in PR, awaiting merge. |
 | Next track | **Pilot prep — end-to-end testing using PR-F tooling.** Exercise the new bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
 | Queued | **SEC-9b** — migrate services to explicit `tenantId` parameter (~20 call-site refactor). |
 | Two-strike counter | 0/2 — clean PR-F arc. |
@@ -127,11 +127,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<PR#> | `<squash-sha>` | test(infra): close test infra MEDIUM — agentManagementService specs + CI test step |
 | #137 | `bb08cc7` | fix(functions): chain .timeZone('UTC') to all 4 scheduled CFs (Track D) |
 | #136 | `89182cd` | fix(functions): doCreateUser emailQueued truthfulness (#134 follow-up) |
 | #135 | `6baaa98` | feat(tooling): PR-F — bulk test data seeders + cleanup sweep |
 | #134 | `98ac43c` | docs(follow-ups): bank doCreateUser step E-2 emailQueued truthfulness gap |
-| #133 | `5ca6ea6` | feat(email): PR-D — server-side email infrastructure (HIGH#5) |
 
 ---
 

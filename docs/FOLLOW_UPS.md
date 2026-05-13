@@ -569,35 +569,22 @@ historical.
 
 ---
 
-## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix) — MOSTLY RESOLVED (re-classified POST-PILOT)
+## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix) — FULLY RESOLVED in PR #<PR#> (2026-05-13)
 
-**Mostly resolved.** The infrastructure half of this item shipped
-incrementally across the M-series, Track-C, kiosk, persistency, and
-production-report PRs. As of `5645100`:
+**Fully resolved 2026-05-13 in PR #<PR#>** (`<squash-sha>`,
+`test(infra): close test infra MEDIUM — agentManagementService specs + CI test step`).
 
-- `vitest ^3.2.4`, `@testing-library/react`, `@testing-library/jest-dom`,
-  `@testing-library/dom`, `jsdom`, `@firebase/rules-unit-testing` all in
-  `package.json:51` devDependencies.
-- `"test": "vitest run"` wired in `package.json` scripts.
-- 30+ `*.test.{js,jsx}` files in `src/` covering kiosk panels, persistency
-  playground, awards, UI primitives, tenant-admin dashboard, manager
-  surfaces, production-report routing/computations, weekly-report schema,
-  Goals/PersistencyTab, and more.
+All outstanding pieces shipped:
 
-**Outstanding piece (re-classified POST-PILOT):** the named regression
-spec for `agentManagementService.createUser` (the silent-failure mode
-HIGH#1 masked) is not yet written. Opportunistic — ship it the next time
-`createUser` is touched. Three test cases per the original triage below
-(happy path, email-dispatch failure, callable-rejection).
-
-**Added 2026-05-13 alongside the `doCreateUser` emailQueued truthfulness fix:**
-add a fourth regression test covering the new `doCreateUser` return shape —
-mock `admin.firestore().collection('mail').add` to throw and assert the CF
-returns `{ success: true, uid, emailQueued: false, emailError: '<thrown message>' }`
-(plus a matching positive case asserting `emailQueued: true` and no
-`emailError` field on the happy path). Vitest is already installed; this test
-landed without automated coverage because the existing smoke is a production
-browser harness that cannot induce a `mail/` write failure on demand.
+- `src/services/__tests__/agentManagementService.test.js` — 5 regression tests covering the wrapper layer:
+  1. Happy path — CF returns `{ uid, emailQueued: true }`; wrapper returns unchanged.
+  2. Email-dispatch failure — CF returns `{ uid, emailQueued: false, emailError }` (PR #136 guard); wrapper returns unchanged.
+  3. Callable rejection — CF throws; wrapper propagates the error.
+  4. Explicit `emailQueued: true` assertion (named-spec coverage).
+  5. Explicit `emailQueued: false + typeof emailError === 'string'` assertion (named-spec coverage).
+- `.github/workflows/ci.yml` — `npm test -- --run` step added after lint, before build. Test failures now block PRs.
+- Suite grows from 48 files / 603 tests → 49 files / 608 tests (verified locally).
+- The PR itself is the first CI run with the new test step — serves as self-test.
 
 ---
 
