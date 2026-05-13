@@ -127,7 +127,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #<PR#> | `<squash-sha>` | test(infra): close test infra MEDIUM — agentManagementService specs + CI test step |
+| #138 | `261b9ec` | test(infra): close test infra MEDIUM — agentManagementService specs + CI test step |
 | #137 | `bb08cc7` | fix(functions): chain .timeZone('UTC') to all 4 scheduled CFs (Track D) |
 | #136 | `89182cd` | fix(functions): doCreateUser emailQueued truthfulness (#134 follow-up) |
 | #135 | `6baaa98` | feat(tooling): PR-F — bulk test data seeders + cleanup sweep |
