@@ -602,6 +602,35 @@ attempt independently.
 
 ---
 
+## `doCreateUser` step E-2 silently returns `emailQueued: true` on mail/ write failure (MEDIUM, banked 2026-05-13 during PR-D smoke)
+
+**Scope:** `doCreateUser` in `functions/index.js` wraps step E-2
+(`generatePasswordResetLink` + `mail/` write) in a try/catch. On failure the
+catch logs `console.warn` and returns `{ success: true, uid, emailQueued: true }`.
+`emailQueued` is `true` even when no doc was written — the caller has no signal
+that email failed. This is the exact failure mode that caused all post-PR-D user
+creations to lose password emails until R1 was resolved (domain-authorization gap,
+2026-05-13). Had `emailQueued` been `false` on failure, the UI would have surfaced
+a retry affordance and admins would have known immediately.
+
+**Fix shape:**
+- Step E-2 catch: set `emailQueued = false` (currently always `true`).
+- `bulkImportUsers` row results: pass `emailQueued` through so Step 4
+  SummaryStats can distinguish "created + email sent" from "created, email
+  failed".
+- `UserManagementPanel.jsx` toast: when `emailQueued === false`, show a
+  secondary warning ("Password email may not have dispatched — use Resend invite
+  to retry").
+
+This closes the same observability gap that HIGH#1 fixed client-side (PR #57).
+HIGH#5/PR-D fixed the mechanism; this tracks the truthfulness of the return value.
+See also: "Resend invite UI" item already in FOLLOW_UPS.md.
+
+Priority: **MEDIUM**. Not pilot-blocking while R1 fix is stable. Ship before any
+bulk onboarding beyond the pilot cohort.
+
+---
+
 ## Track E — Agent + Manager Tooling Enhancements
 
 Source: planning session with Kyron + planning-Claude, May 8 2026.
