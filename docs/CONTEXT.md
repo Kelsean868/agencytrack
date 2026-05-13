@@ -127,7 +127,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #<placeholder> | `<squash-sha>` | fix(functions): doCreateUser emailQueued truthfulness (#134 follow-up) |
+| #136 | `89182cd` | fix(functions): doCreateUser emailQueued truthfulness (#134 follow-up) |
 | #135 | `6baaa98` | feat(tooling): PR-F — bulk test data seeders + cleanup sweep |
 | #134 | `98ac43c` | docs(follow-ups): bank doCreateUser step E-2 emailQueued truthfulness gap |
 | #133 | `5ca6ea6` | feat(email): PR-D — server-side email infrastructure (HIGH#5) |
