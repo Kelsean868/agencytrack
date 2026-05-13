@@ -1,6 +1,6 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db, getTenantId } from '../firebase';
+import { db } from '../firebase';
 
 
 /**
@@ -40,8 +40,8 @@ export async function deactivateUser(targetUid, active) {
  * All users in the current tenant, minus provisioning docs.
  * Optionally includes users with active: false.
  */
-export async function getAllUsers({ includeInactive = false } = {}) {
-  const snap = await getDocs(collection(db, `tenants/${getTenantId()}/users`));
+export async function getAllUsers(tenantId, { includeInactive = false } = {}) {
+  const snap = await getDocs(collection(db, `tenants/${tenantId}/users`));
   return snap.docs
     .map((d) => ({ uid: d.id, id: d.id, ...d.data() }))
     .filter((u) => u.provisioning !== true)

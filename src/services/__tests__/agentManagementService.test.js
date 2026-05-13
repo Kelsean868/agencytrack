@@ -8,7 +8,6 @@ const hoisted = vi.hoisted(() => ({
 
 vi.mock('../../firebase', () => ({
   db: {},
-  getTenantId: vi.fn(() => 'test-tenant'),
 }));
 
 vi.mock('firebase/firestore', () => ({
