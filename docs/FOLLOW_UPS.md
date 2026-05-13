@@ -144,6 +144,32 @@ Audit approach (bank for whoever picks this up):
 
 ---
 
+## PILOT-BLOCKING — Shakedown findings (surfaced 2026-05-13, must fix before Tatil demo)
+
+Two app bugs confirmed by the pre-pilot shakedown run. Full report: [`docs/shakedown-findings-2026-05-13.md`](shakedown-findings-2026-05-13.md).
+
+### SHAKEDOWN-001 — Manager/UM see Agent Dashboard on first login (Major)
+
+**Root cause:** Firebase custom claims set via `setCustomUserClaims()` propagate slowly. `AuthContext.jsx:20` calls `getIdTokenResult(true)` immediately on login. For brand-new accounts the forced refresh still returns `role: null` within the first ~120s of account creation. With `role = null`, `App.jsx` falls through to `AgentDashboard`.
+
+**Impact:** Every manager or agent created by BM/TA will see the Agent Dashboard on their very first login. They must sign out and back in (or wait ~2 minutes) to get their correct dashboard. This will be visible in any live demo where accounts are freshly created.
+
+**Fix:** `src/context/AuthContext.jsx` — add a retry loop (3 attempts × 3s) when `getIdTokenResult(true)` returns `role: null`, or read `tenants/{tenantId}/users/{uid}.role` from Firestore as an authoritative fallback when claims are empty.
+
+**Effort:** M (1–2 days). Fix before demo.
+
+### SHAKEDOWN-002 — Unit Manager sees cross-unit agents (Major, data isolation)
+
+**Root cause:** UM_001 sees agent-005/006/007 (UM_002 agents) in Team tab and Master Sheet. The seed data sets `unitId` on agents to their UM's UID. The query in `managerService.js` or `MasterSheet.jsx` may fetch all branch agents without filtering by `unitId`, or the filter is applied conditionally and mis-applied.
+
+**Impact:** Unit Manager is seeing agents from other units — a data isolation failure. Violates the role scoping model.
+
+**Fix:** Audit Team tab and Master Sheet user queries. For `unit_manager` role, ensure `.where('unitId', '==', callerUid)` is applied. Also verify `unitId` on seeded users matches the UM's UID (or however the app models the UM-agent relationship).
+
+**Effort:** S–M (half-day investigation + fix + regression verification). Fix before demo.
+
+---
+
 ## HIGH-priority — sales_manager onboarding regressions (surfaced 2026-05-07)
 
 Three production-affecting bugs discovered while provisioning the missing test
