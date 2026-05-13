@@ -314,7 +314,7 @@ export default function EditUserDrawer({
     }
     try {
       if (hasPr4) {
-        await updateUserFields(user.uid ?? user.id, pr4Diff);
+        await updateUserFields(tenantId, user.uid ?? user.id, pr4Diff);
       }
       if (hasCf) {
         await callUpdateUser({

@@ -1,10 +1,10 @@
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { auth, db, storage, getTenantId } from '../firebase';
+import { auth, db, storage } from '../firebase';
 
-export async function updateUserProfile(uid, fields) {
-  const docRef = doc(db, `tenants/${getTenantId()}/users/${uid}`);
+export async function updateUserProfile(tenantId, uid, fields) {
+  const docRef = doc(db, `tenants/${tenantId}/users/${uid}`);
   await updateDoc(docRef, { ...fields, updatedAt: serverTimestamp() });
 }
 
@@ -34,7 +34,7 @@ export const MANAGER_EDITABLE_FIELDS = Object.freeze([
  * `active` toggle: continues to flow through agentManagementService.deactivateUser.
  * `email` changes: deferred entirely.
  */
-export async function updateUserFields(uid, fields) {
+export async function updateUserFields(tenantId, uid, fields) {
   if (!uid) throw new Error('uid is required.');
   if (!fields || typeof fields !== 'object') throw new Error('fields object is required.');
 
@@ -52,7 +52,7 @@ export async function updateUserFields(uid, fields) {
   const callerUid = auth.currentUser?.uid;
   if (!callerUid) throw new Error('Not signed in.');
 
-  const docRef = doc(db, `tenants/${getTenantId()}/users/${uid}`);
+  const docRef = doc(db, `tenants/${tenantId}/users/${uid}`);
   await updateDoc(docRef, {
     ...fields,
     updatedAt: serverTimestamp(),
@@ -129,9 +129,9 @@ export function compressImage(file, maxDim = 400) {
 
 // Upload compressed blob to Storage, update photoURL in Firestore
 // onProgress: (0–100) => void
-export function uploadProfilePhoto(uid, blob, onProgress) {
+export function uploadProfilePhoto(tenantId, uid, blob, onProgress) {
   return new Promise((resolve, reject) => {
-    const storageRef = ref(storage, `avatars/${getTenantId()}/${uid}.jpg`);
+    const storageRef = ref(storage, `avatars/${tenantId}/${uid}.jpg`);
     const task = uploadBytesResumable(storageRef, blob, { contentType: 'image/jpeg' });
 
     task.on(
@@ -144,7 +144,7 @@ export function uploadProfilePhoto(uid, blob, onProgress) {
       async () => {
         try {
           const url = await getDownloadURL(task.snapshot.ref);
-          await updateUserProfile(uid, { photoURL: url });
+          await updateUserProfile(tenantId, uid, { photoURL: url });
           resolve(url);
         } catch (err) {
           reject(err);

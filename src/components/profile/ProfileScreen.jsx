@@ -14,7 +14,7 @@ const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const BIO_MAX   = 200;
 
 export default function ProfileScreen() {
-  const { user, userProfile, role } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
 
   const [displayName,     setDisplayName]     = useState(userProfile?.name ?? '');
   const [phone,           setPhone]           = useState(userProfile?.phone ?? '');
@@ -57,7 +57,7 @@ export default function ProfileScreen() {
     try {
       setUploadProgress(0);
       const compressed = await compressImage(file, 400);
-      const url = await uploadProfilePhoto(user.uid, compressed, (pct) => {
+      const url = await uploadProfilePhoto(tenantId, user.uid, compressed, (pct) => {
         setUploadProgress(pct);
       });
       setPhotoURL(url);
@@ -78,7 +78,7 @@ export default function ProfileScreen() {
     setModeSaving(true);
     setModeMessage(null);
     try {
-      await updateUserProfile(user.uid, {
+      await updateUserProfile(tenantId, user.uid, {
         loggingMode: modeToSave,
         dailyNudgeTime,
       });
@@ -173,7 +173,7 @@ export default function ProfileScreen() {
         bio: bio.trim(),
       };
       if (role === 'unit_manager') fields.unitName = unitName.trim();
-      await updateUserProfile(user.uid, fields);
+      await updateUserProfile(tenantId, user.uid, fields);
       setSavedAt(new Date());
     } catch (err) {
       console.error(err);
