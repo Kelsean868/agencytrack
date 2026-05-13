@@ -132,21 +132,23 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 | Dark Mode Hotfix | Warm palette + CSS-var theme system + persistence | ✅ COMPLETE |
 | A11y Trilogy + Mobile Audit | PR #30, #33, #34, #35, #36, #37, #38 — agent + manager surfaces + dark mode + mobile pilot pass | ✅ COMPLETE |
 | Track A | Security/perf hardening | ✅ COMPLETE — all 4 fixes shipped (see § Track A — Historical Items) |
-| Track B (v2) | Design System v2 — "Concept 4 Complete" redesign (5 sub-PRs B1–B5) | 📋 PLANNED — see `docs/design-v2-PRD.md` |
-| Pilot Prep | End-to-end testing, account setup, mobile audit | ⏸️ DEFERRED (app not at Tatil yet) |
-| P9  | Sales Manager role | ⏳ Planned (post-pilot) |
-| P10 | Multi-tenancy full rollout | ⏳ Deferred |
+| Track B (v2) | Design System v2 — "Concept 4 Complete" redesign (5 sub-PRs B1–B5) | ✅ COMPLETE — B1 medals, B2 goals carousel, B3 activity feed, B4 sidebar shell (#52), B5 tenant admin config (#55) |
+| Track C | Configuration & data — branches schema, bulk import users/goals, company minimums | ✅ COMPLETE — C1 branches (#60), C2 bulk-import users, C3 bulk-import goals, FU#3 channel-split tokens (#132) |
+| Track D | Cron + notifications verification | ⚠️ PARTIAL — PR-D server-side email (#133) closed the notifications half (HIGH#5). Cron half tracked separately in `docs/FOLLOW_UPS.md` § Track D cron portion status verification. |
+| Track E | Agent + Manager Tooling Enhancements (E1–E6) | ✅ COMPLETE — E1 schema split (#68–#70), E2 reverse commission calc (#66), E3 persistency playground (#82), E4 production report (#72), E5 kiosk (#73/#74), E5.1 kiosk polish (#75), E6 daily input (#71), E6 AOM (#76) |
+| M-series | Manager portal revamp | ✅ COMPLETE — M1 shared primitives (#105), M2 manager overview hero (#107), M3 manager awards medal (#113), M4 goals IA flatten (#116), M5 weekly champions medals (#118) |
+| User-mgmt | PR-3 retire super_admin + PR-4 edit-user + PR-4b role/branch edits | ✅ COMPLETE — PR-3 (#28/#29), PR-4 (#122), PR-4b (#129) |
+| Polish | Toast adoption + mobile polish + bulk test data | ✅ COMPLETE — Polish-1 (#114), Polish-2 (#127), PR-F bulk seeders + cleanup (#135) |
+| Pilot Prep | End-to-end testing using PR-F tooling, real Tatil accounts | 🚧 IN FLIGHT (next track) — app not at Tatil yet |
+| P9  | Sales Manager role | ⏳ Planned (post-pilot) — note: `sales_manager` claim + rules shipped via user-mgmt PR-1+; cross-branch UI surfaces remain |
+| P10 | Multi-tenancy full rollout | ⏳ Deferred (post-pilot) |
 
 ## Current Phase
-**Pre-Tatil-demo polish.** App has not been demoed to Tatil yet. Goal: ship app close to v1.0 because Kyron is also the decision-maker for the branch and wants minimal rework after pilot.
+**Pre-Tatil-demo polish — wrapping up.** App has not been demoed to Tatil yet. Goal: ship app close to v1.0 because Kyron is also the decision-maker for the branch and wants minimal rework after pilot.
 
-**Track A — security & performance hardening — COMPLETE** (all 4 originally-listed fixes shipped: firestore.rules SEC-2/3/4, WizardForm debounce + error UI, AgentDashboard html2canvas mount removed, firebase.js `persistentLocalCache` migration). Next: Track B (v2) — Design System v2.
+Tracks A through E are complete (see Build Phase History). User-mgmt PR-3/PR-4/PR-4b, M-series, Polish-1/2, PR-D server-side email, and PR-F bulk test data tooling have all shipped. The remaining pre-pilot work is **end-to-end pilot prep using the new PR-F bulk-seed + cleanup tooling**: exercise the full create-user → wizard → manager review → kiosk → AOM flow under realistic data volumes before the Tatil demo. After that, **SEC-9b** services-tenantId refactor is queued.
 
-**Then:** Track B (v2) — Design System v2 redesign. Replaces the original "visible polish" Track B scope. Ships in 5 sub-PRs (B1 medal badges, B2 goal carousel, B3 activity feed, B4 sidebar shell, B5 tenant admin config). Canonical spec: [`docs/design-v2-PRD.md`](docs/design-v2-PRD.md). Phased plan: [`docs/design-v2-implementation.md`](docs/design-v2-implementation.md). Visual source of truth: [`mocks/concept-4-complete.html`](mocks/concept-4-complete.html). Goal is visual parity with the mock at 1440px / 1024px / 768px / 390px in both light and dark mode.
-
-**Then:** Track C — configuration & data (real Tatil accounts, company minimums, 2026 goals, persistency historicals). Note: B5 covers the company-minimums UI surface ahead of Track C.
-
-**Then:** Track D — cron + notifications verification.
+Open follow-ups live in [`docs/FOLLOW_UPS.md`](docs/FOLLOW_UPS.md). Dynamic state (active track, recent shipping, where-we-left-off) lives in [`docs/CONTEXT.md`](docs/CONTEXT.md).
 
 ## Key Technical Decisions
 - Auth: email + password. Passwordless email link was abandoned — unreliable for field agents with intermittent connectivity.
