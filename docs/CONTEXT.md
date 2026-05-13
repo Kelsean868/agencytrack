@@ -14,10 +14,10 @@
 |---|---|
 | Last updated | `2026-05-13` |
 | Current main HEAD | `5f1c2c6` (docs(briefs): test infra cleanup kickoff) |
-| Active track | **Test infra cleanup** — agentManagementService 5-test regression spec + CI test step in PR, awaiting merge. |
+| Active track | **SEC-9b** — services `tenantId` migration PR open on branch `sec-9b`. Awaiting merge. |
 | Next track | **Pilot prep — end-to-end testing using PR-F tooling.** Exercise the new bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
-| Queued | **SEC-9b** — migrate services to explicit `tenantId` parameter (~20 call-site refactor). |
-| Two-strike counter | 0/2 — clean PR-F arc. |
+| Queued | (none) |
+| Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
 
 ---
@@ -26,13 +26,13 @@
 
 These are settled across all future sessions. If a session audit surfaces a reason to revisit, treat as a **surprise-stop** — surface in chat, do not unilaterally override.
 
-### Multi-tenancy (SEC-9, shipped PR #16)
+### Multi-tenancy (SEC-9, shipped PR #16; holder retired in SEC-9b)
 
-- `tenantId` is sourced from auth claims at runtime via `getTenantId()` runtime holder in `src/firebase.js`.
-- `AuthContext` populates the holder after claims resolve, clears on sign-out.
-- 18 files migrated: 13 components use `useAuth().tenantId`, 5 services use `getTenantId()`.
+- `tenantId` is sourced from auth claims at runtime and exposed via `useAuth().tenantId` in all React components.
+- All services accept `tenantId` as an explicit first parameter — the `getTenantId()` runtime holder in `src/firebase.js` was deleted in SEC-9b (PR pending).
+- `AuthContext` no longer calls `setRuntimeTenantId`; KioskRoute passes `tenantId` to `KioskShell` as a prop.
 - ~~One inline `import.meta.env.VITE_TENANT_ID` read remains at the AuthContext bootstrap site only — tracked by SEC-11.~~ **Resolved in PR-2:** bootstrap block deleted, SEC-11 closed.
-- `firebase.js` no longer exports `tenantId` as a const.
+- `firebase.js` no longer exports `tenantId` as a const, nor the `_tenantId`/`setRuntimeTenantId`/`getTenantId` holder trio.
 
 ### ~~User-management hierarchy matrix (next track, plan approved)~~
 
@@ -118,7 +118,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 | **Resend invite UI** | Per-row "Resend invite" action in user management | No | MEDIUM. Once-off email failures currently have no recourse after the post-create toast dismisses — the truthful warning toast (shipped PR #<placeholder>) tells admins email failed but the only recovery is recreating the user. Wire `sendPasswordResetEmail` short-term; swap to a `mail/` doc write via a callable wrapper once the PR-D pattern is consumed by more flows. |
 | Mobile FU#2 | Non-core agent surface P1s | No | `CareerPortal` "Edit My Goals" 32px → 44px, `History` row eye/preview hit area, `CommissionPlayground` accordion toggle measure-and-adjust. Source: `docs/FOLLOW_UPS.md`. |
 | Mobile FU#4 | P2 cosmetic items | No | Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hardcoded `bg-[#01696f]/8` → token (FU#3 channel-split landed in PR #132 but this site is hex-literal-arbitrary, not token-driven). Source: `docs/FOLLOW_UPS.md`. |
-| SEC-9b | Migrate services to explicit `tenantId` parameter | No | **Queued next** — ~20 call-site refactor. Schedule after pilot prep wraps. |
+| SEC-9b | Migrate services to explicit `tenantId` parameter | No | **PR open on `sec-9b`** — 9 service commits + Phase 3/4/5/6. Awaiting merge. Post-merge: run production smoke test. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 
 ---
@@ -150,13 +150,15 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Memory-refresh / state reconciliation session on 2026-05-13. CONTEXT.md was ~30 PRs stale; this commit catches up the top metadata, Active follow-ups, Recently shipped, Pending op state, and supersedes the `super_admin` Locked-decision section.
+> **Session boundary:** SEC-9b services tenantId migration — all 9 service commits + Phase 3/4/5/6 complete. PR opened on branch `sec-9b`. Not yet merged.
 
-**Last feature work — 2026-05-13:** PR-D server-side email infrastructure (#133, `5ca6ea6`) shipped the Firebase Trigger Email Extension wiring that closes HIGH#5. Client-side `sendPasswordResetEmail` removed; both create-user reset emails and the Sunday-nudge stub now route through `mail/` collection writes. R1 (domain authorization gap) surfaced and was resolved same day. PR-F bulk test data seeders + cleanup sweep (#135, `6baaa98`) followed — `scripts/seed/*` Admin SDK seeders + `scripts/cleanup/*` preview/wipe scripts + end-to-end smoke + lifecycle runbook. Both shipped clean (0/2 strike counter).
+**Last feature work — 2026-05-13 (SEC-9b):** Retired the `firebase.js` runtime tenantId holder (`_tenantId`, `setRuntimeTenantId`, `getTenantId`). All 9 services now accept `tenantId` as an explicit first parameter: `authService`, `managerService`, `submissionService`, `userService`, `agentManagementService`, `dailyActivityService`, `loggingModeService`, `agentOfMonthService`, `persistencyService`. AuthContext and KioskRoute no longer call `setRuntimeTenantId`. Tests cleaned up across all service + component test files. 607/607 tests green, 0 lint errors.
 
-**Pre-pilot state:** Track E fully complete (E1–E6 across PRs #66–#82). Manager revamp M-series fully complete (#105/#107/#113/#116/#118). User-mgmt PR-3/PR-4/PR-4b complete. Polish-1 + Polish-2 complete. Pilot has not launched at Tatil yet — Kyron remains both the decision-maker for the branch and the platform admin, so we're shipping pre-pilot polish in batches.
+**Lint note:** 15 new `react-hooks/exhaustive-deps` warnings (warnings only, not errors — lint exits 0). All relate to `tenantId` now being a React state value in `useAuth()` rather than a module-scoped `getTenantId()` call. `tenantId` is stable within a session (changes only on sign-in/sign-out), so the missing-dep pattern is low-risk. Tracked alongside the pre-existing deferred `exhaustive-deps` items in FOLLOW_UPS.md.
 
-**Next:** Pilot prep — exercise the new PR-F bulk-seed + cleanup tooling against the full end-to-end pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. Surfaces drift in the user-management + dashboard surfaces under realistic data volumes. SEC-9b services-tenantId refactor queued after that.
+**Pre-pilot state:** Track E fully complete (E1–E6 across PRs #66–#82). Manager revamp M-series fully complete (#105/#107/#113/#116/#118). User-mgmt PR-3/PR-4/PR-4b complete. Polish-1 + Polish-2 complete. Pilot has not launched at Tatil yet.
+
+**Next:** Merge SEC-9b PR, do production smoke test, then pivot to pilot prep — exercise the PR-F bulk-seed + cleanup tooling against the full end-to-end pilot flow.
 
 ---
 
