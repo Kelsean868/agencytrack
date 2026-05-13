@@ -608,12 +608,13 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
 /* ─────────────────────────────────────────────────────────────────────── */
 
 function SummaryStats({ results, preview }) {
-  const success = results.filter((r) => r.success).length;
-  const failure = results.filter((r) => !r.success).length;
-  const skipped = (preview?.summary?.warnings ?? 0);
+  const success     = results.filter((r) => r.success).length;
+  const failure     = results.filter((r) => !r.success).length;
+  const emailFailed = results.filter((r) => r.success && r.emailQueued === false).length;
+  const skipped     = (preview?.summary?.warnings ?? 0);
 
   return (
-    <div className="grid grid-cols-3 gap-2">
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       <div className="card p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Created</p>
         <p className="text-2xl font-bold text-success">{success}</p>
@@ -626,6 +627,11 @@ function SummaryStats({ results, preview }) {
       <div className="card p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Failed</p>
         <p className="text-2xl font-bold text-danger">{failure}</p>
+      </div>
+      <div className="card p-3">
+        <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Email failed</p>
+        <p className="text-2xl font-bold text-warning">{emailFailed}</p>
+        <p className="text-[10px] text-ink-muted">user created, no email</p>
       </div>
     </div>
   );

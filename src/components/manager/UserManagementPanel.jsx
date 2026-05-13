@@ -105,8 +105,8 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
         payload.confirmationPhrase = 'CREATE TENANT ADMIN';
       }
 
-      await createUser(payload);
-      onCreated(payload.email, effectiveRole);
+      const result = await createUser(payload);
+      onCreated(payload.email, effectiveRole, result?.emailQueued !== false);
     } catch (err) {
       const code = err?.code ?? '';
       if (code.includes('already-exists')) {
@@ -376,15 +376,23 @@ export default function UserManagementPanel() {
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
-  function handleCreated(email, createdRole) {
+  function handleCreated(email, createdRole, emailQueued) {
     setShowDrawer(false);
     loadUsers();
     const roleLabel = ROLE_DISPLAY[createdRole] ?? 'User';
-    toast.show({
-      variant: 'success',
-      message: `${roleLabel} account created. Password reset email on its way to ${email}.`,
-      duration: 6000,
-    });
+    if (emailQueued) {
+      toast.show({
+        variant: 'success',
+        message: `${roleLabel} account created. Password reset email on its way to ${email}.`,
+        duration: 6000,
+      });
+    } else {
+      toast.show({
+        variant: 'warning',
+        message: `${roleLabel} account created, but the password reset email may not have sent. Contact support or recreate the user if they don't receive it.`,
+        duration: 10000,
+      });
+    }
   }
 
   function handleEditSaved(savedName, customMessage) {

@@ -592,6 +592,15 @@ HIGH#1 masked) is not yet written. Opportunistic — ship it the next time
 `createUser` is touched. Three test cases per the original triage below
 (happy path, email-dispatch failure, callable-rejection).
 
+**Added 2026-05-13 alongside the `doCreateUser` emailQueued truthfulness fix:**
+add a fourth regression test covering the new `doCreateUser` return shape —
+mock `admin.firestore().collection('mail').add` to throw and assert the CF
+returns `{ success: true, uid, emailQueued: false, emailError: '<thrown message>' }`
+(plus a matching positive case asserting `emailQueued: true` and no
+`emailError` field on the happy path). Vitest is already installed; this test
+landed without automated coverage because the existing smoke is a production
+browser harness that cannot induce a `mail/` write failure on demand.
+
 ---
 
 **Original triage notes (kept for reference):**
@@ -702,32 +711,39 @@ attempt independently.
 
 ---
 
-## `doCreateUser` step E-2 silently returns `emailQueued: true` on mail/ write failure (MEDIUM, banked 2026-05-13 during PR-D smoke)
+## `doCreateUser` step E-2 silently returns `emailQueued: true` on mail/ write failure — RESOLVED in PR #<placeholder> (2026-05-13)
 
-**Scope:** `doCreateUser` in `functions/index.js` wraps step E-2
-(`generatePasswordResetLink` + `mail/` write) in a try/catch. On failure the
-catch logs `console.warn` and returns `{ success: true, uid, emailQueued: true }`.
-`emailQueued` is `true` even when no doc was written — the caller has no signal
-that email failed. This is the exact failure mode that caused all post-PR-D user
-creations to lose password emails until R1 was resolved (domain-authorization gap,
-2026-05-13). Had `emailQueued` been `false` on failure, the UI would have surfaced
-a retry affordance and admins would have known immediately.
+**Resolved 2026-05-13 in PR #<placeholder>** (`<squash-sha>`,
+`fix(functions): doCreateUser emailQueued truthfulness (#134 follow-up)`).
+Step E-2 catch now sets `emailQueued = false` and includes an optional
+`emailError` string; the return shape is `{ success, uid, emailQueued, emailError? }`.
+`bulkImportUsers` propagates `emailQueued` (+ `emailError`) into each row's
+result so the Step 4 SummaryStats card "Email failed" can distinguish
+"created + email sent" from "created, email never queued".
+`UserManagementPanel.jsx` `CreateUserDrawer` now captures the return value and
+forwards `emailQueued` into `handleCreated`, which switches to a warning toast:
+*"<Role> account created, but the password reset email may not have sent.
+Contact support or recreate the user if they don't receive it."*
 
-**Fix shape:**
-- Step E-2 catch: set `emailQueued = false` (currently always `true`).
-- `bulkImportUsers` row results: pass `emailQueued` through so Step 4
-  SummaryStats can distinguish "created + email sent" from "created, email
-  failed".
-- `UserManagementPanel.jsx` toast: when `emailQueued === false`, show a
-  secondary warning ("Password email may not have dispatched — use Resend invite
-  to retry").
+**Two brief premises corrected during Phase 1 discovery** (documented in the PR
+description, banked here for the next reviewer to find):
 
-This closes the same observability gap that HIGH#1 fixed client-side (PR #57).
-HIGH#5/PR-D fixed the mechanism; this tracks the truthfulness of the return value.
-See also: "Resend invite UI" item already in FOLLOW_UPS.md.
+1. Brief's locked decision *"Existing Retry button is the recovery path — no
+   new UI components"* — the Retry button was deleted in PR-D commit `f167708`
+   (`refactor(email): PR-D — remove all client-side email dispatch`) because
+   client-side `sendPasswordResetEmail` was removed in the same change. The
+   warning toast in this fix is informational with no action button. The
+   genuine recovery path is the still-unshipped "Resend invite UI"
+   follow-up below.
+2. Brief's NOT-in-scope line *"Bulk user import path — already handles email
+   failures correctly via `dispatchResetEmails`"* — `dispatchResetEmails` was
+   also deleted in commit `f167708`. Post-PR-D, bulk import inherited the same
+   `emailQueued: true` lie, so the bulk path WAS in scope per the original bank.
 
-Priority: **MEDIUM**. Not pilot-blocking while R1 fix is stable. Ship before any
-bulk onboarding beyond the pilot cohort.
+**Open follow-up:** the "Resend invite UI" item below remains the canonical
+recovery path for an email failure detected after the post-create toast
+dismisses. This fix surfaces the failure; "Resend invite" gives admins a way
+to actually resend.
 
 ---
 
