@@ -41,33 +41,31 @@ Priority: **LOW**. Not blocking. Bank for the next docs-hygiene session.
 
 ---
 
-## Track D — cron portion status verification (MEDIUM, banked 2026-05-13)
+## Track D — cron portion status verification — RESOLVED in PR #<PR#> (2026-05-13)
 
-**Scope:** Pre-Track-E plan named Track D as "cron + notifications
-verification." The notifications half landed via PR-D (#133, server-side
-email via Trigger Email Extension). The cron half — verifying that
-`sendSundayNudge` / `sendMondayNudge` / `weeklyChampions` / persistency-
-window crons fire on schedule with correct claim hydration + tenant scoping
-— has not been explicitly exercised since the Track D banking.
+**Resolved 2026-05-13 in PR #<PR#>** (`<squash-sha>`,
+`fix(functions): chain .timeZone('UTC') to all 4 scheduled CFs (Track D)`).
 
-**Why this matters:** PR-D rewrote the Sunday-nudge dispatch path to write
-`mail/` docs. The cron itself still fires from `functions/index.js`; its
-schedule + tenant-scope + claim-resolve behavior has not been independently
-verified post-PR-D. Adjacent risk: scheduled functions still hardcode
-`TENANT_ID = 'tatillife_south'` (SEC-9c open).
+Phase 1 Track D investigation surfaced that all 4 scheduled CFs were firing
+in `America/Los_Angeles` (Firebase Functions v1 default) instead of UTC.
+The cron strings were written for UTC interpretation but no `.timeZone()`
+chain was present, causing 3–7 hour drift from intended AST fire times.
 
-**Verification approach (when picked up):**
+Fix: chained `.timeZone('UTC')` to `sendSundayNudge`, `sendMondayNudge`,
+`flagMissedDeadlines` in `functions/index.js` and `aggregateDailyToWeeklyCron`
+in `functions/aggregators/sundayDailyToWeekly.js`. Pre-merge deploy from
+the feature worktree. Post-deploy `gcloud scheduler jobs describe` confirmed
+`timeZone: UTC` on all 4 jobs and correct `scheduleTime` UTC instants:
 
-- Trigger each scheduled function via `firebase functions:shell` against a
-  pilot-shaped test tenant (PR-F bulk seeders can now provision this).
-- Verify expected `mail/` doc(s) land for nudge crons.
-- Verify weekly-champion docs land in `leaderboard/` subcollection.
-- Confirm production schedule via Firebase Console Cloud Scheduler view.
+| Function | scheduleTime | AST wall-clock |
+|---|---|---|
+| sendSundayNudge | 2026-05-17T22:00Z | Sun 18:00 AST ✓ |
+| sendMondayNudge | 2026-05-18T11:00Z | Mon 07:00 AST ✓ |
+| flagMissedDeadlines | 2026-05-18T13:01Z | Mon 09:01 AST ✓ |
+| aggregateDailyToWeekly | 2026-05-18T03:00Z | Sun 23:00 AST ✓ |
 
-Priority: **MEDIUM**. Not pilot-blocking — crons have been running unchanged
-across PR #133/#135. Worth a dedicated triage session before the Tatil
-demo so the cron half of Track D has the same verification weight as the
-notifications half.
+SEC-9c (hardcoded `TENANT_ID = 'tatillife_south'` on scheduled functions)
+remains open — separate ticket, deferred post-pilot.
 
 ---
 

@@ -960,6 +960,7 @@ exports.updateUser = functions.https.onCall(async (data, context) => {
 // ─────────────────────────────────────────────────────────────────────────────
 exports.sendSundayNudge = functions.pubsub
   .schedule('0 22 * * 0')
+  .timeZone('UTC')
   .onRun(async () => {
     try {
       const weekStarting = getTriniSundayString(new Date());
@@ -997,6 +998,7 @@ exports.sendSundayNudge = functions.pubsub
 // ─────────────────────────────────────────────────────────────────────────────
 exports.sendMondayNudge = functions.pubsub
   .schedule('0 11 * * 1')
+  .timeZone('UTC')
   .onRun(async () => {
     try {
       const weekStarting = getTriniSundayString(new Date());
@@ -1034,6 +1036,7 @@ exports.sendMondayNudge = functions.pubsub
 // ─────────────────────────────────────────────────────────────────────────────
 exports.flagMissedDeadlines = functions.pubsub
   .schedule('1 13 * * 1')
+  .timeZone('UTC')
   .onRun(async () => {
     try {
       const weekStarting = getTriniSundayString(new Date());
