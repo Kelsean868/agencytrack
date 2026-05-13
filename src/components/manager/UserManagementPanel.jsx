@@ -364,7 +364,7 @@ export default function UserManagementPanel() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const list = await getAllUsers({ includeInactive: showInactive });
+      const list = await getAllUsers(tenantId, { includeInactive: showInactive });
       list.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
       setUsers(list);
     } catch (err) {

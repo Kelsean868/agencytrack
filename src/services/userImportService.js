@@ -228,7 +228,7 @@ export async function prepareImport(rows, tenantId) {
 
   // Load all tenant users (including deactivated) for the duplicate-email
   // check. Sub-500 user tenants — no pagination needed for pilot scope.
-  const existingUsers = await getAllUsers({ includeInactive: true });
+  const existingUsers = await getAllUsers(tenantId, { includeInactive: true });
   const existingEmails = new Set(
     existingUsers
       .map((u) => trim(u.email).toLowerCase())

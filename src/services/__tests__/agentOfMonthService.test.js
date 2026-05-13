@@ -4,7 +4,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 vi.mock('../../firebase', () => ({
   db: {},
   functions: {},
-  getTenantId: vi.fn(() => 'tenant1'),
 }));
 
 vi.mock('firebase/firestore', () => ({

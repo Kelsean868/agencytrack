@@ -59,7 +59,7 @@ export default function BranchesPanel() {
       const [b, bm, u] = await Promise.all([
         listBranches(tenantId),
         getBranchManagers(tenantId),
-        getAllUsers({ includeInactive: false }),
+        getAllUsers(tenantId, { includeInactive: false }),
       ]);
       setBranches(b);
       setBranchManagers(bm);

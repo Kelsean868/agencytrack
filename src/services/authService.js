@@ -4,7 +4,7 @@ import {
   sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db, getTenantId } from '../firebase';
+import { auth, db } from '../firebase';
 
 export async function signIn(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
@@ -18,8 +18,8 @@ export async function sendPasswordReset(email) {
   return sendPasswordResetEmail(auth, email);
 }
 
-export async function getUserProfile(uid) {
-  const ref = doc(db, `tenants/${getTenantId()}/users/${uid}`);
+export async function getUserProfile(tenantId, uid) {
+  const ref = doc(db, `tenants/${tenantId}/users/${uid}`);
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }

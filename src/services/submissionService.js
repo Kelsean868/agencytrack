@@ -2,7 +2,7 @@ import {
   doc, setDoc, getDoc, serverTimestamp,
   collection, query, where, orderBy, limit, getDocs,
 } from 'firebase/firestore';
-import { db, getTenantId } from '../firebase';
+import { db } from '../firebase';
 import {
   computeLumpsumCredit,
   computeLumpsumCommission,
@@ -112,8 +112,8 @@ export function sanitize(data, commissionRate = 0) {
   };
 }
 
-export async function saveDraft(uid, agentName, weekStarting, data, commissionRate = 0) {
-  const ref = doc(db, `tenants/${getTenantId()}/submissions/${submissionDocId(uid, weekStarting)}`);
+export async function saveDraft(tenantId, uid, agentName, weekStarting, data, commissionRate = 0) {
+  const ref = doc(db, `tenants/${tenantId}/submissions/${submissionDocId(uid, weekStarting)}`);
   await setDoc(
     ref,
     { ...sanitize(data, commissionRate), userId: uid, agentId: uid, agentName, weekStarting, status: 'draft', updatedAt: serverTimestamp() },
@@ -121,8 +121,8 @@ export async function saveDraft(uid, agentName, weekStarting, data, commissionRa
   );
 }
 
-export async function submitReport(uid, agentName, weekStarting, data, commissionRate = 0) {
-  const ref = doc(db, `tenants/${getTenantId()}/submissions/${submissionDocId(uid, weekStarting)}`);
+export async function submitReport(tenantId, uid, agentName, weekStarting, data, commissionRate = 0) {
+  const ref = doc(db, `tenants/${tenantId}/submissions/${submissionDocId(uid, weekStarting)}`);
   await setDoc(ref, {
     ...sanitize(data, commissionRate),
     userId: uid,
@@ -135,15 +135,15 @@ export async function submitReport(uid, agentName, weekStarting, data, commissio
   });
 }
 
-export async function getDraft(uid, weekStarting) {
-  const ref = doc(db, `tenants/${getTenantId()}/submissions/${submissionDocId(uid, weekStarting)}`);
+export async function getDraft(tenantId, uid, weekStarting) {
+  const ref = doc(db, `tenants/${tenantId}/submissions/${submissionDocId(uid, weekStarting)}`);
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }
 
-export async function getLastSubmission(uid) {
+export async function getLastSubmission(tenantId, uid) {
   const q = query(
-    collection(db, `tenants/${getTenantId()}/submissions`),
+    collection(db, `tenants/${tenantId}/submissions`),
     where('agentId', '==', uid),
     orderBy('weekStarting', 'desc'),
     limit(1)
@@ -152,9 +152,9 @@ export async function getLastSubmission(uid) {
   return snap.empty ? null : snap.docs[0].data();
 }
 
-export async function getAgentSubmissions(uid) {
+export async function getAgentSubmissions(tenantId, uid) {
   const q = query(
-    collection(db, `tenants/${getTenantId()}/submissions`),
+    collection(db, `tenants/${tenantId}/submissions`),
     where('agentId', '==', uid),
     orderBy('weekStarting', 'desc')
   );

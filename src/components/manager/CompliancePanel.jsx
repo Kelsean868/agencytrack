@@ -128,7 +128,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   const loadData = () => {
     setLoading(true);
     setError('');
-    Promise.all([getWeeklySubmissions(selectedWeek), getTenantUsers()])
+    Promise.all([getWeeklySubmissions(tenantId, selectedWeek), getTenantUsers(tenantId)])
       .then(([subs, userList]) => {
         setSubmissions(subs);
         setUsers(userList.filter((u) => u.role === 'agent'));

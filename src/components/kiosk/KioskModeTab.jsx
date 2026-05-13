@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { Copy, ExternalLink, Trash2, Plus, RefreshCw } from 'lucide-react';
-import { db, getTenantId } from '../../firebase';
+import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
 
@@ -34,7 +34,7 @@ export default function KioskModeTab() {
     setError(null);
     try {
       const q = query(
-        collection(db, `tenants/${getTenantId()}/kioskTokens`),
+        collection(db, `tenants/${tenantId}/kioskTokens`),
         orderBy('createdAt', 'desc')
       );
       const snap = await getDocs(q);

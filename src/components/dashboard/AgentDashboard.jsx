@@ -128,10 +128,10 @@ export default function AgentDashboard() {
     if (!user?.uid || !tenantId) return;
     setLoading(true);
     Promise.all([
-      getDraft(user.uid, currentWeek).catch(() => null),
-      getAgentSubmissions(user.uid).catch(() => []),
+      getDraft(tenantId, user.uid, currentWeek).catch(() => null),
+      getAgentSubmissions(tenantId, user.uid).catch(() => []),
       getGoals(tenantId, user.uid).catch(() => null),
-      getAgentHistory(user.uid, 12).catch(() => []),
+      getAgentHistory(tenantId, user.uid, 12).catch(() => []),
       getSettlements(tenantId, user.uid, thisYear).catch(() => []),
       getCompanyMinimums(tenantId).catch(() => null),
     ]).then(([weekSub, subs, agentGoals, pers, setts, mins]) => {
@@ -244,7 +244,7 @@ export default function AgentDashboard() {
       setTodayDailyChecked(true);
       return;
     }
-    getDailyEntry(user.uid, today)
+    getDailyEntry(tenantId, user.uid, today)
       .then(setTodayDailyEntry)
       .catch(() => setTodayDailyEntry(null))
       .finally(() => setTodayDailyChecked(true));
@@ -252,7 +252,7 @@ export default function AgentDashboard() {
 
   const refreshDailyEntry = () => {
     if (!user?.uid) return;
-    getDailyEntry(user.uid, today).then(setTodayDailyEntry).catch(() => {});
+    getDailyEntry(tenantId, user.uid, today).then(setTodayDailyEntry).catch(() => {});
   };
 
   // Fetch goal hierarchy for gap analysis

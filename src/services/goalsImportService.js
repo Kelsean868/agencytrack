@@ -173,7 +173,7 @@ export async function prepareImport(rows, tenantId) {
 
   // Active-agent index. Single getAllUsers fetch — sub-500-user tenants
   // for the pilot, no pagination needed.
-  const allUsers = await getAllUsers({ includeInactive: true });
+  const allUsers = await getAllUsers(tenantId, { includeInactive: true });
   const activeAgents = allUsers.filter(
     (u) => u.role === 'agent' && u.active !== false && trim(u.email)
   );

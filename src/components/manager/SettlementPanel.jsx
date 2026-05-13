@@ -69,7 +69,7 @@ export default function SettlementPanel() {
     if (!tenantId) return;
     setLoadingData(true);
     setError('');
-    getTenantUsers()
+    getTenantUsers(tenantId)
       .then((userList) => {
         const agentList = userList.filter((u) => u.role === 'agent');
         setAgents(agentList);

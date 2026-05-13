@@ -44,9 +44,9 @@ export default function KioskShell({ tenantId, branchId }) {
   const fetchData = useCallback(async () => {
     try {
       const [subs, users, aom] = await Promise.all([
-        getAllYTDSubmissions(),
-        getTenantUsers(),
-        getAgentOfMonthForKiosk().catch(() => null),
+        getAllYTDSubmissions(tenantId),
+        getTenantUsers(tenantId),
+        getAgentOfMonthForKiosk(tenantId).catch(() => null),
       ]);
       setAllSubmissions(subs);
       setAllUsers(users);

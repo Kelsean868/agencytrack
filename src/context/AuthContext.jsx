@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db, setRuntimeTenantId } from '../firebase';
+import { auth, db } from '../firebase';
 
 const AuthContext = createContext(null);
 
@@ -28,11 +28,6 @@ export function AuthProvider({ children }) {
         const claimTenantId = finalClaims.tenantId ?? null;
         setTenantId(claimTenantId);
         setRole(finalClaims.role ?? null);
-        // Populate the firebase.js runtime holder so non-React services
-        // (authService, managerService, persistencyService, submissionService,
-        // userService) can read the current tenantId via getTenantId().
-        setRuntimeTenantId(claimTenantId);
-
         if (!claimTenantId) {
           console.error('[AgencyTrack] No tenantId in claims after auth resolution — profile load skipped');
           setUserProfile(null);
@@ -73,9 +68,6 @@ export function AuthProvider({ children }) {
         setUserProfile(null);
         setRole(null);
         setTenantId(null);
-        // Clear the runtime holder so a stale tenant cannot leak into the
-        // next session if another user signs in on the same client.
-        setRuntimeTenantId(null);
       }
       setLoading(false);
     });

@@ -28,8 +28,8 @@ export default function BranchManagerProductionView() {
     if (!tenantId) return;
     setLoading(true);
     Promise.all([
-      getAllYTDSubmissions().catch(() => []),
-      getTenantUsers().catch(() => []),
+      getAllYTDSubmissions(tenantId).catch(() => []),
+      getTenantUsers(tenantId).catch(() => []),
     ]).then(([subs, users]) => {
       setAllSubmissions(subs);
       setAllUsers(users);

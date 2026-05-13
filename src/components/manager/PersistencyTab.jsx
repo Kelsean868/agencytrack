@@ -68,7 +68,7 @@ function buildCSV(rows) {
 }
 
 export default function PersistencyTab() {
-  const { user, userProfile, role } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
   const toast = useToast();
   const scopeType = SCOPE_BY_ROLE[role] ?? 'tenant';
   const scopeId = scopeType === 'unit'   ? userProfile?.unitId
@@ -91,7 +91,7 @@ export default function PersistencyTab() {
     let cancelled = false;
     (async () => {
       try {
-        const months = await getAvailableMonths(scopeType, scopeId);
+        const months = await getAvailableMonths(tenantId, scopeType, scopeId);
         if (cancelled) return;
         setMonthKeys(months);
         setMonthKey((prev) => prev ?? months[0] ?? null);
@@ -108,10 +108,10 @@ export default function PersistencyTab() {
     setError('');
     try {
       const [allUsers, recs] = await Promise.all([
-        getTenantUsers(),
-        scopeType === 'unit'   ? getPersistencyForUnit(monthKey, scopeId) :
-        scopeType === 'branch' ? getPersistencyForBranch(monthKey, scopeId) :
-                                  getPersistencyForTenant(monthKey),
+        getTenantUsers(tenantId),
+        scopeType === 'unit'   ? getPersistencyForUnit(tenantId, monthKey, scopeId) :
+        scopeType === 'branch' ? getPersistencyForBranch(tenantId, monthKey, scopeId) :
+                                  getPersistencyForTenant(tenantId, monthKey),
       ]);
       const filtered = scopeType === 'unit'
         ? allUsers.filter((u) => u.unitId === scopeId && u.role === 'agent')
@@ -345,6 +345,7 @@ export default function PersistencyTab() {
       {/* Entry form modal */}
       {editingAgentUid && (
         <PersistencyEntryForm
+          tenantId={tenantId}
           monthKey={monthKey}
           agentUid={editingAgentUid}
           agentName={editingUser?.name ?? editingUser?.email ?? editingAgentUid}

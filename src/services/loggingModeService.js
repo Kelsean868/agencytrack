@@ -19,13 +19,13 @@
  */
 
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
-import { db, getTenantId } from '../firebase';
+import { db } from '../firebase';
 import { getDailyEntriesForWeek, saveDailyEntry } from './dailyActivityService';
 import { aggregateDailyToWeekly } from '../lib/schema/dailyActivity.aggregator';
 import { getMostRecentSunday } from '../utils/dateHelpers';
 
-function submissionRef(uid, weekStarting) {
-  return doc(db, `tenants/${getTenantId()}/submissions/${uid}_${weekStarting}`);
+function submissionRef(tenantId, uid, weekStarting) {
+  return doc(db, `tenants/${tenantId}/submissions/${uid}_${weekStarting}`);
 }
 
 /**
@@ -67,13 +67,13 @@ export function draftHasContent(draft) {
  *
  * Returns { aggregated: true|false, count: <num daily entries> }.
  */
-export async function aggregateCurrentWeekDaily(uid, agentName, commissionRate) {
+export async function aggregateCurrentWeekDaily(tenantId, uid, agentName, commissionRate) {
   const weekStarting = getMostRecentSunday();
-  const dailies = await getDailyEntriesForWeek(uid, weekStarting);
+  const dailies = await getDailyEntriesForWeek(tenantId, uid, weekStarting);
   if (dailies.length === 0) return { aggregated: false, count: 0, weekStarting };
 
   const rollup = aggregateDailyToWeekly(dailies, commissionRate);
-  const ref = submissionRef(uid, weekStarting);
+  const ref = submissionRef(tenantId, uid, weekStarting);
   const existing = await getDoc(ref);
   if (existing.exists() && existing.data().status === 'submitted') {
     return { aggregated: false, count: dailies.length, weekStarting, alreadySubmitted: true };
@@ -107,9 +107,9 @@ export async function aggregateCurrentWeekDaily(uid, agentName, commissionRate) 
  *
  * Returns { catchUp: true|false, weekStarting }.
  */
-export async function catchUpWeeklyToDaily(uid, agentName, today) {
+export async function catchUpWeeklyToDaily(tenantId, uid, agentName, today) {
   const weekStarting = getMostRecentSunday();
-  const ref = submissionRef(uid, weekStarting);
+  const ref = submissionRef(tenantId, uid, weekStarting);
   const snap = await getDoc(ref);
   if (!snap.exists()) return { catchUp: false, weekStarting, reason: 'no-draft' };
 
@@ -154,7 +154,7 @@ export async function catchUpWeeklyToDaily(uid, agentName, today) {
     catchUpEndDate:   today,
   };
 
-  await saveDailyEntry(uid, agentName, today, catchUpEntry);
+  await saveDailyEntry(tenantId, uid, agentName, today, catchUpEntry);
   await deleteDoc(ref);
   return { catchUp: true, weekStarting, today };
 }

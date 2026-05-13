@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import StatusPill from '../ui/StatusPill';
 import { Download, Search } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
@@ -65,6 +66,7 @@ function SkeletonRow() {
 }
 
 export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
+  const { tenantId } = useAuth();
   const [submissions, setSubmissions]       = useState([]);
   const [userNameMap, setUserNameMap]       = useState({});
   const [loading, setLoading]               = useState(true);
@@ -78,8 +80,8 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     setLoading(true);
     setError('');
     Promise.all([
-      getWeeklySubmissions(selectedWeek),
-      getTenantUsers().catch(() => []),
+      getWeeklySubmissions(tenantId, selectedWeek),
+      getTenantUsers(tenantId).catch(() => []),
     ])
       .then(([subs, userList]) => {
         setSubmissions(subs);

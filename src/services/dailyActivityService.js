@@ -19,19 +19,19 @@ import {
   serverTimestamp,
   deleteDoc,
 } from 'firebase/firestore';
-import { db, getTenantId } from '../firebase';
+import { db } from '../firebase';
 import { getSundayOf } from '../lib/schema/dailyActivity';
 
-function dailyDocPath(uid, date) {
-  return `tenants/${getTenantId()}/users/${uid}/dailyActivity/${date}`;
+function dailyDocPath(tenantId, uid, date) {
+  return `tenants/${tenantId}/users/${uid}/dailyActivity/${date}`;
 }
 
-function dailyCollectionPath(uid) {
-  return `tenants/${getTenantId()}/users/${uid}/dailyActivity`;
+function dailyCollectionPath(tenantId, uid) {
+  return `tenants/${tenantId}/users/${uid}/dailyActivity`;
 }
 
-export async function saveDailyEntry(uid, agentName, date, entry) {
-  const ref = doc(db, dailyDocPath(uid, date));
+export async function saveDailyEntry(tenantId, uid, agentName, date, entry) {
+  const ref = doc(db, dailyDocPath(tenantId, uid, date));
   const existing = await getDoc(ref);
   await setDoc(
     ref,
@@ -48,22 +48,22 @@ export async function saveDailyEntry(uid, agentName, date, entry) {
   );
 }
 
-export async function getDailyEntry(uid, date) {
-  const ref = doc(db, dailyDocPath(uid, date));
+export async function getDailyEntry(tenantId, uid, date) {
+  const ref = doc(db, dailyDocPath(tenantId, uid, date));
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
 }
 
-export async function getDailyEntriesForWeek(uid, weekStarting) {
+export async function getDailyEntriesForWeek(tenantId, uid, weekStarting) {
   const q = query(
-    collection(db, dailyCollectionPath(uid)),
+    collection(db, dailyCollectionPath(tenantId, uid)),
     where('weekStarting', '==', weekStarting)
   );
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function deleteDailyEntry(uid, date) {
-  const ref = doc(db, dailyDocPath(uid, date));
+export async function deleteDailyEntry(tenantId, uid, date) {
+  const ref = doc(db, dailyDocPath(tenantId, uid, date));
   await deleteDoc(ref);
 }

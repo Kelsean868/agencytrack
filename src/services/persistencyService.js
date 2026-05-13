@@ -1,7 +1,7 @@
 // E3 — Persistency service.
 //
-// Tenant resolution: ALWAYS via getTenantId() from firebase.js (SEC-9).
-// Never accepts tenantId as a parameter; never reads import.meta.env directly.
+// Tenant resolution: tenantId is always accepted as an explicit first parameter
+// (SEC-9b). Never reads import.meta.env directly.
 //
 // Schema is the E3-shaped doc — see docs/briefs/e3-persistency-playground-kickoff.md
 // § Schema and docs/e3-persistency-discovery-notes.md.
@@ -15,7 +15,7 @@ import {
   collection, query, where,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, auth, getTenantId } from '../firebase';
+import { db, auth } from '../firebase';
 import { deriveAll, aggregatePersistency } from '../lib/persistency/calculations';
 import { getTenantUsers } from './managerService';
 
@@ -73,27 +73,26 @@ export function reportPeriodFromMonthKey(monthKey) {
   return { reportPeriodStart: start, reportPeriodEnd: end };
 }
 
-function persistencyCollection() {
-  return collection(db, `tenants/${getTenantId()}/persistency`);
+function persistencyCollection(tenantId) {
+  return collection(db, `tenants/${tenantId}/persistency`);
 }
 
-function persistencyDocRef(agentUid, monthKey) {
-  return doc(db, `tenants/${getTenantId()}/persistency/${persistencyDocId(agentUid, monthKey)}`);
+function persistencyDocRef(tenantId, agentUid, monthKey) {
+  return doc(db, `tenants/${tenantId}/persistency/${persistencyDocId(agentUid, monthKey)}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Reads
 // ─────────────────────────────────────────────────────────────────────────────
 
-export async function getPersistencyForAgent(monthKey, agentUid) {
-  const snap = await getDoc(persistencyDocRef(agentUid, monthKey));
+export async function getPersistencyForAgent(tenantId, monthKey, agentUid) {
+  const snap = await getDoc(persistencyDocRef(tenantId, agentUid, monthKey));
   if (!snap.exists()) return null;
   const data = { id: snap.id, ...snap.data() };
   return isE3Doc(data) ? data : null;
 }
 
-async function getPersistencyForUserList(monthKey, userList) {
-  const tenantId = getTenantId();
+async function getPersistencyForUserList(tenantId, monthKey, userList) {
   const settled = await Promise.all(
     userList.map(async (u) => {
       try {
@@ -114,35 +113,35 @@ async function getPersistencyForUserList(monthKey, userList) {
   return settled.filter(Boolean);
 }
 
-export async function getPersistencyForUnit(monthKey, unitId) {
-  const users = (await getTenantUsers()).filter(
+export async function getPersistencyForUnit(tenantId, monthKey, unitId) {
+  const users = (await getTenantUsers(tenantId)).filter(
     (u) => u.unitId === unitId && u.role === 'agent',
   );
-  return getPersistencyForUserList(monthKey, users);
+  return getPersistencyForUserList(tenantId, monthKey, users);
 }
 
-export async function getPersistencyForBranch(monthKey, branchId) {
-  const users = (await getTenantUsers()).filter(
+export async function getPersistencyForBranch(tenantId, monthKey, branchId) {
+  const users = (await getTenantUsers(tenantId)).filter(
     (u) => u.branchId === branchId && u.role === 'agent',
   );
-  return getPersistencyForUserList(monthKey, users);
+  return getPersistencyForUserList(tenantId, monthKey, users);
 }
 
-export async function getPersistencyForTenant(monthKey) {
-  const users = (await getTenantUsers()).filter((u) => u.role === 'agent');
-  return getPersistencyForUserList(monthKey, users);
+export async function getPersistencyForTenant(tenantId, monthKey) {
+  const users = (await getTenantUsers(tenantId)).filter((u) => u.role === 'agent');
+  return getPersistencyForUserList(tenantId, monthKey, users);
 }
 
 // Returns distinct monthKeys, sorted newest first. For 'agent' scope, queries
 // by agentId. For other scopes, queries the tenant collection (rules apply).
 // If no E3 docs exist, returns the current month so the UI selector still has
 // at least one option.
-export async function getAvailableMonths(scopeType, scopeId) {
+export async function getAvailableMonths(tenantId, scopeType, scopeId) {
   let q;
   if (scopeType === 'agent') {
-    q = query(persistencyCollection(), where('agentId', '==', scopeId));
+    q = query(persistencyCollection(tenantId), where('agentId', '==', scopeId));
   } else {
-    q = query(persistencyCollection());
+    q = query(persistencyCollection(tenantId));
   }
   const snap = await getDocs(q);
   const monthKeys = new Set();
@@ -167,9 +166,8 @@ export async function getAvailableMonths(scopeType, scopeId) {
 // no scope is passed, the caller must have tenant-wide read (sales_manager
 // or higher) — otherwise the per-agent query for cross-branch agents will be
 // rejected by rules and silently dropped.
-export async function getPersistencyMapForYear(year, opts = {}) {
-  const tenantId = getTenantId();
-  const allUsers = await getTenantUsers();
+export async function getPersistencyMapForYear(tenantId, year, opts = {}) {
+  const allUsers = await getTenantUsers(tenantId);
   let agents = allUsers.filter((u) => u.role === 'agent');
   if (opts.branchId) agents = agents.filter((u) => u.branchId === opts.branchId);
   if (opts.unitId)   agents = agents.filter((u) => u.unitId   === opts.unitId);
@@ -194,8 +192,8 @@ export async function getPersistencyMapForYear(year, opts = {}) {
 
 // Returns oldest-first array of E3 records for a single agent, capped at
 // lastNMonths. Used by the agent trend chart.
-export async function getAgentHistory(agentUid, lastNMonths = 12) {
-  const q = query(persistencyCollection(), where('agentId', '==', agentUid));
+export async function getAgentHistory(tenantId, agentUid, lastNMonths = 12) {
+  const q = query(persistencyCollection(tenantId), where('agentId', '==', agentUid));
   const snap = await getDocs(q);
   const records = snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
@@ -211,8 +209,7 @@ export async function getAgentHistory(agentUid, lastNMonths = 12) {
 // Computes derived fields, validates inputs non-negative, and writes the doc.
 // On overwrite, preserves the original enteredAt/By/ByRole and updates only
 // lastEdited*. The 'role' parameter is the writer's claim role.
-export async function savePersistency(monthKey, agentUid, inputs, role) {
-  const tenantId = getTenantId(); // throws if unpopulated — SEC-9 fail-fast
+export async function savePersistency(tenantId, monthKey, agentUid, inputs, role) {
   const writerUid = auth?.currentUser?.uid;
 
   if (!writerUid)             throw new Error('savePersistency: no signed-in user');
@@ -240,7 +237,7 @@ export async function savePersistency(monthKey, agentUid, inputs, role) {
   const { year, month } = parseMonthKey(monthKey);
   const period = reportPeriodFromMonthKey(monthKey);
 
-  const docRef = persistencyDocRef(agentUid, monthKey);
+  const docRef = persistencyDocRef(tenantId, agentUid, monthKey);
   const existing = await getDoc(docRef);
 
   const auditNow = serverTimestamp();
@@ -286,8 +283,8 @@ export async function savePersistency(monthKey, agentUid, inputs, role) {
 // Computes a branch aggregate from current docs. Phase 1 computes on read; a
 // future Cloud Function may persist these to a `persistencyAggregates` collection
 // for cheaper kiosk/leaderboard reads (out of scope for E3 PR).
-export async function calculateAndCacheBranchAggregate(monthKey, branchId) {
-  const records = await getPersistencyForBranch(monthKey, branchId);
+export async function calculateAndCacheBranchAggregate(tenantId, monthKey, branchId) {
+  const records = await getPersistencyForBranch(tenantId, monthKey, branchId);
   const agg = aggregatePersistency(records);
   return {
     monthKey,

@@ -270,7 +270,7 @@ describe('EditUserDrawer', () => {
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
     await waitFor(() => expect(hoisted.updateUserFields).toHaveBeenCalledTimes(1));
     // Diff includes only phone — name/bio/unitId/etc. unchanged.
-    expect(hoisted.updateUserFields).toHaveBeenCalledWith('agent-1', { phone: '868-555-1234' });
+    expect(hoisted.updateUserFields).toHaveBeenCalledWith('t1', 'agent-1', { phone: '868-555-1234' });
     expect(onSaved).toHaveBeenCalledWith('Test Agent');
   });
 
@@ -338,7 +338,7 @@ describe('EditUserDrawer', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Reassign$/i }));
     await waitFor(() => expect(hoisted.updateUserFields).toHaveBeenCalledTimes(1));
-    expect(hoisted.updateUserFields).toHaveBeenCalledWith('agent-1', { unitId: 'unit-mgr-2' });
+    expect(hoisted.updateUserFields).toHaveBeenCalledWith('t1', 'agent-1', { unitId: 'unit-mgr-2' });
     expect(onSaved).toHaveBeenCalled();
   });
 
