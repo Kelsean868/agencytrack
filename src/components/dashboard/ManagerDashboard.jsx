@@ -75,7 +75,7 @@ export default function ManagerDashboard() {
   const [agentIds, setAgentIds] = useState([]);
 
   useEffect(() => {
-    getTenantUsers()
+    getTenantUsers(tenantId)
       .then((userList) => {
         setAgentIds(userList.filter((u) => u.role === 'agent').map((u) => u.id));
       })
@@ -102,8 +102,8 @@ export default function ManagerDashboard() {
   const handleStartMeeting = async () => {
     try {
       const [subs, userList] = await Promise.all([
-        getWeeklySubmissions(selectedWeek),
-        getTenantUsers().catch(() => []),
+        getWeeklySubmissions(tenantId, selectedWeek),
+        getTenantUsers(tenantId).catch(() => []),
       ]);
       const nameMap = {};
       userList.forEach((u) => {
@@ -126,8 +126,8 @@ export default function ManagerDashboard() {
     try {
       const year = new Date().getFullYear();
       const [userList, subs, persMap] = await Promise.all([
-        getTenantUsers().catch(() => []),
-        getAllYTDSubmissions().catch(() => []),
+        getTenantUsers(tenantId).catch(() => []),
+        getAllYTDSubmissions(tenantId).catch(() => []),
         getPersistencyMapForYear(year, {
           branchId: role === 'branch_manager' ? userProfile?.branchId : undefined,
           unitId:   role === 'unit_manager'   ? userProfile?.unitId   : undefined,

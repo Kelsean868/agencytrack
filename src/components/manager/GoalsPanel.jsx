@@ -558,7 +558,7 @@ function AgentGoalsTab() {
   useEffect(() => {
     if (!tenantId) return;
     Promise.all([
-      getTenantUsers(),
+      getTenantUsers(tenantId),
       getCompanyMinimums(tenantId).catch(() => FALLBACK_MINIMUMS),
     ])
       .then(async ([userList, mins]) => {
@@ -726,7 +726,7 @@ export default function GoalsPanel() {
   const canSeeUnit = role === 'unit_manager' || canSeeBranch;
 
   useEffect(() => {
-    getTenantUsers().then(setAllUsers).catch(console.error);
+    getTenantUsers(tenantId).then(setAllUsers).catch(console.error);
   }, []);
 
   useEffect(() => {

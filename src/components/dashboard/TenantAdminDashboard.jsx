@@ -85,7 +85,7 @@ export default function TenantAdminDashboard() {
   useEffect(() => {
     let cancelled = false;
     setUsersLoading(true);
-    getTenantUsers()
+    getTenantUsers(tenantId)
       .then((u) => { if (!cancelled) setUsers(u); })
       .catch((err) => { if (!cancelled) console.error('Failed to load users:', err); })
       .finally(() => { if (!cancelled) setUsersLoading(false); });
@@ -97,7 +97,7 @@ export default function TenantAdminDashboard() {
   useEffect(() => {
     let cancelled = false;
     setYtdLoading(true);
-    getAllYTDSubmissions()
+    getAllYTDSubmissions(tenantId)
       .then((subs) => {
         if (cancelled) return;
         const total = subs.reduce((sum, s) => sum + (extractFields(s).apiSold || 0), 0);

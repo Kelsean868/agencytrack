@@ -28,7 +28,7 @@ export default function AgentProductionView() {
     setLoading(true);
     Promise.all([
       getAgentSubmissions(agentId).catch(() => []),
-      getTenantUsers().catch(() => []),
+      getTenantUsers(tenantId).catch(() => []),
     ]).then(([subs, users]) => {
       setAllSubmissions(subs);
       setAllUsers(users);

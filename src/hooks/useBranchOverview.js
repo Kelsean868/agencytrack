@@ -38,8 +38,8 @@ export function useBranchOverview(role, userProfile, tenantId) {
         : getBranchGoals(tenantId, year).catch(() => null);
 
     Promise.all([
-      getAllYTDSubmissions().catch(() => []),
-      getTenantUsers().catch(() => []),
+      getAllYTDSubmissions(tenantId).catch(() => []),
+      getTenantUsers(tenantId).catch(() => []),
       goalRead,
       getCompanyMinimums(tenantId).catch(() => null),
     ])

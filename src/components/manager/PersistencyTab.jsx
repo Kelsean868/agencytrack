@@ -68,7 +68,7 @@ function buildCSV(rows) {
 }
 
 export default function PersistencyTab() {
-  const { user, userProfile, role } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
   const toast = useToast();
   const scopeType = SCOPE_BY_ROLE[role] ?? 'tenant';
   const scopeId = scopeType === 'unit'   ? userProfile?.unitId
@@ -108,7 +108,7 @@ export default function PersistencyTab() {
     setError('');
     try {
       const [allUsers, recs] = await Promise.all([
-        getTenantUsers(),
+        getTenantUsers(tenantId),
         scopeType === 'unit'   ? getPersistencyForUnit(monthKey, scopeId) :
         scopeType === 'branch' ? getPersistencyForBranch(monthKey, scopeId) :
                                   getPersistencyForTenant(monthKey),

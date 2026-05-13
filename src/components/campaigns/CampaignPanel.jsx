@@ -506,7 +506,7 @@ export default function CampaignPanel() {
     try {
       const [camps, users] = await Promise.all([
         getCampaigns(tenantId),
-        getTenantUsers(),
+        getTenantUsers(tenantId),
       ]);
       setCampaigns(camps);
       setAllUsers(users);
