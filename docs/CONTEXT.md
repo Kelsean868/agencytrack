@@ -127,6 +127,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #140 | `6603d27` | AGENCY Shakedown results |
 | #139 | `9cbd5a4` | refactor(services): migrate to explicit tenantId parameter (SEC-9b) |
 | #138 | `261b9ec` | test(infra): close test infra MEDIUM — agentManagementService specs + CI test step |
 | #137 | `bb08cc7` | fix(functions): chain .timeZone('UTC') to all 4 scheduled CFs (Track D) |
