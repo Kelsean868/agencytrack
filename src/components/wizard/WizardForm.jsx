@@ -144,7 +144,7 @@ const INITIAL_DATA = {
 
 // screen: 'date' | 'step' | 'review' | 'done' | 'submitted'
 export default function WizardForm({ onClose, initialWeek }) {
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, tenantId } = useAuth();
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
   const [screen, setScreen]             = useState(initialWeek ? 'step' : 'date');
   const [weekStarting, setWeekStarting] = useState(initialWeek ?? '');
@@ -179,12 +179,12 @@ export default function WizardForm({ onClose, initialWeek }) {
 
   useEffect(() => {
     if (!user) return;
-    getLastSubmission(user.uid).then(setLastWeekData).catch(console.error);
+    getLastSubmission(tenantId, user.uid).then(setLastWeekData).catch(console.error);
   }, [user]);
 
   useEffect(() => {
     if (!weekStarting || !user) return;
-    getDraft(user.uid, weekStarting)
+    getDraft(tenantId, user.uid, weekStarting)
       .then((draft) => {
         if (!draft) {
           setDraftStatus(null);
@@ -211,7 +211,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     setSaving(true);
     setSaveError(false);
     try {
-      await saveDraft(user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0);
+      await saveDraft(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0);
       consecutiveFailures.current = 0;
       setSaveEscalated(false);
       clearTimeout(savedTimer.current);
@@ -308,7 +308,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     }
     setSubmitting(true);
     try {
-      await submitReport(user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0);
+      await submitReport(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0);
       setDraftStatus('submitted');
       setScreen('done');
     } catch (e) {

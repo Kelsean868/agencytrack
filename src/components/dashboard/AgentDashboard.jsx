@@ -128,8 +128,8 @@ export default function AgentDashboard() {
     if (!user?.uid || !tenantId) return;
     setLoading(true);
     Promise.all([
-      getDraft(user.uid, currentWeek).catch(() => null),
-      getAgentSubmissions(user.uid).catch(() => []),
+      getDraft(tenantId, user.uid, currentWeek).catch(() => null),
+      getAgentSubmissions(tenantId, user.uid).catch(() => []),
       getGoals(tenantId, user.uid).catch(() => null),
       getAgentHistory(user.uid, 12).catch(() => []),
       getSettlements(tenantId, user.uid, thisYear).catch(() => []),
