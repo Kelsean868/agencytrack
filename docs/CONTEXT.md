@@ -127,11 +127,11 @@ Rule: no tier creates its own peers, except Super Admin → Super Admin.
 
 | PR | SHA | Description |
 |---|---|---|
+| #TBD | `TBD — run \`git log origin/main --oneline -1\` after merge` | feat(tooling): PR-F — bulk test data seeders + cleanup sweep |
 | #75 | `ed99ece` | feat(e5.1): kiosk polish — 12-panel restructure, period leaderboards, activity panel, icons + animations |
 | #74 | `da5973e` | fix: add SPA catch-all rewrite for /kiosk/* and other client-side routes (`vercel.json`) |
 | #73 | `c8f5d2b` | feat(e5): tv display kiosk mode — token-based public route, 8-panel rotation |
 | #72 | `783c07a` | feat(e4): digital production report — three role-based views with time-period toggles |
-| #71 | `31d3c3d` | feat(e6): daily input mode — agent cadence choice + Sunday aggregator |
 
 ---
 
