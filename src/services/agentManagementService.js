@@ -9,7 +9,11 @@ import { db, getTenantId } from '../firebase';
  *
  * The CF provisions the Auth user, Firestore doc, custom claims, and queues
  * a password-reset email via the Trigger Email Extension (mail/ collection).
- * Returns { success, uid, emailQueued } from the CF.
+ * Returns { success, uid, emailQueued, emailError? } from the CF.
+ * emailQueued is false (with emailError set) when the mail/ write or the
+ * generatePasswordResetLink call failed — the user is still fully provisioned,
+ * but the password-reset email never queued. Callers must surface this state
+ * to admins so they know recovery is required.
  *
  * userData: { role, name, email, ...roleSpecificFields }
  */

@@ -370,7 +370,11 @@ async function doCreateUser(data, context) {
   // Step E-2: server-side password-reset email via Trigger Email Extension.
   // generatePasswordResetLink produces the link; writing to mail/ queues dispatch.
   // Failure here is logged but never fails the saga — the account is fully
-  // provisioned; admin can use Firebase console as recovery path.
+  // provisioned; admin can fall back to recreating the user as recovery path.
+  // emailQueued is the authoritative truthful signal: true only when both
+  // the reset-link generation and the mail/ write succeeded.
+  let emailQueued = true;
+  let emailError;
   try {
     const resetLink = await admin.auth().generatePasswordResetLink(data.email, {
       url: 'https://agencytrack.vercel.app',
@@ -386,10 +390,14 @@ async function doCreateUser(data, context) {
     );
   } catch (mailErr) {
     console.warn('[createUser] mail/ write failed (non-fatal):', mailErr.message);
+    emailQueued = false;
+    emailError = mailErr.message ?? String(mailErr);
   }
 
-  console.log(`[createUser] Created ${targetRole} ${newUid} (${data.email}) by ${callerRole} ${callerUid}`);
-  return { success: true, uid: newUid, emailQueued: true };
+  console.log(`[createUser] Created ${targetRole} ${newUid} (${data.email}) by ${callerRole} ${callerUid} — emailQueued=${emailQueued}`);
+  const result = { success: true, uid: newUid, emailQueued };
+  if (emailError) result.emailError = emailError;
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -569,6 +577,12 @@ exports.bulkImportUsers = functions
 
         rowResult.success = true;
         rowResult.uid = result.uid;
+        // Propagate the emailQueued signal so Step 4 SummaryStats can show
+        // the "Email failed" count distinct from the "Failed" (creation-failed)
+        // count. A row can be success: true yet emailQueued: false — the user
+        // is provisioned but the password-reset email never queued.
+        rowResult.emailQueued = result.emailQueued !== false;
+        if (result.emailError) rowResult.emailError = result.emailError;
       } catch (err) {
         rowResult.success = false;
         rowResult.error = err?.message ?? String(err);

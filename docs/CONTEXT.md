@@ -14,7 +14,7 @@
 |---|---|
 | Last updated | `2026-05-13` |
 | Current main HEAD | `69807a9` (docs(context): fill PR-F squash SHA + PR# in recently-shipped row; PR #135 PR-F shipped at `6baaa98`) |
-| Active track | None in flight — housekeeping / memory-hygiene mode. Track E fully shipped (E1 #68–#70, E2 #66, E3 #82, E4 #72, E5 #73/#74, E5.1 #75, E6-daily #71, E6 AOM #76). M-series complete (#105/#107/#113/#116/#118). User-mgmt PR-3/PR-4/PR-4b shipped. PR-D server-side email (#133) and PR-F bulk test data (#135) shipped 2026-05-13. |
+| Active track | None in flight — housekeeping / memory-hygiene mode. Track E fully shipped (E1 #68–#70, E2 #66, E3 #82, E4 #72, E5 #73/#74, E5.1 #75, E6-daily #71, E6 AOM #76). M-series complete (#105/#107/#113/#116/#118). User-mgmt PR-3/PR-4/PR-4b shipped. PR-D server-side email (#133) and PR-F bulk test data (#135) shipped 2026-05-13. doCreateUser emailQueued truthfulness fix (PR #<placeholder>) shipped 2026-05-13 (closes the banked MEDIUM from PR #134). |
 | Next track | **Pilot prep — end-to-end testing using PR-F tooling.** Exercise the new bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
 | Queued | **SEC-9b** — migrate services to explicit `tenantId` parameter (~20 call-site refactor). |
 | Two-strike counter | 0/2 — clean PR-F arc. |
@@ -115,8 +115,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
 | **HIGH#6** | TenantAdminDashboard YTD composite index missing | No | Production manual click — tenant_admin loads `/`, copies index URL from `failed-precondition` console error, creates in Firebase console (~2–5 min). PR #131 mirrored existing indexes to source; HIGH#6's index may or may not be in that mirror — verify before assuming closed. Source: `docs/FOLLOW_UPS.md`. |
-| **doCreateUser emailQueued truthfulness** | Step E-2 catch returns `emailQueued: true` on `mail/` write failure | No | MEDIUM. Banked PR #134. Fix shape: step E-2 catch sets `emailQueued = false`; propagate through `bulkImportUsers` row results + `UserManagementPanel.jsx` toast warning. Ship before bulk onboarding beyond pilot cohort. |
-| **Resend invite UI** | Per-row "Resend invite" action in user management | No | MEDIUM. Once-off email failures currently have no recourse after the post-create toast dismisses. Wire `sendPasswordResetEmail` short-term; swap to a `mail/` doc write via a callable wrapper once the PR-D pattern is consumed by more flows. |
+| **Resend invite UI** | Per-row "Resend invite" action in user management | No | MEDIUM. Once-off email failures currently have no recourse after the post-create toast dismisses — the truthful warning toast (shipped PR #<placeholder>) tells admins email failed but the only recovery is recreating the user. Wire `sendPasswordResetEmail` short-term; swap to a `mail/` doc write via a callable wrapper once the PR-D pattern is consumed by more flows. |
 | Mobile FU#2 | Non-core agent surface P1s | No | `CareerPortal` "Edit My Goals" 32px → 44px, `History` row eye/preview hit area, `CommissionPlayground` accordion toggle measure-and-adjust. Source: `docs/FOLLOW_UPS.md`. |
 | Mobile FU#4 | P2 cosmetic items | No | Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hardcoded `bg-[#01696f]/8` → token (FU#3 channel-split landed in PR #132 but this site is hex-literal-arbitrary, not token-driven). Source: `docs/FOLLOW_UPS.md`. |
 | SEC-9b | Migrate services to explicit `tenantId` parameter | No | **Queued next** — ~20 call-site refactor. Schedule after pilot prep wraps. |
@@ -128,11 +127,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<placeholder> | `<squash-sha>` | fix(functions): doCreateUser emailQueued truthfulness (#134 follow-up) |
 | #135 | `6baaa98` | feat(tooling): PR-F — bulk test data seeders + cleanup sweep |
 | #134 | `98ac43c` | docs(follow-ups): bank doCreateUser step E-2 emailQueued truthfulness gap |
 | #133 | `5ca6ea6` | feat(email): PR-D — server-side email infrastructure (HIGH#5) |
 | #132 | `0573a2c` | fix(theme): FU#3 — channel-split token migration for working opacity modifiers |
-| #131 | `a3de48b` | chore(firestore): mirror production composite indexes in firestore.indexes.json |
 
 ---
 
