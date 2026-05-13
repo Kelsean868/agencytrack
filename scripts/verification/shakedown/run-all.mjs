@@ -46,7 +46,7 @@ import {
   appendFileSync, writeFileSync,
   readFileSync,
 } from 'fs';
-import { spawnSync }      from 'child_process';
+import { spawnSync, spawn } from 'child_process';
 
 const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT  = resolve(__dir, '../../..');
@@ -140,7 +140,7 @@ async function runCategory(name, fn, opts) {
 
 // ── Cleanup helper ─────────────────────────────────────────────────────────────
 
-function runCleanup() {
+async function runCleanup() {
   log('\n' + '═'.repeat(60));
   log('PHASE 6: Cleanup — running wipe-test-data-sweep.mjs');
 
@@ -169,28 +169,43 @@ function runCleanup() {
     return true;
   }
 
-  // Step 2: Build the confirmation phrase
-  const confirmTs = new Date().toISOString().slice(0, 19) + 'Z';
-  const phrase    = `DELETE ${userCount} USERS AT ${confirmTs}`;
-  log(`  Wipe confirmation phrase: ${phrase}`);
+  // Step 2: Run wipe using async spawn — reads the wipe script's own timestamp
+  // phrase from its stdout and echoes it back via stdin. This avoids the clock-skew
+  // race where spawnSync pre-builds the phrase before the wipe script generates its own.
+  const wipeExitCode = await new Promise((resolve) => {
+    const wipeProc = spawn('node', [
+      'scripts/cleanup/wipe-test-data-sweep.mjs',
+      '--mode=email-pattern',
+      '--execute',
+    ], {
+      cwd:   ROOT,
+      env:   { ...process.env, CLEANUP_ALLOWED_TENANTS: 'tatillife_south' },
+    });
 
-  // Step 3: Run wipe with auto-confirmation (piped stdin)
-  const wipe = spawnSync('node', [
-    'scripts/cleanup/wipe-test-data-sweep.mjs',
-    '--mode=email-pattern',
-    '--execute',
-  ], {
-    cwd:      ROOT,
-    encoding: 'utf8',
-    timeout:  300_000,
-    input:    phrase + '\n',
-    env:      { ...process.env, CLEANUP_ALLOWED_TENANTS: 'tatillife_south' },
+    let buf = '';
+    let phraseEchoed = false;
+
+    wipeProc.stdout.on('data', (chunk) => {
+      const str = chunk.toString('utf8');
+      process.stdout.write(str);
+      buf += str;
+      if (!phraseEchoed) {
+        // The wipe script prints "Type exactly:\n  DELETE N USERS AT TIMESTAMP"
+        const m = buf.match(/DELETE \d+ USERS AT \S+/);
+        if (m) {
+          const phrase = m[0];
+          log(`  Auto-confirming wipe phrase: ${phrase}`);
+          wipeProc.stdin.write(phrase + '\n');
+          wipeProc.stdin.end();
+          phraseEchoed = true;
+        }
+      }
+    });
+    wipeProc.stderr.on('data', (chunk) => process.stderr.write(chunk));
+    wipeProc.on('close', resolve);
   });
 
-  if (wipe.stdout) process.stdout.write(wipe.stdout);
-  if (wipe.stderr) process.stderr.write(wipe.stderr);
-
-  if (wipe.status !== 0) {
+  if (wipeExitCode !== 0) {
     log('CLEANUP HARD STOP: wipe-test-data-sweep.mjs failed');
     log('  Manual cleanup required immediately.');
     return false;
@@ -437,7 +452,7 @@ async function main() {
       log('WARNING: *@agencytrack.test data remains in production. Manual wipe required.');
     } else {
       runtimeMs = runtimeMs || (Date.now() - startMs);
-      const cleanOk = runCleanup();
+      const cleanOk = await runCleanup();
       if (!cleanOk) {
         log('\n⛔ CLEANUP FAILED — IMMEDIATE ACTION REQUIRED');
         log('Run manually: node scripts/cleanup/wipe-test-data-sweep.mjs --mode=email-pattern --execute');

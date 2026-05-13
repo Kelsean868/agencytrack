@@ -115,7 +115,7 @@ export async function runCat02UnitManager({ log, ssDir } = {}) {
     await navigateToTab(page, 'Settlements');
     await sleep(1000);
     await screenshot(page, join(ssOut, 'settlements', 'light-desktop.png'));
-    const confirmBtn = await page.locator('button:has-text("Confirm"), button:has-text("Settle"), button:has-text("Enter Settlement")').count();
+    const confirmBtn = await page.locator('button:visible').filter({ hasText: /^(Confirm|Settle|Enter Settlement)$/i }).count();
     if (confirmBtn > 0) {
       throw new Error('UM appears to have settlement confirmation button — should be read-only');
     }

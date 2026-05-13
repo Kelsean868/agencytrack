@@ -106,7 +106,7 @@ export async function runCat02BranchManager({ log, ssDir, uidByEmail } = {}) {
       throw new Error('Goals content not detected for BM');
     }
     // Company Floor should NOT be editable for BM
-    const floorEdit = await page.locator('button:has-text("Edit Floor"), input[placeholder*="floor"][disabled!=true]').count();
+    const floorEdit = await page.locator('button:has-text("Edit Floor"), input[placeholder*="floor"]:not([disabled])').count();
     _log(`  Company Floor edit elements: ${floorEdit} (should be 0 or read-only)`);
   }));
 

@@ -320,8 +320,11 @@ export async function logoutViaUI(page) {
 /**
  * navigateToTab — clicks a sidebar nav item by its visible label text.
  * Handles both desktop sidebar and mobile bottom-nav.
+ * Always waits for the app to be ready before looking for buttons (important
+ * after page.reload() calls where React hasn't re-rendered yet).
  */
 export async function navigateToTab(page, label) {
+  await waitForAppReady(page);
   // Try sidebar first (button with exact or partial matching label)
   const sidebarBtn = page.getByRole('button', { name: new RegExp(label, 'i') }).first();
   if (await sidebarBtn.count() > 0) {

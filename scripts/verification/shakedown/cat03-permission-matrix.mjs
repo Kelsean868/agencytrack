@@ -50,9 +50,10 @@ export async function runCat03PermissionMatrix({ log } = {}) {
   // T3.01: Agent reads another agent's submission
   results.push(await check('T3.01', 'Agent cannot read another agent\'s submission', async () => {
     const it = await idToken(TEST_USERS.agent2.email);  // agent-002
-    // Find a submission belonging to agent-001
+    // Find a submission belonging to agent-001 (submissions use agentId, not agentEmail)
+    const agent1Uid = await getUidByEmail(TEST_USERS.agent1.email);
     const snap = await db.collection(`tenants/${TENANT_ID}/submissions`)
-      .where('agentEmail', '==', TEST_USERS.agent1.email)
+      .where('agentId', '==', agent1Uid)
       .limit(1).get();
     if (snap.empty) {
       throw new Error('No agent-001 submissions found — seeding may be incomplete');

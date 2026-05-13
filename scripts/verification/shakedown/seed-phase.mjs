@@ -158,6 +158,14 @@ export async function runSeedPhase({ log, batchId: callerBatchId } = {}) {
   }
   _log(`  ✓ ${uidByEmail.size}/${ALL_USERS.length} users seeded`);
 
+  // Firebase custom claims set via Admin SDK have a brief propagation delay
+  // before they appear in newly issued ID tokens. 45s is conservative; in
+  // practice claims propagate in 5-15s for brand-new users but the wait
+  // prevents T1.01/T1.03 "manager sees agent dashboard on first login" flakiness.
+  _log('  Waiting 45s for custom claims to propagate to Firebase token servers…');
+  await new Promise((resolve) => setTimeout(resolve, 45_000));
+  _log('  Claims propagation wait complete.');
+
   // ── Step 2: Seed goals via Admin SDK ──────────────────────────────────────
 
   _log('\n[2/4] Seeding goals via Admin SDK…');

@@ -64,20 +64,21 @@ export async function runCat02PlatformAdmin({ log, ssDir } = {}) {
     await browser.close();
   }
 
-  // ── T2E.03: API — custom token carries tenantId claim ─────────────────────
-  results.push(await check('T2E.03', 'Custom token for bm-001 contains tenantId claim', async () => {
+  // ── T2E.03: API — user record has correct custom claims ──────────────────
+  // Note: createCustomToken() does NOT embed setCustomUserClaims() into the JWT.
+  // Custom claims (set via Admin SDK) appear in ID tokens issued by Firebase Auth,
+  // not in custom tokens. We verify via auth.getUser().customClaims instead.
+  results.push(await check('T2E.03', 'bm-001 Admin SDK user record has correct tenantId + role claims', async () => {
     const { auth } = adminInit();
-    const uid = await getUidByEmail(TEST_USERS.branchManager.email);
-    const token = await auth.createCustomToken(uid);
-    // Decode the JWT payload (middle segment is base64url-encoded JSON)
-    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
-    const claims  = payload.claims ?? {};
-    _log(`  Token claims: tenantId=${claims.tenantId}, role=${claims.role}`);
+    const uid  = await getUidByEmail(TEST_USERS.branchManager.email);
+    const user = await auth.getUser(uid);
+    const claims = user.customClaims ?? {};
+    _log(`  User custom claims: tenantId=${claims.tenantId}, role=${claims.role}`);
     if (claims.tenantId !== TENANT_ID) {
-      throw new Error(`Expected tenantId="${TENANT_ID}" in token, got "${claims.tenantId}"`);
+      throw new Error(`Expected tenantId="${TENANT_ID}" in customClaims, got "${claims.tenantId}"`);
     }
     if (claims.role !== 'branch_manager') {
-      throw new Error(`Expected role="branch_manager", got "${claims.role}"`);
+      throw new Error(`Expected role="branch_manager" in customClaims, got "${claims.role}"`);
     }
   }));
 
