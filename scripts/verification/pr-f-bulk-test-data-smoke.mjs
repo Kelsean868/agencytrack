@@ -185,14 +185,14 @@ const goalsOut = resolve(logDir, 'test-goals.csv');
 
 const usersGen = runScript([
   'scripts/seed/generate-users-csv.mjs',
-  '--out', usersOut,
+  '--out', logDir,
   '--batch-id', batchId,
 ]);
 assert('generate-users-csv exits 0', usersGen.status === 0, usersGen.stderr?.slice(0, 200));
 
 const goalsGen = runScript([
   'scripts/seed/generate-goals-csv.mjs',
-  '--out', goalsOut,
+  '--out', logDir,
   '--batch-id', batchId,
 ]);
 assert('generate-goals-csv exits 0', goalsGen.status === 0, goalsGen.stderr?.slice(0, 200));
