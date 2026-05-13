@@ -58,6 +58,7 @@ describe('agent PersistencyTab', () => {
     hoisted.useAuth.mockReturnValue({
       user: { uid: 'a1' },
       role: 'agent',
+      tenantId: 'tenant1',
     });
   });
 

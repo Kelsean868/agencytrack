@@ -30,7 +30,7 @@ function badgeClass(decimal) {
 }
 
 export default function PersistencyTab() {
-  const { user, role } = useAuth();
+  const { user, role, tenantId } = useAuth();
 
   const [history, setHistory] = useState([]);
   const [monthKeys, setMonthKeys] = useState([]);
@@ -46,8 +46,8 @@ export default function PersistencyTab() {
     setError('');
     try {
       const [recs, months] = await Promise.all([
-        getAgentHistory(user.uid, 12),
-        getAvailableMonths('agent', user.uid),
+        getAgentHistory(tenantId, user.uid, 12),
+        getAvailableMonths(tenantId, 'agent', user.uid),
       ]);
       setHistory(recs);
       setMonthKeys(months);
@@ -236,6 +236,7 @@ export default function PersistencyTab() {
 
       {editing && activeMonthKey && (
         <PersistencyEntryForm
+          tenantId={tenantId}
           monthKey={activeMonthKey}
           agentUid={user.uid}
           agentName="You"

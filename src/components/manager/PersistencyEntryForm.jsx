@@ -36,6 +36,7 @@ function loadInitial(record) {
 }
 
 export default function PersistencyEntryForm({
+  tenantId,
   monthKey,
   agentUid,
   agentName,
@@ -80,7 +81,7 @@ export default function PersistencyEntryForm({
     setSaving(true);
     setError('');
     try {
-      await savePersistency(monthKey, agentUid, numericInputs, writerRole);
+      await savePersistency(tenantId, monthKey, agentUid, numericInputs, writerRole);
       onSaved();
     } catch (err) {
       setError(err?.message ?? 'Save failed.');

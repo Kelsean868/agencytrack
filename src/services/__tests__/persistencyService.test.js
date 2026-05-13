@@ -3,18 +3,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Hoisted mock state — must use vi.hoisted because vi.mock factories run
 // before any top-level `const` in the test file.
 const hoisted = vi.hoisted(() => ({
-  mockGetTenantId: vi.fn(() => 'tenant1'),
   mockAuth: { currentUser: { uid: 'writer-uid' } },
   mockGetDoc:  vi.fn(),
   mockGetDocs: vi.fn(),
   mockSetDoc:  vi.fn(),
 }));
-const { mockGetTenantId, mockAuth, mockGetDoc, mockGetDocs, mockSetDoc } = hoisted;
+const { mockAuth, mockGetDoc, mockGetDocs, mockSetDoc } = hoisted;
 
 vi.mock('../../firebase', () => ({
   db: {},
   auth: hoisted.mockAuth,
-  getTenantId: hoisted.mockGetTenantId,
 }));
 
 vi.mock('firebase/firestore', () => ({
@@ -148,12 +146,11 @@ describe('monthKey helpers', () => {
 describe('getPersistencyForAgent', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetTenantId.mockReturnValue('tenant1');
   });
 
   it('returns null when doc does not exist', async () => {
     mockGetDoc.mockResolvedValueOnce({ exists: () => false });
-    expect(await getPersistencyForAgent('2026-02', 'agent-1')).toBeNull();
+    expect(await getPersistencyForAgent('tenant1', '2026-02', 'agent-1')).toBeNull();
   });
 
   it('returns the doc when it is E3-shaped', async () => {
@@ -162,7 +159,7 @@ describe('getPersistencyForAgent', () => {
       id: 'agent-1_2026_02',
       data: () => E3_FULL_DOC,
     });
-    const result = await getPersistencyForAgent('2026-02', 'agent-1');
+    const result = await getPersistencyForAgent('tenant1', '2026-02', 'agent-1');
     expect(result.persistency).toBe(0.7393);
   });
 
@@ -177,14 +174,13 @@ describe('getPersistencyForAgent', () => {
         persistency: 92.5, // legacy 0–100
       }),
     });
-    expect(await getPersistencyForAgent('2026-02', 'agent-1')).toBeNull();
+    expect(await getPersistencyForAgent('tenant1', '2026-02', 'agent-1')).toBeNull();
   });
 });
 
 describe('getPersistencyForBranch', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetTenantId.mockReturnValue('tenant1');
   });
 
   it('filters users by branchId + role==="agent"', async () => {
@@ -196,7 +192,7 @@ describe('getPersistencyForBranch', () => {
     ]);
     mockGetDoc.mockResolvedValue({ exists: () => false });
 
-    await getPersistencyForBranch('2026-02', 'branch-x');
+    await getPersistencyForBranch('tenant1', '2026-02', 'branch-x');
 
     // Only a1 + a3 should be looked up (2 calls).
     expect(mockGetDoc).toHaveBeenCalledTimes(2);
@@ -211,7 +207,7 @@ describe('getPersistencyForBranch', () => {
       .mockResolvedValueOnce({ exists: () => true, id: 'a1_2026_02', data: () => E3_FULL_DOC })
       .mockResolvedValueOnce({ exists: () => true, id: 'a2_2026_02', data: () => ({ persistency: 92.5 }) });
 
-    const result = await getPersistencyForBranch('2026-02', 'b1');
+    const result = await getPersistencyForBranch('tenant1', '2026-02', 'b1');
     expect(result).toHaveLength(1);
     expect(result[0].agentId).toBe('agent-1');
   });
@@ -231,12 +227,12 @@ describe('getAvailableMonths', () => {
         ].forEach(cb);
       },
     });
-    expect(await getAvailableMonths('tenant', 'tenant1')).toEqual(['2026-02', '2026-01']);
+    expect(await getAvailableMonths('tenant1', 'tenant', 'tenant1')).toEqual(['2026-02', '2026-01']);
   });
 
   it('returns current month as fallback when no E3 docs exist', async () => {
     mockGetDocs.mockResolvedValueOnce({ forEach: () => {} });
-    const result = await getAvailableMonths('tenant', 'tenant1');
+    const result = await getAvailableMonths('tenant1', 'tenant', 'tenant1');
     expect(result).toHaveLength(1);
     expect(result[0]).toMatch(/^\d{4}-\d{2}$/);
   });
@@ -254,7 +250,7 @@ describe('getAgentHistory', () => {
         { id: 'a1_2025_10', data: () => ({                  monthKey: '2025-10' }) }, // pre-E3
       ],
     });
-    const out = await getAgentHistory('a1', 12);
+    const out = await getAgentHistory('tenant1', 'a1', 12);
     expect(out.map((r) => r.monthKey)).toEqual(['2025-11', '2026-01', '2026-02']);
   });
 
@@ -265,7 +261,7 @@ describe('getAgentHistory', () => {
         data: () => ({ ...E3_INPUTS, monthKey: `2025-${String(i + 1).padStart(2, '0')}` }),
       })),
     });
-    const out = await getAgentHistory('a1', 6);
+    const out = await getAgentHistory('tenant1', 'a1', 6);
     expect(out).toHaveLength(6);
   });
 });
@@ -273,41 +269,31 @@ describe('getAgentHistory', () => {
 describe('savePersistency', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetTenantId.mockReturnValue('tenant1');
     mockAuth.currentUser = { uid: 'writer-uid' };
-  });
-
-  it('throws when getTenantId is not populated (SEC-9 fail-fast)', async () => {
-    mockGetTenantId.mockImplementationOnce(() => {
-      throw new Error('getTenantId() called before AuthContext populated the holder');
-    });
-    await expect(
-      savePersistency('2026-02', 'agent-1', E3_INPUTS, 'agent'),
-    ).rejects.toThrow(/getTenantId\(\) called before/);
   });
 
   it('throws when no user is signed in', async () => {
     mockAuth.currentUser = null;
     await expect(
-      savePersistency('2026-02', 'agent-1', E3_INPUTS, 'agent'),
+      savePersistency('tenant1', '2026-02', 'agent-1', E3_INPUTS, 'agent'),
     ).rejects.toThrow(/no signed-in user/);
   });
 
   it('throws on invalid role', async () => {
     await expect(
-      savePersistency('2026-02', 'agent-1', E3_INPUTS, 'super_admin'),
+      savePersistency('tenant1', '2026-02', 'agent-1', E3_INPUTS, 'super_admin'),
     ).rejects.toThrow(/invalid role/);
   });
 
   it('throws on malformed monthKey', async () => {
     await expect(
-      savePersistency('2026/02', 'agent-1', E3_INPUTS, 'agent'),
+      savePersistency('tenant1', '2026/02', 'agent-1', E3_INPUTS, 'agent'),
     ).rejects.toThrow(/invalid monthKey/);
   });
 
   it('throws on negative input', async () => {
     await expect(
-      savePersistency('2026-02', 'agent-1', { ...E3_INPUTS, lapses: -100 }, 'agent'),
+      savePersistency('tenant1', '2026-02', 'agent-1', { ...E3_INPUTS, lapses: -100 }, 'agent'),
     ).rejects.toThrow(/lapses must be a non-negative number/);
   });
 
@@ -315,7 +301,7 @@ describe('savePersistency', () => {
     mockGetDoc.mockResolvedValueOnce({ exists: () => false });
     mockSetDoc.mockResolvedValueOnce(undefined);
 
-    const result = await savePersistency('2026-02', 'agent-1', E3_INPUTS, 'agent');
+    const result = await savePersistency('tenant1', '2026-02', 'agent-1', E3_INPUTS, 'agent');
 
     expect(result.grossSettled).toBeCloseTo(406335.53, 2);
     expect(result.netSettled).toBeCloseTo(300397.73, 2);
@@ -341,7 +327,7 @@ describe('savePersistency', () => {
       businessPlaced: 1000000, notTakens: 0, incPPPs: 0, lumpsums100: 0,
       lapses: 50000, reinstatements: 10000,
     };
-    const result = await savePersistency('2026-02', 'agent-1', highInputs, 'branch_manager');
+    const result = await savePersistency('tenant1', '2026-02', 'agent-1', highInputs, 'branch_manager');
     // (1000000 - 50000 + 10000) / 1000000 = 0.96
     expect(result.persistency).toBeCloseTo(0.96, 4);
     expect(result.meetsAwardGate).toBe(true);
@@ -361,7 +347,7 @@ describe('savePersistency', () => {
     });
     mockSetDoc.mockResolvedValueOnce(undefined);
 
-    await savePersistency('2026-02', 'agent-1', E3_INPUTS, 'branch_manager');
+    await savePersistency('tenant1', '2026-02', 'agent-1', E3_INPUTS, 'branch_manager');
 
     const written = mockSetDoc.mock.calls[0][1];
     expect(written.enteredAt).toEqual(priorTimestamp);
@@ -379,7 +365,7 @@ describe('savePersistency', () => {
     });
     mockSetDoc.mockResolvedValueOnce(undefined);
 
-    await savePersistency('2026-02', 'agent-1', E3_INPUTS, 'branch_manager');
+    await savePersistency('tenant1', '2026-02', 'agent-1', E3_INPUTS, 'branch_manager');
 
     const written = mockSetDoc.mock.calls[0][1];
     expect(written.enteredBy).toBe('writer-uid');
@@ -409,7 +395,7 @@ describe('getPersistencyMapForYear', () => {
       })
       .mockResolvedValueOnce({ docs: [] });
 
-    const map = await getPersistencyMapForYear(2026, { branchId: 'b1' });
+    const map = await getPersistencyMapForYear('tenant1', 2026, { branchId: 'b1' });
 
     // Two agents queried (a1, a3), only a1 had records.
     expect(mockGetDocs).toHaveBeenCalledTimes(2);
@@ -430,7 +416,7 @@ describe('getPersistencyMapForYear', () => {
         ],
       });
 
-    const map = await getPersistencyMapForYear(2026, { branchId: 'b1' });
+    const map = await getPersistencyMapForYear('tenant1', 2026, { branchId: 'b1' });
     expect(map.a1).toBeUndefined();
     expect(map.a2).toHaveLength(1);
   });
@@ -468,7 +454,7 @@ describe('calculateAndCacheBranchAggregate', () => {
         }),
       });
 
-    const out = await calculateAndCacheBranchAggregate('2026-02', 'b1');
+    const out = await calculateAndCacheBranchAggregate('tenant1', '2026-02', 'b1');
     expect(out.recordCount).toBe(2);
     expect(out.sumGrossSettled).toBe(1100);
     expect(out.sumNetSettled).toBe(590);
@@ -479,7 +465,7 @@ describe('calculateAndCacheBranchAggregate', () => {
     getTenantUsers.mockResolvedValueOnce([{ id: 'a1', role: 'agent', branchId: 'b1' }]);
     mockGetDoc.mockResolvedValueOnce({ exists: () => false });
 
-    const out = await calculateAndCacheBranchAggregate('2026-02', 'b1');
+    const out = await calculateAndCacheBranchAggregate('tenant1', '2026-02', 'b1');
     expect(out.recordCount).toBe(0);
     expect(out.aggregatedPersistency).toBe(0);
   });

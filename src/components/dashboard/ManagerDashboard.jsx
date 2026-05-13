@@ -128,7 +128,7 @@ export default function ManagerDashboard() {
       const [userList, subs, persMap] = await Promise.all([
         getTenantUsers(tenantId).catch(() => []),
         getAllYTDSubmissions(tenantId).catch(() => []),
-        getPersistencyMapForYear(year, {
+        getPersistencyMapForYear(tenantId, year, {
           branchId: role === 'branch_manager' ? userProfile?.branchId : undefined,
           unitId:   role === 'unit_manager'   ? userProfile?.unitId   : undefined,
         }).catch(() => ({})),

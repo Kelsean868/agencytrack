@@ -39,6 +39,7 @@ describe('PersistencyEntryForm', () => {
   it('renders the six TTD inputs', () => {
     render(
       <PersistencyEntryForm
+        tenantId="t1"
         monthKey="2026-02"
         agentUid="agent-1"
         agentName="Ricardo Duke"
@@ -60,6 +61,7 @@ describe('PersistencyEntryForm', () => {
   it('updates the derived preview as inputs change (Ricardo Duke validation)', () => {
     render(
       <PersistencyEntryForm
+        tenantId="t1"
         monthKey="2026-02"
         agentUid="agent-1"
         agentName="Ricardo Duke"
@@ -80,6 +82,7 @@ describe('PersistencyEntryForm', () => {
   it('disables save until all six inputs are populated', () => {
     render(
       <PersistencyEntryForm
+        tenantId="t1"
         monthKey="2026-02"
         agentUid="agent-1"
         agentName="Ricardo Duke"
@@ -115,7 +118,8 @@ describe('PersistencyEntryForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() => expect(hoisted.savePersistency).toHaveBeenCalledTimes(1));
-    const [monthKey, agentUid, inputs, role] = hoisted.savePersistency.mock.calls[0];
+    const [tenantId, monthKey, agentUid, inputs, role] = hoisted.savePersistency.mock.calls[0];
+    expect(tenantId).toBe('t1');
     expect(monthKey).toBe('2026-02');
     expect(agentUid).toBe('agent-1');
     expect(role).toBe('branch_manager');
@@ -129,6 +133,7 @@ describe('PersistencyEntryForm', () => {
 
     render(
       <PersistencyEntryForm
+        tenantId="t1"
         monthKey="2026-02"
         agentUid="agent-1"
         agentName="Ricardo Duke"

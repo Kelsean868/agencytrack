@@ -131,7 +131,7 @@ export default function AgentDashboard() {
       getDraft(tenantId, user.uid, currentWeek).catch(() => null),
       getAgentSubmissions(tenantId, user.uid).catch(() => []),
       getGoals(tenantId, user.uid).catch(() => null),
-      getAgentHistory(user.uid, 12).catch(() => []),
+      getAgentHistory(tenantId, user.uid, 12).catch(() => []),
       getSettlements(tenantId, user.uid, thisYear).catch(() => []),
       getCompanyMinimums(tenantId).catch(() => null),
     ]).then(([weekSub, subs, agentGoals, pers, setts, mins]) => {
