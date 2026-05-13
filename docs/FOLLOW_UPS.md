@@ -631,6 +631,18 @@ bulk onboarding beyond the pilot cohort.
 
 ---
 
+## CONTEXT.md broader refresh (MEDIUM, 2026-05-13)
+
+**CONTEXT.md is stale by ~30 PRs as of 2026-05-13.** Last updated `2026-05-10`
+with `Current main HEAD: ed99ece` (PR #75 E5.1); actual current main HEAD is
+`5ca6ea6` (PR #133 PR-D). Active track, two-strike counter, hierarchy section,
+and "Where we left off" are all out of date. Triage separately.
+
+Priority: **MEDIUM**. Not pilot-blocking but degrades session-start quality for
+new CC sessions. Worth a dedicated cleanup session before the Tatil demo.
+
+---
+
 ## Track E — Agent + Manager Tooling Enhancements
 
 Source: planning session with Kyron + planning-Claude, May 8 2026.
