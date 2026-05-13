@@ -104,6 +104,7 @@ describe('PersistencyEntryForm', () => {
 
     render(
       <PersistencyEntryForm
+        tenantId="t1"
         monthKey="2026-02"
         agentUid="agent-1"
         agentName="Ricardo Duke"
