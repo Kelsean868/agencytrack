@@ -372,67 +372,78 @@ async function main() {
     }
   }
 
-  // ── Phase 4: Execute all categories ───────────────────────────────────────
-  log('\n' + '═'.repeat(60));
-  log('PHASE 4: Shakedown execution');
-
+  // ── Phases 4 + 5 wrapped in try/finally so Phase 6 always runs ───────────
   const allResults  = [];
   const catOpts     = { log, ssDir: SS_DIR, batchId, uidByEmail };
+  let bugCount      = 0;
+  let reportPath    = null;
+  let runtimeMs     = 0;
 
-  const categories = [
-    ['cat01-auth',              () => runCat01(catOpts)],
-    ['cat02-agent',             () => runCat02Agent(catOpts)],
-    ['cat02-unit-manager',      () => runCat02UnitManager(catOpts)],
-    ['cat02-branch-manager',    () => runCat02BranchManager(catOpts)],
-    ['cat02-tenant-admin',      () => runCat02TenantAdmin(catOpts)],
-    ['cat02-platform-admin',    () => runCat02PlatformAdmin(catOpts)],
-    ['cat03-permission-matrix', () => runCat03PermissionMatrix(catOpts)],
-    ['cat04-form-validation',   () => runCat04FormValidation(catOpts)],
-    ['cat05-edge-cases',        () => runCat05EdgeCases(catOpts)],
-    ['cat06-cross-role-flows',  () => runCat06CrossRoleFlows(catOpts)],
-    ['cat07-a11y',              () => runCat07A11y(catOpts)],
-    ['cat08-screenshot-dossier',() => runCat08ScreenshotDossier(catOpts)],
-    ['cat10-email-infra',       () => runCat10EmailInfra(catOpts)],
-  ];
+  try {
+    // ── Phase 4: Execute all categories ─────────────────────────────────────
+    log('\n' + '═'.repeat(60));
+    log('PHASE 4: Shakedown execution');
 
-  let bugCount = 0;
-  for (const [name, fn] of categories) {
-    if (!checkGlobalTime()) {
-      log(`HARD STOP: Global 10h ceiling reached before ${name}`);
-      break;
+    const categories = [
+      ['cat01-auth',              () => runCat01(catOpts)],
+      ['cat02-agent',             () => runCat02Agent(catOpts)],
+      ['cat02-unit-manager',      () => runCat02UnitManager(catOpts)],
+      ['cat02-branch-manager',    () => runCat02BranchManager(catOpts)],
+      ['cat02-tenant-admin',      () => runCat02TenantAdmin(catOpts)],
+      ['cat02-platform-admin',    () => runCat02PlatformAdmin(catOpts)],
+      ['cat03-permission-matrix', () => runCat03PermissionMatrix(catOpts)],
+      ['cat04-form-validation',   () => runCat04FormValidation(catOpts)],
+      ['cat05-edge-cases',        () => runCat05EdgeCases(catOpts)],
+      ['cat06-cross-role-flows',  () => runCat06CrossRoleFlows(catOpts)],
+      ['cat07-a11y',              () => runCat07A11y(catOpts)],
+      ['cat08-screenshot-dossier',() => runCat08ScreenshotDossier(catOpts)],
+      ['cat10-email-infra',       () => runCat10EmailInfra(catOpts)],
+    ];
+
+    for (const [name, fn] of categories) {
+      if (!checkGlobalTime()) {
+        log(`HARD STOP: Global 10h ceiling reached before ${name}`);
+        break;
+      }
+      const result = await runCategory(name, fn, catOpts);
+      allResults.push(result);
+
+      const catBugs = (result.results ?? []).filter((r) => !r.pass && !r.skipped).length;
+      bugCount += catBugs;
+
+      if (bugCount > 20) {
+        log(`\nHARD STOP: ${bugCount} bugs found — exceeds 20-bug threshold per brief.`);
+        log('Something fundamental may be wrong. Proceeding to cleanup.');
+        break;
+      }
     }
-    const result = await runCategory(name, fn, catOpts);
-    allResults.push(result);
 
-    // Count failures as bugs
-    const catBugs = (result.results ?? []).filter((r) => !r.pass && !r.skipped).length;
-    bugCount += catBugs;
+    runtimeMs = Date.now() - startMs;
 
-    if (bugCount > 20) {
-      log(`\nHARD STOP: ${bugCount} bugs found — exceeds 20-bug threshold per brief.`);
-      log('Something fundamental may be wrong. Proceeding to cleanup.');
-      break;
+    // ── Phase 5: Report generation ───────────────────────────────────────────
+    log('\n' + '═'.repeat(60));
+    log('PHASE 5: Generating findings report…');
+    try {
+      reportPath = generateReport(allResults, batchId, runtimeMs);
+      log(`Report written: ${reportPath}`);
+    } catch (e) {
+      log(`WARN: Report generation failed: ${e.message} — cleanup will still run`);
     }
-  }
 
-  const runtimeMs = Date.now() - startMs;
-
-  // ── Phase 5: Report generation ─────────────────────────────────────────────
-  log('\n' + '═'.repeat(60));
-  log('PHASE 5: Generating findings report…');
-  const reportPath = generateReport(allResults, batchId, runtimeMs);
-  log(`Report written: ${reportPath}`);
-
-  // ── Phase 6: Cleanup ───────────────────────────────────────────────────────
-  if (SKIP_CLEANUP) {
-    log('\nPhase 6: SKIPPED (--skip-cleanup)');
-    log('WARNING: *@agencytrack.test data remains in production. Manual wipe required.');
-  } else {
-    const cleanOk = runCleanup();
-    if (!cleanOk) {
-      log('\n⛔ CLEANUP FAILED — IMMEDIATE ACTION REQUIRED');
-      log('Run manually: node scripts/cleanup/wipe-test-data-sweep.mjs --mode=email-pattern --execute');
-      process.exit(2);
+  } finally {
+    // ── Phase 6: Cleanup — runs on any exit path (error OR normal) ───────────
+    if (SKIP_CLEANUP) {
+      log('\nPhase 6: SKIPPED (--skip-cleanup)');
+      log('WARNING: *@agencytrack.test data remains in production. Manual wipe required.');
+    } else {
+      runtimeMs = runtimeMs || (Date.now() - startMs);
+      const cleanOk = runCleanup();
+      if (!cleanOk) {
+        log('\n⛔ CLEANUP FAILED — IMMEDIATE ACTION REQUIRED');
+        log('Run manually: node scripts/cleanup/wipe-test-data-sweep.mjs --mode=email-pattern --execute');
+        // eslint-disable-next-line no-process-exit
+        process.exit(2);
+      }
     }
   }
 
@@ -446,14 +457,14 @@ async function main() {
   log(`  Tests:      ${totalPass}/${totalTests} passed`);
   log(`  Bugs:       ${bugCount}`);
   log(`  Runtime:    ${runtimeHrs}h`);
-  log(`  Report:     ${reportPath}`);
+  log(`  Report:     ${reportPath ?? 'generation failed'}`);
   log(`  Screenshots: ${SS_DIR}`);
   log(`  Run log:    ${LOG_PATH}`);
   log('═'.repeat(60));
-  log('\nDo NOT merge — review findings report first (Phase 8).');
+  log('\nDo NOT merge — review findings report first.');
 }
 
 main().catch((e) => {
-  console.error('FATAL:', e);
+  console.error('FATAL (outside try/finally):', e.message);
   process.exit(1);
 });
