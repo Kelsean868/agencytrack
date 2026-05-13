@@ -13,8 +13,8 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-13` |
-| Current main HEAD | `69807a9` (docs(context): fill PR-F squash SHA + PR# in recently-shipped row; PR #135 PR-F shipped at `6baaa98`) |
-| Active track | None in flight — housekeeping / memory-hygiene mode. Track E fully shipped (E1 #68–#70, E2 #66, E3 #82, E4 #72, E5 #73/#74, E5.1 #75, E6-daily #71, E6 AOM #76). M-series complete (#105/#107/#113/#116/#118). User-mgmt PR-3/PR-4/PR-4b shipped. PR-D server-side email (#133) and PR-F bulk test data (#135) shipped 2026-05-13. doCreateUser emailQueued truthfulness fix (PR #<placeholder>) shipped 2026-05-13 (closes the banked MEDIUM from PR #134). |
+| Current main HEAD | `e86ed3f` (docs(briefs): cron timezone fix kickoff) |
+| Active track | **Cron timezone fix in flight** — fix/cron-timezone PR open, pre-merge deploy done, gcloud verified. Closes Track D cron portion. |
 | Next track | **Pilot prep — end-to-end testing using PR-F tooling.** Exercise the new bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
 | Queued | **SEC-9b** — migrate services to explicit `tenantId` parameter (~20 call-site refactor). |
 | Two-strike counter | 0/2 — clean PR-F arc. |
@@ -127,11 +127,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<PR#> | `<squash-sha>` | fix(functions): chain .timeZone('UTC') to all 4 scheduled CFs (Track D) |
 | #136 | `89182cd` | fix(functions): doCreateUser emailQueued truthfulness (#134 follow-up) |
 | #135 | `6baaa98` | feat(tooling): PR-F — bulk test data seeders + cleanup sweep |
 | #134 | `98ac43c` | docs(follow-ups): bank doCreateUser step E-2 emailQueued truthfulness gap |
 | #133 | `5ca6ea6` | feat(email): PR-D — server-side email infrastructure (HIGH#5) |
-| #132 | `0573a2c` | fix(theme): FU#3 — channel-split token migration for working opacity modifiers |
 
 ---
 

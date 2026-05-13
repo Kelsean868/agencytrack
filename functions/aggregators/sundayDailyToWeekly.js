@@ -145,6 +145,7 @@ async function runAggregation({ tenantId, weekStarting, db, logger = console }) 
 
 const aggregateDailyToWeeklyCron = functions.pubsub
   .schedule('0 3 * * 1') // Monday 03:00 UTC = Sunday 23:00 Trinidad
+  .timeZone('UTC')
   .onRun(async () => {
     const weekStarting = resolveWeekToAggregate(new Date());
     try {
