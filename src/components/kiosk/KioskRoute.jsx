@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { signInWithCustomToken } from 'firebase/auth';
-import { auth, setRuntimeTenantId } from '../../firebase';
+import { auth } from '../../firebase';
 import { VALIDATE_TOKEN_URL } from '../../lib/kiosk/kioskConfig';
 import KioskShell from './KioskShell';
 
@@ -33,8 +33,6 @@ export default function KioskRoute() {
         }
         // Sign into Firebase Auth with the custom token so Firestore reads work.
         await signInWithCustomToken(auth, data.customToken);
-        // Populate the runtime tenantId holder so service functions work.
-        setRuntimeTenantId(data.tenantId);
         setKioskMeta({ tenantId: data.tenantId, branchId: data.branchId });
         setState('valid');
       })
