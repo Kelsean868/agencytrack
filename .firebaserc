@@ -3,5 +3,11 @@
     "default": "agencytrack-2a610"
   },
   "targets": {},
-  "etags": {}
+  "etags": {
+    "agencytrack-2a610": {
+      "extensionInstances": {
+        "firestore-send-email": "dd0791a8303787436dda1c09af223cf803d159106698f54f60cdd47cdc64dcdf"
+      }
+    }
+  }
 }

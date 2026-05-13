@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import {
-  parseCSV, prepareImport, runImport, dispatchResetEmails,
+  parseCSV, prepareImport, runImport,
   buildErrorCSV, buildTemplateCSV, downloadCSV, generateBatchId, LIMITS,
 } from '../../services/userImportService';
 import { listBranches } from '../../services/branchService';
@@ -124,7 +124,6 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
 
   // — Step 4: summary
   const [importResults, setImportResults] = useState(null); // { results: [...] }
-  const [emailDispatch, setEmailDispatch] = useState(null); // [{ email, sent, error? }]
   const [serverError, setServerError] = useState(null);
 
   // Cancel mid-flight: confirmation opens while step === 3 and importing.
@@ -228,10 +227,6 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
       const callableResult = await runImport(preview, batchId);
       if (abandonedRef.current) return; // user closed modal mid-flight
       setImportResults({ ...callableResult, batchId });
-      // Dispatch reset emails per success row.
-      const emails = await dispatchResetEmails(callableResult?.results ?? []);
-      if (abandonedRef.current) return;
-      setEmailDispatch(emails);
       setStep(4);
     } catch (err) {
       console.error('[BulkImportUsersModal] runImport:', err);
@@ -573,14 +568,10 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
           {/* — Step 4: summary */}
           {step === 4 && importResults && (
             <div className="flex flex-col gap-4">
-              <SummaryStats results={importResults.results ?? []} emailDispatch={emailDispatch ?? []} preview={preview} />
+              <SummaryStats results={importResults.results ?? []} preview={preview} />
 
               {(importResults.results ?? []).some((r) => !r.success) && (
                 <FailureList results={importResults.results ?? []} />
-              )}
-
-              {emailDispatch && emailDispatch.some((e) => !e.sent) && (
-                <EmailFailureList dispatch={emailDispatch} />
               )}
 
               <div className="flex justify-between items-center pt-2 border-t border-border mt-2">
@@ -616,14 +607,13 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
 /* Step 4 sub-components                                                    */
 /* ─────────────────────────────────────────────────────────────────────── */
 
-function SummaryStats({ results, emailDispatch, preview }) {
+function SummaryStats({ results, preview }) {
   const success = results.filter((r) => r.success).length;
   const failure = results.filter((r) => !r.success).length;
   const skipped = (preview?.summary?.warnings ?? 0);
-  const emailFailed = (emailDispatch ?? []).filter((e) => !e.sent).length;
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+    <div className="grid grid-cols-3 gap-2">
       <div className="card p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Created</p>
         <p className="text-2xl font-bold text-success">{success}</p>
@@ -636,11 +626,6 @@ function SummaryStats({ results, emailDispatch, preview }) {
       <div className="card p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Failed</p>
         <p className="text-2xl font-bold text-danger">{failure}</p>
-      </div>
-      <div className="card p-3">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Email failed</p>
-        <p className="text-2xl font-bold text-warning">{emailFailed}</p>
-        <p className="text-[10px] text-ink-muted">{success > 0 ? `${success - emailFailed} sent` : ''}</p>
       </div>
     </div>
   );
@@ -669,24 +654,6 @@ function FailureList({ results }) {
           </li>
         ))}
       </ul>
-    </div>
-  );
-}
-
-function EmailFailureList({ dispatch }) {
-  const failed = dispatch.filter((e) => !e.sent);
-  if (failed.length === 0) return null;
-  return (
-    <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-ink flex items-start gap-2">
-      <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" aria-hidden="true" />
-      <div>
-        <p className="font-semibold mb-1">
-          {failed.length} password-reset email{failed.length === 1 ? '' : 's'} failed to dispatch
-        </p>
-        <p className="text-ink-muted">
-          Affected accounts were created server-side. Use the per-user Retry button on the user list, or trigger a fresh reset from the Firebase console.
-        </p>
-      </div>
     </div>
   );
 }

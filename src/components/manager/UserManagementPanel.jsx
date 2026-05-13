@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload, Pencil } from 'lucide-react';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import {
   createUser,
@@ -107,8 +105,8 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
         payload.confirmationPhrase = 'CREATE TENANT ADMIN';
       }
 
-      const result = await createUser(payload);
-      onCreated(payload.email, effectiveRole, result?.emailSent === true, result?.emailError);
+      await createUser(payload);
+      onCreated(payload.email, effectiveRole);
     } catch (err) {
       const code = err?.code ?? '';
       if (code.includes('already-exists')) {
@@ -378,48 +376,15 @@ export default function UserManagementPanel() {
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
-  // Polish-1 Toast migration (PR-4): show a sticky warning with a Retry action
-  // for the post-create email-dispatch failure path. The Toast primitive
-  // dismisses on action click — handleRetryEmail re-shows a fresh toast based
-  // on the retry outcome.
-  async function handleRetryEmail(email) {
-    if (!email) return;
-    try {
-      await sendPasswordResetEmail(auth, email);
-      toast.show({
-        variant: 'success',
-        message: `Reset email sent to ${email}.`,
-        duration: 6000,
-      });
-    } catch (err) {
-      console.error('[UserManagementPanel] retry sendPasswordResetEmail:', err);
-      toast.show({
-        variant: 'warning',
-        message: `Email retry failed${err?.code ? ` (${err.code})` : ''}. Try again or check the address.`,
-        duration: 0,
-        action: { label: 'Retry email', onClick: () => handleRetryEmail(email) },
-      });
-    }
-  }
-
-  function handleCreated(email, createdRole, emailSent, _emailError) {
+  function handleCreated(email, createdRole) {
     setShowDrawer(false);
     loadUsers();
     const roleLabel = ROLE_DISPLAY[createdRole] ?? 'User';
-    if (emailSent) {
-      toast.show({
-        variant: 'success',
-        message: `${roleLabel} account created. Reset email sent to ${email}.`,
-        duration: 6000,
-      });
-    } else {
-      toast.show({
-        variant: 'warning',
-        message: `${roleLabel} account created, but the password reset email failed to send.`,
-        duration: 0,
-        action: { label: 'Retry email', onClick: () => handleRetryEmail(email) },
-      });
-    }
+    toast.show({
+      variant: 'success',
+      message: `${roleLabel} account created. Password reset email on its way to ${email}.`,
+      duration: 6000,
+    });
   }
 
   function handleEditSaved(savedName, customMessage) {

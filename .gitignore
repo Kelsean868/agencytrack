@@ -92,3 +92,9 @@ playwright-report/
 
 # Session handoff notes — local context for the next chat session
 .session-handoffs/
+
+# Firebase extension config — may contain SMTP credentials, API keys
+extensions/*.env
+extensions/*.env.*
+extensions/*.secret.local
+extensions/secrets/

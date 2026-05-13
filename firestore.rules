@@ -56,6 +56,13 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // PR-D: mail/ queue for Firebase Trigger Email Extension.
+    // All writes come from Cloud Functions via Admin SDK (bypasses rules).
+    // No client read or write access — the extension handles delivery.
+    match /mail/{docId} {
+      allow read, write: if false;
+    }
+
     match /tenants/{tenantId} {
 
       // PR-1 (user-management): tenant metadata (e.g., enumerated branchIds list
