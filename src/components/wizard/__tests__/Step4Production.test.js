@@ -15,7 +15,6 @@ vi.mock('firebase/firestore', () => ({
 
 vi.mock('../../../firebase', () => ({
   db: {},
-  getTenantId: () => 'test-tenant',
 }));
 
 import { sanitize } from '../../../services/submissionService';

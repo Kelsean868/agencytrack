@@ -39,7 +39,6 @@ vi.mock('firebase/functions', () => ({
 
 vi.mock('../../../firebase', () => ({
   db: { __mock: 'db' },
-  getTenantId: () => 't1',
 }));
 
 import KioskModeTab from '../KioskModeTab';
