@@ -1,6 +1,6 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions, getTenantId } from '../firebase';
+import { db, functions } from '../firebase';
 
 const TRINI_OFFSET_MS = 4 * 60 * 60 * 1000;
 
@@ -28,18 +28,17 @@ export function isWithinEditWindow() {
   return getTriniNow().getUTCDate() <= 7;
 }
 
-export async function getAgentOfMonth(monthKey) {
-  const tenantId = getTenantId();
+export async function getAgentOfMonth(tenantId, monthKey) {
   const snap = await getDoc(doc(db, `tenants/${tenantId}/agentOfMonth/${monthKey}`));
   return snap.exists() ? snap.data() : null;
 }
 
 // Kiosk: reads current month, falls back to prior month during the 7-day edit window.
-export async function getAgentOfMonthForKiosk() {
+export async function getAgentOfMonthForKiosk(tenantId) {
   const current = getCurrentMonthKey();
-  let data = await getAgentOfMonth(current);
+  let data = await getAgentOfMonth(tenantId, current);
   if (!data && isWithinEditWindow()) {
-    data = await getAgentOfMonth(getPrevMonthKey());
+    data = await getAgentOfMonth(tenantId, getPrevMonthKey());
   }
   return data;
 }

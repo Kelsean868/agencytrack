@@ -30,7 +30,7 @@ const CATEGORIES = [
 ];
 
 export default function AgentOfMonthTab() {
-  const { userProfile } = useAuth();
+  const { userProfile, tenantId } = useAuth();
   const toast = useToast();
   const branchId = userProfile?.branchId;
 
@@ -53,7 +53,7 @@ export default function AgentOfMonthTab() {
     setError(null);
     try {
       const [aom, cands] = await Promise.all([
-        getAgentOfMonth(monthKey),
+        getAgentOfMonth(tenantId, monthKey),
         getCandidates({ branchId, monthKey }),
       ]);
       setAomData(aom);
