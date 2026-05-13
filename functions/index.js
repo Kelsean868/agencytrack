@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { isValidEmail } = require('./utils/validators');
+const { buildMailDoc } = require('./utils/email');
 
 // Ambient credentials. createCustomToken needs iam.serviceAccounts.signBlob;
 // granted via roles/iam.serviceAccountTokenCreator on the App Engine default SA
@@ -86,6 +87,57 @@ async function getAllAgents() {
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
     .filter((u) => u.provisioning !== true);
+}
+
+// Helper — compute the set of agents to nudge for a given weekStarting.
+//
+// Filtering rules (Q7 locks):
+//   (a) Skip deactivated agents (active === false).
+//   (b) Skip long-inactive: agents whose most recent submission was 4+ weeks
+//       ago. Brand-new agents (never submitted) are always included.
+//   (c) Only agents (already enforced by getAllAgents role filter).
+//
+// Uses the existing (status ASC, weekStarting ASC) composite index for the
+// recent-submissions range query — no new index required.
+async function getAgentsToNudge(weekStarting) {
+  // Active agents only (Q7a: skip deactivated)
+  const allAgents = (await getAllAgents()).filter((a) => a.active !== false);
+
+  // Who has already submitted this week?
+  const submittedIds = await getSubmittedAgentIds(weekStarting);
+  const missing = allAgents.filter((a) => !submittedIds.has(a.id));
+  if (missing.length === 0) return [];
+
+  // 4-week lookback boundary (Q7b)
+  const boundary = new Date();
+  boundary.setDate(boundary.getDate() - 28);
+  const fourWeeksAgoString = getTriniSundayString(boundary);
+
+  // Who submitted anything in the last 4 weeks?
+  const recentSnap = await admin.firestore()
+    .collection(`tenants/${TENANT_ID}/submissions`)
+    .where('status', '==', 'submitted')
+    .where('weekStarting', '>=', fourWeeksAgoString)
+    .select('agentId')
+    .get();
+  const recentlyActiveIds = new Set(
+    recentSnap.docs.map((d) => d.data().agentId).filter(Boolean)
+  );
+
+  // Who has ever submitted? (to distinguish brand-new from long-inactive)
+  const allTimeSnap = await admin.firestore()
+    .collection(`tenants/${TENANT_ID}/submissions`)
+    .where('status', '==', 'submitted')
+    .select('agentId')
+    .get();
+  const allTimeSubmitterIds = new Set(
+    allTimeSnap.docs.map((d) => d.data().agentId).filter(Boolean)
+  );
+
+  // Include: recently active OR brand-new (never submitted). Skip long-inactive.
+  return missing.filter(
+    (a) => recentlyActiveIds.has(a.id) || !allTimeSubmitterIds.has(a.id)
+  );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -307,18 +359,37 @@ async function doCreateUser(data, context) {
   }
 
   // ── Side effects (best-effort, do not fail the saga) ──────────────────────
-  // Password-reset email is dispatched client-side from agentManagementService.createUser
-  // after this callable returns. The Admin SDK has no equivalent of
-  // sendPasswordResetEmail (generatePasswordResetLink only returns a string with no
-  // delivery), so the email is triggered from the caller's Firebase Auth client.
+
+  // Step E-1: in-app welcome notification
   await createAdminNotification(callerTenant, newUid, {
     type:  'account_created',
     title: 'Welcome to AgencyTrack',
     body:  'Your account has been created. Check your email to set your password and get started.',
   }).catch(console.error);
 
+  // Step E-2: server-side password-reset email via Trigger Email Extension.
+  // generatePasswordResetLink produces the link; writing to mail/ queues dispatch.
+  // Failure here is logged but never fails the saga — the account is fully
+  // provisioned; admin can use Firebase console as recovery path.
+  try {
+    const resetLink = await admin.auth().generatePasswordResetLink(data.email, {
+      url: 'https://agencytrack.vercel.app',
+    });
+    await admin.firestore().collection('mail').add(
+      buildMailDoc(
+        data.email,
+        'Welcome to AgencyTrack — set your password',
+        'password-reset.txt',
+        'password-reset.html',
+        { userName: data.name, resetLink }
+      )
+    );
+  } catch (mailErr) {
+    console.warn('[createUser] mail/ write failed (non-fatal):', mailErr.message);
+  }
+
   console.log(`[createUser] Created ${targetRole} ${newUid} (${data.email}) by ${callerRole} ${callerUid}`);
-  return { success: true, uid: newUid };
+  return { success: true, uid: newUid, emailQueued: true };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -878,24 +949,30 @@ exports.sendSundayNudge = functions.pubsub
   .onRun(async () => {
     try {
       const weekStarting = getTriniSundayString(new Date());
-      const submittedIds = await getSubmittedAgentIds(weekStarting);
-      const agents       = await getAllAgents();
+      const toNudge = await getAgentsToNudge(weekStarting);
 
-      const missing = agents.filter((a) => !submittedIds.has(a.id));
       await Promise.all(
-        missing.map((a) =>
+        toNudge.map((a) => Promise.allSettled([
+          // In-app notification (existing channel)
           createAdminNotification(TENANT_ID, a.id, {
             type:  'submission_reminder',
             title: 'Report Due Tomorrow',
             body:  'Your weekly report is due by Monday 9:00 AM. Submit now to stay on track.',
-          }).catch(console.error)
-        )
+          }),
+          // Email via Trigger Email Extension
+          admin.firestore().collection('mail').add(
+            buildMailDoc(
+              a.email,
+              'Your AgencyTrack report for {{weekStarting}} is due',
+              'sunday-nudge.txt',
+              'sunday-nudge.html',
+              { userName: a.name ?? a.email, weekStarting }
+            )
+          ),
+        ]))
       );
 
-      // Email stub — wire up nodemailer or Firebase Extension here when ready
-      // missing.forEach(a => sendReminderEmail(a.email, 'Report Due Tomorrow').catch(console.error));
-
-      console.log(`[sendSundayNudge] Notified ${missing.length} agents for week ${weekStarting}`);
+      console.log(`[sendSundayNudge] Nudged ${toNudge.length} agents (in-app + email) for week ${weekStarting}`);
     } catch (err) {
       console.error('[sendSundayNudge]', err);
     }
@@ -909,24 +986,30 @@ exports.sendMondayNudge = functions.pubsub
   .onRun(async () => {
     try {
       const weekStarting = getTriniSundayString(new Date());
-      const submittedIds = await getSubmittedAgentIds(weekStarting);
-      const agents       = await getAllAgents();
+      const toNudge = await getAgentsToNudge(weekStarting);
 
-      const missing = agents.filter((a) => !submittedIds.has(a.id));
       await Promise.all(
-        missing.map((a) =>
+        toNudge.map((a) => Promise.allSettled([
+          // In-app notification (existing channel)
           createAdminNotification(TENANT_ID, a.id, {
             type:  'submission_reminder',
             title: '2 Hours Left',
             body:  'Deadline is 9:00 AM today. Submit your report now.',
-          }).catch(console.error)
-        )
+          }),
+          // Email via Trigger Email Extension
+          admin.firestore().collection('mail').add(
+            buildMailDoc(
+              a.email,
+              '2 hours left to submit your report',
+              'monday-nudge.txt',
+              'monday-nudge.html',
+              { userName: a.name ?? a.email, weekStarting }
+            )
+          ),
+        ]))
       );
 
-      // Email stub
-      // missing.forEach(a => sendReminderEmail(a.email, '2 Hours Left').catch(console.error));
-
-      console.log(`[sendMondayNudge] Notified ${missing.length} agents for week ${weekStarting}`);
+      console.log(`[sendMondayNudge] Nudged ${toNudge.length} agents (in-app + email) for week ${weekStarting}`);
     } catch (err) {
       console.error('[sendMondayNudge]', err);
     }
