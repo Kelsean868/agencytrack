@@ -5,6 +5,72 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Untracked legacy briefs + verification scripts cleanup (LOW, banked 2026-05-13)
+
+**Scope:** `git status` on `main` surfaces 11 untracked files left over
+from shipped work. Cleanup deferred during the memory-refresh session.
+
+**Stale kickoff briefs** (all features shipped — archive to
+`docs/archive/briefs/`):
+
+- `docs/PR-3-Claude-Code-Brief.md` — user-mgmt PR-3 (#28). Already noted
+  in CONTEXT.md Pending Operational across PR #39 + #40; un-actioned since.
+- `docs/briefs/e1-slice-2a-kickoff.md` — E1 schema split (#68).
+- `docs/briefs/e1-slice-2b-kickoff.md` — E1 schema split (#69/#70).
+- `docs/briefs/e4-phase-8-followup-kickoff.md` — E4 follow-up.
+- `docs/briefs/e4-production-report-kickoff.md` — E4 (#72).
+- `docs/briefs/e5-kiosk-mode-kickoff.md` — E5 (#73).
+- `docs/briefs/e6-agent-of-month-kickoff.md` — E6 AOM (#76).
+- `docs/briefs/e6-daily-input-kickoff.md` — E6 daily (#71).
+- `docs/briefs/pr-d-server-side-email-kickoff.md` — PR-D (#133).
+
+**Verification scripts** (possibly reusable — defer fate to next consumer):
+
+- `scripts/mgr-mobile-audit.cjs` — used by Mobile FU#1 #90 mgr-mobile audit.
+- `scripts/verification/pr-d-email-smoke.mjs` — used by PR-D #133 smoke.
+
+**Cleanup approach:**
+
+1. `mkdir -p docs/archive/briefs/` if not present.
+2. `git mv` each stale brief into `docs/archive/briefs/`.
+3. Surface the two verification scripts for decision: archive, delete, or
+   leave as-is for the next manager-mobile / email-smoke iteration.
+4. Single docs-only commit: `docs(archive): archive Track-E + PR-D kickoff briefs (shipped)`.
+
+Priority: **LOW**. Not blocking. Bank for the next docs-hygiene session.
+
+---
+
+## Track D — cron portion status verification (MEDIUM, banked 2026-05-13)
+
+**Scope:** Pre-Track-E plan named Track D as "cron + notifications
+verification." The notifications half landed via PR-D (#133, server-side
+email via Trigger Email Extension). The cron half — verifying that
+`sendSundayNudge` / `sendMondayNudge` / `weeklyChampions` / persistency-
+window crons fire on schedule with correct claim hydration + tenant scoping
+— has not been explicitly exercised since the Track D banking.
+
+**Why this matters:** PR-D rewrote the Sunday-nudge dispatch path to write
+`mail/` docs. The cron itself still fires from `functions/index.js`; its
+schedule + tenant-scope + claim-resolve behavior has not been independently
+verified post-PR-D. Adjacent risk: scheduled functions still hardcode
+`TENANT_ID = 'tatillife_south'` (SEC-9c open).
+
+**Verification approach (when picked up):**
+
+- Trigger each scheduled function via `firebase functions:shell` against a
+  pilot-shaped test tenant (PR-F bulk seeders can now provision this).
+- Verify expected `mail/` doc(s) land for nudge crons.
+- Verify weekly-champion docs land in `leaderboard/` subcollection.
+- Confirm production schedule via Firebase Console Cloud Scheduler view.
+
+Priority: **MEDIUM**. Not pilot-blocking — crons have been running unchanged
+across PR #133/#135. Worth a dedicated triage session before the Tatil
+demo so the cron half of Track D has the same verification weight as the
+notifications half.
+
+---
+
 ## RESOLVED 2026-05-11 — Service-account-key cleanup (Cloud Functions)
 
 E5 (kiosk) shipped with `functions/service-account-key.json` loaded via
@@ -31,27 +97,39 @@ those scripts to ADC + impersonation. Not blocking.
 
 ---
 
-## Worktree + branch audit (LOW, banked 2026-05-11)
+## Worktree + branch audit (LOW, banked 2026-05-11; scope grew 2026-05-13)
 
-Five `.claude/worktrees/` directories remain from prior CC sessions, all
-attached to feature branches not yet reconciled with main:
-- feat-e1-schema-split-foundation
-- feat-e1-slice-2a-wizard-restructure
-- feat-e1-slice-2b-surface-adaptation
-- feat-e2-reverse-commission-calc
-- feat-e6-daily-input-mode
+**Updated 2026-05-13:** scope is larger than the 2026-05-11 banking
+suggested. Current state:
 
-Two orphan local branches (no worktree) with unique commits not on main:
-- chore-context-sync-and-verification-script-lift (1 commit, CONTEXT sync
-  + verification script lift, post-E2 housekeeping)
-- chore/housekeeping-followups (6 commits — E5.1 + SPA rewrite work,
-  squash-merged to main under different SHAs; possibly 1-2 docs edits
-  that didn't make the squashed PRs, needs careful diff)
+- **6 worktrees** in `.claude/worktrees/`, all attached to merged feature
+  branches (post-squash, `git branch -v` shows `+` markers indicating the
+  branches diverged from main post-merge):
+  - `feat+pr-f-bulk-test-data` (PR #135)
+  - `feat-polish-2-toast-sweep` (PR #127)
+  - `feat-pr-d-server-side-email` (PR #133)
+  - `feat-pr4-edit-user-flows` (PR #122)
+  - `feat-pr4b-role-branch-edits` (PR #129)
+  - `feat-wizard-ux-hardening` (PR #88 + R1 micro-fix #124)
+- **~15 stale local branches** without remote tracking refs (most have
+  `+` markers indicating squash-merged-but-locally-divergent state). The
+  original two orphan branches from the 2026-05-11 audit
+  (`chore-context-sync-and-verification-script-lift`,
+  `chore/housekeeping-followups`) are still present.
 
-Each needs a quick audit: did the work merge under a different branch
-name? Is it abandoned? Is it WIP that should resume? Not blocking —
-they're inert, just clutter `git worktree list` and `git branch`.
-~30-45 min audit when convenient.
+**Cleanup approach** (extends the original audit pattern):
+1. For each worktree-attached branch, run `git diff main..<branch> --stat`
+   to verify no unmerged content (expected: empty diff for squash-merged
+   PRs).
+2. If empty diff: `git worktree remove --force <path>` then `git branch -D <branch>`.
+3. For the orphan branches without worktrees: same diff check; if equivalent
+   work landed under a different SHA via squash, `git branch -D`.
+4. Surface any branch with unmerged content for decision (resume?
+   abandon? reconcile?).
+5. After cleanup, `git fetch origin --prune` to clear any stale remote
+   tracking refs.
+
+~45–60 min focused session now (was ~30–45 min before scope grew).
 
 Audit approach (bank for whoever picks this up):
 1. For each worktree-attached branch, run
@@ -242,7 +320,29 @@ verification gate; the next one is unbounded). Not pilot-blocking — PR
 
 ---
 
-## HIGH#5 — Server-side email infrastructure (surfaced 2026-05-08 during HIGH#1 fix)
+## HIGH#5 — Server-side email infrastructure — RESOLVED in PR #133 (2026-05-13)
+
+**Resolved 2026-05-13 in PR #133** (`5ca6ea6`,
+`feat(email): PR-D — server-side email infrastructure (HIGH#5)`). Shipped:
+
+- Firebase Trigger Email Extension installed (`8f030d0 chore(extensions): install firestore-send-email + gitignore extension config`).
+- `mail/` collection rules locked to Cloud Function writes only (`0cb6cfc feat(firestore): PR-D — lock mail/ collection to CF writes only`).
+- Email templates + render helper (`3be983b feat(email): PR-D — email templates and render helper`).
+- `doCreateUser` saga writes `mail/` doc post-claims-commit (`c23e624 feat(functions): PR-D — server-side email via Trigger Email Extension`). Companion Sunday-nudge stub replaced with `mail/` writes per missing agent.
+- Client-side `sendPasswordResetEmail` removed from `agentManagementService.createUser` (`f167708 refactor(email): PR-D — remove all client-side email dispatch`). Return shape collapsed back to `{ success, uid }` once dispatch was reliably server-side.
+- Troubleshooting runbook at `docs/runbooks/pr-d-email-troubleshooting.md` (`fb2a0be docs(runbooks): PR-D — email troubleshooting runbook`).
+
+**R1 (domain authorization gap) surfaced and was resolved same day.** Pre-PR-D
+mail dispatches sat in `mail/` with `error: "Email did not validate"` until
+`sendgrid.net` / the configured sender domain were authorized. Documented
+in the runbook; pilot tenant authorized before PR-F.
+
+**Open follow-up tracked separately:** `doCreateUser` step E-2 `emailQueued`
+truthfulness gap (PR #134 banking) — see entry below.
+
+---
+
+**Original triage notes (kept for reference):**
 
 **Scope:** Wire up a single piece of server-side email infrastructure that
 covers BOTH outstanding email gaps in the codebase:
@@ -631,18 +731,6 @@ bulk onboarding beyond the pilot cohort.
 
 ---
 
-## CONTEXT.md broader refresh (MEDIUM, 2026-05-13)
-
-**CONTEXT.md is stale by ~30 PRs as of 2026-05-13.** Last updated `2026-05-10`
-with `Current main HEAD: ed99ece` (PR #75 E5.1); actual current main HEAD is
-`5ca6ea6` (PR #133 PR-D). Active track, two-strike counter, hierarchy section,
-and "Where we left off" are all out of date. Triage separately.
-
-Priority: **MEDIUM**. Not pilot-blocking but degrades session-start quality for
-new CC sessions. Worth a dedicated cleanup session before the Tatil demo.
-
----
-
 ## Track E — Agent + Manager Tooling Enhancements
 
 Source: planning session with Kyron + planning-Claude, May 8 2026.
@@ -722,7 +810,23 @@ treatment as the agent side. Estimated 1–2 days of focused work.
 - `History` row eye/preview button is < 44px — bump hit area while preserving icon
 - `CommissionPlayground` accordion toggle — measure and adjust if < 44px
 
-### Mobile follow-up #3 — `bg-primary/N` opacity utilities resolve to transparent
+### Mobile follow-up #3 — `bg-primary/N` opacity utilities resolve to transparent — RESOLVED in PR #132 (2026-05-12)
+
+**Resolved 2026-05-12 in PR #132** (`0573a2c`,
+`fix(theme): FU#3 — channel-split token migration for working opacity modifiers`).
+Option 1 implemented: CSS variables migrated to channel form (`19d3cf3 fix(theme): channel-split CSS color tokens with derived aliases`),
+Tailwind config rewritten to functional notation (`595dce5 fix(theme): rewrite tailwind config to functional notation for opacity modifiers`).
+All `bg-primary/N`, `text-primary/N`, `border-primary/N` modifiers now resolve
+correctly app-wide. FU#3 smoke script lives at `scripts/verification/fu3-channel-split.cjs`.
+
+Cosmetic hardcoded-hex sites (e.g. `bg-[#01696f]/8`) were intentionally
+deferred — see "Hardcoded hex literals with opacity modifier" entry at the
+end of this file. Those resolve correctly without channel-split (Tailwind
+decomposes literal hex at build time) but bypass the design-token system.
+
+---
+
+**Original triage notes (kept for reference):**
 
 The carousel inactive dot indicators show `bg-primary/30` but the computed
 `background-color` is `rgba(0,0,0,0)` because the project's Tailwind config
