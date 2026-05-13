@@ -404,3 +404,21 @@ const admin = require('../../functions/node_modules/firebase-admin');
 ```
 
 Key confirmed present at `C:\Projects\AgencyTrack\functions\service-account-key.json`.
+
+---
+
+## 8. Batch-Mode Cleanup Constraint (Kyron refinement, 2026-05-13)
+
+**`--mode=batch` is smoke-only.** Batch mode identifies docs by `testDataBatchId` — a field stamped only by Admin SDK seeders (smoke path). It will NOT find user docs or goal docs created through the manual runbook path (`bulkImportUsers` callable, `goalsImportService.runImport()`) because those paths stamp `csvImportBatchId`, not `testDataBatchId`.
+
+**Cleanup after the manual runbook MUST use `--mode=email-pattern`.** Email-pattern mode sweeps Auth for all `*@agencytrack.test` users, derives their UIDs, and deletes by UID-derived paths — correctly covering both manually-imported and directly-seeded data.
+
+**Runbook Phase 6 must include this one-liner:**
+> "`--mode=batch` is only valid after the smoke script path. After the manual runbook import steps, always use `--mode=email-pattern`."
+
+**Summary table:**
+
+| Path | `testDataBatchId` stamped? | Correct cleanup mode |
+|---|---|---|
+| Smoke test (Admin SDK direct) | Yes | `--mode=batch` OR `--mode=email-pattern` |
+| Manual runbook (modal imports) | No — only `csvImportBatchId` | `--mode=email-pattern` ONLY |

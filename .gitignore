@@ -43,6 +43,9 @@ functions/seed-company-minimums.cjs
 # Repomix — generated file, too large for project
 repomix-output.xml
 
+# Verification artifacts — logs, screenshots, seed output (gitignored by design)
+verification/
+
 # Firebase debug logs
 firebase-debug.log
 firestore-debug.log
