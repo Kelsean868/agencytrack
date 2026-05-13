@@ -1,7 +1,5 @@
 import Papa from 'papaparse';
 import { getFunctions, httpsCallable } from 'firebase/functions';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../firebase';
 import { isValidEmail } from '../utils/validators';
 import { listBranches } from './branchService';
 import { getAllUsers } from './agentManagementService';
@@ -13,7 +11,6 @@ import { getAllUsers } from './agentManagementService';
  *   - parseCSV(file)                       → { rows, parseErrors }
  *   - prepareImport(rows, tenantId)        → preview model (validated rows + summary)
  *   - runImport(preview, csvImportBatchId) → invokes bulkImportUsers Callable
- *   - dispatchResetEmails(results, rows)   → fires sendPasswordResetEmail per success
  *   - buildErrorCSV(preview, results)      → re-importable error CSV string
  *   - buildTemplateCSV()                   → header row + one example row
  *
@@ -23,12 +20,9 @@ import { getAllUsers } from './agentManagementService';
  *     in-depth — see functions/index.js. Both layers run.
  *
  * Reset-email dispatch:
- *   - The Callable creates Auth users + Firestore docs, but cannot dispatch
- *     password-reset emails (Admin SDK has no equivalent of
- *     sendPasswordResetEmail). Mirrors HIGH#1 single-user path: client
- *     dispatches per-row after the Callable returns. Best-effort — failures
- *     are surfaced in the summary so the admin can re-send via the existing
- *     single-user Retry path.
+ *   - The bulkImportUsers Callable triggers a password-reset email per
+ *     successfully-created user via the Trigger Email Extension (mail/
+ *     collection write). No client-side dispatch needed.
  */
 
 const REQUIRED_HEADERS = ['email', 'name', 'role', 'branchname', 'agentnumber'];
@@ -281,34 +275,6 @@ export async function runImport(preview, csvImportBatchId) {
   const fn = httpsCallable(getFunctions(), 'bulkImportUsers');
   const result = await fn(payload);
   return result?.data ?? { results: [] };
-}
-
-/**
- * dispatchResetEmails(callableResults, validatedRows)
- *
- * After the Callable returns successful UIDs, fire sendPasswordResetEmail
- * client-side per success — mirrors the HIGH#1 single-user path. Returns
- * an array of { email, sent, error? } per success row. Failures are
- * surfaced in the summary, NOT silently absorbed.
- *
- * Uses Promise.allSettled so one failure doesn't block the others.
- */
-export async function dispatchResetEmails(callableResults) {
-  if (!Array.isArray(callableResults)) return [];
-  const successes = callableResults.filter((r) => r.success && r.email);
-  const settled = await Promise.allSettled(
-    successes.map((r) =>
-      sendPasswordResetEmail(auth, r.email).then(
-        () => ({ email: r.email, sent: true }),
-        (err) => ({ email: r.email, sent: false, error: err?.code ?? err?.message ?? String(err) })
-      )
-    )
-  );
-  return settled.map((s) =>
-    s.status === 'fulfilled'
-      ? s.value
-      : { email: '(unknown)', sent: false, error: String(s.reason) }
-  );
 }
 
 /**
