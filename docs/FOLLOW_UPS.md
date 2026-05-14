@@ -883,13 +883,12 @@ Privacy controls per branch. ~3 days. Spec: §E5.
 
 - ✅ **Wizard UX hardening — CLOSED** by PR #88 (2026-05-11): retry button, Saved✓ indicator, offline-vs-failed distinction, role=alert/aria-live, persistent-failure handling. PR #124 added R1 micro-fix (Saved-while-offline semantic copy).
 
-### Wizard polish (post-pilot)
-Deferred refinement items from R1 surface analysis (2026-05-14). All low-severity polish; none pilot-blocking.
+### ✅ Wizard polish (post-pilot) — CLOSED by PR #<pr#> (`<sha>`)
 
-- **R2** — Nested role="alert" inside role="status" container (WizardForm.jsx). Some screen readers ignore nested live regions per ARIA spec. Fix: split into two siblings (outer polite + separate assertive).
-- **R3** — animate-pulse at WizardForm.jsx:553 missing motion-reduce guard. Add `motion-reduce:animate-none`.
-- **R4** — Retry button has no throttle; rapid taps could double-increment failure counter. Add 2s throttle or `disabled while saving`.
-- **R5** — Intermittent-failure visibility: brief save failures get cleared by subsequent successful saves, masking flaky patterns. Either keep last failure visible for fixed window, or expose failure-count badge.
+- ✅ **R2** — CLOSED by PR #<pr#> (`<sha>`): Split nested `role="alert"` inside `role="status"` into sibling live regions. Polite region carries idle/saving/saved; assertive region carries failed/offline/escalated.
+- ✅ **R3** — CLOSED by PR #<pr#> (`<sha>`): Added `motion-reduce:animate-none` guard to `animate-pulse` on the saving indicator.
+- ✅ **R4** — CLOSED by PR #<pr#> (`<sha>`): 2s throttle on Retry button via `lastRetryAt` ref; silent no-op on rapid re-clicks; reset on each new failure.
+- ✅ **R5** — CLOSED by PR #<pr#> (`<sha>`): Sticky failure window (8s). `stickyError` hoisted to WizardForm; `FAILURE_STICKY_MS = 8000` named const; `visibleError` derived during render from prop + `failedShownAt` ref.
 
 ---
 
