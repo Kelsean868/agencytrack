@@ -348,3 +348,58 @@ Claude Code creates worktree branches automatically — each maps 1:1 to a PR.
   open; PR2 merged first and both had touched `ManagerAwardsPanel.jsx`, producing a
   conflict that required a manual merge commit. Pulling latest main before branching
   eliminates this class of conflict entirely.
+
+## Methodology requirements (added 2026-05-14, from pilot prep session)
+
+These four rules emerged from a productive but mistake-yielding session. Apply on every CC brief and dispatch.
+
+### 1. Surface before architectural decisions
+
+CC must surface for Kyron's acknowledgement BEFORE making any decision not pre-listed in a brief's "Decisions locked" section. Specifically:
+
+- Scope expansion (touching files outside the brief's file inventory)
+- New architectural patterns (cache, helper, state mechanism, localStorage usage, etc.)
+- Test file rewrite from scratch (vs. targeted edits that preserve existing coverage)
+- Inline fix of unexpected behavior (vs. STOP + surface)
+- Any "how to solve" decision not explicitly pre-decided
+
+"Solve rather than surface" is itself a strike condition even when the resulting fix is correct. The methodology requirement statement should appear at the top of every brief that involves implementation work. SHAKEDOWN-001 (#141), SEC-9b (#139), and the original shakedown (#140) all had at least one unsurfaced methodology decision; #142, #144, and subsequent re-runs were clean once the requirement was banked into briefs.
+
+### 2. Phase 1 audits enumerate ALL data paths
+
+For permission-boundary fixes, Phase 1 must enumerate every function that returns data joinable to the entity being scoped — not just the ones mentioned in the bug report.
+
+SHAKEDOWN-002's first fix (#142) scoped two user-list queries (`getTenantUsers`, `getAllUsers`) but missed two submission paths (`getWeeklySubmissions`, `getAllYTDSubmissions`). SHAKEDOWN-002B (#144) closed those. A complete Phase 1 audit before #142 would have caught all four.
+
+Pattern: when a bug report says "X data leaks to Y," Phase 1 enumerates every read path that could leak any data joinable to X, not just the specific one cited. Document the enumeration in the Phase 1 surface output — list every exported function in the relevant service(s) and classify each (already scoped / not joinable / unscoped gap).
+
+### 3. Autonomous-mode strike calibration
+
+For autonomous CC runs (shakedown-style multi-hour execution where Kyron is away):
+
+- **Bugs found are NOT strikes.** The shakedown finding defects is the test working as designed.
+- **Infrastructure failures ARE strikes** — seed failures, wipe failures, cleanup orphans, script crashes, mid-run script bugs.
+- **Data safety issues are STOP IMMEDIATELY** — single stop, not 2-strike. If any operation could touch real production data or cross tenant boundaries, halt and surface, regardless of strike count.
+- **Cleanup is non-negotiable.** Even if a shakedown finds 50 bugs mid-flight, Phase 6 cleanup must execute. Wrap orchestration in `try/finally` with cleanup in `finally`. The original shakedown (#140) initially missed this and orphaned 10 test users for ~13 seconds before emergency recovery.
+
+### 4. env-listing commands filter for KEY= pattern
+
+Any PowerShell or bash command that lists `.env.local` (or any env file) contents must filter for `^[A-Z_]+=` patterns to prevent echoing non-KEY=VALUE lines as raw values.
+
+The pilot prep session caught a SendGrid SMTP credential leak this way — CC's command split on `=` and printed the value of a bare URI line. Credential was rotated; this rule prevents recurrence.
+
+Correct pattern in PowerShell:
+
+`Get-Content .env.local | Where-Object { $_ -match '^[A-Z_]+=' } | ForEach-Object { ($_ -split '=')[0] }`
+
+Returns only the key names. Values never reach the chat. Apply the same `^[A-Z_]+=` filter in bash, grep, or any equivalent command.
+
+---
+
+## Banked patterns (also from 2026-05-14 session)
+
+**Brief-drafting verification rule (already banked, reinforced this session):** `project_knowledge_search` lags `main` by several PRs. Briefs based on project knowledge alone can embed stale premises. The Phase 1 discovery gate in every brief catches this — never skip it, even for "small" fixes. emailQueued (#136), SEC-9b (#139), and SHAKEDOWN-001 (#141) all had brief assumptions Phase 1 corrected.
+
+**Smoke standard, reinforced:** Walks MUST include a real write-read-verify cycle. Selector-only checks miss permission/rules/index bugs. The shakedown design follows this principle — every category does at least one real Firestore write through the rule layer.
+
+**Cron timezone handling for Trinidad pilot:** Trinidad observes permanent AST (UTC-4, no DST). Firebase Functions v1 default is `America/Los_Angeles` (DST-observing). For scheduled functions whose cron strings are written in UTC reasoning (e.g., comments like "Sunday 6 PM Trinidad time = 22:00 UTC"), chain `.timeZone('UTC')` to preserve author intent and avoid DST drift. Alternative — `.timeZone('America/Port_of_Spain')` with cron strings rewritten to AST-local — works but requires rewriting all cron strings.
