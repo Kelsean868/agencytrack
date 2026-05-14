@@ -175,7 +175,7 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
           {!editing ? (
             <button
               onClick={() => setEditing(true)}
-              className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border text-xs font-semibold text-ink-muted hover:text-ink transition-colors"
+              className="flex items-center gap-1.5 h-11 px-4 rounded-lg border border-border text-sm font-semibold text-ink-muted hover:text-ink transition-colors"
             >
               <Pencil size={12} />
               Edit My Goals
@@ -184,14 +184,14 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
             <div className="flex gap-1">
               <button
                 onClick={() => { setEditing(false); setSaveError(''); }}
-                className="h-8 px-3 rounded-lg border border-border text-xs text-ink-muted hover:text-ink transition-colors"
+                className="h-11 px-4 rounded-lg border border-border text-sm text-ink-muted hover:text-ink transition-colors"
               >
                 <X size={12} />
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="h-8 px-3 rounded-lg bg-primary dark:bg-primary-dark text-white text-xs font-semibold disabled:opacity-60 hover:bg-[color:var(--color-primary-dark)] dark:hover:bg-primary transition-colors flex items-center gap-1"
+                className="h-11 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold disabled:opacity-60 hover:bg-[color:var(--color-primary-dark)] dark:hover:bg-primary transition-colors flex items-center gap-1"
               >
                 <Check size={12} />
                 {saving ? 'Saving…' : 'Save'}
