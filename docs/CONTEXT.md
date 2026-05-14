@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `<sha>` (feat(wizard): R2-R5 polish — nested live regions, motion-reduce, retry throttle, sticky failure window #<pr#>) |
-| Active track | **Wizard R2-R5 polish** — four deferred a11y/UX polish items from post-PR #88 analysis. PR #<pr#> open for review. |
-| Next track | **Pilot prep** — end-to-end testing using PR-F tooling. Exercise the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
+| Current main HEAD | `8a8818c` (feat(wizard): R2-R5 polish — nested live regions, motion-reduce, retry throttle, sticky failure window #151) |
+| Active track | **Pilot prep** — end-to-end testing using PR-F tooling. Exercise the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
+| Next track | **SEC-9b** — migrate services to explicit `tenantId` parameter. PR open on `sec-9b`. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -127,7 +127,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #<pr#> | `<sha>` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
+| #151 | `8a8818c` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
 | #149 | `66dbc77` | fix(dashboard): resolve branch names from branches/ collection |
 | #148 | `20b7c72` | feat(profile): tenant_admin email update with re-auth + audit |
 | #147 | `5434afe` | feat(submissions): denormalize unitId — full defense-in-depth |
@@ -150,9 +150,9 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Wizard R2-R5 polish — PR #<pr#> open for review.
+> **Session boundary:** Wizard R2-R5 polish — PR #151 merged (`8a8818c`).
 
-**Wizard R2-R5 polish — 2026-05-14 (feat(wizard), PR #<pr#>):** Closed all four deferred wizard polish items from `docs/FOLLOW_UPS.md` "Wizard polish (post-pilot)". Single file touched: `src/components/wizard/WizardForm.jsx` + its test file.
+**Wizard R2-R5 polish — 2026-05-14 (feat(wizard), PR #151):** Closed all four deferred wizard polish items from `docs/FOLLOW_UPS.md` "Wizard polish (post-pilot)". Single file touched: `src/components/wizard/WizardForm.jsx` + its test file.
 
 - **R2** — Split nested `role="alert"` inside `role="status"` into sibling live regions. Polite region (`role="status"`) carries idle/saving/saved states; assertive region (`role="alert"`) carries failed/offline/escalated states. Screen readers now reliably announce both channels.
 - **R3** — Added `motion-reduce:animate-none` guard to the `animate-pulse` class on the saving indicator. Users with `prefers-reduced-motion` no longer see the pulse.
