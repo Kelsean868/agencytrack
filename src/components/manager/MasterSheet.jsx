@@ -205,6 +205,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
       {/* Controls */}
       <div className="flex flex-wrap gap-3 items-center">
         <select
+          aria-label="Select week"
           value={selectedWeek}
           onChange={(e) => setSelectedWeek(e.target.value)}
           className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
