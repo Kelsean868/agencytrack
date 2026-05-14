@@ -13,10 +13,10 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `<sha>` (fix(mobile): tap-target pass for non-core agent surface (FU#2) #<pr#>) |
-| Active track | **Mobile FU#2** — non-core agent tap-target pass (P1-1 CareerPortal trio, P1-3 CommissionPlayground accordion; P1-2 structural finding). PR open, pending merge. |
-| Next track | **Pilot prep** — end-to-end testing using PR-F tooling. Exercise the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
-| Queued | **SEC-9b** — migrate services to explicit `tenantId` parameter. PR open on `sec-9b`. |
+| Current main HEAD | `9571a28` (fix(mobile): tap-target pass for non-core agent surface (FU#2) #153) |
+| Active track | **Pilot prep** — end-to-end testing using PR-F tooling. Exercise the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
+| Next track | **SEC-9b** — migrate services to explicit `tenantId` parameter. PR open on `sec-9b`. |
+| Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
 
@@ -116,7 +116,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 |---|---|---|---|
 | **HIGH#6** | TenantAdminDashboard YTD composite index missing | No | Production manual click — tenant_admin loads `/`, copies index URL from `failed-precondition` console error, creates in Firebase console (~2–5 min). PR #131 mirrored existing indexes to source; HIGH#6's index may or may not be in that mirror — verify before assuming closed. Source: `docs/FOLLOW_UPS.md`. |
 | **Resend invite UI** | Per-row "Resend invite" action in user management | No | MEDIUM. Once-off email failures currently have no recourse after the post-create toast dismisses — the truthful warning toast (shipped PR #<placeholder>) tells admins email failed but the only recovery is recreating the user. Wire `sendPasswordResetEmail` short-term; swap to a `mail/` doc write via a callable wrapper once the PR-D pattern is consumed by more flows. |
-| Mobile FU#2 | Non-core agent surface P1s | No | **PR open, pending merge.** P1-1 + P1-3 code-fixed; P1-2 closed via structural finding (History row IS the button at ~78px). Source: `docs/FOLLOW_UPS.md`. |
+| Mobile FU#2 | Non-core agent surface P1s | No | **CLOSED — PR #153 (`9571a28`).** All three P1 items resolved. New aria-label FU banked. Source: `docs/FOLLOW_UPS.md`. |
 | Mobile FU#4 | P2 cosmetic items | No | Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hardcoded `bg-[#01696f]/8` → token (FU#3 channel-split landed in PR #132 but this site is hex-literal-arbitrary, not token-driven). Source: `docs/FOLLOW_UPS.md`. |
 | SEC-9b | Migrate services to explicit `tenantId` parameter | No | **PR open on `sec-9b`** — 9 service commits + Phase 3/4/5/6. Awaiting merge. Post-merge: run production smoke test. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
@@ -127,7 +127,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #<pr#> | `<sha>` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
+| #153 | `9571a28` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
 | #151 | `8a8818c` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
 | #149 | `66dbc77` | fix(dashboard): resolve branch names from branches/ collection |
 | #148 | `20b7c72` | feat(profile): tenant_admin email update with re-auth + audit |
@@ -150,9 +150,9 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Mobile FU#2 tap-target pass — PR #<pr#> open, pending Kyron's merge.
+> **Session boundary:** Mobile FU#2 tap-target pass — PR #153 merged (`9571a28`).
 
-**Mobile FU#2 — 2026-05-14 (fix(mobile), PR #<pr#>):** Closed all three P1 items from the Mobile follow-up #2 deferred list. Two files changed + two new test files created.
+**Mobile FU#2 — 2026-05-14 (fix(mobile), PR #153):** Closed all three P1 items from the Mobile follow-up #2 deferred list. Two files changed + two new test files created.
 
 - **P1-1** — `CareerPortal.jsx`: editing-mode button trio (Edit My Goals / Cancel / Save) bumped from `h-8 px-3 text-xs` to `h-11 px-4 text-sm`. Decision was to fix all three siblings, not just the named "Edit" button — fixing one and leaving Cancel/Save at 32px would create a worse pattern in edit mode.
 - **P1-2** — No code change. Structural finding: the entire History row IS the `<button>` element with `card` class (`p-6` ≈ 78px hit area). The `Eye` icon is decorative inside that hit area. The original audit measured the icon's rendered size (15px), not the actual button. Banked permanently in `FOLLOW_UPS.md`. New aria-label FU added (History row button's visible label is "Week of {date}" only; Eye icon needs SR explanation — defer to comprehensive aria sweep).

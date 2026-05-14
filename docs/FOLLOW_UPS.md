@@ -908,11 +908,11 @@ because Tatil managers will use desktop/tablet, but each has the same
 36px tab-button + horizontally-scrolling-grid pattern that needs the same
 treatment as the agent side. Estimated 1–2 days of focused work.
 
-### Mobile follow-up #2 — Non-core agent surface P1s — CLOSED by PR #<pr#> (<sha>)
+### Mobile follow-up #2 — Non-core agent surface P1s — CLOSED by PR #153 (9571a28)
 
-- ✅ **P1-1** — CLOSED by PR #<pr#> (<sha>): CareerPortal Edit/Cancel/Save buttons bumped to `h-11 px-4 text-sm` (44px). All three editing-mode siblings fixed, not just "Edit My Goals".
-- ✅ **P1-2** — CLOSED by PR #<pr#> (<sha>): already-resolved structurally (entire `AgentDashboard.jsx:722-747` History row is the `<button>` with `card` class, resolving to `p-6` ≈ 78px hit area; Eye icon is decorative inside that hit area). Original audit measured icon size (15px) not button bounds.
-- ✅ **P1-3** — CLOSED by PR #<pr#> (<sha>): CommissionPlayground accordion toggle gets `min-h-[44px]`.
+- ✅ **P1-1** — CLOSED by PR #153 (9571a28): CareerPortal Edit/Cancel/Save buttons bumped to `h-11 px-4 text-sm` (44px). All three editing-mode siblings fixed, not just "Edit My Goals".
+- ✅ **P1-2** — CLOSED by PR #153 (9571a28): already-resolved structurally (entire `AgentDashboard.jsx:722-747` History row is the `<button>` with `card` class, resolving to `p-6` ≈ 78px hit area; Eye icon is decorative inside that hit area). Original audit measured icon size (15px) not button bounds.
+- ✅ **P1-3** — CLOSED by PR #153 (9571a28): CommissionPlayground accordion toggle gets `min-h-[44px]`.
 
 **New FU banked during P1-2 audit:**
 - [ ] **History row aria-label** — `AgentDashboard.jsx:722-747` History row button has only "Week of {date}" as visible text; Eye icon is decorative. Add `aria-label="Preview submission from week of {date}"` (or similar) for SR clarity. Surfaced during Mobile FU#2 P1-2 closure audit; defer to a comprehensive aria sweep rather than one-off fix.
