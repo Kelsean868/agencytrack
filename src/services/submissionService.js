@@ -112,22 +112,23 @@ export function sanitize(data, commissionRate = 0) {
   };
 }
 
-export async function saveDraft(tenantId, uid, agentName, weekStarting, data, commissionRate = 0) {
+export async function saveDraft(tenantId, uid, agentName, weekStarting, data, commissionRate = 0, unitId = null) {
   const ref = doc(db, `tenants/${tenantId}/submissions/${submissionDocId(uid, weekStarting)}`);
   await setDoc(
     ref,
-    { ...sanitize(data, commissionRate), userId: uid, agentId: uid, agentName, weekStarting, status: 'draft', updatedAt: serverTimestamp() },
+    { ...sanitize(data, commissionRate), userId: uid, agentId: uid, agentName, unitId, weekStarting, status: 'draft', updatedAt: serverTimestamp() },
     { merge: true }
   );
 }
 
-export async function submitReport(tenantId, uid, agentName, weekStarting, data, commissionRate = 0) {
+export async function submitReport(tenantId, uid, agentName, weekStarting, data, commissionRate = 0, unitId = null) {
   const ref = doc(db, `tenants/${tenantId}/submissions/${submissionDocId(uid, weekStarting)}`);
   await setDoc(ref, {
     ...sanitize(data, commissionRate),
     userId: uid,
     agentId: uid,
     agentName,
+    unitId,
     weekStarting,
     status: 'submitted',
     updatedAt: serverTimestamp(),

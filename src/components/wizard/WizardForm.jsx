@@ -211,7 +211,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     setSaving(true);
     setSaveError(false);
     try {
-      await saveDraft(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0);
+      await saveDraft(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0, userProfile?.unitId ?? null);
       consecutiveFailures.current = 0;
       setSaveEscalated(false);
       clearTimeout(savedTimer.current);
@@ -308,7 +308,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     }
     setSubmitting(true);
     try {
-      await submitReport(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0);
+      await submitReport(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0, userProfile?.unitId ?? null);
       setDraftStatus('submitted');
       setScreen('done');
     } catch (e) {

@@ -146,22 +146,25 @@ service cloud.firestore {
       }
 
       match /submissions/{submissionId} {
-        // SHAKEDOWN-002B: split read into get + list so unit_manager is restricted
-        // to their own unit on individual doc reads.
+        // unitId is denormalized onto every submission doc at write time.
         //
-        // get: resource.data is available — UM restricted to submissions whose agent
-        //      belongs to their unit (cross-doc lookup on the agent's user doc).
-        // list: resource.data is NOT available during Firestore list/query evaluation,
-        //       so per-doc UM scoping cannot be enforced here. Defense-in-depth for list
-        //       relies on the client-side agentId `in` filter in getWeeklySubmissions /
-        //       getAllYTDSubmissions (SHAKEDOWN-002B fix). BM/TA/PA retain full visibility.
+        // get: resource.data.unitId is available — UM restricted to own-unit
+        //      submissions via direct field check (no cross-doc lookup needed).
+        // list: resource.data.unitId is available for query evaluation — UM list
+        //       queries must include where('unitId','==',callerUid); rule enforces
+        //       this, closing the partial defense-in-depth gap from SHAKEDOWN-002B.
+        //       BM/TA/PA retain full visibility.
         allow get: if kioskCanRead(tenantId)
           || canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
                getRole() != 'unit_manager'
-               || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(resource.data.agentId)).data.unitId == request.auth.uid
+               || resource.data.unitId == request.auth.uid
              ));
-        allow list: if canManage(tenantId) || kioskCanRead(tenantId);
+        allow list: if kioskCanRead(tenantId)
+          || (canManage(tenantId) && (
+               getRole() != 'unit_manager'
+               || resource.data.unitId == request.auth.uid
+             ));
         allow create: if canManage(tenantId) || canAccessOwn(tenantId, request.resource.data.agentId);
         allow update: if canManage(tenantId) ||
           (canAccessOwn(tenantId, resource.data.agentId) && resource.data.status == 'draft');

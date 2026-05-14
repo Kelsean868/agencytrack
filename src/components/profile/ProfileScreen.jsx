@@ -131,7 +131,8 @@ export default function ProfileScreen() {
           tenantId,
           user.uid,
           agentName,
-          userProfile?.commissionRate ?? 0
+          userProfile?.commissionRate ?? 0,
+          userProfile?.unitId ?? null
         );
         if (result.aggregated) {
           setModeMessage({

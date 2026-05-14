@@ -67,7 +67,7 @@ export function draftHasContent(draft) {
  *
  * Returns { aggregated: true|false, count: <num daily entries> }.
  */
-export async function aggregateCurrentWeekDaily(tenantId, uid, agentName, commissionRate) {
+export async function aggregateCurrentWeekDaily(tenantId, uid, agentName, commissionRate, unitId = null) {
   const weekStarting = getMostRecentSunday();
   const dailies = await getDailyEntriesForWeek(tenantId, uid, weekStarting);
   if (dailies.length === 0) return { aggregated: false, count: 0, weekStarting };
@@ -86,6 +86,7 @@ export async function aggregateCurrentWeekDaily(tenantId, uid, agentName, commis
       userId: uid,
       agentId: uid,
       agentName,
+      unitId,
       weekStarting,
       status: 'draft',
       aggregatedAt: serverTimestamp(),

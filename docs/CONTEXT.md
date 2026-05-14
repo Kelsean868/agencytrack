@@ -127,6 +127,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<pr#> | `<sha>` | feat(submissions): denormalize unitId — full defense-in-depth |
 | #146 | `f108698` | perf(services): cache UM agent UIDs per session |
 | #145 | `2b5f37d` | fix(services): bugs squashed |
 | #144 | `1db8a67` | fix(services): enforce UM unit scoping on submissions + Master Sheet aria-label (SHAKEDOWN-002B) |

@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
-import { clearAgentUidCache } from '../services/managerService';
 
 const AuthContext = createContext(null);
 
@@ -113,7 +112,6 @@ export function AuthProvider({ children }) {
         setUserProfile(null);
         setRole(null);
         setTenantId(null);
-        clearAgentUidCache();
       }
       setLoading(false);
     });
