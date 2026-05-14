@@ -118,7 +118,6 @@ These are settled across all future sessions. If a session audit surfaces a reas
 | **Resend invite UI** | Per-row "Resend invite" action in user management | No | MEDIUM. Once-off email failures currently have no recourse after the post-create toast dismisses — the truthful warning toast (shipped PR #<placeholder>) tells admins email failed but the only recovery is recreating the user. Wire `sendPasswordResetEmail` short-term; swap to a `mail/` doc write via a callable wrapper once the PR-D pattern is consumed by more flows. |
 | Mobile FU#2 | Non-core agent surface P1s | No | **CLOSED — PR #153 (`9571a28`).** All three P1 items resolved. New aria-label FU banked. Source: `docs/FOLLOW_UPS.md`. |
 | Mobile FU#4 | P2 cosmetic items | No | Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hardcoded `bg-[#01696f]/8` → token (FU#3 channel-split landed in PR #132 but this site is hex-literal-arbitrary, not token-driven). Source: `docs/FOLLOW_UPS.md`. |
-| SEC-9b | Migrate services to explicit `tenantId` parameter | No | **PR open on `sec-9b`** — 9 service commits + Phase 3/4/5/6. Awaiting merge. Post-merge: run production smoke test. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 
 ---
