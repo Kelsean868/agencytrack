@@ -489,7 +489,7 @@ export default function EditUserDrawer({
         aria-modal="true"
         aria-labelledby="edit-user-drawer-title"
         data-testid="edit-user-drawer"
-        className="w-full max-w-md bg-[var(--color-surface)] shadow-2xl flex flex-col h-full overflow-hidden"
+        className="w-full max-w-md bg-card shadow-2xl flex flex-col h-full overflow-hidden"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
@@ -526,7 +526,7 @@ export default function EditUserDrawer({
               value={form.name}
               onChange={(e) => setField('name', e.target.value)}
               maxLength={100}
-              className="h-11 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
 
@@ -540,7 +540,7 @@ export default function EditUserDrawer({
               onChange={(e) => setField('phone', e.target.value)}
               placeholder="Optional"
               autoComplete="off"
-              className="h-11 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
 
@@ -554,7 +554,7 @@ export default function EditUserDrawer({
               placeholder="Optional"
               rows={3}
               maxLength={500}
-              className="px-3 py-2 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+              className="px-3 py-2 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
             />
           </div>
 
@@ -568,7 +568,7 @@ export default function EditUserDrawer({
                 value={form.agentNumber}
                 onChange={(e) => setField('agentNumber', e.target.value)}
                 placeholder="Optional"
-                className="h-11 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
           )}
@@ -582,7 +582,7 @@ export default function EditUserDrawer({
                 value={form.contractStartDate}
                 onChange={(e) => setField('contractStartDate', e.target.value)}
                 max={TODAY()}
-                className="h-11 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
           )}
@@ -597,7 +597,7 @@ export default function EditUserDrawer({
                 value={form.unitId}
                 onChange={(e) => setField('unitId', e.target.value)}
                 disabled={loadingUnits}
-                className="h-11 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+                className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
               >
                 <option value="">{loadingUnits ? 'Loading units…' : 'Select a unit…'}</option>
                 {unitManagers.map((um) => (
@@ -632,7 +632,7 @@ export default function EditUserDrawer({
                 onChange={(e) => setField('unitName', e.target.value)}
                 maxLength={50}
                 placeholder='e.g. "Phoenix Unit"'
-                className="h-11 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
           )}
@@ -673,7 +673,7 @@ export default function EditUserDrawer({
                     data-testid="edit-user-role"
                     value={form.role}
                     onChange={(e) => setField('role', e.target.value)}
-                    className="h-11 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     <option value={user.role}>{ROLE_DISPLAY[user.role] ?? user.role} (current)</option>
                     {allowedRoleTransitions.map((r) => (
@@ -706,7 +706,7 @@ export default function EditUserDrawer({
                     value={form.branchId}
                     onChange={(e) => setField('branchId', e.target.value)}
                     disabled={loadingBranches}
-                    className="h-11 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+                    className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
                   >
                     <option value="">{loadingBranches ? 'Loading branches…' : 'Select a branch…'}</option>
                     {branches.map((b) => (

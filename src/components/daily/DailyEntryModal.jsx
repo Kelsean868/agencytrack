@@ -450,12 +450,12 @@ export default function DailyEntryModal({ onClose }) {
       </main>
 
       {/* Footer */}
-      <footer className="grid grid-cols-5 gap-2 px-4 py-4 border-t border-border bg-[var(--color-surface)] shrink-0">
+      <footer className="grid grid-cols-5 gap-2 px-4 py-4 border-t border-border bg-card shrink-0">
         <button
           type="button"
           onClick={onClose}
           disabled={saving}
-          className="col-span-2 h-11 rounded-xl border border-border bg-[var(--color-surface)] text-ink font-semibold text-sm hover:bg-surface transition-colors disabled:opacity-60"
+          className="col-span-2 h-11 rounded-xl border border-border bg-card text-ink font-semibold text-sm hover:bg-surface transition-colors disabled:opacity-60"
         >
           Cancel
         </button>

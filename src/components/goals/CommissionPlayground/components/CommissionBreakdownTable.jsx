@@ -23,7 +23,7 @@ export default function CommissionBreakdownTable({ breakdown }) {
           {breakdown.map((row, i) => (
             <tr
               key={row.mode}
-              className={i % 2 === 0 ? 'bg-[var(--color-surface-raised)]' : 'bg-[var(--color-surface)]'}
+              className={i % 2 === 0 ? 'bg-card-raised' : 'bg-card'}
             >
               <td className="px-2 py-2 font-medium text-ink">{MODE_LABELS[row.mode]}</td>
               <td className="px-2 py-2 text-right text-ink tabular-nums">

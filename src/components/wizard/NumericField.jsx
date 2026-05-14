@@ -18,7 +18,7 @@ export default function NumericField({ label, name, value, onChange, min = 0, ma
         <button
           type="button"
           onClick={decrement}
-          className="w-11 h-11 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-xl font-bold flex items-center justify-center hover:bg-surface active:scale-95 transition-transform"
+          className="w-11 h-11 rounded-lg border border-border bg-card text-ink text-xl font-bold flex items-center justify-center hover:bg-surface active:scale-95 transition-transform"
           aria-label={`Decrease ${label}`}
         >
           −
@@ -30,12 +30,12 @@ export default function NumericField({ label, name, value, onChange, min = 0, ma
           onChange={handleInput}
           min={min}
           max={max}
-          className="flex-1 h-11 text-center text-lg font-semibold text-ink border border-border rounded-lg bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="flex-1 h-11 text-center text-lg font-semibold text-ink border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
         <button
           type="button"
           onClick={increment}
-          className="w-11 h-11 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-xl font-bold flex items-center justify-center hover:bg-surface active:scale-95 transition-transform"
+          className="w-11 h-11 rounded-lg border border-border bg-card text-ink text-xl font-bold flex items-center justify-center hover:bg-surface active:scale-95 transition-transform"
           aria-label={`Increase ${label}`}
         >
           +

@@ -37,7 +37,7 @@ function NumInput({ label, value, onChange, currency }) {
   return (
     <div className="flex flex-col gap-0.5">
       <label className="text-xs text-ink-muted">{label}</label>
-      <div className="flex items-center h-11 rounded-lg border border-border bg-[var(--color-surface)] overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
+      <div className="flex items-center h-11 rounded-lg border border-border bg-card overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
         {currency && (
           <span className="text-xs text-ink-muted pl-2 pr-1 shrink-0">TTD</span>
         )}
@@ -199,7 +199,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
           <select
             value={selectedUnit}
             onChange={(e) => setSelectedUnit(e.target.value)}
-            className="h-11 px-3 border border-border rounded-lg bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="h-11 px-3 border border-border rounded-lg bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           >
             {units.map((u) => (
               <option key={u.id} value={u.id}>{u.label}</option>

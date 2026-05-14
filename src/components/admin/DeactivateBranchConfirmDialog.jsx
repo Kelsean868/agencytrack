@@ -19,7 +19,7 @@ export default function DeactivateBranchConfirmDialog({ branch, onConfirm, onCan
   if (isReactivate) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-        <div className="w-full max-w-sm bg-[var(--color-surface)] rounded-2xl shadow-2xl p-6 flex flex-col gap-4">
+        <div className="w-full max-w-sm bg-card rounded-2xl shadow-2xl p-6 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold text-ink">Reactivate branch?</p>
             <button
@@ -55,7 +55,7 @@ export default function DeactivateBranchConfirmDialog({ branch, onConfirm, onCan
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="w-full max-w-sm bg-[var(--color-surface)] rounded-2xl shadow-2xl p-6 flex flex-col gap-4">
+      <div className="w-full max-w-sm bg-card rounded-2xl shadow-2xl p-6 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle size={16} className="text-danger shrink-0" />

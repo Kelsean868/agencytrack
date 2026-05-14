@@ -224,7 +224,7 @@ export default function BranchesPanel() {
                 className={`grid grid-cols-[2fr_2fr_1fr_1fr_auto] gap-3 items-center px-3 py-3 rounded-xl border ${
                   inactive
                     ? 'bg-border/20 border-border/40 opacity-70'
-                    : 'bg-[var(--color-surface)] border-border'
+                    : 'bg-card border-border'
                 }`}
               >
                 <span className="text-sm font-semibold text-ink truncate">{b.name}</span>

@@ -215,7 +215,7 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
           <tbody>
             {rows.map((row, i) => (
               <React.Fragment key={row.label}>
-                <tr className={i % 2 === 0 ? 'bg-[var(--color-surface-raised)]' : 'bg-[var(--color-surface)]'}>
+                <tr className={i % 2 === 0 ? 'bg-card-raised' : 'bg-card'}>
                   <td className="px-2 py-2 font-medium text-ink">{row.label}</td>
                   <td className="px-2 py-2 text-right text-ink-muted">{String(row.min)}</td>
                   <td className="px-2 py-2 text-right text-ink-muted">{String(row.mgr)}</td>
@@ -237,7 +237,7 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
                   </td>
                 </tr>
                 {showDerived && row.monthly !== null && (
-                  <tr className={`${i % 2 === 0 ? 'bg-[var(--color-surface-raised)]' : 'bg-[var(--color-surface)]'} opacity-70`}>
+                  <tr className={`${i % 2 === 0 ? 'bg-card-raised' : 'bg-card'} opacity-70`}>
                     <td className="pl-6 pr-2 py-1 text-ink-muted italic">↳ Monthly / Weekly</td>
                     <td className="px-2 py-1 text-right text-ink-muted">—</td>
                     <td className="px-2 py-1 text-right text-ink-muted">—</td>

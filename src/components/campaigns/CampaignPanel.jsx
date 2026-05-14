@@ -121,7 +121,7 @@ function CampaignRow({ campaign, canEdit, onEdit, onDelete, allUsers, tenantId }
   }, [expanded, subs.length, campaign, tenantId]);
 
   return (
-    <div className="rounded-xl border border-border bg-[var(--color-surface)] overflow-hidden">
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
       <button
         className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface/60 transition-colors"
         onClick={handleExpand}
@@ -277,7 +277,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
         onClick={onClose}
         className="flex-1 bg-black/40 border-0 p-0 m-0 cursor-pointer"
       />
-      <div className="w-full max-w-md bg-[var(--color-surface)] flex flex-col overflow-y-auto shadow-xl">
+      <div className="w-full max-w-md bg-card flex flex-col overflow-y-auto shadow-xl">
         <header className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <h2 className="text-base font-bold text-ink">{initial ? 'Edit Campaign' : 'New Campaign'}</h2>
           <button onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-ink-muted transition-colors">
@@ -294,7 +294,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
               value={form.name}
               onChange={(e) => set('name', e.target.value)}
               placeholder="e.g. Q2 API Sprint"
-              className="w-full h-11 px-3 border border-border rounded-xl bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full h-11 px-3 border border-border rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
 
@@ -307,7 +307,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
               onChange={(e) => set('description', e.target.value)}
               rows={2}
               placeholder="Optional details…"
-              className="w-full px-3 py-2 border border-border rounded-xl bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+              className="w-full px-3 py-2 border border-border rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
             />
           </div>
 
@@ -319,7 +319,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
               value={form.prize}
               onChange={(e) => set('prize', e.target.value)}
               placeholder="e.g. Weekend Getaway for Two"
-              className="w-full h-11 px-3 border border-border rounded-xl bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-full h-11 px-3 border border-border rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
 
@@ -332,7 +332,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
                 type="date"
                 value={form.startDate}
                 onChange={(e) => set('startDate', e.target.value)}
-                className="w-full h-11 px-3 border border-border rounded-xl bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full h-11 px-3 border border-border rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
             <div>
@@ -342,7 +342,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
                 type="date"
                 value={form.endDate}
                 onChange={(e) => set('endDate', e.target.value)}
-                className="w-full h-11 px-3 border border-border rounded-xl bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="w-full h-11 px-3 border border-border rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
           </div>
@@ -423,7 +423,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
                   <select
                     value={t.metric}
                     onChange={(e) => updateTarget(i, 'metric', e.target.value)}
-                    className="flex-1 h-10 px-2 border border-border rounded-lg bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="flex-1 h-10 px-2 border border-border rounded-lg bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     {METRIC_OPTIONS.map((m) => (
                       <option key={m.value} value={m.value}>{m.label}</option>
@@ -435,7 +435,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
                     value={t.threshold}
                     onChange={(e) => updateTarget(i, 'threshold', e.target.value)}
                     placeholder="Threshold"
-                    className="w-28 h-10 px-2 border border-border rounded-lg bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="w-28 h-10 px-2 border border-border rounded-lg bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                   {form.targets.length > 1 && (
                     <button
@@ -582,7 +582,7 @@ export default function CampaignPanel() {
       {/* Delete confirm dialog */}
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="bg-[var(--color-surface)] rounded-2xl p-6 max-w-sm w-full">
+          <div className="bg-card rounded-2xl p-6 max-w-sm w-full">
             <h3 className="text-base font-bold text-ink mb-2">Delete Campaign?</h3>
             <p className="text-sm text-ink-muted mb-5">This cannot be undone. All associated campaign data will be removed.</p>
             <div className="flex gap-3">

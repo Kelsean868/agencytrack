@@ -225,7 +225,7 @@ export default function SettlementPanel() {
     );
   }
 
-  const inputCls = 'h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-full';
+  const inputCls = 'h-10 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-full';
   const labelCls = 'block text-xs font-semibold text-ink-muted mb-1';
 
   if (isReadOnly) {
@@ -254,7 +254,7 @@ export default function SettlementPanel() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto rounded-xl border border-border bg-[var(--color-surface)]">
+              <div className="overflow-x-auto rounded-xl border border-border bg-card">
                 <table className="text-sm w-full">
                   <thead>
                     <tr className="bg-surface border-b border-border">
@@ -286,7 +286,7 @@ export default function SettlementPanel() {
               {settlements.length > visibleCount && (
                 <button
                   onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                  className="mt-3 w-full h-10 rounded-lg border border-border bg-[var(--color-surface)] text-sm font-medium text-ink-muted hover:text-ink transition-colors"
+                  className="mt-3 w-full h-10 rounded-lg border border-border bg-card text-sm font-medium text-ink-muted hover:text-ink transition-colors"
                 >
                   Load More ({settlements.length - visibleCount} remaining)
                 </button>
@@ -397,7 +397,7 @@ export default function SettlementPanel() {
                 onChange={(e) => setNotes(e.target.value)}
                 rows={2}
                 placeholder="e.g. From Feb production circular"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                className="w-full px-3 py-2 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
               />
             </div>
 
@@ -439,7 +439,7 @@ export default function SettlementPanel() {
                               value={row.api ?? ''}
                               onChange={(e) => setBulkRows((prev) => ({ ...prev, [a.id]: { ...prev[a.id], api: e.target.value } }))}
                               placeholder="0"
-                              className="h-9 w-24 px-2 rounded-lg border border-border bg-[var(--color-surface)] text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+                              className="h-9 w-24 px-2 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
                             />
                           </td>
                           <td className="px-2 py-1">
@@ -448,7 +448,7 @@ export default function SettlementPanel() {
                               value={row.apps ?? ''}
                               onChange={(e) => setBulkRows((prev) => ({ ...prev, [a.id]: { ...prev[a.id], apps: e.target.value } }))}
                               placeholder="0"
-                              className="h-9 w-16 px-2 rounded-lg border border-border bg-[var(--color-surface)] text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+                              className="h-9 w-16 px-2 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
                             />
                           </td>
                           <td className="px-2 py-1">
@@ -457,7 +457,7 @@ export default function SettlementPanel() {
                               value={row.persist ?? ''}
                               onChange={(e) => setBulkRows((prev) => ({ ...prev, [a.id]: { ...prev[a.id], persist: e.target.value } }))}
                               placeholder="0"
-                              className="h-9 w-16 px-2 rounded-lg border border-border bg-[var(--color-surface)] text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
+                              className="h-9 w-16 px-2 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
                             />
                             {row.error && <p className="text-[10px] text-danger mt-0.5">{row.error}</p>}
                           </td>
@@ -565,7 +565,7 @@ export default function SettlementPanel() {
             {settlements.length > visibleCount && (
               <button
                 onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
-                className="mt-3 w-full h-10 rounded-lg border border-border bg-[var(--color-surface)] text-sm font-medium text-ink-muted hover:text-ink transition-colors"
+                className="mt-3 w-full h-10 rounded-lg border border-border bg-card text-sm font-medium text-ink-muted hover:text-ink transition-colors"
               >
                 Load More ({settlements.length - visibleCount} remaining)
               </button>

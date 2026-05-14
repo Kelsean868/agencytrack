@@ -37,7 +37,7 @@ export default function ModalTargetingTab({ defaultCommissionRate = 35 }) {
             <label className="text-xs text-ink-muted" htmlFor="modal-target-commission">
               Target Commission (TTD)
             </label>
-            <div className="flex items-center h-9 rounded-lg border border-border bg-[var(--color-surface)] overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
+            <div className="flex items-center h-9 rounded-lg border border-border bg-card overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
               <span className="text-xs text-ink-muted pl-2 pr-1 shrink-0">TTD</span>
               <input
                 id="modal-target-commission"
@@ -54,7 +54,7 @@ export default function ModalTargetingTab({ defaultCommissionRate = 35 }) {
             <label className="text-xs text-ink-muted" htmlFor="modal-commission-rate">
               Commission Rate (%)
             </label>
-            <div className="flex items-center h-9 rounded-lg border border-border bg-[var(--color-surface)] overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
+            <div className="flex items-center h-9 rounded-lg border border-border bg-card overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
               <input
                 id="modal-commission-rate"
                 type="number"
