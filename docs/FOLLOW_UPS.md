@@ -950,11 +950,17 @@ codebase — needs a one-pass audit. Two options:
 
 Option 1 is the right fix but touches every theme variable + consumer.
 
-### Mobile follow-up #4 — P2 cosmetic items
+### Mobile follow-up #4 — P2 cosmetic items — CLOSED in PR #<pr#> (<sha>)
 
-- Wizard close (X) button is 40×40 — bump to 44×44
-- Leaderboard avatars are 40×40 — leave visual but expand surrounding tap row
-- `MotivationalCarousel.jsx` line 366 hardcoded `bg-[#01696f]/8` — replace with token
+- ✅ **P2-1** — CLOSED by PR #<pr#> (<sha>): WizardForm + CampaignPanel close buttons bumped to `w-11 h-11` (44×44px). Sibling sweep included.
+- ✅ **P2-2** — CLOSED by PR #<pr#> (<sha>): already-resolved structurally. LeaderRow is non-interactive (no onClick/role/href), row height ~60px via `py-3` + content, and avatar is 36px (`size="md"`) not 40px. Tap-target rules apply only to tap targets. FOLLOW_UPS text "40×40" was a doc-accuracy gap — actual size 36px. No code change required.
+- ✅ **P2-3** — CLOSED by PR #<pr#> (<sha>): MotivationalCarousel hex literals replaced with `bg-primary/8` + `border-primary/15` tokens. Dark-mode theme contract restored.
+
+---
+
+## `bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep (LOW, banked during Mobile FU#4)
+
+- [ ] **`bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep** — Several components use `bg-[var(--color-surface)]` and similar arbitrary syntax instead of the named `bg-card` / `bg-surface` utilities. Resolves correctly through the var; purely a code-hygiene inconsistency. Surfaced during Mobile FU#4 P2-3 closure audit. Defer to a comprehensive sweep rather than one-off fixes. Originally flagged in CLAUDE.md § Cosmetic Inconsistencies.
 
 ---
 
