@@ -36,3 +36,94 @@ describe('BranchHealthCards — TA-CLEANUP', () => {
     expect(screen.getByText('1 agent')).toBeInTheDocument();
   });
 });
+
+describe('BranchHealthCards — branch-name resolution', () => {
+  // Case (a): branchId resolves via branches/ doc → use the doc's name.
+  it('renders the branch.name from branches/ when a doc exists for the id', () => {
+    const users = [
+      { uid: 'a1', role: 'agent', branchId: 'ljbBHP1g7lbZXvHlpcDn' },
+      { uid: 'a2', role: 'agent', branchId: 'ljbBHP1g7lbZXvHlpcDn' },
+    ];
+    const branches = [
+      { id: 'ljbBHP1g7lbZXvHlpcDn', name: 'Cyril Murray Branch', isActive: true },
+    ];
+    render(<BranchHealthCards users={users} branches={branches} loading={false} />);
+    expect(screen.getByText('Cyril Murray Branch')).toBeInTheDocument();
+    expect(screen.queryByText(/Ljbbhp1g7lbzxvhlpcdn/i)).toBeNull();
+  });
+
+  it('prefers branch.name over the slug humanise fallback even when the id is slug-shaped', () => {
+    const users = [{ uid: 'a1', role: 'agent', branchId: 'tatil_south' }];
+    const branches = [{ id: 'tatil_south', name: 'Tatil South Office', isActive: true }];
+    render(<BranchHealthCards users={users} branches={branches} loading={false} />);
+    expect(screen.getByText('Tatil South Office')).toBeInTheDocument();
+    expect(screen.queryByText(/^Tatil South$/)).toBeNull();
+  });
+
+  // Case (b): slug-shaped id with no matching branches/ doc → humanise.
+  it('humanises a slug-shaped id when no branches/ doc exists for it', () => {
+    const users = [
+      { uid: 'a1', role: 'agent', branchId: 'tatil_south' },
+      { uid: 'a2', role: 'agent', branchId: 'tatil_south' },
+    ];
+    render(<BranchHealthCards users={users} branches={[]} loading={false} />);
+    expect(screen.getByText('Tatil South')).toBeInTheDocument();
+  });
+
+  // Case (c): Firestore auto-id (mixed case) with no matching branches/ doc
+  // → "Unnamed branch". This is the bug class the fix closes.
+  it('renders "Unnamed branch" for an auto-id with no matching branches/ doc', () => {
+    const users = [
+      { uid: 'a1', role: 'agent', branchId: 'ljbBHP1g7lbZXvHlpcDn' },
+    ];
+    render(<BranchHealthCards users={users} branches={[]} loading={false} />);
+    expect(screen.getByText('Unnamed branch')).toBeInTheDocument();
+    // The raw id must not leak through, in any case variant.
+    expect(screen.queryByText(/Ljbbhp1g7lbzxvhlpcdn/i)).toBeNull();
+    expect(screen.queryByText('ljbBHP1g7lbZXvHlpcDn')).toBeNull();
+  });
+
+  it('renders "Unnamed branch" when the matching branches/ doc has an empty name field', () => {
+    const users = [{ uid: 'a1', role: 'agent', branchId: 'ljbBHP1g7lbZXvHlpcDn' }];
+    const branches = [{ id: 'ljbBHP1g7lbZXvHlpcDn', name: '   ', isActive: true }];
+    render(<BranchHealthCards users={users} branches={branches} loading={false} />);
+    expect(screen.getByText('Unnamed branch')).toBeInTheDocument();
+  });
+
+  it('handles a mixed set of legacy slug + new auto-id branches together', () => {
+    // Reproduces the exact production state surfaced in Phase 1.
+    const users = [
+      { uid: 'a1', role: 'agent', branchId: 'tatil_south' },
+      { uid: 'a2', role: 'agent', branchId: 'tatil_south' },
+      { uid: 'a3', role: 'agent', branchId: 'tatil_south' },
+      { uid: 'a4', role: 'agent', branchId: 'tatil_south' },
+      { uid: 'a5', role: 'agent', branchId: 'tatil_south' },
+      { uid: 'a6', role: 'agent', branchId: 'tatil_south' },
+      { uid: 'a7', role: 'agent', branchId: 'ljbBHP1g7lbZXvHlpcDn' },
+      { uid: 'a8', role: 'agent', branchId: 'ljbBHP1g7lbZXvHlpcDn' },
+      { uid: 'a9', role: 'agent', branchId: 'ljbBHP1g7lbZXvHlpcDn' },
+    ];
+    const branches = [
+      { id: 'ljbBHP1g7lbZXvHlpcDn', name: 'Cyril Murray Branch', isActive: true },
+    ];
+    render(<BranchHealthCards users={users} branches={branches} loading={false} />);
+    expect(screen.getByText('Tatil South')).toBeInTheDocument();
+    expect(screen.getByText('Cyril Murray Branch')).toBeInTheDocument();
+    expect(screen.getByText('6 agents')).toBeInTheDocument();
+    expect(screen.getByText('3 agents')).toBeInTheDocument();
+    expect(screen.queryByText(/Ljbbhp1g7lbzxvhlpcdn/i)).toBeNull();
+  });
+
+  it('renders "Unassigned" when users have no branchId', () => {
+    const users = [{ uid: 'a1', role: 'agent' }];
+    render(<BranchHealthCards users={users} branches={[]} loading={false} />);
+    expect(screen.getByText('Unassigned')).toBeInTheDocument();
+  });
+
+  it('works when no `branches` prop is provided (back-compat)', () => {
+    render(<BranchHealthCards users={USERS} loading={false} />);
+    // Falls through to humanise — same as the original test suite.
+    expect(screen.getByText(/Port Of Spain/i)).toBeInTheDocument();
+    expect(screen.getByText(/San Fernando/i)).toBeInTheDocument();
+  });
+});

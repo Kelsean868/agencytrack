@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency } from '../../utils/formatters';
 import { getTenantUsers, getAllYTDSubmissions } from '../../services/managerService';
+import { listBranches } from '../../services/branchService';
 import { extractFields } from '../../utils/extractFields';
 import Shell from '../shell/Shell';
 import CompanyConfigPanel from '../admin/CompanyConfigPanel';
@@ -77,6 +78,7 @@ export default function TenantAdminDashboard() {
 
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(true);
+  const [branches, setBranches] = useState([]);
   const [ytdAPI, setYtdAPI] = useState(null);
   const [ytdLoading, setYtdLoading] = useState(true);
 
@@ -89,6 +91,16 @@ export default function TenantAdminDashboard() {
       .then((u) => { if (!cancelled) setUsers(u); })
       .catch((err) => { if (!cancelled) console.error('Failed to load users:', err); })
       .finally(() => { if (!cancelled) setUsersLoading(false); });
+    return () => { cancelled = true; };
+  }, [tenantId]);
+
+  // Load branches once for display-name resolution in BranchHealthCards.
+  // Failure is non-fatal — the card falls back to humanise/Unnamed-branch.
+  useEffect(() => {
+    let cancelled = false;
+    listBranches(tenantId)
+      .then((b) => { if (!cancelled) setBranches(b); })
+      .catch((err) => { if (!cancelled) console.error('Failed to load branches:', err); });
     return () => { cancelled = true; };
   }, [tenantId]);
 
@@ -165,7 +177,7 @@ export default function TenantAdminDashboard() {
 
           <div className="tenant-admin-grid-2col">
             <RoleDistributionCard users={users} loading={usersLoading} />
-            <BranchHealthCards     users={users} loading={usersLoading} />
+            <BranchHealthCards     users={users} branches={branches} loading={usersLoading} />
           </div>
         </div>
       )}
