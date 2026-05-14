@@ -234,9 +234,9 @@ Two architecture improvements banked during SHAKEDOWN-002B Phase 1 ack.
 
 ~~Not urgent — at pilot scale the extra read costs fractions of a cent. Revisit if unit sizes grow or Firestore billing becomes material.~~
 
-### ~~Denormalize `unitId` onto submission docs~~ (RESOLVED in PR #<pr#>)
+### ~~Denormalize `unitId` onto submission docs~~ (RESOLVED in PR #147)
 
-Shipped in PR #<pr#>: `unitId` denormalized onto all three submission write paths (`saveDraft`, `submitReport`, `aggregateCurrentWeekDaily`). Service layer simplified to direct `where('unitId', '==', callerUid)` queries. Rules tightened from partial to full defense-in-depth (`allow list` now enforces UM scoping). Agent-uid cache from #146 removed (Path A). Backfill script at `scripts/backfill/denormalize-submission-unitId.mjs`.
+Shipped in PR #147: `unitId` denormalized onto all three submission write paths (`saveDraft`, `submitReport`, `aggregateCurrentWeekDaily`). Service layer simplified to direct `where('unitId', '==', callerUid)` queries. Rules tightened from partial to full defense-in-depth (`allow list` now enforces UM scoping). Agent-uid cache from #146 removed (Path A). Backfill script at `scripts/backfill/denormalize-submission-unitId.mjs`.
 
 ### Delete tenant_admin historical test submissions (LOW, backfill cleanup)
 
