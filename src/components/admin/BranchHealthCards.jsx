@@ -4,29 +4,49 @@ import React, { useMemo } from 'react';
  * Branch overview card (Design System v2 — B5, TA-CLEANUP).
  *
  * Renders one inner card per branch derived from the users collection
- * (group by `branchId`). Only branch ID and agent count render with
- * derived data today.
+ * (group by `branchId`), joined against the `branches/` collection for
+ * the display name.
  *
- * TA-CLEANUP removed the prior per-branch placeholder line ("— % to YTD
- * goal · — Last sync · Coming soon") per the manager-portal audit's "no
- * placeholder text in production" guidance. Branch-level aggregations
- * (settlements + submissions.updatedAt per branch) can re-introduce those
- * metrics when the data is real.
- *
- * Branch ID → display name mapping is best-effort: if a humanised name is
- * available on a manager's user doc it could be used in a future PR, but
- * here we render the branchId verbatim with simple title-casing.
+ * Name resolution order:
+ *   1. branches/{branchId}.name — the canonical name from the C1 surface.
+ *   2. humaniseBranchId(branchId) — only when the id is slug-shaped
+ *      (lowercase alnum + `_`/`-`). Preserves legacy pre-C1 slugs like
+ *      "tatil_south" → "Tatil South" until those are backfilled into the
+ *      branches/ collection.
+ *   3. "Unnamed branch" — fallback for Firestore auto-IDs (mixed case)
+ *      whose branch doc is missing. Previously the raw id rendered
+ *      verbatim (e.g. "Ljbbhp1g7lbzxvhlpcdn") — that's the bug this
+ *      change closes.
  */
-function humaniseBranchId(branchId) {
-  if (!branchId) return 'Unassigned';
+const SLUG_RE = /^[a-z0-9][a-z0-9_-]*$/;
+
+function humaniseSlug(branchId) {
   return String(branchId)
     .split(/[_-]/)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
     .join(' ');
 }
 
-export default function BranchHealthCards({ users, loading }) {
-  const branches = useMemo(() => {
+function resolveBranchName(branchId, branchById) {
+  if (!branchId || branchId === '__unassigned') return 'Unassigned';
+  const fromDoc = branchById?.get?.(branchId)?.name;
+  if (typeof fromDoc === 'string' && fromDoc.trim()) return fromDoc.trim();
+  if (SLUG_RE.test(branchId)) return humaniseSlug(branchId);
+  return 'Unnamed branch';
+}
+
+export default function BranchHealthCards({ users, branches, loading }) {
+  const branchById = useMemo(() => {
+    const map = new Map();
+    if (Array.isArray(branches)) {
+      for (const b of branches) {
+        if (b?.id) map.set(b.id, b);
+      }
+    }
+    return map;
+  }, [branches]);
+
+  const grouped = useMemo(() => {
     if (!Array.isArray(users)) return [];
     const groups = new Map();
     for (const u of users) {
@@ -52,21 +72,21 @@ export default function BranchHealthCards({ users, loading }) {
         </div>
       </div>
 
-      {loading && branches.length === 0 ? (
+      {loading && grouped.length === 0 ? (
         <p className="text-sm text-ink-muted italic">Loading branches…</p>
-      ) : branches.length === 0 ? (
+      ) : grouped.length === 0 ? (
         <p className="text-sm text-ink-muted italic">
           No branches found. Branches are derived from user records.
         </p>
       ) : (
         <div className="flex flex-col gap-3">
-          {branches.map((b) => (
+          {grouped.map((b) => (
             <article
               key={b.branchId}
               className="p-3.5 rounded-xl border border-border bg-card"
             >
               <div className="flex items-center justify-between gap-2">
-                <h3 className="text-sm font-bold text-ink">{humaniseBranchId(b.branchId)}</h3>
+                <h3 className="text-sm font-bold text-ink">{resolveBranchName(b.branchId, branchById)}</h3>
                 <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-ink-muted/10 text-ink-muted">
                   {b.agentCount} {b.agentCount === 1 ? 'agent' : 'agents'}
                 </span>

@@ -31,6 +31,10 @@ vi.mock('../../../services/managerService', () => ({
   ]),
 }));
 
+vi.mock('../../../services/branchService', () => ({
+  listBranches: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock('../../../utils/extractFields', () => ({
   extractFields: (s) => (s.id === 's1' ? { apiSold: 100 } : { apiSold: 50 }),
 }));
