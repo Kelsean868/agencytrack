@@ -3,20 +3,40 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
+// Per-session cache of a UM caller's agent UIDs, keyed by `${tenantId}:${callerUid}`.
+// Populated lazily on first read, cleared on sign-out by AuthContext via
+// clearAgentUidCache(). No TTL — reassignments are reflected after next sign-in.
+const agentUidCache = new Map();
+
+export function clearAgentUidCache() {
+  agentUidCache.clear();
+}
+
+// Resolves the UM caller's scoped agent UIDs, with per-session memoization.
+// Submissions don't carry unitId; SHAKEDOWN-002B established the user-list
+// pre-fetch as the defense-in-depth filter for UM-scoped submission reads.
+async function getCallerAgentUids(tenantId, callerUid) {
+  const cacheKey = `${tenantId}:${callerUid}`;
+  if (agentUidCache.has(cacheKey)) {
+    return agentUidCache.get(cacheKey);
+  }
+  const agentsSnap = await getDocs(
+    query(collection(db, `tenants/${tenantId}/users`), where('unitId', '==', callerUid))
+  );
+  // TODO: chunk into ≤30-item batches if units ever exceed Firestore `in` cap
+  const agentUids = agentsSnap.docs
+    .filter((d) => d.data().provisioning !== true)
+    .map((d) => d.id);
+  agentUidCache.set(cacheKey, agentUids);
+  return agentUids;
+}
+
 export async function getWeeklySubmissions(tenantId, weekStarting) {
   const { claims } = await auth.currentUser.getIdTokenResult();
 
   if (claims.role === 'unit_manager') {
     const callerUid = auth.currentUser.uid;
-    // Submissions don't carry unitId, so resolve the UM's agent UIDs from users first.
-    // SHAKEDOWN-002B: same defense-in-depth pattern as getTenantUsers / getAllUsers.
-    const agentsSnap = await getDocs(
-      query(collection(db, `tenants/${tenantId}/users`), where('unitId', '==', callerUid))
-    );
-    // TODO: chunk into ≤30-item batches if units ever exceed Firestore `in` cap
-    const agentUids = agentsSnap.docs
-      .filter((d) => d.data().provisioning !== true)
-      .map((d) => d.id);
+    const agentUids = await getCallerAgentUids(tenantId, callerUid);
     if (agentUids.length === 0) return [];
     const q = query(
       collection(db, `tenants/${tenantId}/submissions`),
@@ -60,15 +80,7 @@ export async function getAllYTDSubmissions(tenantId) {
 
   if (claims.role === 'unit_manager') {
     const callerUid = auth.currentUser.uid;
-    // Submissions don't carry unitId — resolve agent UIDs from users first.
-    // SHAKEDOWN-002B: same pattern as getWeeklySubmissions.
-    const agentsSnap = await getDocs(
-      query(collection(db, `tenants/${tenantId}/users`), where('unitId', '==', callerUid))
-    );
-    // TODO: chunk into ≤30-item batches if units ever exceed Firestore `in` cap
-    const agentUids = agentsSnap.docs
-      .filter((d) => d.data().provisioning !== true)
-      .map((d) => d.id);
+    const agentUids = await getCallerAgentUids(tenantId, callerUid);
     if (agentUids.length === 0) return [];
     // status filtered client-side to avoid a 3-field compound index (agentId + weekStarting range + status).
     const q = query(

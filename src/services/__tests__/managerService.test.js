@@ -23,7 +23,12 @@ vi.mock('firebase/firestore', () => ({
   getDocs: (...args) => hoisted.mockGetDocs(...args),
 }));
 
-import { getTenantUsers, getWeeklySubmissions, getAllYTDSubmissions } from '../managerService';
+import {
+  getTenantUsers,
+  getWeeklySubmissions,
+  getAllYTDSubmissions,
+  clearAgentUidCache,
+} from '../managerService';
 
 // Helpers to build a fake Firestore snapshot.
 function makeDoc(id, data) {
@@ -152,6 +157,8 @@ describe('managerService.getWeeklySubmissions — SHAKEDOWN-002B unit scoping', 
     hoisted.mockCollection.mockReturnValue('__col__');
     hoisted.mockWhere.mockReturnValue('__where__');
     hoisted.mockQuery.mockReturnValue('__query__');
+
+    clearAgentUidCache();
   });
 
   it('unit_manager: pre-fetches agent UIDs then filters submissions by agentId', async () => {
@@ -260,6 +267,8 @@ describe('managerService.getAllYTDSubmissions — SHAKEDOWN-002B unit scoping', 
     hoisted.mockCollection.mockReturnValue('__col__');
     hoisted.mockWhere.mockReturnValue('__where__');
     hoisted.mockQuery.mockReturnValue('__query__');
+
+    clearAgentUidCache();
   });
 
   it('unit_manager: pre-fetches agent UIDs then filters YTD submissions by agentId', async () => {
@@ -346,5 +355,163 @@ describe('managerService.getAllYTDSubmissions — SHAKEDOWN-002B unit scoping', 
 
     expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(1);
     expect(hoisted.mockWhere).not.toHaveBeenCalledWith('agentId', 'in', expect.anything());
+  });
+});
+
+describe('managerService — agent UID cache', () => {
+  beforeEach(() => {
+    hoisted.mockGetDocs.mockReset();
+    hoisted.mockWhere.mockReset();
+    hoisted.mockQuery.mockReset();
+    hoisted.mockCollection.mockReset();
+
+    hoisted.mockGetDocs.mockResolvedValue(makeSnap());
+    hoisted.mockCollection.mockReturnValue('__col__');
+    hoisted.mockWhere.mockReturnValue('__where__');
+    hoisted.mockQuery.mockReturnValue('__query__');
+
+    clearAgentUidCache();
+  });
+
+  it('cache miss: first UM call queries users + submissions (2 getDocs)', async () => {
+    hoisted.mockCurrentUser = {
+      uid: 'um-uid-001',
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'unit_manager' } }),
+    };
+    hoisted.mockGetDocs
+      .mockResolvedValueOnce(makeSnap(makeDoc('agent-a', { unitId: 'um-uid-001' })))
+      .mockResolvedValueOnce(makeSnap(
+        makeDoc('sub-1', { agentId: 'agent-a', weekStarting: '2026-01-05', status: 'submitted' }),
+      ));
+
+    await getWeeklySubmissions('tenant1', '2026-01-05');
+
+    expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(2);
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('unitId', '==', 'um-uid-001');
+  });
+
+  it('cache hit: second UM call within session skips the users query (1 getDocs)', async () => {
+    hoisted.mockCurrentUser = {
+      uid: 'um-uid-001',
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'unit_manager' } }),
+    };
+    hoisted.mockGetDocs
+      // First call: agents + submissions
+      .mockResolvedValueOnce(makeSnap(makeDoc('agent-a', { unitId: 'um-uid-001' })))
+      .mockResolvedValueOnce(makeSnap())
+      // Second call: only submissions (cache hit on agents)
+      .mockResolvedValueOnce(makeSnap());
+
+    await getWeeklySubmissions('tenant1', '2026-01-05');
+    await getWeeklySubmissions('tenant1', '2026-01-12');
+
+    // Three getDocs total: agents + subs (call 1), subs only (call 2).
+    expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(3);
+    // unitId filter fires exactly once across both calls.
+    const unitIdCalls = hoisted.mockWhere.mock.calls
+      .filter(([field]) => field === 'unitId');
+    expect(unitIdCalls).toHaveLength(1);
+  });
+
+  it('clearAgentUidCache(): post-clear, next call re-queries users', async () => {
+    hoisted.mockCurrentUser = {
+      uid: 'um-uid-001',
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'unit_manager' } }),
+    };
+    hoisted.mockGetDocs
+      // First call: agents + submissions
+      .mockResolvedValueOnce(makeSnap(makeDoc('agent-a', { unitId: 'um-uid-001' })))
+      .mockResolvedValueOnce(makeSnap())
+      // After clear: agents + submissions again
+      .mockResolvedValueOnce(makeSnap(makeDoc('agent-a', { unitId: 'um-uid-001' })))
+      .mockResolvedValueOnce(makeSnap());
+
+    await getWeeklySubmissions('tenant1', '2026-01-05');
+    clearAgentUidCache();
+    await getWeeklySubmissions('tenant1', '2026-01-12');
+
+    // Four getDocs total: agents + subs, then agents + subs again post-clear.
+    expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(4);
+    const unitIdCalls = hoisted.mockWhere.mock.calls
+      .filter(([field]) => field === 'unitId');
+    expect(unitIdCalls).toHaveLength(2);
+  });
+
+  it('per-user keying: UM_A cache does not leak to UM_B', async () => {
+    // First UM populates cache.
+    hoisted.mockCurrentUser = {
+      uid: 'um-a',
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'unit_manager' } }),
+    };
+    hoisted.mockGetDocs
+      .mockResolvedValueOnce(makeSnap(makeDoc('agent-a', { unitId: 'um-a' })))
+      .mockResolvedValueOnce(makeSnap());
+
+    await getWeeklySubmissions('tenant1', '2026-01-05');
+
+    // Switch to a different UM — should NOT hit UM_A's cache.
+    hoisted.mockCurrentUser = {
+      uid: 'um-b',
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'unit_manager' } }),
+    };
+    hoisted.mockGetDocs
+      .mockResolvedValueOnce(makeSnap(makeDoc('agent-b', { unitId: 'um-b' })))
+      .mockResolvedValueOnce(makeSnap());
+
+    await getWeeklySubmissions('tenant1', '2026-01-05');
+
+    // 4 getDocs total — each UM did its own agents lookup.
+    expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(4);
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('unitId', '==', 'um-a');
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('unitId', '==', 'um-b');
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('agentId', 'in', ['agent-a']);
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('agentId', 'in', ['agent-b']);
+  });
+
+  it('provisioning agents are filtered out of cached UIDs', async () => {
+    hoisted.mockCurrentUser = {
+      uid: 'um-uid-001',
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'unit_manager' } }),
+    };
+    hoisted.mockGetDocs
+      .mockResolvedValueOnce(makeSnap(
+        makeDoc('agent-a',    { unitId: 'um-uid-001' }),
+        makeDoc('agent-prov', { unitId: 'um-uid-001', provisioning: true }),
+      ))
+      .mockResolvedValueOnce(makeSnap())
+      // Second call exercises the cached value.
+      .mockResolvedValueOnce(makeSnap());
+
+    await getWeeklySubmissions('tenant1', '2026-01-05');
+    await getWeeklySubmissions('tenant1', '2026-01-12');
+
+    // Both submission queries should use the provisioning-filtered list.
+    const agentIdInCalls = hoisted.mockWhere.mock.calls
+      .filter(([field, op]) => field === 'agentId' && op === 'in');
+    expect(agentIdInCalls).toHaveLength(2);
+    expect(agentIdInCalls[0][2]).toEqual(['agent-a']);
+    expect(agentIdInCalls[1][2]).toEqual(['agent-a']);
+  });
+
+  it('cross-function reuse: getAllYTDSubmissions reuses cache populated by getWeeklySubmissions', async () => {
+    hoisted.mockCurrentUser = {
+      uid: 'um-uid-001',
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'unit_manager' } }),
+    };
+    hoisted.mockGetDocs
+      // getWeeklySubmissions: agents + subs
+      .mockResolvedValueOnce(makeSnap(makeDoc('agent-a', { unitId: 'um-uid-001' })))
+      .mockResolvedValueOnce(makeSnap())
+      // getAllYTDSubmissions: subs only (cache hit on agents)
+      .mockResolvedValueOnce(makeSnap());
+
+    await getWeeklySubmissions('tenant1', '2026-01-05');
+    await getAllYTDSubmissions('tenant1');
+
+    // 3 getDocs total — agents lookup ran exactly once across both functions.
+    expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(3);
+    const unitIdCalls = hoisted.mockWhere.mock.calls
+      .filter(([field]) => field === 'unitId');
+    expect(unitIdCalls).toHaveLength(1);
   });
 });
