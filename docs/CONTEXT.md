@@ -13,7 +13,7 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `<sha>` (refactor(styles): arbitrary CSS-var-syntax → named-utility sweep #<pr#>) |
+| Current main HEAD | `70c764d` (refactor(styles): arbitrary CSS-var-syntax → named-utility sweep #155) |
 | Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Arbitrary-syntax sweep just closed. Working through remaining LOW items. |
 | Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); `border-border` resolution audit and KioskShell presentation-token migration both banked from this PR's audit. |
 | Queued | (none) |
@@ -124,7 +124,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #<pr#> | `<sha>` | refactor(styles): arbitrary CSS-var-syntax → named-utility sweep (89 substitutions, 28 files) |
+| #155 | `70c764d` | refactor(styles): arbitrary CSS-var-syntax → named-utility sweep (89 substitutions, 28 files) |
 | #154 | `630bac1` | fix(mobile): FU#4 cosmetic cleanup (P2-1 + P2-3; P2-2 closed structurally) |
 | #153 | `9571a28` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
 | #151 | `8a8818c` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
@@ -147,9 +147,9 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Arbitrary CSS-var-syntax → named-utility sweep — PR #<pr#> merged (`<sha>`).
+> **Session boundary:** Arbitrary CSS-var-syntax → named-utility sweep — PR #155 merged (`70c764d`).
 
-**Arbitrary-syntax sweep — 2026-05-14 (refactor(styles), PR #<pr#>):** Closed the LOW FU "`bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep" banked during Mobile FU#4 audit. Pure code-hygiene refactor; mechanical find/replace across 28 files.
+**Arbitrary-syntax sweep — 2026-05-14 (refactor(styles), PR #155):** Closed the LOW FU "`bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep" banked during Mobile FU#4 audit. Pure code-hygiene refactor; mechanical find/replace across 28 files.
 
 - 89 utility substitutions: `bg-[var(--color-surface)]` → `bg-card` (83), `bg-[var(--color-surface-raised)]` → `bg-card-raised` (5), `text-[var(--color-text)]` → `text-ink` (1).
 - Held back from scope: `border-[var(--color-border)]` (2 WizardForm.jsx occurrences). The intuitive replacement `border-border` is used 201× across 49 files but tailwind.config.js does NOT define `border` under `theme.extend.colors`. Resolution mechanism untraced. Migrating 2 explicit-and-working outliers to an unverified utility would shift them from "known correct" to "unverified" — worse, not better. Banked as separate audit FU (MEDIUM until mechanism traced).
