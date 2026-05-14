@@ -15,7 +15,7 @@
 | Last updated | `2026-05-14` |
 | Current main HEAD | `9571a28` (fix(mobile): tap-target pass for non-core agent surface (FU#2) #153) |
 | Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Working through deferred LOW items between in-flight PRs. |
-| Next track | **Mobile FU#4 — P2 cosmetic items.** Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hex literal → token. SEC-9b PR (`sec-9b`) remains open awaiting merge — see Active follow-ups. |
+| Next track | **Mobile FU#4 — P2 cosmetic items.** Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hex literal → token. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
