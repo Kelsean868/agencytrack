@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Save, AlertCircle, User, CalendarClock, LogOut } from 'lucide-react';
+import { Camera, Save, AlertCircle, User, CalendarClock, LogOut, Pencil } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleLabel } from '../../utils/formatters';
 import { updateUserProfile, compressImage, uploadProfilePhoto } from '../../services/userService';
 import { signOut } from '../../services/authService';
+import EmailUpdateModal from './EmailUpdateModal';
 import {
   aggregateCurrentWeekDaily,
   catchUpWeeklyToDaily,
@@ -25,6 +26,7 @@ export default function ProfileScreen() {
   const [saving,          setSaving]          = useState(false);
   const [savedAt,         setSavedAt]         = useState(null);
   const [error,           setError]           = useState(null);
+  const [emailModalOpen,  setEmailModalOpen]  = useState(false);
 
   // E6 logging mode panel state
   const [loggingMode,    setLoggingMode]    = useState(userProfile?.loggingMode ?? 'hybrid');
@@ -459,7 +461,21 @@ export default function ProfileScreen() {
 
         <div className="flex items-center justify-between">
           <span className="text-sm text-ink-muted">Email</span>
-          <span className="text-sm font-medium text-ink">{email}</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-ink">{email}</span>
+            {role === 'tenant_admin' && (
+              <button
+                type="button"
+                onClick={() => setEmailModalOpen(true)}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:text-primary/80 transition-colors min-h-[44px] px-1"
+                aria-label="Update email address"
+                data-testid="profile-update-email"
+              >
+                <Pencil size={12} />
+                Update
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center justify-between">
@@ -486,6 +502,10 @@ export default function ProfileScreen() {
           Sign Out
         </button>
       </div>
+
+      {emailModalOpen && (
+        <EmailUpdateModal onClose={() => setEmailModalOpen(false)} />
+      )}
     </div>
   );
 }

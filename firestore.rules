@@ -56,6 +56,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // feat(profile): audit log for tenant_admin self-service email changes.
+    // Clients create their own entry (scoped by uid + tenantId); no edits or
+    // deletes permitted. Mirrors auditAdminCreations read access pattern.
+    match /auditAdminEmailUpdates/{docId} {
+      allow read: if isSignedIn() && (
+        getRole() == 'platform_admin' ||
+        (getRole() == 'tenant_admin' && resource.data.tenantId == getTenantId())
+      );
+      allow create: if isSignedIn()
+        && getRole() == 'tenant_admin'
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.tenantId == getTenantId()
+        && request.resource.data.initiatedByUid == request.auth.uid;
+      allow update, delete: if false;
+    }
+
     // PR-D: mail/ queue for Firebase Trigger Email Extension.
     // All writes come from Cloud Functions via Admin SDK (bypasses rules).
     // No client read or write access — the extension handles delivery.
@@ -131,7 +147,7 @@ service cloud.firestore {
               ||
               request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['hasSeenWelcome', 'photoURL', 'bio', 'phone',
-                           'loggingMode', 'dailyNudgeTime', 'updatedAt'])
+                           'loggingMode', 'dailyNudgeTime', 'updatedAt', 'email'])
             ));
         allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
       }

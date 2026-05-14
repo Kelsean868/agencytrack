@@ -1073,14 +1073,18 @@ tenant's subcollections.
 
 ---
 
-## tenant_admin email update path
+## tenant_admin email update path — RESOLVED in PR #<PR#> (2026-05-15)
 
-**Scope:** Changing a tenant_admin's own email is blocked by Firebase Auth's re-auth
-requirement, but there is no UI flow for it. Admins currently must use the Firebase console.
+**Resolved 2026-05-15 in PR #<PR#>** (`<squash-sha>`,
+`feat(profile): tenant_admin email update with re-auth + audit`).
 
-- Add an "Update Email" flow in ProfileScreen gated behind re-authentication (`reauthenticateWithCredential`)
-- Show a "confirm current password" step before allowing the email change
-- Update Firestore user doc email field after Auth email update succeeds
+Self-service email update flow in `ProfileScreen.jsx` for `tenant_admin` role only.
+`verifyBeforeUpdateEmail` (Firebase Auth) requires current-password re-auth before
+sending a verification link to the new address; email in Auth/Firestore only changes
+after the user clicks the link. Firestore user doc syncs lazily via `AuthContext`
+email-mismatch detection on next sign-in. Audit entries written to the new top-level
+`auditAdminEmailUpdates` collection. Phase 1 caught a stale `updateEmail()` call in
+the brief — `verifyBeforeUpdateEmail` is the correct safer API.
 
 ---
 
