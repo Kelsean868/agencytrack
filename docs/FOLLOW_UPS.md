@@ -234,16 +234,9 @@ Two architecture improvements banked during SHAKEDOWN-002B Phase 1 ack.
 
 ~~Not urgent — at pilot scale the extra read costs fractions of a cent. Revisit if unit sizes grow or Firestore billing becomes material.~~
 
-### Denormalize `unitId` onto submission docs (LOW, post-pilot)
+### ~~Denormalize `unitId` onto submission docs~~ (RESOLVED in PR #<pr#>)
 
-**Scope:** Submissions don't carry `unitId` (only `agentId`). The SHAKEDOWN-002B fix uses an agent-uid-lookup approach to work around this. A future denormalization of `unitId` onto submission docs at write time (`submissionService.saveDraft` / `submitReport`) would:
-1. Enable `where('unitId', '==', callerUid)` directly on the submissions query (same pattern as user-list scoping).
-2. Unblock Firestore rules-level `allow list` enforcement for UM (currently `resource.data` is unavailable during list operations; the client-side `agentId in agentUids` filter is the real enforcement).
-3. Eliminate the two-step agent-uid-lookup round-trip (see cache item above).
-
-**Migration path:** add `unitId` field in `saveDraft`/`submitReport` in `submissionService.js`, backfill existing docs via a one-off Admin SDK script (join each submission's `agentId` against its user doc's `unitId`). Firestore rules can then be tightened from `allow list: if canManage(tenantId)` to `allow list: if canManage(tenantId) && (getRole() != 'unit_manager' || resource.data.unitId == request.auth.uid)` — wait, this still doesn't work for list (resource.data unavailable at list time). Partial win: `allow get` is already cross-doc restricted; denormalization enables a `where` filter on the query itself which is the real enforcement mechanism.
-
-Not blocking pilot. Bank for post-pilot schema iteration.
+Shipped in PR #<pr#>: `unitId` denormalized onto all three submission write paths (`saveDraft`, `submitReport`, `aggregateCurrentWeekDaily`). Service layer simplified to direct `where('unitId', '==', callerUid)` queries. Rules tightened from partial to full defense-in-depth (`allow list` now enforces UM scoping). Agent-uid cache from #146 removed (Path A). Backfill script at `scripts/backfill/denormalize-submission-unitId.mjs`.
 
 ---
 
