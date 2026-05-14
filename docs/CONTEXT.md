@@ -12,9 +12,9 @@
 
 | Field | Value |
 |---|---|
-| Last updated | `2026-05-13` |
-| Current main HEAD | `5f1c2c6` (docs(briefs): test infra cleanup kickoff) |
-| Active track | **SEC-9b** — services `tenantId` migration PR open on branch `sec-9b`. Awaiting merge. |
+| Last updated | `2026-05-14` |
+| Current main HEAD | `8f652ed` (docs(briefs): SHAKEDOWN-002 UM cross-unit visibility fix kickoff) |
+| Active track | **SHAKEDOWN-002** — UM unit scoping fix. PR open, awaiting merge + manual smoke. |
 | Next track | **Pilot prep — end-to-end testing using PR-F tooling.** Exercise the new bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
@@ -127,12 +127,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<PR#> | `<squash-sha>` | fix(services): enforce UM unit scoping on user list (SHAKEDOWN-002) |
 | #141 | `162b8de` | fix(auth): manager role resolution on first login (SHAKEDOWN-001) |
 | #140 | `6603d27` | AGENCY Shakedown results |
 | #139 | `9cbd5a4` | refactor(services): migrate to explicit tenantId parameter (SEC-9b) |
 | #138 | `261b9ec` | test(infra): close test infra MEDIUM — agentManagementService specs + CI test step |
-| #137 | `bb08cc7` | fix(functions): chain .timeZone('UTC') to all 4 scheduled CFs (Track D) |
-| #136 | `89182cd` | fix(functions): doCreateUser emailQueued truthfulness (#134 follow-up) |
 
 ---
 
@@ -151,15 +150,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** SEC-9b services tenantId migration — all 9 service commits + Phase 3/4/5/6 complete. PR opened on branch `sec-9b`. Not yet merged.
+> **Session boundary:** SHAKEDOWN-002 — UM cross-unit visibility fix. PR open on branch `shakedown-002-um-unit-scoping` (or similar). Awaiting Kyron manual smoke + merge.
 
-**Last feature work — 2026-05-13 (SEC-9b):** Retired the `firebase.js` runtime tenantId holder (`_tenantId`, `setRuntimeTenantId`, `getTenantId`). All 9 services now accept `tenantId` as an explicit first parameter: `authService`, `managerService`, `submissionService`, `userService`, `agentManagementService`, `dailyActivityService`, `loggingModeService`, `agentOfMonthService`, `persistencyService`. AuthContext and KioskRoute no longer call `setRuntimeTenantId`. Tests cleaned up across all service + component test files. 607/607 tests green, 0 lint errors.
+**Last feature work — 2026-05-14 (SHAKEDOWN-002):** Fixed UM cross-unit data leak across both affected surfaces. Phase 1 discovery confirmed two independent unscoped queries: `managerService.getTenantUsers` (consumed by MasterSheet) and `agentManagementService.getAllUsers` (consumed by UserManagementPanel / Team tab). Both now read `auth.currentUser.getIdTokenResult()` internally and apply `where('unitId', '==', callerUid)` for `unit_manager` callers. Firestore rules split `users/{userId}` `allow read` into `allow get` + `allow list`, with UM restricted to own unit on both. New `managerService.test.js` (6 cases) + new `getAllUsers` describe block in `agentManagementService.test.js` (5 cases). BM/TA/PA scopes unchanged.
 
-**Lint note:** 15 new `react-hooks/exhaustive-deps` warnings (warnings only, not errors — lint exits 0). All relate to `tenantId` now being a React state value in `useAuth()` rather than a module-scoped `getTenantId()` call. `tenantId` is stable within a session (changes only on sign-in/sign-out), so the missing-dep pattern is low-risk. Tracked alongside the pre-existing deferred `exhaustive-deps` items in FOLLOW_UPS.md.
+**Pre-pilot state:** Both SHAKEDOWN pilot blockers addressed (001 in PR #141, 002 in PR #<PR#>). After SHAKEDOWN-002 merges, both fixes are live and pilot prep can proceed — exercise the PR-F bulk-seed + cleanup tooling against the full pilot flow.
 
-**Pre-pilot state:** Track E fully complete (E1–E6 across PRs #66–#82). Manager revamp M-series fully complete (#105/#107/#113/#116/#118). User-mgmt PR-3/PR-4/PR-4b complete. Polish-1 + Polish-2 complete. Pilot has not launched at Tatil yet.
-
-**Next:** Merge SEC-9b PR, do production smoke test, then pivot to pilot prep — exercise the PR-F bulk-seed + cleanup tooling against the full end-to-end pilot flow.
+**Next:** Kyron reviews PR + performs manual smoke (sign in as UM → confirm only own unit visible; sign in as BM → confirm full branch visible). After merge, update CONTEXT.md/FOLLOW_UPS.md with squash SHA + PR#, then pivot to end-to-end pilot prep.
 
 ---
 

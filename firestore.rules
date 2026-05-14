@@ -73,7 +73,25 @@ service cloud.firestore {
       }
 
       match /users/{userId} {
-        allow read: if canManage(tenantId) || (isSignedIn() && request.auth.uid == userId) || kioskCanRead(tenantId);
+        // SHAKEDOWN-002: split read into get + list so unit_manager is restricted
+        // to their own unit. BM/TA/PA retain full branch/tenant visibility.
+        //
+        // get: agents/kiosk read own doc; managers read any doc except unit_manager
+        //      who can only read own doc or docs in their unit.
+        allow get: if kioskCanRead(tenantId)
+          || (isSignedIn() && request.auth.uid == userId)
+          || (canManage(tenantId) && (
+               getRole() != 'unit_manager'
+               || request.auth.uid == userId
+               || resource.data.unitId == request.auth.uid
+             ));
+        // list: manager-tier only. unit_manager is restricted to own unit —
+        // an unscoped collection query from a UM is denied (defense in depth).
+        // Client must include where('unitId','==',callerUid) for UM list reads.
+        allow list: if canManage(tenantId) && (
+          getRole() != 'unit_manager'
+          || resource.data.unitId == request.auth.uid
+        );
         // SEC-4: unit_manager can only create/update users within their own unit
         allow create: if canManage(tenantId) && (
           getRole() != 'unit_manager' ||

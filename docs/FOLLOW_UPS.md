@@ -156,15 +156,17 @@ Two app bugs confirmed by the pre-pilot shakedown run. Full report: [`docs/shake
 
 **Fix shape D:** Made the Firestore user doc the load-bearing fallback. Parallel fetch via `Promise.all([getIdTokenResult(true), getDoc(...)])` using a localStorage-cached tenantId. `resolvedRole = claims.role ?? doc.role ?? null`. `ProvisioningScreen` added to `App.jsx` for the true-null case (no claims AND no doc). Post-merge manual smoke: Kyron creates fresh BM via UserManagementPanel, signs in, confirms BM dashboard renders within seconds.
 
-### SHAKEDOWN-002 — Unit Manager sees cross-unit agents (Major, data isolation)
+### SHAKEDOWN-002 — Unit Manager sees cross-unit agents — RESOLVED in PR #<PR#>
 
-**Root cause:** UM_001 sees agent-005/006/007 (UM_002 agents) in Team tab and Master Sheet. The seed data sets `unitId` on agents to their UM's UID. The query in `managerService.js` or `MasterSheet.jsx` may fetch all branch agents without filtering by `unitId`, or the filter is applied conditionally and mis-applied.
+**Resolved in PR #<PR#>** (`<squash-sha>`, `fix(services): enforce UM unit scoping on user list (SHAKEDOWN-002)`).
 
-**Impact:** Unit Manager is seeing agents from other units — a data isolation failure. Violates the role scoping model.
+**Root cause (confirmed in Phase 1):** Two separate unscoped queries — `managerService.getTenantUsers` and `agentManagementService.getAllUsers` — both called `getDocs(collection(...users))` with no `where` filter and no role awareness. Firestore rules permitted all manager roles (including `unit_manager`) to list all tenant users via the `canManage()` helper. Both surfaces (Master Sheet via `managerService`, Team tab via `agentManagementService`) leaked cross-unit agents to the UM.
 
-**Fix:** Audit Team tab and Master Sheet user queries. For `unit_manager` role, ensure `.where('unitId', '==', callerUid)` is applied. Also verify `unitId` on seeded users matches the UM's UID (or however the app models the UM-agent relationship).
+**Fix shape C (combined — client + rules):** Both service functions now read `auth.currentUser.getIdTokenResult()` internally and apply `where('unitId', '==', callerUid)` when the caller is a `unit_manager`. Firestore rules' `users/{userId}` block now splits `allow read` into separate `allow get` (single doc, UM restricted to own unit or own doc) and `allow list` (UM restricted to `resource.data.unitId == request.auth.uid`, so unscoped UM collection queries are denied at the rules layer). BM/TA/PA scopes unchanged.
 
-**Effort:** S–M (half-day investigation + fix + regression verification). Fix before demo.
+**Files changed:** `src/services/managerService.js`, `src/services/agentManagementService.js`, `firestore.rules`, `src/services/__tests__/managerService.test.js` (new), `src/services/__tests__/agentManagementService.test.js` (new describe block).
+
+**Post-merge manual smoke:** Sign in as UM, confirm Team tab + Master Sheet show only own unit's agents. Sign in as BM, confirm full branch visibility preserved.
 
 ---
 

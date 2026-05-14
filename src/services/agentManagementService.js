@@ -1,6 +1,6 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 
 
 /**
@@ -41,7 +41,17 @@ export async function deactivateUser(targetUid, active) {
  * Optionally includes users with active: false.
  */
 export async function getAllUsers(tenantId, { includeInactive = false } = {}) {
-  const snap = await getDocs(collection(db, `tenants/${tenantId}/users`));
+  const { claims } = await auth.currentUser.getIdTokenResult();
+  const callerUid = auth.currentUser.uid;
+
+  // SHAKEDOWN-002: unit_manager callers see only their own unit's agents.
+  // Other manager roles retain full branch/tenant visibility.
+  const col = collection(db, `tenants/${tenantId}/users`);
+  const q = claims.role === 'unit_manager'
+    ? query(col, where('unitId', '==', callerUid))
+    : col;
+
+  const snap = await getDocs(q);
   return snap.docs
     .map((d) => ({ uid: d.id, id: d.id, ...d.data() }))
     .filter((u) => u.provisioning !== true)
