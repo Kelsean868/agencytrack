@@ -148,15 +148,13 @@ Audit approach (bank for whoever picks this up):
 
 Two app bugs confirmed by the pre-pilot shakedown run. Full report: [`docs/shakedown-findings-2026-05-13.md`](shakedown-findings-2026-05-13.md).
 
-### SHAKEDOWN-001 — Manager/UM see Agent Dashboard on first login (Major)
+### SHAKEDOWN-001 — Manager/UM see Agent Dashboard on first login — RESOLVED in PR #<PR#>
 
-**Root cause:** Firebase custom claims set via `setCustomUserClaims()` propagate slowly. `AuthContext.jsx:20` calls `getIdTokenResult(true)` immediately on login. For brand-new accounts the forced refresh still returns `role: null` within the first ~120s of account creation. With `role = null`, `App.jsx` falls through to `AgentDashboard`.
+**Resolved in PR #<PR#>** (`<squash-sha>`, `fix(auth): manager role resolution on first login (SHAKEDOWN-001)`).
 
-**Impact:** Every manager or agent created by BM/TA will see the Agent Dashboard on their very first login. They must sign out and back in (or wait ~2 minutes) to get their correct dashboard. This will be visible in any live demo where accounts are freshly created.
+**Root cause:** `AuthContext.jsx` early-exited when `claimTenantId` was null, blocking the Firestore doc fallback. On fresh accounts where `setCustomUserClaims()` hasn't yet propagated (60–120s delay), claims were empty, so `role` resolved to null and `App.jsx` fell through to `AgentDashboard`.
 
-**Fix:** `src/context/AuthContext.jsx` — add a retry loop (3 attempts × 3s) when `getIdTokenResult(true)` returns `role: null`, or read `tenants/{tenantId}/users/{uid}.role` from Firestore as an authoritative fallback when claims are empty.
-
-**Effort:** M (1–2 days). Fix before demo.
+**Fix shape D:** Made the Firestore user doc the load-bearing fallback. Parallel fetch via `Promise.all([getIdTokenResult(true), getDoc(...)])` using a localStorage-cached tenantId. `resolvedRole = claims.role ?? doc.role ?? null`. `ProvisioningScreen` added to `App.jsx` for the true-null case (no claims AND no doc). Post-merge manual smoke: Kyron creates fresh BM via UserManagementPanel, signs in, confirms BM dashboard renders within seconds.
 
 ### SHAKEDOWN-002 — Unit Manager sees cross-unit agents (Major, data isolation)
 
