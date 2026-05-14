@@ -394,6 +394,24 @@ Correct pattern in PowerShell:
 
 Returns only the key names. Values never reach the chat. Apply the same `^[A-Z_]+=` filter in bash, grep, or any equivalent command.
 
+### 5. Phase 3 verification must include actual invocation, not just module resolution
+
+For briefs that include scripts touching external services (Firestore, APIs, cloud resources, file systems), Phase 3 verification must include an actual invocation in non-destructive mode (dry-run, list, count, etc.), not just module loading or import resolution checks.
+
+PR #147's `denormalize-submission-unitId.mjs` passed Phase 3 with "module resolution path is right" but had a missing `credential.cert(...)` initialization block that only surfaced when Kyron ran the script. A real dry-run invocation in Phase 3 would have caught the credentials gap before it reached production verification.
+
+Pattern: for any new script that connects to external services, Phase 3 must include a real invocation that exercises the connection layer (auth, transport, basic round-trip). "Compiles" or "loads" is insufficient. The dry-run pattern (read-only, non-destructive default with explicit `--execute` flag) makes this safe to run against production from Phase 3.
+
+### 6. Phase 1 validates data quality, not just data structure
+
+For permission-boundary fixes, denormalization work, or any change that depends on existing data having specific values populated, Phase 1 must verify both:
+- **Structural integrity:** does the source field exist on the doc?
+- **Assignment completeness:** does the field have a non-null, non-empty value?
+
+PR #147's Phase 1 hard stops covered "agent doc missing" (structural) but not "agent doc exists with `unitId` field missing or null" (assignment). Result: all 22 backfilled submissions wrote `unitId = null`, only surfaced when Kyron reviewed the dry-run output. The new rules would have silently broken UM visibility in production if the dry-run hadn't been carefully read.
+
+Pattern: for any denormalization or value-dependent fix, Phase 1 must sample-read a representative subset of source docs and verify the relevant field values are populated as the change assumes. Surface sparse fields, unexpected nulls, or assignment gaps as Phase 1 findings before designing the fix, not after running it.
+
 ---
 
 ## Banked patterns (also from 2026-05-14 session)
