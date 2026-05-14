@@ -950,11 +950,11 @@ codebase — needs a one-pass audit. Two options:
 
 Option 1 is the right fix but touches every theme variable + consumer.
 
-### Mobile follow-up #4 — P2 cosmetic items — CLOSED in PR #<pr#> (<sha>)
+### Mobile follow-up #4 — P2 cosmetic items — CLOSED in PR #154 (630bac1)
 
-- ✅ **P2-1** — CLOSED by PR #<pr#> (<sha>): WizardForm + CampaignPanel close buttons bumped to `w-11 h-11` (44×44px). Sibling sweep included.
-- ✅ **P2-2** — CLOSED by PR #<pr#> (<sha>): already-resolved structurally. LeaderRow is non-interactive (no onClick/role/href), row height ~60px via `py-3` + content, and avatar is 36px (`size="md"`) not 40px. Tap-target rules apply only to tap targets. FOLLOW_UPS text "40×40" was a doc-accuracy gap — actual size 36px. No code change required.
-- ✅ **P2-3** — CLOSED by PR #<pr#> (<sha>): closed as already-resolved-structurally. `MotivationalCarousel.jsx` has had zero live consumers since M2 (PR #107, `46eda67`) removed it from ManagerDashboard. The hex-literal defect does not manifest because the component never renders. Dead-code deletion banked as a new LOW FU (see below).
+- ✅ **P2-1** — CLOSED by PR #154 (630bac1): WizardForm + CampaignPanel close buttons bumped to `w-11 h-11` (44×44px). Sibling sweep included.
+- ✅ **P2-2** — CLOSED by PR #154 (630bac1): already-resolved structurally. LeaderRow is non-interactive (no onClick/role/href), row height ~60px via `py-3` + content, and avatar is 36px (`size="md"`) not 40px. Tap-target rules apply only to tap targets. FOLLOW_UPS text "40×40" was a doc-accuracy gap — actual size 36px. No code change required.
+- ✅ **P2-3** — CLOSED by PR #154 (630bac1): closed as already-resolved-structurally. `MotivationalCarousel.jsx` has had zero live consumers since M2 (PR #107, `46eda67`) removed it from ManagerDashboard. The hex-literal defect does not manifest because the component never renders. Dead-code deletion banked as a new LOW FU (see below).
 
 ---
 

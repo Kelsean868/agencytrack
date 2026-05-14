@@ -13,7 +13,7 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `<sha>` (fix(mobile): FU#4 cosmetic cleanup #<pr#>) |
+| Current main HEAD | `630bac1` (fix(mobile): FU#4 cosmetic cleanup #154) |
 | Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). FU#4 cosmetic items just closed. Working through remaining LOW items. |
 | Next track | LOW queue — `bg-[var(--color-X)]` arbitrary-syntax sweep banked from FU#4 audit; HIGH#6 TenantAdminDashboard YTD index waiting on manual production step. |
 | Queued | (none) |
@@ -124,7 +124,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #<pr#> | `<sha>` | fix(mobile): FU#4 cosmetic cleanup (P2-1 + P2-3; P2-2 closed structurally) |
+| #154 | `630bac1` | fix(mobile): FU#4 cosmetic cleanup (P2-1 + P2-3; P2-2 closed structurally) |
 | #153 | `9571a28` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
 | #151 | `8a8818c` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
 | #149 | `66dbc77` | fix(dashboard): resolve branch names from branches/ collection |
@@ -147,9 +147,9 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Mobile FU#4 cosmetic cleanup — PR #<pr#> open, pending merge (`<sha>`).
+> **Session boundary:** Mobile FU#4 cosmetic cleanup — PR #154 merged (`630bac1`).
 
-**Mobile FU#4 — 2026-05-14 (fix(mobile), PR #<pr#>):** Closed P2-1 with code changes; P2-2 and P2-3 closed structurally. Two files changed (WizardForm + CampaignPanel) + one test extension.
+**Mobile FU#4 — 2026-05-14 (fix(mobile), PR #154):** Closed P2-1 with code changes; P2-2 and P2-3 closed structurally. Two files changed (WizardForm + CampaignPanel) + one test extension.
 
 - **P2-1** — `WizardForm.jsx` + `CampaignPanel.jsx`: close-button class bumped from `w-10 h-10` (40×40px) to `w-11 h-11` (44×44px). Sibling sweep across both modal surfaces. Smoke-verified at 44×44px each.
 - **P2-2** — No code change. Structural finding: `LeaderRow` is non-interactive (no onClick/role/href), row height already ~60px via `py-3` + content, avatar is 36px (`size="md"`) not 40px as FOLLOW_UPS originally stated. Original audit measurement was a doc-accuracy gap.
@@ -159,7 +159,7 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **Test delta:** +1 new test case (WizardFormSaveStatus close-button class extension) → 683 total (56 files). Lint: 0 errors. Build: green.
 
-**Next after merge:** Fill `<pr#>` + `<sha>` placeholders in `CONTEXT.md` + `FOLLOW_UPS.md`. Then continue LOW queue — `bg-[var(--color-X)]` sweep or HIGH#6 TenantAdminDashboard index as next item.
+**Next:** Continue LOW queue — `bg-[var(--color-X)]` sweep or HIGH#6 TenantAdminDashboard index as next item.
 
 ---
 
