@@ -22,6 +22,7 @@ import Step8SelfEvaluation    from './steps/Step8SelfEvaluation';
 import Step9Goals             from './steps/Step9Goals';
 
 const MAX_AUTOSAVE_RETRIES = 3;
+const FAILURE_STICKY_MS = 8000;
 
 // 9 step components grouped into 5 screens.
 // Each entry in `components` is [Component, needsLastWeekData].
@@ -158,10 +159,10 @@ export default function WizardForm({ onClose, initialWeek }) {
   const [submissionData, setSubmissionData] = useState(null);
   const [viewingSubmission, setViewingSubmission] = useState(false);
   const [saving, setSaving]             = useState(false);
-  const [saveError, setSaveError]       = useState(false);
   const [savedAt, setSavedAt]           = useState(null);
   const [isOffline, setIsOffline]       = useState(() => typeof navigator !== 'undefined' && !navigator.onLine);
   const [saveEscalated, setSaveEscalated] = useState(false);
+  const [stickyError, setStickyError]   = useState(false);
   const [submitting, setSubmitting]     = useState(false);
   const [error, setError]               = useState('');
   const saveTimer = useRef(null);
@@ -209,7 +210,7 @@ export default function WizardForm({ onClose, initialWeek }) {
   doSave.current = async () => {
     if (!weekStarting || !user || draftStatus === 'submitted') return;
     setSaving(true);
-    setSaveError(false);
+    setStickyError(false);     // legitimate replacement — clear sticky before new attempt
     try {
       await saveDraft(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0, userProfile?.unitId ?? null);
       consecutiveFailures.current = 0;
@@ -220,7 +221,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     } catch (err) {
       console.error('Auto-save failed:', err);
       consecutiveFailures.current += 1;
-      setSaveError(true);
+      setStickyError(true);
       if (consecutiveFailures.current >= MAX_AUTOSAVE_RETRIES) setSaveEscalated(true);
     } finally {
       setSaving(false);
@@ -349,7 +350,7 @@ export default function WizardForm({ onClose, initialWeek }) {
           <SaveStatusIndicator
             saving={saving}
             savedAt={savedAt}
-            saveError={saveError}
+            stickyError={stickyError}
             isOffline={isOffline}
             onRetry={handleManualSave}
           />
@@ -546,45 +547,104 @@ export default function WizardForm({ onClose, initialWeek }) {
 
 // ─── Save status indicator ────────────────────────────────────────────────────
 
-function SaveStatusIndicator({ saving, savedAt, saveError, isOffline, onRetry }) {
+// stickyError prop comes from WizardForm (set in the same batch as saving),
+// so the Retry button appears in the same render without an extra useEffect round-trip.
+// visibleError extends that display for FAILURE_STICKY_MS after the prop clears (R5).
+function SaveStatusIndicator({ saving, savedAt, stickyError, isOffline, onRetry }) {
+  const lastRetryAt  = useRef(0);    // R4: retry throttle
+  const failedShownAt = useRef(0);   // R5: anchor for sticky window
+  const stickyTimer  = useRef(null);
+  const savingRef    = useRef(saving); // read inside stickyError effect without dep
+  const [, setStickyTick] = useState(0); // trigger re-render when window expires
+
+  savingRef.current = saving; // always current before any effect fires
+
+  // R5: track failure timestamp; when prop clears, decide how to release the sticky window.
+  // savingRef.current is used (not saving directly) to avoid an exhaustive-dep violation —
+  // both saving and stickyError change in the same React batch when a save starts, so the
+  // ref reliably reflects whether this is a legitimate replacement vs. a direct transition.
+  useEffect(() => {
+    if (stickyError) {
+      lastRetryAt.current = 0;          // reset throttle so first click after each failure is never blocked
+      failedShownAt.current = Date.now();
+      clearTimeout(stickyTimer.current);
+    } else if (savingRef.current) {
+      // Legitimate replacement: saving re-fired, clear immediately so "Saving…" takes over
+      clearTimeout(stickyTimer.current);
+      failedShownAt.current = 0;
+    } else {
+      // Direct failed→saved path: hold visibleError for remaining window, then swap
+      const remaining = FAILURE_STICKY_MS - (Date.now() - failedShownAt.current);
+      clearTimeout(stickyTimer.current);
+      stickyTimer.current = setTimeout(() => {
+        failedShownAt.current = 0;
+        setStickyTick(n => n + 1);
+      }, remaining > 0 ? remaining : 0);
+    }
+  }, [stickyError]);
+
+  useEffect(() => () => clearTimeout(stickyTimer.current), []);
+
+  // R5: derived — true while stickyError prop is set OR within the 8s sticky window
+  const visibleError = stickyError || (
+    failedShownAt.current > 0 &&
+    Date.now() - failedShownAt.current < FAILURE_STICKY_MS &&
+    !saving
+  );
+
+  // R4: 2s throttle — prevents rapid double-fire before saving state toggles
+  function handleRetry() {
+    if (Date.now() - lastRetryAt.current < 2000) return;
+    lastRetryAt.current = Date.now();
+    onRetry();
+  }
+
   return (
-    <div role="status" aria-live="polite" aria-atomic="true" className="flex items-center">
-      {saving && (
-        <span className="text-xs text-ink-muted animate-pulse">Saving…</span>
-      )}
-      {!saving && savedAt && isOffline && (
-        <span className="flex items-center gap-1 text-xs text-warning">
-          <Check size={13} />
-          Saved offline — will sync when reconnected
-        </span>
-      )}
-      {!saving && savedAt && !isOffline && (
-        <span className="flex items-center gap-1 text-xs text-success">
-          <Check size={13} />
-          Saved
-        </span>
-      )}
-      {!saving && !savedAt && isOffline && (
-        <span className="text-xs text-warning">Offline — will save when reconnected</span>
-      )}
-      {!saving && !savedAt && !isOffline && saveError && (
-        <span role="alert" className="flex items-center gap-1 text-xs text-danger">
-          <AlertTriangle size={13} />
-          Save failed — tap to retry
-          <button
-            type="button"
-            onClick={onRetry}
-            className="h-11 px-2 flex items-center gap-1 text-xs font-semibold text-danger border border-danger/30 rounded-lg hover:bg-danger-tint transition-colors ml-1"
-            aria-label="Retry save"
-          >
-            <RotateCcw size={12} />
-            Retry
-          </button>
-        </span>
-      )}
+    <div className="flex items-center">
+      {/* R2: polite region — saving / saved states */}
+      <div role="status" aria-live="polite" aria-atomic="true">
+        {saving && (
+          <span className="text-xs text-ink-muted animate-pulse motion-reduce:animate-none">Saving…</span>
+        )}
+        {!saving && savedAt && isOffline && !visibleError && (
+          <span className="flex items-center gap-1 text-xs text-warning">
+            <Check size={13} />
+            Saved offline — will sync when reconnected
+          </span>
+        )}
+        {!saving && savedAt && !isOffline && !visibleError && (
+          <span className="flex items-center gap-1 text-xs text-success">
+            <Check size={13} />
+            Saved
+          </span>
+        )}
+      </div>
+      {/* R2: assertive region — error / offline warning; sibling, never nested */}
+      <div role="alert" aria-atomic="true">
+        {!saving && !savedAt && isOffline && !visibleError && (
+          <span className="text-xs text-warning">Offline — will save when reconnected</span>
+        )}
+        {visibleError && !saving && !isOffline && (
+          <span className="flex items-center gap-1 text-xs text-danger">
+            <AlertTriangle size={13} />
+            Save failed — tap to retry
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="h-11 px-2 flex items-center gap-1 text-xs font-semibold text-danger border border-danger/30 rounded-lg hover:bg-danger-tint transition-colors ml-1"
+              aria-label="Retry save"
+            >
+              <RotateCcw size={12} />
+              Retry
+            </button>
+          </span>
+        )}
+      </div>
     </div>
   );
 }
+
+export { SaveStatusIndicator };
 
 // ─── Production summary panel ────────────────────────────────────────────────
 
