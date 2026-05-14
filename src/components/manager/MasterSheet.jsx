@@ -208,7 +208,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           aria-label="Select week"
           value={selectedWeek}
           onChange={(e) => setSelectedWeek(e.target.value)}
-          className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="h-10 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           {sundays.map((d, i) => (
             <option key={d} value={d}>
@@ -224,14 +224,14 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search agent…"
-            className="w-full h-10 pl-8 pr-3 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+            className="w-full h-10 pl-8 pr-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
           />
         </div>
 
         <button
           onClick={exportCSV}
           disabled={loading || rows.length === 0}
-          className="h-10 px-4 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm font-medium flex items-center gap-2 hover:bg-surface transition-colors disabled:opacity-50"
+          className="h-10 px-4 rounded-lg border border-border bg-card text-ink text-sm font-medium flex items-center gap-2 hover:bg-surface transition-colors disabled:opacity-50"
         >
           <Download size={14} />
           Export CSV
@@ -245,7 +245,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
       )}
 
       {/* Table — horizontally scrollable, first 2 columns sticky */}
-      <div className="overflow-x-auto rounded-xl border border-border bg-[var(--color-surface)]">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card">
         <table className="text-sm border-separate border-spacing-0">
           <thead>
             <tr>
@@ -292,7 +292,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
                       className={`
                         ${tdBase} ${col.minW}
                         ${col.sticky
-                          ? `sticky ${col.left} z-10 bg-[var(--color-surface)] group-hover:bg-surface/50`
+                          ? `sticky ${col.left} z-10 bg-card group-hover:bg-surface/50`
                           : 'group-hover:bg-surface/30'}
                       `}
                     >

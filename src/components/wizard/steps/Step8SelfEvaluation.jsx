@@ -23,7 +23,7 @@ function RatingCard({ badge, label, name, value, onChange, desc, variant = 'defa
                   ? 'border-primary bg-primary dark:bg-primary-dark text-white'
                   : n < value
                   ? 'border-primary/30 bg-primary/10 text-primary'
-                  : 'border-border bg-[var(--color-surface)] text-ink hover:border-primary/50'
+                  : 'border-border bg-card text-ink hover:border-primary/50'
               }`}
             >
               {n}

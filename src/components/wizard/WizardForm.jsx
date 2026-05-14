@@ -416,7 +416,7 @@ export default function WizardForm({ onClose, initialWeek }) {
               id="wizard-week"
               value={localWeekChoice}
               onChange={(e) => { setLocalWeekChoice(e.target.value); setError(''); }}
-              className="w-full h-11 px-3 border border-[var(--color-border)] rounded-xl bg-[var(--color-surface)] text-[var(--color-text)] text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 mb-4"
+              className="w-full h-11 px-3 border border-[var(--color-border)] rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 mb-4"
             >
               {dropdownOptions.map((opt, i) => (
                 <option key={opt.value} value={opt.value}>
@@ -487,7 +487,7 @@ export default function WizardForm({ onClose, initialWeek }) {
                 <button
                   type="button"
                   onClick={resetToDatePicker}
-                  className="w-full h-11 rounded-xl border border-border bg-[var(--color-surface)] text-ink font-semibold text-sm hover:bg-surface transition-colors"
+                  className="w-full h-11 rounded-xl border border-border bg-card text-ink font-semibold text-sm hover:bg-surface transition-colors"
                 >
                   Pick Different Week
                 </button>
@@ -523,11 +523,11 @@ export default function WizardForm({ onClose, initialWeek }) {
 
       {/* Footer nav */}
       {(screen === 'step' || screen === 'review') && (
-        <footer className="grid grid-cols-5 gap-2 px-4 py-4 border-t border-border bg-[var(--color-surface)] shrink-0">
+        <footer className="grid grid-cols-5 gap-2 px-4 py-4 border-t border-border bg-card shrink-0">
           <button
             type="button"
             onClick={handleBack}
-            className="col-span-2 h-11 rounded-xl border border-border bg-[var(--color-surface)] text-ink font-semibold text-sm hover:bg-surface transition-colors"
+            className="col-span-2 h-11 rounded-xl border border-border bg-card text-ink font-semibold text-sm hover:bg-surface transition-colors"
           >
             {prevLabel}
           </button>
@@ -677,7 +677,7 @@ function ProductionSummaryPanel({ data, commissionRate }) {
   const hasLmps = lmpsGross > 0;
 
   return (
-    <div className="bg-[var(--color-surface)] rounded-xl border border-border/60 p-4 mb-3">
+    <div className="bg-card rounded-xl border border-border/60 p-4 mb-3">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
         Production this week
       </h3>
@@ -757,7 +757,7 @@ function ReviewRow({ label, value }) {
 
 function ReviewSection({ title, children }) {
   return (
-    <div className="bg-[var(--color-surface)] rounded-xl border border-border/60 p-4 mb-3">
+    <div className="bg-card rounded-xl border border-border/60 p-4 mb-3">
       <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">{title}</h3>
       {children}
     </div>

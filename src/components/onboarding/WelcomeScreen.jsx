@@ -58,7 +58,7 @@ export default function WelcomeScreen({ onComplete }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-      <div className="relative bg-[var(--color-surface)] rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+      <div className="relative bg-card rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
         {/* Skip button */}
         <button
           onClick={complete}

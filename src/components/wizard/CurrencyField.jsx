@@ -21,7 +21,7 @@ export default function CurrencyField({ label, name, value, onChange, help }) {
           value={value === 0 ? '' : value}
           onChange={handleChange}
           placeholder="0.00"
-          className="w-full h-11 pl-14 pr-4 text-lg font-semibold text-ink border border-border rounded-lg bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="w-full h-11 pl-14 pr-4 text-lg font-semibold text-ink border border-border rounded-lg bg-card focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
       </div>
       {value > 0 && <p className="text-xs text-ink-muted">{formatCurrency(value)}</p>}

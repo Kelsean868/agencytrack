@@ -133,7 +133,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
         onClick={onClose}
         className="flex-1 bg-black/40 border-0 p-0 m-0 cursor-pointer"
       />
-      <div className="w-full max-w-md bg-[var(--color-surface)] shadow-2xl flex flex-col h-full overflow-hidden">
+      <div className="w-full max-w-md bg-card shadow-2xl flex flex-col h-full overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <p className="text-sm font-bold text-ink">Add New User</p>
@@ -152,7 +152,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                 id="create-user-role"
                 value={targetRole}
                 onChange={(e) => setTargetRole(e.target.value)}
-                className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
               >
                 {creatableRoles.map((r) => (
                   <option key={r} value={r}>{ROLE_DISPLAY[r] ?? r}</option>
@@ -184,7 +184,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
               value={form.name}
               onChange={set('name')}
               placeholder="e.g. Jordan Smith"
-              className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
 
@@ -197,7 +197,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
               value={form.email}
               onChange={set('email')}
               placeholder="user@example.com"
-              className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
 
@@ -212,7 +212,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                   value={form.agentNumber}
                   onChange={set('agentNumber')}
                   placeholder="Optional"
-                  className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -223,7 +223,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                   value={form.contractStartDate}
                   onChange={set('contractStartDate')}
                   max={new Date().toISOString().slice(0, 10)}
-                  className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
                 {form.contractStartDate && (
                   <p className="text-[10px] text-ink-muted">{formatDateFriendly(form.contractStartDate)}</p>
@@ -240,7 +240,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                     id="create-user-unit"
                     value={form.unitId}
                     onChange={set('unitId')}
-                    className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     <option value="">Select a unit…</option>
                     {unitManagers.map((um) => (
@@ -268,7 +268,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                   onChange={set('unitName')}
                   placeholder='e.g. "Phoenix Unit"'
                   maxLength={50}
-                  className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
@@ -282,7 +282,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                     id="create-user-um-branch"
                     value={form.branchId}
                     onChange={set('branchId')}
-                    className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     <option value="">Select a branch…</option>
                     {branchManagers.map((bm) => (
@@ -309,7 +309,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                   id="create-user-bm-branch"
                   value={form.branchId}
                   onChange={set('branchId')}
-                  className="h-10 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
                 >
                   <option value="">Select a branch…</option>
                   {branchManagers.map((bm) => (
@@ -508,7 +508,7 @@ export default function UserManagementPanel() {
                 className={`grid grid-cols-[2fr_2fr_1.5fr_1fr_auto] gap-3 items-center px-3 py-3 rounded-xl border ${
                   isInactive
                     ? 'bg-border/20 border-border/40 opacity-70'
-                    : 'bg-[var(--color-surface)] border-border'
+                    : 'bg-card border-border'
                 }`}
               >
                 <div className="flex items-center gap-2 min-w-0">

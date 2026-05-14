@@ -8,7 +8,7 @@ export function ChampionCard({ Icon, label, champion, medalClass, format }) {
   return (
     <div
       data-testid="champion-card"
-      className="flex flex-col items-center gap-2 rounded-xl bg-[var(--color-surface)] border border-primary/20 p-3 text-center"
+      className="flex flex-col items-center gap-2 rounded-xl bg-card border border-primary/20 p-3 text-center"
     >
       <div className={`badge-medal ${coinClass}`} aria-hidden="true">
         <Icon className="medal-ico" size={26} strokeWidth={2} aria-hidden="true" />
@@ -37,7 +37,7 @@ export default function WeeklyChampionsBanner({ champions, loading }) {
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="flex flex-col items-center gap-2 rounded-xl border border-primary/20 bg-[var(--color-surface)] p-3"
+              className="flex flex-col items-center gap-2 rounded-xl border border-primary/20 bg-card p-3"
             >
               <div className="w-[52px] h-[52px] rounded-full bg-primary/15 animate-pulse" />
               <div className="h-3 w-20 rounded bg-primary/15 animate-pulse" />

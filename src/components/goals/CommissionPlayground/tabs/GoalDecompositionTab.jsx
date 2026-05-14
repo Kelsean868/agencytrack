@@ -41,7 +41,7 @@ function NumField({ label, value, onChange, prefix, step = 1, min = 0, badge }) 
           </span>
         )}
       </div>
-      <div className="flex items-center h-9 rounded-lg border border-border bg-[var(--color-surface)] overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
+      <div className="flex items-center h-9 rounded-lg border border-border bg-card overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
         {prefix && <span className="text-xs text-ink-muted pl-2 pr-1 shrink-0">{prefix}</span>}
         <input
           type="number"
@@ -78,7 +78,7 @@ function OutputTable({ computed, freqKey, onFreqChange }) {
           id="commission-frequency"
           value={freqKey}
           onChange={(e) => onFreqChange(e.target.value)}
-          className="h-9 px-3 rounded-lg border border-border bg-[var(--color-surface)] text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="h-9 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
         >
           {PERIODS.map((p) => (
             <option key={p.key} value={p.key}>{p.label}</option>
@@ -95,7 +95,7 @@ function OutputTable({ computed, freqKey, onFreqChange }) {
           </thead>
           <tbody>
             {rows.map((row, i) => (
-              <tr key={row.label} className={i % 2 === 0 ? 'bg-[var(--color-surface-raised)]' : 'bg-[var(--color-surface)]'}>
+              <tr key={row.label} className={i % 2 === 0 ? 'bg-card-raised' : 'bg-card'}>
                 <td className="px-2 py-2 font-medium text-ink">{row.label}</td>
                 <td className="px-2 py-2 text-right text-ink tabular-nums">{row.fmt(row.value)}</td>
               </tr>

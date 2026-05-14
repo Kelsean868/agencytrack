@@ -960,7 +960,19 @@ Option 1 is the right fix but touches every theme variable + consumer.
 
 ## `bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep (LOW, banked during Mobile FU#4)
 
-- [ ] **`bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep** — Several components use `bg-[var(--color-surface)]` and similar arbitrary syntax instead of the named `bg-card` / `bg-surface` utilities. Resolves correctly through the var; purely a code-hygiene inconsistency. Surfaced during Mobile FU#4 P2-3 closure audit. Defer to a comprehensive sweep rather than one-off fixes. Originally flagged in CLAUDE.md § Cosmetic Inconsistencies.
+- ✅ **`bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep** — CLOSED by PR #<pr#> (`<sha>`): 89 utility substitutions across 28 files. `bg-[var(--color-surface)]` → `bg-card` (83), `bg-[var(--color-surface-raised)]` → `bg-card-raised` (5), `text-[var(--color-text)]` → `text-ink` (1). Computed CSS identical at full opacity (named utilities resolve to `rgb(var(--surface-channels) / 1)` vs `rgb(var(--surface-channels))` — same color when alpha=1). `border-[var(--color-border)]` outliers in WizardForm.jsx held back pending separate `border-border` resolution audit (see banked FU below).
+
+---
+
+## `border-border` utility resolution audit (MEDIUM, banked from arbitrary-syntax sweep)
+
+- [ ] **`border-border` utility resolution audit** — Codebase has 201 usages of `border-border` across 49 files, but `tailwind.config.js` does NOT define `border` under `theme.extend.colors`, and `postcss.config.cjs` has no custom plugin (just `tailwindcss` + `autoprefixer`). Either there is a resolution mechanism not yet traced (Tailwind default, base-layer `@apply` rule, undocumented behavior) or all 201 usages are silently producing no border-color. Surfaced during the arbitrary-syntax sweep audit when the 2 `border-[var(--color-border)]` outliers in `WizardForm.jsx:419` and `WizardForm.jsx:434` looked for a named equivalent — `border-border` was the intuitive candidate but its resolution is unverified. The 2 outliers were held back from the sweep pending this audit. **Priority MEDIUM:** silently-broken borders across 201 usages would be a real defect; if the mechanism turns out to be obvious once investigated, drop to LOW.
+
+---
+
+## KioskShell hex literals → presentation token family (LOW, banked from arbitrary-syntax sweep)
+
+- [ ] **KioskShell hex literals → `presentation` token family** — `src/components/kiosk/KioskShell.jsx:80` and `src/components/kiosk/KioskRoute.jsx:44` use hex literals (`bg-[#1a1612]`, `border-[#4ab5b8]`, `text-[#f0ebe0]`, `text-[#b8aea0]`) for the kiosk fullscreen presentation shell. The `bg-presentation`, `text-presentation`, `bg-presentation-accent`, `border-presentation-border` token family already defined in `tailwind.config.js` appears designed to encode exactly this intent — theme-independent dark presentation surface. Migration would unify kiosk styling with the theme system. Surfaced during arbitrary-syntax sweep audit as a sibling pattern. Different category from the CSS-var-syntax sweep itself (hex literal vs `var()`) so banked separately.
 
 ---
 

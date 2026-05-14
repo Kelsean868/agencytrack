@@ -36,7 +36,7 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
         <div className="flex flex-col gap-5 mt-5">
           {/* Tab pills */}
           <div
-            className="flex gap-1 p-1 rounded-lg bg-[var(--color-surface-raised)] self-start"
+            className="flex gap-1 p-1 rounded-lg bg-card-raised self-start"
             role="tablist"
             aria-label="Commission Playground views"
           >
@@ -48,7 +48,7 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
                 onClick={() => setActiveTab(tab.key)}
                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   activeTab === tab.key
-                    ? 'bg-[var(--color-surface)] text-ink shadow-sm'
+                    ? 'bg-card text-ink shadow-sm'
                     : 'text-ink-muted hover:text-ink'
                 }`}
               >

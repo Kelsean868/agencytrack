@@ -63,7 +63,7 @@ export default function CampaignCard({ campaign, submissions, agentId }) {
   const days = getDaysRemaining(campaign.endDate);
 
   return (
-    <div className="rounded-xl bg-[var(--color-surface)] border-l-4 border-primary border border-primary/20 p-4 flex flex-col gap-3">
+    <div className="rounded-xl bg-card border-l-4 border-primary border border-primary/20 p-4 flex flex-col gap-3">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
