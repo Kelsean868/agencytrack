@@ -13,7 +13,7 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `<sha>` (fix(styles): bind border-border utility to theme token #<pr#>) |
+| Current main HEAD | `1e4bdf0` (fix(styles): bind border-border utility to theme token #156) |
 | Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). `border-border` resolution audit just closed via 1-LOC tailwind binding. Working through remaining LOW items. |
 | Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); KioskShell presentation-token migration; Pattern B `border-border` sites audit (banked from this PR). |
 | Queued | (none) |
@@ -124,7 +124,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #<pr#> | `<sha>` | fix(styles): bind border-border utility to theme token (1 LOC fix, 201 silent usages corrected) |
+| #156 | `1e4bdf0` | fix(styles): bind border-border utility to theme token (1 LOC fix, 201 silent usages corrected) |
 | #155 | `70c764d` | refactor(styles): arbitrary CSS-var-syntax → named-utility sweep (89 substitutions, 28 files) |
 | #154 | `630bac1` | fix(mobile): FU#4 cosmetic cleanup (P2-1 + P2-3; P2-2 closed structurally) |
 | #153 | `9571a28` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
@@ -147,9 +147,9 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** `border-border` utility resolution fix — PR #<pr#> merged (`<sha>`).
+> **Session boundary:** `border-border` utility resolution fix — PR #156 merged (`1e4bdf0`).
 
-**`border-border` resolution fix — 2026-05-14 (fix(styles), PR #<pr#>):** Closed the MEDIUM FU "`border-border` utility resolution audit" banked during PR #155. The audit→fix arc: PR #155's sweep held back the 2 `border-[var(--color-border)]` outliers in WizardForm.jsx pending an audit of whether the intuitive `border-border` replacement actually resolved. Audit confirmed the worst-case hypothesis — the utility had no binding, so all 201 usages across 49 files were silently rendering Tailwind's hardcoded Preflight fallback `#e5e7eb` (cool gray-200) instead of the warm `--color-border` theme token.
+**`border-border` resolution fix — 2026-05-14 (fix(styles), PR #156):** Closed the MEDIUM FU "`border-border` utility resolution audit" banked during PR #155. The audit→fix arc: PR #155's sweep held back the 2 `border-[var(--color-border)]` outliers in WizardForm.jsx pending an audit of whether the intuitive `border-border` replacement actually resolved. Audit confirmed the worst-case hypothesis — the utility had no binding, so all 201 usages across 49 files were silently rendering Tailwind's hardcoded Preflight fallback `#e5e7eb` (cool gray-200) instead of the warm `--color-border` theme token.
 
 - **Mechanism:** `theme.extend.colors` had no `border` key, so Tailwind JIT emitted no `.border-border` rule. The 201 usages produced visible borders only because Preflight's base layer sets `*,:before,:after { border: 0 solid #e5e7eb }` as a hardcoded literal — the fallback color was being used everywhere `border-border` appeared, regardless of theme.
 - **Fix:** 1-LOC addition to `tailwind.config.js` — `border: 'rgb(var(--border-channels) / <alpha-value>)'` under `theme.extend.colors`. Compiled bundle now emits `.border-border{--tw-border-opacity:1;border-color:rgb(var(--border-channels) / var(--tw-border-opacity,1))}`. All 201 usages light up correctly with no JSX touched.
