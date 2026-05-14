@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import GoalDecompositionTab from './tabs/GoalDecompositionTab';
@@ -18,7 +18,7 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
     <div className="card flex flex-col gap-0">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center justify-between w-full text-left"
+        className="flex items-center justify-between w-full text-left min-h-[44px]"
         aria-expanded={open}
       >
         <div>
