@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext(null);
@@ -97,6 +97,24 @@ export function AuthProvider({ children }) {
         setUserProfile(profile);
         setTenantId(resolvedTenantId);
         setRole(resolvedRole);
+
+        // Lazy email sync: verifyBeforeUpdateEmail changes the Firebase Auth
+        // email only after the user clicks the verification link. On the next
+        // sign-in after verification, firebaseUser.email will be the new email
+        // while the Firestore doc still holds the old one. Detect the mismatch
+        // and silently update the doc so the app stays consistent.
+        if (
+          profile &&
+          resolvedTenantId &&
+          firebaseUser.email &&
+          profile.email &&
+          firebaseUser.email !== profile.email
+        ) {
+          updateDoc(
+            doc(db, `tenants/${resolvedTenantId}/users/${firebaseUser.uid}`),
+            { email: firebaseUser.email, updatedAt: serverTimestamp() },
+          ).catch((e) => console.error('[AgencyTrack] email lazy sync failed:', e));
+        }
 
         // Persist so the next sign-in can start the doc read in parallel.
         if (resolvedTenantId) writeCachedTenantId(firebaseUser.uid, resolvedTenantId);
