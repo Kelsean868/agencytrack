@@ -224,7 +224,7 @@ Three low-severity shakedown harness issues banked from the 2026-05-14 run. None
 
 Two architecture improvements banked during SHAKEDOWN-002B Phase 1 ack.
 
-### ~~Cache UM agent UIDs per session~~ (RESOLVED in PR #`<placeholder>`)
+### ~~Cache UM agent UIDs per session~~ (RESOLVED in PR #146)
 
 **Resolved 2026-05-14** — module-scoped `Map<"${tenantId}:${callerUid}", string[]>` in `managerService.js`, populated by a new private `getCallerAgentUids` helper used by both `getWeeklySubmissions` and `getAllYTDSubmissions`. Invalidation via exported `clearAgentUidCache()`, called from `AuthContext` sign-out path (else branch of `onAuthStateChanged`). 6 new cache-coverage tests added (cache miss, cache hit, clear, per-user keying, provisioning filter, cross-function reuse). Existing #144 `beforeEach` hooks each gained one `clearAgentUidCache()` call for test isolation — no assertion or fixture changes.
 
