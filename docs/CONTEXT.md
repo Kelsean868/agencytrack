@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `9571a28` (fix(mobile): tap-target pass for non-core agent surface (FU#2) #153) |
-| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Working through deferred LOW items between in-flight PRs. |
-| Next track | **Mobile FU#4 — P2 cosmetic items.** Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hex literal → token. |
+| Current main HEAD | `<sha>` (fix(mobile): FU#4 cosmetic cleanup #<pr#>) |
+| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). FU#4 cosmetic items just closed. Working through remaining LOW items. |
+| Next track | LOW queue — `bg-[var(--color-X)]` arbitrary-syntax sweep banked from FU#4 audit; HIGH#6 TenantAdminDashboard YTD index waiting on manual production step. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -116,7 +116,6 @@ These are settled across all future sessions. If a session audit surfaces a reas
 |---|---|---|---|
 | **HIGH#6** | TenantAdminDashboard YTD composite index missing | No | Production manual click — tenant_admin loads `/`, copies index URL from `failed-precondition` console error, creates in Firebase console (~2–5 min). PR #131 mirrored existing indexes to source; HIGH#6's index may or may not be in that mirror — verify before assuming closed. Source: `docs/FOLLOW_UPS.md`. |
 | **Resend invite UI** | Per-row "Resend invite" action in user management | No | MEDIUM. Once-off email failures currently have no recourse after the post-create toast dismisses — the truthful warning toast (shipped PR #136) tells admins email failed but the only recovery is recreating the user. Wire `sendPasswordResetEmail` short-term; swap to a `mail/` doc write via a callable wrapper once the PR-D pattern is consumed by more flows. |
-| Mobile FU#4 | P2 cosmetic items | No | Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hardcoded `bg-[#01696f]/8` → token (FU#3 channel-split landed in PR #132 but this site is hex-literal-arbitrary, not token-driven). Source: `docs/FOLLOW_UPS.md`. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 
 ---
@@ -125,11 +124,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<pr#> | `<sha>` | fix(mobile): FU#4 cosmetic cleanup (P2-1 + P2-3; P2-2 closed structurally) |
 | #153 | `9571a28` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
 | #151 | `8a8818c` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
 | #149 | `66dbc77` | fix(dashboard): resolve branch names from branches/ collection |
 | #148 | `20b7c72` | feat(profile): tenant_admin email update with re-auth + audit |
-| #147 | `5434afe` | feat(submissions): denormalize unitId — full defense-in-depth |
 
 ---
 
@@ -141,28 +140,26 @@ These don't block anything, but they need to be resolved or carried forward each
 - **Orphan user** `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc exists but no Auth user. Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). Do not auto-delete; investigate first.
 - **Node.js 20 Functions runtime** deprecated 2026-04-30, decommission 2026-10-30 — migration to Node 22 is a separate ticket. Not blocking; CLAUDE.md locks v1 runtime for current track.
 - **`firebase-functions` SDK** at 4.9.0 — upgrade to ≥5.1.0 has breaking changes; schedule as own ticket post-pilot.
-- **`MotivationalCarousel.jsx` still consumed by `ManagerDashboard.jsx`** — verified still live as of 2026-05-13 (post-M2 manager overview hero #107). Replacement deferred to future Manager surface PR.
+- **`MotivationalCarousel.jsx` is dead code** — removed from ManagerDashboard by M2 (PR #107, `46eda67`). Component file retained in source pending deletion sweep (FU banked in `docs/FOLLOW_UPS.md`).
 - **6 worktrees + ~15 stale local branches** — all attached to merged feature branches. Cleanup banked in `docs/FOLLOW_UPS.md` § Worktree + branch audit.
 
 ---
 
 ## Where we left off
 
-> **Session boundary:** Mobile FU#2 tap-target pass — PR #153 merged (`9571a28`).
+> **Session boundary:** Mobile FU#4 cosmetic cleanup — PR #<pr#> open, pending merge (`<sha>`).
 
-**Mobile FU#2 — 2026-05-14 (fix(mobile), PR #153):** Closed all three P1 items from the Mobile follow-up #2 deferred list. Two files changed + two new test files created.
+**Mobile FU#4 — 2026-05-14 (fix(mobile), PR #<pr#>):** Closed P2-1 with code changes; P2-2 and P2-3 closed structurally. Two files changed (WizardForm + CampaignPanel) + one test extension.
 
-- **P1-1** — `CareerPortal.jsx`: editing-mode button trio (Edit My Goals / Cancel / Save) bumped from `h-8 px-3 text-xs` to `h-11 px-4 text-sm`. Decision was to fix all three siblings, not just the named "Edit" button — fixing one and leaving Cancel/Save at 32px would create a worse pattern in edit mode.
-- **P1-2** — No code change. Structural finding: the entire History row IS the `<button>` element with `card` class (`p-6` ≈ 78px hit area). The `Eye` icon is decorative inside that hit area. The original audit measured the icon's rendered size (15px), not the actual button. Banked permanently in `FOLLOW_UPS.md`. New aria-label FU added (History row button's visible label is "Week of {date}" only; Eye icon needs SR explanation — defer to comprehensive aria sweep).
-- **P1-3** — `CommissionPlayground/index.jsx`: accordion toggle button gets `min-h-[44px]`. `min-h-*` over `h-11` to preserve variable-content design pattern.
+- **P2-1** — `WizardForm.jsx` + `CampaignPanel.jsx`: close-button class bumped from `w-10 h-10` (40×40px) to `w-11 h-11` (44×44px). Sibling sweep across both modal surfaces. Smoke-verified at 44×44px each.
+- **P2-2** — No code change. Structural finding: `LeaderRow` is non-interactive (no onClick/role/href), row height already ~60px via `py-3` + content, avatar is 36px (`size="md"`) not 40px as FOLLOW_UPS originally stated. Original audit measurement was a doc-accuracy gap.
+- **P2-3** — No code change. Closed as already-resolved-structurally. `MotivationalCarousel.jsx` has had zero live consumers since M2 (PR #107, `46eda67`) removed it from ManagerDashboard. The hex-literal defect does not manifest because the component never renders. Token swap applied and reverted in same PR; dead-code deletion banked as new LOW FU.
 
-Also added `import React from 'react'` to `CommissionPlayground/index.jsx` — required for the Vitest jsdom environment (all other tested components already had explicit React import; this file was the only outlier).
+**Banked from this PR's audit:** (1) `bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep entered LOW queue. (2) `MotivationalCarousel.jsx` dead-code deletion banked as LOW FU. (3) `CampaignForm` close button missing `aria-label` banked as LOW FU. (4) CONTEXT.md operational-state claim about carousel consumer was stale by 22 days — corrected in same docs commit.
 
-Test delta: +3 new test cases (class-presence assertions) → 681 total (56 files). Lint: 0 errors. Build: green.
+**Test delta:** +1 new test case (WizardFormSaveStatus close-button class extension) → 683 total (56 files). Lint: 0 errors. Build: green.
 
-**Carryover from PR #149:** Assign a `branch_manager` to "Tatil South" via `BranchesPanel` UI on production (`managerId=null` was deliberate from the data backfill — gives the UI an exercise).
-
-**Next after merge:** Pilot prep — exercise PR-F bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM). SEC-9b (explicit `tenantId` parameter migration) queued after pilot prep.
+**Next after merge:** Fill `<pr#>` + `<sha>` placeholders in `CONTEXT.md` + `FOLLOW_UPS.md`. Then continue LOW queue — `bg-[var(--color-X)]` sweep or HIGH#6 TenantAdminDashboard index as next item.
 
 ---
 

@@ -364,6 +364,13 @@ describe('Persistent-failure escalation', () => {
   });
 });
 
+// ─── 6. Tap-target dimensions (FU#4 P2-1) ────────────────────────────────────
+
+it('close button has 44px tap-target class (w-11 h-11)', () => {
+  renderWizard();
+  expect(screen.getByRole('button', { name: 'Close' }).className).toContain('w-11 h-11');
+});
+
 // ─── 6. R2–R5 Polish ─────────────────────────────────────────────────────────
 
 describe('R2 — live-region structure', () => {
