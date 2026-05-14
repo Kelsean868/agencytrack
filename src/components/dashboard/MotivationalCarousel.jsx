@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   ChevronLeft, ChevronRight,
   Flame, Trophy, Target, Award, CheckCircle2,
@@ -363,7 +363,7 @@ export default function MotivationalCarousel({
     <section
       aria-roledescription="carousel"
       aria-label="Motivational insights"
-      className="rounded-xl bg-primary/8 border border-primary/15 px-4 py-4 mb-6 relative select-none"
+      className="rounded-xl bg-[#01696f]/8 border border-[#01696f]/15 px-4 py-4 mb-6 relative select-none"
     >
       {/* Content */}
       <div className="text-center px-8 min-h-[56px] flex flex-col items-center justify-center transition-all duration-300">
