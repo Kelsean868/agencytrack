@@ -127,6 +127,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #145 | `2b5f37d` | fix(services): bugs squashed |
 | #144 | `1db8a67` | fix(services): enforce UM unit scoping on submissions + Master Sheet aria-label (SHAKEDOWN-002B) |
 | #143 | `bb12c11` | SHAKEDOWN BUG FINDS  |
 | #142 | `1a7526c` | fix(services): enforce UM unit scoping on user list (SHAKEDOWN-002) |
