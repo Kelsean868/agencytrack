@@ -964,9 +964,15 @@ Option 1 is the right fix but touches every theme variable + consumer.
 
 ---
 
-## `border-border` utility resolution audit (MEDIUM, banked from arbitrary-syntax sweep)
+## `border-border` utility resolution audit (MEDIUM, banked from arbitrary-syntax sweep) — RESOLVED in PR #<pr#> (2026-05-14)
 
-- [ ] **`border-border` utility resolution audit** — Codebase has 201 usages of `border-border` across 49 files, but `tailwind.config.js` does NOT define `border` under `theme.extend.colors`, and `postcss.config.cjs` has no custom plugin (just `tailwindcss` + `autoprefixer`). Either there is a resolution mechanism not yet traced (Tailwind default, base-layer `@apply` rule, undocumented behavior) or all 201 usages are silently producing no border-color. Surfaced during the arbitrary-syntax sweep audit when the 2 `border-[var(--color-border)]` outliers in `WizardForm.jsx:419` and `WizardForm.jsx:434` looked for a named equivalent — `border-border` was the intuitive candidate but its resolution is unverified. The 2 outliers were held back from the sweep pending this audit. **Priority MEDIUM:** silently-broken borders across 201 usages would be a real defect; if the mechanism turns out to be obvious once investigated, drop to LOW.
+- ✅ **`border-border` utility resolution audit** — CLOSED by PR #<pr#> (`<sha>`): mechanism untraced because no binding existed. Audit confirmed 201 usages across 49 files were rendering Tailwind's Preflight fallback (`#e5e7eb` gray-200) instead of the warm `--color-border` theme token. Fixed via 1-line addition to `tailwind.config.js`: `theme.extend.colors.border` → `rgb(var(--border-channels) / <alpha-value>)`. All 201 named-utility usages now resolve correctly. Pattern B sites (`border-border` without width utility) banked as separate audit (see below).
+
+---
+
+## Pattern B `border-border` sites audit (LOW, banked from border-border resolution fix)
+
+- [ ] **Pattern B `border-border` sites audit** — Some occurrences of `border-border` in the codebase don't pair with a `border` width utility, so Preflight's `border-width: 0` keeps them invisible even after the PR #<pr#> color-binding fix. Audit task: enumerate Pattern B sites (grep for `border-border` NOT preceded/followed by a border width class on the same element), per-site judgment whether a visible border was intended. Surfaced during the `border-border` resolution audit (PR #155 follow-up). LOW because no visual regression — sites currently render no border and continue to render no border post-PR #<pr#>; this is intentionality verification, not defect remediation.
 
 ---
 
