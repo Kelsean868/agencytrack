@@ -357,7 +357,7 @@ export default function WizardForm({ onClose, initialWeek }) {
           <button
             type="button"
             onClick={onClose}
-            className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface text-ink-muted transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-ink-muted transition-colors"
             aria-label="Close"
           >
             <X size={20} />
