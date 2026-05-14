@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `630bac1` (fix(mobile): FU#4 cosmetic cleanup #154) |
-| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). FU#4 cosmetic items just closed. Working through remaining LOW items. |
-| Next track | LOW queue — `bg-[var(--color-X)]` arbitrary-syntax sweep banked from FU#4 audit; HIGH#6 TenantAdminDashboard YTD index waiting on manual production step. |
+| Current main HEAD | `<sha>` (refactor(styles): arbitrary CSS-var-syntax → named-utility sweep #<pr#>) |
+| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Arbitrary-syntax sweep just closed. Working through remaining LOW items. |
+| Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); `border-border` resolution audit and KioskShell presentation-token migration both banked from this PR's audit. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -29,7 +29,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 ### Multi-tenancy (SEC-9, shipped PR #16; holder retired in SEC-9b)
 
 - `tenantId` is sourced from auth claims at runtime and exposed via `useAuth().tenantId` in all React components.
-- All services accept `tenantId` as an explicit first parameter — the `getTenantId()` runtime holder in `src/firebase.js` was deleted in SEC-9b (PR pending).
+- All services accept `tenantId` as an explicit first parameter — the `getTenantId()` runtime holder in `src/firebase.js` was deleted in SEC-9b (shipped PR #139, `9cbd5a4`).
 - `AuthContext` no longer calls `setRuntimeTenantId`; KioskRoute passes `tenantId` to `KioskShell` as a prop.
 - ~~One inline `import.meta.env.VITE_TENANT_ID` read remains at the AuthContext bootstrap site only — tracked by SEC-11.~~ **Resolved in PR-2:** bootstrap block deleted, SEC-11 closed.
 - `firebase.js` no longer exports `tenantId` as a const, nor the `_tenantId`/`setRuntimeTenantId`/`getTenantId` holder trio.
@@ -124,11 +124,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<pr#> | `<sha>` | refactor(styles): arbitrary CSS-var-syntax → named-utility sweep (89 substitutions, 28 files) |
 | #154 | `630bac1` | fix(mobile): FU#4 cosmetic cleanup (P2-1 + P2-3; P2-2 closed structurally) |
 | #153 | `9571a28` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
 | #151 | `8a8818c` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
 | #149 | `66dbc77` | fix(dashboard): resolve branch names from branches/ collection |
-| #148 | `20b7c72` | feat(profile): tenant_admin email update with re-auth + audit |
 
 ---
 
@@ -147,19 +147,19 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Mobile FU#4 cosmetic cleanup — PR #154 merged (`630bac1`).
+> **Session boundary:** Arbitrary CSS-var-syntax → named-utility sweep — PR #<pr#> merged (`<sha>`).
 
-**Mobile FU#4 — 2026-05-14 (fix(mobile), PR #154):** Closed P2-1 with code changes; P2-2 and P2-3 closed structurally. Two files changed (WizardForm + CampaignPanel) + one test extension.
+**Arbitrary-syntax sweep — 2026-05-14 (refactor(styles), PR #<pr#>):** Closed the LOW FU "`bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep" banked during Mobile FU#4 audit. Pure code-hygiene refactor; mechanical find/replace across 28 files.
 
-- **P2-1** — `WizardForm.jsx` + `CampaignPanel.jsx`: close-button class bumped from `w-10 h-10` (40×40px) to `w-11 h-11` (44×44px). Sibling sweep across both modal surfaces. Smoke-verified at 44×44px each.
-- **P2-2** — No code change. Structural finding: `LeaderRow` is non-interactive (no onClick/role/href), row height already ~60px via `py-3` + content, avatar is 36px (`size="md"`) not 40px as FOLLOW_UPS originally stated. Original audit measurement was a doc-accuracy gap.
-- **P2-3** — No code change. Closed as already-resolved-structurally. `MotivationalCarousel.jsx` has had zero live consumers since M2 (PR #107, `46eda67`) removed it from ManagerDashboard. The hex-literal defect does not manifest because the component never renders. Token swap applied and reverted in same PR; dead-code deletion banked as new LOW FU.
+- 89 utility substitutions: `bg-[var(--color-surface)]` → `bg-card` (83), `bg-[var(--color-surface-raised)]` → `bg-card-raised` (5), `text-[var(--color-text)]` → `text-ink` (1).
+- Held back from scope: `border-[var(--color-border)]` (2 WizardForm.jsx occurrences). The intuitive replacement `border-border` is used 201× across 49 files but tailwind.config.js does NOT define `border` under `theme.extend.colors`. Resolution mechanism untraced. Migrating 2 explicit-and-working outliers to an unverified utility would shift them from "known correct" to "unverified" — worse, not better. Banked as separate audit FU (MEDIUM until mechanism traced).
+- Hex-literal arbitrary syntax (KioskShell, CampaignCard medal palette, GapAnalysisPanel categorical purple) explicitly out of scope — different category from CSS-var arbitrary syntax. KioskShell migration to `presentation` token family banked as separate LOW FU; others have no clear token home (rule 7).
 
-**Banked from this PR's audit:** (1) `bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep entered LOW queue. (2) `MotivationalCarousel.jsx` dead-code deletion banked as LOW FU. (3) `CampaignForm` close button missing `aria-label` banked as LOW FU. (4) CONTEXT.md operational-state claim about carousel consumer was stale by 22 days — corrected in same docs commit.
+**Banked from this PR's audit:** (1) `border-border` utility resolution audit (MEDIUM — silently-broken borders across 201 usages would be a real defect). (2) KioskShell hex literals → `presentation` token family (LOW).
 
-**Test delta:** +1 new test case (WizardFormSaveStatus close-button class extension) → 683 total (56 files). Lint: 0 errors. Build: green.
+**Verification:** Lint 0 errors (16 pre-existing `react-hooks/exhaustive-deps` warnings unchanged). Build green. Test suite 682/682 pass (no behavioral surface). Smoke walk waived per Memory 35 internal-refactor carve-out; replacement was 3-minute visual spot-check on UserManagementPanel + EditUserDrawer + CampaignPanel — zero visual delta vs production.
 
-**Next:** Continue LOW queue — `bg-[var(--color-X)]` sweep or HIGH#6 TenantAdminDashboard index as next item.
+**Next:** Continue LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step), or one of the two new banked FUs.
 
 ---
 
