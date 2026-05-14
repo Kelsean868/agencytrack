@@ -156,17 +156,92 @@ Two app bugs confirmed by the pre-pilot shakedown run. Full report: [`docs/shake
 
 **Fix shape D:** Made the Firestore user doc the load-bearing fallback. Parallel fetch via `Promise.all([getIdTokenResult(true), getDoc(...)])` using a localStorage-cached tenantId. `resolvedRole = claims.role ?? doc.role ?? null`. `ProvisioningScreen` added to `App.jsx` for the true-null case (no claims AND no doc). Post-merge manual smoke: Kyron creates fresh BM via UserManagementPanel, signs in, confirms BM dashboard renders within seconds.
 
-### SHAKEDOWN-002 — Unit Manager sees cross-unit agents — RESOLVED in PR #<PR#>
+### SHAKEDOWN-002 — Unit Manager sees cross-unit agents — FULLY RESOLVED in PR #142 + PR #<PR#>
 
-**Resolved in PR #<PR#>** (`<squash-sha>`, `fix(services): enforce UM unit scoping on user list (SHAKEDOWN-002)`).
+**User list scoping resolved in PR #142** (`1a7526c`, `fix(services): enforce UM unit scoping on user list (SHAKEDOWN-002)`).
 
-**Root cause (confirmed in Phase 1):** Two separate unscoped queries — `managerService.getTenantUsers` and `agentManagementService.getAllUsers` — both called `getDocs(collection(...users))` with no `where` filter and no role awareness. Firestore rules permitted all manager roles (including `unit_manager`) to list all tenant users via the `canManage()` helper. Both surfaces (Master Sheet via `managerService`, Team tab via `agentManagementService`) leaked cross-unit agents to the UM.
+**Submission scoping + aria-label resolved in PR #<PR#>** (`<squash-sha>`, `fix(services): enforce UM unit scoping on submissions + Master Sheet aria-label (SHAKEDOWN-002B)`).
 
-**Fix shape C (combined — client + rules):** Both service functions now read `auth.currentUser.getIdTokenResult()` internally and apply `where('unitId', '==', callerUid)` when the caller is a `unit_manager`. Firestore rules' `users/{userId}` block now splits `allow read` into separate `allow get` (single doc, UM restricted to own unit or own doc) and `allow list` (UM restricted to `resource.data.unitId == request.auth.uid`, so unscoped UM collection queries are denied at the rules layer). BM/TA/PA scopes unchanged.
+**Root cause (confirmed across both PRs):** PR #142's Phase 1 audit scoped to user-list queries only. Three separate unscoped paths leaked cross-unit data to the UM:
+1. `managerService.getTenantUsers` — Master Sheet name map. **Fixed in PR #142.**
+2. `agentManagementService.getAllUsers` — Team tab agent list. **Fixed in PR #142.**
+3. `managerService.getWeeklySubmissions` — Master Sheet row data. **Fixed in PR #<PR#>.**
+4. `managerService.getAllYTDSubmissions` — Production Report + Manager Dashboard YTD data. **Fixed in PR #<PR#>.**
 
-**Files changed:** `src/services/managerService.js`, `src/services/agentManagementService.js`, `firestore.rules`, `src/services/__tests__/managerService.test.js` (new), `src/services/__tests__/agentManagementService.test.js` (new describe block).
+**Fix shape (submissions, PR #<PR#>):** Submissions don't carry `unitId`, so the `where('unitId','==',callerUid)` pattern from #142 couldn't be applied directly. Instead: service reads `auth.currentUser.getIdTokenResult()`, UM path fetches agent UIDs via `where('unitId','==',callerUid)` on users collection, then applies `where('agentId','in',agentUids)` on the submissions query. `getAllYTDSubmissions` UM path filters status client-side to avoid a 3-field compound index requirement. Firestore rules split submissions `allow read` into `allow get` (UM restricted via cross-doc unitId lookup) + `allow list` (partial defense-in-depth; list relies on client filter due to Firestore limitation). 10 new test cases.
 
-**Post-merge manual smoke:** Sign in as UM, confirm Team tab + Master Sheet show only own unit's agents. Sign in as BM, confirm full branch visibility preserved.
+**Post-merge manual smoke:** Sign in as UM, confirm Team tab + Master Sheet rows + Production Report show only own unit's agents. Sign in as BM, confirm full branch visibility preserved. Verify `aria-label="Select week"` on week picker via devtools.
+
+---
+
+## Bug 005 — Master Sheet week picker `select-name` CRITICAL a11y — RESOLVED in PR #<PR#> (2026-05-14)
+
+**Resolved 2026-05-14 in PR #<PR#>** (`<squash-sha>`, `fix(services): enforce UM unit scoping on submissions + Master Sheet aria-label (SHAKEDOWN-002B)`).
+
+**Root cause:** `MasterSheet.jsx` week picker `<select>` had no accessible name — no `<label>`, `aria-label`, or `aria-labelledby`. Axe rule `select-name`. Surfaced as a CRITICAL violation in the 2026-05-14 shakedown's cat07-a11y run (T7.11), first run where cat07 reached the Master Sheet after the infrastructure errors in runs 1+2 were resolved.
+
+**Fix:** `aria-label="Select week"` added directly to the `<select>` element at `MasterSheet.jsx:207`. XS effort — one token addition.
+
+---
+
+## Shakedown harness — LOW opportunistic follow-ups (banked 2026-05-14)
+
+Three low-severity shakedown harness issues banked from the 2026-05-14 run. None blocking pilot demo.
+
+### Bug 001 — Wizard screen 5 selector fragility (LOW, shakedown harness)
+
+**Source:** Shakedown run 3 T2A.03 `cat02-role-agent`, pre-existing across all 3 runs.
+
+**Error:** `Wizard screen 5 (summary) not detected` — test navigates through 4 Next/Continue button clicks and expects `summary|review|submit|total` text on screen 5.
+
+**Hypothesis:** Mismatch between the test's button-text regex and the actual wizard's navigation control label, OR screen 5 uses different terminology than expected. Inspect `shakedown-screenshots-2026-05-14T08-18-31/cat02-agent/wizard/screen5.png` + align test regex against `WizardForm.jsx` screen 5 label text.
+
+**Fix area:** `cat02-role-agent.mjs:T2A.03` — regex adjustment only (not a WizardForm regression; wizard was unchanged across all 3 shakedown runs). Effort: S.
+
+### Bugs 003/004 — Form validation tests expect visible error messages; wizard uses silent filtering (LOW, shakedown harness)
+
+**Source:** Shakedown run 3 T4.02 + T4.03 `cat04-form-validation`, first run to reach these tests (cat04 threw infra errors in runs 1+2).
+
+**Bug 003 (T4.02):** Non-Sunday date entered; test waits for a validation error indicator. `validateSundayDate()` likely silently prevents the date from being accepted without surfacing a visible error element.
+
+**Bug 004 (T4.03):** Text entered in numeric field; test waits for rejection feedback. `NumericField.jsx` likely filters non-numeric input silently (valid UX — the char just doesn't appear) with no error message rendered.
+
+**Design intent:** Silent filtering is likely intentional — both are form-level guards that keep the field clean without triggering error UI. The tests need to be updated to match the actual behavior (assert the invalid value never entered the field, rather than waiting for an error message).
+
+**Fix area:** `cat04-form-validation.mjs:T4.02` + `T4.03` — adjust waitForFunction condition to assert the *absence* of invalid input rather than *presence* of an error element. Confirm design intent first via manual wizard walk. Effort: S each.
+
+### Bug 006 — Screenshot dossier 79/80 captures (LOW, shakedown harness polish)
+
+**Source:** Shakedown run 3 T8.ALL `cat08-screenshot-dossier`.
+
+**Error:** 79 captures vs ≥80 target. One screenshot missed — likely downstream of T2A.03 wizard walk exiting early before its screen 5 screenshot, or a skipped platform-admin screenshot.
+
+**Fix area:** Either adjust the dossier count target to 79 (if platform-admin screenshots are expected to be skipped in the current test environment), or fix the upstream test that exits early (Bug 001 wizard walk). If Bug 001 is resolved, the screen 5 screenshot will likely be captured and close this automatically. Effort: XS.
+
+---
+
+## SHAKEDOWN follow-ups — future optimization items (LOW, banked 2026-05-14)
+
+Two architecture improvements banked during SHAKEDOWN-002B Phase 1 ack.
+
+### Cache UM agent UIDs per session (LOW, post-pilot)
+
+**Scope:** The `unit_manager` path in `getWeeklySubmissions` and `getAllYTDSubmissions` each issue a `getDocs` call to fetch agent UIDs before querying submissions. On the Master Sheet surface, both functions are called in the same `useEffect` (or close together) — 2 round-trips per data load.
+
+**Future optimization:** cache the UM's agent UID list in session state (e.g. React context or a module-level memo keyed by `[tenantId, callerUid]`) so the agent-lookup read is issued once per session rather than once per submission-fetch. Net: one fewer Firestore read per Master Sheet load and per Production Report load.
+
+Not urgent — at pilot scale the extra read costs fractions of a cent. Revisit if unit sizes grow or Firestore billing becomes material.
+
+### Denormalize `unitId` onto submission docs (LOW, post-pilot)
+
+**Scope:** Submissions don't carry `unitId` (only `agentId`). The SHAKEDOWN-002B fix uses an agent-uid-lookup approach to work around this. A future denormalization of `unitId` onto submission docs at write time (`submissionService.saveDraft` / `submitReport`) would:
+1. Enable `where('unitId', '==', callerUid)` directly on the submissions query (same pattern as user-list scoping).
+2. Unblock Firestore rules-level `allow list` enforcement for UM (currently `resource.data` is unavailable during list operations; the client-side `agentId in agentUids` filter is the real enforcement).
+3. Eliminate the two-step agent-uid-lookup round-trip (see cache item above).
+
+**Migration path:** add `unitId` field in `saveDraft`/`submitReport` in `submissionService.js`, backfill existing docs via a one-off Admin SDK script (join each submission's `agentId` against its user doc's `unitId`). Firestore rules can then be tightened from `allow list: if canManage(tenantId)` to `allow list: if canManage(tenantId) && (getRole() != 'unit_manager' || resource.data.unitId == request.auth.uid)` — wait, this still doesn't work for list (resource.data unavailable at list time). Partial win: `allow get` is already cross-doc restricted; denormalization enables a `where` filter on the query itself which is the real enforcement mechanism.
+
+Not blocking pilot. Bank for post-pilot schema iteration.
 
 ---
 

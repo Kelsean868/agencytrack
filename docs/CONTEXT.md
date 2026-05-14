@@ -13,8 +13,8 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `8f652ed` (docs(briefs): SHAKEDOWN-002 UM cross-unit visibility fix kickoff) |
-| Active track | **SHAKEDOWN-002** — UM unit scoping fix. PR open, awaiting merge + manual smoke. |
+| Current main HEAD | `37d8479` (docs(briefs): SHAKEDOWN-002B continuation + Bug 005 fix kickoff) |
+| Active track | **SHAKEDOWN-002B** — UM submissions scoping fix (getWeeklySubmissions + getAllYTDSubmissions) + Master Sheet aria-label (Bug 005). PR open, awaiting merge + manual smoke. |
 | Next track | **Pilot prep — end-to-end testing using PR-F tooling.** Exercise the new bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
@@ -127,12 +127,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #\<PR#> | `<squash-sha>` | fix(services): enforce UM unit scoping on submissions + Master Sheet aria-label (SHAKEDOWN-002B) |
 | #143 | `bb12c11` | SHAKEDOWN BUG FINDS  |
 | #142 | `1a7526c` | fix(services): enforce UM unit scoping on user list (SHAKEDOWN-002) |
 | #141 | `162b8de` | fix(auth): manager role resolution on first login (SHAKEDOWN-001) |
 | #140 | `6603d27` | AGENCY Shakedown results |
-| #139 | `9cbd5a4` | refactor(services): migrate to explicit tenantId parameter (SEC-9b) |
-| #138 | `261b9ec` | test(infra): close test infra MEDIUM — agentManagementService specs + CI test step |
 
 ---
 
@@ -151,11 +150,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** SHAKEDOWN-002 — UM cross-unit visibility fix. PR open on branch `shakedown-002-um-unit-scoping` (or similar). Awaiting Kyron manual smoke + merge.
+> **Session boundary:** SHAKEDOWN-002B — UM submissions scoping fix. PR open on branch `fix/shakedown-002b-submissions-scope`. Awaiting Kyron manual smoke + merge.
 
-**Last feature work — 2026-05-14 (SHAKEDOWN-002):** Fixed UM cross-unit data leak across both affected surfaces. Phase 1 discovery confirmed two independent unscoped queries: `managerService.getTenantUsers` (consumed by MasterSheet) and `agentManagementService.getAllUsers` (consumed by UserManagementPanel / Team tab). Both now read `auth.currentUser.getIdTokenResult()` internally and apply `where('unitId', '==', callerUid)` for `unit_manager` callers. Firestore rules split `users/{userId}` `allow read` into `allow get` + `allow list`, with UM restricted to own unit on both. New `managerService.test.js` (6 cases) + new `getAllUsers` describe block in `agentManagementService.test.js` (5 cases). BM/TA/PA scopes unchanged.
+**Last feature work — 2026-05-14 (SHAKEDOWN-002B):** Completed UM cross-unit data fix that PR #142 started. Phase 1 full audit surfaced two unscoped submission paths not covered by #142: `getWeeklySubmissions` (MasterSheet rows) and `getAllYTDSubmissions` (UnitManagerProductionView + ManagerDashboard). Root cause: submissions don't carry `unitId`, so the `where('unitId','==',callerUid)` pattern from #142 couldn't be applied directly. Fix uses agent-uid lookup first, then `where('agentId','in',agentUids)` for UM callers. Firestore rules split submissions `allow read` into `allow get` (UM restricted via cross-doc unitId lookup) + `allow list` (partial defense-in-depth; client-side filter is the real enforcement for list due to Firestore list-time per-doc limitation). Also fixed Bug 005: `aria-label="Select week"` added to MasterSheet week picker `<select>`. 10 new test cases added (5 for getWeeklySubmissions, 5 for getAllYTDSubmissions). Bug 005 fully closes SHAKEDOWN-002 (submissions path); SHAKEDOWN-001 (PR #141) remains clean.
 
-**Pre-pilot state:** Both SHAKEDOWN pilot blockers addressed (001 in PR #141, 002 in PR #<PR#>). After SHAKEDOWN-002 merges, both fixes are live and pilot prep can proceed — exercise the PR-F bulk-seed + cleanup tooling against the full pilot flow.
+**Pre-pilot state:** Both SHAKEDOWN pilot blockers fully addressed (001 in PR #141, 002 complete with PR #142 + this PR). After this PR merges, pilot prep can proceed — exercise the PR-F bulk-seed + cleanup tooling against the full pilot flow.
 
 **Next:** Kyron reviews PR + performs manual smoke (sign in as UM → confirm only own unit visible; sign in as BM → confirm full branch visible). After merge, update CONTEXT.md/FOLLOW_UPS.md with squash SHA + PR#, then pivot to end-to-end pilot prep.
 

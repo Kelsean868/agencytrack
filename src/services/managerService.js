@@ -4,6 +4,30 @@ import {
 import { db, auth } from '../firebase';
 
 export async function getWeeklySubmissions(tenantId, weekStarting) {
+  const { claims } = await auth.currentUser.getIdTokenResult();
+
+  if (claims.role === 'unit_manager') {
+    const callerUid = auth.currentUser.uid;
+    // Submissions don't carry unitId, so resolve the UM's agent UIDs from users first.
+    // SHAKEDOWN-002B: same defense-in-depth pattern as getTenantUsers / getAllUsers.
+    const agentsSnap = await getDocs(
+      query(collection(db, `tenants/${tenantId}/users`), where('unitId', '==', callerUid))
+    );
+    // TODO: chunk into ≤30-item batches if units ever exceed Firestore `in` cap
+    const agentUids = agentsSnap.docs
+      .filter((d) => d.data().provisioning !== true)
+      .map((d) => d.id);
+    if (agentUids.length === 0) return [];
+    const q = query(
+      collection(db, `tenants/${tenantId}/submissions`),
+      where('weekStarting', '==', weekStarting),
+      where('agentId', 'in', agentUids)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  }
+
+  // BM / TA / PA: full query unchanged.
   const q = query(
     collection(db, `tenants/${tenantId}/submissions`),
     where('weekStarting', '==', weekStarting)
@@ -32,6 +56,34 @@ export async function getTenantUsers(tenantId) {
 
 export async function getAllYTDSubmissions(tenantId) {
   const year = new Date().getFullYear();
+  const { claims } = await auth.currentUser.getIdTokenResult();
+
+  if (claims.role === 'unit_manager') {
+    const callerUid = auth.currentUser.uid;
+    // Submissions don't carry unitId — resolve agent UIDs from users first.
+    // SHAKEDOWN-002B: same pattern as getWeeklySubmissions.
+    const agentsSnap = await getDocs(
+      query(collection(db, `tenants/${tenantId}/users`), where('unitId', '==', callerUid))
+    );
+    // TODO: chunk into ≤30-item batches if units ever exceed Firestore `in` cap
+    const agentUids = agentsSnap.docs
+      .filter((d) => d.data().provisioning !== true)
+      .map((d) => d.id);
+    if (agentUids.length === 0) return [];
+    // status filtered client-side to avoid a 3-field compound index (agentId + weekStarting range + status).
+    const q = query(
+      collection(db, `tenants/${tenantId}/submissions`),
+      where('agentId', 'in', agentUids),
+      where('weekStarting', '>=', `${year}-01-01`),
+      where('weekStarting', '<=', `${year}-12-31`)
+    );
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((s) => s.status === 'submitted');
+  }
+
+  // BM / TA / PA: full query unchanged.
   const q = query(
     collection(db, `tenants/${tenantId}/submissions`),
     where('weekStarting', '>=', `${year}-01-01`),
