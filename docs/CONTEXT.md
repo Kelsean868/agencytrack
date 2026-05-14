@@ -13,10 +13,10 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `8a8818c` (feat(wizard): R2-R5 polish — nested live regions, motion-reduce, retry throttle, sticky failure window #151) |
-| Active track | **Pilot prep** — end-to-end testing using PR-F tooling. Exercise the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
-| Next track | **SEC-9b** — migrate services to explicit `tenantId` parameter. PR open on `sec-9b`. |
-| Queued | (none) |
+| Current main HEAD | `<sha>` (fix(mobile): tap-target pass for non-core agent surface (FU#2) #<pr#>) |
+| Active track | **Mobile FU#2** — non-core agent tap-target pass (P1-1 CareerPortal trio, P1-3 CommissionPlayground accordion; P1-2 structural finding). PR open, pending merge. |
+| Next track | **Pilot prep** — end-to-end testing using PR-F tooling. Exercise the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
+| Queued | **SEC-9b** — migrate services to explicit `tenantId` parameter. PR open on `sec-9b`. |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
 
@@ -116,7 +116,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 |---|---|---|---|
 | **HIGH#6** | TenantAdminDashboard YTD composite index missing | No | Production manual click — tenant_admin loads `/`, copies index URL from `failed-precondition` console error, creates in Firebase console (~2–5 min). PR #131 mirrored existing indexes to source; HIGH#6's index may or may not be in that mirror — verify before assuming closed. Source: `docs/FOLLOW_UPS.md`. |
 | **Resend invite UI** | Per-row "Resend invite" action in user management | No | MEDIUM. Once-off email failures currently have no recourse after the post-create toast dismisses — the truthful warning toast (shipped PR #<placeholder>) tells admins email failed but the only recovery is recreating the user. Wire `sendPasswordResetEmail` short-term; swap to a `mail/` doc write via a callable wrapper once the PR-D pattern is consumed by more flows. |
-| Mobile FU#2 | Non-core agent surface P1s | No | `CareerPortal` "Edit My Goals" 32px → 44px, `History` row eye/preview hit area, `CommissionPlayground` accordion toggle measure-and-adjust. Source: `docs/FOLLOW_UPS.md`. |
+| Mobile FU#2 | Non-core agent surface P1s | No | **PR open, pending merge.** P1-1 + P1-3 code-fixed; P1-2 closed via structural finding (History row IS the button at ~78px). Source: `docs/FOLLOW_UPS.md`. |
 | Mobile FU#4 | P2 cosmetic items | No | Wizard close (X) button 40×40 → 44×44, Leaderboard avatar tap-row, `MotivationalCarousel.jsx:366` hardcoded `bg-[#01696f]/8` → token (FU#3 channel-split landed in PR #132 but this site is hex-literal-arbitrary, not token-driven). Source: `docs/FOLLOW_UPS.md`. |
 | SEC-9b | Migrate services to explicit `tenantId` parameter | No | **PR open on `sec-9b`** — 9 service commits + Phase 3/4/5/6. Awaiting merge. Post-merge: run production smoke test. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
@@ -127,11 +127,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<pr#> | `<sha>` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
 | #151 | `8a8818c` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
 | #149 | `66dbc77` | fix(dashboard): resolve branch names from branches/ collection |
 | #148 | `20b7c72` | feat(profile): tenant_admin email update with re-auth + audit |
 | #147 | `5434afe` | feat(submissions): denormalize unitId — full defense-in-depth |
-| #146 | `f108698` | perf(services): cache UM agent UIDs per session |
 
 ---
 
@@ -150,20 +150,21 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Wizard R2-R5 polish — PR #151 merged (`8a8818c`).
+> **Session boundary:** Mobile FU#2 tap-target pass — PR #<pr#> open, pending Kyron's merge.
 
-**Wizard R2-R5 polish — 2026-05-14 (feat(wizard), PR #151):** Closed all four deferred wizard polish items from `docs/FOLLOW_UPS.md` "Wizard polish (post-pilot)". Single file touched: `src/components/wizard/WizardForm.jsx` + its test file.
+**Mobile FU#2 — 2026-05-14 (fix(mobile), PR #<pr#>):** Closed all three P1 items from the Mobile follow-up #2 deferred list. Two files changed + two new test files created.
 
-- **R2** — Split nested `role="alert"` inside `role="status"` into sibling live regions. Polite region (`role="status"`) carries idle/saving/saved states; assertive region (`role="alert"`) carries failed/offline/escalated states. Screen readers now reliably announce both channels.
-- **R3** — Added `motion-reduce:animate-none` guard to the `animate-pulse` class on the saving indicator. Users with `prefers-reduced-motion` no longer see the pulse.
-- **R4** — Added 2s throttle to the Retry button via `lastRetryAt` ref. Silent no-op on rapid re-clicks; reset on each new failure so the first retry is never blocked. Layered on top of (not replacing) existing disabled-while-saving behavior.
-- **R5** — Sticky failure window (DECISION LOCKED: 8s). `stickyError` state hoisted to WizardForm parent (set in same React batch as `saving` state). `FAILURE_STICKY_MS = 8000` named const. `failedShownAt` ref anchors the window; `visibleError` derived during render. Timer deferred via `setTimeout` for the direct `failed→saved` path; legitimate replacement (saving re-fires) clears immediately.
+- **P1-1** — `CareerPortal.jsx`: editing-mode button trio (Edit My Goals / Cancel / Save) bumped from `h-8 px-3 text-xs` to `h-11 px-4 text-sm`. Decision was to fix all three siblings, not just the named "Edit" button — fixing one and leaving Cancel/Save at 32px would create a worse pattern in edit mode.
+- **P1-2** — No code change. Structural finding: the entire History row IS the `<button>` element with `card` class (`p-6` ≈ 78px hit area). The `Eye` icon is decorative inside that hit area. The original audit measured the icon's rendered size (15px), not the actual button. Banked permanently in `FOLLOW_UPS.md`. New aria-label FU added (History row button's visible label is "Week of {date}" only; Eye icon needs SR explanation — defer to comprehensive aria sweep).
+- **P1-3** — `CommissionPlayground/index.jsx`: accordion toggle button gets `min-h-[44px]`. `min-h-*` over `h-11` to preserve variable-content design pattern.
 
-Test delta: +4 new test cases → 677 total (54 files). Verification: lint 0 errors, 677/677 pass, build green.
+Also added `import React from 'react'` to `CommissionPlayground/index.jsx` — required for the Vitest jsdom environment (all other tested components already had explicit React import; this file was the only outlier).
+
+Test delta: +3 new test cases (class-presence assertions) → 681 total (56 files). Lint: 0 errors. Build: green.
 
 **Carryover from PR #149:** Assign a `branch_manager` to "Tatil South" via `BranchesPanel` UI on production (`managerId=null` was deliberate from the data backfill — gives the UI an exercise).
 
-**Next:** Pilot prep — exercise PR-F bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM). SEC-9b (explicit `tenantId` parameter migration) queued after pilot prep.
+**Next after merge:** Pilot prep — exercise PR-F bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM). SEC-9b (explicit `tenantId` parameter migration) queued after pilot prep.
 
 ---
 
