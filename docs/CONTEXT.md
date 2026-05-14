@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `70c764d` (refactor(styles): arbitrary CSS-var-syntax → named-utility sweep #155) |
-| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Arbitrary-syntax sweep just closed. Working through remaining LOW items. |
-| Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); `border-border` resolution audit and KioskShell presentation-token migration both banked from this PR's audit. |
+| Current main HEAD | `<sha>` (fix(styles): bind border-border utility to theme token #<pr#>) |
+| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). `border-border` resolution audit just closed via 1-LOC tailwind binding. Working through remaining LOW items. |
+| Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); KioskShell presentation-token migration; Pattern B `border-border` sites audit (banked from this PR). |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -124,11 +124,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<pr#> | `<sha>` | fix(styles): bind border-border utility to theme token (1 LOC fix, 201 silent usages corrected) |
 | #155 | `70c764d` | refactor(styles): arbitrary CSS-var-syntax → named-utility sweep (89 substitutions, 28 files) |
 | #154 | `630bac1` | fix(mobile): FU#4 cosmetic cleanup (P2-1 + P2-3; P2-2 closed structurally) |
 | #153 | `9571a28` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
 | #151 | `8a8818c` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
-| #149 | `66dbc77` | fix(dashboard): resolve branch names from branches/ collection |
 
 ---
 
@@ -147,19 +147,20 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Arbitrary CSS-var-syntax → named-utility sweep — PR #155 merged (`70c764d`).
+> **Session boundary:** `border-border` utility resolution fix — PR #<pr#> merged (`<sha>`).
 
-**Arbitrary-syntax sweep — 2026-05-14 (refactor(styles), PR #155):** Closed the LOW FU "`bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep" banked during Mobile FU#4 audit. Pure code-hygiene refactor; mechanical find/replace across 28 files.
+**`border-border` resolution fix — 2026-05-14 (fix(styles), PR #<pr#>):** Closed the MEDIUM FU "`border-border` utility resolution audit" banked during PR #155. The audit→fix arc: PR #155's sweep held back the 2 `border-[var(--color-border)]` outliers in WizardForm.jsx pending an audit of whether the intuitive `border-border` replacement actually resolved. Audit confirmed the worst-case hypothesis — the utility had no binding, so all 201 usages across 49 files were silently rendering Tailwind's hardcoded Preflight fallback `#e5e7eb` (cool gray-200) instead of the warm `--color-border` theme token.
 
-- 89 utility substitutions: `bg-[var(--color-surface)]` → `bg-card` (83), `bg-[var(--color-surface-raised)]` → `bg-card-raised` (5), `text-[var(--color-text)]` → `text-ink` (1).
-- Held back from scope: `border-[var(--color-border)]` (2 WizardForm.jsx occurrences). The intuitive replacement `border-border` is used 201× across 49 files but tailwind.config.js does NOT define `border` under `theme.extend.colors`. Resolution mechanism untraced. Migrating 2 explicit-and-working outliers to an unverified utility would shift them from "known correct" to "unverified" — worse, not better. Banked as separate audit FU (MEDIUM until mechanism traced).
-- Hex-literal arbitrary syntax (KioskShell, CampaignCard medal palette, GapAnalysisPanel categorical purple) explicitly out of scope — different category from CSS-var arbitrary syntax. KioskShell migration to `presentation` token family banked as separate LOW FU; others have no clear token home (rule 7).
+- **Mechanism:** `theme.extend.colors` had no `border` key, so Tailwind JIT emitted no `.border-border` rule. The 201 usages produced visible borders only because Preflight's base layer sets `*,:before,:after { border: 0 solid #e5e7eb }` as a hardcoded literal — the fallback color was being used everywhere `border-border` appeared, regardless of theme.
+- **Fix:** 1-LOC addition to `tailwind.config.js` — `border: 'rgb(var(--border-channels) / <alpha-value>)'` under `theme.extend.colors`. Compiled bundle now emits `.border-border{--tw-border-opacity:1;border-color:rgb(var(--border-channels) / var(--tw-border-opacity,1))}`. All 201 usages light up correctly with no JSX touched.
+- **Visual delta:** light-mode subtle (warm beige `#e5e2db` vs cool gray `#e5e7eb` are visually close); dark-mode significant (warm dark `#3a3530` vs light gray `#e5e7eb` — the Preflight color was rendering light-gray borders on warm-dark surfaces, theme-incorrect and missed by the original a11y/dark-mode audit).
+- **Held back from scope:** `theme.extend.borderColor.DEFAULT` (would change behavior for any one-off bare `border` usage — speculative, not banked per CLAUDE.md rule 7). Pattern B sites (`border-border` without a width utility) banked as separate audit FU — needs per-site judgment whether visible border was intended.
 
-**Banked from this PR's audit:** (1) `border-border` utility resolution audit (MEDIUM — silently-broken borders across 201 usages would be a real defect). (2) KioskShell hex literals → `presentation` token family (LOW).
+**Banked from this PR's audit:** Pattern B `border-border` sites audit (LOW — no visual regression, intentionality verification only).
 
-**Verification:** Lint 0 errors (16 pre-existing `react-hooks/exhaustive-deps` warnings unchanged). Build green. Test suite 682/682 pass (no behavioral surface). Smoke walk waived per Memory 35 internal-refactor carve-out; replacement was 3-minute visual spot-check on UserManagementPanel + EditUserDrawer + CampaignPanel — zero visual delta vs production.
+**Verification:** Lint 0 errors (16 pre-existing `react-hooks/exhaustive-deps` warnings unchanged). Build green. Test suite 682/682 pass. Compiled bundle inspection confirms `.border-border` rule landed with theme-token resolution. Smoke walk performed at mobile viewport (390×844) on 2-3 high-density Pattern A surfaces in both light and dark mode with computed-RGB-value evidence (results in PR description).
 
-**Next:** Continue LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step), or one of the two new banked FUs.
+**Next:** Continue LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step), KioskShell presentation-token migration, or Pattern B `border-border` sites audit.
 
 ---
 
