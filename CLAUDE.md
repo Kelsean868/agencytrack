@@ -412,6 +412,14 @@ PR #147's Phase 1 hard stops covered "agent doc missing" (structural) but not "a
 
 Pattern: for any denormalization or value-dependent fix, Phase 1 must sample-read a representative subset of source docs and verify the relevant field values are populated as the change assumes. Surface sparse fields, unexpected nulls, or assignment gaps as Phase 1 findings before designing the fix, not after running it.
 
+### 7. Active follow-ups table = active items only
+
+When a row's status transitions to CLOSED (resolving PR merged), remove the row from Active follow-ups in the same Phase 4 docs commit as the resolving PR. Audit trail is preserved in git log + the Recently-shipped table + `docs/FOLLOW_UPS.md` closed sections. Closed rows lingering in Active follow-ups is documentation debt, not audit trail. Banked from PR #153 Phase 4 (Mobile FU#2 row left as CLOSED in Active follow-ups, cleaned up post-hoc at `ba2f4e5`).
+
+### 8. Phase 4 stale-row audit
+
+During Phase 4 docs maintenance, in addition to filling the current PR's placeholders, scan the Active follow-ups table's status column for "PR open", "awaiting merge", "in progress", or similar live-state claims. For each, verify against `gh pr list --state open` and recent `git log origin/main --oneline -20`. Reconcile any drift in the same commit. Banked from one session surfacing three stale SEC-9b "PR open" references (PR #139 had shipped weeks earlier); without this audit, CONTEXT.md state drifts silently from shipped reality.
+
 ---
 
 ## Banked patterns (also from 2026-05-14 session)
