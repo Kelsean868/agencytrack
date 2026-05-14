@@ -12,8 +12,8 @@
 
 | Field | Value |
 |---|---|
-| Last updated | `2026-05-15` |
-| Current main HEAD | `20b7c72` (feat(profile): tenant_admin email update with re-auth + audit #148) |
+| Last updated | `2026-05-14` |
+| Current main HEAD | `66dbc77` (fix(dashboard): resolve branch names from branches/ collection #149) |
 | Active track | **Pilot prep** — end-to-end testing using PR-F tooling. Exercise the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
 | Next track | **SEC-9b** — migrate services to explicit `tenantId` parameter. PR open on `sec-9b`. |
 | Queued | (none) |
@@ -127,11 +127,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #149 | `66dbc77` | fix(dashboard): resolve branch names from branches/ collection |
 | #148 | `20b7c72` | feat(profile): tenant_admin email update with re-auth + audit |
 | #147 | `5434afe` | feat(submissions): denormalize unitId — full defense-in-depth |
 | #146 | `f108698` | perf(services): cache UM agent UIDs per session |
 | #145 | `2b5f37d` | fix(services): bugs squashed |
-| #144 | `1db8a67` | fix(services): enforce UM unit scoping on submissions + Master Sheet aria-label (SHAKEDOWN-002B) |
 
 ---
 
@@ -150,11 +150,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** `tenant_admin` email update — PR #148 merged.
+> **Session boundary:** TA Dashboard branch-name rendering bug — PR #149 merged.
 
-**Last feature work — 2026-05-15 (feat+tenant-admin-email-update, PR #148):** Self-service email update flow for `tenant_admin` accounts shipped. `requestEmailUpdate` in `authService.js` orchestrates re-auth via `reauthenticateWithCredential` → `verifyBeforeUpdateEmail` (sends verification link; Auth email only changes after user clicks) → audit write to new `auditAdminEmailUpdates` top-level collection. `EmailUpdateModal` component handles form, validation, success state, and friendly error mapping. `ProfileScreen` conditionally shows "Update" button for `tenant_admin` role only. `AuthContext` lazy-syncs Firestore email on next sign-in after verification. Rules: `email` added to the self-update allowlist; new `auditAdminEmailUpdates` collection with scoped `allow create`. Test delta: +2 files / +20 tests (7 service unit tests + 13 component tests). Full suite: 54 files / 665 tests.
+**Last bug fix — 2026-05-14 (fix+branch-overview-name-join, PR #149):** Tenant Admin Dashboard's Branch overview rendered a Firestore auto-ID (`Ljbbhp1g7lbzxvhlpcdn`) instead of "Cyril Murray Branch" for any branch created via the C1 `BranchesPanel` UI. Root cause: `BranchHealthCards` derived labels solely from `user.branchId` and humanised the slug — worked for legacy `tatil_south` by coincidence (slug-shaped), broke for `addDoc()`-generated IDs. Fix is two layers: (1) `BranchHealthCards` now accepts a `branches` prop and joins `user.branchId` against the `branches/` collection with a fallback chain `branch.name` → `humaniseSlug(id)` for slug-shaped IDs → `"Unnamed branch"` for auto-IDs; `TenantAdminDashboard` loads `listBranches` once on mount, non-fatal on failure. (2) `scripts/backfill/seed-tatil-south-branch.mjs` (run from feature worktree pre-merge per CLAUDE.md additive-data rule) created the missing `tenants/tatillife_south/branches/tatil_south` doc with `name="Tatil South"`, `managerId=null`, `isActive=true`. Idempotent; 10 users linked. Test delta: +8 BranchHealthCards tests + `branchService` mock added to TenantAdminDashboard test. Full suite: 54 files / 673 tests.
 
-**Phase 1 methodology catch:** Brief's "Decisions locked" listed `updateEmail()` but the UX description ("old email stays active until verified") only holds for `verifyBeforeUpdateEmail()`. Surfaced before coding; Kyron confirmed correct API. Documented in PR #148 description as proof the methodology works even when the brief author is wrong.
+**Phase 1 methodology catch (Rule 2):** Discovery enumerated all read paths joinable to `branchId`, not just the called-out rendering. Surfaced two impacts beyond the user-reported bug: `BranchesPanel` could not manage "Tatil South" (no `branches/` doc) and the `Active Branches` StatCard counted the orphan as a branch. Data backfill closed both. Banked in PR #149 description as Rule 2 paying off — Phase 1 caught two adjacent problems the user report didn't name. Also surfaced (banked for next brief): inline kickoffs should call out Phase 4/5 docs-with-placeholder steps explicitly so Phase 7 fills placeholders rather than authoring fresh content. `scripts/backfill/inspect-branches-bug.mjs` retained as future tenant diagnostic tooling.
+
+**Next session manual step (carryover):** Assign a `branch_manager` to "Tatil South" via `BranchesPanel` UI on production (`managerId=null` was deliberate from the data backfill — gives the UI an exercise).
 
 **Next:** Pilot prep — exercise PR-F bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM). SEC-9b (explicit `tenantId` parameter migration) queued after pilot prep.
 
