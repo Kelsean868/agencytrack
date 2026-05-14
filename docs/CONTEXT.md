@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `66dbc77` (fix(dashboard): resolve branch names from branches/ collection #149) |
-| Active track | **Pilot prep** — end-to-end testing using PR-F tooling. Exercise the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
-| Next track | **SEC-9b** — migrate services to explicit `tenantId` parameter. PR open on `sec-9b`. |
+| Current main HEAD | `<sha>` (feat(wizard): R2-R5 polish — nested live regions, motion-reduce, retry throttle, sticky failure window #<pr#>) |
+| Active track | **Wizard R2-R5 polish** — four deferred a11y/UX polish items from post-PR #88 analysis. PR #<pr#> open for review. |
+| Next track | **Pilot prep** — end-to-end testing using PR-F tooling. Exercise the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -127,11 +127,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<pr#> | `<sha>` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
 | #149 | `66dbc77` | fix(dashboard): resolve branch names from branches/ collection |
 | #148 | `20b7c72` | feat(profile): tenant_admin email update with re-auth + audit |
 | #147 | `5434afe` | feat(submissions): denormalize unitId — full defense-in-depth |
 | #146 | `f108698` | perf(services): cache UM agent UIDs per session |
-| #145 | `2b5f37d` | fix(services): bugs squashed |
 
 ---
 
@@ -150,13 +150,18 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** TA Dashboard branch-name rendering bug — PR #149 merged.
+> **Session boundary:** Wizard R2-R5 polish — PR #<pr#> open for review.
 
-**Last bug fix — 2026-05-14 (fix+branch-overview-name-join, PR #149):** Tenant Admin Dashboard's Branch overview rendered a Firestore auto-ID (`Ljbbhp1g7lbzxvhlpcdn`) instead of "Cyril Murray Branch" for any branch created via the C1 `BranchesPanel` UI. Root cause: `BranchHealthCards` derived labels solely from `user.branchId` and humanised the slug — worked for legacy `tatil_south` by coincidence (slug-shaped), broke for `addDoc()`-generated IDs. Fix is two layers: (1) `BranchHealthCards` now accepts a `branches` prop and joins `user.branchId` against the `branches/` collection with a fallback chain `branch.name` → `humaniseSlug(id)` for slug-shaped IDs → `"Unnamed branch"` for auto-IDs; `TenantAdminDashboard` loads `listBranches` once on mount, non-fatal on failure. (2) `scripts/backfill/seed-tatil-south-branch.mjs` (run from feature worktree pre-merge per CLAUDE.md additive-data rule) created the missing `tenants/tatillife_south/branches/tatil_south` doc with `name="Tatil South"`, `managerId=null`, `isActive=true`. Idempotent; 10 users linked. Test delta: +8 BranchHealthCards tests + `branchService` mock added to TenantAdminDashboard test. Full suite: 54 files / 673 tests.
+**Wizard R2-R5 polish — 2026-05-14 (feat(wizard), PR #<pr#>):** Closed all four deferred wizard polish items from `docs/FOLLOW_UPS.md` "Wizard polish (post-pilot)". Single file touched: `src/components/wizard/WizardForm.jsx` + its test file.
 
-**Phase 1 methodology catch (Rule 2):** Discovery enumerated all read paths joinable to `branchId`, not just the called-out rendering. Surfaced two impacts beyond the user-reported bug: `BranchesPanel` could not manage "Tatil South" (no `branches/` doc) and the `Active Branches` StatCard counted the orphan as a branch. Data backfill closed both. Banked in PR #149 description as Rule 2 paying off — Phase 1 caught two adjacent problems the user report didn't name. Also surfaced (banked for next brief): inline kickoffs should call out Phase 4/5 docs-with-placeholder steps explicitly so Phase 7 fills placeholders rather than authoring fresh content. `scripts/backfill/inspect-branches-bug.mjs` retained as future tenant diagnostic tooling.
+- **R2** — Split nested `role="alert"` inside `role="status"` into sibling live regions. Polite region (`role="status"`) carries idle/saving/saved states; assertive region (`role="alert"`) carries failed/offline/escalated states. Screen readers now reliably announce both channels.
+- **R3** — Added `motion-reduce:animate-none` guard to the `animate-pulse` class on the saving indicator. Users with `prefers-reduced-motion` no longer see the pulse.
+- **R4** — Added 2s throttle to the Retry button via `lastRetryAt` ref. Silent no-op on rapid re-clicks; reset on each new failure so the first retry is never blocked. Layered on top of (not replacing) existing disabled-while-saving behavior.
+- **R5** — Sticky failure window (DECISION LOCKED: 8s). `stickyError` state hoisted to WizardForm parent (set in same React batch as `saving` state). `FAILURE_STICKY_MS = 8000` named const. `failedShownAt` ref anchors the window; `visibleError` derived during render. Timer deferred via `setTimeout` for the direct `failed→saved` path; legitimate replacement (saving re-fires) clears immediately.
 
-**Next session manual step (carryover):** Assign a `branch_manager` to "Tatil South" via `BranchesPanel` UI on production (`managerId=null` was deliberate from the data backfill — gives the UI an exercise).
+Test delta: +4 new test cases → 677 total (54 files). Verification: lint 0 errors, 677/677 pass, build green.
+
+**Carryover from PR #149:** Assign a `branch_manager` to "Tatil South" via `BranchesPanel` UI on production (`managerId=null` was deliberate from the data backfill — gives the UI an exercise).
 
 **Next:** Pilot prep — exercise PR-F bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM). SEC-9b (explicit `tenantId` parameter migration) queued after pilot prep.
 
