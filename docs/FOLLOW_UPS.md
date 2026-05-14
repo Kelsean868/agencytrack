@@ -954,7 +954,7 @@ Option 1 is the right fix but touches every theme variable + consumer.
 
 - ✅ **P2-1** — CLOSED by PR #<pr#> (<sha>): WizardForm + CampaignPanel close buttons bumped to `w-11 h-11` (44×44px). Sibling sweep included.
 - ✅ **P2-2** — CLOSED by PR #<pr#> (<sha>): already-resolved structurally. LeaderRow is non-interactive (no onClick/role/href), row height ~60px via `py-3` + content, and avatar is 36px (`size="md"`) not 40px. Tap-target rules apply only to tap targets. FOLLOW_UPS text "40×40" was a doc-accuracy gap — actual size 36px. No code change required.
-- ✅ **P2-3** — CLOSED by PR #<pr#> (<sha>): MotivationalCarousel hex literals replaced with `bg-primary/8` + `border-primary/15` tokens. Dark-mode theme contract restored.
+- ✅ **P2-3** — CLOSED by PR #<pr#> (<sha>): closed as already-resolved-structurally. `MotivationalCarousel.jsx` has had zero live consumers since M2 (PR #107, `46eda67`) removed it from ManagerDashboard. The hex-literal defect does not manifest because the component never renders. Dead-code deletion banked as a new LOW FU (see below).
 
 ---
 
@@ -967,6 +967,12 @@ Option 1 is the right fix but touches every theme variable + consumer.
 ## CampaignForm close button missing aria-label (LOW, banked during Mobile FU#4 smoke)
 
 - [ ] **CampaignForm close button missing aria-label** — `src/components/campaigns/CampaignPanel.jsx:283` close button has no `aria-label`; contains only a decorative `<X />` icon (no visible text). Screen-reader users hear "button" with no description. Same defect pattern as the History row aria-label gap banked from FU#2 (`AgentDashboard.jsx:722-747`). Surfaced during Mobile FU#4 P2-1 smoke walk attempting `waitForSelector('[aria-label="Close"]')` as a form-open gate — selector never resolved, confirming the label is absent. Defer to a comprehensive aria sweep rather than a one-off fix.
+
+---
+
+## Delete dead MotivationalCarousel component (LOW, banked during Mobile FU#4 smoke)
+
+- [ ] **Delete dead `MotivationalCarousel` component** — `src/components/dashboard/MotivationalCarousel.jsx` (~150 LOC) has had zero live consumers since M2 (PR #107, `46eda67`) removed it from `ManagerDashboard` and wired `ManagerOverviewTab`. Component remains in source. Verified dead via grep (no JSX usage anywhere in `src/` outside the test file) and git log of PR #107 commit message ("Removes MotivationalCarousel + Sparkles placeholder"). Surfaced during Mobile FU#4 P2-3 smoke walk when the component could not be located in any rendered dashboard. Removal is mechanical: delete the component file. No imports remain to clean up. Defer to a dead-code-removal sweep rather than a one-off.
 
 ---
 

@@ -140,7 +140,7 @@ These don't block anything, but they need to be resolved or carried forward each
 - **Orphan user** `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc exists but no Auth user. Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). Do not auto-delete; investigate first.
 - **Node.js 20 Functions runtime** deprecated 2026-04-30, decommission 2026-10-30 — migration to Node 22 is a separate ticket. Not blocking; CLAUDE.md locks v1 runtime for current track.
 - **`firebase-functions` SDK** at 4.9.0 — upgrade to ≥5.1.0 has breaking changes; schedule as own ticket post-pilot.
-- **`MotivationalCarousel.jsx` still consumed by `ManagerDashboard.jsx`** — verified still live as of 2026-05-13 (post-M2 manager overview hero #107). Replacement deferred to future Manager surface PR.
+- **`MotivationalCarousel.jsx` is dead code** — removed from ManagerDashboard by M2 (PR #107, `46eda67`). Component file retained in source pending deletion sweep (FU banked in `docs/FOLLOW_UPS.md`).
 - **6 worktrees + ~15 stale local branches** — all attached to merged feature branches. Cleanup banked in `docs/FOLLOW_UPS.md` § Worktree + branch audit.
 
 ---
@@ -149,15 +149,15 @@ These don't block anything, but they need to be resolved or carried forward each
 
 > **Session boundary:** Mobile FU#4 cosmetic cleanup — PR #<pr#> open, pending merge (`<sha>`).
 
-**Mobile FU#4 — 2026-05-14 (fix(mobile), PR #<pr#>):** Closed all three P2 cosmetic items from the Mobile FU#4 deferred list. Four files changed (3 source + 1 React-import fix) + one new test file.
+**Mobile FU#4 — 2026-05-14 (fix(mobile), PR #<pr#>):** Closed P2-1 with code changes; P2-2 and P2-3 closed structurally. Two files changed (WizardForm + CampaignPanel) + one test extension.
 
-- **P2-1** — `WizardForm.jsx` + `CampaignPanel.jsx`: close-button class bumped from `w-10 h-10` (40×40px) to `w-11 h-11` (44×44px). Sibling sweep across both modal surfaces.
+- **P2-1** — `WizardForm.jsx` + `CampaignPanel.jsx`: close-button class bumped from `w-10 h-10` (40×40px) to `w-11 h-11` (44×44px). Sibling sweep across both modal surfaces. Smoke-verified at 44×44px each.
 - **P2-2** — No code change. Structural finding: `LeaderRow` is non-interactive (no onClick/role/href), row height already ~60px via `py-3` + content, avatar is 36px (`size="md"`) not 40px as FOLLOW_UPS originally stated. Original audit measurement was a doc-accuracy gap.
-- **P2-3** — `MotivationalCarousel.jsx:366`: `bg-[#01696f]/8` → `bg-primary/8`, `border-[#01696f]/15` → `border-primary/15`. Hardcoded hex bypassed the dark-mode token switch; swap restores theme contract. Also added `import React from 'react'` to this file — required for the Vitest jsdom environment (same pattern as `CommissionPlayground/index.jsx` in PR #153).
+- **P2-3** — No code change. Closed as already-resolved-structurally. `MotivationalCarousel.jsx` has had zero live consumers since M2 (PR #107, `46eda67`) removed it from ManagerDashboard. The hex-literal defect does not manifest because the component never renders. Token swap applied and reverted in same PR; dead-code deletion banked as new LOW FU.
 
-**Banked from this PR's audit:** `bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep entered LOW queue in `FOLLOW_UPS.md`. Different hygiene category from the hex-literal swap; works correctly through the var, just inconsistent.
+**Banked from this PR's audit:** (1) `bg-[var(--color-X)]` arbitrary-syntax → named-utility sweep entered LOW queue. (2) `MotivationalCarousel.jsx` dead-code deletion banked as LOW FU. (3) `CampaignForm` close button missing `aria-label` banked as LOW FU. (4) CONTEXT.md operational-state claim about carousel consumer was stale by 22 days — corrected in same docs commit.
 
-**Test delta:** +1 new test case (WizardFormSaveStatus extension) + 1 new test file (MotivationalCarousel.tokens) → 683 total (57 files). Lint: 0 errors. Build: green.
+**Test delta:** +1 new test case (WizardFormSaveStatus close-button class extension) → 683 total (56 files). Lint: 0 errors. Build: green.
 
 **Next after merge:** Fill `<pr#>` + `<sha>` placeholders in `CONTEXT.md` + `FOLLOW_UPS.md`. Then continue LOW queue — `bg-[var(--color-X)]` sweep or HIGH#6 TenantAdminDashboard index as next item.
 
