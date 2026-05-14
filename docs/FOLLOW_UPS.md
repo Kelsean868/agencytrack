@@ -1073,9 +1073,9 @@ tenant's subcollections.
 
 ---
 
-## tenant_admin email update path — RESOLVED in PR #<PR#> (2026-05-15)
+## tenant_admin email update path — RESOLVED in PR #148 (2026-05-15)
 
-**Resolved 2026-05-15 in PR #<PR#>** (`<squash-sha>`,
+**Resolved 2026-05-15 in PR #148** (`20b7c72`,
 `feat(profile): tenant_admin email update with re-auth + audit`).
 
 Self-service email update flow in `ProfileScreen.jsx` for `tenant_admin` role only.

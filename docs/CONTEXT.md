@@ -13,7 +13,7 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-15` |
-| Current main HEAD | `5434afe` (feat(submissions): denormalize unitId onto submission docs — full defense-in-depth #147) |
+| Current main HEAD | `20b7c72` (feat(profile): tenant_admin email update with re-auth + audit #148) |
 | Active track | **Pilot prep** — end-to-end testing using PR-F tooling. Exercise the full pilot flow (user creation → wizard → manager review → kiosk → AOM) before the Tatil demo. |
 | Next track | **SEC-9b** — migrate services to explicit `tenantId` parameter. PR open on `sec-9b`. |
 | Queued | (none) |
@@ -127,7 +127,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #<PR#> | `<squash-sha>` | feat(profile): tenant_admin email update with re-auth + audit |
+| #148 | `20b7c72` | feat(profile): tenant_admin email update with re-auth + audit |
 | #147 | `5434afe` | feat(submissions): denormalize unitId — full defense-in-depth |
 | #146 | `f108698` | perf(services): cache UM agent UIDs per session |
 | #145 | `2b5f37d` | fix(services): bugs squashed |
@@ -150,11 +150,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** `unitId` denormalization on submissions — PR #147 merged, indexes + rules deployed, production smoke passed.
+> **Session boundary:** `tenant_admin` email update — PR #148 merged.
 
-**Last feature work — 2026-05-15 (denormalize-submission-unitId, PR #147):** Completed full defense-in-depth `unitId` denormalization on submission docs. All three submission write paths (`saveDraft`, `submitReport`, `aggregateCurrentWeekDaily`) now include `unitId` in the Firestore payload. `managerService.js` simplified: agent-uid cache from PR #146 fully removed; UM queries now use direct `where('unitId','==',callerUid)` against the submission collection. Firestore rules tightened: `allow list` on submissions now enforces UM scoping via `resource.data.unitId == request.auth.uid` (was no restriction). Composite index `(unitId ASC, weekStarting ASC)` added and deployed. Backfill script executed: 22/22 existing submissions in `tatillife_south` backfilled with real `unitId` values; idempotency confirmed. A mid-session sub-task fixed 4 test user docs that had no `unitId` (blocking the main backfill from writing real values) — `assign-test-unit.mjs` written + executed, then main backfill re-run. All bundled into PR #147. Production smoke tests passed: UM sees only own unit, BM sees full branch, agent submission docs carry `unitId`.
+**Last feature work — 2026-05-15 (feat+tenant-admin-email-update, PR #148):** Self-service email update flow for `tenant_admin` accounts shipped. `requestEmailUpdate` in `authService.js` orchestrates re-auth via `reauthenticateWithCredential` → `verifyBeforeUpdateEmail` (sends verification link; Auth email only changes after user clicks) → audit write to new `auditAdminEmailUpdates` top-level collection. `EmailUpdateModal` component handles form, validation, success state, and friendly error mapping. `ProfileScreen` conditionally shows "Update" button for `tenant_admin` role only. `AuthContext` lazy-syncs Firestore email on next sign-in after verification. Rules: `email` added to the self-update allowlist; new `auditAdminEmailUpdates` collection with scoped `allow create`. Test delta: +2 files / +20 tests (7 service unit tests + 13 component tests). Full suite: 54 files / 665 tests.
 
-**Third write path discovery:** Phase 1 audit proactively caught `loggingModeService.js:aggregateCurrentWeekDaily` as a third write path not in the original brief — the SHAKEDOWN-002B audit-gap lesson applied forward. Scope expansion surfaced and approved before coding.
+**Phase 1 methodology catch:** Brief's "Decisions locked" listed `updateEmail()` but the UX description ("old email stays active until verified") only holds for `verifyBeforeUpdateEmail()`. Surfaced before coding; Kyron confirmed correct API. Documented in PR #148 description as proof the methodology works even when the brief author is wrong.
 
 **Next:** Pilot prep — exercise PR-F bulk-seed + cleanup tooling against the full pilot flow (user creation → wizard → manager review → kiosk → AOM). SEC-9b (explicit `tenantId` parameter migration) queued after pilot prep.
 
