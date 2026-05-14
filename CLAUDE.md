@@ -351,7 +351,7 @@ Claude Code creates worktree branches automatically — each maps 1:1 to a PR.
 
 ## Methodology requirements (added 2026-05-14, from pilot prep session)
 
-These four rules emerged from a productive but mistake-yielding session. Apply on every CC brief and dispatch.
+These eight rules emerged from a productive but mistake-yielding session. Apply on every CC brief and dispatch.
 
 ### 1. Surface before architectural decisions
 
