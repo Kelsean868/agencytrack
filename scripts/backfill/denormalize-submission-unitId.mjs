@@ -28,12 +28,23 @@
 import { createRequire } from 'module';
 import { fileURLToPath } from 'url';
 import path from 'path';
+import { existsSync } from 'fs';
 
 const require = createRequire(import.meta.url);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ROOT    = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 
-// Admin SDK is installed only in functions/node_modules.
-const admin = require(path.resolve(__dirname, '../../functions/node_modules/firebase-admin'));
+// ── Admin SDK init (mirrors preview-test-data-sweep.mjs) ──────────────────────
+
+const KEY_PATH = path.resolve(ROOT, 'functions/service-account-key.json');
+if (!existsSync(KEY_PATH)) {
+  console.error(`ERROR: service account key not found at ${KEY_PATH}`);
+  process.exit(1);
+}
+
+const admin = require('../../functions/node_modules/firebase-admin');
+if (!admin.apps.length) {
+  admin.initializeApp({ credential: admin.credential.cert(require(KEY_PATH)) });
+}
 
 // ─── Argument parsing ────────────────────────────────────────────────────────
 
@@ -53,9 +64,6 @@ if (TENANT_FILTER) {
   console.log(`[backfill] Filtering to tenant: ${TENANT_FILTER}`);
 }
 
-// ─── Firebase init ───────────────────────────────────────────────────────────
-
-admin.initializeApp();
 const db = admin.firestore();
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
