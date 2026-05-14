@@ -964,6 +964,12 @@ Option 1 is the right fix but touches every theme variable + consumer.
 
 ---
 
+## CampaignForm close button missing aria-label (LOW, banked during Mobile FU#4 smoke)
+
+- [ ] **CampaignForm close button missing aria-label** — `src/components/campaigns/CampaignPanel.jsx:283` close button has no `aria-label`; contains only a decorative `<X />` icon (no visible text). Screen-reader users hear "button" with no description. Same defect pattern as the History row aria-label gap banked from FU#2 (`AgentDashboard.jsx:722-747`). Surfaced during Mobile FU#4 P2-1 smoke walk attempting `waitForSelector('[aria-label="Close"]')` as a form-open gate — selector never resolved, confirming the label is absent. Defer to a comprehensive aria sweep rather than a one-off fix.
+
+---
+
 ## A11Y dark-mode story — CLOSED in PR7
 
 PR3/PR4/PR5/PR6/PR7 collectively brought the project to **0 axe color-contrast
