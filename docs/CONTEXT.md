@@ -127,6 +127,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #143 | `bb12c11` | SHAKEDOWN BUG FINDS  |
 | #142 | `1a7526c` | fix(services): enforce UM unit scoping on user list (SHAKEDOWN-002) |
 | #141 | `162b8de` | fix(auth): manager role resolution on first login (SHAKEDOWN-001) |
 | #140 | `6603d27` | AGENCY Shakedown results |
