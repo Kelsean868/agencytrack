@@ -46,7 +46,7 @@ vi.mock('../../../services/submissionService', () => ({
   sanitize: (d) => d,
 }));
 
-import WizardForm from '../WizardForm';
+import WizardForm, { SaveStatusIndicator } from '../WizardForm';
 
 // --- Helpers ---
 
@@ -361,5 +361,97 @@ describe('Persistent-failure escalation', () => {
     });
 
     expect(screen.queryByText(/Couldn't save your work/)).not.toBeInTheDocument();
+  });
+});
+
+// ─── 6. R2–R5 Polish ─────────────────────────────────────────────────────────
+
+describe('R2 — live-region structure', () => {
+  it('polite and assertive regions are siblings, not nested', () => {
+    const { container } = render(
+      <SaveStatusIndicator saving={false} savedAt={null} stickyError={false} isOffline={false} onRetry={vi.fn()} />
+    );
+    const polite = container.querySelector('[role="status"]');
+    const alert  = container.querySelector('[role="alert"]');
+    expect(polite).not.toBeNull();
+    expect(alert).not.toBeNull();
+    expect(polite.contains(alert)).toBe(false);
+    expect(alert.contains(polite)).toBe(false);
+  });
+});
+
+describe('R3 — motion-reduce guard', () => {
+  it('every animate-pulse in the saving indicator carries motion-reduce:animate-none', () => {
+    const { container } = render(
+      <SaveStatusIndicator saving={true} savedAt={null} stickyError={false} isOffline={false} onRetry={vi.fn()} />
+    );
+    const pulsing = container.querySelectorAll('[class*="animate-pulse"]');
+    expect(pulsing.length).toBeGreaterThan(0);
+    pulsing.forEach((el) => {
+      expect(el.className).toContain('motion-reduce:animate-none');
+    });
+  });
+});
+
+describe('R4 — retry throttle', () => {
+  afterEach(() => { vi.restoreAllMocks(); });
+
+  it('throttles rapid retry clicks to once per 2s, then allows again after the window', () => {
+    const fakeNow = 1_000_000;
+    vi.spyOn(Date, 'now').mockReturnValue(fakeNow);
+
+    const onRetry = vi.fn();
+    render(
+      <SaveStatusIndicator saving={false} savedAt={null} stickyError={true} isOffline={false} onRetry={onRetry} />
+    );
+
+    const retryBtn = screen.getByRole('button', { name: 'Retry save' });
+
+    fireEvent.click(retryBtn);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    // Second click within 2s — throttled
+    fireEvent.click(retryBtn);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+
+    // Advance past 2s threshold
+    vi.spyOn(Date, 'now').mockReturnValue(fakeNow + 2001);
+
+    // Third click — passes through
+    fireEvent.click(retryBtn);
+    expect(onRetry).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('R5 — sticky failure window', () => {
+  it('holds the failed indicator visible for 8s even if a save succeeds within the window', () => {
+    const onRetry = vi.fn();
+    const { rerender } = render(
+      <SaveStatusIndicator saving={false} savedAt={null} stickyError={true} isOffline={false} onRetry={onRetry} />
+    );
+
+    expect(screen.getByText('Save failed — tap to retry')).toBeInTheDocument();
+
+    // Advance 1s — still within the 8s sticky window
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(screen.getByText('Save failed — tap to retry')).toBeInTheDocument();
+
+    // Transition directly to saved state (stickyError cleared by parent, savedAt set — no saving intermediate)
+    act(() => {
+      rerender(
+        <SaveStatusIndicator saving={false} savedAt={new Date()} stickyError={false} isOffline={false} onRetry={onRetry} />
+      );
+    });
+
+    // visibleError still holds via failedShownAt ref — failed visible, Saved suppressed
+    expect(screen.getByText('Save failed — tap to retry')).toBeInTheDocument();
+    expect(screen.queryByText('Saved')).not.toBeInTheDocument();
+
+    // Advance past the full 8s window (8100ms more brings fake clock well past the timer)
+    act(() => { vi.advanceTimersByTime(8100); });
+
+    // Swap completes — Saved now visible
+    expect(screen.queryByText('Save failed — tap to retry')).not.toBeInTheDocument();
+    expect(screen.getByText('Saved')).toBeInTheDocument();
   });
 });
