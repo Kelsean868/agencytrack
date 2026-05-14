@@ -40,6 +40,7 @@ export default {
           muted:   'rgb(var(--text-muted-channels) / <alpha-value>)',
           faint:   'rgb(var(--text-faint-channels) / <alpha-value>)',
         },
+        border: 'rgb(var(--border-channels) / <alpha-value>)',
         success: {
           DEFAULT: 'rgb(var(--success-channels) / <alpha-value>)',
           tint:    'var(--color-success-tint)',
