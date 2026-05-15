@@ -13,7 +13,7 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-15` |
-| Current main HEAD | `a40fe73` (docs(claude.md): methodology batch — 6 edits from FU#4 → border-border arc, #159) |
+| Current main HEAD | `9805933` (chore: close (unitId, weekStarting) index deploy-state FU (Outcome a — deployed), #162) |
 | Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology batch just closed via 6 CLAUDE.md edits (Phase 0 gate, Rule 4 regex fix, Rule 8 prose extension, verification-target language, static-CSS-verification pattern, Rule 9 dispatcher protocol). Working through remaining LOW items. |
 | Next track | LOW queue — KioskShell presentation-token migration; env-credentials propagation audit (deferred 7th queue item from this batch). |
 | Queued | (none) |
@@ -123,7 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #___ | `________` | docs: close (unitId, weekStarting) composite index FU (Outcome a — deployed, Kelsean-verified 2026-05-15) |
+| #162 | `9805933` | docs: close (unitId, weekStarting) composite index FU (Outcome a — deployed, Kelsean-verified 2026-05-15) |
 | #160 | `1d4f194` | docs: close HIGH#6 (TenantAdminDashboard YTD index — resolved in PR #131) + bank PR #147 unitId index FU |
 | #159 | `a40fe73` | docs: CLAUDE.md methodology batch (6 edits from FU#4 → border-border arc) |
 | #158 | `8a9df1b` | docs: fill FOLLOW_UPS.md stale placeholders (12 sites across 5 FU sections — Track D, SHAKEDOWN-001, SHAKEDOWN-002B, Bug 005, Test Infrastructure) |
