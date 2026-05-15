@@ -123,6 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #168 | `{SHA168}` | docs(CLAUDE): bank 5 methodology rules — firestore indexes deploy confirmation (Workflow) + Rules 10–13 (brief commit convention, FU body re-audit, hard-stop language, AC waiver protocol) |
 | #166 | `eedd2bb` | chore: close shakedown bugs 001/003/004/006 (navigator off-by-one + assertion fixes in cat02/cat04/cat08) |
 | #164 | `33e44e6` | chore: close react-hooks/exhaustive-deps × 3 FU (AgentAwardsPanel `now` useMemo fix + items 2/3 direct closure) |
 | #162 | `9805933` | docs: close (unitId, weekStarting) composite index FU (Outcome a — deployed, Kelsean-verified 2026-05-15) |
