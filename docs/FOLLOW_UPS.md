@@ -176,7 +176,7 @@ Two app bugs confirmed by the pre-pilot shakedown run. Full report: [`docs/shake
 
 ## Bug 005 — Master Sheet week picker `select-name` CRITICAL a11y — RESOLVED in PR #144 (2026-05-14)
 
-**Resolved 2026-05-14 in PR #144** (`<squash-sha>`, `fix(services): enforce UM unit scoping on submissions + Master Sheet aria-label (SHAKEDOWN-002B)`).
+**Resolved 2026-05-14 in PR #144** (`1db8a67`, `fix(services): enforce UM unit scoping on submissions + Master Sheet aria-label (SHAKEDOWN-002B)`).
 
 **Root cause:** `MasterSheet.jsx` week picker `<select>` had no accessible name — no `<label>`, `aria-label`, or `aria-labelledby`. Axe rule `select-name`. Surfaced as a CRITICAL violation in the 2026-05-14 shakedown's cat07-a11y run (T7.11), first run where cat07 reached the Master Sheet after the infrastructure errors in runs 1+2 were resolved.
 
@@ -675,7 +675,7 @@ historical.
 
 ## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix) — FULLY RESOLVED in PR #138 (2026-05-13)
 
-**Fully resolved 2026-05-13 in PR #<PR#>** (`<squash-sha>`,
+**Fully resolved 2026-05-13 in PR #138** (`261b9ec`,
 `test(infra): close test infra MEDIUM — agentManagementService specs + CI test step`).
 
 All outstanding pieces shipped:
