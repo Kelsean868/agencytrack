@@ -12,8 +12,8 @@
 
 | Field | Value |
 |---|---|
-| Last updated | `2026-05-15` |
-| Current main HEAD | `342aba1` (docs(CLAUDE): bank 5 methodology rules, #168) |
+| Last updated | `2026-05-16` |
+| Current main HEAD | `{TBD}` (docs(CONTEXT): inventory-prose-instability fix, #TBD) |
 | Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology batch 2 just closed via 5 CLAUDE.md additions (indexes deploy rule + Rules 10–13). Working through remaining LOW items. |
 | Next track | LOW queue — KioskShell presentation-token migration; env-credentials propagation audit (deferred from methodology batch 2). |
 | Queued | (none) |
@@ -119,16 +119,15 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 ---
 
-## Recently shipped (last 5 PRs)
+## Recently shipped
 
 | PR | SHA | Description |
 |---|---|---|
+| #TBD | `{TBD}` | docs(CONTEXT): inventory-prose-instability fix — 5 drift candidates rephrased to count-agnostic prose |
 | #168 | `342aba1` | docs(CLAUDE): bank 5 methodology rules — firestore indexes deploy confirmation (Workflow) + Rules 10–13 (brief commit convention, FU body re-audit, hard-stop language, AC waiver protocol) |
 | #166 | `eedd2bb` | chore: close shakedown bugs 001/003/004/006 (navigator off-by-one + assertion fixes in cat02/cat04/cat08) |
 | #164 | `33e44e6` | chore: close react-hooks/exhaustive-deps × 3 FU (AgentAwardsPanel `now` useMemo fix + items 2/3 direct closure) |
 | #162 | `9805933` | docs: close (unitId, weekStarting) composite index FU (Outcome a — deployed, Kelsean-verified 2026-05-15) |
-| #160 | `1d4f194` | docs: close HIGH#6 (TenantAdminDashboard YTD index — resolved in PR #131) + bank PR #147 unitId index FU |
-| #159 | `a40fe73` | docs: CLAUDE.md methodology batch (6 edits from FU#4 → border-border arc) |
 
 ---
 
@@ -136,12 +135,12 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 These don't block anything, but they need to be resolved or carried forward each session.
 
-- **Untracked legacy docs + scripts** — `git status` shows 14 untracked files left over from shipped work: `docs/PR-3-Claude-Code-Brief.md` (user-mgmt PR-3 brief, shipped PR #28), 8 Track-E/PR-D kickoff briefs under `docs/briefs/` (all features shipped — E1 #68–#70, E4 #72, E5 #73/#74, E6 daily #71, E6 AOM #76, PR-D #133), and 5 verification scripts (`scripts/mgr-mobile-audit.cjs` from Mobile FU#1 #90, `scripts/verification/pr-d-email-smoke.mjs` from PR-D #133, `scripts/verification/mobile-fu2-tap-targets-smoke.mjs` from Mobile FU#2 #153, `scripts/verification/mobile-fu4-cosmetics-smoke.mjs` from Mobile FU#4 #154, `scripts/verification/border-border-smoke.mjs` from border-border #156). Cleanup tracked in `docs/FOLLOW_UPS.md` — likely fate: archive briefs to `docs/archive/briefs/`, defer scripts (possibly reusable). Not blocking.
+- **Untracked legacy docs + scripts** — `git status` shows untracked files left over from shipped work, across three categories: `docs/PR-3-Claude-Code-Brief.md` (user-mgmt PR-3 brief, shipped PR #28), Track-E/PR-D kickoff briefs under `docs/briefs/` (E1 #68–#70, E4 #72, E5 #73/#74, E6 daily #71, E6 AOM #76, PR-D #133), and verification scripts under `scripts/` and `scripts/verification/` from Mobile FU#1 (#90), PR-D (#133), Mobile FU#2 (#153), Mobile FU#4 (#154), and border-border (#156). Cleanup tracked in `docs/FOLLOW_UPS.md` — likely fate: archive briefs to `docs/archive/briefs/`, defer scripts (possibly reusable). Not blocking.
 - **Orphan user** `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc exists but no Auth user. Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). Do not auto-delete; investigate first.
 - **Node.js 20 Functions runtime** deprecated 2026-04-30, decommission 2026-10-30 — migration to Node 22 is a separate ticket. Not blocking; CLAUDE.md locks v1 runtime for current track.
 - **`firebase-functions` SDK** at 4.9.0 — upgrade to ≥5.1.0 has breaking changes; schedule as own ticket post-pilot.
 - **`MotivationalCarousel.jsx` is dead code** — removed from ManagerDashboard by M2 (PR #107, `46eda67`). Component file retained in source pending deletion sweep (FU banked in `docs/FOLLOW_UPS.md`).
-- **6 worktrees + ~15 stale local branches** — all attached to merged feature branches. Cleanup banked in `docs/FOLLOW_UPS.md` § Worktree + branch audit.
+- **Worktrees + stale local branches** — multiple worktrees and ~15 stale local branches attached to merged feature branches. Cleanup banked in `docs/FOLLOW_UPS.md` § Worktree + branch audit.
 
 ---
 
