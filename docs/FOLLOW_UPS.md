@@ -1546,3 +1546,31 @@ currently render correctly; this is design-system hygiene. Bank for the
 next theme-system PR.
 
 Banked during PR-C-FU3 (2026-05-12 pilot-readiness audit).
+
+---
+
+### SEC-9b residual: tenantId-in-deps exhaustive-deps warnings (RESOLVED 2026-05-16)
+
+**Banked + resolved in same PR.** The tenantId-in-deps pattern was a known residual of SEC-9b (PR #139) — 16 react-hooks warnings remained at SEC-9b merge; PR #164 closed 3 (unrelated react-hooks shapes); the pattern was verbally surfaced during PR #164 closure but never formalized as a FOLLOW_UPS row. This PR formalizes the banking and closes it via mechanical dep additions across 11 files / 13 hooks.
+
+**Audit trail:** PR #139 (SEC-9b migration) → PR #164 (3 react-hooks closures, 16→14 baseline) → PR #XXX (this PR — 13 tenantId-in-deps fixes + 1 unrelated stale eslint-disable cleanup).
+
+**Per-hook fix table:**
+
+| # | File:line | Proposed deps |
+|---|---|---|
+| 1 | `agent/PersistencyTab.jsx:60` | `[user?.uid, tenantId]` |
+| 2 | `daily/DailyEntryModal.jsx:77` | `[user?.uid, today, tenantId]` |
+| 3 | `dashboard/AgentDashboard.jsx:251` | `[user?.uid, today, showDailyCTA, tenantId]` |
+| 4 | `dashboard/ManagerDashboard.jsx:83` | `[tenantId]` |
+| 5 | `kiosk/KioskShell.jsx:59` | `[tenantId]` |
+| 6 | `manager/AgentOfMonthTab.jsx:66` | `[branchId, monthKey, tenantId]` |
+| 7 | `manager/GoalsPanel.jsx:730` | `[tenantId]` |
+| 8 | `manager/MasterSheet.jsx:99` | `[selectedWeek, tenantId]` |
+| 9 | `manager/PersistencyTab.jsx:103` | `[scopeType, scopeId, tenantId]` |
+| 10 | `manager/PersistencyTab.jsx:128` | `[monthKey, scopeId, scopeType, tenantId]` |
+| 11 | `manager/UserManagementPanel.jsx:375` | `[showInactive, tenantId]` |
+| 12 | `wizard/WizardForm.jsx:184` | `[user, tenantId]` |
+| 13 | `wizard/WizardForm.jsx:206` | `[weekStarting, user, tenantId]` |
+
+Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run-all.mjs:459` also removed in same PR).
