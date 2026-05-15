@@ -13,8 +13,8 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-16` |
-| Current main HEAD | `{TBD}` (docs(CONTEXT): inventory-prose-instability fix, #TBD) |
-| Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology batch 2 just closed via 5 CLAUDE.md additions (indexes deploy rule + Rules 10–13). Working through remaining LOW items. |
+| Current main HEAD | `7a785a5` (docs(CONTEXT): inventory-prose-instability fix, #170) |
+| Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Inventory-prose-instability fix shipped (PR #170, `7a785a5`). Working through remaining LOW items. |
 | Next track | LOW queue — KioskShell presentation-token migration; env-credentials propagation audit (deferred from methodology batch 2). |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
@@ -123,7 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #TBD | `{TBD}` | docs(CONTEXT): inventory-prose-instability fix — 5 drift candidates rephrased to count-agnostic prose |
+| #170 | `7a785a5` | docs(CONTEXT): inventory-prose-instability fix — 5 drift candidates rephrased to count-agnostic prose |
 | #168 | `342aba1` | docs(CLAUDE): bank 5 methodology rules — firestore indexes deploy confirmation (Workflow) + Rules 10–13 (brief commit convention, FU body re-audit, hard-stop language, AC waiver protocol) |
 | #166 | `eedd2bb` | chore: close shakedown bugs 001/003/004/006 (navigator off-by-one + assertion fixes in cat02/cat04/cat08) |
 | #164 | `33e44e6` | chore: close react-hooks/exhaustive-deps × 3 FU (AgentAwardsPanel `now` useMemo fix + items 2/3 direct closure) |
@@ -146,20 +146,16 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** CLAUDE.md methodology batch — PR #159 merged (`a40fe73`).
+> **Session boundary:** CONTEXT.md inventory-prose-instability fix — PR #170 merged (`7a785a5`).
 
-**CLAUDE.md methodology batch — 2026-05-15 (docs, PR #159):** Pure docs hygiene PR. Banks 6 methodology refinements into `CLAUDE.md` that emerged from the FU#4 → arbitrary-syntax-sweep → border-border-resolution → placeholder-sweep arc (PRs #154–#158). Total file change: +15 lines (438 → 453), 19 insertions / 4 deletions.
+**CONTEXT.md inventory-prose-instability fix — 2026-05-16 (docs, PR #170):** Pure docs PR. Closes the inventory-prose-instability methodology queue item from the 2026-05-16 audit dispatch. Rewrites 5 count-specific drift candidates in `docs/CONTEXT.md` to count-agnostic prose. Total change: 6 edits, 1 file, 6 insertions / 7 deletions.
 
-- **Edit 1 — Phase 0 branch-confirmation gate** (`### Post-merge local cleanup` bullet): verify `git rev-parse --abbrev-ref HEAD` returns `main` before step 9.5's pull. Surfaced after PR #154 wrong-branch incident; validated PRs #155–#158.
-- **Edit 2 — Rule 8 extension** (`### 8. Phase 4 stale-row audit` body paragraph): audit extends to CONTEXT.md prose claims (component-consumer tracking, deferred-but-still-valid annotations, recently-shipped narrative), not just the Active follow-ups table. Banked from PR #156 MotivationalCarousel 22-day-stale prose claim.
-- **Edit 3 — Verification target language** (`### Post-merge local cleanup` bullet): "clean" = no NEW stale state from this PR; pre-existing stale branches scope to running Worktree + branch audit FU, not per-PR cleanup. Banked from PR #155.
-- **Edit 4 — Rule 4 regex fix** (`### 4. env-listing commands` body): `^[A-Z_]+=` → `^[A-Z0-9_]+=` (3 substitutions + explanatory note). Digit-less pattern silently misses keys like `A11Y_AGENT_PASSWORD`. Banked from PR #156 credential exposure incident.
-- **Edit 5 — Static CSS verification as smoke replacement** (`## Banked patterns` bullet): compiled-bundle inspection is the load-bearing verification for genuinely-waivable CSS-only refactors. Validated PRs #155, #156.
-- **Edit 6 — Rule 9 — Dispatcher Phase-5 scope-extension protocol** (new numbered rule + intro paragraph update): formalizes dispatcher authority to authorize in-PR scope extension when CC surfaces in-category findings via NEW commit (not amend). Validated PR #158 commit `0f6a4b5`.
+- **Edit 1 — Header:** `## Recently shipped (last 5 PRs)` → `## Recently shipped` (count removed from section header).
+- **Edit 2 — Row drop:** #159 row dropped; #160 also dropped during Phase 4 to enforce exactly 5 rows after adding this PR as new top entry. Table: #170, #168, #166, #164, #162.
+- **Edits 3–5 — Untracked-files bullet (L139):** Top-line "14 untracked files" → "across three categories"; "8 Track-E/PR-D kickoff briefs" → count removed, PR-number enumeration preserved; "5 verification scripts (...)" → directory-pointing prose with origin-PR enumeration (covers `high6-ytd-smoke.mjs` implicitly via directory reference — pre-existing gap, no FU needed).
+- **Edit 6 — Worktrees bullet (L144):** `**6 worktrees + ~15 stale local branches**` → `**Worktrees + stale local branches** — multiple worktrees and ~15 stale local branches`.
 
-**Deferred from scope:** Env-credentials propagation audit (7th queue item) — investigative not documentation; queued for its own audit-only dispatch in a future session.
-
-**Verification:** All 7 grep checks pass. Old `^[A-Z_]+=` regex count: 0 (was 3). New `^[A-Z0-9_]+=` regex count: 3. "Phase 0", "Static CSS verification", "dispatcher", "### 9.", "rule 9 added" markers all present. Diff stat: 19 insertions, 4 deletions on CLAUDE.md only. Smoke waived per memory 35 (pure docs, no source touched). Strike count 0/2 across the dispatch.
+**Verification:** Three grep checks pass (no residual count-specific prose in target sections). PR-number spot-checks pass. Lint 0 errors / build clean. Smoke waived (pure docs). Strike count 0/2.
 
 **Next:** Continue LOW queue — KioskShell presentation-token migration, env-credentials propagation audit, or untracked docs/scripts cleanup.
 
