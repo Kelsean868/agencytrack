@@ -1649,3 +1649,21 @@ Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run
 **Sequencing:** Ship after FU-B (which already touches most A11Y-reading scripts; FU-F can reuse that touch surface).
 
 **Surfaced from:** Section 3 Drift #5 of env-credentials propagation audit (2026-05-16).
+
+---
+
+### FU-A: Hardcoded test agent password scrub (RESOLVED 2026-05-16)
+
+**Banked + resolved in same PR.** The `functions/set-agent-password.cjs` script contained a literal test agent password and Firebase Auth UID, tracked in git. Same value also appeared in 2 tracked brief files: `docs/briefs/walk-1-kickoff.md:92` and `docs/briefs/polish-series-housekeeping-kickoff.md:69`. A third brief file (`docs/briefs/e1-slice-2b-kickoff.md:366`) also contained the value but is untracked (confirmed via `git ls-files` — absent from index) — out of scope per brief carve-out; noted in PR body.
+
+**Blast radius:** Test agent account only (`kelsean@gmail.com`, UID `J0j4uBqzTPcfm1IlGCPyDzo27RP2`). Bounded but real plaintext exposure.
+
+**Fixes applied in this PR:**
+- `functions/set-agent-password.cjs`: literal password replaced with `process.env.TEST_AGENT_PASSWORD` direct read (no parser, no new dependency); fail-fast on missing env var with PowerShell + Bash invocation hints. `dotenv` is not installed in this project; direct `process.env` read avoids the install and sidesteps FU-F's parser-unification concern.
+- `.env.example`: `TEST_AGENT_PASSWORD` documented with purpose comment (Rule 14 compliance)
+- 2 tracked brief files: literal password scrubbed, replaced with `<TEST_AGENT_PASSWORD>` placeholder (`walk-1-kickoff.md` and `polish-series-housekeeping-kickoff.md`)
+- Grep verification (`git ls-files | xargs grep`) confirmed no tracked file retains the literal value
+
+**Operator action (post-merge, required):** Rotate test agent password via Firebase Console → Authentication → Users → kelsean@gmail.com → Reset password. **The code change alone does not invalidate the leaked credential — only rotation does.** Update `.env.local` with the new value to keep the script functional.
+
+**Surfaced from:** Section 4 Exposure #1 of env-credentials propagation audit (2026-05-16).
