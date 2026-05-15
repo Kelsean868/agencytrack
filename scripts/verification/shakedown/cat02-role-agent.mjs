@@ -78,6 +78,13 @@ export async function runCat02Agent({ log, ssDir } = {}) {
       await dateInput.fill(sunStr);
     }
 
+    // Advance past date pre-screen before counting wizard screens
+    const preDateNext = page.getByRole('button', { name: /next|continue/i }).first();
+    if (await preDateNext.count() > 0) {
+      await preDateNext.click();
+      await sleep(300);
+    }
+
     // Navigate through Next buttons, collecting screenshots
     for (let screen = 1; screen <= 5; screen++) {
       await screenshot(page, join(ssOut, 'wizard', `screen${screen}.png`));

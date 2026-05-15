@@ -89,6 +89,12 @@ export async function runCat08ScreenshotDossier({ log, ssDir } = {}) {
     if (await submitBtn.count() > 0) {
       await submitBtn.click();
       await sleep(600);
+      // Advance past date pre-screen before counting wizard screens
+      const preDateNext = page.getByRole('button', { name: /next|continue/i }).first();
+      if (await preDateNext.count() > 0) {
+        await preDateNext.click();
+        await sleep(300);
+      }
       for (let i = 1; i <= 5; i++) {
         await ss(page, 'agent', 'wizard', `screen-${i}-light-desktop.png`);
         const nextBtn = page.getByRole('button', { name: /next|continue/i }).first();
