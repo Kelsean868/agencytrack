@@ -13,7 +13,7 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-15` |
-| Current main HEAD | `<sha>` (docs(claude.md): methodology batch — 6 edits from FU#4 → border-border arc, #<pr#>) |
+| Current main HEAD | `a40fe73` (docs(claude.md): methodology batch — 6 edits from FU#4 → border-border arc, #159) |
 | Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology batch just closed via 6 CLAUDE.md edits (Phase 0 gate, Rule 4 regex fix, Rule 8 prose extension, verification-target language, static-CSS-verification pattern, Rule 9 dispatcher protocol). Working through remaining LOW items. |
 | Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); KioskShell presentation-token migration; env-credentials propagation audit (deferred 7th queue item from this batch). |
 | Queued | (none) |
@@ -124,7 +124,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #<pr#> | `<sha>` | docs: CLAUDE.md methodology batch (6 edits from FU#4 → border-border arc) |
+| #159 | `a40fe73` | docs: CLAUDE.md methodology batch (6 edits from FU#4 → border-border arc) |
 | #158 | `8a9df1b` | docs: fill FOLLOW_UPS.md stale placeholders (12 sites across 5 FU sections — Track D, SHAKEDOWN-001, SHAKEDOWN-002B, Bug 005, Test Infrastructure) |
 | #156 | `1e4bdf0` | fix(styles): bind border-border utility to theme token (1 LOC fix, 201 silent usages corrected) |
 | #155 | `70c764d` | refactor(styles): arbitrary CSS-var-syntax → named-utility sweep (89 substitutions, 28 files) |
@@ -147,9 +147,9 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** CLAUDE.md methodology batch — PR #<pr#> merged (`<sha>`).
+> **Session boundary:** CLAUDE.md methodology batch — PR #159 merged (`a40fe73`).
 
-**CLAUDE.md methodology batch — 2026-05-15 (docs, PR #<pr#>):** Pure docs hygiene PR. Banks 6 methodology refinements into `CLAUDE.md` that emerged from the FU#4 → arbitrary-syntax-sweep → border-border-resolution → placeholder-sweep arc (PRs #154–#158). Total file change: +15 lines (438 → 453), 19 insertions / 4 deletions.
+**CLAUDE.md methodology batch — 2026-05-15 (docs, PR #159):** Pure docs hygiene PR. Banks 6 methodology refinements into `CLAUDE.md` that emerged from the FU#4 → arbitrary-syntax-sweep → border-border-resolution → placeholder-sweep arc (PRs #154–#158). Total file change: +15 lines (438 → 453), 19 insertions / 4 deletions.
 
 - **Edit 1 — Phase 0 branch-confirmation gate** (`### Post-merge local cleanup` bullet): verify `git rev-parse --abbrev-ref HEAD` returns `main` before step 9.5's pull. Surfaced after PR #154 wrong-branch incident; validated PRs #155–#158.
 - **Edit 2 — Rule 8 extension** (`### 8. Phase 4 stale-row audit` body paragraph): audit extends to CONTEXT.md prose claims (component-consumer tracking, deferred-but-still-valid annotations, recently-shipped narrative), not just the Active follow-ups table. Banked from PR #156 MotivationalCarousel 22-day-stale prose claim.
