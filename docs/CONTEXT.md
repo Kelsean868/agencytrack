@@ -15,7 +15,7 @@
 | Last updated | `2026-05-15` |
 | Current main HEAD | `a40fe73` (docs(claude.md): methodology batch — 6 edits from FU#4 → border-border arc, #159) |
 | Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology batch just closed via 6 CLAUDE.md edits (Phase 0 gate, Rule 4 regex fix, Rule 8 prose extension, verification-target language, static-CSS-verification pattern, Rule 9 dispatcher protocol). Working through remaining LOW items. |
-| Next track | LOW queue — KioskShell presentation-token migration; env-credentials propagation audit (deferred 7th queue item from this batch); (unitId, weekStarting) index deploy-state audit (MEDIUM, banked 2026-05-15). |
+| Next track | LOW queue — KioskShell presentation-token migration; env-credentials propagation audit (deferred 7th queue item from this batch). |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -123,11 +123,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #___ | `________` | docs: close (unitId, weekStarting) composite index FU (Outcome a — deployed, Kelsean-verified 2026-05-15) |
 | #160 | `1d4f194` | docs: close HIGH#6 (TenantAdminDashboard YTD index — resolved in PR #131) + bank PR #147 unitId index FU |
 | #159 | `a40fe73` | docs: CLAUDE.md methodology batch (6 edits from FU#4 → border-border arc) |
 | #158 | `8a9df1b` | docs: fill FOLLOW_UPS.md stale placeholders (12 sites across 5 FU sections — Track D, SHAKEDOWN-001, SHAKEDOWN-002B, Bug 005, Test Infrastructure) |
 | #156 | `1e4bdf0` | fix(styles): bind border-border utility to theme token (1 LOC fix, 201 silent usages corrected) |
-| #155 | `70c764d` | refactor(styles): arbitrary CSS-var-syntax → named-utility sweep (89 substitutions, 28 files) |
 
 ---
 
@@ -161,7 +161,7 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **Verification:** All 7 grep checks pass. Old `^[A-Z_]+=` regex count: 0 (was 3). New `^[A-Z0-9_]+=` regex count: 3. "Phase 0", "Static CSS verification", "dispatcher", "### 9.", "rule 9 added" markers all present. Diff stat: 19 insertions, 4 deletions on CLAUDE.md only. Smoke waived per memory 35 (pure docs, no source touched). Strike count 0/2 across the dispatch.
 
-**Next:** Continue LOW queue — KioskShell presentation-token migration, env-credentials propagation audit, (unitId, weekStarting) index deploy-state audit (new MEDIUM banked 2026-05-15), or untracked docs/scripts cleanup.
+**Next:** Continue LOW queue — KioskShell presentation-token migration, env-credentials propagation audit, or untracked docs/scripts cleanup.
 
 ---
 

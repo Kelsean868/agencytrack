@@ -565,7 +565,24 @@ PR.
 
 ---
 
-## (unitId, weekStarting) composite index — production deploy status unverified (MEDIUM, banked from HIGH#6 closure audit, 2026-05-15)
+## (unitId, weekStarting) composite index — production deploy status verified — RESOLVED (docs-only, 2026-05-15)
+
+**Resolved 2026-05-15 (docs-only, no source-change PR required).**
+- **Outcome:** (a) — index deployed and matches repo entry.
+- **Production verification:** Firebase Console → Firestore Database → Indexes → Composite.
+  Index on submissions: `unitId ASC + weekStarting ASC`. Index ID `CICAgJj7z4EK`.
+  Status: **Enabled**. Verified by Kelsean via Console on 2026-05-15.
+- **Audit note (FU text correction):** original FU body was imprecise. It claimed both
+  `getWeeklySubmissions` and `getAllYTDSubmissions` "use unitId + range on weekStarting
+  for the UM path." Correction: only `getAllYTDSubmissions` uses a range filter on
+  `weekStarting`. `getWeeklySubmissions` uses equality on both `unitId` and `weekStarting`,
+  which Firestore serves via single-field auto-indexes without requiring this
+  composite. The composite would serve `getWeeklySubmissions` but its absence would
+  not produce a `failed-precondition` error.
+
+---
+
+**Original triage notes (kept for reference):**
 
 **Scope:** `firestore.indexes.json:59-72` (PR #147, commit `5434afe`,
 2026-05-13) adds a composite index `submissions: unitId ASC + weekStarting ASC`
