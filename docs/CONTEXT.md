@@ -123,11 +123,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #XXX | `SHA TBD` | docs(CLAUDE): bank Rule 14 (.env.example canonical doc) + 5 new FUs from env-credentials propagation audit |
 | #172 | `1ea423d` | chore(lint): close 13 tenantId-in-deps exhaustive-deps warnings (SEC-9b residual) + stale eslint-disable cleanup |
 | #170 | `7a785a5` | docs(CONTEXT): inventory-prose-instability fix — 5 drift candidates rephrased to count-agnostic prose |
 | #168 | `342aba1` | docs(CLAUDE): bank 5 methodology rules — firestore indexes deploy confirmation (Workflow) + Rules 10–13 (brief commit convention, FU body re-audit, hard-stop language, AC waiver protocol) |
 | #166 | `eedd2bb` | chore: close shakedown bugs 001/003/004/006 (navigator off-by-one + assertion fixes in cat02/cat04/cat08) |
-| #164 | `33e44e6` | chore: close react-hooks/exhaustive-deps × 3 FU (AgentAwardsPanel `now` useMemo fix + items 2/3 direct closure) |
 
 ---
 
