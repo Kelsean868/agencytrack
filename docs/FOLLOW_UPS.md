@@ -530,7 +530,7 @@ prescribed fix below (no code change). Verified live in PR #131 (`a3de48b`,
 *"The index was created manually in Firebase Console and is verified live by the
 YTD tile rendering correctly in production."* Phase 2 smoke (2026-05-15) confirms:
 Total API · YTD tile renders **TTD 25,123**, console free of `failed-precondition`.
-FU row closed in PR #<PR#>.
+FU row closed in PR #160 (`1d4f194`).
 
 ---
 
