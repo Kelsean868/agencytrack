@@ -1574,3 +1574,78 @@ Banked during PR-C-FU3 (2026-05-12 pilot-readiness audit).
 | 13 | `wizard/WizardForm.jsx:206` | `[weekStarting, user, tenantId]` |
 
 Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run-all.mjs:459` also removed in same PR).
+
+---
+
+### FU-B: Consolidate A11Y env var naming (MEDIUM, banked 2026-05-16)
+
+**Surface:** Two distinct names for the same logical credential exist. `A11Y_MANAGER_*` (legacy, documented in `.env.example`) and `A11Y_BRANCH_MANAGER_*` (current, used in most scripts). The dual-name fallback at `scripts/verification/e1-slice-2b-walk.mjs:49` is direct evidence of partial migration. Three other role flavors (`A11Y_UNIT_MANAGER_*`, `A11Y_TENANT_ADMIN_*`, `A11Y_PLATFORM_ADMIN_*`) are actively read but not documented in `.env.example`.
+
+**Failure mode:** Contributors copying `.env.example` populate the legacy name; verification scripts using the new name silently fail with "credentials not found."
+
+**Fix shape:**
+1. Pick canonical name: `A11Y_BRANCH_MANAGER_*` (more widely used)
+2. Retire `A11Y_MANAGER_*` everywhere
+3. Update `.env.example` to list all 5 role flavors (agent, unit_manager, branch_manager, tenant_admin, platform_admin) with consistent naming
+4. Remove the dual-name fallback at `e1-slice-2b-walk.mjs:49` once migration completes
+
+**Touch surface:** ~10 files, mostly env-name find-replace.
+
+**Surfaced from:** Section 3 Drift #1 of env-credentials propagation audit (2026-05-16).
+
+---
+
+### FU-C: Remove tracked historical super_admin scripts (MEDIUM, banked 2026-05-16)
+
+**Surface:** `functions/set-super-admin.cjs` and `functions/seed-super-admin-user.cjs` are tracked in git despite being listed in `.gitignore:27-28`. The `super_admin` role was retired in PR-3; these scripts are vestigial. `functions/seed-super-admin-user.cjs:30` also writes Kyron's work email literal.
+
+**Failure mode:** CLAUDE.md's "Sensitive Files — Never Commit" section claims "All four are confirmed in `.gitignore`" — true in letter, false in effect (files added before gitignore took effect).
+
+**Fix shape:**
+1. **Phase 1 sanity check (mandatory):** grep `src/`, `docs/`, runbooks for any live references to these scripts. If found: STOP and wait for dispatcher.
+2. `git rm functions/set-super-admin.cjs functions/seed-super-admin-user.cjs`
+3. Update CLAUDE.md "Sensitive Files" section: change "confirmed in `.gitignore`" to "confirmed absent from git tree"
+
+**Surfaced from:** Section 3 Drift #4 + Section 4 Exposure #2/#3 of env-credentials propagation audit (2026-05-16).
+
+---
+
+### FU-D: Remove VITE_TENANT_ID from .env.example (LOW, banked 2026-05-16)
+
+**Surface:** `.env.example:5-9` carries a SEC-11 deprecation comment for `VITE_TENANT_ID`. SEC-11 closed in PR #26; no live `import.meta.env.VITE_TENANT_ID` reader exists in `src/`.
+
+**Failure mode:** Var sits as bait — anyone copying the template populates a value nothing reads. Comment is factually wrong post-SEC-11.
+
+**Fix shape:** Remove the var + comment block from `.env.example`. Trivial single-edit.
+
+**Bundle candidate:** can ship with FU-E in one `.env.example` cleanup PR.
+
+**Surfaced from:** Section 3 Drift #2 of env-credentials propagation audit (2026-05-16).
+
+---
+
+### FU-E: Document VITE_VALIDATE_KIOSK_TOKEN_URL in .env.example (LOW, banked 2026-05-16)
+
+**Surface:** `src/lib/kiosk/kioskConfig.js:39` reads `VITE_VALIDATE_KIOSK_TOKEN_URL` with a hardcoded production fallback. Not documented in `.env.example`.
+
+**Failure mode:** Knowledge silo — new contributors won't discover this knob exists.
+
+**Fix shape:** Add `VITE_VALIDATE_KIOSK_TOKEN_URL` to `.env.example` with a comment explaining it's optional (defaults to deployed CF endpoint, only set for non-prod kiosk testing).
+
+**Bundle candidate:** can ship with FU-D in one `.env.example` cleanup PR.
+
+**Surfaced from:** Section 3 Drift #3 of env-credentials propagation audit (2026-05-16).
+
+---
+
+### FU-F: Unify .env.local parsing strategy (LOW, depends on FU-B, banked 2026-05-16)
+
+**Surface:** Two separate `.env.local` parsers exist in the repo. `dotenv` (npm package) used by most scripts. Custom `loadEnv()` in `scripts/verification/shakedown/auth-helpers.mjs:75` — bespoke parser with defensive `[A-Z_][A-Z0-9_]*=` line filter (Rule 4 alignment).
+
+**Risk:** Parser behavior divergence (quote handling, multi-line values, embedded-key detection). Custom parser is stricter; scripts using dotenv get less protection. Low-impact today (no observed mismatch) but a future contributor could write a script using dotenv that trips an edge case the shakedown parser would catch.
+
+**Fix shape:** Extract `loadEnv()` from `shakedown/auth-helpers.mjs` into a shared helper at `scripts/lib/loadEnv.mjs`. Migrate all script readers from `dotenv` to the shared helper.
+
+**Sequencing:** Ship after FU-B (which already touches most A11Y-reading scripts; FU-F can reuse that touch surface).
+
+**Surfaced from:** Section 3 Drift #5 of env-credentials propagation audit (2026-05-16).

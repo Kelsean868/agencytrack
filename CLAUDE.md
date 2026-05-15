@@ -356,7 +356,7 @@ Claude Code creates worktree branches automatically — each maps 1:1 to a PR.
 
 ## Methodology requirements (added 2026-05-14, from pilot prep session)
 
-These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc; rules 10–13 added 2026-05-15 from CLAUDE.md methodology batch — firestore-indexes + brief-discipline arc). Apply on every CC brief and dispatch.
+These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc; rules 10–13 added 2026-05-15 from CLAUDE.md methodology batch — firestore-indexes + brief-discipline arc; rule 14 added 2026-05-16 from env-credentials propagation audit closure). Apply on every CC brief and dispatch.
 
 ### 1. Surface before architectural decisions
 
@@ -476,6 +476,19 @@ When environment conditions prevent a brief's acceptance criteria from being ver
 - **Deferred-verification FU banked in `docs/FOLLOW_UPS.md`** — full re-run instructions (commands, env prerequisites, seed paths) and the unverified acceptance criteria copied verbatim. Banked in the same merge cycle as the resolving PR — never deferred to a follow-up commit.
 
 CC's Phase 3 surfaces the env gap (via Rule 12's STOP and wait for dispatcher); dispatcher authorizes waiver or instructs CC to resolve the env condition. Banked from PR #166 (shakedown harness re-run blocked by absent `*@agencytrack.test` accounts; deferred FU at `docs/FOLLOW_UPS.md:44`, PR #166 squash commit `eedd2bb`).
+
+### 14. .env.example is canonical credential documentation
+
+Every `process.env.X`, `import.meta.env.X`, or post-`loadEnv` env read site must reference a key documented in `.env.example`. When a new credential is introduced:
+
+- Add the key + a one-line purpose comment to `.env.example` in the same PR as the first read site.
+- If the credential is deprecated, REMOVE it from `.env.example` in the same PR as the reader removal. Do NOT leave deprecated keys with explanatory comments — they accumulate as bait.
+
+Why: drift between `.env.example` and live read sites creates onboarding gaps (new contributors don't know what to set) and stale-bait risk (deprecated vars get re-populated by anyone copying the template). Surfaced via 2026-05-16 credential propagation audit: 5 A11Y role keys actively read, only 2 documented; `VITE_TENANT_ID` documented as deprecated but post-SEC-11 has no live reader.
+
+How to apply: Before opening a PR that adds or removes a credential read site, grep `.env.example` for the key name. If new, add it. If the last reader was removed, delete the entry. Brief Phase 1 audits for any work touching credential-reading scripts MUST scan both `.env.example` and live `process.env.X` reads as part of the enumeration.
+
+Banked from PR #XXX (env-credentials propagation audit closure).
 
 ---
 
