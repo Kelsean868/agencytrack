@@ -11,6 +11,7 @@ Firebase project: agencytrack-2a610 | Hosted: agencytrack.vercel.app | Repo: git
 - `npm run repomix` — Generate Claude context snapshot (run before every session)
 - `firebase deploy --only functions` — Deploy Cloud Functions
 - `firebase deploy --only firestore:rules` — Deploy Firestore rules
+- `firebase deploy --only firestore:indexes` — Deploy Firestore composite indexes
 - `firebase serve` — Run Firebase emulator locally
 
 ## Workflow — IMPORTANT
@@ -34,8 +35,9 @@ Firebase project: agencytrack-2a610 | Hosted: agencytrack.vercel.app | Repo: git
   - Cloud Functions: new exports (no edits to existing functions).
   - Cloud Functions: modifications to existing exports where new behavior is gated by new input fields not present in existing callers (defense: existing callers fall through to existing behavior, no regression vector). C2's `doCreateUser` extension for optional `data.branchId` / `data.csvImportBatchId` / `data.importedFromCsv` is the canonical example.
   Modifications where existing callers exercise the new behavior → post-merge only. Banked from C1 close (rules block deployed pre-merge for BranchesPanel preview); generalized to Cloud Functions in C2.
+- **`firestore.indexes.json` changes require explicit deploy confirmation.** Adding or modifying a composite index in `firestore.indexes.json` does NOT auto-deploy via Vercel — `firebase deploy --only firestore:indexes` must be run from a worktree authenticated against the production project. Capture the deploy output (or Firebase Console index ID + status) in the PR description before merge. Pre-merge deploy is safe for additive index changes (new composites that don't redefine an existing one); modifications/removals deploy post-merge with the same staging discipline as rules. Verification path: Firebase Console → Firestore Database → Indexes → Composite tab, confirm status `Enabled`. Banked from PR #162 closure audit (composite `(unitId, weekStarting)` deploy state required manual Console verification because no rule existed).
 - **Squash SHA ≠ feature-branch SHA.** GitHub generates a fresh SHA on squash-merge (the feature branch's pre-squash final commit is NOT what lands on main). Kickoff briefs and CONTEXT.md `Recently shipped` rows must record the squash SHA captured from `git log origin/main --oneline -1` post-merge, not the feature branch's pre-squash final SHA. Banked from C2 close.
-  - **Brief drafting from FOLLOW_UPS.md items must verify codebase state first.** Before drafting a kickoff brief for a follow-up item, grep git log + PR history for the topic (`git log --all --grep="<topic>"`). If the work is already shipped, the brief is unnecessary — update FOLLOW_UPS.md to reflect actual state instead. Banked from PR #124 close (wizard hardening brief was drafted while PR #88 had already shipped the work, causing ~45 min of wasted CC discovery).
+  - **Brief drafting from FOLLOW_UPS.md items must verify codebase state first.** Before drafting a kickoff brief for a follow-up item, grep git log + PR history for the topic (`git log --all --grep="<topic>"`). If the work is already shipped, the brief is unnecessary — update FOLLOW_UPS.md to reflect actual state instead. Banked from PR #124 close (wizard hardening brief was drafted while PR #88 had already shipped the work, causing ~45 min of wasted CC discovery). (see Methodology Rule 10 for brief commit convention; Rule 11 for FU-body re-audit before first work).
 - **Admin-script firebase-admin require path.** `firebase-admin` is installed only in `functions/node_modules`, not at the repo root. Scripts at `scripts/` or `verification/` that use the Admin SDK must either `require('../functions/node_modules/firebase-admin')` (relative to the script's location) or run from inside `functions/`. Adding `firebase-admin` to repo-root `package.json` is intentionally avoided — Cloud Functions packaging is the canonical install path. Banked from C2 close.
 - **Cloud Functions auth: ambient credentials, not key files.** Functions that mint custom tokens (`admin.auth().createCustomToken(...)`) or otherwise call `signBlob` must use the App Engine default service account's ambient credentials via plain `admin.initializeApp()` — **never ship `service-account-key.json` in the deploy bundle**. Ambient credentials need `roles/iam.serviceAccountTokenCreator` granted to the SA on itself. One-time setup:
   ```
@@ -354,16 +356,16 @@ Claude Code creates worktree branches automatically — each maps 1:1 to a PR.
 
 ## Methodology requirements (added 2026-05-14, from pilot prep session)
 
-These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc). Apply on every CC brief and dispatch.
+These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc; rules 10–13 added 2026-05-15 from CLAUDE.md methodology batch — firestore-indexes + brief-discipline arc). Apply on every CC brief and dispatch.
 
 ### 1. Surface before architectural decisions
 
-CC must surface for Kyron's acknowledgement BEFORE making any decision not pre-listed in a brief's "Decisions locked" section. Specifically:
+CC must surface (per Rule 12's STOP and wait for dispatcher semantics) for Kyron's acknowledgement BEFORE making any decision not pre-listed in a brief's "Decisions locked" section. Specifically:
 
 - Scope expansion (touching files outside the brief's file inventory)
 - New architectural patterns (cache, helper, state mechanism, localStorage usage, etc.)
 - Test file rewrite from scratch (vs. targeted edits that preserve existing coverage)
-- Inline fix of unexpected behavior (vs. STOP + surface)
+- Inline fix of unexpected behavior (vs. STOP and wait for dispatcher)
 - Any "how to solve" decision not explicitly pre-decided
 
 "Solve rather than surface" is itself a strike condition even when the resulting fix is correct. The methodology requirement statement should appear at the top of every brief that involves implementation work. SHAKEDOWN-001 (#141), SEC-9b (#139), and the original shakedown (#140) all had at least one unsurfaced methodology decision; #142, #144, and subsequent re-runs were clean once the requirement was banked into briefs.
@@ -384,6 +386,8 @@ For autonomous CC runs (shakedown-style multi-hour execution where Kyron is away
 - **Infrastructure failures ARE strikes** — seed failures, wipe failures, cleanup orphans, script crashes, mid-run script bugs.
 - **Data safety issues are STOP IMMEDIATELY** — single stop, not 2-strike. If any operation could touch real production data or cross tenant boundaries, halt and surface, regardless of strike count.
 - **Cleanup is non-negotiable.** Even if a shakedown finds 50 bugs mid-flight, Phase 6 cleanup must execute. Wrap orchestration in `try/finally` with cleanup in `finally`. The original shakedown (#140) initially missed this and orphaned 10 test users for ~13 seconds before emergency recovery.
+
+STOP IMMEDIATELY is the data-safety variant of Rule 12's halt-condition vocabulary.
 
 ### 4. env-listing commands filter for KEY= pattern
 
@@ -432,6 +436,46 @@ The audit extends to CONTEXT.md prose claims, not just the table. Component-cons
 Phase 5 stops exist for dispatcher review and authorization, not just go/no-go on merge. When CC surfaces findings adjacent to the brief's locked scope — same category, same risk profile, same verification basis — the dispatcher MAY authorize an in-PR extension rather than requiring a follow-up. CC MUST NOT unilaterally expand; the scope-lock protects against silent drift. The dispatcher's authority to extend exists precisely because Phase 5 is review-authorization.
 
 Protocol: surface as out-of-scope per brief → dispatcher evaluates → if authorized, CC applies via NEW commit (not amend — preserves "extended at Phase 5 review" audit trail), updates PR description, re-stops at Phase 5. Validated in PR #158 (placeholder-sweep), where 2 additional sites mapping to PRs already verified HIGH-confidence landed via commit 0f6a4b5 on the same branch.
+
+### 10. Kickoff briefs commit before CC dispatch
+
+Every kickoff brief for an implementation PR (any size — XS, S, M, L, XL — no exception) commits to `docs/briefs/` via a small standalone docs PR BEFORE CC is dispatched against it. The pattern: dispatcher drafts brief → opens `docs(briefs): <topic> kickoff` PR → merges → dispatches CC against the merged brief on a fresh feature branch. This preserves the dispatch-vs-implementation boundary in git history (the brief's authorship and timing is separate from CC's execution) and lets reviewers trace methodology drift across PRs.
+
+Audit-only dispatches stay inline. Pre-flight surface audits, read-only investigations, and any task that produces no source/docs commit do NOT require a committed brief — the chat prompt is the brief.
+
+Banked from May 2026 closure cadence (PRs #161/#162, #163/#164, #165/#166 all followed this pattern).
+
+### 11. FU body re-audit before first work
+
+When a FU is referenced for first implementation work after any gap (banking-date to dispatch-date), the brief author must verify the FU body's diagnosis claims against current source code BEFORE locking the brief's "Decisions locked" section. Specifically, for any FU body that names:
+
+- a root cause / mechanism (e.g., "regex adjustment", "downstream of bug X", "race condition in handler Y")
+- a file:line target
+- a suggested fix shape ("just adjust the regex", "wrap in useMemo")
+
+the brief MUST quote the current source at that location and either (a) confirm the FU diagnosis matches reality, or (b) document the corrected diagnosis in the brief's audit-findings section. The corrected diagnosis lands in the RESOLVED note when the FU closes — preserving the drift trail.
+
+Banked from PR #164 (react-hooks Item 2: FU body claimed "downstream of Item 1"; reality was "eslint-disable was vestigial — unused at any baseline") and PR #166 Bug 001 (FU body claimed "regex adjustment only"; reality was navigator off-by-one).
+
+### 12. Hard-stop language must be unambiguous
+
+Briefs use only two phrases for halt conditions, no synonyms:
+
+- **STOP and wait for dispatcher** — CC halts execution, posts the surface finding to chat, and does NOT proceed until receiving an explicit dispatcher reply. No autonomous next step, no "I'll continue with a defensible path." This is the default for any condition the brief identifies as a stop.
+- **STOP IMMEDIATELY** — reserved for data-safety / production-touch / cross-tenant risk (carried from Rule 3). Same halt semantics, escalated visual weight.
+
+Forbidden synonyms: "hard stop and surface", "flag to Kelsean", "note and continue", "surface for review". These are interpretable as either halt-and-wait OR proceed-with-note; the ambiguity caused PR #166's first-turn methodology miss (CC encountered an env-gap stop, rationalized continuation via the smoke waiver, and only halted on the second turn). Brief authors must rewrite any halt condition into one of the two canonical phrases.
+
+Existing committed briefs (pre-banking) are grandfathered. Rule applies to all new briefs from banking date forward.
+
+### 13. Acceptance-criteria waiver protocol
+
+When environment conditions prevent a brief's acceptance criteria from being verified at Phase 3 (seeded data absent, third-party service unavailable, indexed-state not yet propagated, etc.), the dispatcher MAY authorize merge with an explicit waiver. The waiver requires BOTH artifacts to land at merge time:
+
+- **Waiver decision in PR body** — dispatcher's explicit "verification waived because <env condition>" note. Not implicit. Not "merge anyway, will verify later."
+- **Deferred-verification FU banked in `docs/FOLLOW_UPS.md`** — full re-run instructions (commands, env prerequisites, seed paths) and the unverified acceptance criteria copied verbatim. Banked in the same merge cycle as the resolving PR — never deferred to a follow-up commit.
+
+CC's Phase 3 surfaces the env gap (via Rule 12's STOP and wait for dispatcher); dispatcher authorizes waiver or instructs CC to resolve the env condition. Banked from PR #166 (shakedown harness re-run blocked by absent `*@agencytrack.test` accounts; deferred FU at `docs/FOLLOW_UPS.md:44`, PR #166 squash commit `eedd2bb`).
 
 ---
 
