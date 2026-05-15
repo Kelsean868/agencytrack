@@ -727,7 +727,7 @@ export default function GoalsPanel() {
 
   useEffect(() => {
     getTenantUsers(tenantId).then(setAllUsers).catch(console.error);
-  }, []);
+  }, [tenantId]);
 
   useEffect(() => {
     if (!user?.uid || !tenantId) return;

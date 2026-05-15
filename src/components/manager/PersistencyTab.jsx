@@ -100,7 +100,7 @@ export default function PersistencyTab() {
       }
     })();
     return () => { cancelled = true; };
-  }, [scopeType, scopeId]);
+  }, [scopeType, scopeId, tenantId]);
 
   const loadRecords = useCallback(async () => {
     if (!monthKey || !scopeId) return;
@@ -125,7 +125,7 @@ export default function PersistencyTab() {
     } finally {
       setLoading(false);
     }
-  }, [monthKey, scopeId, scopeType]);
+  }, [monthKey, scopeId, scopeType, tenantId]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 

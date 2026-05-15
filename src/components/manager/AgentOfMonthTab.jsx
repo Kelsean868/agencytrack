@@ -63,7 +63,7 @@ export default function AgentOfMonthTab() {
     } finally {
       setLoading(false);
     }
-  }, [branchId, monthKey]);
+  }, [branchId, monthKey, tenantId]);
 
   useEffect(() => { load(); }, [load]);
 

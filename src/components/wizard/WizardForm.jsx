@@ -181,7 +181,7 @@ export default function WizardForm({ onClose, initialWeek }) {
   useEffect(() => {
     if (!user) return;
     getLastSubmission(tenantId, user.uid).then(setLastWeekData).catch(console.error);
-  }, [user]);
+  }, [user, tenantId]);
 
   useEffect(() => {
     if (!weekStarting || !user) return;
@@ -203,7 +203,7 @@ export default function WizardForm({ onClose, initialWeek }) {
         }
       })
       .catch(console.error);
-  }, [weekStarting, user]);
+  }, [weekStarting, user, tenantId]);
 
   // Always-current save executor — assigned on every render so the online
   // handler and the retry button always capture the latest closure values.

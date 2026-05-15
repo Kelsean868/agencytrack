@@ -372,7 +372,7 @@ export default function UserManagementPanel() {
     } finally {
       setLoading(false);
     }
-  }, [showInactive]);
+  }, [showInactive, tenantId]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
 
