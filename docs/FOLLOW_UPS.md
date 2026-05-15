@@ -41,6 +41,27 @@ Priority: **LOW**. Not blocking. Bank for the next docs-hygiene session.
 
 ---
 
+## Verify PR #166 shakedown harness fixes via runtime re-run (LOW, deferred 2026-05-15)
+
+**Background:** PR #166 fixed shakedown bugs 001/003/004/006 (cat02 navigator off-by-one, cat04 T4.02 hard assertion, cat08 navigator off-by-one). Phase 3 runtime re-run was attempted on 2026-05-15 but blocked: `agent-001@agencytrack.test` (and all `*@agencytrack.test` test accounts) returned "Incorrect email or password" against production. Test data seeding from PR-F was not active at time of verification. Phase 1 source inspection confirmed fix shape; runtime verification deferred to next seeding cycle.
+
+**Acceptance criteria (from PR #166 brief):**
+- `cat02-role-agent.mjs` T2A.03 passes (screen 5 body matches `/summary|review|submit|total/i`)
+- `cat04-form-validation.mjs` T4.02 passes (hard fail when wizard advances past invalid date; or correctly blocks)
+- `cat04-form-validation.mjs` T4.03 passes (unchanged from baseline)
+- `cat08-screenshot-dossier.mjs` T8.ALL captures ≥80 screenshots (was 79 pre-fix)
+
+**To execute:** Seed `*@agencytrack.test` test accounts via PR-F tooling, then run:
+```
+node scripts/verification/shakedown/cat02-role-agent.mjs
+node scripts/verification/shakedown/cat04-form-validation.mjs
+node scripts/verification/shakedown/cat08-screenshot-dossier.mjs
+```
+
+Priority: **LOW**. No app source affected by PR #166 — this is harness-only verification. Close by removing this item once all four acceptance criteria pass.
+
+---
+
 ## Track D — cron portion status verification — RESOLVED in PR #137 (2026-05-13)
 
 **Resolved 2026-05-13 in PR #137** (`bb08cc7`,
