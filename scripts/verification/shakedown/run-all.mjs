@@ -456,7 +456,6 @@ async function main() {
       if (!cleanOk) {
         log('\n⛔ CLEANUP FAILED — IMMEDIATE ACTION REQUIRED');
         log('Run manually: node scripts/cleanup/wipe-test-data-sweep.mjs --mode=email-pattern --execute');
-        // eslint-disable-next-line no-process-exit
         process.exit(2);
       }
     }
