@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-16` |
-| Current main HEAD | `6b6745b` (docs: bank Rule 14 + 5 FUs from env-credentials propagation audit, #174) |
-| Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology queue closed (Rule 14 + 5 FUs banked, PR #174). Working through remaining LOW items. |
-| Next track | LOW queue — FU-A (test-agent password scrub), FU-D/E (.env.example cleanup), untracked docs/scripts cleanup, KioskShell presentation-token migration. |
+| Current main HEAD | `44d654f` (chore(security): close FU-A — scrub test agent password, #176) |
+| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). FU-A closed (#176). |
+| Next track | LOW queue — FU-D/E (.env.example cleanup, bundle candidate), FU-C (remove tracked super_admin scripts), untracked docs/scripts cleanup, KioskShell presentation-token migration. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -123,7 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #XXX | `<squash-sha>` | chore(security): close FU-A — scrub test agent password from tracked files (Rule 14 compliance) |
+| #176 | `44d654f` | chore(security): close FU-A — scrub test agent password from tracked files (Rule 14 compliance) |
 | #174 | `6b6745b` | docs(CLAUDE): bank Rule 14 (.env.example canonical doc) + 5 new FUs from env-credentials propagation audit |
 | #172 | `1ea423d` | chore(lint): close 13 tenantId-in-deps exhaustive-deps warnings (SEC-9b residual) + stale eslint-disable cleanup |
 | #170 | `7a785a5` | docs(CONTEXT): inventory-prose-instability fix — 5 drift candidates rephrased to count-agnostic prose |
@@ -146,15 +146,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** env-credentials propagation audit closure — PR #174 merged (`6b6745b`).
+> **Session boundary:** FU-A closure — PR #176 merged (`44d654f`).
 
-**env-credentials propagation audit closure — 2026-05-16 (docs, PR #174):** Pure docs PR. Closes the methodology queue (queue 1 → 0). Appends Rule 14 to CLAUDE.md (`## Methodology requirements`): `.env.example` is canonical credential documentation — every env read site must reference a key there; new key = add in same PR; deprecated key = remove in same PR. Banks 5 new FUs: FU-B (A11Y env-var naming consolidation, MEDIUM), FU-C (remove tracked super_admin scripts, MEDIUM), FU-D (remove stale VITE_TENANT_ID from .env.example, LOW), FU-E (document VITE_VALIDATE_KIOSK_TOKEN_URL, LOW), FU-F (unify .env.local parsing, LOW depends FU-B). CONTEXT.md placeholder row filled (#174 / `6b6745b`).
+**FU-A closure — 2026-05-16 (chore/security, PR #176):** Removes literal test agent password from all tracked files. `functions/set-agent-password.cjs` now reads `process.env.TEST_AGENT_PASSWORD` directly (no dotenv — not installed; direct `process.env` read avoids install + sidesteps FU-F). `.env.example` documents `TEST_AGENT_PASSWORD` (Rule 14 compliance). 2 tracked brief files scrubbed (`walk-1-kickoff.md`, `polish-series-housekeeping-kickoff.md`). FU-A appended to FOLLOW_UPS.md Resolved section (bank-and-resolve same PR). Note: `docs/briefs/e1-slice-2b-kickoff.md` is untracked and was NOT scrubbed — out of scope per brief; cleanup via FU-C. ⚠️ Operator action pending: Kelsean must rotate test agent password via Firebase Console.
 
-**Parallel in flight:** PR B — FU-A (test-agent password scrub) brief on branch `docs/fu-a-test-agent-password-scrub-brief`. No ordering dependency with PR #174.
+**Verification:** Lint 0 / build clean. Smoke waived (admin script, operator-only path, no user-visible surface). Strike count 0/2.
 
-**Verification:** Lint 0 / build clean. Smoke waived (pure docs). Strike count 0/2.
-
-**Next:** LOW queue — FU-A brief ship + implementation dispatch, FU-D/E (.env.example cleanup, bundle candidate), untracked docs/scripts cleanup.
+**Next:** LOW queue — FU-D/E (.env.example cleanup, bundle candidate), FU-C (remove tracked super_admin scripts), untracked docs/scripts cleanup.
 
 ---
 
