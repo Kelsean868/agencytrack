@@ -66,7 +66,7 @@ Apply the smoke standard. This is the third post-merge automated smoke in this a
 
 1. Load `VERCEL_BYPASS_TOKEN` via `dotenv` from `C:\Projects\AgencyTrack\.env.local`. **NEVER log the token. NEVER read the file via cat/echo/grep.**
 2. Navigate to `https://agencytrack.vercel.app` (production, no bypass token needed — production is not SSO-gated).
-3. Sign in as test agent (`kelsean@gmail.com` / `AgentTest123!`, UID `J0j4uBqzTPcfm1IlGCPyDzo27RP2`).
+3. Sign in as test agent (`kelsean@gmail.com` / `<TEST_AGENT_PASSWORD>` from `.env.local`, UID `J0j4uBqzTPcfm1IlGCPyDzo27RP2`).
 4. Click **Persistency** in the left nav.
 5. Click **Enter** in the SELF-ENTRY section. Wait for dialog.
 6. Fill 6 fields with clearly-test values:
@@ -88,7 +88,7 @@ Note: an existing test persistency doc for `kelsean@gmail.com / 2026_05` may alr
 **Hard stops:**
 - Save fails with permission error → STOP and surface (rules regression)
 - Value doesn't appear after hard reload → STOP and surface
-- Login fails → STOP and check `.env.local` credentials (kelsean@gmail.com / AgentTest123!)
+- Login fails → STOP and check `.env.local` credentials (`kelsean@gmail.com` / `<TEST_AGENT_PASSWORD>`)
 
 ---
 

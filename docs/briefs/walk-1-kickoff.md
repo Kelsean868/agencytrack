@@ -89,7 +89,7 @@ Include a top-of-file comment block in the helper documenting the 4 banked lesso
 Add a NEW write-read-verify check using `writeReadVerifyCycle`. Existing checks stay — additive only.
 
 **Cycle definition:**
-- `writeFn`: log in as test agent (`kelsean@gmail.com` / `AgentTest123!`), navigate to Persistency tab, click Enter, fill 6 fields with `businessPlaced: 1.00` and 0s elsewhere, click Save, wait for dialog close.
+- `writeFn`: log in as test agent (`kelsean@gmail.com` / `<TEST_AGENT_PASSWORD>` from `.env.local`), navigate to Persistency tab, click Enter, fill 6 fields with `businessPlaced: 1.00` and 0s elsewhere, click Save, wait for dialog close.
 - `verifyFn`: assert the "Saved" indicator and/or the rendered persistency value (100.0% / Award-eligible badge) is visible on the Persistency tab.
 - `description`: `e3-persistency-write-read-verify`
 - `screenshotDir`: existing screenshot path used by the script.
