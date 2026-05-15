@@ -522,7 +522,19 @@ Priority: **HIGH** (pre-pilot — modal is completely inaccessible to screen rea
 
 ---
 
-## HIGH#6 — TenantAdminDashboard YTD composite index missing (surfaced during C1 walkthrough)
+## HIGH#6 — TenantAdminDashboard YTD composite index missing — RESOLVED in PR #131 (2026-05-12)
+
+**Resolved 2026-05-12.** Index created manually in Firebase Console per the
+prescribed fix below (no code change). Verified live in PR #131 (`a3de48b`,
+`chore(firestore): mirror production composite indexes in firestore.indexes.json`):
+*"The index was created manually in Firebase Console and is verified live by the
+YTD tile rendering correctly in production."* Phase 2 smoke (2026-05-15) confirms:
+Total API · YTD tile renders **TTD 25,123**, console free of `failed-precondition`.
+FU row closed in PR #<PR#>.
+
+---
+
+**Original triage notes (kept for reference):**
 
 **Scope:** `TenantAdminDashboard.jsx` aggregates Total API · YTD via
 `getAllYTDSubmissions()` in `src/services/managerService.js`. The query
@@ -550,6 +562,38 @@ the YTD value end-to-end.
 Priority: **HIGH** (UX gap on tenant_admin's primary surface; near-zero
 effort fix). Knock out manually whenever convenient — does not require a
 PR.
+
+---
+
+## (unitId, weekStarting) composite index — production deploy status unverified (MEDIUM, banked from HIGH#6 closure audit, 2026-05-15)
+
+**Scope:** `firestore.indexes.json:59-72` (PR #147, commit `5434afe`,
+2026-05-13) adds a composite index `submissions: unitId ASC + weekStarting ASC`
+to support the `unit_manager` path of `getAllYTDSubmissions()` in
+`managerService.js`. This index was added to source but there is **no evidence
+of a manual production deploy** following PR #147.
+
+If undeployed, the first `unit_manager` who opens the Master Sheet or Production
+Report will hit a `failed-precondition` console error on the `getAllYTDSubmissions`
+and `getWeeklySubmissions` calls (both use `unitId` + range on `weekStarting` for
+the UM path).
+
+**Audit + fix (if needed):**
+1. Confirm deploy state: Firebase Console → Firestore → Indexes → verify
+   `submissions (unitId ASC, weekStarting ASC)` exists and is **Enabled**.
+2. If missing: copy the auto-generated index URL from a live `unit_manager`
+   console error (or create manually from Firebase Console). Click **Create**.
+   Wait ~2–5 min. Confirm with a UM-credentialed smoke.
+3. `firestore.indexes.json` already has the entry — no source change needed;
+   this is a production-state-only deploy.
+
+Surfaced adjacent to HIGH#6 during the HIGH#6 closure audit (2026-05-15).
+Different surface (unit_manager role), different index — kept as a separate
+FU per Rule 9 same-category gate.
+
+Priority: **MEDIUM** (pilot postponed indefinitely, reducing immediate
+exposure — but silent `failed-precondition` failure on first UM access is
+real once pilot resumes). Does not require a PR.
 
 ---
 
@@ -800,9 +844,9 @@ attempt independently.
 
 ---
 
-## `doCreateUser` step E-2 silently returns `emailQueued: true` on mail/ write failure — RESOLVED in PR #<placeholder> (2026-05-13)
+## `doCreateUser` step E-2 silently returns `emailQueued: true` on mail/ write failure — RESOLVED in PR #136 (2026-05-13)
 
-**Resolved 2026-05-13 in PR #<placeholder>** (`<squash-sha>`,
+**Resolved 2026-05-13 in PR #136** (`89182cd`,
 `fix(functions): doCreateUser emailQueued truthfulness (#134 follow-up)`).
 Step E-2 catch now sets `emailQueued = false` and includes an optional
 `emailError` string; the return shape is `{ success, uid, emailQueued, emailError? }`.

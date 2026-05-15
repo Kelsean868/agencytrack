@@ -15,7 +15,7 @@
 | Last updated | `2026-05-15` |
 | Current main HEAD | `a40fe73` (docs(claude.md): methodology batch — 6 edits from FU#4 → border-border arc, #159) |
 | Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology batch just closed via 6 CLAUDE.md edits (Phase 0 gate, Rule 4 regex fix, Rule 8 prose extension, verification-target language, static-CSS-verification pattern, Rule 9 dispatcher protocol). Working through remaining LOW items. |
-| Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); KioskShell presentation-token migration; env-credentials propagation audit (deferred 7th queue item from this batch). |
+| Next track | LOW queue — KioskShell presentation-token migration; env-credentials propagation audit (deferred 7th queue item from this batch); (unitId, weekStarting) index deploy-state audit (MEDIUM, banked 2026-05-15). |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -114,7 +114,6 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
-| **HIGH#6** | TenantAdminDashboard YTD composite index missing | No | Production manual click — tenant_admin loads `/`, copies index URL from `failed-precondition` console error, creates in Firebase console (~2–5 min). PR #131 mirrored existing indexes to source; HIGH#6's index may or may not be in that mirror — verify before assuming closed. Source: `docs/FOLLOW_UPS.md`. |
 | **Resend invite UI** | Per-row "Resend invite" action in user management | No | MEDIUM. Once-off email failures currently have no recourse after the post-create toast dismisses — the truthful warning toast (shipped PR #136) tells admins email failed but the only recovery is recreating the user. Wire `sendPasswordResetEmail` short-term; swap to a `mail/` doc write via a callable wrapper once the PR-D pattern is consumed by more flows. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 
@@ -124,11 +123,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<PR#> | `<squash-sha>` | docs: close HIGH#6 (TenantAdminDashboard YTD index — resolved in PR #131) + bank PR #147 unitId index FU |
 | #159 | `a40fe73` | docs: CLAUDE.md methodology batch (6 edits from FU#4 → border-border arc) |
 | #158 | `8a9df1b` | docs: fill FOLLOW_UPS.md stale placeholders (12 sites across 5 FU sections — Track D, SHAKEDOWN-001, SHAKEDOWN-002B, Bug 005, Test Infrastructure) |
 | #156 | `1e4bdf0` | fix(styles): bind border-border utility to theme token (1 LOC fix, 201 silent usages corrected) |
 | #155 | `70c764d` | refactor(styles): arbitrary CSS-var-syntax → named-utility sweep (89 substitutions, 28 files) |
-| #154 | `630bac1` | fix(mobile): FU#4 cosmetic cleanup (P2-1 + P2-3; P2-2 closed structurally) |
 
 ---
 
@@ -162,7 +161,7 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **Verification:** All 7 grep checks pass. Old `^[A-Z_]+=` regex count: 0 (was 3). New `^[A-Z0-9_]+=` regex count: 3. "Phase 0", "Static CSS verification", "dispatcher", "### 9.", "rule 9 added" markers all present. Diff stat: 19 insertions, 4 deletions on CLAUDE.md only. Smoke waived per memory 35 (pure docs, no source touched). Strike count 0/2 across the dispatch.
 
-**Next:** Continue LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step), KioskShell presentation-token migration, env-credentials propagation audit, or L805 `<placeholder>` syntax cleanup.
+**Next:** Continue LOW queue — KioskShell presentation-token migration, env-credentials propagation audit, (unitId, weekStarting) index deploy-state audit (new MEDIUM banked 2026-05-15), or untracked docs/scripts cleanup.
 
 ---
 
