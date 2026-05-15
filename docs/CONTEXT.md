@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | `2026-05-14` |
-| Current main HEAD | `8a9df1b` (docs: fill FOLLOW_UPS.md stale placeholders, 12 sites, #158) |
-| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). FOLLOW_UPS.md placeholder sweep just closed via 12-site fill across 5 FU sections. Working through remaining LOW items. |
-| Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); KioskShell presentation-token migration; Pattern B `border-border` sites audit. |
+| Last updated | `2026-05-15` |
+| Current main HEAD | `<sha>` (docs(claude.md): methodology batch — 6 edits from FU#4 → border-border arc, #<pr#>) |
+| Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology batch just closed via 6 CLAUDE.md edits (Phase 0 gate, Rule 4 regex fix, Rule 8 prose extension, verification-target language, static-CSS-verification pattern, Rule 9 dispatcher protocol). Working through remaining LOW items. |
+| Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); KioskShell presentation-token migration; env-credentials propagation audit (deferred 7th queue item from this batch). |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -124,11 +124,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #<pr#> | `<sha>` | docs: CLAUDE.md methodology batch (6 edits from FU#4 → border-border arc) |
 | #158 | `8a9df1b` | docs: fill FOLLOW_UPS.md stale placeholders (12 sites across 5 FU sections — Track D, SHAKEDOWN-001, SHAKEDOWN-002B, Bug 005, Test Infrastructure) |
 | #156 | `1e4bdf0` | fix(styles): bind border-border utility to theme token (1 LOC fix, 201 silent usages corrected) |
 | #155 | `70c764d` | refactor(styles): arbitrary CSS-var-syntax → named-utility sweep (89 substitutions, 28 files) |
 | #154 | `630bac1` | fix(mobile): FU#4 cosmetic cleanup (P2-1 + P2-3; P2-2 closed structurally) |
-| #153 | `9571a28` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
 
 ---
 
@@ -147,17 +147,22 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** FOLLOW_UPS.md placeholder sweep — PR #158 merged (`8a9df1b`).
+> **Session boundary:** CLAUDE.md methodology batch — PR #<pr#> merged (`<sha>`).
 
-**FOLLOW_UPS.md placeholder sweep — 2026-05-14 (docs, PR #158):** Pure docs hygiene PR. Filled 12 unfilled `<PR#>` / `<squash-sha>` placeholder tokens across 5 FU sections in `docs/FOLLOW_UPS.md`, each mapped to the already-shipped PR + squash SHA via `git log origin/main` cross-verification against the FU body's quoted commit message.
+**CLAUDE.md methodology batch — 2026-05-15 (docs, PR #<pr#>):** Pure docs hygiene PR. Banks 6 methodology refinements into `CLAUDE.md` that emerged from the FU#4 → arbitrary-syntax-sweep → border-border-resolution → placeholder-sweep arc (PRs #154–#158). Total file change: +15 lines (438 → 453), 19 insertions / 4 deletions.
 
-- **Originally a 10-site sweep across 4 FU sections** (commit `6530b39`): Track D cron `.timeZone('UTC')` (#137 / `bb08cc7`), SHAKEDOWN-001 manager first-login (#141 / `162b8de`), SHAKEDOWN-002B UM submission scoping (#144 / `1db8a67`, 5 placeholder sites), Test Infrastructure MEDIUM (#138 / `261b9ec`).
-- **Extended at Phase 5 review** (commit `0f6a4b5`) to fill 2 paired placeholders previously surfaced as out-of-scope: L179 Bug 005 SHA (paired with already-filled PR #144) and L678 Test Infrastructure body line (pair to the L676 header — both #138 / `261b9ec`).
-- **Held back from scope:** L805 `<squash-sha>` for the `doCreateUser emailQueued` FU — uses `<placeholder>` syntax (not `<PR#>`), belongs to a distinct cleanup pass. Surfaced in the PR description for follow-up tracking.
+- **Edit 1 — Phase 0 branch-confirmation gate** (`### Post-merge local cleanup` bullet): verify `git rev-parse --abbrev-ref HEAD` returns `main` before step 9.5's pull. Surfaced after PR #154 wrong-branch incident; validated PRs #155–#158.
+- **Edit 2 — Rule 8 extension** (`### 8. Phase 4 stale-row audit` body paragraph): audit extends to CONTEXT.md prose claims (component-consumer tracking, deferred-but-still-valid annotations, recently-shipped narrative), not just the Active follow-ups table. Banked from PR #156 MotivationalCarousel 22-day-stale prose claim.
+- **Edit 3 — Verification target language** (`### Post-merge local cleanup` bullet): "clean" = no NEW stale state from this PR; pre-existing stale branches scope to running Worktree + branch audit FU, not per-PR cleanup. Banked from PR #155.
+- **Edit 4 — Rule 4 regex fix** (`### 4. env-listing commands` body): `^[A-Z_]+=` → `^[A-Z0-9_]+=` (3 substitutions + explanatory note). Digit-less pattern silently misses keys like `A11Y_AGENT_PASSWORD`. Banked from PR #156 credential exposure incident.
+- **Edit 5 — Static CSS verification as smoke replacement** (`## Banked patterns` bullet): compiled-bundle inspection is the load-bearing verification for genuinely-waivable CSS-only refactors. Validated PRs #155, #156.
+- **Edit 6 — Rule 9 — Dispatcher Phase-5 scope-extension protocol** (new numbered rule + intro paragraph update): formalizes dispatcher authority to authorize in-PR scope extension when CC surfaces in-category findings via NEW commit (not amend). Validated PR #158 commit `0f6a4b5`.
 
-**Verification:** Mapping table all-HIGH-confidence before edits. Final grep returns exactly 1 hit (L805, expected out-of-scope). Smoke waived per memory 35 (pure docs, no source touched). Strike count 0/2 across the dispatch.
+**Deferred from scope:** Env-credentials propagation audit (7th queue item) — investigative not documentation; queued for its own audit-only dispatch in a future session.
 
-**Next:** Continue LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step), KioskShell presentation-token migration, or Pattern B `border-border` sites audit. L805 `<placeholder>` syntax cleanup also available as a small docs-hygiene candidate.
+**Verification:** All 7 grep checks pass. Old `^[A-Z_]+=` regex count: 0 (was 3). New `^[A-Z0-9_]+=` regex count: 3. "Phase 0", "Static CSS verification", "dispatcher", "### 9.", "rule 9 added" markers all present. Diff stat: 19 insertions, 4 deletions on CLAUDE.md only. Smoke waived per memory 35 (pure docs, no source touched). Strike count 0/2 across the dispatch.
+
+**Next:** Continue LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step), KioskShell presentation-token migration, env-credentials propagation audit, or L805 `<placeholder>` syntax cleanup.
 
 ---
 
