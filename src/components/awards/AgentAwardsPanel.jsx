@@ -152,7 +152,7 @@ function RatioCard({ label, value4w, value12w, trend, format }) {
 export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate }) {
   const [activeCategory, setActiveCategory] = useState('monthly');
 
-  const now = currentDate ?? new Date();
+  const now = useMemo(() => currentDate ?? new Date(), [currentDate]);
 
   const computation = useMemo(() => {
     try {
@@ -165,7 +165,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       console.error(e);
       return { awards: {}, ratioTrends: null, error: 'Failed to compute awards.' };
     }
-  }, [confirmedSettlements, submissions, agentProfile, now]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [confirmedSettlements, submissions, agentProfile, now]);
 
   const { awards, ratioTrends, error } = computation;
 
