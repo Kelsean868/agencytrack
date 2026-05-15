@@ -1077,15 +1077,11 @@ and apply the established `dark:bg-primary-dark dark:hover:bg-primary` pattern
 
 ## react-hooks/exhaustive-deps × 3 (deferred from PR3)
 
-Not jsx-a11y; left at `warn` rather than flipped. Fix as a small follow-up:
+**RESOLVED 2026-05-15 via PR #[PR#].**
 
-- `src/components/awards/AgentAwardsPanel.jsx:155` — `now` logical expression
-  could change every render; move inside useMemo or wrap in its own useMemo
-- `src/components/awards/AgentAwardsPanel.jsx:168` — unused eslint-disable
-  directive (downstream of the above)
-- `src/components/manager/GoalsPanel.jsx:361` — useEffect missing
-  `onGoalsLoaded` dep; either add to deps or wrap parent definition in
-  useCallback
+- `src/components/awards/AgentAwardsPanel.jsx:155` — **RESOLVED** — wrapped `now` in `useMemo([currentDate])` to stabilize the memo key. The computation `useMemo` now correctly skips recomputation when `currentDate` is stable.
+- `src/components/awards/AgentAwardsPanel.jsx:168` — **RESOLVED** — eslint-disable removed; lint no longer flags the deps array after item 1 fix. (The directive was already "unused" at baseline — the violation fired at :155, not :168, so the disable never actually suppressed anything.)
+- `src/components/manager/GoalsPanel.jsx:361` — **STALE — direct closure.** `onGoalsLoaded` does not exist anywhere in `src/` (verified via grep on 2026-05-15). `GoalsPanel` is zero-props (`export default function GoalsPanel()`); the dependency was removed in a prior refactor. No code change required.
 
 ---
 

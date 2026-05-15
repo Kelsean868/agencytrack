@@ -123,11 +123,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #[PR#] | `[SHA]` | chore: close react-hooks/exhaustive-deps × 3 FU (AgentAwardsPanel `now` useMemo fix + items 2/3 direct closure) |
 | #162 | `9805933` | docs: close (unitId, weekStarting) composite index FU (Outcome a — deployed, Kelsean-verified 2026-05-15) |
 | #160 | `1d4f194` | docs: close HIGH#6 (TenantAdminDashboard YTD index — resolved in PR #131) + bank PR #147 unitId index FU |
 | #159 | `a40fe73` | docs: CLAUDE.md methodology batch (6 edits from FU#4 → border-border arc) |
 | #158 | `8a9df1b` | docs: fill FOLLOW_UPS.md stale placeholders (12 sites across 5 FU sections — Track D, SHAKEDOWN-001, SHAKEDOWN-002B, Bug 005, Test Infrastructure) |
-| #156 | `1e4bdf0` | fix(styles): bind border-border utility to theme token (1 LOC fix, 201 silent usages corrected) |
 
 ---
 
