@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-15` |
-| Current main HEAD | `eedd2bb` (chore: close shakedown bugs 001/003/004/006, #166) |
-| Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology batch just closed via 6 CLAUDE.md edits (Phase 0 gate, Rule 4 regex fix, Rule 8 prose extension, verification-target language, static-CSS-verification pattern, Rule 9 dispatcher protocol). Working through remaining LOW items. |
-| Next track | LOW queue — KioskShell presentation-token migration; env-credentials propagation audit (deferred 7th queue item from this batch). |
+| Current main HEAD | `342aba1` (docs(CLAUDE): bank 5 methodology rules, #168) |
+| Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology batch 2 just closed via 5 CLAUDE.md additions (indexes deploy rule + Rules 10–13). Working through remaining LOW items. |
+| Next track | LOW queue — KioskShell presentation-token migration; env-credentials propagation audit (deferred from methodology batch 2). |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -123,7 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #168 | `{SHA168}` | docs(CLAUDE): bank 5 methodology rules — firestore indexes deploy confirmation (Workflow) + Rules 10–13 (brief commit convention, FU body re-audit, hard-stop language, AC waiver protocol) |
+| #168 | `342aba1` | docs(CLAUDE): bank 5 methodology rules — firestore indexes deploy confirmation (Workflow) + Rules 10–13 (brief commit convention, FU body re-audit, hard-stop language, AC waiver protocol) |
 | #166 | `eedd2bb` | chore: close shakedown bugs 001/003/004/006 (navigator off-by-one + assertion fixes in cat02/cat04/cat08) |
 | #164 | `33e44e6` | chore: close react-hooks/exhaustive-deps × 3 FU (AgentAwardsPanel `now` useMemo fix + items 2/3 direct closure) |
 | #162 | `9805933` | docs: close (unitId, weekStarting) composite index FU (Outcome a — deployed, Kelsean-verified 2026-05-15) |
