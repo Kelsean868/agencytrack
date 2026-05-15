@@ -56,7 +56,7 @@ export default function KioskShell({ tenantId, branchId }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [tenantId]);
 
   // Initial data load + 5-minute polling.
   useEffect(() => {

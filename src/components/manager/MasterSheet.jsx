@@ -96,7 +96,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
         setError('Failed to load data. Please try again.');
       })
       .finally(() => setLoading(false));
-  }, [selectedWeek]);
+  }, [selectedWeek, tenantId]);
 
   const rows = useMemo(() => {
     return submissions

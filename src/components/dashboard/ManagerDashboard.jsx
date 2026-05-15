@@ -80,7 +80,7 @@ export default function ManagerDashboard() {
         setAgentIds(userList.filter((u) => u.role === 'agent').map((u) => u.id));
       })
       .catch(console.error);
-  }, []);
+  }, [tenantId]);
 
   const filteredNavItems = useMemo(
     () => NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role)),

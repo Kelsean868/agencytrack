@@ -57,7 +57,7 @@ export default function PersistencyTab() {
     } finally {
       setLoading(false);
     }
-  }, [user?.uid]);
+  }, [user?.uid, tenantId]);
 
   useEffect(() => { load(); }, [load]);
 

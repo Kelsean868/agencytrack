@@ -74,7 +74,7 @@ export default function DailyEntryModal({ onClose }) {
         setError('Could not load existing entry — your save will overwrite.');
       })
       .finally(() => setLoading(false));
-  }, [user?.uid, today]);
+  }, [user?.uid, today, tenantId]);
 
   const handleChange = (name, value) => {
     setData((prev) => ({ ...prev, [name]: value }));

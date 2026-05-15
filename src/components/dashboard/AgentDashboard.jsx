@@ -248,7 +248,7 @@ export default function AgentDashboard() {
       .then(setTodayDailyEntry)
       .catch(() => setTodayDailyEntry(null))
       .finally(() => setTodayDailyChecked(true));
-  }, [user?.uid, today, showDailyCTA]);
+  }, [user?.uid, today, showDailyCTA, tenantId]);
 
   const refreshDailyEntry = () => {
     if (!user?.uid) return;
