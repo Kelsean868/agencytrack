@@ -1077,7 +1077,7 @@ and apply the established `dark:bg-primary-dark dark:hover:bg-primary` pattern
 
 ## react-hooks/exhaustive-deps × 3 (deferred from PR3)
 
-**RESOLVED 2026-05-15 via PR #[PR#].**
+**RESOLVED 2026-05-15 via PR #164 (`33e44e6`).**
 
 - `src/components/awards/AgentAwardsPanel.jsx:155` — **RESOLVED** — wrapped `now` in `useMemo([currentDate])` to stabilize the memo key. The computation `useMemo` now correctly skips recomputation when `currentDate` is stable.
 - `src/components/awards/AgentAwardsPanel.jsx:168` — **RESOLVED** — eslint-disable removed; lint no longer flags the deps array after item 1 fix. (The directive was already "unused" at baseline — the violation fired at :155, not :168, so the disable never actually suppressed anything.)
