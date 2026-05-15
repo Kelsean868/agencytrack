@@ -41,9 +41,9 @@ Priority: **LOW**. Not blocking. Bank for the next docs-hygiene session.
 
 ---
 
-## Track D — cron portion status verification — RESOLVED in PR #<PR#> (2026-05-13)
+## Track D — cron portion status verification — RESOLVED in PR #137 (2026-05-13)
 
-**Resolved 2026-05-13 in PR #<PR#>** (`<squash-sha>`,
+**Resolved 2026-05-13 in PR #137** (`bb08cc7`,
 `fix(functions): chain .timeZone('UTC') to all 4 scheduled CFs (Track D)`).
 
 Phase 1 Track D investigation surfaced that all 4 scheduled CFs were firing
@@ -148,27 +148,27 @@ Audit approach (bank for whoever picks this up):
 
 Two app bugs confirmed by the pre-pilot shakedown run. Full report: [`docs/shakedown-findings-2026-05-13.md`](shakedown-findings-2026-05-13.md).
 
-### SHAKEDOWN-001 — Manager/UM see Agent Dashboard on first login — RESOLVED in PR #<PR#>
+### SHAKEDOWN-001 — Manager/UM see Agent Dashboard on first login — RESOLVED in PR #141
 
-**Resolved in PR #<PR#>** (`<squash-sha>`, `fix(auth): manager role resolution on first login (SHAKEDOWN-001)`).
+**Resolved in PR #141** (`162b8de`, `fix(auth): manager role resolution on first login (SHAKEDOWN-001)`).
 
 **Root cause:** `AuthContext.jsx` early-exited when `claimTenantId` was null, blocking the Firestore doc fallback. On fresh accounts where `setCustomUserClaims()` hasn't yet propagated (60–120s delay), claims were empty, so `role` resolved to null and `App.jsx` fell through to `AgentDashboard`.
 
 **Fix shape D:** Made the Firestore user doc the load-bearing fallback. Parallel fetch via `Promise.all([getIdTokenResult(true), getDoc(...)])` using a localStorage-cached tenantId. `resolvedRole = claims.role ?? doc.role ?? null`. `ProvisioningScreen` added to `App.jsx` for the true-null case (no claims AND no doc). Post-merge manual smoke: Kyron creates fresh BM via UserManagementPanel, signs in, confirms BM dashboard renders within seconds.
 
-### SHAKEDOWN-002 — Unit Manager sees cross-unit agents — FULLY RESOLVED in PR #142 + PR #<PR#>
+### SHAKEDOWN-002 — Unit Manager sees cross-unit agents — FULLY RESOLVED in PR #142 + PR #144
 
 **User list scoping resolved in PR #142** (`1a7526c`, `fix(services): enforce UM unit scoping on user list (SHAKEDOWN-002)`).
 
-**Submission scoping + aria-label resolved in PR #<PR#>** (`<squash-sha>`, `fix(services): enforce UM unit scoping on submissions + Master Sheet aria-label (SHAKEDOWN-002B)`).
+**Submission scoping + aria-label resolved in PR #144** (`1db8a67`, `fix(services): enforce UM unit scoping on submissions + Master Sheet aria-label (SHAKEDOWN-002B)`).
 
 **Root cause (confirmed across both PRs):** PR #142's Phase 1 audit scoped to user-list queries only. Three separate unscoped paths leaked cross-unit data to the UM:
 1. `managerService.getTenantUsers` — Master Sheet name map. **Fixed in PR #142.**
 2. `agentManagementService.getAllUsers` — Team tab agent list. **Fixed in PR #142.**
-3. `managerService.getWeeklySubmissions` — Master Sheet row data. **Fixed in PR #<PR#>.**
-4. `managerService.getAllYTDSubmissions` — Production Report + Manager Dashboard YTD data. **Fixed in PR #<PR#>.**
+3. `managerService.getWeeklySubmissions` — Master Sheet row data. **Fixed in PR #144.**
+4. `managerService.getAllYTDSubmissions` — Production Report + Manager Dashboard YTD data. **Fixed in PR #144.**
 
-**Fix shape (submissions, PR #<PR#>):** Submissions don't carry `unitId`, so the `where('unitId','==',callerUid)` pattern from #142 couldn't be applied directly. Instead: service reads `auth.currentUser.getIdTokenResult()`, UM path fetches agent UIDs via `where('unitId','==',callerUid)` on users collection, then applies `where('agentId','in',agentUids)` on the submissions query. `getAllYTDSubmissions` UM path filters status client-side to avoid a 3-field compound index requirement. Firestore rules split submissions `allow read` into `allow get` (UM restricted via cross-doc unitId lookup) + `allow list` (partial defense-in-depth; list relies on client filter due to Firestore limitation). 10 new test cases.
+**Fix shape (submissions, PR #144):** Submissions don't carry `unitId`, so the `where('unitId','==',callerUid)` pattern from #142 couldn't be applied directly. Instead: service reads `auth.currentUser.getIdTokenResult()`, UM path fetches agent UIDs via `where('unitId','==',callerUid)` on users collection, then applies `where('agentId','in',agentUids)` on the submissions query. `getAllYTDSubmissions` UM path filters status client-side to avoid a 3-field compound index requirement. Firestore rules split submissions `allow read` into `allow get` (UM restricted via cross-doc unitId lookup) + `allow list` (partial defense-in-depth; list relies on client filter due to Firestore limitation). 10 new test cases.
 
 **Post-merge manual smoke:** Sign in as UM, confirm Team tab + Master Sheet rows + Production Report show only own unit's agents. Sign in as BM, confirm full branch visibility preserved. Verify `aria-label="Select week"` on week picker via devtools.
 
@@ -673,7 +673,7 @@ historical.
 
 ---
 
-## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix) — FULLY RESOLVED in PR #<PR#> (2026-05-13)
+## Test Infrastructure (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix) — FULLY RESOLVED in PR #138 (2026-05-13)
 
 **Fully resolved 2026-05-13 in PR #<PR#>** (`<squash-sha>`,
 `test(infra): close test infra MEDIUM — agentManagementService specs + CI test step`).
