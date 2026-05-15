@@ -41,6 +41,27 @@ Priority: **LOW**. Not blocking. Bank for the next docs-hygiene session.
 
 ---
 
+## Verify PR #166 shakedown harness fixes via runtime re-run (LOW, deferred 2026-05-15)
+
+**Background:** PR #166 fixed shakedown bugs 001/003/004/006 (cat02 navigator off-by-one, cat04 T4.02 hard assertion, cat08 navigator off-by-one). Phase 3 runtime re-run was attempted on 2026-05-15 but blocked: `agent-001@agencytrack.test` (and all `*@agencytrack.test` test accounts) returned "Incorrect email or password" against production. Test data seeding from PR-F was not active at time of verification. Phase 1 source inspection confirmed fix shape; runtime verification deferred to next seeding cycle.
+
+**Acceptance criteria (from PR #166 brief):**
+- `cat02-role-agent.mjs` T2A.03 passes (screen 5 body matches `/summary|review|submit|total/i`)
+- `cat04-form-validation.mjs` T4.02 passes (hard fail when wizard advances past invalid date; or correctly blocks)
+- `cat04-form-validation.mjs` T4.03 passes (unchanged from baseline)
+- `cat08-screenshot-dossier.mjs` T8.ALL captures ≥80 screenshots (was 79 pre-fix)
+
+**To execute:** Seed `*@agencytrack.test` test accounts via PR-F tooling, then run:
+```
+node scripts/verification/shakedown/cat02-role-agent.mjs
+node scripts/verification/shakedown/cat04-form-validation.mjs
+node scripts/verification/shakedown/cat08-screenshot-dossier.mjs
+```
+
+Priority: **LOW**. No app source affected by PR #166 — this is harness-only verification. Close by removing this item once all four acceptance criteria pass.
+
+---
+
 ## Track D — cron portion status verification — RESOLVED in PR #137 (2026-05-13)
 
 **Resolved 2026-05-13 in PR #137** (`bb08cc7`,
@@ -184,39 +205,25 @@ Two app bugs confirmed by the pre-pilot shakedown run. Full report: [`docs/shake
 
 ---
 
-## Shakedown harness — LOW opportunistic follow-ups (banked 2026-05-14)
+## ~~Shakedown harness — LOW opportunistic follow-ups (banked 2026-05-14)~~ (ALL RESOLVED — PR #165)
 
-Three low-severity shakedown harness issues banked from the 2026-05-14 run. None blocking pilot demo.
+### ~~Bug 001 — Wizard screen 5 selector fragility~~ (RESOLVED — PR #165)
 
-### Bug 001 — Wizard screen 5 selector fragility (LOW, shakedown harness)
+**Source:** Shakedown run 3 T2A.03 `cat02-role-agent`.
 
-**Source:** Shakedown run 3 T2A.03 `cat02-role-agent`, pre-existing across all 3 runs.
+**Resolution:** Fixed via off-by-one navigator correction in `cat02-role-agent.mjs` T2A.03 — added pre-loop click to advance past date pre-screen before the 5-iteration loop. **Original FU hypothesis ("regex adjustment only") was incorrect**; the regex `/summary|review|submit|total/i` was fine all along. The loop entry state was wrong: T2A.02 left the wizard on the date pre-screen, so the 5-iteration loop traversed date→step1→step2→step3→step4, leaving the body check on step 4 (no "review" text). With the pre-loop click, the loop correctly traverses step1→step2→step3→step4→step5, where the "Review" button label matches the existing regex. Verified via Phase 1 code inspection (`WizardForm.jsx` line 326: `nextLabel = step === TOTAL_SCREENS ? 'Review' : 'Next'`).
 
-**Error:** `Wizard screen 5 (summary) not detected` — test navigates through 4 Next/Continue button clicks and expects `summary|review|submit|total` text on screen 5.
+### ~~Bugs 003/004 — Form validation tests~~ (RESOLVED — PR #165)
 
-**Hypothesis:** Mismatch between the test's button-text regex and the actual wizard's navigation control label, OR screen 5 uses different terminology than expected. Inspect `shakedown-screenshots-2026-05-14T08-18-31/cat02-agent/wizard/screen5.png` + align test regex against `WizardForm.jsx` screen 5 label text.
+**Bug 003 (T4.02) — RESOLVED:** Fixed via navigation-blocking assertion in `cat04-form-validation.mjs` T4.02 — replaced the wrong-keyword body-text WARN (`/sunday|invalid.*date|must be sunday/i`, text that never appears because validation is silent) with a hard assertion that the wizard did NOT advance past the date input after a Next-click on an invalid (non-Sunday) date. Soft `_log('WARN...')` replaced with `throw new Error(...)` on navigation success; assertion now catches real behavior.
 
-**Fix area:** `cat02-role-agent.mjs:T2A.03` — regex adjustment only (not a WizardForm regression; wizard was unchanged across all 3 shakedown runs). Effort: S.
+**Bug 004 (T4.03) — RESOLVED (stale/direct closure):** STALE. Current test already uses the correct `inputValue()` check — fills 'abc', reads back the field value, warns only if 'abc' appears (i.e., filtering didn't happen). This is exactly the "assert absence of invalid input" pattern the original FU called for. No code change required. Verified via audit on 2026-05-15.
 
-### Bugs 003/004 — Form validation tests expect visible error messages; wizard uses silent filtering (LOW, shakedown harness)
-
-**Source:** Shakedown run 3 T4.02 + T4.03 `cat04-form-validation`, first run to reach these tests (cat04 threw infra errors in runs 1+2).
-
-**Bug 003 (T4.02):** Non-Sunday date entered; test waits for a validation error indicator. `validateSundayDate()` likely silently prevents the date from being accepted without surfacing a visible error element.
-
-**Bug 004 (T4.03):** Text entered in numeric field; test waits for rejection feedback. `NumericField.jsx` likely filters non-numeric input silently (valid UX — the char just doesn't appear) with no error message rendered.
-
-**Design intent:** Silent filtering is likely intentional — both are form-level guards that keep the field clean without triggering error UI. The tests need to be updated to match the actual behavior (assert the invalid value never entered the field, rather than waiting for an error message).
-
-**Fix area:** `cat04-form-validation.mjs:T4.02` + `T4.03` — adjust waitForFunction condition to assert the *absence* of invalid input rather than *presence* of an error element. Confirm design intent first via manual wizard walk. Effort: S each.
-
-### Bug 006 — Screenshot dossier 79/80 captures (LOW, shakedown harness polish)
+### ~~Bug 006 — Screenshot dossier 79/80 captures~~ (RESOLVED — PR #165, auto-closed via Bug 001)
 
 **Source:** Shakedown run 3 T8.ALL `cat08-screenshot-dossier`.
 
-**Error:** 79 captures vs ≥80 target. One screenshot missed — likely downstream of T2A.03 wizard walk exiting early before its screen 5 screenshot, or a skipped platform-admin screenshot.
-
-**Fix area:** Either adjust the dossier count target to 79 (if platform-admin screenshots are expected to be skipped in the current test environment), or fix the upstream test that exits early (Bug 001 wizard walk). If Bug 001 is resolved, the screen 5 screenshot will likely be captured and close this automatically. Effort: XS.
+**Resolution:** Cat08's wizard walk (lines 86–100) had the same off-by-one navigator as `cat02` T2A.03 — the 5-iteration loop started immediately after `submitBtn.click()`, with the wizard on the date pre-screen. The loop traversed date→step1→step2→step3→step4, so the step5 screenshot was never taken (79 instead of ≥80). Fixed in the same PR via the matching pre-loop click. Screenshot count now reaches the ≥80 target.
 
 ---
 

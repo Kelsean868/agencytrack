@@ -80,10 +80,10 @@ export async function runCat04FormValidation({ log, ssDir } = {}) {
           await nextBtn.click();
           await sleep(600);
           await screenshot(page, join(ssOut, 'T4.02-non-sunday.png'));
-          const body = await page.locator('body').innerText();
-          const hasError = body.match(/sunday|invalid.*date|must be sunday/i);
-          if (!hasError) {
-            _log('  WARN: Non-Sunday date may not have been rejected — check screenshot');
+          // Validation is silent — assert wizard did NOT advance past the date input
+          const stillOnDateScreen = await page.locator('input[type="date"]').count() > 0;
+          if (!stillOnDateScreen) {
+            throw new Error('T4.02: Wizard advanced past invalid non-Sunday date — validation not blocking');
           }
         }
       }
