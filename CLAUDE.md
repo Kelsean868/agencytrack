@@ -328,6 +328,8 @@ When in doubt, surface and ask.
 
 ### Post-merge local cleanup (standard sequence, not exception)
 
+**Phase 0 — branch confirmation gate (validated PRs #154–#158).** Before step 9.5's pull, verify `git rev-parse --abbrev-ref HEAD` returns `main`. If not, `git checkout main` before any further command. Step 9.5's `git pull origin main` from a feature branch creates an unintended merge commit or operates on the wrong working tree; the Phase 0 gate eliminates both modes. Surfaced after PR #154 hiccup (placeholder edits applied to wrong branch, required recovery); validated in PRs #155, #156, #157, #158.
+
 After step 9.5's pull and after capturing the squash SHA from `git log origin/main --oneline -5`:
 
 - **Local branch deletion uses `git branch -D <feature-branch>` (force).** With GitHub's `deleteBranchOnMerge: true` enabled on the repo, the remote tracking ref is pruned automatically before local cleanup runs, so `git branch -d` (lowercase) cannot verify merge status and will refuse. `git branch -D` is the correct tool here — the squash SHA captured one step earlier verifies the diff is preserved in main. Reference: PR #50 retrospective, B3 post-merge.
@@ -337,6 +339,7 @@ After step 9.5's pull and after capturing the squash SHA from `git log origin/ma
   3. If hashes don't match, the local copy has unmerged edits — surface as a real conflict, do not auto-resolve.
 
   Prevention (preferred): When opening a docs-only PR, draft the file directly inside the PR's feature worktree, not the main worktree. This keeps main's working tree clean and avoids the collision entirely. Reference: PR #51 retrospective, B-series cleanup pattern across PRs #45, #50, #51.
+- **Verification target = no NEW stale state from this PR.** After cleanup, "clean" means this PR's branch is deleted, its worktree (if any) removed, no PR-specific untracked artifacts remain. Pre-existing stale branches from prior sessions fall under the running Worktree + branch audit FU, not this PR's cleanup. Verification must scope honestly to what this PR introduced; "only main + remote refs" is aspirational across all PRs, not a per-PR-enforceable target. Banked from PR #155 (arbitrary-syntax sweep) surfacing 4 pre-existing stale branches that were correctly identified as out-of-scope.
 
 ### Single-branch PR rule
 One worktree branch = one PR. Never extend an open PR by pushing unrelated work to its branch.
@@ -351,7 +354,7 @@ Claude Code creates worktree branches automatically — each maps 1:1 to a PR.
 
 ## Methodology requirements (added 2026-05-14, from pilot prep session)
 
-These eight rules emerged from a productive but mistake-yielding session. Apply on every CC brief and dispatch.
+These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc). Apply on every CC brief and dispatch.
 
 ### 1. Surface before architectural decisions
 
@@ -384,15 +387,17 @@ For autonomous CC runs (shakedown-style multi-hour execution where Kyron is away
 
 ### 4. env-listing commands filter for KEY= pattern
 
-Any PowerShell or bash command that lists `.env.local` (or any env file) contents must filter for `^[A-Z_]+=` patterns to prevent echoing non-KEY=VALUE lines as raw values.
+Any PowerShell or bash command that lists `.env.local` (or any env file) contents must filter for `^[A-Z0-9_]+=` patterns to prevent echoing non-KEY=VALUE lines as raw values.
 
 The pilot prep session caught a SendGrid SMTP credential leak this way — CC's command split on `=` and printed the value of a bare URI line. Credential was rotated; this rule prevents recurrence.
 
 Correct pattern in PowerShell:
 
-`Get-Content .env.local | Where-Object { $_ -match '^[A-Z_]+=' } | ForEach-Object { ($_ -split '=')[0] }`
+`Get-Content .env.local | Where-Object { $_ -match '^[A-Z0-9_]+=' } | ForEach-Object { ($_ -split '=')[0] }`
 
-Returns only the key names. Values never reach the chat. Apply the same `^[A-Z_]+=` filter in bash, grep, or any equivalent command.
+Returns only the key names. Values never reach the chat. Apply the same `^[A-Z0-9_]+=` filter in bash, grep, or any equivalent command.
+
+Character class must include digits (`[A-Z0-9_]+`, not `[A-Z_]+`) — keys like `A11Y_AGENT_PASSWORD`, `A11Y_BRANCH_MANAGER_PASSWORD` etc. begin with digit-containing prefixes and the digit-less pattern silently misses them. PR #156 smoke walk surfaced this gap when env-listing reported `A11Y_*` keys as absent; values were then pasted inline to unblock, requiring post-PR credential rotation. Both the credentials and the regex pattern are now fixed; this rule update prevents recurrence.
 
 ### 5. Phase 3 verification must include actual invocation, not just module resolution
 
@@ -420,6 +425,14 @@ When a row's status transitions to CLOSED (resolving PR merged), remove the row 
 
 During Phase 4 docs maintenance, in addition to filling the current PR's placeholders, scan the Active follow-ups table's status column for "PR open", "awaiting merge", "in progress", or similar live-state claims. For each, verify against `gh pr list --state open` and recent `git log origin/main --oneline -20`. Reconcile any drift in the same commit. Banked from one session surfacing three stale SEC-9b "PR open" references (PR #139 had shipped weeks earlier); without this audit, CONTEXT.md state drifts silently from shipped reality.
 
+The audit extends to CONTEXT.md prose claims, not just the table. Component-consumer tracking ("X.jsx still consumed by Y"), deferred-but-still-valid annotations, and recently-shipped narrative all drift silently in the same way. PR #156 exposed a 22-day-stale "still consumed by ManagerDashboard" claim about MotivationalCarousel that survived the table-scoped scan because it lived in prose. Phase 4 must `git grep` for any named component referenced in CONTEXT.md prose and verify the claim against current state.
+
+### 9. Dispatcher Phase-5 scope-extension protocol
+
+Phase 5 stops exist for dispatcher review and authorization, not just go/no-go on merge. When CC surfaces findings adjacent to the brief's locked scope — same category, same risk profile, same verification basis — the dispatcher MAY authorize an in-PR extension rather than requiring a follow-up. CC MUST NOT unilaterally expand; the scope-lock protects against silent drift. The dispatcher's authority to extend exists precisely because Phase 5 is review-authorization.
+
+Protocol: surface as out-of-scope per brief → dispatcher evaluates → if authorized, CC applies via NEW commit (not amend — preserves "extended at Phase 5 review" audit trail), updates PR description, re-stops at Phase 5. Validated in PR #158 (placeholder-sweep), where 2 additional sites mapping to PRs already verified HIGH-confidence landed via commit 0f6a4b5 on the same branch.
+
 ---
 
 ## Banked patterns (also from 2026-05-14 session)
@@ -429,6 +442,8 @@ During Phase 4 docs maintenance, in addition to filling the current PR's placeho
 **Smoke standard, reinforced:** Walks MUST include a real write-read-verify cycle. Selector-only checks miss permission/rules/index bugs. The shakedown design follows this principle — every category does at least one real Firestore write through the rule layer.
 
 - **Smoke is CC's default, not Kyron's manual check.** CC runs production smoke autonomously for every PR via `setupBypassSession` from `scripts/verification/lib/walk-helpers.mjs`. The default is RUN. Waiver is only acceptable when changes are clearly outside any user-visible behavior path (pure docs commits, pure type changes, internal refactors with no UI surface). Even rendering/a11y/timing changes get a smoke walk — RTL covers component logic, but smoke covers real-DOM + real-timer behavior under real Firebase backoff that RTL can't simulate. Brief authors must justify a smoke waiver explicitly; absence of waiver = CC runs the walk. Banked from PR #151 (Wizard R2-R5 polish) where brief waived smoke for pure-rendering changes and Kyron retroactively flagged this as too permissive a default.
+
+- **Static CSS verification as smoke replacement for utility-alias and config-binding refactors.** When smoke is genuinely waived per the "internal refactor, no user-visible behavior" carve-out, CSS-only changes verify deterministically by inspecting the compiled bundle: fetch `dist/assets/index-*.css` (post-build) or the Vercel preview's served bundle, grep for expected utility classes, confirm rules emit with expected `var(--*)` resolution. Stronger than human spot-check (deterministic), cheaper than full smoke (no auth or navigation). Validated in PR #155 (arbitrary CSS-var-syntax → named-utility sweep — verified target utilities present in preview bundle, source patterns tree-shaken) and PR #156 (border-border resolution — verified `.border-border` rule emission in compiled bundle BEFORE smoke measured computed colors). For genuinely-waivable CSS-only refactors, this is the load-bearing verification.
 
 - **Mobile-viewport smokes need viewport-aware login routines.** `setupBypassSession` in `walk-helpers.mjs` currently waits on a sidebar nav selector (`nav[aria-label="Primary navigation"]`) that is CSS-hidden at mobile (390×844). Mobile-viewport smokes must either use a mobile-friendly selector for login confirmation (e.g., `waitForFunction(() => document.body.textContent.length > 100)`) or briefs must call out the workaround explicitly. Future improvement: make `setupBypassSession` viewport-aware. Banked from PR #153 smoke debug.
 
