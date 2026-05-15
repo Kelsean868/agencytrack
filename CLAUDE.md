@@ -488,7 +488,7 @@ Why: drift between `.env.example` and live read sites creates onboarding gaps (n
 
 How to apply: Before opening a PR that adds or removes a credential read site, grep `.env.example` for the key name. If new, add it. If the last reader was removed, delete the entry. Brief Phase 1 audits for any work touching credential-reading scripts MUST scan both `.env.example` and live `process.env.X` reads as part of the enumeration.
 
-Banked from PR #XXX (env-credentials propagation audit closure).
+Banked from PR #174 (env-credentials propagation audit closure).
 
 ---
 

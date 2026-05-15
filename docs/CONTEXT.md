@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-16` |
-| Current main HEAD | `1ea423d` (chore(lint): close 13 tenantId-in-deps exhaustive-deps warnings, #172) |
-| Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). tenantId-in-deps sweep shipped (PR #172, `1ea423d`, lint now at 0 warnings). Working through remaining LOW items. |
-| Next track | LOW queue — KioskShell presentation-token migration; env-credentials propagation audit (deferred from methodology batch 2). |
+| Current main HEAD | `6b6745b` (docs: bank Rule 14 + 5 FUs from env-credentials propagation audit, #174) |
+| Active track | **Refinement — methodology bookkeeping + LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). Methodology queue closed (Rule 14 + 5 FUs banked, PR #174). Working through remaining LOW items. |
+| Next track | LOW queue — FU-A (test-agent password scrub), FU-D/E (.env.example cleanup), untracked docs/scripts cleanup, KioskShell presentation-token migration. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -123,7 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #XXX | `SHA TBD` | docs(CLAUDE): bank Rule 14 (.env.example canonical doc) + 5 new FUs from env-credentials propagation audit |
+| #174 | `6b6745b` | docs(CLAUDE): bank Rule 14 (.env.example canonical doc) + 5 new FUs from env-credentials propagation audit |
 | #172 | `1ea423d` | chore(lint): close 13 tenantId-in-deps exhaustive-deps warnings (SEC-9b residual) + stale eslint-disable cleanup |
 | #170 | `7a785a5` | docs(CONTEXT): inventory-prose-instability fix — 5 drift candidates rephrased to count-agnostic prose |
 | #168 | `342aba1` | docs(CLAUDE): bank 5 methodology rules — firestore indexes deploy confirmation (Workflow) + Rules 10–13 (brief commit convention, FU body re-audit, hard-stop language, AC waiver protocol) |
@@ -146,18 +146,15 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** CONTEXT.md inventory-prose-instability fix — PR #170 merged (`7a785a5`).
+> **Session boundary:** env-credentials propagation audit closure — PR #174 merged (`6b6745b`).
 
-**CONTEXT.md inventory-prose-instability fix — 2026-05-16 (docs, PR #170):** Pure docs PR. Closes the inventory-prose-instability methodology queue item from the 2026-05-16 audit dispatch. Rewrites 5 count-specific drift candidates in `docs/CONTEXT.md` to count-agnostic prose. Total change: 6 edits, 1 file, 6 insertions / 7 deletions.
+**env-credentials propagation audit closure — 2026-05-16 (docs, PR #174):** Pure docs PR. Closes the methodology queue (queue 1 → 0). Appends Rule 14 to CLAUDE.md (`## Methodology requirements`): `.env.example` is canonical credential documentation — every env read site must reference a key there; new key = add in same PR; deprecated key = remove in same PR. Banks 5 new FUs: FU-B (A11Y env-var naming consolidation, MEDIUM), FU-C (remove tracked super_admin scripts, MEDIUM), FU-D (remove stale VITE_TENANT_ID from .env.example, LOW), FU-E (document VITE_VALIDATE_KIOSK_TOKEN_URL, LOW), FU-F (unify .env.local parsing, LOW depends FU-B). CONTEXT.md placeholder row filled (#174 / `6b6745b`).
 
-- **Edit 1 — Header:** `## Recently shipped (last 5 PRs)` → `## Recently shipped` (count removed from section header).
-- **Edit 2 — Row drop:** #159 row dropped; #160 also dropped during Phase 4 to enforce exactly 5 rows after adding this PR as new top entry. Table: #170, #168, #166, #164, #162.
-- **Edits 3–5 — Untracked-files bullet (L139):** Top-line "14 untracked files" → "across three categories"; "8 Track-E/PR-D kickoff briefs" → count removed, PR-number enumeration preserved; "5 verification scripts (...)" → directory-pointing prose with origin-PR enumeration (covers `high6-ytd-smoke.mjs` implicitly via directory reference — pre-existing gap, no FU needed).
-- **Edit 6 — Worktrees bullet (L144):** `**6 worktrees + ~15 stale local branches**` → `**Worktrees + stale local branches** — multiple worktrees and ~15 stale local branches`.
+**Parallel in flight:** PR B — FU-A (test-agent password scrub) brief on branch `docs/fu-a-test-agent-password-scrub-brief`. No ordering dependency with PR #174.
 
-**Verification:** Three grep checks pass (no residual count-specific prose in target sections). PR-number spot-checks pass. Lint 0 errors / build clean. Smoke waived (pure docs). Strike count 0/2.
+**Verification:** Lint 0 / build clean. Smoke waived (pure docs). Strike count 0/2.
 
-**Next:** Continue LOW queue — KioskShell presentation-token migration, env-credentials propagation audit, or untracked docs/scripts cleanup.
+**Next:** LOW queue — FU-A brief ship + implementation dispatch, FU-D/E (.env.example cleanup, bundle candidate), untracked docs/scripts cleanup.
 
 ---
 
