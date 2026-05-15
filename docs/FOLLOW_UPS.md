@@ -1553,7 +1553,7 @@ Banked during PR-C-FU3 (2026-05-12 pilot-readiness audit).
 
 **Banked + resolved in same PR.** The tenantId-in-deps pattern was a known residual of SEC-9b (PR #139) — 16 react-hooks warnings remained at SEC-9b merge; PR #164 closed 3 (unrelated react-hooks shapes); the pattern was verbally surfaced during PR #164 closure but never formalized as a FOLLOW_UPS row. This PR formalizes the banking and closes it via mechanical dep additions across 11 files / 13 hooks.
 
-**Audit trail:** PR #139 (SEC-9b migration) → PR #164 (3 react-hooks closures, 16→14 baseline) → PR #XXX (this PR — 13 tenantId-in-deps fixes + 1 unrelated stale eslint-disable cleanup).
+**Audit trail:** PR #139 (SEC-9b migration) → PR #164 (3 react-hooks closures, 16→14 baseline) → PR #172 (`1ea423d` — 13 tenantId-in-deps fixes + 1 unrelated stale eslint-disable cleanup).
 
 **Per-hook fix table:**
 
