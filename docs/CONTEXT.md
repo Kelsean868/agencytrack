@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-14` |
-| Current main HEAD | `1e4bdf0` (fix(styles): bind border-border utility to theme token #156) |
-| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). `border-border` resolution audit just closed via 1-LOC tailwind binding. Working through remaining LOW items. |
-| Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); KioskShell presentation-token migration; Pattern B `border-border` sites audit (banked from this PR). |
+| Current main HEAD | `8a9df1b` (docs: fill FOLLOW_UPS.md stale placeholders, 12 sites, #158) |
+| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). FOLLOW_UPS.md placeholder sweep just closed via 12-site fill across 5 FU sections. Working through remaining LOW items. |
+| Next track | LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step); KioskShell presentation-token migration; Pattern B `border-border` sites audit. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -124,11 +124,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #158 | `8a9df1b` | docs: fill FOLLOW_UPS.md stale placeholders (12 sites across 5 FU sections — Track D, SHAKEDOWN-001, SHAKEDOWN-002B, Bug 005, Test Infrastructure) |
 | #156 | `1e4bdf0` | fix(styles): bind border-border utility to theme token (1 LOC fix, 201 silent usages corrected) |
 | #155 | `70c764d` | refactor(styles): arbitrary CSS-var-syntax → named-utility sweep (89 substitutions, 28 files) |
 | #154 | `630bac1` | fix(mobile): FU#4 cosmetic cleanup (P2-1 + P2-3; P2-2 closed structurally) |
 | #153 | `9571a28` | fix(mobile): tap-target pass for non-core agent surface (FU#2 P1-1 + P1-3; P1-2 already-resolved) |
-| #151 | `8a8818c` | feat(wizard): R2-R5 polish — nested live regions split, motion-reduce guard, retry throttle, sticky failure window |
 
 ---
 
@@ -147,20 +147,17 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** `border-border` utility resolution fix — PR #156 merged (`1e4bdf0`).
+> **Session boundary:** FOLLOW_UPS.md placeholder sweep — PR #158 merged (`8a9df1b`).
 
-**`border-border` resolution fix — 2026-05-14 (fix(styles), PR #156):** Closed the MEDIUM FU "`border-border` utility resolution audit" banked during PR #155. The audit→fix arc: PR #155's sweep held back the 2 `border-[var(--color-border)]` outliers in WizardForm.jsx pending an audit of whether the intuitive `border-border` replacement actually resolved. Audit confirmed the worst-case hypothesis — the utility had no binding, so all 201 usages across 49 files were silently rendering Tailwind's hardcoded Preflight fallback `#e5e7eb` (cool gray-200) instead of the warm `--color-border` theme token.
+**FOLLOW_UPS.md placeholder sweep — 2026-05-14 (docs, PR #158):** Pure docs hygiene PR. Filled 12 unfilled `<PR#>` / `<squash-sha>` placeholder tokens across 5 FU sections in `docs/FOLLOW_UPS.md`, each mapped to the already-shipped PR + squash SHA via `git log origin/main` cross-verification against the FU body's quoted commit message.
 
-- **Mechanism:** `theme.extend.colors` had no `border` key, so Tailwind JIT emitted no `.border-border` rule. The 201 usages produced visible borders only because Preflight's base layer sets `*,:before,:after { border: 0 solid #e5e7eb }` as a hardcoded literal — the fallback color was being used everywhere `border-border` appeared, regardless of theme.
-- **Fix:** 1-LOC addition to `tailwind.config.js` — `border: 'rgb(var(--border-channels) / <alpha-value>)'` under `theme.extend.colors`. Compiled bundle now emits `.border-border{--tw-border-opacity:1;border-color:rgb(var(--border-channels) / var(--tw-border-opacity,1))}`. All 201 usages light up correctly with no JSX touched.
-- **Visual delta:** light-mode subtle (warm beige `#e5e2db` vs cool gray `#e5e7eb` are visually close); dark-mode significant (warm dark `#3a3530` vs light gray `#e5e7eb` — the Preflight color was rendering light-gray borders on warm-dark surfaces, theme-incorrect and missed by the original a11y/dark-mode audit).
-- **Held back from scope:** `theme.extend.borderColor.DEFAULT` (would change behavior for any one-off bare `border` usage — speculative, not banked per CLAUDE.md rule 7). Pattern B sites (`border-border` without a width utility) banked as separate audit FU — needs per-site judgment whether visible border was intended.
+- **Originally a 10-site sweep across 4 FU sections** (commit `6530b39`): Track D cron `.timeZone('UTC')` (#137 / `bb08cc7`), SHAKEDOWN-001 manager first-login (#141 / `162b8de`), SHAKEDOWN-002B UM submission scoping (#144 / `1db8a67`, 5 placeholder sites), Test Infrastructure MEDIUM (#138 / `261b9ec`).
+- **Extended at Phase 5 review** (commit `0f6a4b5`) to fill 2 paired placeholders previously surfaced as out-of-scope: L179 Bug 005 SHA (paired with already-filled PR #144) and L678 Test Infrastructure body line (pair to the L676 header — both #138 / `261b9ec`).
+- **Held back from scope:** L805 `<squash-sha>` for the `doCreateUser emailQueued` FU — uses `<placeholder>` syntax (not `<PR#>`), belongs to a distinct cleanup pass. Surfaced in the PR description for follow-up tracking.
 
-**Banked from this PR's audit:** Pattern B `border-border` sites audit (LOW — no visual regression, intentionality verification only).
+**Verification:** Mapping table all-HIGH-confidence before edits. Final grep returns exactly 1 hit (L805, expected out-of-scope). Smoke waived per memory 35 (pure docs, no source touched). Strike count 0/2 across the dispatch.
 
-**Verification:** Lint 0 errors (16 pre-existing `react-hooks/exhaustive-deps` warnings unchanged). Build green. Test suite 682/682 pass. Compiled bundle inspection confirms `.border-border` rule landed with theme-token resolution. Smoke walk performed at mobile viewport (390×844) on 2-3 high-density Pattern A surfaces in both light and dark mode with computed-RGB-value evidence (results in PR description).
-
-**Next:** Continue LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step), KioskShell presentation-token migration, or Pattern B `border-border` sites audit.
+**Next:** Continue LOW queue — HIGH#6 TenantAdminDashboard YTD index (manual production step), KioskShell presentation-token migration, or Pattern B `border-border` sites audit. L805 `<placeholder>` syntax cleanup also available as a small docs-hygiene candidate.
 
 ---
 
