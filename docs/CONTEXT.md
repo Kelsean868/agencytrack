@@ -123,7 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #TBD | {TBD} | FU-B closure: A11Y env var consolidation + Rule 14 banking-note re-baseline |
+| #182 | `19a8281` | FU-B closure: A11Y env var consolidation + Rule 14 banking-note re-baseline |
 | #180 | `e6018e8` | Methodology batch: Rule 15 (push verification) + FU-G/H/I banking + CONTEXT.md backfill |
 | #178 | `c930d97` | FU-D + FU-E .env.example cleanup (Rule 14 demonstration) |
 | #176 | `44d654f` | chore(security): close FU-A — scrub test agent password from tracked files (Rule 14 compliance) |
