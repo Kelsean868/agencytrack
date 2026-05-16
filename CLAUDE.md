@@ -343,6 +343,8 @@ After step 9.5's pull and after capturing the squash SHA from `git log origin/ma
   Prevention (preferred): When opening a docs-only PR, draft the file directly inside the PR's feature worktree, not the main worktree. This keeps main's working tree clean and avoids the collision entirely. Reference: PR #51 retrospective, B-series cleanup pattern across PRs #45, #50, #51.
 - **Verification target = no NEW stale state from this PR.** After cleanup, "clean" means this PR's branch is deleted, its worktree (if any) removed, no PR-specific untracked artifacts remain. Pre-existing stale branches from prior sessions fall under the running Worktree + branch audit FU, not this PR's cleanup. Verification must scope honestly to what this PR introduced; "only main + remote refs" is aspirational across all PRs, not a per-PR-enforceable target. Banked from PR #155 (arbitrary-syntax sweep) surfacing 4 pre-existing stale branches that were correctly identified as out-of-scope.
 
+Rule 15 governs the origin-verification step for any commit produced by this sequence.
+
 ### Single-branch PR rule
 One worktree branch = one PR. Never extend an open PR by pushing unrelated work to its branch.
 If scope grows mid-PR, open a follow-up PR on a fresh branch after the current one merges.
@@ -356,7 +358,7 @@ Claude Code creates worktree branches automatically — each maps 1:1 to a PR.
 
 ## Methodology requirements (added 2026-05-14, from pilot prep session)
 
-These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc; rules 10–13 added 2026-05-15 from CLAUDE.md methodology batch — firestore-indexes + brief-discipline arc; rule 14 added 2026-05-16 from env-credentials propagation audit closure). Apply on every CC brief and dispatch.
+These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc; rules 10–13 added 2026-05-15 from CLAUDE.md methodology batch — firestore-indexes + brief-discipline arc; rule 14 added 2026-05-16 from env-credentials propagation audit closure; rule 15 added 2026-05-17 from PR #176 silent-push recovery arc). Apply on every CC brief and dispatch.
 
 ### 1. Surface before architectural decisions
 
@@ -489,6 +491,20 @@ Why: drift between `.env.example` and live read sites creates onboarding gaps (n
 How to apply: Before opening a PR that adds or removes a credential read site, grep `.env.example` for the key name. If new, add it. If the last reader was removed, delete the entry. Brief Phase 1 audits for any work touching credential-reading scripts MUST scan both `.env.example` and live `process.env.X` reads as part of the enumeration.
 
 Banked from PR #174 (env-credentials propagation audit closure).
+
+### 15. Direct-to-main pushes require origin verification
+
+For any commit that lands on `main` outside the squash-merge-PR path — including the post-merge placeholder-fill commit (per Session Protocol step 9 and § Post-merge local cleanup), authorized hotfixes, and any other dispatcher-authorized direct push — CC MUST run `git fetch origin && git log origin/main --oneline -1` immediately after the push, and confirm the SHA matches `git rev-parse HEAD` on local `main`.
+
+If the SHA does not match: the push has not reached origin. **STOP and wait for dispatcher** — do not retry, do not amend, do not exit the sequence. Push-failure modes are non-obvious (auth re-prompt, upstream rejection, network blip, malformed commit) and each warrants dispatcher review rather than autonomous retry.
+
+CC's sequence summary MUST include an explicit line stating the commit was pushed to `origin/main` and the verification SHA matched. "Committed" alone is not equivalent to "pushed and verified" — the verification step is not complete until both have been confirmed in the report.
+
+Why: on 2026-05-17 a silent push failure from the previous day's post-merge sequence was caught only when the next PR's Phase 0 gate detected a divergence between local `main` and `origin/main`. PR #176's placeholder-fill commit (`148c15c`) had been committed locally but never reached origin; the failure was invisible because the post-merge summary described the commit without claiming verification. Same shape as the "preview verified + merged via UI is not proof of shipping" learning already in memory: execution reports don't equal verification.
+
+Note on terminology: This rule anchors to canonical CLAUDE.md sections (Session Protocol step 9 + § Post-merge local cleanup), not to "Rule 4." Some prior briefs use "Rule 4" as shorthand for the post-merge placeholder-fill sequence; that shorthand collides with canonical Rule 4 (env-listing credential safety) and should not be carried forward in new briefs.
+
+Banked from PR #TBD (2026-05-17, methodology batch).
 
 ---
 

@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | `2026-05-16` |
-| Current main HEAD | `44d654f` (chore(security): close FU-A — scrub test agent password, #176) |
-| Active track | **Refinement — LOW housekeeping queue.** Pilot postponed indefinitely (banked 2026-05-14). FU-A closed (#176). |
-| Next track | LOW queue — FU-D/E (.env.example cleanup, bundle candidate), FU-C (remove tracked super_admin scripts), untracked docs/scripts cleanup, KioskShell presentation-token migration. |
+| Last updated | `2026-05-17` |
+| Current main HEAD | `3783b26` (Docs/methodology rule 15 fu g fu h brief, #179) |
+| Active track | **Methodology batch in flight** (Rule 15 push-verification + FU-G/H/I banking + CONTEXT.md backfill). FU completion arc continues post-pilot. Pilot postponed indefinitely (banked 2026-05-14). |
+| Next track | MEDIUM queue — FU-B (A11Y env var consolidation). Behind it: FU-C (remove tracked super_admin scripts), FU-G (operational env-var script-local READMEs), FU-H (Phase 4 fill scope methodology), FU-I (TENANT_ID parameterization), FU-F (.env.local parser unification, depends on FU-B), untracked docs/scripts cleanup, KioskShell presentation-token migration. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -123,11 +123,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #TBD | {TBD} | Methodology batch: Rule 15 (push verification) + FU-G/H/I banking + CONTEXT.md backfill |
 | #178 | `c930d97` | FU-D + FU-E .env.example cleanup (Rule 14 demonstration) |
 | #176 | `44d654f` | chore(security): close FU-A — scrub test agent password from tracked files (Rule 14 compliance) |
 | #174 | `6b6745b` | docs(CLAUDE): bank Rule 14 (.env.example canonical doc) + 5 new FUs from env-credentials propagation audit |
 | #172 | `1ea423d` | chore(lint): close 13 tenantId-in-deps exhaustive-deps warnings (SEC-9b residual) + stale eslint-disable cleanup |
-| #170 | `7a785a5` | docs(CONTEXT): inventory-prose-instability fix — 5 drift candidates rephrased to count-agnostic prose |
 
 ---
 
@@ -146,13 +146,15 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** FU-A closure — PR #176 merged (`44d654f`).
+> **Session boundary:** Methodology batch PR in flight — Rule 15 (push verification) + FU-G/H/I banking + CONTEXT.md backfill. Brief commit shipped via PR #179 (`3783b26`).
 
-**FU-A closure — 2026-05-16 (chore/security, PR #176):** Removes literal test agent password from all tracked files. `functions/set-agent-password.cjs` now reads `process.env.TEST_AGENT_PASSWORD` directly (no dotenv — not installed; direct `process.env` read avoids install + sidesteps FU-F). `.env.example` documents `TEST_AGENT_PASSWORD` (Rule 14 compliance). 2 tracked brief files scrubbed (`walk-1-kickoff.md`, `polish-series-housekeeping-kickoff.md`). FU-A appended to FOLLOW_UPS.md Resolved section (bank-and-resolve same PR). Note: `docs/briefs/e1-slice-2b-kickoff.md` is untracked and was NOT scrubbed — out of scope per brief; cleanup via FU-C. ⚠️ Operator action pending: Kelsean must rotate test agent password via Firebase Console.
+**Today's session arc (2026-05-17).** PR #178 (FU-D + FU-E .env.example cleanup) shipped clean (`c930d97`). PR #176's post-merge sequence from the prior day surfaced a silent push-failure mode: placeholder-fill commit `148c15c` was committed locally but never reached `origin/main`. The divergence was caught only when today's Phase 0 gate detected local-vs-origin SHA mismatch; full merge-abort + reset recovery required. This methodology PR banks Rule 15 to close the gap going forward — direct-to-main pushes (post-merge fills, hotfixes) now require `git fetch origin && git log origin/main --oneline -1` verification with explicit "pushed and verified" reporting line and hard-stop on mismatch.
 
-**Verification:** Lint 0 / build clean. Smoke waived (admin script, operator-only path, no user-visible surface). Strike count 0/2.
+**Adjacent banking.** FU-G (PREVIEW_HOST + CLEANUP_ALLOWED_TENANTS script-local README documentation) and FU-H (Phase 4 fill scope methodology — second failure mode adjacent to Rule 15) bank as LOW. FU-I (TENANT_ID parameterization for multi-tenant readiness) carved out from FU-G scope during Phase 1 verification when grep revealed TENANT_ID is hardcoded JS constants, not `process.env` reads. CONTEXT.md top-table backfilled to current state — itself a demonstration of the FU-H gap.
 
-**Next:** LOW queue — FU-D/E (.env.example cleanup, bundle candidate), FU-C (remove tracked super_admin scripts), untracked docs/scripts cleanup.
+**Verification:** Lint 0 / build clean. Smoke waived (pure docs, no runtime surface). Strike count 0/2 (Phase 1 hard-stop on TENANT_ID premise shift surfaced cleanly per Rule 12 — discipline working, not a strike).
+
+**Next:** MEDIUM queue — FU-B (A11Y env var consolidation). LOW queue behind: FU-C, FU-G, FU-H, FU-I, FU-F, untracked docs/scripts cleanup.
 
 ---
 
