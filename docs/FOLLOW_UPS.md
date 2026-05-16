@@ -1622,7 +1622,7 @@ Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run
 
 **Surfaced from:** Section 3 Drift #2 of env-credentials propagation audit (2026-05-16).
 
-**Resolved in PR #TBD** ({TBD}, 2026-05-17). Removed the 5-line VITE_TENANT_ID
+**Resolved in PR #178** (`c930d97`, 2026-05-17). Removed the 5-line VITE_TENANT_ID
 block (4-line comment header + var declaration) from .env.example. Audit
 (2026-05-17) confirmed zero tracked source readers post-SEC-11/SEC-9b — all
 remaining references are docs/history only. Section banner "Vite / Firebase
@@ -1643,7 +1643,7 @@ below.
 
 **Surfaced from:** Section 3 Drift #3 of env-credentials propagation audit (2026-05-16).
 
-**Resolved in PR #TBD** ({TBD}, 2026-05-17). Added VITE_VALIDATE_KIOSK_TOKEN_URL
+**Resolved in PR #178** (`c930d97`, 2026-05-17). Added VITE_VALIDATE_KIOSK_TOKEN_URL
 to .env.example under a new "Kiosk overrides" section. Comment block explains
 the prod-fallback default in src/lib/kiosk/kioskConfig.js and when an operator
 should set the override. Fresh-clone onboarding now surfaces the option.
