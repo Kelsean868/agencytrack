@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-17` |
-| Current main HEAD | `3783b26` (Docs/methodology rule 15 fu g fu h brief, #179) |
-| Active track | **Methodology batch in flight** (Rule 15 push-verification + FU-G/H/I banking + CONTEXT.md backfill). FU completion arc continues post-pilot. Pilot postponed indefinitely (banked 2026-05-14). |
-| Next track | MEDIUM queue — FU-B (A11Y env var consolidation). Behind it: FU-C (remove tracked super_admin scripts), FU-G (operational env-var script-local READMEs), FU-H (Phase 4 fill scope methodology), FU-I (TENANT_ID parameterization), FU-F (.env.local parser unification, depends on FU-B), untracked docs/scripts cleanup, KioskShell presentation-token migration. |
+| Current main HEAD | `6b19f87` (docs(briefs): FU-B A11Y env var consolidation kickoff, #181) |
+| Active track | **FU-B execution in flight** (A11Y env var consolidation + Rule 14 banking-note re-baseline). FU completion arc continues post-pilot. Methodology rule discipline established (Rules 14–15 banked, dogfooded). Pilot postponed indefinitely (banked 2026-05-14). |
+| Next track | MEDIUM queue — FU-C (remove tracked super_admin scripts). LOW queue behind: FU-G execution (operational env-var script-local READMEs), FU-H (Phase 4 fill scope methodology, design judgment), FU-I (TENANT_ID parameterization), FU-F (.env.local parser unification, was depends-on-FU-B), untracked docs/scripts cleanup, KioskShell presentation-token migration. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -123,11 +123,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #TBD | {TBD} | FU-B closure: A11Y env var consolidation + Rule 14 banking-note re-baseline |
 | #180 | `e6018e8` | Methodology batch: Rule 15 (push verification) + FU-G/H/I banking + CONTEXT.md backfill |
 | #178 | `c930d97` | FU-D + FU-E .env.example cleanup (Rule 14 demonstration) |
 | #176 | `44d654f` | chore(security): close FU-A — scrub test agent password from tracked files (Rule 14 compliance) |
 | #174 | `6b6745b` | docs(CLAUDE): bank Rule 14 (.env.example canonical doc) + 5 new FUs from env-credentials propagation audit |
-| #172 | `1ea423d` | chore(lint): close 13 tenantId-in-deps exhaustive-deps warnings (SEC-9b residual) + stale eslint-disable cleanup |
 
 ---
 
@@ -146,15 +146,15 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Methodology batch PR in flight — Rule 15 (push verification) + FU-G/H/I banking + CONTEXT.md backfill. Brief commit shipped via PR #179 (`3783b26`).
+> **Session boundary:** FU-B execution PR in flight — A11Y env var consolidation + Rule 14 banking-note re-baseline. Brief commit shipped via PR #181 (`6b19f87`).
 
-**Today's session arc (2026-05-17).** PR #178 (FU-D + FU-E .env.example cleanup) shipped clean (`c930d97`). PR #176's post-merge sequence from the prior day surfaced a silent push-failure mode: placeholder-fill commit `148c15c` was committed locally but never reached `origin/main`. The divergence was caught only when today's Phase 0 gate detected local-vs-origin SHA mismatch; full merge-abort + reset recovery required. This methodology PR banks Rule 15 to close the gap going forward — direct-to-main pushes (post-merge fills, hotfixes) now require `git fetch origin && git log origin/main --oneline -1` verification with explicit "pushed and verified" reporting line and hard-stop on mismatch.
+**Today's session arc (2026-05-17, continued).** FU-B (MEDIUM, banked PR #174) executes: legacy `A11Y_MANAGER_*` renamed to canonical `A11Y_BRANCH_MANAGER_*` across 2 consumer sites (`a11y-axe-scan-manager.cjs` primary + `e1-slice-2b-walk.mjs` fallback chain removed). `.env.example` expanded from 2 documented A11Y role flavors to 6, in role-hierarchy order. CLAUDE.md Rule 14 banking note rewritten to pattern-based framing with the 2026-05-17 audit's frozen counts (7 role flavors actively read, 2 documented at banking) — prevents recursive staleness on adjacent FU closes. Per Rule 11, the corrected diagnosis (FU body's "5 role flavors" understated count; SALES_MANAGER omitted from enumeration) lands in FU-B's Resolved closure note rather than as in-place body edits.
 
-**Adjacent banking.** FU-G (PREVIEW_HOST + CLEANUP_ALLOWED_TENANTS script-local README documentation) and FU-H (Phase 4 fill scope methodology — second failure mode adjacent to Rule 15) bank as LOW. FU-I (TENANT_ID parameterization for multi-tenant readiness) carved out from FU-G scope during Phase 1 verification when grep revealed TENANT_ID is hardcoded JS constants, not `process.env` reads. CONTEXT.md top-table backfilled to current state — itself a demonstration of the FU-H gap.
+**Rule discipline practiced.** Rule 15 dogfooded twice in this PR's execution — Phase 0 pre-branch gate (local main HEAD matched origin) and Phase 8 post-feature-branch push (origin SHA matched local HEAD before opening PR). Rule 14 demonstrated by completing the A11Y documentation gap that motivated its banking.
 
-**Verification:** Lint 0 / build clean. Smoke waived (pure docs, no runtime surface). Strike count 0/2 (Phase 1 hard-stop on TENANT_ID premise shift surfaced cleanly per Rule 12 — discipline working, not a strike).
+**Verification:** Lint 0 / build clean. Smoke waived (rename + docs only, no production runtime surface). Operator action required post-merge: rename `A11Y_MANAGER_*` keys in `.env.local` to `A11Y_BRANCH_MANAGER_*` (same logical credential). Strike count 0/2.
 
-**Next:** MEDIUM queue — FU-B (A11Y env var consolidation). LOW queue behind: FU-C, FU-G, FU-H, FU-I, FU-F, untracked docs/scripts cleanup.
+**Next:** MEDIUM queue — FU-C (remove tracked super_admin scripts). LOW queue behind: FU-G execution, FU-F (now unblocked by FU-B), FU-H design resolution, FU-I, untracked cleanup.
 
 ---
 
