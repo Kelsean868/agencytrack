@@ -1610,7 +1610,7 @@ Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run
 
 ---
 
-### FU-D: Remove VITE_TENANT_ID from .env.example (LOW, banked 2026-05-16)
+### FU-D: Remove VITE_TENANT_ID from .env.example (LOW, RESOLVED 2026-05-17)
 
 **Surface:** `.env.example:5-9` carries a SEC-11 deprecation comment for `VITE_TENANT_ID`. SEC-11 closed in PR #26; no live `import.meta.env.VITE_TENANT_ID` reader exists in `src/`.
 
@@ -1622,9 +1622,16 @@ Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run
 
 **Surfaced from:** Section 3 Drift #2 of env-credentials propagation audit (2026-05-16).
 
+**Resolved in PR #TBD** ({TBD}, 2026-05-17). Removed the 5-line VITE_TENANT_ID
+block (4-line comment header + var declaration) from .env.example. Audit
+(2026-05-17) confirmed zero tracked source readers post-SEC-11/SEC-9b — all
+remaining references are docs/history only. Section banner "Vite / Firebase
+client config" preserved; next entry (VITE_FIREBASE_API_KEY) sits directly
+below.
+
 ---
 
-### FU-E: Document VITE_VALIDATE_KIOSK_TOKEN_URL in .env.example (LOW, banked 2026-05-16)
+### FU-E: Document VITE_VALIDATE_KIOSK_TOKEN_URL in .env.example (LOW, RESOLVED 2026-05-17)
 
 **Surface:** `src/lib/kiosk/kioskConfig.js:39` reads `VITE_VALIDATE_KIOSK_TOKEN_URL` with a hardcoded production fallback. Not documented in `.env.example`.
 
@@ -1635,6 +1642,11 @@ Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run
 **Bundle candidate:** can ship with FU-D in one `.env.example` cleanup PR.
 
 **Surfaced from:** Section 3 Drift #3 of env-credentials propagation audit (2026-05-16).
+
+**Resolved in PR #TBD** ({TBD}, 2026-05-17). Added VITE_VALIDATE_KIOSK_TOKEN_URL
+to .env.example under a new "Kiosk overrides" section. Comment block explains
+the prod-fallback default in src/lib/kiosk/kioskConfig.js and when an operator
+should set the override. Fresh-clone onboarding now surfaces the option.
 
 ---
 
