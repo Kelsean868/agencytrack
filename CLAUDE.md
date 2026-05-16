@@ -486,7 +486,7 @@ Every `process.env.X`, `import.meta.env.X`, or post-`loadEnv` env read site must
 - Add the key + a one-line purpose comment to `.env.example` in the same PR as the first read site.
 - If the credential is deprecated, REMOVE it from `.env.example` in the same PR as the reader removal. Do NOT leave deprecated keys with explanatory comments — they accumulate as bait.
 
-Why: drift between `.env.example` and live read sites creates onboarding gaps (new contributors don't know what to set) and stale-bait risk (deprecated vars get re-populated by anyone copying the template). Surfaced via 2026-05-16 credential propagation audit: 5 A11Y role keys actively read, only 2 documented; `VITE_TENANT_ID` documented as deprecated but post-SEC-11 has no live reader.
+Why: drift between `.env.example` and live read sites creates onboarding gaps (new contributors don't know what to set) and stale-bait risk (deprecated vars get re-populated by anyone copying the template). Surfaced via 2026-05-16 env-credentials propagation audit: A11Y_* test credentials for multiple role tiers were partly documented in `.env.example`, partly drifting in script env reads (later quantified in the 2026-05-17 FU-B audit: 7 role flavors actively read, 2 documented at banking time). `VITE_TENANT_ID` was documented as deprecated despite having no live reader post-SEC-11. Rule 14 canonicalizes `.env.example` as the credential doc.
 
 How to apply: Before opening a PR that adds or removes a credential read site, grep `.env.example` for the key name. If new, add it. If the last reader was removed, delete the entry. Brief Phase 1 audits for any work touching credential-reading scripts MUST scan both `.env.example` and live `process.env.X` reads as part of the enumeration.
 

@@ -10,7 +10,7 @@
  *   manager_awards, manager_agents, manager_meeting_mode.
  *
  * Credentials read from .env.local:
- *   A11Y_MANAGER_EMAIL, A11Y_MANAGER_PASSWORD
+ *   A11Y_BRANCH_MANAGER_EMAIL, A11Y_BRANCH_MANAGER_PASSWORD
  *   A11Y_BASE_URL (optional — defaults to http://localhost:5173)
  *
  * For PR 1: if a dedicated branch_manager-tier scan account doesn't exist
@@ -68,8 +68,8 @@ function loadDotEnvLocal() {
 
 const argUrl = (process.argv.find((a) => a.startsWith('--url=')) || '').replace('--url=', '');
 const BASE_URL = argUrl || process.env.A11Y_BASE_URL || 'http://localhost:5173';
-const EMAIL    = process.env.A11Y_MANAGER_EMAIL;
-const PASSWORD = process.env.A11Y_MANAGER_PASSWORD;
+const EMAIL    = process.env.A11Y_BRANCH_MANAGER_EMAIL;
+const PASSWORD = process.env.A11Y_BRANCH_MANAGER_PASSWORD;
 const BYPASS   = process.env.VERCEL_BYPASS_TOKEN || '';
 // `--dark`: enables dark mode pre-mount by setting localStorage
 // `agencytrack-dark = '1'`, then reloading. Mirrors the
@@ -77,7 +77,7 @@ const BYPASS   = process.env.VERCEL_BYPASS_TOKEN || '';
 const DARK     = process.argv.includes('--dark');
 
 if (!EMAIL || !PASSWORD) {
-  console.error('Missing A11Y_MANAGER_EMAIL / A11Y_MANAGER_PASSWORD in .env.local');
+  console.error('Missing A11Y_BRANCH_MANAGER_EMAIL / A11Y_BRANCH_MANAGER_PASSWORD in .env.local');
   process.exit(1);
 }
 

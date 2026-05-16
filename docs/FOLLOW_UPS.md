@@ -1577,21 +1577,15 @@ Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run
 
 ---
 
-### FU-B: Consolidate A11Y env var naming (MEDIUM, banked 2026-05-16)
+### FU-B: Consolidate A11Y env var naming (RESOLVED 2026-05-17)
 
-**Surface:** Two distinct names for the same logical credential exist. `A11Y_MANAGER_*` (legacy, documented in `.env.example`) and `A11Y_BRANCH_MANAGER_*` (current, used in most scripts). The dual-name fallback at `scripts/verification/e1-slice-2b-walk.mjs:49` is direct evidence of partial migration. Three other role flavors (`A11Y_UNIT_MANAGER_*`, `A11Y_TENANT_ADMIN_*`, `A11Y_PLATFORM_ADMIN_*`) are actively read but not documented in `.env.example`.
+**Resolved in PR #TBD** ({TBD}, 2026-05-17). A11Y env var naming consolidated: legacy `A11Y_MANAGER_*` renamed to `A11Y_BRANCH_MANAGER_*` across 2 consumer sites (`scripts/a11y-axe-scan-manager.cjs` primary + `scripts/verification/e1-slice-2b-walk.mjs` fallback chain — simplified, dual-name bridge removed). `.env.example` expanded from 2 documented A11Y_* role flavors (AGENT + legacy MANAGER) to 6 (AGENT, UNIT_MANAGER, BRANCH_MANAGER, SALES_MANAGER, TENANT_ADMIN, PLATFORM_ADMIN). CLAUDE.md Rule 14 banking note rewritten to pattern-based framing with the 2026-05-17 audit's frozen counts (7 role flavors actively read, 2 documented at banking time).
 
-**Failure mode:** Contributors copying `.env.example` populate the legacy name; verification scripts using the new name silently fail with "credentials not found."
+**Corrected diagnosis vs the originating FU body:** the 2026-05-16 audit's "5 role flavors actively read, only 2 documented" understated the count. Ground truth at the 2026-05-17 audit was 7 role flavors (the 5 referenced plus SALES_MANAGER and a second role flavor not enumerated in the original). FU-B body lines 1582 and 1589 both omitted SALES_MANAGER from the enumeration. Post-rename canonical count is 6 role flavors (no MANAGER-legacy).
 
-**Fix shape:**
-1. Pick canonical name: `A11Y_BRANCH_MANAGER_*` (more widely used)
-2. Retire `A11Y_MANAGER_*` everywhere
-3. Update `.env.example` to list all 5 role flavors (agent, unit_manager, branch_manager, tenant_admin, platform_admin) with consistent naming
-4. Remove the dual-name fallback at `e1-slice-2b-walk.mjs:49` once migration completes
+**Surfaced from:** Section 3 Drift #1 of env-credentials propagation audit (2026-05-16). Corrected diagnosis surfaced by 2026-05-17 FU-B + Rule 14 re-baseline audit (Rule 11).
 
-**Touch surface:** ~10 files, mostly env-name find-replace.
-
-**Surfaced from:** Section 3 Drift #1 of env-credentials propagation audit (2026-05-16).
+**Operator action (post-merge, required):** Rename `A11Y_MANAGER_EMAIL` / `A11Y_MANAGER_PASSWORD` keys in `.env.local` to `A11Y_BRANCH_MANAGER_*` — same logical credential, just the new canonical name. Optional: add credentials for the 4 newly-documented role flavors (`A11Y_UNIT_MANAGER_*`, `A11Y_SALES_MANAGER_*`, `A11Y_TENANT_ADMIN_*`, `A11Y_PLATFORM_ADMIN_*`) if running multi-role smoke walks locally.
 
 ---
 

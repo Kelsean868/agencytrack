@@ -8,7 +8,7 @@
  * Requires .env.local with:
  *   VERCEL_BYPASS_TOKEN
  *   A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD
- *   A11Y_MANAGER_EMAIL / A11Y_MANAGER_PASSWORD
+ *   A11Y_BRANCH_MANAGER_EMAIL / A11Y_BRANCH_MANAGER_PASSWORD
  *
  * Artifacts (screenshots, results.json) written to verification/e1-slice-2b/ (gitignored).
  */
@@ -46,16 +46,16 @@ const env = loadEnv(resolve(process.cwd(), '.env.local'));
 const BYPASS_TOKEN     = env.VERCEL_BYPASS_TOKEN;
 const AGENT_EMAIL      = env.A11Y_AGENT_EMAIL    ?? 'kelsean@gmail.com';
 const AGENT_PASSWORD   = env.A11Y_AGENT_PASSWORD;
-const MANAGER_EMAIL    = env.A11Y_BRANCH_MANAGER_EMAIL ?? env.A11Y_MANAGER_EMAIL;
-const MANAGER_PASSWORD = env.A11Y_BRANCH_MANAGER_PASSWORD ?? env.A11Y_MANAGER_PASSWORD;
+const MANAGER_EMAIL    = env.A11Y_BRANCH_MANAGER_EMAIL;
+const MANAGER_PASSWORD = env.A11Y_BRANCH_MANAGER_PASSWORD;
 
 // URL derived from GitHub deployment API after push — Vercel truncated the branch name.
 const PREVIEW_HOST = 'agencytrack-2bqcjg17j-kyron-marchan-s-projects.vercel.app';
 
 if (!BYPASS_TOKEN)     { console.error('VERCEL_BYPASS_TOKEN not found in .env.local'); process.exit(1); }
 if (!AGENT_PASSWORD)   { console.error('A11Y_AGENT_PASSWORD not found in .env.local'); process.exit(1); }
-if (!MANAGER_EMAIL)    { console.error('A11Y_MANAGER_EMAIL not found in .env.local'); process.exit(1); }
-if (!MANAGER_PASSWORD) { console.error('A11Y_MANAGER_PASSWORD not found in .env.local'); process.exit(1); }
+if (!MANAGER_EMAIL)    { console.error('A11Y_BRANCH_MANAGER_EMAIL not found in .env.local'); process.exit(1); }
+if (!MANAGER_PASSWORD) { console.error('A11Y_BRANCH_MANAGER_PASSWORD not found in .env.local'); process.exit(1); }
 
 function redact(msg) {
   return typeof msg === 'string'
