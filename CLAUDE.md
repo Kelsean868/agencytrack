@@ -504,7 +504,7 @@ Why: on 2026-05-17 a silent push failure from the previous day's post-merge sequ
 
 Note on terminology: This rule anchors to canonical CLAUDE.md sections (Session Protocol step 9 + § Post-merge local cleanup), not to "Rule 4." Some prior briefs use "Rule 4" as shorthand for the post-merge placeholder-fill sequence; that shorthand collides with canonical Rule 4 (env-listing credential safety) and should not be carried forward in new briefs.
 
-Banked from PR #TBD (2026-05-17, methodology batch).
+Banked from PR #180 (2026-05-17, methodology batch).
 
 ---
 
