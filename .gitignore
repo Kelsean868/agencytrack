@@ -24,8 +24,6 @@ dist-ssr
 service-account-key.json
 scripts/service-account-key.json
 functions/service-account-key.json
-functions/set-super-admin.cjs
-functions/seed-super-admin-user.cjs
 functions/seed-agent-names.cjs
 functions/seed-company-minimums.cjs
 

@@ -1591,16 +1591,31 @@ Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run
 
 ### FU-C: Remove tracked historical super_admin scripts (MEDIUM, banked 2026-05-16)
 
-**Surface:** `functions/set-super-admin.cjs` and `functions/seed-super-admin-user.cjs` are tracked in git despite being listed in `.gitignore:27-28`. The `super_admin` role was retired in PR-3; these scripts are vestigial. `functions/seed-super-admin-user.cjs:30` also writes Kyron's work email literal.
+**Resolved in PR #TBD** ({TBD}, 2026-05-17). Removed 2 vestigial dead-code
+scripts from the pre-PR-3 super_admin era:
+- functions/set-super-admin.cjs (22 lines, one-time claim setter)
+- functions/seed-super-admin-user.cjs (45 lines, one-time user doc seeder
+  containing hardcoded kyron@tatillife.com literal)
 
-**Failure mode:** CLAUDE.md's "Sensitive Files — Never Commit" section claims "All four are confirmed in `.gitignore`" — true in letter, false in effect (files added before gitignore took effect).
+Companion cleanup landed in the same PR: .gitignore lines 27–28 entries
+pruned, CLAUDE.md § Sensitive Files — Never Commit bullets for both files
+removed, stale PR-1-era comment in scripts/a11y-axe-scan-manager.cjs:17
+referencing super_admin credentials as a fallback (rendered obsolete by
+PR-3 + FU-B PR #182) deleted.
 
-**Fix shape:**
-1. **Phase 1 sanity check (mandatory):** grep `src/`, `docs/`, runbooks for any live references to these scripts. If found: STOP and wait for dispatcher.
-2. `git rm functions/set-super-admin.cjs functions/seed-super-admin-user.cjs`
-3. Update CLAUDE.md "Sensitive Files" section: change "confirmed in `.gitignore`" to "confirmed absent from git tree"
+Phase 1 sanity-check grep (2026-05-17 audit, satisfying the FU-C banking
+requirement) confirmed: FUNCTIONAL_GATE bucket empty across firestore.rules
++ functions/index.js + src/. Role retirement is complete in production
+code paths. Zero npm-script or CI references to the removed files. The
+platform_admin successor role's scaffolding (PlatformAdminStubScreen in
+App.jsx, Firestore rules cross-tenant grants, functions/scripts/
+seed-platform-admin.cjs bootstrap) is untouched — its cross-tenant UI
+build is deferred indefinitely per dispatcher decision 2026-05-17 (single-
+tenant Tatil Life scope).
 
-**Surfaced from:** Section 3 Drift #4 + Section 4 Exposure #2/#3 of env-credentials propagation audit (2026-05-16).
+TEST_OR_SEED bucket (migration scripts, emulator harness, one test sentinel)
+deliberately left in place — each has rational reasons to stay; out of
+FU-C banked scope.
 
 ---
 

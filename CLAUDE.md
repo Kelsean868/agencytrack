@@ -269,11 +269,9 @@ Use `extractFields()` in `src/utils/extractFields.js` — single source of truth
 
 ## Sensitive Files — Never Commit
 - `functions/service-account-key.json` — Firebase Admin SDK key
-- `functions/set-super-admin.cjs` — historical bootstrap script (super_admin era, retired PR-3); gitignored
-- `functions/seed-super-admin-user.cjs` — historical seed script (super_admin era, retired PR-3); gitignored
 - `functions/seed-agent-names.cjs` — one-time seed script
 
-All four are confirmed in `.gitignore`.
+Both are confirmed in `.gitignore`.
 
 ## Tool installation policy
 

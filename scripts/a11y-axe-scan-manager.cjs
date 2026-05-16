@@ -13,9 +13,6 @@
  *   A11Y_BRANCH_MANAGER_EMAIL, A11Y_BRANCH_MANAGER_PASSWORD
  *   A11Y_BASE_URL (optional — defaults to http://localhost:5173)
  *
- * For PR 1: if a dedicated branch_manager-tier scan account doesn't exist
- * yet, super_admin credentials may be used locally — flag as follow-up.
- *
  * Usage:
  *   node scripts/a11y-axe-scan-manager.cjs
  *   node scripts/a11y-axe-scan-manager.cjs --url=https://agencytrack-git-<branch>.vercel.app
