@@ -123,7 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #TBD | {TBD} | FU-C closure: super_admin script removal + companion cleanup |
+| #184 | `ddc6095` | FU-C closure: super_admin script removal + companion cleanup |
 | #182 | `19a8281` | FU-B closure: A11Y env var consolidation + Rule 14 banking-note re-baseline |
 | #180 | `e6018e8` | Methodology batch: Rule 15 (push verification) + FU-G/H/I banking + CONTEXT.md backfill |
 | #178 | `c930d97` | FU-D + FU-E .env.example cleanup (Rule 14 demonstration) |
@@ -150,7 +150,7 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **Today's session arc (2026-05-17, continued).** FU-C (MEDIUM, banked 2026-05-16) executes: 2 pre-PR-3 super_admin dead-code scripts removed from tracked source via `git rm` (`set-super-admin.cjs` claim setter + `seed-super-admin-user.cjs` user doc seeder with hardcoded email literal). Companion cleanup in the same PR: `.gitignore` lines 27–28 entries pruned, CLAUDE.md § Sensitive Files bullets for both files removed, stale PR-1-era comment in `scripts/a11y-axe-scan-manager.cjs:17` referencing super_admin credentials as a fallback deleted. 2026-05-17 audit confirmed FUNCTIONAL_GATE bucket empty; role retirement is complete in production code paths. Platform_admin successor scaffolding untouched (cross-tenant UI build deferred indefinitely; single-tenant Tatil Life scope).
 
-**MEDIUM-severity FU queue cleared.** FU-C was the last MEDIUM item. After PR #TBD merges, all remaining open FUs (FU-F, FU-G, FU-H, FU-I) are LOW severity. Rule 12 hard-stop discipline practiced at Phase 1: grep returned the known TEST_OR_SEED hit in `src/`; CC halted per brief wording; dispatcher authorized Option A continuation (pre-classified audit item, not a FUNCTIONAL_GATE survivor). Lint 0 / build clean. Smoke waived (deletion + companion docs/config only, no runtime callers). Strike count 0/2.
+**MEDIUM-severity FU queue cleared.** FU-C was the last MEDIUM item. After PR #184 (`ddc6095`) merged, all remaining open FUs (FU-F, FU-G, FU-H, FU-I) are LOW severity. Rule 12 hard-stop discipline practiced at Phase 1: grep returned the known TEST_OR_SEED hit in `src/`; CC halted per brief wording; dispatcher authorized Option A continuation (pre-classified audit item, not a FUNCTIONAL_GATE survivor). Lint 0 / build clean. Smoke waived (deletion + companion docs/config only, no runtime callers). Strike count 0/2.
 
 **Next:** LOW queue — FU-G execution (operational env-var script-local READMEs), FU-F (.env.local parser unification, now unblocked by FU-B), FU-H design resolution, FU-I (TENANT_ID parameterization), untracked docs/scripts cleanup.
 

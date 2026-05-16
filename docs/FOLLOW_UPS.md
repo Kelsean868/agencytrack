@@ -1591,7 +1591,7 @@ Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run
 
 ### FU-C: Remove tracked historical super_admin scripts (MEDIUM, banked 2026-05-16)
 
-**Resolved in PR #TBD** ({TBD}, 2026-05-17). Removed 2 vestigial dead-code
+**Resolved in PR #184** (`ddc6095`, 2026-05-17). Removed 2 vestigial dead-code
 scripts from the pre-PR-3 super_admin era:
 - functions/set-super-admin.cjs (22 lines, one-time claim setter)
 - functions/seed-super-admin-user.cjs (45 lines, one-time user doc seeder
