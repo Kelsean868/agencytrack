@@ -40,6 +40,31 @@ If `VERCEL_BYPASS_TOKEN` has been rotated since the last run, update it in
 `.env.local` before running. Rotate the token in Vercel project settings:
 Settings → Deployment Protection → Protection Bypass for Automation.
 
+### Operational knob: `PREVIEW_HOST`
+
+`.env.local` may optionally set:
+
+```
+PREVIEW_HOST=agencytrack-preview-XXXX.vercel.app
+```
+
+Bare host — scripts prepend `https://` internally (e.g. `https://${PREVIEW_HOST}/`).
+Including the scheme in the value produces `https://https://...` and breaks the
+first `page.goto`.
+
+Overrides the preview host targeted by smoke and walk scripts. Each
+fallback-pattern script (e.g. `bug-n3-smoke.mjs`, `e3-persistency-walk.mjs`,
+`e4-walk.mjs`, `e5-walk.mjs`, `e6-walk.mjs`) hardcodes its own per-feature-branch
+preview URL as a fallback, captured at the time the walk was authored. These
+fallbacks are typically stale — Vercel garbage-collects old branch previews — so
+they may be unreachable or reflect old code. Always set `PREVIEW_HOST`
+explicitly to target a current preview deployment.
+
+Two legacy walk scripts (`e1-slice-2b-walk.mjs:53`, `e2-walk.mjs:48`) hardcode
+the host without reading `PREVIEW_HOST` at all. The fallback-pattern scripts at
+least respect the env var; these do not. Both categories are pre-existing
+drift; consolidation is out of scope for FU-G.
+
 ## Test account
 
 - Email: `kelsean@gmail.com`

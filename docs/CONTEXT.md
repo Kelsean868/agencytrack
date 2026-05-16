@@ -123,11 +123,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #{TBD} | `{TBD}` | FU-G script-local READMEs (LOW closure): PREVIEW_HOST documented in `scripts/verification/README.md`; new `scripts/cleanup/README.md` documents CLEANUP_ALLOWED_TENANTS. `.env.example` untouched per Rule 14 carve-out. |
 | #184 | `ddc6095` | FU-C closure: super_admin script removal + companion cleanup |
 | #182 | `19a8281` | FU-B closure: A11Y env var consolidation + Rule 14 banking-note re-baseline |
 | #180 | `e6018e8` | Methodology batch: Rule 15 (push verification) + FU-G/H/I banking + CONTEXT.md backfill |
 | #178 | `c930d97` | FU-D + FU-E .env.example cleanup (Rule 14 demonstration) |
-| #176 | `44d654f` | chore(security): close FU-A — scrub test agent password from tracked files (Rule 14 compliance) |
 
 ---
 

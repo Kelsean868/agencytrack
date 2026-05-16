@@ -1691,7 +1691,7 @@ should set the override. Fresh-clone onboarding now surfaces the option.
 
 ---
 
-### FU-G — Document operational env vars in script-local READMEs (LOW)
+### FU-G — Document operational env vars in script-local READMEs (LOW, RESOLVED 2026-05-17)
 
 **Banked from:** 2026-05-17 env-credentials propagation audit Layer 3 (originating PR #178 brief deferred this). 2026-05-17 methodology batch audit confirmed scope.
 
@@ -1708,6 +1708,8 @@ should set the override. Fresh-clone onboarding now surfaces the option.
 - `.env.example` remains untouched (these are not credential-doc material per Rule 14).
 
 **Severity:** LOW — operationally important but no security or correctness risk; current state works because either env vars are set in operator shells or fallbacks apply.
+
+**Resolved in PR #{TBD}** (`{TBD}`, 2026-05-17). Extended `scripts/verification/README.md` with a `PREVIEW_HOST` operational-knob section (bare-host format, source-accurate fallback behavior, drift note preserving the `e1-slice-2b-walk.mjs` + `e2-walk.mjs` hardcoded-host call-out). Created `scripts/cleanup/README.md` documenting `CLEANUP_ALLOWED_TENANTS` allowlist semantics (env unset OR target tenant absent → `exit 1`), the consumer list (direct invocation plus orchestrator sites in `pr-f-bulk-test-data-smoke.mjs` and the shakedown harness), and a cross-reference to `docs/runbooks/test-data-lifecycle.md`. Phase 1 source audit caught three content-vs-source divergences in the brief's Phase 2a/2b spec and corrected each before commit (documented in the work PR body's Phase 1 findings section). `.env.example` was intentionally NOT modified per Rule 14 carve-out (these are operational knobs, not credentials).
 
 ---
 
