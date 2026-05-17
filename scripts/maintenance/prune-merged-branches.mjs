@@ -72,6 +72,41 @@ function git(...gitArgs) {
   return result.stdout.trim();
 }
 
+// ── Worktree map — branches attached to any worktree ──────────────────────────
+
+function parseWorktreeBranches() {
+  // Returns Map<branchName, worktreePath> for all branches attached to a worktree.
+  // Output format from `git worktree list --porcelain`:
+  //   worktree <path>
+  //   HEAD <sha>
+  //   branch refs/heads/<name>   (omitted if detached)
+  //   [blank line between records]
+  const map = new Map();
+  let raw;
+  try {
+    raw = git('worktree', 'list', '--porcelain');
+  } catch (err) {
+    log(`⚠ git worktree list --porcelain failed: ${(err.stderr || err.message).trim()}`);
+    log('  Continuing without worktree-attached protection. Manual review recommended.');
+    return map;
+  }
+
+  let currentPath = null;
+  for (const line of raw.split('\n')) {
+    if (line.startsWith('worktree ')) {
+      currentPath = line.slice('worktree '.length).trim();
+    } else if (line.startsWith('branch refs/heads/')) {
+      const branchName = line.slice('branch refs/heads/'.length).trim();
+      if (currentPath) map.set(branchName, currentPath);
+    } else if (line === '') {
+      currentPath = null;  // end of record
+    }
+    // detached worktrees have no `branch` line — skip
+  }
+
+  return map;
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 function main() {
@@ -90,6 +125,9 @@ function main() {
 
   const currentBranch = git('rev-parse', '--abbrev-ref', 'HEAD');
   log(`Current branch: ${currentBranch}`);
+
+  const worktreeBranches = parseWorktreeBranches();
+  log(`Worktree-attached branches detected: ${worktreeBranches.size}`);
   log('');
 
   // Enumerate all local branches with their upstream-tracking status.
@@ -102,6 +140,14 @@ function main() {
   for (const line of lines) {
     const [name, track] = line.split('|');
     if (name === 'main' || name === currentBranch) continue;   // hard exclusion
+
+    // Worktree-attached branches: skip with diagnostic marker.
+    // `git branch -D` refuses to delete branches checked out in any worktree.
+    if (worktreeBranches.has(name)) {
+      live.push({ name, track: `(attached to worktree at ${worktreeBranches.get(name)})` });
+      continue;
+    }
+
     if (track && track.includes('gone')) {
       stale.push(name);
     } else {
@@ -125,7 +171,8 @@ function main() {
     log('  (none)');
   } else {
     live.forEach(({ name, track }) => log(`  ${name}  ${track}`));
-    log('  → Investigate separately: open PRs, closed-unmerged PRs, or pre-deleteBranchOnMerge legacy.');
+    log('  → Investigate separately: open PRs, closed-unmerged PRs, pre-deleteBranchOnMerge legacy, or worktree-attached.');
+    log('  → For worktree-attached entries: `git worktree remove <path>` to detach, then re-run.');
     log('  → See docs/runbooks/branch-cleanup.md for handling guidance.');
   }
   log(`  Total: ${live.length}`);

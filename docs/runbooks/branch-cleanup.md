@@ -71,6 +71,30 @@ gh pr list --head <branch-name> --state all
   ref via `git push origin --delete <branch-name>`, then re-run the sweep —
   the local branch will now appear as `[gone]`.
 
+## Worktree-attached branches
+
+If the script reports any entries under "NOT swept" with marker `(attached to
+worktree at <path>)`, the local branch is checked out in a Git worktree at the
+specified path. `git branch -D` refuses to delete branches attached to any
+worktree (not just the current one), so the script skips these entries
+explicitly.
+
+To clean up a worktree-attached branch:
+
+```powershell
+git worktree remove <path>          # detach the worktree
+node scripts/maintenance/prune-merged-branches.mjs --execute   # re-run sweep
+```
+
+If the worktree is in a dirty state (uncommitted changes), `git worktree remove`
+will refuse. Either commit/stash inside the worktree first, or force-remove
+with `git worktree remove <path> --force` if the work is intentionally
+discardable.
+
+After detaching, the local branch's deletion status depends on its upstream
+state (`[gone]` → sweep candidate; live upstream → skipped). Re-run the script
+to apply the appropriate handling.
+
 ## Branches with no upstream
 
 A local branch with no upstream was never pushed. Delete manually if
