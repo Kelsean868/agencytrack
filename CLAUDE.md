@@ -356,7 +356,7 @@ Claude Code creates worktree branches automatically — each maps 1:1 to a PR.
 
 ## Methodology requirements (added 2026-05-14, from pilot prep session)
 
-These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc; rules 10–13 added 2026-05-15 from CLAUDE.md methodology batch — firestore-indexes + brief-discipline arc; rule 14 added 2026-05-16 from env-credentials propagation audit closure; rule 15 added 2026-05-17 from PR #176 silent-push recovery arc; rule 16 added 2026-05-17 from FU-H methodology PR (#188) — post-merge fill scope canonization; rule 17 added 2026-05-18 from FU-J methodology PR — source verification at authoring time). Apply on every CC brief and dispatch.
+These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc; rules 10–13 added 2026-05-15 from CLAUDE.md methodology batch — firestore-indexes + brief-discipline arc; rule 14 added 2026-05-16 from env-credentials propagation audit closure; rule 15 added 2026-05-17 from PR #176 silent-push recovery arc; rule 16 added 2026-05-17 from FU-H methodology PR (#188) — post-merge fill scope canonization; rule 17 added 2026-05-18 from FU-J methodology PR (#192) — source verification at authoring time). Apply on every CC brief and dispatch.
 
 ### 1. Surface before architectural decisions
 
@@ -534,7 +534,7 @@ Rule 11 is the specific case of this discipline for FU-body diagnoses; Rule 17 i
 
 Phase 1 audits remain the execution-time safety net (per Rule 11's "re-audit before first work" and existing Phase 1 gates in every brief). Rule 17 shifts the primary verification surface to authoring time — Phase 1 catches what authoring missed, not what authoring shouldn't have written.
 
-Banked from PR #{TBD} (2026-05-18). Six instances surfaced 2026-05-17 across FU-G + FU-F + FU-H briefs and Rule 16 wording; enumerated in `docs/FOLLOW_UPS.md` FU-J body at banking time (PR #190, `54c7d1c`).
+Banked from PR #192 (2026-05-18). Six instances surfaced 2026-05-17 across FU-G + FU-F + FU-H briefs and Rule 16 wording; enumerated in `docs/FOLLOW_UPS.md` FU-J body at banking time (PR #190, `54c7d1c`).
 
 ---
 
