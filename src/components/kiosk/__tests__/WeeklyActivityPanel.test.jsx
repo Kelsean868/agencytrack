@@ -12,9 +12,14 @@ const AGENTS = [
   { id: 'a2', name: 'Bob', role: 'agent' },
 ];
 
-// Week starting must be the current week's Sunday
+// Week starting must be the current week's Sunday in Trinidad-local time
+// (UTC−4, no DST) — mirrors filterSubmissionsByPeriod's toTriniDate semantics
+// in src/lib/productionReport/computations.js. Computing in UTC instead causes
+// the fixture's weekStarting to fall outside the filter's Trinidad-local window
+// during the 00:00–03:59 UTC danger window each day.
+const TRINI_OFFSET_MS = 4 * 60 * 60 * 1000;
 function currentWeekSunday() {
-  const d = new Date();
+  const d = new Date(Date.now() - TRINI_OFFSET_MS);
   d.setUTCDate(d.getUTCDate() - d.getUTCDay());
   const y = d.getUTCFullYear();
   const m = String(d.getUTCMonth() + 1).padStart(2, '0');
