@@ -15,28 +15,14 @@
  *   1 — test FAILED (token leaked OR unexpected behavior)
  */
 import { chromium } from 'playwright';
-import { writeFileSync, readFileSync, mkdirSync, existsSync } from 'fs';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { setupBypassSession } from './lib/walk-helpers.mjs';
+import { loadEnv } from '../lib/loadEnv.mjs';
 
 const OUT_DIR  = resolve(process.cwd(), 'verification');
 const OUT_FILE = resolve(OUT_DIR, 'walk-3-induced-failure.txt');
 if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
-
-// Load env minimally to get the real token — we then assert it does NOT appear
-// in the thrown error.
-function loadEnv() {
-  const text = readFileSync(resolve(process.cwd(), '.env.local'), 'utf8');
-  const env = {};
-  text.split('\n').forEach((line) => {
-    const eq = line.indexOf('=');
-    if (eq < 1) return;
-    const k = line.slice(0, eq).trim();
-    let v = line.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
-    env[k] = v;
-  });
-  return env;
-}
 
 const env = loadEnv();
 const TOKEN = env.VERCEL_BYPASS_TOKEN;

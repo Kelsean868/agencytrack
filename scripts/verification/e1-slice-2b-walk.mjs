@@ -13,34 +13,14 @@
  * Artifacts (screenshots, results.json) written to verification/e1-slice-2b/ (gitignored).
  */
 import { chromium } from 'playwright';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
+import { writeFileSync, mkdirSync, existsSync } from 'fs';
+import { resolve } from 'path';
+import { loadEnv } from '../lib/loadEnv.mjs';
 
-const __dir = dirname(fileURLToPath(import.meta.url));
 const ARTIFACTS_DIR = resolve(process.cwd(), 'verification/e1-slice-2b');
 const SS_DIR        = resolve(ARTIFACTS_DIR, 'screenshots');
 const RESULTS_FILE  = resolve(ARTIFACTS_DIR, 'results.json');
 if (!existsSync(SS_DIR)) mkdirSync(SS_DIR, { recursive: true });
-
-// ── env ──────────────────────────────────────────────────────────────────────
-function loadEnv(...paths) {
-  for (const p of paths) {
-    try {
-      const src = readFileSync(p, 'utf8');
-      const env = {};
-      src.split('\n').forEach(line => {
-        const eq = line.indexOf('=');
-        if (eq < 1) return;
-        const k = line.slice(0, eq).trim();
-        const v = line.slice(eq + 1).trim().replace(/^["']|["']$/g, '');
-        if (k) env[k] = v;
-      });
-      return env;
-    } catch { /* try next */ }
-  }
-  return {};
-}
 
 const env = loadEnv(resolve(process.cwd(), '.env.local'));
 const BYPASS_TOKEN     = env.VERCEL_BYPASS_TOKEN;
