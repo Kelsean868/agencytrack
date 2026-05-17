@@ -1794,7 +1794,7 @@ Five of six are brief-authoring; one is rule-authoring. Root cause: dispatcher (
 
 ---
 
-### FU-L — `prune-merged-branches.mjs` skip worktree-attached branches (LOW, housekeeping, banked 2026-05-18)
+### FU-L — `prune-merged-branches.mjs` skip worktree-attached branches (LOW, housekeeping, RESOLVED 2026-05-18)
 
 **Surfaced:** dogfood `--execute` run 2026-05-18 (post-FU-K PR #194 + FU-H PR #196 close). Script reported `error: cannot delete branch 'chore/fu-h-stale-row-sweep' used by worktree at 'C:/Projects/AgencyTrack-fu-h-sweep'`. Failed-1 OK-1, exit reflected partial failure cleanly.
 
@@ -1807,6 +1807,8 @@ Five of six are brief-authoring; one is rule-authoring. Root cause: dispatcher (
 **Severity:** LOW. Script reports failure cleanly, doesn't crash; operator can manually `git worktree remove <path>` then re-run.
 
 **Sequencing:** XS work PR. Open opportunistically — could pair with FU-F-2 in same session.
+
+**Resolved in PR #{TBD}** (`{TBD}`, 2026-05-18). Added `parseWorktreeBranches()` helper to `scripts/maintenance/prune-merged-branches.mjs` parsing `git worktree list --porcelain`. Integrated into classification loop: worktree-attached branches are routed to the "NOT swept" list with marker `(attached to worktree at <path>)` BEFORE the `[gone]` check, preserving operator visibility and providing actionable guidance (`git worktree remove <path>` to detach + re-run). Runbook at `docs/runbooks/branch-cleanup.md` gains a new "Worktree-attached branches" section between "Branches with live upstream" and "Branches with no upstream". Phase 3 integration test created a throwaway worktree to validate the new logic at runtime — output confirmed `(attached to worktree at <path>)` marker rendered correctly. Closes the dogfood-surfaced gap from morning 2026-05-18 (`chore/fu-h-stale-row-sweep` deletion failure).
 
 ---
 
