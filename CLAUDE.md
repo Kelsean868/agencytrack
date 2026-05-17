@@ -341,7 +341,7 @@ After step 9.5's pull and after capturing the squash SHA from `git log origin/ma
   Prevention (preferred): When opening a docs-only PR, draft the file directly inside the PR's feature worktree, not the main worktree. This keeps main's working tree clean and avoids the collision entirely. Reference: PR #51 retrospective, B-series cleanup pattern across PRs #45, #50, #51.
 - **Verification target = no NEW stale state from this PR.** After cleanup, "clean" means this PR's branch is deleted, its worktree (if any) removed, no PR-specific untracked artifacts remain. Pre-existing stale branches from prior sessions fall under the running Worktree + branch audit FU, not this PR's cleanup. Verification must scope honestly to what this PR introduced; "only main + remote refs" is aspirational across all PRs, not a per-PR-enforceable target. Banked from PR #155 (arbitrary-syntax sweep) surfacing 4 pre-existing stale branches that were correctly identified as out-of-scope.
 
-Rule 15 governs the origin-verification step for any commit produced by this sequence.
+Rule 16 governs the fill scope for this sequence; Rule 15 governs the origin-verification step for any commit produced by it.
 
 ### Single-branch PR rule
 One worktree branch = one PR. Never extend an open PR by pushing unrelated work to its branch.
@@ -503,6 +503,22 @@ Why: on 2026-05-17 a silent push failure from the previous day's post-merge sequ
 Note on terminology: This rule anchors to canonical CLAUDE.md sections (Session Protocol step 9 + § Post-merge local cleanup), not to "Rule 4." Some prior briefs use "Rule 4" as shorthand for the post-merge placeholder-fill sequence; that shorthand collides with canonical Rule 4 (env-listing credential safety) and should not be carried forward in new briefs.
 
 Banked from PR #180 (2026-05-17, methodology batch).
+
+### 16. Post-merge fill scope is canonical
+
+The post-merge cleanup sequence (Session Protocol step 9.5 + § Post-merge local cleanup) MUST update the following in `docs/CONTEXT.md` as part of every cycle, regardless of whether the work brief's Phase 4 specified them:
+
+- **Current main HEAD** — squash SHA of the most recently merged PR (the work PR squash, not the post-merge fill commit which is housekeeping). For direct-to-main commits without an associated PR, use the commit SHA.
+- **Active track** — identifier of the just-shipped work.
+- **Next track** — remove items that just shipped; promote the next-up item, or note "(queue clear)" if none.
+- **"Where we left off"** prose — summary of the just-shipped PR and what's next. Format flexible; content must be current.
+- **Last updated** — ISO date of the fill commit.
+
+Any `#TBD` or `{TBD}` placeholders introduced in the work PR's Phase 4 are filled with the work PR's number and squash SHA (the pre-existing mechanic, now consolidated under Rule 16).
+
+**Terminology resolution.** Some prior briefs used "Rule 4 shorthand" to refer to this sequence; that collides with canonical Rule 4 (env-listing safety) and is retired. Briefs and dispatches cite **Rule 16** when referencing the post-merge fill scope.
+
+**Verification anchor.** Rule 15 (origin-verification) verifies the push produced by Rule 16's fill commit.
 
 ---
 
