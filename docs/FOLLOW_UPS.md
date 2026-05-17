@@ -1751,7 +1751,7 @@ Evidence at banking time: even after PR #178's clean post-merge fill (`3e3afc0`)
 
 ---
 
-### FU-J — Brief and rule authoring source-verification discipline (LOW, methodology, banked 2026-05-17)
+### FU-J — Brief and rule authoring source-verification discipline (LOW, methodology, RESOLVED 2026-05-18)
 
 **Surface:** Pattern observed 2026-05-17 across FU-G + FU-F + FU-H + Rule 16: briefs and rule additions describing source behavior (default behavior, example values, command syntax, file paths, line numbers, structural format) authored without source-level verification produced six errors. Phase 1 re-audit caught all six, but at cost of re-author cycles.
 
@@ -1771,6 +1771,8 @@ Five of six are brief-authoring; one is rule-authoring. Root cause: dispatcher (
 **Severity:** LOW (no production impact; methodology drag only).
 
 **Sequencing:** Rule 17 canonization is a future methodology PR (separate session). This entry banks the pattern for that session.
+
+**Resolved in PR #{TBD}** (`{TBD}`, 2026-05-18). Rule 17 added to `CLAUDE.md` mandating source-verification at brief- and rule-authoring time for behavioral/example/format/path claims. Five-bullet enumeration covers default behavior, example values, file paths, structural format, and operational possibility of proposed wording. Rule 11 explicitly carved out as the specific case for FU-body diagnoses. Meta-paragraph at `CLAUDE.md:359` extended in same commit to cover both Rule 16 (missed during PR #188) and Rule 17 entries.
 
 ---
 
