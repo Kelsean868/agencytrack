@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-17` |
-| Current main HEAD | `3ae762c` (docs(briefs): FU-C super_admin script removal kickoff, #183) |
-| Active track | **FU-C shipped** — super_admin vestigial dead-code scripts removed from tracked source + companion cleanup (gitignore, CLAUDE.md, stale comment). MEDIUM-severity FU queue cleared. Role retirement formally complete in tracked source. |
-| Next track | LOW queue — FU-G execution (operational env-var script-local READMEs), FU-F (.env.local parser unification, now unblocked by FU-B), FU-H (Phase 4 fill scope methodology, design judgment), FU-I (TENANT_ID parameterization), untracked docs/scripts cleanup, KioskShell presentation-token migration. |
+| Current main HEAD | `a1cd73c` (fix(test): WeeklyActivityPanel — use Trinidad-local Sunday in test fixture (pre-existing since #75), #189) |
+| Active track | WeeklyActivityPanel test hotfix shipped (PR #189, squash `a1cd73c`). FU-H rebase next. |
+| Next track | FU-H (PR #188) rebase + CI re-run + merge; then FU-H Phase 6 canonical first Rule 16 application. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -123,11 +123,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #189 | `a1cd73c` | WeeklyActivityPanel test timezone fix: test fixture now uses Trinidad-local Sunday boundary (pre-existing since #75, surfaced by FU-H CI run in UTC danger window). Test-only, no component change. |
 | #186 | `bd238d2` | FU-G script-local READMEs (LOW closure): PREVIEW_HOST documented in `scripts/verification/README.md`; new `scripts/cleanup/README.md` documents CLEANUP_ALLOWED_TENANTS. `.env.example` untouched per Rule 14 carve-out. |
 | #184 | `ddc6095` | FU-C closure: super_admin script removal + companion cleanup |
 | #182 | `19a8281` | FU-B closure: A11Y env var consolidation + Rule 14 banking-note re-baseline |
 | #180 | `e6018e8` | Methodology batch: Rule 15 (push verification) + FU-G/H/I banking + CONTEXT.md backfill |
-| #178 | `c930d97` | FU-D + FU-E .env.example cleanup (Rule 14 demonstration) |
 
 ---
 
@@ -153,6 +153,8 @@ These don't block anything, but they need to be resolved or carried forward each
 **MEDIUM-severity FU queue cleared.** FU-C was the last MEDIUM item. After PR #184 (`ddc6095`) merged, all remaining open FUs (FU-F, FU-G, FU-H, FU-I) are LOW severity. Rule 12 hard-stop discipline practiced at Phase 1: grep returned the known TEST_OR_SEED hit in `src/`; CC halted per brief wording; dispatcher authorized Option A continuation (pre-classified audit item, not a FUNCTIONAL_GATE survivor). Lint 0 / build clean. Smoke waived (deletion + companion docs/config only, no runtime callers). Strike count 0/2.
 
 **Next:** LOW queue — FU-G execution (operational env-var script-local READMEs), FU-F (.env.local parser unification, now unblocked by FU-B), FU-H design resolution, FU-I (TENANT_ID parameterization), untracked docs/scripts cleanup.
+
+**WeeklyActivityPanel test hotfix shipped (PR #189, `a1cd73c`).** Pre-existing test breakage from PR #75 (`ed99ece`, E5.1 kiosk polish) surfaced when FU-H's CI run hit the 00:00–03:59 UTC danger window — test fixture computed `weekStarting` in UTC while production filter uses Trinidad-local time (UTC−4 via `toTriniDate`), mismatch fell `Alice` and `Bob` submissions outside the period filter, panel rendered empty state, two assertions failed. Test-only fix (`src/components/kiosk/__tests__/WeeklyActivityPanel.test.jsx`, 7 insertions / 2 deletions; mirrors production's `toTriniDate` semantics). Bug was on main for 113 commits before surfacing today; tests verified failing at the introducing commit `ed99ece` (detached HEAD bisect). FU-H (PR #188) is blocked on this CI gate and will rebase onto `a1cd73c` next; rebase expected to be small (docs-only diff in FU-H; this fill commit touches `docs/CONTEXT.md` which FU-H's Phase 2c also edits — rebase will need conflict resolution on top-table fields and "Where we left off" content). FU-H Phase 6 remains the canonical first Rule 16 application — Rule 16 itself is still in PR #188, not on main yet; this fill commit operates under the spirit of Rule 16 per dispatcher instruction.
 
 ---
 
