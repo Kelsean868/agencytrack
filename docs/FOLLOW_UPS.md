@@ -1589,7 +1589,7 @@ Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run
 
 ---
 
-### FU-C: Remove tracked historical super_admin scripts (MEDIUM, banked 2026-05-16)
+### FU-C: Remove tracked historical super_admin scripts (MEDIUM, RESOLVED 2026-05-17)
 
 **Resolved in PR #184** (`ddc6095`, 2026-05-17). Removed 2 vestigial dead-code
 scripts from the pre-PR-3 super_admin era:
