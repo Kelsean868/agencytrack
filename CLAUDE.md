@@ -356,7 +356,7 @@ Claude Code creates worktree branches automatically — each maps 1:1 to a PR.
 
 ## Methodology requirements (added 2026-05-14, from pilot prep session)
 
-These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc; rules 10–13 added 2026-05-15 from CLAUDE.md methodology batch — firestore-indexes + brief-discipline arc; rule 14 added 2026-05-16 from env-credentials propagation audit closure; rule 15 added 2026-05-17 from PR #176 silent-push recovery arc). Apply on every CC brief and dispatch.
+These rules emerged from productive sessions and post-incident learnings (originally 8 from pilot prep 2026-05-14; rule 9 added 2026-05-15 from FU#4 → border-border arc; rules 10–13 added 2026-05-15 from CLAUDE.md methodology batch — firestore-indexes + brief-discipline arc; rule 14 added 2026-05-16 from env-credentials propagation audit closure; rule 15 added 2026-05-17 from PR #176 silent-push recovery arc; rule 16 added 2026-05-17 from FU-H methodology PR (#188) — post-merge fill scope canonization; rule 17 added 2026-05-18 from FU-J methodology PR — source verification at authoring time). Apply on every CC brief and dispatch.
 
 ### 1. Surface before architectural decisions
 
@@ -519,6 +519,22 @@ Any `#TBD` or `{TBD}` placeholders introduced in the work PR's Phase 4 are fille
 **Terminology resolution.** Some prior briefs used "Rule 4 shorthand" to refer to this sequence; that collides with canonical Rule 4 (env-listing safety) and is retired. Briefs and dispatches cite **Rule 16** when referencing the post-merge fill scope.
 
 **Verification anchor.** Rule 15 (origin-verification) verifies the push produced by Rule 16's fill commit.
+
+### 17. Source verification at authoring time
+
+When a brief or methodology rule describes source behavior — default behavior, example values, command syntax, file paths, line numbers, existing structural format — the author MUST verify each claim against current source BEFORE locking the brief's "Decisions locked" section or proposing rule wording. Specifically:
+
+- **Default behavior / fallback claims:** grep or read the consumer site; never paraphrase from memory.
+- **Example values:** trace through actual call sites (scheme prefixes, separator characters, escape rules, units). Operator copy-paste must work verbatim.
+- **File paths and line numbers:** open the file and confirm; line numbers drift between sessions.
+- **Existing structural format:** read the existing target document end-to-end before prescribing changes (table cadence, paragraph count, heading levels).
+- **Operational possibility of proposed wording:** for rule additions, mentally simulate the rule's first execution and check for chicken-and-egg conditions (e.g., "fill commit SHA captured before fill commit exists").
+
+Rule 11 is the specific case of this discipline for FU-body diagnoses; Rule 17 is the general principle applied to all source-derived claims in briefs and rule wording. Cite Rule 11 when the FU-body diagnosis itself is the gap; cite Rule 17 otherwise.
+
+Phase 1 audits remain the execution-time safety net (per Rule 11's "re-audit before first work" and existing Phase 1 gates in every brief). Rule 17 shifts the primary verification surface to authoring time — Phase 1 catches what authoring missed, not what authoring shouldn't have written.
+
+Banked from PR #{TBD} (2026-05-18). Six instances surfaced 2026-05-17 across FU-G + FU-F + FU-H briefs and Rule 16 wording; enumerated in `docs/FOLLOW_UPS.md` FU-J body at banking time (PR #190, `54c7d1c`).
 
 ---
 

@@ -123,11 +123,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #{TBD} | `{TBD}` | FU-J methodology (LOW closure): Rule 17 added to `CLAUDE.md` mandating brief/rule source-verification at authoring time (default behavior, example values, file paths, structural format, operational possibility). Rule 11 carved as specific case for FU-body diagnoses. Meta-paragraph at line 359 extended to cover Rules 16 + 17 (caught Rule 16 catch-up drift from PR #188). Single-file CLAUDE.md edit. |
 | #190 | `54c7d1c` | End-of-day banking: FU-J (brief-/rule-authoring source-verification methodology, six-instance pattern from FU-G + FU-F + FU-H + Rule 16) and FU-K (stale `docs/*` + `chore/*` branch cleanup sweep, ~16 branches accumulated) added to FOLLOW_UPS.md. |
 | #188 | `a543c30` | FU-H methodology (LOW closure): Rule 16 added to CLAUDE.md mandating post-merge fill scope (Current main HEAD, Active track, Next track, Where we left off, Last updated). Wording corrected Pass 3 to anchor Current main HEAD on the work-PR squash (not the fill commit, which is housekeeping). Anchor tweak at CLAUDE.md:344 cites Rule 16 alongside Rule 15. Retires 'Rule 4 shorthand' terminology drift flagged by Rule 15:503. Top-table staleness reconciled. |
 | #189 | `a1cd73c` | WeeklyActivityPanel test timezone fix: test fixture now uses Trinidad-local Sunday boundary (pre-existing since #75, surfaced by FU-H CI run in UTC danger window). Test-only, no component change. |
 | #186 | `bd238d2` | FU-G script-local READMEs (LOW closure): PREVIEW_HOST documented in `scripts/verification/README.md`; new `scripts/cleanup/README.md` documents CLEANUP_ALLOWED_TENANTS. `.env.example` untouched per Rule 14 carve-out. |
-| #184 | `ddc6095` | FU-C closure: super_admin script removal + companion cleanup |
 
 ---
 
