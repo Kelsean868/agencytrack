@@ -1589,7 +1589,7 @@ Post-PR lint baseline: 0 warnings (down from 14; +1 stale eslint-disable in `run
 
 ---
 
-### FU-C: Remove tracked historical super_admin scripts (MEDIUM, banked 2026-05-16)
+### FU-C: Remove tracked historical super_admin scripts (MEDIUM, RESOLVED 2026-05-17)
 
 **Resolved in PR #184** (`ddc6095`, 2026-05-17). Removed 2 vestigial dead-code
 scripts from the pre-PR-3 super_admin era:
@@ -1732,7 +1732,7 @@ All other `scripts/cleanup/**` and `scripts/verification/shakedown/**` consumers
 
 ---
 
-### FU-H — Phase 4 fill scope methodology (LOW, methodology)
+### FU-H — Phase 4 fill scope methodology (LOW, methodology, RESOLVED 2026-05-17)
 
 **Banked from:** 2026-05-17 methodology batch audit. Surfaced as the second failure mode adjacent to Rule 15.
 
@@ -1748,6 +1748,8 @@ Evidence at banking time: even after PR #178's clean post-merge fill (`3e3afc0`)
 **Closure criteria:** Design judgment locked in a future methodology PR; canonical Phase 4 fill scope is unambiguous and enforceable; CONTEXT.md top-table state stays current automatically after every post-merge sequence.
 
 **Severity:** LOW (methodology) — doesn't break shipping, but causes CONTEXT.md drift that erodes the doc's value as an at-a-glance state reference.
+
+**Resolved in PR #188** (`a543c30`, 2026-05-17). Rule 16 added to `CLAUDE.md` mandating post-merge fill scope (Current main HEAD, Active track, Next track, "Where we left off", Last updated). Anchor tweak at `CLAUDE.md:344` cites Rule 16 alongside Rule 15. Retired "Rule 4 shorthand" terminology drift flagged by Rule 15:503. Top-table staleness fixed in same commit as Rule 16 demonstration case. Pass 3 amend corrected initial `fill commit` anchor wording to `work-PR squash` (the operationally-possible version) after the hotfix-Phase-4 self-application surfaced the chicken-and-egg condition. Rule 16 has self-validated across four consecutive post-merge cycles (PRs #188, #190, #192, #194) with zero drift recurrences. **Note on this footer:** PR #188's Phase 6 spec included this resolved-block conversion but execution missed it; the drift was caught during FU-J + FU-K Session A brief authoring (2026-05-18) and reconciled in this stale-row sweep PR.
 
 ---
 
