@@ -1659,7 +1659,7 @@ should set the override. Fresh-clone onboarding now surfaces the option.
 
 ---
 
-### FU-F: Unify .env.local parsing strategy (LOW, RESOLVED 2026-05-18 — Part 1 of 2)
+### FU-F: Unify .env.local parsing strategy (LOW, RESOLVED 2026-05-18)
 
 **Surface:** Two separate `.env.local` parsers exist in the repo. `dotenv` (npm package) used by most scripts. Custom `loadEnv()` in `scripts/verification/shakedown/auth-helpers.mjs:75` — bespoke parser with defensive `[A-Z_][A-Z0-9_]*=` line filter (Rule 4 alignment).
 
@@ -1672,6 +1672,8 @@ should set the override. Fresh-clone onboarding now surfaces the option.
 **Surfaced from:** Section 3 Drift #5 of env-credentials propagation audit (2026-05-16).
 
 **Part 1 resolved in PR #198** (`316b86a`, 2026-05-18). Created `scripts/lib/loadEnv.mjs` (strict parser preserving TOOLING-N embedded-key detection, frozen dict return, module-scoped cache, optional path arg with cwd-default). Migrated 19 of 23 `.mjs` inline-parser sites (Pattern A ×16 + Pattern B ×2 + Pattern D ×1; 4 untracked sites excluded per existing 2026-05-13 banked untracked-cleanup FU). FU-B PR #182 sequencing constraint satisfied — all 19 migration targets within FU-B's touch surface. **Rule 11 corrected diagnosis:** FU-F body's "Two separate .env.local parsers" claim was operationally stale; actual landscape at audit time (2026-05-18, repo HEAD `40cd5d6`) was 8 distinct parser shapes consolidating to 5 semantic patterns across 30 inline-parser sites (23 `.mjs` + 7 `.cjs`). FU body's "dotenv (npm package) used by most scripts" claim was also stale; zero dotenv consumers in source (verified). Corrected diagnosis preserved here per Rule 11 drift-trail principle. **Part 2 (FU-F-2)** deferred — `.cjs` sibling helper at `scripts/lib/loadEnv.cjs` + 7 `.cjs` migrations (audit-locked at 2026-05-18; decisions retrievable via this PR's chat context). Second canonical Rule 17 in-the-wild application during brief authoring (after FU-K's `git branch --merged main` mechanism, FU-J PR #194).
+
+**Part 2 resolved in PR #{TBD}** (`{TBD}`, 2026-05-18). Created `scripts/lib/loadEnv.cjs` (CommonJS sibling to `scripts/lib/loadEnv.mjs` shipped in FU-F-1 / PR #198) preserving identical strict parser semantics including TOOLING-N embedded-key detection. Migrated 5 tracked `.cjs` inline-parser sites: `a11y-axe-scan.cjs`, `a11y-axe-scan-manager.cjs`, `exploration-walk.cjs` (Pattern G — embedded-key detection preserved); `manager-audit-screenshots.cjs`, `manager-audit-screenshots-mobile.cjs` (Pattern H — gains embedded-key detection as safety upgrade). `Object.assign(process.env, loadEnv(...))` preserves caller-side mutation contract. **Rule 11 corrected diagnosis (knock-on from FU-M closure):** Dispatcher's FU-M closure paragraph (PR #202) claimed actual tracked `.cjs` count was 6; correct count is 5 (audit's 7 minus 1 untracked `mgr-mobile-audit.cjs` minus 1 excluded `multi-role-smoke.cjs`). Arithmetic miscount preserved here as drift trail per Rule 11. **FU-N banked in same Phase 4** (audit-methodology refinement: pair `grep` with `git ls-files` for future audit enumerations). Both Parts 1 + 2 of FU-F now complete; entire script parser unification effort closed end-to-end across two PRs.
 
 ---
 
@@ -1828,3 +1830,17 @@ Five of six are brief-authoring; one is rule-authoring. Root cause: dispatcher (
 **Severity:** LOW. Doesn't break shipping; just risks confusion + represents likely-dead code.
 
 **Resolved in PR #202** (`a4fba56`, 2026-05-18). Phase 1 source-verification surfaced that `scripts/multi-role-smoke.cjs` was NOT tracked in git — file existed only in main worktree's local filesystem, excluded via `.git/info/exclude` line 8 (personal exclude file, not repo-shared `.gitignore`). Brief's "tracked" claim was incorrect — corrected diagnosis preserved here per Rule 11 drift-trail principle. Remedy: filesystem `rm` of the local file + cleaned up `.git/info/exclude` line 8 (both local-only operations, not in repo diff). Third canonical Rule 17 in-the-wild signal — caught at Phase 1 execution gate (safety net layer), not at brief authoring time (primary layer). Both layers of the discipline validated across the two-day arc. Audit miscounting (knock-on): FU-F audit (2026-05-17 + 2026-05-18 re-run) claimed 7 `.cjs` migration targets via `grep`; actual tracked `.cjs` count is 6 (multi-role-smoke.cjs was excluded-not-tracked all along). FU-F-2's brief should reflect 6 as migration target. Methodology refinement candidate: future audit enumerations should pair `grep` with `git ls-files` to distinguish tracked/untracked/excluded — flagged for separate banking, not absorbed here.
+
+---
+
+### FU-N — Audit enumeration: pair `grep` with `git ls-files` to distinguish tracked/untracked/excluded (LOW, methodology, banked 2026-05-18)
+
+**Surfaced:** FU-M execution Phase 1 (PR #202, 2026-05-18). FU-F audit (2026-05-17 + 2026-05-18 re-run) enumerated `.cjs` parser sites via `grep -rn` alone, treating all matches as tracked migration targets. CC's Phase 1 source-verification caught `scripts/multi-role-smoke.cjs` was excluded-not-tracked via `.git/info/exclude` (personal exclude file, not repo-shared `.gitignore`). Additional dispatcher miscount in FU-M closure (claimed "6"; actual 5 — fixed in FU-F-2 Phase 4a closure paragraph per Rule 11).
+
+**Mechanism:** `grep -rn` matches all files on filesystem regardless of git-tracked status. Audit consumers (brief authors) downstream assume tracked = migration target. Discrepancy creates phantom migration targets + dispatcher miscounts.
+
+**Proposed fix:** future audit dispatches pair enumeration with `git ls-files` to filter to tracked-only files. Alternatively: use `git grep` which only searches index/tracked content. Update CLAUDE.md Rule 17 bullet list to add a "tracked-status verification" discipline OR bank as a Methodology Patterns note.
+
+**Severity:** LOW (methodology refinement). Doesn't break shipping; causes audit downstream inefficiency + dispatcher miscounts. Phase 1 safety net catches the discrepancy (as proven in FU-M PR #202), but caught-at-authoring-time is preferred per Rule 17.
+
+**Sequencing:** XS work PR — opportunistic. Could pair with future methodology batch (similar to PR #168) or stand alone.
