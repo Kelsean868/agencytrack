@@ -1748,3 +1748,38 @@ Evidence at banking time: even after PR #178's clean post-merge fill (`3e3afc0`)
 **Closure criteria:** Design judgment locked in a future methodology PR; canonical Phase 4 fill scope is unambiguous and enforceable; CONTEXT.md top-table state stays current automatically after every post-merge sequence.
 
 **Severity:** LOW (methodology) — doesn't break shipping, but causes CONTEXT.md drift that erodes the doc's value as an at-a-glance state reference.
+
+---
+
+### FU-J — Brief and rule authoring source-verification discipline (LOW, methodology, banked 2026-05-17)
+
+**Surface:** Pattern observed 2026-05-17 across FU-G + FU-F + FU-H + Rule 16: briefs and rule additions describing source behavior (default behavior, example values, command syntax, file paths, line numbers, structural format) authored without source-level verification produced six errors. Phase 1 re-audit caught all six, but at cost of re-author cycles.
+
+**Specific instances:**
+
+1. FU-G brief Phase 2a default behavior — described `PREVIEW_HOST` fallback as "production preview URL"; source reality is per-feature-branch stale URLs across 9 fallback sites.
+2. FU-G brief Phase 2a example — included `https://` scheme; source consumes bare host (`https://${PREVIEW_HOST}/`), prepending scheme internally. Operator copy-paste would have broken every walk.
+3. FU-G brief Phase 2b Purpose — described `scripts/cleanup/**` as "operations are destructive"; source includes `preview-test-data-sweep.mjs` which is DRY-RUN only per its file header.
+4. FU-F body claim — "dotenv used by most scripts"; source has zero dotenv consumers; actual landscape is 5 inline parser patterns across 30 files (23 .mjs + 7 .cjs).
+5. FU-H brief Phase 2c — prescribed "one-line summary" for "Where we left off" without consulting actual format; CONTEXT.md had a 4-paragraph multi-section structure that was collapsed before CC surfaced it via Rule 1.
+6. FU-H Rule 16 wording — "fill commit" anchor for Current main HEAD is operationally impossible (chicken-and-egg); surfaced by hotfix #189 Phase 4 as the de-facto first application.
+
+Five of six are brief-authoring; one is rule-authoring. Root cause: dispatcher (chat Claude) authors briefs/rules from assumptions about source rather than reading source first.
+
+**Proposed resolution:** A new methodology rule (candidate Rule 17) mandating source-verification at authoring time for behavioral/example/format/path claims. Concretely: grep or read source before writing behavior descriptions; trace example values through actual call sites; confirm file paths and line numbers; read existing structural format before prescribing changes. Phase 1 remains as safety net; the primary verification surface shifts to authoring time.
+
+**Severity:** LOW (no production impact; methodology drag only).
+
+**Sequencing:** Rule 17 canonization is a future methodology PR (separate session). This entry banks the pattern for that session.
+
+---
+
+### FU-K — Stale local docs/* and chore/* branch cleanup sweep (LOW, housekeeping, banked 2026-05-17)
+
+**Surface:** Local branches from merged brief-docs PRs and feature PRs accumulate after upstream pruning via GitHub's `deleteBranchOnMerge`. Currently: ~11 stale local branches from pre-2026-05-17 docs PRs plus today's branches (`docs/fu-g-brief`, `docs/fu-h-brief`, `chore/fu-g-script-readmes`, `chore/fu-h-rule-16`, `fix/weekly-activity-panel-test-tz`, and the just-merged `chore/bank-fu-j-fu-k`).
+
+**Action:** Single sweep dispatch. (1) `git branch --merged main` to enumerate merged-locally branches. (2) Filter to exclude `main`, current branch, any active worktree branches. (3) `git branch -D` each stale entry. (4) `git remote prune origin` to clear any leftover remote-tracking refs.
+
+**Severity:** LOW (housekeeping; no production impact, no methodology surface).
+
+**Sequencing:** Anytime; XS execution; deferrable indefinitely without consequence.
