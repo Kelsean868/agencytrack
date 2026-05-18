@@ -35,7 +35,7 @@ export default function SaveButton({
           'min-h-[44px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50',
           isSaved
             ? 'bg-success/15 text-success hover:bg-success/20'
-            : 'bg-primary dark:bg-primary-dark text-white hover:bg-[color:var(--color-primary-dark)]',
+            : 'bg-primary dark:bg-primary-dark text-white hover:bg-primary-dark',
         ].join(' ')}
       >
         {saving

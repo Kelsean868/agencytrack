@@ -1882,3 +1882,15 @@ Five of six are brief-authoring; one is rule-authoring. Root cause: dispatcher (
 ## /post-merge slash command discovery failure (LOW, methodology — banked 2026-05-19, PR #217 cycle)
 
 /post-merge slash command discovery failure (LOW, methodology — banked 2026-05-19, PR #217 cycle). During the first deployment of /post-merge as part of PR #217's post-merge sequence, the operator-facing CLI surface displayed the command as unrecognized despite the slash command system successfully injecting the .claude/commands/post-merge.md body into CC's context (CC executed the canonical sequence end-to-end and produced commit 0e390e8). Investigate: does .claude/commands/ require additional registration step (settings.json, CC restart, plugin reload)? Is the operator-side recognition mechanism distinct from the CC-side execution mechanism? Same investigation may apply to /dispatch. Next action: verify on the next dispatched PR whether /dispatch displays as recognized; if both commands fail operator-side recognition while still executing CC-side, document the dual-surface gap in CLAUDE.md § Dispatcher tooling.
+
+---
+
+## `@apply bg-[color:var(--color-X)]` sweep in `src/index.css` (LOW, refactor — banked PR #TBD, {TBD})
+
+Banked from PR #TBD ({TBD}) audit. 4 call-sites in `src/index.css` `@layer components` definitions (`.btn-secondary`, `.card`, `.input`, `.label`) use `@apply` with arbitrary-value CSS-var syntax — out of scope for the JSX sweep that PR #TBD addressed.
+
+`@apply` resolution semantics may differ between arbitrary-value (`@apply bg-[color:var(--color-card)]`) and named-utility (`@apply bg-card`) syntax inside `@layer` rules. Requires verification that the compiled output is byte-equivalent before sweeping.
+
+**Next action:** scratch-build verification — change one of the 4 call-sites to named utility, run `npm run build`, compare compiled `dist/assets/index-*.css` for that class rule against baseline. If equivalent, ship the sweep. If divergent, document the cause and leave as-is.
+
+**Banked:** PR #TBD ({TBD}).

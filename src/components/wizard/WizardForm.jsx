@@ -416,7 +416,7 @@ export default function WizardForm({ onClose, initialWeek }) {
               id="wizard-week"
               value={localWeekChoice}
               onChange={(e) => { setLocalWeekChoice(e.target.value); setError(''); }}
-              className="w-full h-11 px-3 border border-[var(--color-border)] rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 mb-4"
+              className="w-full h-11 px-3 border border-border rounded-xl bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 mb-4"
             >
               {dropdownOptions.map((opt, i) => (
                 <option key={opt.value} value={opt.value}>
@@ -441,7 +441,7 @@ export default function WizardForm({ onClose, initialWeek }) {
             {SCREENS[step - 1].components.map(([Component, needsLastWeek], i) => (
               <div key={i}>
                 {i > 0 && (
-                  <hr className="border-t border-[var(--color-border)] my-6" />
+                  <hr className="border-t border-border my-6" />
                 )}
                 <Component
                   data={formData}
