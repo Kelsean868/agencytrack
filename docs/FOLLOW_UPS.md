@@ -5,7 +5,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Untracked legacy briefs + verification scripts cleanup (LOW, banked 2026-05-13) [RESOLVED PR #{TBD}, {TBD}]
+## Untracked legacy briefs + verification scripts cleanup (LOW, banked 2026-05-13) [RESOLVED PR #211, dff2847]
 
 **Scope:** `git status` on `main` surfaces 11 untracked files left over
 from shipped work. Cleanup deferred during the memory-refresh session.
@@ -39,7 +39,7 @@ from shipped work. Cleanup deferred during the memory-refresh session.
 
 Priority: **LOW**. Not blocking. Bank for the next docs-hygiene session.
 
-**Closure (PR #{TBD}, squash `{TBD}`):** 9 stale kickoff briefs archived to `docs/archive/briefs/` via filesystem move + `git add` (untracked files; `git mv` requires tracked source). Single docs-only commit per FU body step 4.
+**Closure (PR #211, squash `dff2847`):** 9 stale kickoff briefs archived to `docs/archive/briefs/` via filesystem move + `git add` (untracked files; `git mv` requires tracked source). Single docs-only commit per FU body step 4.
 
 **Rule 11 corrected-diagnosis:** FU body banked-time count of "11 untracked files" was stale at resolution. Actual count: 15 untracked files (9 briefs + 6 scripts). Four additional verification scripts joined the untracked pool between 2026-05-13 banking and 2026-05-18 resolution: `border-border-smoke.mjs` (border-border #156), `high6-ytd-smoke.mjs` (HIGH-6 YTD), `mobile-fu2-tap-targets-smoke.mjs` (Mobile FU#2 PR #153), `mobile-fu4-cosmetics-smoke.mjs` (Mobile FU#4 PR #154). All 6 scripts (original 2 + post-banking 4) intentionally left as deferred per FU body's "possibly reusable — defer fate to next consumer" direction. If/when a future PR re-runs any of these smoke scripts (Mobile FU#5, PR-D follow-up, etc.), the consuming PR can decide commit vs delete vs archive at that time.
 
