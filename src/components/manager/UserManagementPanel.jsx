@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload, Pencil } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload, Pencil, MailPlus } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   createUser,
@@ -8,6 +8,7 @@ import {
   getBranchManagers,
   getAllUsers,
 } from '../../services/agentManagementService';
+import { sendPasswordReset } from '../../services/authService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
 import useToast from '../../hooks/useToast';
@@ -357,6 +358,8 @@ export default function UserManagementPanel() {
   const [editTarget, setEditTarget]     = useState(null);
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [deactivating, setDeactivating] = useState(false);
+  const [resendTarget, setResendTarget] = useState(null);
+  const [resending, setResending]       = useState(false);
 
   const canCreate = (CREATABLE_ROLES[role]?.length ?? 0) > 0;
   const canBulkImport = role === 'tenant_admin' || role === 'platform_admin';
@@ -405,6 +408,30 @@ export default function UserManagementPanel() {
       message: customMessage ?? `${savedName} updated.`,
       duration: customMessage ? 6000 : 4000,
     });
+  }
+
+  async function handleResendConfirm() {
+    if (!resendTarget) return;
+    setResending(true);
+    const targetName = resendTarget.name ?? resendTarget.email;
+    try {
+      await sendPasswordReset(resendTarget.email);
+      setResendTarget(null);
+      toast.show({
+        variant: 'success',
+        message: `Invite email resent to ${targetName}.`,
+        duration: 4000,
+      });
+    } catch (err) {
+      console.error('[UserManagementPanel] resend invite:', err);
+      const msg = err?.message?.includes('permission')
+        ? "You don't have permission to do this."
+        : 'Could not resend invite. Please try again.';
+      toast.show({ variant: 'error', message: msg, duration: 4000 });
+      setResendTarget(null);
+    } finally {
+      setResending(false);
+    }
   }
 
   async function handleDeactivateConfirm(active) {
@@ -537,6 +564,17 @@ export default function UserManagementPanel() {
                       <Pencil size={15} />
                     </button>
                   )}
+                  {canAct && !isInactive && (
+                    <button
+                      type="button"
+                      onClick={() => setResendTarget(u)}
+                      aria-label={`Resend invite email to ${u.name ?? u.email ?? 'user'}`}
+                      data-testid={`user-resend-${u.uid ?? u.id}`}
+                      className="text-xs font-semibold text-ink-muted hover:text-ink bg-border/20 hover:bg-border/40 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center"
+                    >
+                      <MailPlus size={15} />
+                    </button>
+                  )}
                   {canAct && (
                     <button
                       type="button"
@@ -607,6 +645,19 @@ export default function UserManagementPanel() {
         loading={deactivating}
         onConfirm={() => handleDeactivateConfirm(true)}
         onCancel={() => setDeactivateTarget(null)}
+      />
+
+      {/* Resend invite dialog */}
+      <ConfirmDialog
+        open={Boolean(resendTarget)}
+        title="Resend invite email?"
+        message={<>A new password-reset email will be sent to <span className="font-semibold text-ink">{resendTarget?.email}</span>. Previous reset email link will stop working.</>}
+        variant="primary"
+        confirmLabel="Resend"
+        loadingLabel="Resending…"
+        loading={resending}
+        onConfirm={handleResendConfirm}
+        onCancel={() => setResendTarget(null)}
       />
 
       {/* Bulk import users (tenant_admin / platform_admin only) */}
