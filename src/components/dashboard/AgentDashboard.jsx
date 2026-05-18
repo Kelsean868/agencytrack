@@ -721,6 +721,7 @@ export default function AgentDashboard() {
           {!loading &&
             allSubmissions.map((s) => (
               <button
+                aria-label={`Preview submission from week of ${formatDateDisplay(s.weekStarting)}`}
                 key={s.id ?? s.weekStarting}
                 onClick={() => setViewingSubmission(s)}
                 className="card flex items-center justify-between gap-4 text-left w-full hover:bg-surface/70 transition-colors"

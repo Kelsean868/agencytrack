@@ -280,7 +280,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
       <div className="w-full max-w-md bg-card flex flex-col overflow-y-auto shadow-xl">
         <header className="flex items-center justify-between px-5 py-4 border-b border-border shrink-0">
           <h2 className="text-base font-bold text-ink">{initial ? 'Edit Campaign' : 'New Campaign'}</h2>
-          <button onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-ink-muted transition-colors">
+          <button aria-label="Close campaign form" onClick={onClose} className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-ink-muted transition-colors">
             <X size={20} />
           </button>
         </header>
@@ -439,6 +439,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
                   />
                   {form.targets.length > 1 && (
                     <button
+                      aria-label="Remove target"
                       onClick={() => removeTarget(i)}
                       className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-muted hover:text-danger hover:bg-danger/10 transition-colors"
                     >
