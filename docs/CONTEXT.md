@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-18` |
-| Current main HEAD | `44db563` (chore(cleanup): delete dead MotivationalCarousel component, #208) |
-| Active track | Dead `MotivationalCarousel` component deleted (PR #208, squash `44db563`). Closes FU banked during Mobile FU#4 smoke. First non-methodology-arc PR after the FU-J → FU-N two-day arc closed. |
-| Next track | Smaller follow-ups remaining: react-hooks ×3, aria-label sweep (CampaignForm L283 + History row banked from Mobile FU#2), `bg-[var(--color-X)]` arbitrary-syntax sweep, untracked legacy briefs/scripts cleanup (2026-05-13 banked — 9 briefs + 5 scripts surfaced today via `git status`), shakedown bugs 001/003/004/006, Wizard R2-R5 residual. Resend invite UI (MEDIUM) remains in Active follow-ups table for substantive work. |
+| Current main HEAD | `f493a0c` (fix(test): wait for unit-select state in EditUserDrawer demote-to-agent test, #210) |
+| Active track | EditUserDrawer test CI race hotfix shipped (PR #210, squash `f493a0c`). Unblocks PR #209 (archive-stale-briefs brief) re-run. Twelfth consecutive Rule 16 cycle, zero drift maintained. |
+| Next track | Re-run CI on PR #209, merge, then dispatch archive-stale-briefs work PR. Smaller follow-ups in queue: react-hooks ×3, aria-label sweep (CampaignForm + History row), `bg-[var(--color-X)]` arbitrary-syntax sweep, shakedown bugs 001/003/004/006, Wizard R2-R5 residual. Resend invite UI (MEDIUM) remains in Active follow-ups table for substantive work. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -123,7 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #{TBD} | `{TBD}` | Hotfix: EditUserDrawer test CI race — added waitFor between unit-select change and save click in "demoting to agent with unitId selected" test. Pre-existing pattern surfaced on PR #209 (docs brief) CI; passes locally but slower CI runner exposed the missing state-flush wait between fireEvent.change and fireEvent.click. Same shape as PR #189 hotfix yesterday (WeeklyActivityPanel timezone). |
+| #210 | `f493a0c` | Hotfix: EditUserDrawer test CI race — added waitFor between unit-select change and save click in "demoting to agent with unitId selected" test. Pre-existing pattern surfaced on PR #209 (docs brief) CI; passes locally but slower CI runner exposed the missing state-flush wait between fireEvent.change and fireEvent.click. Same shape as PR #189 hotfix yesterday (WeeklyActivityPanel timezone). |
 | #208 | `44db563` | Dead-code removal: deleted `src/components/dashboard/MotivationalCarousel.jsx` (~378 LOC, zero live consumers since M2 / PR #107 / `46eda67`). Closes FU "Delete dead MotivationalCarousel component" (LOW, banked during Mobile FU#4 smoke). |
 | #206 | `1d36436` | FU-N Rule 17 sub-bullet (LOW methodology refinement): added "Enumeration tracked-status" bullet at position 4 of Rule 17's bullet list — pairs `grep` with `git ls-files` (or `git grep`) for tracked-status filtering during file enumeration. Closes the methodology gap surfaced via FU-M discovery + FU-F-2 miscount. Self-applying: brief was authored against source-verified CLAUDE.md per Rule 17 itself. |
 | #204 | `a975706` | FU-F-2 `.cjs` parser unification (LOW housekeeping closure, Part 2 of 2): created `scripts/lib/loadEnv.cjs` (CommonJS sibling to `.mjs` from FU-F-1); migrated 5 tracked `.cjs` inline parsers (Pattern G ×3 + Pattern H ×2). Pattern H sites gain embedded-key detection (safety upgrade). FU-F arc complete end-to-end. Rule 11 corrected diagnosis: actual tracked `.cjs` count is 5, not 6 (FU-M closure miscount). FU-N banked (audit-methodology refinement: pair `grep` with `git ls-files`). |
@@ -145,13 +145,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Session C continues. This Phase 6 fill is the **eleventh formal application of Rule 16** (after #188, #190, #192, #194, #196, #198, #200, #202, #204, #206); all eleven followed the corrected "work-PR squash" anchor wording without chicken-and-egg drift.
+> **Session boundary:** Session C continues. This Phase 6 fill is the **twelfth formal application of Rule 16** (after #188, #190, #192, #194, #196, #198, #200, #202, #204, #206, #208); all twelve followed the corrected "work-PR squash" anchor wording without chicken-and-egg drift.
 
-**MotivationalCarousel deletion (PR #208, 2026-05-18).** XS mechanical dead-code removal — 421 lines deleted (component file), one dangling JSX comment in `AgentDashboard.jsx:414` updated as Rule 9 in-PR scope extension. Phase 1 caught LOC divergence (378 content lines vs FU body's "~150 LOC" estimate — file had grown since Mobile FU#4 banking); preserved per Rule 11 corrected-diagnosis pattern in the FOLLOW_UPS.md closure paragraph. Re-verified at execution: zero external imports / JSX usage in tracked `src/` files; build confirmed no latent unresolved modules. First non-methodology-arc PR since the FU-J → FU-N arc closed.
+**EditUserDrawer CI race hotfix (PR #210, 2026-05-18).** Second CI-only-failure hotfix in two days — after PR #189 yesterday (WeeklyActivityPanel timezone). Same root cause family, different mechanism: PR #189 was UTC-vs-AST timezone boundary; PR #210 is React state-flush timing between `fireEvent.change` and `fireEvent.click` on a slower CI Ubuntu runner. Fix: inserted `waitFor` asserting `unit-select` value has settled before clicking save — same pattern already correctly applied one line earlier at line 527 for the role-change → unit-dropdown-appearance check. Local 22/22 before and after; lint 0; build clean.
 
-**Rule 17 fired twice at brief-authoring time today as recommendation pivots (2026-05-18).** Eighth signal: Rule 17 caught that Track B v2 (B1–B5) had already shipped (PRs #44/#47/#49/#52/#55) when dispatcher recommended B1 as next track — caught before any brief was authored for shipped work. Ninth signal: Rule 17 caught that Mobile FU#4 had already shipped at PR #154 when dispatcher pivoted to "Mobile FU#4 cosmetics" — same catch, same layer. Memory's "Mobile FU#4 cosmetics" label in the session backlog is stale and needs a sweep. Eleventh consecutive Rule 16 cycle, zero drift maintained.
+**Local-pass / CI-fail divergence is now a confirmed project weakness pattern.** Two instances bank it. If a third surfaces, candidate for a CLAUDE.md rule about defaulting `waitFor` between `change` + `click` pairs in React test files. Tenth Rule 17 in-the-wild signal of the two-day arc — arithmetic miscount in the hotfix brief ("thirteenth" → corrected to "twelfth" at dispatch; catch at authoring layer, not execution). Strike count holds 0/2 throughout. PR #210 unblocks PR #209 (archive-stale-briefs brief) CI re-run.
 
-**Next.** Smaller follow-ups remaining: react-hooks ×3, aria-label sweep (CampaignForm L283 + History row banked from Mobile FU#2), `bg-[var(--color-X)]` arbitrary-syntax sweep, untracked legacy briefs/scripts cleanup (2026-05-13 banked — 9 briefs + 5 scripts surfaced today via `git status`), shakedown bugs 001/003/004/006, Wizard R2-R5 residual. Resend invite UI (MEDIUM) remains in Active follow-ups table for substantive work.
+**Next.** Re-run CI on PR #209, merge, then dispatch archive-stale-briefs work PR. Smaller follow-ups in queue: react-hooks ×3, aria-label sweep (CampaignForm + History row), `bg-[var(--color-X)]` arbitrary-syntax sweep, shakedown bugs 001/003/004/006, Wizard R2-R5 residual. Resend invite UI (MEDIUM) remains in Active follow-ups table for substantive work.
 
 ---
 
