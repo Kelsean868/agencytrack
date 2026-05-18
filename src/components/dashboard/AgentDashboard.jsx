@@ -411,8 +411,7 @@ export default function AgentDashboard() {
           </div>
 
           {/* Goal carousel hero (Design System v2 — B2). Replaces the
-              YTD API Progress card and the previous MotivationalCarousel
-              top-of-dashboard slot. */}
+              YTD API Progress card at the top-of-dashboard slot. */}
           <div className="mb-6">
             {allSubmissions.length === 0 ? (
               <div className="role-hero">

@@ -123,11 +123,11 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #{TBD} | `{TBD}` | Dead-code removal: deleted `src/components/dashboard/MotivationalCarousel.jsx` (~378 LOC, zero live consumers since M2 / PR #107 / `46eda67`). Closes FU "Delete dead MotivationalCarousel component" (LOW, banked during Mobile FU#4 smoke). |
 | #206 | `1d36436` | FU-N Rule 17 sub-bullet (LOW methodology refinement): added "Enumeration tracked-status" bullet at position 4 of Rule 17's bullet list — pairs `grep` with `git ls-files` (or `git grep`) for tracked-status filtering during file enumeration. Closes the methodology gap surfaced via FU-M discovery + FU-F-2 miscount. Self-applying: brief was authored against source-verified CLAUDE.md per Rule 17 itself. |
 | #204 | `a975706` | FU-F-2 `.cjs` parser unification (LOW housekeeping closure, Part 2 of 2): created `scripts/lib/loadEnv.cjs` (CommonJS sibling to `.mjs` from FU-F-1); migrated 5 tracked `.cjs` inline parsers (Pattern G ×3 + Pattern H ×2). Pattern H sites gain embedded-key detection (safety upgrade). FU-F arc complete end-to-end. Rule 11 corrected diagnosis: actual tracked `.cjs` count is 5, not 6 (FU-M closure miscount). FU-N banked (audit-methodology refinement: pair `grep` with `git ls-files`). |
 | #202 | `a4fba56` | FU-M defunct-script handling (LOW housekeeping closure): `scripts/multi-role-smoke.cjs` was NOT tracked in git — Phase 1 source-verification caught the brief's "tracked" assumption (file existed only in main worktree's filesystem, excluded via `.git/info/exclude` line 8). Remedy: filesystem cleanup (file `rm` + exclude rule removed) + close FU-M. Third canonical Rule 17 in-the-wild signal — caught at Phase 1 execution (safety net layer). Audit miscount knock-on: FU-F's `.cjs` migration target actually 6 (tracked), not 7. |
 | #200 | `4dd9bbd` | FU-L worktree-attached branch protection (LOW housekeeping closure): added `parseWorktreeBranches()` to `scripts/maintenance/prune-merged-branches.mjs` parsing `git worktree list --porcelain`; worktree-attached branches routed to skipped list with diagnostic marker before `[gone]` classification. Runbook gains "Worktree-attached branches" section. Phase 3 integration test via throwaway worktree confirmed runtime behavior. Closes dogfood-surfaced gap from morning 2026-05-18. |
-| #198 | `316b86a` | FU-F-1 `.mjs` parser unification (LOW housekeeping, Part 1 of 2): created `scripts/lib/loadEnv.mjs` (strict, frozen, cached, TOOLING-N embedded-key detection preserved); migrated 19 of 23 `.mjs` inline parsers (Pattern A ×16 + B ×2 + D ×1). 4 untracked `.mjs` excluded per existing 2026-05-13 untracked-cleanup FU. FU-F-2 (`.cjs` sibling + 7 migrations) deferred. Rule 11 corrected-diagnosis preserved in FU-F RESOLVED block. Second canonical Rule 17 in-the-wild application during brief authoring. |
 
 ---
 
@@ -139,7 +139,6 @@ These don't block anything, but they need to be resolved or carried forward each
 - **Orphan user** `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc exists but no Auth user. Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). Do not auto-delete; investigate first.
 - **Node.js 20 Functions runtime** deprecated 2026-04-30, decommission 2026-10-30 — migration to Node 22 is a separate ticket. Not blocking; CLAUDE.md locks v1 runtime for current track.
 - **`firebase-functions` SDK** at 4.9.0 — upgrade to ≥5.1.0 has breaking changes; schedule as own ticket post-pilot.
-- **`MotivationalCarousel.jsx` is dead code** — removed from ManagerDashboard by M2 (PR #107, `46eda67`). Component file retained in source pending deletion sweep (FU banked in `docs/FOLLOW_UPS.md`).
 - **Worktrees + stale local branches** — multiple worktrees and ~15 stale local branches attached to merged feature branches. Cleanup banked in `docs/FOLLOW_UPS.md` § Worktree + branch audit.
 
 ---
