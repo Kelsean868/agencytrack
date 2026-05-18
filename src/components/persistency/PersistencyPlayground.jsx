@@ -147,7 +147,7 @@ export default function PersistencyPlayground({
                 step="0.005"
                 value={target}
                 onChange={(e) => setTarget(parseFloat(e.target.value))}
-                className="flex-1 accent-[color:var(--color-primary)]"
+                className="flex-1 accent-primary"
                 data-testid="playground-target-slider"
                 aria-label="Target persistency"
               />
@@ -177,7 +177,7 @@ export default function PersistencyPlayground({
                 step={s.step}
                 value={levers[s.id]}
                 onChange={(e) => setLevers({ ...levers, [s.id]: parseFloat(e.target.value) || 0 })}
-                className="accent-[color:var(--color-primary)]"
+                className="accent-primary"
               />
             </div>
           ))}

@@ -91,7 +91,7 @@ export default function NotificationDrawer({ open, onClose }) {
                   }}
                   className={`w-full text-left flex gap-3 px-4 py-3 hover:bg-surface transition-colors ${
                     !n.read
-                      ? 'bg-[color:var(--color-surface-raised)] border-l-2 border-[color:var(--color-primary)]'
+                      ? 'bg-surface-raised border-l-2 border-primary'
                       : ''
                   }`}
                 >
