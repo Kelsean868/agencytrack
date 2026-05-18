@@ -583,7 +583,7 @@ Operator usage in CC (after confirming squash merge in GitHub UI):
 - **Decision points** — scope judgment, smoke waiver evaluation, hard-stop recovery options — handled by dispatcher in chat. Tooling embeds methodology, not judgment.
 - **Verbatim `git log` paste-back** (Rule 16) — operator pastes raw output to dispatcher. Slash commands report verification, but the operator-side paste-back remains manual per banked rule.
 
-Banked: PR #TBD ({TBD}).
+Banked: PR #217 (d84a752).
 
 ---
 
