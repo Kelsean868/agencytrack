@@ -63,7 +63,9 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
-.claude/
+.claude/*
+!.claude/commands/
+!.claude/commands/**
 functions/create-test-agent.cjs
 
 functions/create-test-managers.cjs

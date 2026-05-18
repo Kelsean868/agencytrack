@@ -539,6 +539,54 @@ Banked from PR #192 (2026-05-18). Six instances surfaced 2026-05-17 across FU-G 
 
 ---
 
+## Dispatcher tooling
+
+These helpers reduce per-PR copy-paste between dispatcher (Claude chat), operator (Kyron), and Claude Code. The canonical methodology (Session Protocol, § Post-merge local cleanup, Methodology Rules 1–17) remains authoritative — these tools embed the rules, they do not replace them.
+
+### `scripts/dispatcher/new-brief.ps1`
+
+One-command brief docs PR shuffle (Rule 10). Operator invokes after writing the brief to `docs/briefs/` via the dispatcher's paste-block.
+
+Usage:
+
+```powershell
+.\scripts\dispatcher\new-brief.ps1 -File "fu-foo-closure-kickoff.md" -Topic "FU-foo closure"
+```
+
+The script enforces the Phase 0 gate (must be on main), fetches origin, pulls main, creates a fresh branch derived from the filename slug, commits, and pushes. Branch naming convention: `docs/<slug>-brief`. Commit message convention: `docs(briefs): <Topic> kickoff`.
+
+### `/dispatch <brief-path>` (CC slash command)
+
+Defined in `.claude/commands/dispatch.md`. CC reads the brief at the given path, applies the standing methodology (Phases 0–5, Rules 9 / 12 / 15 / 17), executes, opens PR, surfaces URL for dispatcher review.
+
+Operator usage in CC:
+
+```
+/dispatch docs/briefs/fu-foo-closure-kickoff.md
+```
+
+Replaces the long-form "PR dispatch — Kickoff brief: ..." prose payload from prior PRs.
+
+### `/post-merge <pr-number>` (CC slash command)
+
+Defined in `.claude/commands/post-merge.md`. CC runs the canonical post-merge sequence: sync main, capture squash SHA, fill `#TBD` / `{TBD}` placeholders, commit + push direct to main, Rule 15 verification.
+
+Operator usage in CC (after confirming squash merge in GitHub UI):
+
+```
+/post-merge 217
+```
+
+### When NOT to use the tooling
+
+- **Audit-only dispatches** stay inline (no brief commit PR, no slash command). Short, scoped, no-PR-output investigations are not subject to Rule 10.
+- **Decision points** — scope judgment, smoke waiver evaluation, hard-stop recovery options — handled by dispatcher in chat. Tooling embeds methodology, not judgment.
+- **Verbatim `git log` paste-back** (Rule 16) — operator pastes raw output to dispatcher. Slash commands report verification, but the operator-side paste-back remains manual per banked rule.
+
+Banked: PR #TBD ({TBD}).
+
+---
+
 ## Banked patterns (also from 2026-05-14 session)
 
 **Brief-drafting verification rule (already banked, reinforced this session):** `project_knowledge_search` lags `main` by several PRs. Briefs based on project knowledge alone can embed stale premises. The Phase 1 discovery gate in every brief catches this — never skip it, even for "small" fixes. emailQueued (#136), SEC-9b (#139), and SHAKEDOWN-001 (#141) all had brief assumptions Phase 1 corrected.
