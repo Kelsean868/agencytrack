@@ -526,6 +526,10 @@ describe('EditUserDrawer', () => {
     // Demotion surfaces the "Assign unit *" dropdown.
     await waitFor(() => expect(screen.getByLabelText(/Assign unit/i)).toBeInTheDocument());
     fireEvent.change(screen.getByLabelText(/Assign unit/i), { target: { value: 'unit-mgr-2' } });
+    // Wait for React to flush unit-select state before clicking save (CI race fix).
+    await waitFor(() =>
+      expect(screen.getByLabelText(/Assign unit/i)).toHaveValue('unit-mgr-2')
+    );
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
     expect(await screen.findByText(/Change role\?/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /^Change role$/i }));
