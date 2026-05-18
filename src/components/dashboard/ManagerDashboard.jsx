@@ -166,7 +166,7 @@ export default function ManagerDashboard() {
           className="h-11 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Download size={16} />
-          <span className="hidden md:inline">Export Branch Report</span>
+          <span className="sr-only md:not-sr-only">Export Branch Report</span>
         </button>
       )}
       <button
@@ -175,7 +175,7 @@ export default function ManagerDashboard() {
         className="h-10 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <Presentation size={16} />
-        <span className="hidden md:inline">Start Meeting</span>
+        <span className="sr-only md:not-sr-only">Start Meeting</span>
       </button>
     </>
   );

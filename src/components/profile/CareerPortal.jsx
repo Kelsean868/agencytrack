@@ -183,6 +183,7 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
           ) : (
             <div className="flex gap-1">
               <button
+                aria-label="Cancel edit"
                 onClick={() => { setEditing(false); setSaveError(''); }}
                 className="h-11 px-4 rounded-lg border border-border text-sm text-ink-muted hover:text-ink transition-colors"
               >

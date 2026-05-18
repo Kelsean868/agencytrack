@@ -168,6 +168,7 @@ export default function KioskModeTab() {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
+                    aria-label="Copy kiosk URL"
                     type="button"
                     onClick={() => handleCopy(token.id)}
                     title={copied ? 'Copied!' : 'Copy URL'}
@@ -176,6 +177,7 @@ export default function KioskModeTab() {
                     <Copy size={15} className={copied ? 'text-success' : ''} />
                   </button>
                   <a
+                    aria-label="Open kiosk"
                     href={url}
                     target="_blank"
                     rel="noopener noreferrer"
@@ -185,6 +187,7 @@ export default function KioskModeTab() {
                     <ExternalLink size={15} />
                   </a>
                   <button
+                    aria-label="Revoke kiosk URL"
                     type="button"
                     onClick={() => handleRevoke(token.id)}
                     disabled={revoking}

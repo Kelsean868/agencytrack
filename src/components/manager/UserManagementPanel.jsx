@@ -137,7 +137,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <p className="text-sm font-bold text-ink">Add New User</p>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-border/40 transition-colors">
+          <button aria-label="Close create user drawer" onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full text-ink-muted hover:text-ink hover:bg-border/40 transition-colors">
             <X size={18} />
           </button>
         </div>
