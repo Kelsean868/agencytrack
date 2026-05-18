@@ -583,6 +583,14 @@ Operator usage in CC (after confirming squash merge in GitHub UI):
 - **Decision points** — scope judgment, smoke waiver evaluation, hard-stop recovery options — handled by dispatcher in chat. Tooling embeds methodology, not judgment.
 - **Verbatim `git log` paste-back** (Rule 16) — operator pastes raw output to dispatcher. Slash commands report verification, but the operator-side paste-back remains manual per banked rule.
 
+### Known behavior: slash commands display as unrecognized but execute correctly
+
+Slash commands defined in `.claude/commands/` (currently `/dispatch` and `/post-merge`) are injected into CC's prompt context and execute correctly when invoked. The operator-facing CLI may display them as "unrecognized" at invocation time — this is a cosmetic dual-surface gap, not an execution failure. CC has received the command body and will begin executing within a few seconds.
+
+If you see "unrecognized" after pasting a slash command: wait briefly. If CC begins executing the brief or post-merge sequence, the command worked. If CC does not respond to the command body within ~30 seconds, treat as a real failure and fall back to the long-form payload from the dispatcher.
+
+Confirmed across 2 cycles: PR #217 (d84a752) /post-merge invocation, PR #219 (0b3f058) /dispatch + /post-merge invocations.
+
 Banked: PR #217 (d84a752).
 
 ---

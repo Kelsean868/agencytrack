@@ -1879,9 +1879,13 @@ Five of six are brief-authoring; one is rule-authoring. Root cause: dispatcher (
 
 ---
 
-## /post-merge slash command discovery failure (LOW, methodology — banked 2026-05-19, PR #217 cycle)
+## ✅ /post-merge slash command discovery failure (LOW, methodology — banked 2026-05-19, PR #217 cycle) — CLOSED 2026-05-19 (PR #219 cycle, second data point)
+
+**RESOLVED 2026-05-19 (PR #219 cycle, second data point).** Both `/dispatch` and `/post-merge` displayed "unrecognized" on operator CLI but executed cleanly CC-side across PR #217 (d84a752) /post-merge cycle and PR #219 (0b3f058) /dispatch + /post-merge cycle. Pattern confirmed — cosmetic dual-surface gap, not execution failure.
 
 /post-merge slash command discovery failure (LOW, methodology — banked 2026-05-19, PR #217 cycle). During the first deployment of /post-merge as part of PR #217's post-merge sequence, the operator-facing CLI surface displayed the command as unrecognized despite the slash command system successfully injecting the .claude/commands/post-merge.md body into CC's context (CC executed the canonical sequence end-to-end and produced commit 0e390e8). Investigate: does .claude/commands/ require additional registration step (settings.json, CC restart, plugin reload)? Is the operator-side recognition mechanism distinct from the CC-side execution mechanism? Same investigation may apply to /dispatch. Next action: verify on the next dispatched PR whether /dispatch displays as recognized; if both commands fail operator-side recognition while still executing CC-side, document the dual-surface gap in CLAUDE.md § Dispatcher tooling.
+
+Documented in CLAUDE.md § Dispatcher tooling > Known behavior. Tooling works as designed; only the CLI display is misleading.
 
 ---
 
