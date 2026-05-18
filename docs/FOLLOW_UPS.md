@@ -1885,12 +1885,12 @@ Five of six are brief-authoring; one is rule-authoring. Root cause: dispatcher (
 
 ---
 
-## `@apply bg-[color:var(--color-X)]` sweep in `src/index.css` (LOW, refactor — banked PR #TBD, {TBD})
+## `@apply bg-[color:var(--color-X)]` sweep in `src/index.css` (LOW, refactor — banked PR #219, 0b3f058)
 
-Banked from PR #TBD ({TBD}) audit. 4 call-sites in `src/index.css` `@layer components` definitions (`.btn-secondary`, `.card`, `.input`, `.label`) use `@apply` with arbitrary-value CSS-var syntax — out of scope for the JSX sweep that PR #TBD addressed.
+Banked from PR #219 (0b3f058) audit. 4 call-sites in `src/index.css` `@layer components` definitions (`.btn-secondary`, `.card`, `.input`, `.label`) use `@apply` with arbitrary-value CSS-var syntax — out of scope for the JSX sweep that PR #219 addressed.
 
 `@apply` resolution semantics may differ between arbitrary-value (`@apply bg-[color:var(--color-card)]`) and named-utility (`@apply bg-card`) syntax inside `@layer` rules. Requires verification that the compiled output is byte-equivalent before sweeping.
 
 **Next action:** scratch-build verification — change one of the 4 call-sites to named utility, run `npm run build`, compare compiled `dist/assets/index-*.css` for that class rule against baseline. If equivalent, ship the sweep. If divergent, document the cause and leave as-is.
 
-**Banked:** PR #TBD ({TBD}).
+**Banked:** PR #219 (0b3f058).
