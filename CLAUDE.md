@@ -527,6 +527,7 @@ When a brief or methodology rule describes source behavior — default behavior,
 - **Default behavior / fallback claims:** grep or read the consumer site; never paraphrase from memory.
 - **Example values:** trace through actual call sites (scheme prefixes, separator characters, escape rules, units). Operator copy-paste must work verbatim.
 - **File paths and line numbers:** open the file and confirm; line numbers drift between sessions.
+- **Enumeration tracked-status:** when listing files via `grep -rn` to scope a migration or audit, pair with `git ls-files` (or use `git grep`) to filter to tracked-only paths. Untracked or excluded files appear in `grep` output but are not part of canonical repo state, and silently inflate migration-target counts in briefs.
 - **Existing structural format:** read the existing target document end-to-end before prescribing changes (table cadence, paragraph count, heading levels).
 - **Operational possibility of proposed wording:** for rule additions, mentally simulate the rule's first execution and check for chicken-and-egg conditions (e.g., "fill commit SHA captured before fill commit exists").
 
