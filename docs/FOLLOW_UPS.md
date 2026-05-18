@@ -818,7 +818,7 @@ scope decision.
 
 ---
 
-## Resend invite UI (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix)
+## Resend invite UI (MEDIUM, surfaced 2026-05-08 during HIGH#1 fix) [RESOLVED PR #{TBD}, {TBD}]
 
 **Scope:** Add a per-row "Resend invite" button on the user-management
 list. When the create-user flow's email dispatch fails (or when an admin
@@ -845,6 +845,26 @@ reset email link will stop working." in a confirm dialog.
 Priority: **MEDIUM**. Not pilot-blocking. Closes the gap when individual
 emails fail. Suggested wiring: same `sendPasswordResetEmail` primitive
 short-term; HIGH#5 server-side path post-migration.
+
+**Closure (PR #{TBD}, squash `{TBD}`):** Per-row Resend invite button shipped on `UserManagementPanel.jsx` action cell, between Edit and Deactivate. Client-side path via `sendPasswordReset()` from `authService.js` (short-term per FU body); long-term server-side `mail/` doc swap deferred as a separate follow-up below. ConfirmDialog uses banked edge-case copy "Previous reset email link will stop working." Visibility gated on `canAct && !isInactive` (mirrors Edit-row pattern). aria-label="Resend invite email to {u.name ?? u.email ?? 'user'}" applied from the start — pre-empts a future aria-label sweep finding. 3 buttons always on row — kebab/responsive pattern deferred to a future dedicated mobile-manager pass (when MasterSheet, SettlementPanel, and these action rows all need it together). 2 new tests added in `src/components/manager/__tests__/UserManagementPanel.test.jsx` covering visibility gate + confirm-then-send flow with appropriate `waitFor` discipline (avoids CI-race pattern from PR #210).
+
+**Q3 revision banked in Phase 1 surface (Rule 11 corrected-diagnosis preservation):** Original dispatcher Q3 was "yes, audit log entry mirroring `auditAdminEmailUpdates`." Phase 1 source-verification surfaced that no audit service module exists — the only existing pattern is an **inline** `addDoc` in `authService.js:50-58` writing to a **top-level** `auditAdminEmailUpdates` collection in a **self-service shape** (`uid === initiatedByUid`). For a "different actor + different target" resend, a new sibling `auditInviteResends` collection would need a dedicated function, a two-actor document shape, and a Firestore rules entry permitting write from tenant_admin/branch_manager/sales_manager + read from platform_admin. That rules infrastructure work expands MVP scope significantly. **Dispatcher revised Q3 to: audit log DEFERRED** — banked as a separate LOW follow-up below alongside the server-side `mail/` doc consistency swap. Audit log entry is not in this PR. 15th in-the-wild Rule 17 signal of the arc (audit module pattern didn't match brief assumption captured at authoring time).
+
+---
+
+## Resend invite: swap to server-side mail/ doc write (LOW, banked 2026-05-19)
+
+Resend invite shipped MVP (PR #{TBD}) with client-side `sendPasswordReset()` (Firebase Auth default reset template). Long-term consistency with the server-side `mail/` template path that create-user uses (PR-D #133 / PR #136) requires a new Cloud Function `resendInviteEmail(uid)` that writes a `mail/` doc using the same template `createUser` emits. Trade-off: shipped MVP uses Firebase Auth's default reset template; users see different visual styling for resent vs. original invite emails. Defer to a dedicated email-template-consistency PR. Estimated size: M (CF function + callable wrapper + rule update + swap UI handler to call CF instead of `authService.sendPasswordReset`).
+
+Priority: **LOW**. Not pilot-blocking; visual consistency only.
+
+---
+
+## Resend invite: add audit log entry (LOW, banked 2026-05-19)
+
+Resend invite shipped MVP (PR #{TBD}) without audit log entry. Original dispatcher Q3 was "yes, audit log entry mirroring `auditAdminEmailUpdates`" but Phase 1 source-verification surfaced that no audit module exists — the current pattern is an **inline** `addDoc` in `authService.js` writing to a **top-level** `auditAdminEmailUpdates` collection in a self-service shape (`uid === initiatedByUid`). A new `auditInviteResends` sibling collection would need: (a) a dedicated function (inline or new module), (b) a document shape supporting two-actor (actor + target), (c) a Firestore rules entry permitting write from `tenant_admin`/`branch_manager`/`sales_manager` + read from `platform_admin`. The rules work specifically expands MVP scope significantly. Deferred to a future PR that can address the audit pattern architecturally (likely alongside the `mail/` swap above, or as part of a broader audit-infrastructure pass).
+
+Priority: **LOW**. Not pilot-blocking; recovery flow itself works without audit trail. Adds compliance/forensics surface only.
 
 ---
 
