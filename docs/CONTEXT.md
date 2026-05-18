@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-18` |
-| Current main HEAD | `1d36436` (docs(methodology): FU-N Rule 17 sub-bullet — pair grep with git ls-files for tracked-status, #206) |
-| Active track | FU-N Rule 17 sub-bullet shipped (PR #206, squash `1d36436`). Methodology arc closes — `Enumeration tracked-status` discipline now documented in canonical Rule 17 at position 4 of the bullet list. Self-applying meta-PR: brief authored against source-verified CLAUDE.md per Rule 17 itself. |
-| Next track | Session backlog: FU-I post-pilot (TENANT_ID parameterization); BEH-1 blocked on slide copy. Smaller follow-ups available: Mobile FU#4 cosmetics, react-hooks ×3, shakedown bugs 001/003/004/006, Wizard R2-R5 residual, untracked legacy briefs/scripts cleanup (2026-05-13 banked). |
+| Current main HEAD | `44db563` (chore(cleanup): delete dead MotivationalCarousel component, #208) |
+| Active track | Dead `MotivationalCarousel` component deleted (PR #208, squash `44db563`). Closes FU banked during Mobile FU#4 smoke. First non-methodology-arc PR after the FU-J → FU-N two-day arc closed. |
+| Next track | Smaller follow-ups remaining: react-hooks ×3, aria-label sweep (CampaignForm L283 + History row banked from Mobile FU#2), `bg-[var(--color-X)]` arbitrary-syntax sweep, untracked legacy briefs/scripts cleanup (2026-05-13 banked — 9 briefs + 5 scripts surfaced today via `git status`), shakedown bugs 001/003/004/006, Wizard R2-R5 residual. Resend invite UI (MEDIUM) remains in Active follow-ups table for substantive work. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -123,7 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #{TBD} | `{TBD}` | Dead-code removal: deleted `src/components/dashboard/MotivationalCarousel.jsx` (~378 LOC, zero live consumers since M2 / PR #107 / `46eda67`). Closes FU "Delete dead MotivationalCarousel component" (LOW, banked during Mobile FU#4 smoke). |
+| #208 | `44db563` | Dead-code removal: deleted `src/components/dashboard/MotivationalCarousel.jsx` (~378 LOC, zero live consumers since M2 / PR #107 / `46eda67`). Closes FU "Delete dead MotivationalCarousel component" (LOW, banked during Mobile FU#4 smoke). |
 | #206 | `1d36436` | FU-N Rule 17 sub-bullet (LOW methodology refinement): added "Enumeration tracked-status" bullet at position 4 of Rule 17's bullet list — pairs `grep` with `git ls-files` (or `git grep`) for tracked-status filtering during file enumeration. Closes the methodology gap surfaced via FU-M discovery + FU-F-2 miscount. Self-applying: brief was authored against source-verified CLAUDE.md per Rule 17 itself. |
 | #204 | `a975706` | FU-F-2 `.cjs` parser unification (LOW housekeeping closure, Part 2 of 2): created `scripts/lib/loadEnv.cjs` (CommonJS sibling to `.mjs` from FU-F-1); migrated 5 tracked `.cjs` inline parsers (Pattern G ×3 + Pattern H ×2). Pattern H sites gain embedded-key detection (safety upgrade). FU-F arc complete end-to-end. Rule 11 corrected diagnosis: actual tracked `.cjs` count is 5, not 6 (FU-M closure miscount). FU-N banked (audit-methodology refinement: pair `grep` with `git ls-files`). |
 | #202 | `a4fba56` | FU-M defunct-script handling (LOW housekeeping closure): `scripts/multi-role-smoke.cjs` was NOT tracked in git — Phase 1 source-verification caught the brief's "tracked" assumption (file existed only in main worktree's filesystem, excluded via `.git/info/exclude` line 8). Remedy: filesystem cleanup (file `rm` + exclude rule removed) + close FU-M. Third canonical Rule 17 in-the-wild signal — caught at Phase 1 execution (safety net layer). Audit miscount knock-on: FU-F's `.cjs` migration target actually 6 (tracked), not 7. |
@@ -145,13 +145,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Session C — FU-M (#202) + FU-F-2 (#204) + FU-N (#206) all closed in the same session. This Phase 6 fill is the **tenth formal application of Rule 16** (after #188, #190, #192, #194, #196, #198, #200, #202, #204); all ten followed the corrected "work-PR squash" anchor wording without chicken-and-egg drift.
+> **Session boundary:** Session C continues. This Phase 6 fill is the **eleventh formal application of Rule 16** (after #188, #190, #192, #194, #196, #198, #200, #202, #204, #206); all eleven followed the corrected "work-PR squash" anchor wording without chicken-and-egg drift.
 
-**FU-N arc (2026-05-18).** XS — 3-file commit (CLAUDE.md + FOLLOW_UPS.md + CONTEXT.md). Brief #205 committed first per Rule 10. Phase 1 source-verified Rule 17's 5-bullet list against repo HEAD `af8e1ec` — exact match, no divergences, no hard-stops triggered. Inserted "Enumeration tracked-status" bullet at position 4 of Rule 17's bullet list: when listing files via `grep -rn` to scope a migration or audit, pair with `git ls-files` (or use `git grep`) to filter to tracked-only paths. Single clean `+` line in CLAUDE.md diff, no surrounding text modified. Lint 0 problems, build clean.
+**MotivationalCarousel deletion (PR #208, 2026-05-18).** XS mechanical dead-code removal — 421 lines deleted (component file), one dangling JSX comment in `AgentDashboard.jsx:414` updated as Rule 9 in-PR scope extension. Phase 1 caught LOC divergence (378 content lines vs FU body's "~150 LOC" estimate — file had grown since Mobile FU#4 banking); preserved per Rule 11 corrected-diagnosis pattern in the FOLLOW_UPS.md closure paragraph. Re-verified at execution: zero external imports / JSX usage in tracked `src/` files; build confirmed no latent unresolved modules. First non-methodology-arc PR since the FU-J → FU-N arc closed.
 
-**Session C summary — methodology arc closes (2026-05-18).** Two-day arc: 24 commits across 8 work PRs (FU-J #188 / FU-K #190 / FU-H+FU-C #192+#184 / FU-F-1 #198 / FU-L #200 / FU-M #202 / FU-F-2 #204 / FU-N #206). One methodology canonization (Rule 17 PR #192) refined by one sub-bullet update (FU-N PR #206). Rule 16 self-healed across 10 consecutive cycles with zero drift. Seven Rule 17 in-the-wild signals all productively addressed (FU-K broken mechanism / FU-F stale claims ×2 / FU-M tracked-status / FU-F-2 arithmetic+syntax ×3 / FU-N meta-application). Five Rule 11 corrected-diagnosis preservations (FU-K, FU-H, FU-F, FU-M, FU-F-2 JSDoc). One Rule 9 in-PR scope extension (FU-C absorbed into FU-H sweep). Strike count holds 0/2 throughout. Methodology validated end-to-end: every discipline layer fired at least once; safety nets caught what authoring rushed; no strikes accrued.
+**Rule 17 fired twice at brief-authoring time today as recommendation pivots (2026-05-18).** Eighth signal: Rule 17 caught that Track B v2 (B1–B5) had already shipped (PRs #44/#47/#49/#52/#55) when dispatcher recommended B1 as next track — caught before any brief was authored for shipped work. Ninth signal: Rule 17 caught that Mobile FU#4 had already shipped at PR #154 when dispatcher pivoted to "Mobile FU#4 cosmetics" — same catch, same layer. Memory's "Mobile FU#4 cosmetics" label in the session backlog is stale and needs a sweep. Eleventh consecutive Rule 16 cycle, zero drift maintained.
 
-**Next.** Session backlog: FU-I post-pilot (TENANT_ID parameterization); BEH-1 blocked on slide copy. Smaller follow-ups available: Mobile FU#4 cosmetics, react-hooks ×3, shakedown bugs 001/003/004/006, Wizard R2-R5 residual, untracked legacy briefs/scripts cleanup (2026-05-13 banked).
+**Next.** Smaller follow-ups remaining: react-hooks ×3, aria-label sweep (CampaignForm L283 + History row banked from Mobile FU#2), `bg-[var(--color-X)]` arbitrary-syntax sweep, untracked legacy briefs/scripts cleanup (2026-05-13 banked — 9 briefs + 5 scripts surfaced today via `git status`), shakedown bugs 001/003/004/006, Wizard R2-R5 residual. Resend invite UI (MEDIUM) remains in Active follow-ups table for substantive work.
 
 ---
 

@@ -1056,11 +1056,11 @@ Option 1 is the right fix but touches every theme variable + consumer.
 
 ---
 
-## Delete dead MotivationalCarousel component (LOW, banked during Mobile FU#4 smoke) [RESOLVED PR #{TBD}, {TBD}]
+## Delete dead MotivationalCarousel component (LOW, banked during Mobile FU#4 smoke) [RESOLVED PR #208, 44db563]
 
 - [x] **Delete dead `MotivationalCarousel` component** — `src/components/dashboard/MotivationalCarousel.jsx` (~150 LOC) has had zero live consumers since M2 (PR #107, `46eda67`) removed it from `ManagerDashboard` and wired `ManagerOverviewTab`. Component remains in source. Verified dead via grep (no JSX usage anywhere in `src/` outside the test file) and git log of PR #107 commit message ("Removes MotivationalCarousel + Sparkles placeholder"). Surfaced during Mobile FU#4 P2-3 smoke walk when the component could not be located in any rendered dashboard. Removal is mechanical: delete the component file. No imports remain to clean up. Defer to a dead-code-removal sweep rather than a one-off.
 
-**Closure (PR #{TBD}, squash `{TBD}`):** Component file deleted at `src/components/dashboard/MotivationalCarousel.jsx` (actual ~378 LOC at deletion time; FU body's "~150 LOC" estimate was stale — file grew between Mobile FU#4 banking and this closure). No test file existed. Re-verified at execution: zero external imports / JSX usage in tracked `src/` files (one historical comment reference in `AgentDashboard.jsx:414` updated to remove the dangling component name — Rule 9 in-PR scope extension). Sweep scope was limited to this one component per locked decision; broader dead-code sweeps deferred.
+**Closure (PR #208, squash `44db563`):** Component file deleted at `src/components/dashboard/MotivationalCarousel.jsx` (actual ~378 LOC at deletion time; FU body's "~150 LOC" estimate was stale — file grew between Mobile FU#4 banking and this closure). No test file existed. Re-verified at execution: zero external imports / JSX usage in tracked `src/` files (one historical comment reference in `AgentDashboard.jsx:414` updated to remove the dangling component name — Rule 9 in-PR scope extension). Sweep scope was limited to this one component per locked decision; broader dead-code sweeps deferred.
 
 ---
 
