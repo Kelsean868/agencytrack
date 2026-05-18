@@ -989,7 +989,7 @@ treatment as the agent side. Estimated 1–2 days of focused work.
 - ✅ **P1-3** — CLOSED by PR #153 (9571a28): CommissionPlayground accordion toggle gets `min-h-[44px]`.
 
 **New FU banked during P1-2 audit:**
-- [x] **History row aria-label** — `AgentDashboard.jsx:722-747` History row button has only "Week of {date}" as visible text; Eye icon is decorative. Add `aria-label="Preview submission from week of {date}"` (or similar) for SR clarity. Surfaced during Mobile FU#2 P1-2 closure audit; defer to a comprehensive aria sweep rather than one-off fix. [RESOLVED PR #{TBD}, {TBD}]
+- [x] **History row aria-label** — `AgentDashboard.jsx:722-747` History row button has only "Week of {date}" as visible text; Eye icon is decorative. Add `aria-label="Preview submission from week of {date}"` (or similar) for SR clarity. Surfaced during Mobile FU#2 P1-2 closure audit; defer to a comprehensive aria sweep rather than one-off fix. [RESOLVED PR #213, 38be348]
 
 ### Mobile follow-up #3 — `bg-primary/N` opacity utilities resolve to transparent — RESOLVED in PR #132 (2026-05-12)
 
@@ -1056,11 +1056,11 @@ Option 1 is the right fix but touches every theme variable + consumer.
 
 ---
 
-## CampaignForm close button missing aria-label (LOW, banked during Mobile FU#4 smoke) [RESOLVED PR #{TBD}, {TBD}]
+## CampaignForm close button missing aria-label (LOW, banked during Mobile FU#4 smoke) [RESOLVED PR #213, 38be348]
 
 - [x] **CampaignForm close button missing aria-label** — `src/components/campaigns/CampaignPanel.jsx:283` close button has no `aria-label`; contains only a decorative `<X />` icon (no visible text). Screen-reader users hear "button" with no description. Same defect pattern as the History row aria-label gap banked from FU#2 (`AgentDashboard.jsx:722-747`). Surfaced during Mobile FU#4 P2-1 smoke walk attempting `waitForSelector('[aria-label="Close"]')` as a form-open gate — selector never resolved, confirming the label is absent. Defer to a comprehensive aria sweep rather than a one-off fix.
 
-**Closure (PR #{TBD}, squash `{TBD}`):** Resolved as part of comprehensive aria-label sweep — 10 sites total (this site + History row L722-746 + 8 net-new sites from 2026-05-19 audit). `aria-label="Close campaign form"` added to the CampaignPanel close button at `src/components/campaigns/CampaignPanel.jsx:283`. Sweep covered two defect classes: Class A icon-only buttons (8 sites via `aria-label` attribute) + Class B mobile-hidden-text pattern (2 sites in ManagerDashboard via `hidden md:inline` → `sr-only md:not-sr-only` swap so visible text stays in the a11y tree at all viewports). Rule 9 in-PR scope extension absorbed a 10th site: `KioskModeTab.jsx:178-186` is an icon-only `<a>` anchor (`<ExternalLink />` + `title="Open kiosk"`) — identical defect class to Class A, adjacent in a file already in scope. Class B fix path source-verified at Phase 1: `sr-only` is idiomatic in this codebase (2 existing hits at `ActivityFeed.jsx:77` + `ProfileScreen.jsx:370`); `md:not-sr-only` is a valid Tailwind responsive variant requiring no config change.
+**Closure (PR #213, squash `38be348`):** Resolved as part of comprehensive aria-label sweep — 10 sites total (this site + History row L722-746 + 8 net-new sites from 2026-05-19 audit). `aria-label="Close campaign form"` added to the CampaignPanel close button at `src/components/campaigns/CampaignPanel.jsx:283`. Sweep covered two defect classes: Class A icon-only buttons (8 sites via `aria-label` attribute) + Class B mobile-hidden-text pattern (2 sites in ManagerDashboard via `hidden md:inline` → `sr-only md:not-sr-only` swap so visible text stays in the a11y tree at all viewports). Rule 9 in-PR scope extension absorbed a 10th site: `KioskModeTab.jsx:178-186` is an icon-only `<a>` anchor (`<ExternalLink />` + `title="Open kiosk"`) — identical defect class to Class A, adjacent in a file already in scope. Class B fix path source-verified at Phase 1: `sr-only` is idiomatic in this codebase (2 existing hits at `ActivityFeed.jsx:77` + `ProfileScreen.jsx:370`); `md:not-sr-only` is a valid Tailwind responsive variant requiring no config change.
 
 ---
 
