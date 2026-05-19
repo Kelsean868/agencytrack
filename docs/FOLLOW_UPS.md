@@ -1889,7 +1889,9 @@ Documented in CLAUDE.md § Dispatcher tooling > Known behavior. Tooling works as
 
 ---
 
-## `@apply bg-[color:var(--color-X)]` sweep in `src/index.css` (LOW, refactor — banked PR #219, 0b3f058)
+## ✅ `@apply bg-[color:var(--color-X)]` sweep in `src/index.css` (LOW, refactor — banked PR #219, 0b3f058) — CLOSED 2026-05-18 (PR #TBD, {TBD})
+
+**RESOLVED 2026-05-18**
 
 Banked from PR #219 (0b3f058) audit. 4 call-sites in `src/index.css` `@layer components` definitions (`.btn-secondary`, `.card`, `.input`, `.label`) use `@apply` with arbitrary-value CSS-var syntax — out of scope for the JSX sweep that PR #219 addressed.
 
@@ -1898,3 +1900,5 @@ Banked from PR #219 (0b3f058) audit. 4 call-sites in `src/index.css` `@layer com
 **Next action:** scratch-build verification — change one of the 4 call-sites to named utility, run `npm run build`, compare compiled `dist/assets/index-*.css` for that class rule against baseline. If equivalent, ship the sweep. If divergent, document the cause and leave as-is.
 
 **Banked:** PR #219 (0b3f058).
+
+Shipped via PR #TBD ({TBD}). Audit confirmed runtime-equivalent at default opacity; capability-additive (opacity-modifier support gained on `.card` / `.input` / `.btn-secondary` / `.label`). Bundle grew ~400 bytes — accepted. Channel-split tokens per PR-C-FU3 design preserved.
