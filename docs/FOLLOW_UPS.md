@@ -49,7 +49,7 @@ Priority: **LOW**. Not blocking. Bank for the next docs-hygiene session.
 
 ---
 
-### ✅ Add PREVIEW_HOST env override to 2 verification smokes (LOW, refactor, banked 2026-05-19) — CLOSED 2026-05-19 (PR #TBD, {TBD})
+### ✅ Add PREVIEW_HOST env override to 2 verification smokes (LOW, refactor, banked 2026-05-19) — CLOSED 2026-05-19 (PR #227, `cf0373d`)
 
 **RESOLVED 2026-05-19**
 
@@ -70,7 +70,7 @@ This is the sixth Rule 17 source-verify catch of the 2026-05-19 dispatcher arc a
 
 Banked: PR #225 (`975b0fc`).
 
-**Closure (PR #TBD, {TBD}):** Shipped via PR #TBD ({TBD}). Both files now honor PREVIEW_HOST env override. Existing stale defaults preserved as fallback.
+**Closure (PR #227, `cf0373d`):** Shipped via PR #227 (`cf0373d`). Both files now honor PREVIEW_HOST env override. Existing stale defaults preserved as fallback.
 
 ---
 
