@@ -552,6 +552,22 @@ If a brief asserts a source-derived fact without a paired Phase 1 verification c
 
 Banked from PR #223 (`d40fa85`). Motivating catches: PR #217 (`d84a752`, CLAUDE.md path), PR #217 (`d84a752`, .gitignore scope), PR #219 (`0b3f058`, AgentReportDocument path), PR #221 (`e074b50`, per-token sub-counts).
 
+**Brief-completeness sub-bullet: enumerate the full architectural unit when introducing a new Firestore collection.**
+
+Briefs that introduce a new Firestore collection must enumerate ALL parts of the architectural unit explicitly in Phase 1 source-verify and Phase 2 edits, not just the obvious surfaces. The full unit includes:
+
+- **Rules block** — read/write permissions, helper functions or inline role checks, tenant scoping if applicable
+- **Write surface** — Cloud Function logic (with `Admin SDK` writes bypassing rules) and/or client-side write logic (subject to rules)
+- **Read surface** — client-side query shape if any frontend consumes the collection, including filter clauses and orderBy
+- **Composite indexes** — required for any query with 2+ `where()` clauses, range filters, or `orderBy` on non-equality fields. Encode as `firestore.indexes.json` additions in Phase 2 alongside the rules block.
+- **Smoke verification** — if user-visible behavior depends on the new collection, the smoke's own query is part of the architectural unit. The smoke's index requirements must be in `firestore.indexes.json` even if the production app does not yet query the collection in the same shape.
+
+Common gap: smoke queries on the new collection often have different shape than production app queries. The smoke's index requirements are easy to miss because the brief author is focused on the production app's read surface (if any). The smoke is real verification code that runs against real Firestore — its query needs its index.
+
+Two Rule 9 in-PR extensions on a single PR is a signal the brief under-specified the verification surface and should be banked as a methodology learning. Strikes do NOT accrue for these Rule 9 extensions when the corrections are mechanical (filter clause addition, index addition) and the brief's locked decisions remain intact.
+
+Banked from PR #TBD ({TBD}). Motivating catch: PR #229 (`0fdebc0`, Resend invite server-side + `auditInviteResends`). Brief covered rules, CF write, frontend swap, and smoke, but missed the smoke's composite index (4-field: `tenantId + actorUid + targetUid + timestamp DESC`) and the smoke query's required `tenantId` filter clause for the rules to accept the read. Both surfaced during operator smoke as Rule 9 extensions: `848c16c` (smoke query tenantId filter), `cd2ef7b` (composite index add).
+
 ---
 
 ## Dispatcher tooling
