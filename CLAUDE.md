@@ -566,7 +566,7 @@ Common gap: smoke queries on the new collection often have different shape than 
 
 Two Rule 9 in-PR extensions on a single PR is a signal the brief under-specified the verification surface and should be banked as a methodology learning. Strikes do NOT accrue for these Rule 9 extensions when the corrections are mechanical (filter clause addition, index addition) and the brief's locked decisions remain intact.
 
-Banked from PR #TBD ({TBD}). Motivating catch: PR #229 (`0fdebc0`, Resend invite server-side + `auditInviteResends`). Brief covered rules, CF write, frontend swap, and smoke, but missed the smoke's composite index (4-field: `tenantId + actorUid + targetUid + timestamp DESC`) and the smoke query's required `tenantId` filter clause for the rules to accept the read. Both surfaced during operator smoke as Rule 9 extensions: `848c16c` (smoke query tenantId filter), `cd2ef7b` (composite index add).
+Banked from PR #231 (`5be20e7`). Motivating catch: PR #229 (`0fdebc0`, Resend invite server-side + `auditInviteResends`). Brief covered rules, CF write, frontend swap, and smoke, but missed the smoke's composite index (4-field: `tenantId + actorUid + targetUid + timestamp DESC`) and the smoke query's required `tenantId` filter clause for the rules to accept the read. Both surfaced during operator smoke as Rule 9 extensions: `848c16c` (smoke query tenantId filter), `cd2ef7b` (composite index add).
 
 ---
 
