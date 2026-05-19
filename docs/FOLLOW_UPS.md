@@ -1970,4 +1970,4 @@ Five items surfaced in the May 2026 design conversation; each is small enough to
 
 - **PH7-8-Q5 (Track H)** — Verify `agentType: 'agent' | 'bdo' | 'dso'` exists on user docs (or scope adding it). Awards engine eligibility depends on this. Quick grep before H1 schema work. Resolve before H1 schema PR.
 
-Banked from PR #TBD (Phase 7-8 docs integration). Closes with PR #{TBD}.
+Banked from PR #235 (`0b8d04d`) (Phase 7-8 docs integration). Each FU closes individually when its corresponding track design pass resolves the verification: PH7-8-Q1 in Track D design pass (before D5), PH7-8-Q2 before Track E design pass starts, PH7-8-Q3 in Track F design pass, PH7-8-Q4 in Track G design pass, PH7-8-Q5 before H1 schema PR.
