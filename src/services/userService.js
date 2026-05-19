@@ -96,6 +96,26 @@ export async function callUpdateUser({ uid, updates, confirmationPhrase } = {}) 
   return result.data;
 }
 
+/**
+ * resendInvite(uid)
+ *
+ * Invokes the resendInviteEmail Cloud Function, which queues a fresh
+ * password-reset email to the target user via the same mail/ template
+ * path createUser uses (visual styling consistency) and writes an audit
+ * entry to auditInviteResends. Replaces the prior client-side
+ * sendPasswordReset() call from UserManagementPanel.
+ *
+ * Returns the CF response: { success: true, targetUid, targetEmail, emailQueued, emailError? }.
+ * Throws Firebase HttpsError on auth / permission / not-found / mail-queue failure.
+ */
+export async function resendInvite(uid) {
+  if (!uid) throw new Error('uid is required.');
+  const fns = getFunctions();
+  const fn = httpsCallable(fns, 'resendInviteEmail');
+  const result = await fn({ uid });
+  return result.data;
+}
+
 // Compress an image File/Blob to maxDim × maxDim, returns a Blob (image/jpeg)
 export function compressImage(file, maxDim = 400) {
   return new Promise((resolve, reject) => {

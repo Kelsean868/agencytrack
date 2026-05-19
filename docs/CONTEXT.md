@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | `2026-05-19` |
-| Current main HEAD | `cf0373d` (chore(verification): add PREVIEW_HOST env override to 2 smokes, #227) |
-| Active track | PREVIEW_HOST env override — `chore/preview-host-env-override` in flight. Adds `process.env.PREVIEW_HOST ??` pattern to `border-border-smoke.mjs` + `resend-invite-ui-smoke.mjs`, mirroring the existing pattern in `mobile-fu2-tap-targets-smoke.mjs` + `mobile-fu4-cosmetics-smoke.mjs`. Closes PREVIEW_HOST FU banked in PR #225 (`e02f79b`). |
-| Next track | Pending: Resend invite `mail/` swap (#215), Resend invite audit log (#215). MEDIUM still empty. |
+| Last updated | `2026-05-18` |
+| Current main HEAD | `#TBD` ({TBD}) |
+| Active track | Resend invite server-side + audit log — `feat/resend-invite-server-side` in flight. Single PR closing both #215 LOW FUs (Path B per pre-PR audit). New `resendInviteEmail` CF mirrors `doCreateUser` step E-2 mail/ template path; new `auditInviteResends` collection mirrors `auditAdminCreations` rules. |
+| Next track | (queue clear) — MEDIUM and LOW tiers both empty after this lands. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #TBD | `{TBD}` | Resend invite server-side + audit log — new `resendInviteEmail` CF reuses `createUser`'s `mail/` template path (`password-reset.txt` / `.html` + `'Welcome to AgencyTrack — set your password'` subject); new `auditInviteResends` collection mirrors `auditAdminCreations` pattern (`allow write: if false`; reads scoped to tenantId for tenant_admin/branch_manager/sales_manager, unrestricted for platform_admin). `userService.resendInvite(uid)` wrapper mirrors `callUpdateUser` httpsCallable pattern. `UserManagementPanel.jsx` swapped from `sendPasswordReset(email)` → `resendInvite(uid)`; warning toast added for `emailQueued: false` returns. Closes both #215 LOW FUs in single PR (Path B). Additive CF + rules deploy. Three Rule 17 brief-authoring drift catches at Phase 1 (in-scope Rule 9 adaptations): `buildMailDoc` is 5-arg not 4 (subject required); `createUser` wrapper lives in `agentManagementService.js` not `userService.js` (mirror is `callUpdateUser`); rules file uses inline `getRole() == 'X'` not helper functions. |
 | #227 | `cf0373d` | PREVIEW_HOST env override on `border-border-smoke.mjs` + `resend-invite-ui-smoke.mjs` — adds `const PREVIEW_HOST = process.env.PREVIEW_HOST ?? '<stale-default>';` pattern mirroring the existing usage in `mobile-fu2-tap-targets-smoke.mjs` + `mobile-fu4-cosmetics-smoke.mjs`. Existing stale defaults preserved as fallback. Closes PREVIEW_HOST env override FU banked in PR #225 (`e02f79b`). Smoke waived: verification-script refactor, no app runtime surface, env override is additive (preserves existing fallback). |
 | #225 | `975b0fc` | Untracked verification scripts resolution — 6 TRACK (peers of existing 19 tracked smokes under `scripts/verification/`), 1 DELETE (`pr-d-email-smoke.mjs` — `service-account-key.json` import violation per CLAUDE.md ban post-PR #78 + hardcoded production identifiers + production-mutation surface; purpose discharged at PR #133), 2 polish comments documenting PREVIEW_HOST env override on mobile-fu2 + mobile-fu4 smokes. Rule 17 source-verify catch at Phase 2 Edit 3 — brief premise asserted all 4 polish targets read PREVIEW_HOST; source check showed only 2 of 4 do (`border-border-smoke.mjs` + `resend-invite-ui-smoke.mjs` hardcode without override). Polish scope corrected to 2 actual override-supporting scripts; missing override on the other 2 banked as new LOW refactor FU. Sixth Rule 17 catch of the 2026-05-19 dispatcher arc and first under the newly-banked Rule 17 sub-bullet (PR #223, `d40fa85`) — meta-validation that the sub-bullet caught a brief premise gap on the next dispatched PR. Smoke waived: pure repo housekeeping, no app runtime surface change. |
 | #223 | `d40fa85` | Rule 17 source-verification sub-bullet — formalizes Phase 1 paired verification commands for source-derived claims. Banks four-catch pattern from PR #217/#219/#221 cycles. Codifies CC's correct Rule 9 judgment on per-token count handling. |
@@ -143,13 +144,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** PREVIEW_HOST env override in flight on `chore/preview-host-env-override`. XS refactor closing the FU banked one PR earlier (PR #225 Phase 2 Edit 3 source-verify catch). Two-line change per file × two files.
+> **Session boundary:** Resend invite server-side + audit log in flight on `feat/resend-invite-server-side`. Single M-sized PR closing both PR #215 LOW FUs together via Path B per pre-PR audit recommendation.
 
-**PREVIEW_HOST env override (PR #227, 2026-05-19, squash `cf0373d`).** Adds `process.env.PREVIEW_HOST ?? '<stale-default>'` to `border-border-smoke.mjs` + `resend-invite-ui-smoke.mjs`, mirroring the existing pattern at `mobile-fu2-tap-targets-smoke.mjs:62` + `mobile-fu4-cosmetics-smoke.mjs:74`. Existing stale defaults preserved as fallback — re-runs against future preview branches honor `$env:PREVIEW_HOST` from the operator shell without code edits.
+**Resend invite server-side + audit log (PR #TBD, 2026-05-18, squash `{TBD}`).** New `exports.resendInviteEmail` Cloud Function in `functions/index.js` replaces the client-side `sendPasswordReset()` call in `UserManagementPanel.jsx:418`. CF reuses `doCreateUser` step E-2's `buildMailDoc(...)` pattern verbatim — same templates (`password-reset.txt` / `.html`), same subject (`'Welcome to AgencyTrack — set your password'`), same `generatePasswordResetLink` flow — so original and resent invite emails share visual styling. CF writes an audit doc to a new top-level `auditInviteResends` collection via Admin SDK (rules `allow write: if false`, mirroring `auditAdminCreations`). Audit doc shape: `tenantId`, `actorUid`, `actorEmail`, `actorRole`, `targetUid`, `targetEmail`, `ip`, `userAgent`, `emailQueued`, `timestamp`. Actor set gate: `platform_admin / tenant_admin / sales_manager / branch_manager` — matches `CREATABLE_ROLES` Resend button visibility. `userService.resendInvite(uid)` wrapper mirrors `callUpdateUser` `httpsCallable` pattern. Toast handling adds an `emailQueued: false` warning branch parallel to `createUser`'s existing pattern (`UserManagementPanel.jsx:394`).
 
-**Session arc summary (2026-05-19).** Six work PRs shipped in a single dispatcher arc (#217 tooling, #219 + #221 CSS-var sweeps, #223 Rule 17 sub-bullet, #225 untracked-scripts cleanup, this PR PREVIEW_HOST override) closing five LOW FUs along the way: R2-R5 audit closure (in #221 cycle), `/post-merge` UI discovery (logged across), `@apply` sweep (#221), untracked-scripts (#225), and PREVIEW_HOST (this PR). Methodology refinement: Rule 17 source-verification sub-bullet now policy-load-bearing across the dispatcher tooling — six in-the-wild catches across the arc, the most recent (PR #225 Phase 2 Edit 3) was the first under the newly-banked sub-bullet.
+**Session arc summary (2026-05-18 → 2026-05-19).** Seven work PRs shipped: #217 tooling, #219 + #221 CSS-var sweeps, #223 Rule 17 sub-bullet, #225 untracked-scripts cleanup, #227 PREVIEW_HOST override, this PR Resend invite server-side + audit log. Closes 5 LOW FUs along the way plus both PR #215 follow-ups in this PR. Rule 17 source-verification sub-bullet now policy-load-bearing — three in-scope Rule 9 drift catches in this PR's Phase 1 (buildMailDoc arg count, userService wrapper file location, rules helper functions). Methodology arc: dispatcher tooling embeds Rule 17 cleanly.
 
-**Next track.** LOW tier reduces to just the two PR #215 Resend invite items: `mail/` doc consistency swap and audit log entry. MEDIUM tier empty.
+**Next track.** Queue clear — MEDIUM and LOW tiers both empty after this lands. Background-risk items (Node 20 deprecation, `firebase-functions` SDK upgrade, SEC-9c, SEC-12, worktree audit) remain in `docs/FOLLOW_UPS.md` only.
 
 ---
 

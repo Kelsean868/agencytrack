@@ -9,7 +9,7 @@ const hoisted = vi.hoisted(() => ({
   deactivateUser:     vi.fn(),
   getUnitManagers:    vi.fn(),
   getBranchManagers:  vi.fn(),
-  sendPasswordReset:  vi.fn(),
+  resendInvite:       vi.fn(),
   toastShow:          vi.fn(),
 }));
 
@@ -21,8 +21,8 @@ vi.mock('../../../services/agentManagementService', () => ({
   getBranchManagers: hoisted.getBranchManagers,
 }));
 
-vi.mock('../../../services/authService', () => ({
-  sendPasswordReset: hoisted.sendPasswordReset,
+vi.mock('../../../services/userService', () => ({
+  resendInvite: hoisted.resendInvite,
 }));
 
 vi.mock('../../../hooks/useToast', () => ({
@@ -66,7 +66,7 @@ const INACTIVE_AGENT = {
 describe('UserManagementPanel — Resend invite UI', () => {
   beforeEach(() => {
     hoisted.getAllUsers.mockReset();
-    hoisted.sendPasswordReset.mockReset();
+    hoisted.resendInvite.mockReset();
     hoisted.toastShow.mockReset();
   });
 
@@ -86,9 +86,14 @@ describe('UserManagementPanel — Resend invite UI', () => {
     expect(screen.queryByTestId('user-resend-agent-2')).not.toBeInTheDocument();
   });
 
-  it('click Resend → ConfirmDialog opens → confirm → sendPasswordReset called with target email, success toast shown', async () => {
+  it('click Resend → ConfirmDialog opens → confirm → resendInvite called with target uid, success toast shown', async () => {
     hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT]);
-    hoisted.sendPasswordReset.mockResolvedValue();
+    hoisted.resendInvite.mockResolvedValue({
+      success: true,
+      targetUid: 'agent-1',
+      targetEmail: 'active@example.com',
+      emailQueued: true,
+    });
     render(<UserManagementPanel />);
 
     // Wait for the row to render.
@@ -107,15 +112,42 @@ describe('UserManagementPanel — Resend invite UI', () => {
     // Confirm.
     fireEvent.click(screen.getByRole('button', { name: /^Resend$/ }));
 
-    // sendPasswordReset invoked with the target user's email.
-    await waitFor(() => expect(hoisted.sendPasswordReset).toHaveBeenCalledTimes(1));
-    expect(hoisted.sendPasswordReset).toHaveBeenCalledWith('active@example.com');
+    // resendInvite invoked with the target user's uid (CF payload shape).
+    await waitFor(() => expect(hoisted.resendInvite).toHaveBeenCalledTimes(1));
+    expect(hoisted.resendInvite).toHaveBeenCalledWith('agent-1');
 
     // Success toast surfaced.
     await waitFor(() => expect(hoisted.toastShow).toHaveBeenCalledTimes(1));
     expect(hoisted.toastShow).toHaveBeenCalledWith(expect.objectContaining({
       variant: 'success',
       message: expect.stringMatching(/Invite email resent to Active Agent/i),
+    }));
+  });
+
+  it('resendInvite returning emailQueued:false surfaces a warning toast, not success', async () => {
+    hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT]);
+    hoisted.resendInvite.mockResolvedValue({
+      success: true,
+      targetUid: 'agent-1',
+      targetEmail: 'active@example.com',
+      emailQueued: false,
+      emailError: 'mail/ write failed',
+    });
+    render(<UserManagementPanel />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('user-resend-agent-1')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByTestId('user-resend-agent-1'));
+    await waitFor(() => {
+      expect(screen.getByText(/Resend invite email\?/i)).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^Resend$/ }));
+
+    await waitFor(() => expect(hoisted.toastShow).toHaveBeenCalledTimes(1));
+    expect(hoisted.toastShow).toHaveBeenCalledWith(expect.objectContaining({
+      variant: 'warning',
+      message: expect.stringMatching(/may not have sent/i),
     }));
   });
 });
