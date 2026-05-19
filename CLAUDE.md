@@ -550,7 +550,7 @@ Common patterns:
 
 If a brief asserts a source-derived fact without a paired Phase 1 verification command, CC may verify inline as part of Phase 1 before relying on it. Strikes do NOT accrue for inline verification of unguarded source-derived assertions, nor for inline correction via Rule 9 scope extension when the corrected detail does not change the PR's surface area, scope, or risk profile.
 
-Banked from PR #TBD ({TBD}). Motivating catches: PR #217 (`d84a752`, CLAUDE.md path), PR #217 (`d84a752`, .gitignore scope), PR #219 (`0b3f058`, AgentReportDocument path), PR #221 (`e074b50`, per-token sub-counts).
+Banked from PR #223 (`d40fa85`). Motivating catches: PR #217 (`d84a752`, CLAUDE.md path), PR #217 (`d84a752`, .gitignore scope), PR #219 (`0b3f058`, AgentReportDocument path), PR #221 (`e074b50`, per-token sub-counts).
 
 ---
 
