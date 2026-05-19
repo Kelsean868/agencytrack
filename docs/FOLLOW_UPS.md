@@ -149,7 +149,9 @@ those scripts to ADC + impersonation. Not blocking.
 
 ---
 
-## Worktree + branch audit (LOW, banked 2026-05-11; scope grew 2026-05-13)
+## ✅ Worktree + branch audit (LOW, banked 2026-05-11; scope grew 2026-05-13) — CLOSED 2026-05-19
+
+**RESOLVED 2026-05-19** via direct-to-main housekeeping commit. Single audit-and-execute dispatch executed the canonical runbook sequence ([`docs/runbooks/branch-cleanup.md`](runbooks/branch-cleanup.md) § "Worktree-attached branches"): 7 `git worktree remove` calls (all clean, no `--force` needed) + `node scripts/maintenance/prune-merged-branches.mjs --execute` (7 OK, 0 failed). Post-sweep verification: `git worktree list` reports only `C:/Projects/AgencyTrack [main]`; `git branch -vv | Select-String ": gone\]"` returns zero matches. Closure ledger appended below. The historical state captured in the 2026-05-13 update is preserved unchanged as drift-trail; the 7 branches actually swept on 2026-05-19 are a different (later-arriving) set documented in the closure ledger.
 
 **Updated 2026-05-13:** scope is larger than the 2026-05-11 banking
 suggested. Current state:
@@ -195,6 +197,22 @@ Audit approach (bank for whoever picks this up):
    reconcile?).
 5. For the two orphan branches without worktrees: same diff check,
    same decision tree.
+
+**Closure ledger (2026-05-19):**
+
+| Branch | Worktree path | Tip SHA | Merged via | Squash SHA |
+|---|---|---|---|---|
+| `chore/aria-label-sweep` | `C:/Projects/agencytrack-worktrees/aria-label-sweep` | `9763934` | [PR #213](https://github.com/Kelsean868/agencytrack/pull/213) | `38be348` |
+| `chore/dead-motivationalcarousel-deletion` | `C:/Projects/agencytrack-worktrees/dead-motivationalcarousel` | `30a674b` | [PR #208](https://github.com/Kelsean868/agencytrack/pull/208) | `44db563` |
+| `chore/fu-f-2-cjs-parser-unification` | `C:/Projects/AgencyTrack-fu-f-2` | `adfca07` | [PR #204](https://github.com/Kelsean868/agencytrack/pull/204) | `a975706` |
+| `chore/fu-m-delete-multi-role-smoke` | `C:/Projects/AgencyTrack-fu-m` | `6f0e27c` | [PR #202](https://github.com/Kelsean868/agencytrack/pull/202) | `a4fba56` |
+| `chore/fu-n-rule17-tracked-status-bullet` | `C:/Projects/AgencyTrack-fu-n` | `052ca15` | [PR #206](https://github.com/Kelsean868/agencytrack/pull/206) | `1d36436` |
+| `chore/resend-invite-ui` | `C:/Projects/agencytrack-worktrees/resend-invite-ui` | `84d409b` | [PR #215](https://github.com/Kelsean868/agencytrack/pull/215) | `3690bf6` |
+| `fix/editusedrawer-test-unit-select-ci-race` | `C:/Projects/agencytrack-worktrees/fix-editusedrawer-ci-race` | `2dd4262` | [PR #210](https://github.com/Kelsean868/agencytrack/pull/210) | `f493a0c` |
+
+All 7 branches were textbook DELETE-BOTH: clean `git status --short`, `[gone]` upstream with no `ahead N` annotation, tip subject matched the corresponding PR squash subject verbatim. No unpushed or uncommitted work surfaced during audit or execution. Two-strike counter held 0/2 throughout. Direct-to-main housekeeping commit; Rule 16 (post-merge fill scope) not applicable (no PR squash to record); Rule 15 (origin-verification) applied on push.
+
+The two skipped local branches reported by the prune script (`docs/arbitrary-syntax-sweep-brief` with no upstream + `docs/mobile-fu4-cosmetics-brief` with `[ahead 3]` unpushed commits) were out-of-scope for this sweep — both have live or absent upstream rather than `[gone]`, and `docs/mobile-fu4-cosmetics-brief` carries unpushed commits that warrant separate dispatcher review before any cleanup.
 
 ---
 

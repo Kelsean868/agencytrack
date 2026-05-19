@@ -14,8 +14,8 @@
 |---|---|
 | Last updated | `2026-05-19` |
 | Current main HEAD | `5be20e7` (docs(methodology): Rule 17 brief-completeness sub-bullet for new Firestore collections, #231) |
-| Active track | Rule 17 brief-completeness sub-bullet — `docs/rule-17-brief-completeness-subbullet` in flight. |
-| Next track | Pending: Worktree + branch audit cleanup (7 pre-existing gone branches), BEH-1 (blocked on copy). |
+| Active track | Worktree + branch audit cleanup — direct-to-main housekeeping (7 worktrees + 7 [gone] branches swept). |
+| Next track | Pending: BEH-1 (blocked on copy). |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -137,21 +137,18 @@ These don't block anything, but they need to be resolved or carried forward each
 - **Orphan user** `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc exists but no Auth user. Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). Do not auto-delete; investigate first.
 - **Node.js 20 Functions runtime** deprecated 2026-04-30, decommission 2026-10-30 — migration to Node 22 is a separate ticket. Not blocking; CLAUDE.md locks v1 runtime for current track.
 - **`firebase-functions` SDK** at 4.9.0 — upgrade to ≥5.1.0 has breaking changes; schedule as own ticket post-pilot.
-- **Worktrees + stale local branches** — multiple worktrees and ~15 stale local branches attached to merged feature branches. Cleanup banked in `docs/FOLLOW_UPS.md` § Worktree + branch audit.
 
 ---
 
 ## Where we left off
 
-> **Session boundary:** Rule 17 brief-completeness sub-bullet in flight on `docs/rule-17-brief-completeness-subbullet`. Banks the methodology learning from PR #229's two Rule 9 in-PR extensions.
+> **Session boundary:** Worktree + branch audit cleanup landed direct-to-main as a housekeeping commit. Closes `docs/FOLLOW_UPS.md` § Worktree + branch audit (banked 2026-05-11, scope grew 2026-05-13).
 
-**Rule 17 brief-completeness sub-bullet (in flight, branch `docs/rule-17-brief-completeness-subbullet`).** Appends a second sub-bullet to Rule 17 in `CLAUDE.md`, parallel to the source-verification sub-bullet banked at `d40fa85` (PR #223). The new sub-bullet codifies the brief-authoring expectation that briefs introducing a new Firestore collection must enumerate the full architectural unit upfront: rules block, write surface (CF and/or client), read surface (client query shape), composite indexes for non-trivial queries (including smoke queries), and the smoke's own query shape as part of the architectural unit. Common gap: smoke queries on the new collection often differ in shape from production app queries, and the smoke's index requirements get missed when the brief author focuses on the production read surface alone.
+**Worktree + branch audit cleanup (direct-to-main housekeeping, 2026-05-19).** Single audit-then-execute dispatch swept 7 worktree-attached `[gone]` branches accumulated across recent sessions (each preserved during post-merge cleanup per the canonical "no NEW stale state from this PR" rule). Canonical runbook sequence applied verbatim ([`docs/runbooks/branch-cleanup.md`](runbooks/branch-cleanup.md) § "Worktree-attached branches"): `git worktree remove` × 7 (all clean, no `--force` needed) + `node scripts/maintenance/prune-merged-branches.mjs --execute` (7 OK, 0 failed). Post-sweep verification clean: only `C:/Projects/AgencyTrack [main]` remains in worktree list; zero `[gone]` matches in `git branch -vv`.
 
-**Motivating catch: PR #229.** Brief covered rules, CF write, frontend swap, and smoke, but missed the smoke's composite index (4-field: `tenantId + actorUid + targetUid + timestamp DESC`) and the smoke query's required `tenantId` filter clause for the rules to accept the read. Both surfaced during operator smoke as Rule 9 in-PR extensions: `848c16c` (smoke query tenantId filter) and `cd2ef7b` (composite index add). Strikes did not accrue — corrections were mechanical and the brief's locked decisions remained intact. The new sub-bullet formalizes that two Rule 9 extensions on a single PR is itself a signal the brief under-specified the verification surface and should be banked as a methodology learning.
+**Audit-first methodology held.** Pre-execution audit dispatch produced a 7-row DELETE-BOTH classification table with zero anomalies — all worktree dirs existed on disk, all had empty `git status --short`, all tip subjects matched the corresponding PR squash subjects verbatim (PRs #213, #208, #204, #202, #206, #215, #210). Execution dispatch consumed the audit table directly; no scope expansion, no methodology decisions made unilaterally. Rule 16 (post-merge fill scope) not applicable — no PR squash to record. Rule 15 (origin-verification) applied on push. Closure ledger preserved in `docs/FOLLOW_UPS.md` § Worktree + branch audit (now marked ✅ CLOSED 2026-05-19).
 
-**Bank-and-validate pattern.** Mirrors PR #223's source-verification sub-bullet bank: the methodology learning is captured immediately while the motivating catch is fresh, and future briefs touching new Firestore collections inherit the architectural-unit enumeration expectation. Smoke waived: pure docs change to `CLAUDE.md` + `CONTEXT.md`, no runtime surface, no app behavior change.
-
-**Next track.** Pending after merge: Worktree + branch audit cleanup (7 pre-existing gone branches), BEH-1 (blocked on copy). Background-risk items (Node 20 deprecation, `firebase-functions` SDK upgrade, SEC-9c, SEC-12) remain in `docs/FOLLOW_UPS.md` only.
+**Next track.** Pending: BEH-1 (blocked on copy). Background-risk items (Node 20 deprecation, `firebase-functions` SDK upgrade, SEC-9c, SEC-12) remain in `docs/FOLLOW_UPS.md` only.
 
 ---
 
