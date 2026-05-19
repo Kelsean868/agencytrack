@@ -111,6 +111,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 - ALL styling via Tailwind classes + CSS variables.
 - Minimum 44px touch targets (mobile agents in field).
 - AgentReportDocument.jsx is EXEMPT — react-pdf doesn't support CSS vars, uses HEX only.
+**Phase 7-8 design docs:** [`docs/phase7-8-PRD.md`](docs/phase7-8-PRD.md) (full spec across 5 tracks D–H) + [`docs/phase7-8-implementation.md`](docs/phase7-8-implementation.md) (build sequence, recommended order D → E → G → F → H, ~36–46 PRs total). Tracks D–H detailed in the table below. Pilot remains postponed indefinitely.
 
 ## Build Phase History
 | Phase | Scope | Status |
