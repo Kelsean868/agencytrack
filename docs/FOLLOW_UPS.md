@@ -1953,3 +1953,21 @@ Banked from PR #219 (0b3f058) audit. 4 call-sites in `src/index.css` `@layer com
 **Banked:** PR #219 (0b3f058).
 
 Shipped via PR #221 (e074b50). Audit confirmed runtime-equivalent at default opacity; capability-additive (opacity-modifier support gained on `.card` / `.input` / `.btn-secondary` / `.label`). Bundle grew ~400 bytes — accepted. Channel-split tokens per PR-C-FU3 design preserved.
+
+---
+
+## Phase 7-8 Pre-Track Verifications
+
+Five items surfaced in the May 2026 design conversation; each is small enough to resolve in the design pass for its respective track. See `docs/phase7-8-implementation.md` § 9 for full context.
+
+- **PH7-8-Q1 (Track D)** — At-risk threshold design: per-award configurable (Centurion at 80 apps differs from API at 80%) vs single percentage. Recommended: per-award configurable, settable in `config/awardsRuleset/{year}`. Resolve in Track D design pass before D5.
+
+- **PH7-8-Q2 (Track E)** — Verify `dailyNudgeTime` is per-agent on the user doc (existing E6 ProfileScreen code suggests so). Quick code check in `src/components/profile/ProfileScreen.jsx` + `loggingModeService.js`. Resolve before Track E design pass starts.
+
+- **PH7-8-Q3 (Track F)** — Decide whether "concern"-category coaching notes surface in any manager-overview dashboard, or strictly individual-agent context. Default proposal: individual-agent only. Resolve in Track F design pass.
+
+- **PH7-8-Q4 (Track G)** — Confirm "Other" custom line items cap of 5 per group (proposed, not locked). Decide line-item naming ownership (Tenant Admin curated vs free-text agent-defined). Resolve in Track G design pass.
+
+- **PH7-8-Q5 (Track H)** — Verify `agentType: 'agent' | 'bdo' | 'dso'` exists on user docs (or scope adding it). Awards engine eligibility depends on this. Quick grep before H1 schema work. Resolve before H1 schema PR.
+
+Banked from PR #TBD (Phase 7-8 docs integration). Closes with PR #{TBD}.

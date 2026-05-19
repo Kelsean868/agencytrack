@@ -129,6 +129,22 @@ These are settled across all future sessions. If a session audit surfaces a reas
 | #227 | `cf0373d` | PREVIEW_HOST env override on `border-border-smoke.mjs` + `resend-invite-ui-smoke.mjs` — adds `const PREVIEW_HOST = process.env.PREVIEW_HOST ?? '<stale-default>';` pattern mirroring the existing usage in `mobile-fu2-tap-targets-smoke.mjs` + `mobile-fu4-cosmetics-smoke.mjs`. Existing stale defaults preserved as fallback. Closes PREVIEW_HOST env override FU banked in PR #225 (`e02f79b`). Smoke waived: verification-script refactor, no app runtime surface, env override is additive (preserves existing fallback). |
 ---
 
+## Phase 7-8 Planned Tracks
+
+Comprehensive design captured in `docs/phase7-8-PRD.md`. Build order and PR breakdown in `docs/phase7-8-implementation.md`.
+
+Recommended sequence: **D → E → G → F → H** (~36–46 PRs total, no track blocks pilot launch).
+
+- **Track D** — Awards Expansion + Ruleset Config Migration. Moves Tatil 2026 constants from `awardsEngine.js` to `config/awardsRuleset/{year}`. Adds agent + UM awards parity expansion and BM at-risk view. ~6–8 PRs.
+- **Track E** — Daily Reporting Polish. Per-agent work schedule (working days + T&T holidays + vacation overrides), Floating Action Button for Daily Log, refined 8-field-in-2-sections form structure. Polish atop already-shipped E6 logging mode. ~5–7 PRs.
+- **Track F** — Manager Drill-down + Coaching Notes. New `/manager/agent/:agentId` route with agent-mirror dashboard, historic trend visualizations from nightly Cloud Function aggregates, coaching notes private to manager chain. ~8–10 PRs.
+- **Track G** — Money Needs Worksheet. T&T-localized 5-expense-group budget with 3 sub-calculators (Insurance Industry, Car Expenses, Loans/Debt), piecewise PAYE config in `config/payeFormula`, privacy defaults with manager-read audit. ~7–9 PRs.
+- **Track H** — Policy Ledger MVP. Real-time per-policy entry, state machine (Submitted → Settled → Lapsed terminal), awards engine soft-migrates from settlements via per-agent `usesPolicyLedger` flag. ~10–12 PRs. Depends on Track D.
+
+Five pre-track verification follow-ups (PH7-8-Q1 through Q5) banked in `docs/FOLLOW_UPS.md` LOW tier; resolve in the design pass for each track.
+
+---
+
 ## Pending operational state
 
 These don't block anything, but they need to be resolved or carried forward each session.
