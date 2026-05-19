@@ -31,7 +31,7 @@ function loadEnvLocal(path) {
 
 loadEnvLocal(resolve(process.cwd(), '.env.local'));
 
-const PREVIEW_HOST =
+const PREVIEW_HOST = process.env.PREVIEW_HOST ??
   'agencytrack-git-fix-border-bord-704d1c-kyron-marchan-s-projects.vercel.app';
 const PREVIEW_URL = `https://${PREVIEW_HOST}`;
 const VIEWPORT = { width: 390, height: 844 };

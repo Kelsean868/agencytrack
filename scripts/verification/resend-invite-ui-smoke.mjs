@@ -40,7 +40,7 @@ function loadEnvLocal(path) {
 }
 loadEnvLocal(resolve(process.cwd(), '.env.local'));
 
-const PREVIEW_HOST =
+const PREVIEW_HOST = process.env.PREVIEW_HOST ??
   'agencytrack-git-chore-resend-invite-ui-kyron-marchan-s-projects.vercel.app';
 const PREVIEW_URL = `https://${PREVIEW_HOST}`;
 const SCREENSHOT_DIR = resolve('verification', 'resend-invite-ui-smoke');
