@@ -537,6 +537,21 @@ Phase 1 audits remain the execution-time safety net (per Rule 11's "re-audit bef
 
 Banked from PR #192 (2026-05-18). Six instances surfaced 2026-05-17 across FU-G + FU-F + FU-H briefs and Rule 16 wording; enumerated in `docs/FOLLOW_UPS.md` FU-J body at banking time (PR #190, `54c7d1c`).
 
+**Source-verification sub-bullet: paired Phase 1 commands for source-derived claims.**
+
+Brief authoring frequently makes assertions about source state beyond mere file existence — file paths in specific directories, grep counts, line numbers, gitignore reachability, per-token sub-counts. Each such source-derived claim must be paired with a Phase 1 verification command that CC can execute against current source, not just asserted in the brief body.
+
+Common patterns:
+
+- File paths in specific directories: `git ls-files | Select-String "<filename>"` (catches wrong-directory assertions)
+- Grep counts: `git grep -c "<pattern>"` (catches drift from prior audit)
+- Gitignore reachability when adding new file paths: `git check-ignore -v "<path>"` (catches negation-pattern gaps when introducing files into ignored parent directories)
+- Per-token / per-rule sub-counts: explicit grep with token isolation (catches commit-message-template drift)
+
+If a brief asserts a source-derived fact without a paired Phase 1 verification command, CC may verify inline as part of Phase 1 before relying on it. Strikes do NOT accrue for inline verification of unguarded source-derived assertions, nor for inline correction via Rule 9 scope extension when the corrected detail does not change the PR's surface area, scope, or risk profile.
+
+Banked from PR #TBD ({TBD}). Motivating catches: PR #217 (`d84a752`, CLAUDE.md path), PR #217 (`d84a752`, .gitignore scope), PR #219 (`0b3f058`, AgentReportDocument path), PR #221 (`e074b50`, per-token sub-counts).
+
 ---
 
 ## Dispatcher tooling
