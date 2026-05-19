@@ -252,6 +252,16 @@ const record  = (step, pass, note = '') => {
       const cred = await signInWithEmailAndPassword(fbAuth, ADMIN_EMAIL, ADMIN_PASSWORD);
       const actorUid = cred.user.uid;
       actorUidForReport = actorUid;
+      // tenantId comes from the user's custom claim (authoritative; mirrors
+      // src/services/managerService.js + agentManagementService.js read
+      // pattern). Required as the FIRST query filter so Firestore can
+      // validate at query time that all returned docs satisfy the rule
+      // resource.data.tenantId == getTenantId(). Without this filter,
+      // Firestore conservatively rejects with permission-denied even when
+      // matching docs exist.
+      const { claims } = await cred.user.getIdTokenResult();
+      const actorTenantId = claims.tenantId;
+      if (!actorTenantId) throw new Error('tenant_admin auth has no tenantId claim — cannot scope query');
       const fbDb = getFirestore(fbApp);
 
       // Window: 60s back from now. Audit doc lands within seconds of CF
@@ -262,7 +272,8 @@ const record  = (step, pass, note = '') => {
       for (let attempt = 0; attempt < 6 && !auditVerified; attempt++) {
         const q = query(
           collection(fbDb, 'auditInviteResends'),
-          where('actorUid', '==', actorUid),
+          where('tenantId',  '==', actorTenantId),
+          where('actorUid',  '==', actorUid),
           where('targetUid', '==', targetUid),
           where('timestamp', '>=', since),
           orderBy('timestamp', 'desc'),
