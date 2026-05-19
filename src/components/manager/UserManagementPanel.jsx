@@ -8,7 +8,7 @@ import {
   getBranchManagers,
   getAllUsers,
 } from '../../services/agentManagementService';
-import { sendPasswordReset } from '../../services/authService';
+import { resendInvite } from '../../services/userService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
 import useToast from '../../hooks/useToast';
@@ -415,13 +415,21 @@ export default function UserManagementPanel() {
     setResending(true);
     const targetName = resendTarget.name ?? resendTarget.email;
     try {
-      await sendPasswordReset(resendTarget.email);
+      const result = await resendInvite(resendTarget.uid);
       setResendTarget(null);
-      toast.show({
-        variant: 'success',
-        message: `Invite email resent to ${targetName}.`,
-        duration: 4000,
-      });
+      if (result?.emailQueued === false) {
+        toast.show({
+          variant: 'warning',
+          message: `Resend attempted for ${targetName}, but the email may not have sent. Contact support if they don't receive it.`,
+          duration: 10000,
+        });
+      } else {
+        toast.show({
+          variant: 'success',
+          message: `Invite email resent to ${targetName}.`,
+          duration: 4000,
+        });
+      }
     } catch (err) {
       console.error('[UserManagementPanel] resend invite:', err);
       const msg = err?.message?.includes('permission')

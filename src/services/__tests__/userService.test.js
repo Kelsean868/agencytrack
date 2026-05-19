@@ -35,6 +35,7 @@ vi.mock('firebase/functions', () => ({
 import {
   updateUserFields,
   callUpdateUser,
+  resendInvite,
   MANAGER_EDITABLE_FIELDS,
   CLAIM_KEYED_FIELDS,
 } from '../userService';
@@ -215,5 +216,67 @@ describe('userService.callUpdateUser', () => {
 
   it('CLAIM_KEYED_FIELDS contains exactly the v1 claim-keyed field set', () => {
     expect(Array.from(CLAIM_KEYED_FIELDS)).toEqual(['role', 'branchId']);
+  });
+});
+
+describe('userService.resendInvite', () => {
+  beforeEach(() => {
+    hoisted.mockCallable.mockReset();
+    hoisted.mockHttpsCallable.mockReset();
+    hoisted.mockCallable.mockResolvedValue({
+      data: {
+        success: true,
+        targetUid: 'target-uid',
+        targetEmail: 'target@example.com',
+        emailQueued: true,
+      },
+    });
+    hoisted.mockHttpsCallable.mockImplementation(() => hoisted.mockCallable);
+  });
+
+  it('invokes the resendInviteEmail CF with the uid payload', async () => {
+    const result = await resendInvite('target-uid');
+    expect(hoisted.mockHttpsCallable).toHaveBeenCalledTimes(1);
+    expect(hoisted.mockHttpsCallable.mock.calls[0][1]).toBe('resendInviteEmail');
+    expect(hoisted.mockCallable).toHaveBeenCalledWith({ uid: 'target-uid' });
+    expect(result).toEqual({
+      success: true,
+      targetUid: 'target-uid',
+      targetEmail: 'target@example.com',
+      emailQueued: true,
+    });
+  });
+
+  it('propagates emailQueued:false return shape unchanged', async () => {
+    hoisted.mockCallable.mockResolvedValueOnce({
+      data: {
+        success: true,
+        targetUid: 'target-uid',
+        targetEmail: 'target@example.com',
+        emailQueued: false,
+        emailError: 'mail/ write failed',
+      },
+    });
+    const result = await resendInvite('target-uid');
+    expect(result.emailQueued).toBe(false);
+    expect(result.emailError).toBe('mail/ write failed');
+  });
+
+  it('throws when uid is missing without invoking the CF', async () => {
+    await expect(resendInvite()).rejects.toThrow(/uid is required/);
+    expect(hoisted.mockHttpsCallable).not.toHaveBeenCalled();
+  });
+
+  it('throws when uid is empty string without invoking the CF', async () => {
+    await expect(resendInvite('')).rejects.toThrow(/uid is required/);
+    expect(hoisted.mockHttpsCallable).not.toHaveBeenCalled();
+  });
+
+  it('propagates Firebase HttpsError from the CF (permission-denied, not-found, etc.)', async () => {
+    const cfErr = Object.assign(new Error('permission-denied: cross-tenant resend'), {
+      code: 'permission-denied',
+    });
+    hoisted.mockCallable.mockRejectedValueOnce(cfErr);
+    await expect(resendInvite('target-uid')).rejects.toBe(cfErr);
   });
 });

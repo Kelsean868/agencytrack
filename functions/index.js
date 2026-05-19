@@ -443,6 +443,133 @@ exports.onUserCreated = functions.auth.user().onCreate(async (user) => {
 exports.createUser = functions.https.onCall(doCreateUser);
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Resend invite — server-side replacement for client-side sendPasswordReset
+// in UserManagementPanel. Reuses the same mail/ template path doCreateUser
+// emits (password-reset.txt / .html) so original and resent invite emails
+// share visual styling. Writes an audit log entry to auditInviteResends
+// (top-level, CF-only via Admin SDK; mirrors auditAdminCreations).
+//
+// Actor set: platform_admin, tenant_admin, sales_manager, branch_manager —
+// matches UserManagementPanel Resend button visibility (CREATABLE_ROLES).
+// Tenant scoping: actor and target must share tenantId, except platform_admin
+// which is unrestricted (mirrors createUser tenant-scoping shape).
+// ─────────────────────────────────────────────────────────────────────────────
+const RESEND_INVITE_ACTOR_ROLES = ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager'];
+
+exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Must be signed in.');
+  }
+
+  const actorRole   = context.auth.token.role;
+  const actorUid    = context.auth.uid;
+  const actorTenant = context.auth.token.tenantId;
+
+  if (!RESEND_INVITE_ACTOR_ROLES.includes(actorRole)) {
+    throw new functions.https.HttpsError(
+      'permission-denied', `${actorRole} cannot resend invite emails.`
+    );
+  }
+
+  const targetUid = data?.uid;
+  if (!targetUid || typeof targetUid !== 'string') {
+    throw new functions.https.HttpsError('invalid-argument', 'uid is required.');
+  }
+
+  // ── Resolve target user (Auth + Firestore) ────────────────────────────────
+  let targetUser;
+  try {
+    targetUser = await admin.auth().getUser(targetUid);
+  } catch (err) {
+    if (err.code === 'auth/user-not-found') {
+      throw new functions.https.HttpsError('not-found', 'Target user does not exist.');
+    }
+    throw err;
+  }
+  if (!targetUser.email) {
+    throw new functions.https.HttpsError('failed-precondition', 'Target user has no email on file.');
+  }
+
+  // Resolve target tenantId from custom claims (authoritative) — for the
+  // platform_admin cross-tenant path we still need the target's tenant to
+  // record on the audit doc.
+  const targetClaims = targetUser.customClaims ?? {};
+  const targetTenant = targetClaims.tenantId ?? null;
+
+  // ── Tenant scoping ────────────────────────────────────────────────────────
+  // platform_admin may resend across tenants; everyone else must match.
+  if (actorRole !== 'platform_admin' && targetTenant !== actorTenant) {
+    throw new functions.https.HttpsError(
+      'permission-denied', 'Cannot resend invite for a user in a different tenant.'
+    );
+  }
+
+  // ── Read actor profile for audit fields (email, name) ─────────────────────
+  // platform_admin has no Firestore user doc; fall back to auth token email.
+  let actorEmail = null;
+  if (actorRole !== 'platform_admin' && actorTenant) {
+    const actorSnap = await admin.firestore()
+      .doc(`tenants/${actorTenant}/users/${actorUid}`)
+      .get()
+      .catch(() => null);
+    actorEmail = actorSnap?.exists ? (actorSnap.data().email ?? null) : null;
+  }
+  if (!actorEmail) actorEmail = context.auth.token.email ?? null;
+
+  // ── Generate reset link + queue mail/ doc ─────────────────────────────────
+  // Mirrors doCreateUser step E-2 exactly: same template, same subject,
+  // same buildMailDoc signature. emailQueued tracks whether the dispatch
+  // pipeline accepted the doc; failure is non-fatal — the audit row still
+  // lands so admins can see the resend was attempted.
+  let emailQueued = true;
+  let emailError;
+  try {
+    const resetLink = await admin.auth().generatePasswordResetLink(targetUser.email, {
+      url: 'https://agencytrack.vercel.app',
+    });
+    await admin.firestore().collection('mail').add(
+      buildMailDoc(
+        targetUser.email,
+        'Welcome to AgencyTrack — set your password',
+        'password-reset.txt',
+        'password-reset.html',
+        { userName: targetUser.displayName ?? '', resetLink }
+      )
+    );
+  } catch (mailErr) {
+    console.warn('[resendInviteEmail] mail/ write failed (non-fatal):', mailErr.message);
+    emailQueued = false;
+    emailError = mailErr.message ?? String(mailErr);
+  }
+
+  // ── Audit log (Admin SDK write; rules forbid client writes) ───────────────
+  try {
+    await admin.firestore().collection('auditInviteResends').add({
+      tenantId:    targetTenant,
+      actorUid,
+      actorEmail,
+      actorRole,
+      targetUid,
+      targetEmail: targetUser.email,
+      ip:          context.rawRequest?.ip ?? null,
+      userAgent:   context.rawRequest?.headers?.['user-agent'] ?? null,
+      emailQueued,
+      timestamp:   admin.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch (auditErr) {
+    // Audit failure is logged but does not fail the call — the email side
+    // effect already happened (or didn't, captured in emailQueued).
+    console.error('[resendInviteEmail] audit write failed:', auditErr);
+  }
+
+  console.log(`[resendInviteEmail] ${actorRole} ${actorUid} resent invite to ${targetUid} (${targetUser.email}) — emailQueued=${emailQueued}`);
+
+  const result = { success: true, targetUid, targetEmail: targetUser.email, emailQueued };
+  if (emailError) result.emailError = emailError;
+  return result;
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Track C C2: bulkImportUsers — wraps doCreateUser in a per-row loop.
 //
 // Caller (tenant_admin or platform_admin) uploads a CSV via the

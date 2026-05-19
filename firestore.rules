@@ -56,6 +56,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Resend invite audit log — written exclusively by the resendInviteEmail
+    // Cloud Function via Admin SDK (rules bypass). Clients never write.
+    // Reads: platform_admin unrestricted; tenant_admin / branch_manager /
+    // sales_manager scoped to own tenant (matches CF actor set in
+    // RESEND_INVITE_ACTOR_ROLES). Mirrors auditAdminCreations rule shape.
+    match /auditInviteResends/{docId} {
+      allow read: if isSignedIn() && (
+        getRole() == 'platform_admin' ||
+        (getRole() in ['tenant_admin', 'branch_manager', 'sales_manager'] && resource.data.tenantId == getTenantId())
+      );
+      allow write: if false;
+    }
+
     // feat(profile): audit log for tenant_admin self-service email changes.
     // Clients create their own entry (scoped by uid + tenantId); no edits or
     // deletes permitted. Mirrors auditAdminCreations read access pattern.
