@@ -45,13 +45,13 @@ Priority: **LOW**. Not blocking. Bank for the next docs-hygiene session.
 
 **Additional Rule 17 capture at execution time:** brief Phase 0 prescribed `git worktree add` for the cleanup, which fails for untracked-file operations — worktrees share the tracked object store but start with an empty working directory, so the 15 untracked files never propagated. Phase 1 hard-stop surfaced this; resolution worked from the main working tree instead. Eleventh Rule 17 in-the-wild signal of the two-day arc. Banks a candidate CLAUDE.md rule: "When PR scope is moving/staging untracked files, work from the main working tree — worktree convention applies only to tracked-file operations."
 
-**Deferred-scripts closure (PR #TBD, {TBD}):** The 6 verification scripts left deferred per the Rule 11 corrected-diagnosis paragraph above are now resolved. 6 TRACK (structural peers of the existing 19 tracked smokes under `scripts/verification/`) + 1 DELETE — `scripts/verification/pr-d-email-smoke.mjs` removed due to forbidden `functions/service-account-key.json` import pattern (banned post-PR #78) + hardcoded production identifiers + production-mutation surface; purpose discharged at PR #133 ship time. The new untracked script `resend-invite-ui-smoke.mjs` (PR #215, merged 2026-05-18) also tracked under the same pattern. 2 polish comments documenting the PREVIEW_HOST env override added to mobile-fu2 + mobile-fu4 smokes. This PR is the "next consumer" decision moment the deferred-scripts direction anticipated.
+**Deferred-scripts closure (PR #225, `975b0fc`):** The 6 verification scripts left deferred per the Rule 11 corrected-diagnosis paragraph above are now resolved. 6 TRACK (structural peers of the existing 19 tracked smokes under `scripts/verification/`) + 1 DELETE — `scripts/verification/pr-d-email-smoke.mjs` removed due to forbidden `functions/service-account-key.json` import pattern (banned post-PR #78) + hardcoded production identifiers + production-mutation surface; purpose discharged at PR #133 ship time. The new untracked script `resend-invite-ui-smoke.mjs` (PR #215, merged 2026-05-18) also tracked under the same pattern. 2 polish comments documenting the PREVIEW_HOST env override added to mobile-fu2 + mobile-fu4 smokes. This PR is the "next consumer" decision moment the deferred-scripts direction anticipated.
 
 ---
 
 ### Add PREVIEW_HOST env override to 2 verification smokes (LOW, refactor, banked 2026-05-19)
 
-Banked from PR #TBD ({TBD}) Phase 2 Edit 3 source-verify catch. Two tracked verification smokes have hardcoded preview URL defaults without env override support, blocking re-runs against future preview branches without code edits:
+Banked from PR #225 (`975b0fc`) Phase 2 Edit 3 source-verify catch. Two tracked verification smokes have hardcoded preview URL defaults without env override support, blocking re-runs against future preview branches without code edits:
 
 - [scripts/verification/border-border-smoke.mjs:34-35](scripts/verification/border-border-smoke.mjs:34)
 - [scripts/verification/resend-invite-ui-smoke.mjs:43-44](scripts/verification/resend-invite-ui-smoke.mjs:43)
@@ -66,7 +66,7 @@ XS scope (2 line changes, 1 file each). Ship as standalone refactor PR when conv
 
 This is the sixth Rule 17 source-verify catch of the 2026-05-19 dispatcher arc and the first under the newly-banked Rule 17 sub-bullet (PR #223, `d40fa85`). The sub-bullet caught a brief premise gap on the next dispatched PR — exactly what it was designed for.
 
-Banked: PR #TBD ({TBD}).
+Banked: PR #225 (`975b0fc`).
 
 ---
 
