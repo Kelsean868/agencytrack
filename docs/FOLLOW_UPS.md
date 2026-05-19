@@ -49,7 +49,9 @@ Priority: **LOW**. Not blocking. Bank for the next docs-hygiene session.
 
 ---
 
-### Add PREVIEW_HOST env override to 2 verification smokes (LOW, refactor, banked 2026-05-19)
+### ✅ Add PREVIEW_HOST env override to 2 verification smokes (LOW, refactor, banked 2026-05-19) — CLOSED 2026-05-19 (PR #TBD, {TBD})
+
+**RESOLVED 2026-05-19**
 
 Banked from PR #225 (`975b0fc`) Phase 2 Edit 3 source-verify catch. Two tracked verification smokes have hardcoded preview URL defaults without env override support, blocking re-runs against future preview branches without code edits:
 
@@ -67,6 +69,8 @@ XS scope (2 line changes, 1 file each). Ship as standalone refactor PR when conv
 This is the sixth Rule 17 source-verify catch of the 2026-05-19 dispatcher arc and the first under the newly-banked Rule 17 sub-bullet (PR #223, `d40fa85`). The sub-bullet caught a brief premise gap on the next dispatched PR — exactly what it was designed for.
 
 Banked: PR #225 (`975b0fc`).
+
+**Closure (PR #TBD, {TBD}):** Shipped via PR #TBD ({TBD}). Both files now honor PREVIEW_HOST env override. Existing stale defaults preserved as fallback.
 
 ---
 
