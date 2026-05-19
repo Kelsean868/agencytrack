@@ -1889,7 +1889,7 @@ Documented in CLAUDE.md § Dispatcher tooling > Known behavior. Tooling works as
 
 ---
 
-## ✅ `@apply bg-[color:var(--color-X)]` sweep in `src/index.css` (LOW, refactor — banked PR #219, 0b3f058) — CLOSED 2026-05-18 (PR #TBD, {TBD})
+## ✅ `@apply bg-[color:var(--color-X)]` sweep in `src/index.css` (LOW, refactor — banked PR #219, 0b3f058) — CLOSED 2026-05-18 (PR #221, e074b50)
 
 **RESOLVED 2026-05-18**
 
@@ -1901,4 +1901,4 @@ Banked from PR #219 (0b3f058) audit. 4 call-sites in `src/index.css` `@layer com
 
 **Banked:** PR #219 (0b3f058).
 
-Shipped via PR #TBD ({TBD}). Audit confirmed runtime-equivalent at default opacity; capability-additive (opacity-modifier support gained on `.card` / `.input` / `.btn-secondary` / `.label`). Bundle grew ~400 bytes — accepted. Channel-split tokens per PR-C-FU3 design preserved.
+Shipped via PR #221 (e074b50). Audit confirmed runtime-equivalent at default opacity; capability-additive (opacity-modifier support gained on `.card` / `.input` / `.btn-secondary` / `.label`). Bundle grew ~400 bytes — accepted. Channel-split tokens per PR-C-FU3 design preserved.
