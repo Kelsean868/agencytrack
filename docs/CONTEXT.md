@@ -13,9 +13,9 @@
 | Field | Value |
 |---|---|
 | Last updated | `2026-05-19` |
-| Current main HEAD | `5be20e7` (docs(methodology): Rule 17 brief-completeness sub-bullet for new Firestore collections, #231) |
-| Active track | Archive orphaned mobile-fu4-cosmetics brief — `docs/archive-mobile-fu4-cosmetics-brief` in flight. |
-| Next track | Pending after merge + Phase 7 branch deletion: BEH-1 blocked on copy. Otherwise queue is genuinely empty. |
+| Current main HEAD | `29f79cc` (docs(archive): retroactively archive mobile-fu4-cosmetics kickoff brief, #233) |
+| Active track | Phase 7 branch deletion (PR #233 shipped; delete `docs/mobile-fu4-cosmetics-brief` local + remote refs inline). |
+| Next track | BEH-1 (blocked on copy). Otherwise queue genuinely empty. |
 | Queued | (none) |
 | Two-strike counter | 0/2 — clean. |
 | Stash pending | No |
@@ -122,7 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| #TBD | `{TBD}` | Retroactively archived mobile-fu4-cosmetics kickoff brief (orphaned from pre-Rule-10 era, 222 lines from `origin/docs/mobile-fu4-cosmetics-brief` tip `9fec5fe`) to `docs/archive/briefs/`. Mirrors PR #211 archive pattern. Branch deletion follow-on in Phase 7. |
+| #233 | `29f79cc` | Retroactively archived mobile-fu4-cosmetics kickoff brief (orphaned from pre-Rule-10 era, 222 lines from `origin/docs/mobile-fu4-cosmetics-brief` tip `9fec5fe`) to `docs/archive/briefs/`. Mirrors PR #211 archive pattern. Branch deletion follow-on in Phase 7. |
 | #231 | `5be20e7` | Rule 17 brief-completeness sub-bullet — banks PR #229's two Rule 9 extensions as methodology learning for briefs introducing new Firestore collections (rules + CF + index + smoke query shape as a single architectural unit). |
 | #229 | `0fdebc0` | Resend invite server-side + audit log — new `resendInviteEmail` CF reuses `createUser`'s `mail/` template path (`password-reset.txt` / `.html` + `'Welcome to AgencyTrack — set your password'` subject); new `auditInviteResends` collection mirrors `auditAdminCreations` pattern (`allow write: if false`; reads scoped to tenantId for tenant_admin/branch_manager/sales_manager, unrestricted for platform_admin). `userService.resendInvite(uid)` wrapper mirrors `callUpdateUser` httpsCallable pattern. `UserManagementPanel.jsx` swapped from `sendPasswordReset(email)` → `resendInvite(uid)`; warning toast added for `emailQueued: false` returns. Closes both #215 LOW FUs in single PR (Path B). Additive CF + rules + composite index deploy. Three Rule 17 brief-authoring drift catches at Phase 1 (in-scope Rule 9 adaptations): `buildMailDoc` is 5-arg not 4 (subject required); `createUser` wrapper lives in `agentManagementService.js` not `userService.js` (mirror is `callUpdateUser`); rules file uses inline `getRole() == 'X'` not helper functions. Two in-PR Rule 9 fixes after operator smoke surfaced gaps: (1) smoke audit query missing `tenantId` filter required by Firestore rule constraint at query-validation time (commit `848c16c`); (2) `auditInviteResends` composite index `(tenantId ASC, actorUid ASC, targetUid ASC, timestamp DESC)` added to `firestore.indexes.json` (commit `cd2ef7b`) — brief Phase 4 under-specified the index requirement when introducing a new collection + non-trivial query (banked as methodology note: briefs touching new collections + composite queries should enumerate implied index adds upfront). |
 | #227 | `cf0373d` | PREVIEW_HOST env override on `border-border-smoke.mjs` + `resend-invite-ui-smoke.mjs` — adds `const PREVIEW_HOST = process.env.PREVIEW_HOST ?? '<stale-default>';` pattern mirroring the existing usage in `mobile-fu2-tap-targets-smoke.mjs` + `mobile-fu4-cosmetics-smoke.mjs`. Existing stale defaults preserved as fallback. Closes PREVIEW_HOST env override FU banked in PR #225 (`e02f79b`). Smoke waived: verification-script refactor, no app runtime surface, env override is additive (preserves existing fallback). |
@@ -143,15 +143,15 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-> **Session boundary:** Archive orphaned mobile-fu4-cosmetics kickoff brief in flight on `docs/archive-mobile-fu4-cosmetics-brief`. Surfaced during Worktree + branch audit follow-on investigation (CC's `docs/mobile-fu4-cosmetics-brief [ahead 3]` audit, 2026-05-19).
+> **Session boundary:** PR #233 (`29f79cc`) shipped — orphaned mobile-fu4-cosmetics kickoff brief retroactively archived to `docs/archive/briefs/`. Phase 7 branch deletion follow-on runs inline within this `/post-merge` dispatch.
 
-**Archive mobile-fu4-cosmetics kickoff brief (in flight, branch `docs/archive-mobile-fu4-cosmetics-brief`).** Retroactively lands a 222-line pre-Rule-10 kickoff brief from `origin/docs/mobile-fu4-cosmetics-brief` (tip `9fec5fe`) to `docs/archive/briefs/mobile-fu4-cosmetics-kickoff.md`. Brief was authored 2026-05-14 for PR #154 (Mobile FU#4 cosmetic cleanup) but predates Rule 10's commit-brief-via-docs-PR convention, so the content lived only on a feature branch + its origin remote ref, never landing on main. PR #211's archive sweep (2026-05-18) scoped to `git status` output in main's working tree and didn't catch this brief because it was never an untracked main-worktree file — it existed only as origin remote ref content plus 3 stale local commits on a worktree-attached branch (since cleaned up via the Worktree + branch audit closure at `3580e1f`). Content preserved verbatim.
+**Archive mobile-fu4-cosmetics kickoff brief (shipped 2026-05-19, PR #233 `29f79cc`).** Retroactively landed a 222-line pre-Rule-10 kickoff brief from `origin/docs/mobile-fu4-cosmetics-brief` (tip `9fec5fe`) to `docs/archive/briefs/mobile-fu4-cosmetics-kickoff.md`. Brief was authored 2026-05-14 for PR #154 (Mobile FU#4 cosmetic cleanup) but predates Rule 10's commit-brief-via-docs-PR convention, so the content lived only on a feature branch + its origin remote ref, never landing on main. PR #211's archive sweep (2026-05-18) scoped to `git status` output in main's working tree and didn't catch this brief because it was never an untracked main-worktree file — it existed only as origin remote ref content plus 3 stale local commits on a worktree-attached branch (since cleaned up via the Worktree + branch audit closure at `3580e1f`). Content preserved verbatim; Phase 3 `git diff` against source returned empty.
 
 **Audit-driven surface.** CC's worktree + branch audit follow-on investigation (`docs/mobile-fu4-cosmetics-brief [ahead 3]` dispatch, 2026-05-19) confirmed all 3 unpushed local commits on the orphaned branch were preserved on main (`630bac1` identical SHA from PR #154 squash, `1ea1210` merge artifact, `f8852b3` functional duplicate of `b1fa62c` post-merge fill). The brief file itself — not a commit, but a tree blob at the upstream tip — was the only orphaned content. Path B was selected per the audit's recommendation matrix: archive the brief verbatim (mirrors PR #211 pattern), then delete both local and remote refs in Phase 7.
 
-**Phase 7 branch deletion.** After /post-merge runs for this PR, the canonical Phase 7 step deletes `docs/mobile-fu4-cosmetics-brief` local + remote refs. Verification: `git branch -vv | Select-String "mobile-fu4-cosmetics"` returns zero matches; `git ls-remote origin docs/mobile-fu4-cosmetics-brief` returns empty. This closes the orphaned-brief surface entirely.
+**Phase 7 branch deletion.** Runs inline within this `/post-merge` dispatch after Rule 15 verification: deletes `docs/mobile-fu4-cosmetics-brief` local + remote refs. Verification: `git branch -vv | Select-String "mobile-fu4-cosmetics"` returns zero matches; `git ls-remote origin docs/mobile-fu4-cosmetics-brief` returns empty. This closes the orphaned-brief surface entirely.
 
-**Next track.** Pending after merge + Phase 7 branch deletion: BEH-1 (blocked on copy). Otherwise queue is genuinely empty. Background-risk items (Node 20 deprecation, `firebase-functions` SDK upgrade, SEC-9c, SEC-12) remain in `docs/FOLLOW_UPS.md` only.
+**Next track.** BEH-1 (blocked on copy). Otherwise queue genuinely empty after Phase 7 completes. Background-risk items (Node 20 deprecation, `firebase-functions` SDK upgrade, SEC-9c, SEC-12) remain in `docs/FOLLOW_UPS.md` only.
 
 ---
 
