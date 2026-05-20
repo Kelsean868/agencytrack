@@ -1,5 +1,6 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../utils/weeklyActivityFloors';
 
 export async function getGoals(tenantId, agentId) {
   const ref = doc(db, `tenants/${tenantId}/goals/${agentId}`);
@@ -7,11 +8,26 @@ export async function getGoals(tenantId, agentId) {
   return snap.exists() ? snap.data() : null;
 }
 
+// Returns the tenant's `config/companyMinimums` doc with built-in defaults
+// filled in for any missing field. The `weeklyActivityFloors` block (Tatil
+// workshop 2026-05-19, Appendix A) is shallow-merged: present keys from the
+// stored doc override defaults; absent keys fall through to defaults.
+// `usingDefaultMinimums()` heuristic remains intact — it keys off
+// `updatedBy`/`updatedAt`, which the defaults never carry.
 export async function getCompanyMinimums(tenantId) {
   const ref = doc(db, `tenants/${tenantId}/config/companyMinimums`);
   const snap = await getDoc(ref);
-  if (snap.exists()) return snap.data();
-  return { annualAPI: 200000, annualApps: 42, persistency: 90 };
+  const stored = snap.exists() ? snap.data() : {};
+  return {
+    annualAPI:   stored.annualAPI   ?? 200000,
+    annualApps:  stored.annualApps  ?? 42,
+    persistency: stored.persistency ?? 90,
+    ...stored,
+    weeklyActivityFloors: {
+      ...DEFAULT_WEEKLY_ACTIVITY_FLOORS,
+      ...(stored.weeklyActivityFloors ?? {}),
+    },
+  };
 }
 
 // Write helper for the tenant_admin Company Config surface (Design System v2 — B5).

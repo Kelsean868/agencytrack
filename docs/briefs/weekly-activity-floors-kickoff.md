@@ -16,14 +16,14 @@ Store the ten agreed company-minimum weekly activity floors, and show each agent
 
 - `config/companyMinimums` currently holds only `annualAPI` / `annualApps` / `persistency`. No weekly activity floors exist yet.
 - `goalsService.js` exposes `getCompanyMinimums(tenantId)` (returns built-in defaults when no explicit doc) and `setCompanyMinimums(tenantId, data, updatedBy)` (B5 made only `annualAPI` editable; `merge: true` preserves other fields). `usingDefaultMinimums(minimums)` heuristic = doc has `updatedBy`/`updatedAt`.
-- Submission actuals are read through `src/utils/extractFields.js` (flat schema, single source of truth). Confirmed relevant keys: `telephoneDials`, `telephoneContacts`, `appointmentsSet`, `ffiConducted`, `ciConducted`, `applicationsSold`, `livesSold`, `apiSold`. New-name source keys (for #10) and exact spelling of all keys are to be confirmed in Phase 1 against `extractFields.js` — do not assume.
+- Submission actuals are read through `src/utils/extractFields.js` (flat schema, single source of truth). **Canonical keys confirmed in Phase 1 source-verify** (see corrected mapping below): `totalTelAttempts` (derived), `telContacts` (with `qualifiedApproaches` fallback), `appointmentsSet`, `ffiConducted`, `ciConducted`, `applicationsSold`, `livesSold`, `apiSold`, `totalNewNames` (derived 7-sum). Earlier draft of this brief referenced `telephoneDials` / `telephoneContacts` — those names do not exist in the codebase; corrected below.
 
-## Activity → actual mapping
+## Activity → actual mapping (corrected 2026-05-20 per Phase 1 source-verify)
 
 | # | Floor key | Activity | Floor (weekly) | Actual source |
 |---|---|---|---|---|
-| 1 | `callsMade` | Calls Made | 60 | `telephoneDials` |
-| 2 | `contactsMade` | Contacts Made | 40 | `telephoneContacts` |
+| 1 | `callsMade` | Calls Made | 60 | `totalTelAttempts` (derived 4-sum; **`serviceCalls` excluded by design** — prospecting dials only) |
+| 2 | `contactsMade` | Contacts Made | 40 | `telContacts` (**resolves to `qualifiedApproaches` via existing `extractFields` fallback** as the current app-consistent proxy until a true telephone-contacts wizard field exists) |
 | 3 | `appointmentsScheduled` | Appointments Scheduled | 20 | `appointmentsSet` |
 | 4 | `interviewsKept` | Interviews Kept | 15 | `ffiConducted + ciConducted` |
 | 5 | `factFindsCompleted` | Fact Finds Completed | 10 | `ffiConducted` |
@@ -31,9 +31,13 @@ Store the ten agreed company-minimum weekly activity floors, and show each agent
 | 7 | `applicationsSubmitted` | Applications Submitted | 1 | `applicationsSold` |
 | 8 | `clientsSold` | Clients Sold | 1 | `livesSold` |
 | 9 | `api` | API (TTD) | 4,800 | `apiSold` |
-| 10 | `referralsNewLeads` | Referrals / New Leads | 100 | sum of Step-5 new-name source fields (confirm keys in Phase 1) |
+| 10 | `referralsNewLeads` | Referrals / New Leads | 100 | `totalNewNames` (existing derived 7-sum: `namesFromColdCanvass + referralsObtained + namesFromSeminarsConducted + namesFromSeminarsAttended + namesFromTradeshowsConducted + namesFromTradeshowsAttended + namesFromOther`) |
 
 **Decision baked in (sanity-check on review):** #4 "Interviews Kept" = all interviews held = `ffiConducted + ciConducted`, so it deliberately overlaps #5 and #6. Acceptable for a floor-vs-actual display; managers flagged a 6-month review. If "Interviews Kept" should instead mean *appointments kept* (a distinct kept-rate), that requires a new wizard field and a re-scope.
+
+**Notes on the corrected mapping:**
+- **Row #1 (`totalTelAttempts`):** the canonical "Dials" surface across `AgentDashboard`, `MasterSheet`, `MeetingMode`, `AgentReportDocument`, `Kiosk`. Excludes `serviceCalls` — prospecting attempts only, matching the workshop definition of "a call = a dial attempt".
+- **Row #2 (`telContacts` → `qualifiedApproaches` proxy):** `extractFields.js` already comments "telContacts not saved directly; qualifiedApproaches is best available proxy" and uses fallback `d.telContacts || d.qualifiedApproaches`. Card surfaces this transparently via a small footnote/tooltip ("Contacts = qualified approaches (current proxy)") so the resolution is not hidden. A future wizard field for true telephone contacts auto-improves accuracy with no schema change. Tracked as a follow-up in `docs/FOLLOW_UPS.md`.
 
 ---
 
