@@ -15,8 +15,9 @@ vi.mock('firebase/firestore', () => ({
   serverTimestamp: () => '__SERVER_TIMESTAMP__',
 }));
 
-import { getCompanyMinimums, setCompanyMinimums } from '../goalsService';
+import { getCompanyMinimums, setCompanyMinimums, getGoalHierarchy } from '../goalsService';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
+import { DEFAULT_TENURE_API_FLOORS } from '../../utils/tenureFloors';
 
 beforeEach(() => {
   mockGetDoc.mockReset();
@@ -75,6 +76,96 @@ describe('getCompanyMinimums — weeklyActivityFloors defaults', () => {
 
     const result = await getCompanyMinimums('tenant1');
     expect(result.weeklyActivityFloors).toEqual(DEFAULT_WEEKLY_ACTIVITY_FLOORS);
+  });
+});
+
+describe('getCompanyMinimums — tenureApiFloors defaults', () => {
+  it('returns the brief seed table when no companyMinimums doc exists', async () => {
+    mockGetDoc.mockResolvedValue({ exists: () => false, data: () => undefined });
+    const result = await getCompanyMinimums('tenant1');
+    expect(result.tenureApiFloors).toEqual(DEFAULT_TENURE_API_FLOORS);
+  });
+
+  it('shallow-merges: stored partial tenureApiFloors keeps defaults for absent bands', async () => {
+    mockGetDoc.mockResolvedValue({
+      exists: () => true,
+      data: () => ({
+        annualAPI: 200000,
+        tenureApiFloors: { band0_lt12: 175000 },
+      }),
+    });
+
+    const result = await getCompanyMinimums('tenant1');
+    expect(result.tenureApiFloors.band0_lt12).toBe(175000);
+    expect(result.tenureApiFloors.band_gt60).toBe(500000);
+  });
+
+  it('a stored companyMinimums doc without tenureApiFloors still gets defaults', async () => {
+    mockGetDoc.mockResolvedValue({
+      exists: () => true,
+      data: () => ({ annualAPI: 200000, annualApps: 42, persistency: 90 }),
+    });
+
+    const result = await getCompanyMinimums('tenant1');
+    expect(result.tenureApiFloors).toEqual(DEFAULT_TENURE_API_FLOORS);
+  });
+});
+
+describe('getGoalHierarchy — companyFloor.api resolves per-agent from tenure', () => {
+  // The hierarchy reads: getCompanyMinimums (companyMinimums doc),
+  // getBranchGoals (branch year doc), getUnitGoals (unit year doc),
+  // getGoals (agent goals doc), and the agent user doc. Order of getDoc()
+  // calls is non-deterministic (Promise.all), so we drive by path.
+  const wireDocs = (docsByPath) => {
+    mockGetDoc.mockImplementation((ref) => {
+      const path = ref?.__ref ?? '';
+      const data = docsByPath[path];
+      return Promise.resolve({
+        exists: () => data !== undefined,
+        data: () => data,
+      });
+    });
+  };
+
+  it('agent < 12 months → companyFloor.api = 150000', async () => {
+    // Anchor against a contractStartDate close enough to "today" that
+    // months-of-service is < 12 regardless of when this test runs.
+    const today = new Date();
+    const startDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`;
+    wireDocs({
+      'tenants/t1/config/companyMinimums': {
+        annualAPI: 999999, annualApps: 42, persistency: 90,
+      },
+      'tenants/t1/users/agent1': { contractStartDate: startDate },
+    });
+
+    const result = await getGoalHierarchy('t1', null, 2026, 'agent1');
+    expect(result.companyFloor.api).toBe(150000);
+    expect(result.companyFloor.apps).toBe(42);
+  });
+
+  it('agent > 60 months → companyFloor.api = 500000', async () => {
+    wireDocs({
+      'tenants/t1/config/companyMinimums': {
+        annualAPI: 999999, annualApps: 42, persistency: 90,
+      },
+      'tenants/t1/users/agent1': { contractStartDate: '2015-01-01' },
+    });
+
+    const result = await getGoalHierarchy('t1', null, 2026, 'agent1');
+    expect(result.companyFloor.api).toBe(500000);
+  });
+
+  it('agent with missing contractStartDate → flat 200k fallback', async () => {
+    wireDocs({
+      'tenants/t1/config/companyMinimums': {
+        annualAPI: 999999, annualApps: 42, persistency: 90,
+      },
+      'tenants/t1/users/agent1': { /* no contractStartDate */ },
+    });
+
+    const result = await getGoalHierarchy('t1', null, 2026, 'agent1');
+    expect(result.companyFloor.api).toBe(200000);
   });
 });
 

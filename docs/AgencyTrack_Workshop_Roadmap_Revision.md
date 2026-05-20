@@ -69,6 +69,31 @@ planning, training, one-on-one, joint work (field), recruiting, selection, selli
 
 **Design pass needed before build** (open items): exact category list lock with managers; whether manager WAR uses the same weekly cadence + wrap-up model as Track E; how manager-WAR objective targets are set (company default vs self-set).
 
+### 3.1a Track J — Tenure & Level API Minimums (NEW)
+
+**Source:** head-of-sales slide (2026-05-19), reconciled against board-signed `Sales_Career.pdf`.
+
+**Resolved:** career-level API requirements are authoritative in `Sales_Career.pdf` (L1–6 = 200/250/350/450/600/800K; L7 = Chairman's choice). The app already matches these — no change. The head-of-sales slide's career numbers (300/300/500/700) are a divergent draft and are disregarded.
+
+**J1 (PR #TBD):** tenure-based Company Floor (150K–500K by months of service, from `contractStartDate`) replacing the flat 200K; per-agent weekly API floor = tenure annual ÷ 10 ÷ 4. Stored as tenant-admin-editable config at `config/companyMinimums.tenureApiFloors`, seeded from the slide via `scripts/seed/seed-tenure-api-floors.mjs`, **flagged provisional pending head-of-sales confirmation** (`tenureApiFloorsProvisional: true`). Bands per the brief table:
+
+| Months of service | Annual API floor (TTD) |
+|---|---|
+| < 12 (0–11) | 150,000 |
+| 12–24 | 200,000 |
+| 25–36 | 250,000 |
+| 37–48 | 300,000 |
+| 49–60 | 400,000 |
+| > 60 | 500,000 |
+
+Missing/invalid `contractStartDate` → flat 200,000 / 4,800 fallback.
+
+**J2 (follow-up):** career-level qualification on a trailing 2-year average of annual API (the doc's stated basis), feeding the Career Portal.
+
+**J3 (→ Track I):** manager levels 8–10 production model (personal + per-advisor + unit, tenure-scaled recruitment/performance schedules).
+
+**Open action:** confirm the tenure numbers with the head of sales; surface the slide-vs-doc career-level discrepancy to him.
+
 ### 3.2 Track F extension — Structured Joint-Call Log + Prospect-Info form
 
 Track F already specs Coaching Notes (free-text, categorised, manager-chain private, agent never sees) with the right privacy model, agent-doc subcollection, and audit trail. Extend it with two **structured** companions under the same privacy + audit model:
