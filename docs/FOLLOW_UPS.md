@@ -1990,4 +1990,4 @@ Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `
 
 - **[RESOLVED] Workshop decisions** — Manager WAR = new Track I; prospect-info form lives in AgencyTrack (Tatil has no company CRM); Track H columns per §3.3; CRM stance = reporting/coaching side, behind §0 guardrail; future tightly-integrated CRM separately scoped.
 
-Banked from PR #TBD (`{TBD}`) (workshop-driven roadmap revision). Each PLANNED item closes when its design/implementation pass ships; the DECISION LOGGED item closes when Track H design absorbs the column decision; the RESOLVED item is for audit trail only.
+Banked from PR #236 (`58ebb2c`) (workshop-driven roadmap revision). Each PLANNED item closes when its design/implementation pass ships; the DECISION LOGGED item closes when Track H design absorbs the column decision; the RESOLVED item is for audit trail only.
