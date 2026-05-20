@@ -75,7 +75,7 @@ planning, training, one-on-one, joint work (field), recruiting, selection, selli
 
 **Resolved:** career-level API requirements are authoritative in `Sales_Career.pdf` (L1–6 = 200/250/350/450/600/800K; L7 = Chairman's choice). The app already matches these — no change. The head-of-sales slide's career numbers (300/300/500/700) are a divergent draft and are disregarded.
 
-**J1 (PR #TBD):** tenure-based Company Floor (150K–500K by months of service, from `contractStartDate`) replacing the flat 200K; per-agent weekly API floor = tenure annual ÷ 10 ÷ 4. Stored as tenant-admin-editable config at `config/companyMinimums.tenureApiFloors`, seeded from the slide via `scripts/seed/seed-tenure-api-floors.mjs`, **flagged provisional pending head-of-sales confirmation** (`tenureApiFloorsProvisional: true`). Bands per the brief table:
+**J1 (PR #240, `4134d2c`):** tenure-based Company Floor (150K–500K by months of service, from `contractStartDate`) replacing the flat 200K; per-agent weekly API floor = tenure annual ÷ 10 ÷ 4. Stored as tenant-admin-editable config at `config/companyMinimums.tenureApiFloors`, seeded from the slide via `scripts/seed/seed-tenure-api-floors.mjs`, **flagged provisional pending head-of-sales confirmation** (`tenureApiFloorsProvisional: true`). Bands per the brief table:
 
 | Months of service | Annual API floor (TTD) |
 |---|---|

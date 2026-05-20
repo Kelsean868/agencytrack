@@ -7,7 +7,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ## Track J — Tenure floor numbers PROVISIONAL — confirm with head of sales (HIGH, banked 2026-05-20)
 
-**Scope:** The `tenureApiFloors` band table seeded into `tatillife_south` via PR #TBD (`scripts/seed/seed-tenure-api-floors.mjs`) comes from the head-of-sales slide of 2026-05-19. That slide also carried a divergent **career-level** API table (300/300/500/700) which we explicitly disregarded because the board-signed `Sales_Career.pdf` is authoritative on career levels and the app already matches it (L1–6 = 200/250/350/450/600/800K; L7 = Chairman's choice). Because the slide proved unreliable on career levels, the tenure numbers it provided are flagged provisional. The seed sets `tenureApiFloorsProvisional: true` on `config/companyMinimums` and renders nothing in-app from that flag yet.
+**Scope:** The `tenureApiFloors` band table seeded into `tatillife_south` via PR #240 (`scripts/seed/seed-tenure-api-floors.mjs`) comes from the head-of-sales slide of 2026-05-19. That slide also carried a divergent **career-level** API table (300/300/500/700) which we explicitly disregarded because the board-signed `Sales_Career.pdf` is authoritative on career levels and the app already matches it (L1–6 = 200/250/350/450/600/800K; L7 = Chairman's choice). Because the slide proved unreliable on career levels, the tenure numbers it provided are flagged provisional. The seed sets `tenureApiFloorsProvisional: true` on `config/companyMinimums` and renders nothing in-app from that flag yet.
 
 **Action required:**
 
@@ -18,13 +18,13 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 **Priority:** **HIGH**. The Company Floor binds personal commitment enforcement and the Weekly Standard card's API row — production decisions are tied to these numbers. Until confirmation, defenders (managers + agents) may discover discrepancies.
 
-Banked: PR #TBD (`{TBD}`).
+Banked: PR #240 (`4134d2c`).
 
 ---
 
 ## Track J fast-follow — Tenant-Admin in-app editor for the tenure band table (MEDIUM, banked 2026-05-20)
 
-**Scope:** PR #TBD ships the `tenureApiFloors` block as tenant-admin-editable config (via the Admin SDK seed script), but no in-app editor exists yet for the 6 bands. The B5 `EditConfigModal` pattern (`src/components/admin/EditConfigModal.jsx` → `src/components/admin/CompanyConfigPanel.jsx`) is the canonical surface; this FU extends it.
+**Scope:** PR #240 ships the `tenureApiFloors` block as tenant-admin-editable config (via the Admin SDK seed script), but no in-app editor exists yet for the 6 bands. The B5 `EditConfigModal` pattern (`src/components/admin/EditConfigModal.jsx` → `src/components/admin/CompanyConfigPanel.jsx`) is the canonical surface; this FU extends it.
 
 **Suggested shape:**
 
@@ -36,7 +36,7 @@ Banked: PR #TBD (`{TBD}`).
 
 **Priority:** **MEDIUM**. Until this ships, corrections go through the seed script (Kyron-only). Acceptable for the provisional period; once numbers are confirmed and stable, the in-app editor closes the loop.
 
-Banked: PR #TBD (`{TBD}`).
+Banked: PR #240 (`4134d2c`).
 
 ---
 
@@ -44,7 +44,7 @@ Banked: PR #TBD (`{TBD}`).
 
 **Scope:** Per the board-signed `Sales_Career.pdf`, career-level qualification is based on a **trailing 2-year average of annual API**, not single-year point-in-time API. The Career Portal currently checks current-year API only (`CareerPortal.jsx` rows). This FU adds the 2-year trailing average computation feeding the Career Portal level-up criteria.
 
-**Out of PR #TBD's scope** — PR #TBD is the tenure Company Floor only; career-level API math stays as-is.
+**Out of PR #240's scope** — PR #240 was the tenure Company Floor only; career-level API math stays as-is.
 
 **Suggested shape:**
 
@@ -55,7 +55,7 @@ Banked: PR #TBD (`{TBD}`).
 
 **Priority:** **MEDIUM**. Career Portal is a motivational surface; the gap is misleading agents about level eligibility. Not pilot-blocking (career-level surfacing is read-only motivational; tenure-floor enforcement on commitments is the binding piece — already shipped).
 
-Banked: PR #TBD (`{TBD}`).
+Banked: PR #240 (`4134d2c`).
 
 ---
 
@@ -67,7 +67,7 @@ Banked: PR #TBD (`{TBD}`).
 
 **Priority:** **LOW**. Track I has not been scoped yet; this is a forward-reference note so the manager-production-model question doesn't get lost.
 
-Banked: PR #TBD (`{TBD}`).
+Banked: PR #240 (`4134d2c`).
 
 ---
 
