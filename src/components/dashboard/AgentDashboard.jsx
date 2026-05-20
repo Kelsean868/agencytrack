@@ -29,6 +29,7 @@ import SubmissionViewer from '../submissions/SubmissionViewer';
 import GoalCarousel from './GoalCarousel';
 import KPICard from './KPICard';
 import ActivityFeed from './ActivityFeed';
+import WeeklyStandardCard from './WeeklyStandardCard';
 import BadgeGrid, { computeEarnedBadges } from '../gamification/BadgeGrid';
 import { buildActivityEvents } from '../../utils/buildActivityEvents';
 import WelcomeScreen from '../onboarding/WelcomeScreen';
@@ -493,6 +494,16 @@ export default function AgentDashboard() {
               )}
             </div>
           )}
+
+          {/* Weekly Standard — Expected vs Actual (Tatil workshop 2026-05-19,
+              Appendix A). 10-row floor comparison against the current week's
+              submission. Per-row status: green ≥ floor / amber ≥ 70% / red. */}
+          <WeeklyStandardCard
+            minimums={companyMinimums}
+            currentWeekSub={currentWeekSub}
+            loading={loading}
+            error={null}
+          />
 
           {/* Goals section */}
           <div className="card mb-6">
