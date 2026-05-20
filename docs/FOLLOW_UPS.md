@@ -1971,3 +1971,23 @@ Five items surfaced in the May 2026 design conversation; each is small enough to
 - **PH7-8-Q5 (Track H)** — Verify `agentType: 'agent' | 'bdo' | 'dso'` exists on user docs (or scope adding it). Awards engine eligibility depends on this. Quick grep before H1 schema work. Resolve before H1 schema PR.
 
 Banked from PR #235 (`0b8d04d`) (Phase 7-8 docs integration). Each FU closes individually when its corresponding track design pass resolves the verification: PH7-8-Q1 in Track D design pass (before D5), PH7-8-Q2 before Track E design pass starts, PH7-8-Q3 in Track F design pass, PH7-8-Q4 in Track G design pass, PH7-8-Q5 before H1 schema PR.
+
+---
+
+## Workshop-Driven Roadmap Revision Items (2026-05-20)
+
+Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `docs/AgencyTrack_Workshop_Roadmap_Revision.md`. Each item resolves in its own design/implementation pass — these are scope registrations, not blockers.
+
+- **[PLANNED] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design pass before build: lock category list with managers; cadence/wrap-up model; how manager targets are set. Roadmap §3.1.
+
+- **[PLANNED] Track F extension — structured Joint-Call Observation Log** (`/tenants/{tid}/users/{agentId}/jointCalls/{callId}`, manager-chain visibility, same privacy model as coaching notes) + appointment-bound Prospect-Info form. Roadmap §3.2.
+
+- **[DECISION LOGGED] Track H schema** — add Source-of-Prospect (enum) / Cash-with-Application / Date-Placed (= `dateIssued`) / Policy-Delivery-Date; hold demographics; Need-Covered → joint-call form. Apply at Track H design (update PRD §7.4 + §9). Roadmap §3.3.
+
+- **[PLANNED] Quick win** — `config/companyMinimums.weeklyActivityFloors` schema extension + Tenant-Admin surface + seed Appendix A (60/40/20/15/10/10/1/1/4800/100); "Expected/Actual" relabel on dashboard + Master Sheet. Roadmap §3.5.
+
+- **[PLANNED] Small adds** — social/content KPIs (Track E sub-item: content pieces, engagement, inbox enquiries, names-from-social); Personal Growth/CPD log (Career Portal / Phase 8). Roadmap §3.4.
+
+- **[RESOLVED] Workshop decisions** — Manager WAR = new Track I; prospect-info form lives in AgencyTrack (Tatil has no company CRM); Track H columns per §3.3; CRM stance = reporting/coaching side, behind §0 guardrail; future tightly-integrated CRM separately scoped.
+
+Banked from PR #TBD (`{TBD}`) (workshop-driven roadmap revision). Each PLANNED item closes when its design/implementation pass ships; the DECISION LOGGED item closes when Track H design absorbs the column decision; the RESOLVED item is for audit trail only.

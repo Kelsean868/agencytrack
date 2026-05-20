@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| #TBD | `{TBD}` | Workshop-driven roadmap revision — commits `docs/AgencyTrack_Workshop_Roadmap_Revision.md` (analysis of Tatil Life manager workshop 2026-05-19) and registers its scope across CLAUDE.md (Track I row + reference line), CONTEXT.md (new Workshop-Driven Roadmap Revision section), and FOLLOW_UPS.md (6 banked items: Track I planned, Track F extension planned, Track H schema decision logged, quick-win minimums + relabel, social/CPD smalls, RESOLVED workshop decisions). Docs-only; zero code; smoke waived per pure-docs carve-out. |
 | #235 | `0b8d04d` | Phase 7-8 docs integration — single reference line in CLAUDE.md above Build Phase History header pointing to `docs/phase7-8-PRD.md` + `docs/phase7-8-implementation.md` (recommended order D → E → G → F → H, ~36–46 PRs); new `## Phase 7-8 Planned Tracks` section in CONTEXT.md listing all 5 tracks (Awards Expansion / Daily Reporting Polish / Manager Drill-down + Coaching Notes / Money Needs Worksheet / Policy Ledger MVP); new `## Phase 7-8 Pre-Track Verifications` subsection in FOLLOW_UPS.md banking PH7-8-Q1 through PH7-8-Q5 (5 LOW-tier items, each resolves in its track's design pass). Brief-authoring stress test: 4 Rule 17 source-verify catches by CC during dispatch (design-v2-PRD anchor non-existent; loose vs `^##` header grep; Track D/E global namespace collision in Build Phase History table — Edit 2 dropped entirely; FOLLOW_UPS.md uses flat `##` not `### LOW` parent — header inline-corrected per Rule 17 sub-bullet). All four caught at execution time, zero strikes. CI flake on KioskModeTab.toast test (1026ms vs 1000ms waitFor timeout on slow runner) — passed clean on local main run and CI retry. |
 | #234 | `7507ac1` | Phase 7-8 design docs trio shipped ahead of integration PR: `docs/phase7-8-PRD.md` (772 lines, 5-track design spec D–H), `docs/phase7-8-implementation.md` (297 lines, PR-by-PR breakdown with recommended sequence D → E → G → F → H, ~36–46 PRs total), `docs/briefs/pr-phase7-8-docs-integration-kickoff.md` (269 lines, kickoff brief for the integration PR). Covers Track D (Awards Expansion + Ruleset Config), Track E (Daily Reporting Polish), Track F (Manager Drill-down + Coaching Notes), Track G (Money Needs Worksheet), Track H (Policy Ledger MVP). Five pre-track verification follow-ups (PH7-8-Q1 through Q5) staged in the kickoff brief — banking deferred to the integration PR per the brief's scope. Pilot remains postponed indefinitely. |
 | #233 | `29f79cc` | Retroactively archived mobile-fu4-cosmetics kickoff brief (orphaned from pre-Rule-10 era, 222 lines from `origin/docs/mobile-fu4-cosmetics-brief` tip `9fec5fe`) to `docs/archive/briefs/`. Mirrors PR #211 archive pattern. Branch deletion follow-on in Phase 7. |
@@ -142,6 +143,22 @@ Recommended sequence: **D → E → G → F → H** (~36–46 PRs total, no trac
 - **Track H** — Policy Ledger MVP. Real-time per-policy entry, state machine (Submitted → Settled → Lapsed terminal), awards engine soft-migrates from settlements via per-agent `usesPolicyLedger` flag. ~10–12 PRs. Depends on Track D.
 
 Five pre-track verification follow-ups (PH7-8-Q1 through Q5) banked in `docs/FOLLOW_UPS.md` LOW tier; resolve in the design pass for each track.
+
+---
+
+## Workshop-Driven Roadmap Revision (2026-05-20)
+
+Source: Tatil Life manager workshop 2026-05-19 (competitor SCG/ApplyOn demo). Canonical: `docs/AgencyTrack_Workshop_Roadmap_Revision.md`.
+
+- **NEW Track I** — Manager Activity Reporting (manager's own WAR + recruitment activity).
+- **Track F extended** — structured Joint-Call Observation Log + appointment-bound Prospect-Info form (manager-chain privacy, same model as coaching notes).
+- **Track H column decision LOCKED** — IN: Source of Prospect (enum), Cash with Application, Date Placed (= `dateIssued`), Policy Delivery Date. OUT: demographics. Need Covered → joint-call form.
+- **Small adds** — social/content KPIs (Track E sub-item); Personal Growth/CPD log (Career Portal/Phase 8).
+- **Quick wins** — extend `config/companyMinimums` with `weeklyActivityFloors` + Tenant-Admin surface + seed agreed Tatil minimums (60/40/20/15/10/10/1/1/4800/100); relabel dashboards "Expected/Actual".
+- **Re-sequence (insider-seat):** Quick wins → Track F (incl. joint-call forms) → Track I → D + E → H → G.
+- **Guardrail:** activity/production/coaching only, not a relational CRM; Tatil has no own CRM; future tightly-integrated CRM separately scoped.
+
+Recently-shipped row: `docs(roadmap): workshop-driven roadmap revision (#TBD)` — SHA `{TBD}` filled post-merge.
 
 ---
 
