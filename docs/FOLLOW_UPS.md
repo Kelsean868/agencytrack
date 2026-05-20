@@ -74,6 +74,18 @@ Banked: PR #225 (`975b0fc`).
 
 ---
 
+## Fold console/network capture into the canonical exploration-template smoke (LOW, banked 2026-05-20)
+
+**Scope:** The standard smoke script template (lib helpers in `scripts/verification/lib/walk-helpers.mjs` + the per-feature smokes that consume it) does not capture browser console errors/warnings or network failures. Each smoke today only asserts DOM/state expectations. For PR #238's pre- and post-merge smokes the dispatcher requested console + network capture; an ad-hoc supplemental script was written (`scripts/verification/weekly-activity-floors-console-capture.mjs`) to satisfy the request, but it was NOT banked into the canonical template — every future PR that wants this signal will either re-author the same capture pass or skip it.
+
+**Suggested resolution:** add an optional `captureConsoleAndNetwork(page)` helper to `walk-helpers.mjs` that returns `{ consoleMessages, networkFailures }` and a `formatCaptureReport()` companion that prints the summary block. Per-feature smokes opt in by wiring the helper before login and dumping the report block before exit. Static-asset noise filter (`.map`/`.ico` regex) lives in the helper, not the per-feature smoke.
+
+**Priority:** **LOW**. Not blocking any active work; the supplemental script can be deleted or kept as-is in the meantime. Resolve when next touching `walk-helpers.mjs` for any reason, or as standalone XS refactor.
+
+Banked from PR #238 (`1b05eb7`) post-merge.
+
+---
+
 ## Verify PR #166 shakedown harness fixes via runtime re-run (LOW, deferred 2026-05-15)
 
 **Background:** PR #166 fixed shakedown bugs 001/003/004/006 (cat02 navigator off-by-one, cat04 T4.02 hard assertion, cat08 navigator off-by-one). Phase 3 runtime re-run was attempted on 2026-05-15 but blocked: `agent-001@agencytrack.test` (and all `*@agencytrack.test` test accounts) returned "Incorrect email or password" against production. Test data seeding from PR-F was not active at time of verification. Phase 1 source inspection confirmed fix shape; runtime verification deferred to next seeding cycle.
@@ -1984,7 +1996,7 @@ Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `
 
 - **[DECISION LOGGED] Track H schema** — add Source-of-Prospect (enum) / Cash-with-Application / Date-Placed (= `dateIssued`) / Policy-Delivery-Date; hold demographics; Need-Covered → joint-call form. Apply at Track H design (update PRD §7.4 + §9). Roadmap §3.3.
 
-- **[PARTIAL — floors portion SHIPPED PR #TBD `{TBD}`] Quick win — weekly activity floors.** `config/companyMinimums.weeklyActivityFloors` schema extension shipped; `tatillife_south` seeded with Appendix A (60/40/20/15/10/10/1/1/4800/100); `WeeklyStandardCard` on AgentDashboard surfaces Expected vs Actual with per-row Met/Close/Below status. **Remaining fast-follows** (own PRs):
+- **[PARTIAL — floors portion SHIPPED PR #238 `1b05eb7`] Quick win — weekly activity floors.** `config/companyMinimums.weeklyActivityFloors` schema extension shipped; `tatillife_south` seeded with Appendix A (60/40/20/15/10/10/1/1/4800/100); `WeeklyStandardCard` on AgentDashboard surfaces Expected vs Actual with per-row Met/Close/Below status. **Remaining fast-follows** (own PRs):
   - **[PLANNED] Tenant-Admin in-app editor for weekly floors** — wire the 10 floors into the B5 `EditConfigModal` pattern so tenant_admins can adjust without re-running the seed script. Validation: each value a positive integer; `api` allows decimals; floors below current managers' agreed minimum surface a warning. Mirrors B5's `setCompanyMinimums` audit path (`updatedBy` + `updatedAt`); merge-write preserves the block. `setCompanyMinimums` already passes through unknown fields under `merge: true`, so the editor's write path is straightforward.
   - **[PLANNED] Expected/Actual relabel** — broader copy sweep of `KPICard` / `MasterSheet` / Meeting Mode / Awards panels to align with "Expected" (the standard, never changes) and "Actual" (what's logged) wording per Cyril/Garvis workshop ask. Tiny PR; touches labels only, no data shape.
   - **[PLANNED] True telephone-contacts wizard field** — floor #2 currently uses `telContacts` which falls back to `qualifiedApproaches` via `extractFields`. A dedicated "Telephone Contacts" field on the wizard's Step2Telephone (count of dial attempts that resulted in a conversation) auto-improves floor #2 accuracy with no schema change downstream — the `telContacts` key is already wired throughout the codebase (`AgentDashboard.jsx:41`, `MasterSheet.jsx:106`, `SubmissionViewer.jsx:136`, etc.). Surfaces the proxy footnote on `WeeklyStandardCard` as redundant once shipped.
