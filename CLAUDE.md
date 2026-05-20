@@ -113,6 +113,8 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 - AgentReportDocument.jsx is EXEMPT — react-pdf doesn't support CSS vars, uses HEX only.
 **Phase 7-8 design docs:** [`docs/phase7-8-PRD.md`](docs/phase7-8-PRD.md) (full spec across 5 tracks D–H) + [`docs/phase7-8-implementation.md`](docs/phase7-8-implementation.md) (build sequence, recommended order D → E → G → F → H, ~36–46 PRs total). Tracks D–H detailed in the table below. Pilot remains postponed indefinitely.
 
+**Workshop-driven roadmap revision (2026-05-20):** [`docs/AgencyTrack_Workshop_Roadmap_Revision.md`](docs/AgencyTrack_Workshop_Roadmap_Revision.md) — adds Track I; extends Track F (structured Joint-Call Observation Log + appointment-bound Prospect-Info form); locks Track H column decision (Source-of-Prospect/Cash-with-App/Date-Placed/Delivery-Date IN, demographics OUT, Need-Covered → joint-call form); adds social/content KPIs (Track E) + Personal Growth/CPD (Career Portal/Phase 8); re-sequences for insider-seat strategy; no-CRM guardrail (future integrated CRM separately scoped).
+
 ## Build Phase History
 | Phase | Scope | Status |
 |-------|-------|--------|
@@ -139,6 +141,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 | Track C | Configuration & data — branches schema, bulk import users/goals, company minimums | ✅ COMPLETE — C1 branches (#60), C2 bulk-import users, C3 bulk-import goals, FU#3 channel-split tokens (#132) |
 | Track D | Cron + notifications verification | ⚠️ PARTIAL — PR-D server-side email (#133) closed the notifications half (HIGH#5). Cron half tracked separately in `docs/FOLLOW_UPS.md` § Track D cron portion status verification. |
 | Track E | Agent + Manager Tooling Enhancements (E1–E6) | ✅ COMPLETE — E1 schema split (#68–#70), E2 reverse commission calc (#66), E3 persistency playground (#82), E4 production report (#72), E5 kiosk (#73/#74), E5.1 kiosk polish (#75), E6 daily input (#71), E6 AOM (#76) |
+| Track I | Manager Activity Reporting (manager's own WAR: planning/training/1-on-1/joint work/recruiting/supervision + recruitment activity; mirrors agent wizard) | 📋 PLANNED — see `docs/AgencyTrack_Workshop_Roadmap_Revision.md` |
 | M-series | Manager portal revamp | ✅ COMPLETE — M1 shared primitives (#105), M2 manager overview hero (#107), M3 manager awards medal (#113), M4 goals IA flatten (#116), M5 weekly champions medals (#118) |
 | User-mgmt | PR-3 retire super_admin + PR-4 edit-user + PR-4b role/branch edits | ✅ COMPLETE — PR-3 (#28/#29), PR-4 (#122), PR-4b (#129) |
 | Polish | Toast adoption + mobile polish + bulk test data | ✅ COMPLETE — Polish-1 (#114), Polish-2 (#127), PR-F bulk seeders + cleanup (#135) |
