@@ -1,6 +1,11 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../utils/weeklyActivityFloors';
+import {
+  DEFAULT_TENURE_API_FLOORS,
+  FLAT_ANNUAL_API_FALLBACK,
+  resolveAnnualAPIFloor,
+} from '../utils/tenureFloors';
 
 export async function getGoals(tenantId, agentId) {
   const ref = doc(db, `tenants/${tenantId}/goals/${agentId}`);
@@ -9,9 +14,11 @@ export async function getGoals(tenantId, agentId) {
 }
 
 // Returns the tenant's `config/companyMinimums` doc with built-in defaults
-// filled in for any missing field. The `weeklyActivityFloors` block (Tatil
-// workshop 2026-05-19, Appendix A) is shallow-merged: present keys from the
-// stored doc override defaults; absent keys fall through to defaults.
+// filled in for any missing field. Two blocks are shallow-merged on top of
+// the stored doc: `weeklyActivityFloors` (Tatil workshop 2026-05-19) and
+// `tenureApiFloors` (head-of-sales slide 2026-05-19, provisional — see
+// utils/tenureFloors.js). For both, present keys from Firestore override
+// defaults; absent keys fall through.
 // `usingDefaultMinimums()` heuristic remains intact — it keys off
 // `updatedBy`/`updatedAt`, which the defaults never carry.
 export async function getCompanyMinimums(tenantId) {
@@ -26,6 +33,10 @@ export async function getCompanyMinimums(tenantId) {
     weeklyActivityFloors: {
       ...DEFAULT_WEEKLY_ACTIVITY_FLOORS,
       ...(stored.weeklyActivityFloors ?? {}),
+    },
+    tenureApiFloors: {
+      ...DEFAULT_TENURE_API_FLOORS,
+      ...(stored.tenureApiFloors ?? {}),
     },
   };
 }
@@ -84,7 +95,10 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
     payload.notes                   = String(data.notes ?? '');
   }
 
-  // Personal agent goals — enforce company floor before writing
+  // Personal agent goals — enforce company floor before writing. Annual API
+  // floor is resolved per-agent from contractStartDate via the tenure band
+  // table (utils/tenureFloors.js); missing/invalid date falls back to flat
+  // 200k via FLAT_ANNUAL_API_FALLBACK. Annual Apps + Persistency stay flat.
   const hasPersonal =
     'personalAnnualAPI' in data ||
     'personalAnnualApps' in data ||
@@ -92,8 +106,16 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
 
   if (hasPersonal) {
     const mins = await getCompanyMinimums(tenantId);
-    if ('personalAnnualAPI' in data && p(data.personalAnnualAPI) < mins.annualAPI) {
-      throw new Error(`Annual API must be at least TTD ${mins.annualAPI.toLocaleString()} (company minimum).`);
+    const agentSnap = await getDoc(doc(db, `tenants/${tenantId}/users/${agentId}`)).catch(() => null);
+    const contractStartDate = agentSnap?.exists() ? agentSnap.data().contractStartDate : null;
+    const annualFloor = resolveAnnualAPIFloor({
+      contractStartDate,
+      tenureApiFloors: mins.tenureApiFloors,
+      fallback: FLAT_ANNUAL_API_FALLBACK,
+    });
+
+    if ('personalAnnualAPI' in data && p(data.personalAnnualAPI) < annualFloor) {
+      throw new Error(`Annual API must be at least TTD ${annualFloor.toLocaleString()} (company minimum).`);
     }
     if ('personalAnnualApps' in data && p(data.personalAnnualApps) < mins.annualApps) {
       throw new Error(`Annual Apps must be at least ${mins.annualApps} (company minimum).`);
@@ -173,16 +195,31 @@ export async function setBranchGoals(tenantId, year, targets, meta) {
 // ── Goal Hierarchy ────────────────────────────────────────────────────────────
 
 export async function getGoalHierarchy(tenantId, unitId, year, agentId) {
-  const [mins, branchDoc, unitDoc, personalDoc] = await Promise.all([
+  const [mins, branchDoc, unitDoc, personalDoc, agentSnap] = await Promise.all([
     getCompanyMinimums(tenantId).catch(() => null),
     getBranchGoals(tenantId, year).catch(() => null),
     unitId ? getUnitGoals(tenantId, unitId, year).catch(() => null) : Promise.resolve(null),
     agentId ? getGoals(tenantId, agentId).catch(() => null) : Promise.resolve(null),
+    agentId
+      ? getDoc(doc(db, `tenants/${tenantId}/users/${agentId}`)).catch(() => null)
+      : Promise.resolve(null),
   ]);
 
   const p = (v) => (parseFloat(v) > 0 ? parseFloat(v) : null);
 
-  const companyFloor = mins ? { api: p(mins.annualAPI), apps: p(mins.annualApps) } : null;
+  // Company Floor API is resolved per-agent from contractStartDate against
+  // the tenure band table; missing/invalid date → flat 200k fallback.
+  // Apps floor stays flat. When the agent doc can't be loaded, fall through
+  // to the flat fallback so the hierarchy still renders something useful.
+  const contractStartDate = agentSnap?.exists?.() ? agentSnap.data().contractStartDate : null;
+  const resolvedAnnualFloor = mins
+    ? resolveAnnualAPIFloor({
+        contractStartDate,
+        tenureApiFloors: mins.tenureApiFloors,
+        fallback: FLAT_ANNUAL_API_FALLBACK,
+      })
+    : null;
+  const companyFloor = mins ? { api: p(resolvedAnnualFloor), apps: p(mins.annualApps) } : null;
 
   const branchTarget = branchDoc ? {
     api:          p(branchDoc.api),

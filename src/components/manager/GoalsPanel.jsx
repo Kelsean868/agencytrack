@@ -14,8 +14,29 @@ import {
 } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDateDisplay, getUnitDisplayName } from '../../utils/formatters';
+import {
+  resolveAnnualAPIFloor,
+  FLAT_ANNUAL_API_FALLBACK,
+  DEFAULT_TENURE_API_FLOORS,
+} from '../../utils/tenureFloors';
 
-const FALLBACK_MINIMUMS = { annualAPI: 200000, annualApps: 42, persistency: 90 };
+const FALLBACK_MINIMUMS = {
+  annualAPI: 200000,
+  annualApps: 42,
+  persistency: 90,
+  tenureApiFloors: DEFAULT_TENURE_API_FLOORS,
+};
+
+// Helper: resolve the per-agent annual API floor from contractStartDate.
+// Used by the row's status chip, below-floor warning, and the displayed
+// minimum. Apps + Persistency floors stay flat — only API is tenured.
+function agentAnnualFloor(agent, mins) {
+  return resolveAnnualAPIFloor({
+    contractStartDate: agent?.contractStartDate ?? null,
+    tenureApiFloors: mins?.tenureApiFloors,
+    fallback: FLAT_ANNUAL_API_FALLBACK,
+  });
+}
 const ZERO_YTD = { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 };
 
 function emptyGoals() {
@@ -68,14 +89,15 @@ function BelowFloorWarning({ label }) {
 
 // 'unset' = no doc or all-zero targets · 'below' = any annual target under
 // the company minimum · 'above' = all three meet or beat the minimum. Drives
-// the StatusChip and the below-floor auto-expand rule.
-function getAgentStatus(goalsDoc, mins) {
+// the StatusChip and the below-floor auto-expand rule. The API floor is
+// resolved per-agent from tenure; Apps + Persistency stay flat.
+function getAgentStatus(goalsDoc, mins, annualAPIFloor) {
   if (!goalsDoc) return 'unset';
   const api  = parseFloat(goalsDoc.targetAnnualAPI)         || 0;
   const apps = parseFloat(goalsDoc.targetAnnualApps)        || 0;
   const pers = parseFloat(goalsDoc.targetAnnualPersistency) || 0;
   if (api === 0 && apps === 0 && pers === 0) return 'unset';
-  if (api < mins.annualAPI || apps < mins.annualApps || pers < mins.persistency) return 'below';
+  if (api < annualAPIFloor || apps < mins.annualApps || pers < mins.persistency) return 'below';
   return 'above';
 }
 
@@ -384,7 +406,8 @@ function AgentGoalRow({
   isSaving, savedAt, hasSaveError,
 }) {
   const agentLabel = agent.name ?? agent.displayName ?? agent.email ?? agent.id;
-  const status = getAgentStatus(goalsDoc, minimums);
+  const annualAPIFloor = agentAnnualFloor(agent, minimums);
+  const status = getAgentStatus(goalsDoc, minimums, annualAPIFloor);
   const formId = `agent-goal-form-${agent.id}`;
 
   // Collapsed-row summary. 'Not set' agents get the mock's hint copy; the
@@ -408,10 +431,11 @@ function AgentGoalRow({
   }
 
   // Live edit warnings — reflect the in-progress edit, not the saved doc.
+  // API warning uses the per-agent tenure floor; Apps/Persistency stay flat.
   const editApi  = parseFloat(editValues.targetAnnualAPI)         || 0;
   const editApps = parseFloat(editValues.targetAnnualApps)        || 0;
   const editPers = parseFloat(editValues.targetAnnualPersistency) || 0;
-  const apiWarn  = editApi  > 0 && editApi  < minimums.annualAPI;
+  const apiWarn  = editApi  > 0 && editApi  < annualAPIFloor;
   const appsWarn = editApps > 0 && editApps < minimums.annualApps;
   const persWarn = editPers > 0 && editPers < minimums.persistency;
   const hasEditWarning = apiWarn || appsWarn || persWarn;
@@ -598,10 +622,11 @@ function AgentGoalsTab() {
 
         // Below-floor agents auto-expand on initial mount so a manager sees
         // their forms without an extra tap. 'Not set' and 'Above floor' rows
-        // stay collapsed.
+        // stay collapsed. API floor resolves per-agent from tenure.
         const autoOpen = new Set();
         agentList.forEach((a) => {
-          if (getAgentStatus(gMap[a.id], mins) === 'below') autoOpen.add(a.id);
+          const floor = agentAnnualFloor(a, mins);
+          if (getAgentStatus(gMap[a.id], mins, floor) === 'below') autoOpen.add(a.id);
         });
         setExpandedIds(autoOpen);
       })

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Pencil, X, Check, CheckCircle2, XCircle, Trophy, Star } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { getGoals, setGoals, getCompanyMinimums } from '../../services/goalsService';
+import { resolveAnnualAPIFloor, FLAT_ANNUAL_API_FALLBACK } from '../../utils/tenureFloors';
 import { aggregatePersistency } from '../../lib/persistency/calculations';
 import { useAuth } from '../../context/AuthContext';
 import BadgeGrid from '../gamification/BadgeGrid';
@@ -117,6 +118,13 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
   };
 
   const mins  = minimums ?? { annualAPI: 200000, annualApps: 42, persistency: 90 };
+  // Tenure-resolved Annual API floor for this agent. The Apps + Persistency
+  // floors stay flat per the kickoff brief — only the API floor is tenured.
+  const resolvedAnnualAPIFloor = resolveAnnualAPIFloor({
+    contractStartDate: userProfile?.contractStartDate ?? null,
+    tenureApiFloors: mins.tenureApiFloors,
+    fallback: FLAT_ANNUAL_API_FALLBACK,
+  });
   const mgr   = {
     api:         goals?.targetAnnualAPI         ?? 0,
     apps:        goals?.targetAnnualApps        ?? 0,
@@ -131,10 +139,10 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
   const rows = [
     {
       label: 'Annual API (TTD)',
-      min: formatCurrency(mins.annualAPI),
+      min: formatCurrency(resolvedAnnualAPIFloor),
       mgr: mgr.api > 0 ? formatCurrency(mgr.api) : '—',
       mine: mine.api > 0 ? formatCurrency(mine.api) : '—',
-      color: mine.api > 0 ? commitmentColorClass(mine.api, mgr.api, mins.annualAPI) : 'text-ink-muted',
+      color: mine.api > 0 ? commitmentColorClass(mine.api, mgr.api, resolvedAnnualAPIFloor) : 'text-ink-muted',
       draftKey: 'personalAnnualAPI',
       monthly: mine.api > 0 ? formatCurrency(mine.api / 10) : '—',
       weekly:  mine.api > 0 ? formatCurrency(mine.api / 40) : '—',

@@ -9,6 +9,7 @@ import { getRoleLabel, formatCurrency, formatDateDisplay } from '../../utils/for
 import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
 import { getGoals, getCompanyMinimums, getGoalHierarchy } from '../../services/goalsService';
+import { resolveWeeklyAPIFloor, FLAT_WEEKLY_API_FALLBACK } from '../../utils/tenureFloors';
 import { getAgentHistory } from '../../services/persistencyService';
 import { getSettlements } from '../../services/settlementService';
 import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
@@ -157,6 +158,27 @@ export default function AgentDashboard() {
     () => goals?.personalAnnualAPI || companyMinimums?.annualAPI || 200000,
     [goals?.personalAnnualAPI, companyMinimums?.annualAPI]
   );
+
+  // Tenure-resolved weekly API floor for the Weekly Standard card's API row.
+  // Spreads companyMinimums and overrides weeklyActivityFloors.api with the
+  // resolved value so WeeklyStandardCard reads through its existing prop
+  // shape without needing to know about tenure. Missing contractStartDate
+  // → flat 4800 fallback (default already in DEFAULT_WEEKLY_ACTIVITY_FLOORS).
+  const resolvedMinimums = useMemo(() => {
+    if (!companyMinimums) return companyMinimums;
+    const resolvedWeeklyApi = resolveWeeklyAPIFloor({
+      contractStartDate: userProfile?.contractStartDate ?? null,
+      tenureApiFloors: companyMinimums.tenureApiFloors,
+      fallback: FLAT_WEEKLY_API_FALLBACK,
+    });
+    return {
+      ...companyMinimums,
+      weeklyActivityFloors: {
+        ...(companyMinimums.weeklyActivityFloors ?? {}),
+        api: resolvedWeeklyApi,
+      },
+    };
+  }, [companyMinimums, userProfile?.contractStartDate]);
 
   // Period totals for the goal carousel hero. Pure derivation from
   // already-loaded submissions — no Firestore reads inside the util.
@@ -497,9 +519,12 @@ export default function AgentDashboard() {
 
           {/* Weekly Standard — Expected vs Actual (Tatil workshop 2026-05-19,
               Appendix A). 10-row floor comparison against the current week's
-              submission. Per-row status: green ≥ floor / amber ≥ 70% / red. */}
+              submission. Per-row status: green ≥ floor / amber ≥ 70% / red.
+              The API row (#9) is resolved per-agent from contractStartDate
+              via the tenure band table (head-of-sales slide 2026-05-19,
+              provisional); the other nine floors stay flat. */}
           <WeeklyStandardCard
-            minimums={companyMinimums}
+            minimums={resolvedMinimums}
             currentWeekSub={currentWeekSub}
             loading={loading}
             error={null}

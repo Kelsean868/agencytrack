@@ -5,6 +5,72 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Track J — Tenure floor numbers PROVISIONAL — confirm with head of sales (HIGH, banked 2026-05-20)
+
+**Scope:** The `tenureApiFloors` band table seeded into `tatillife_south` via PR #TBD (`scripts/seed/seed-tenure-api-floors.mjs`) comes from the head-of-sales slide of 2026-05-19. That slide also carried a divergent **career-level** API table (300/300/500/700) which we explicitly disregarded because the board-signed `Sales_Career.pdf` is authoritative on career levels and the app already matches it (L1–6 = 200/250/350/450/600/800K; L7 = Chairman's choice). Because the slide proved unreliable on career levels, the tenure numbers it provided are flagged provisional. The seed sets `tenureApiFloorsProvisional: true` on `config/companyMinimums` and renders nothing in-app from that flag yet.
+
+**Action required:**
+
+1. **Surface the slide-vs-doc career-level discrepancy to the head of sales** so the diverged copy can be reconciled to `Sales_Career.pdf`.
+2. **Confirm or correct the tenure-band table** (m<12 → 150K / 12–24 → 200K / 25–36 → 250K / 37–48 → 300K / 49–60 → 400K / m>60 → 500K) with the head of sales.
+3. **Re-run the seed with corrected numbers** if any band changes — no code change required, the script is idempotent and re-runnable.
+4. **Clear the provisional flag** (`tenureApiFloorsProvisional: false`) once confirmed.
+
+**Priority:** **HIGH**. The Company Floor binds personal commitment enforcement and the Weekly Standard card's API row — production decisions are tied to these numbers. Until confirmation, defenders (managers + agents) may discover discrepancies.
+
+Banked: PR #TBD (`{TBD}`).
+
+---
+
+## Track J fast-follow — Tenant-Admin in-app editor for the tenure band table (MEDIUM, banked 2026-05-20)
+
+**Scope:** PR #TBD ships the `tenureApiFloors` block as tenant-admin-editable config (via the Admin SDK seed script), but no in-app editor exists yet for the 6 bands. The B5 `EditConfigModal` pattern (`src/components/admin/EditConfigModal.jsx` → `src/components/admin/CompanyConfigPanel.jsx`) is the canonical surface; this FU extends it.
+
+**Suggested shape:**
+
+- New tile on `CompanyConfigPanel.jsx` for "Tenure API Floors" (table preview with 6 rows + provisional badge if `tenureApiFloorsProvisional === true`).
+- New modal sibling to `EditConfigModal` that lets tenant_admin edit the 6 band values + flip the provisional flag.
+- Validation: each band ≥ 0, ≤ 10,000,000 (mirror `EditConfigModal` annualAPI bounds); bands monotonically non-decreasing across tenure (band0_lt12 ≤ band12_to_24 ≤ ... ≤ band_gt60) — surface a non-blocking warning if the manager violates this.
+- Write path: extend `setCompanyMinimums()` (or a new `setTenureApiFloors()` peer) to take the 6 values + provisional flag; `merge: true` semantics preserve unrelated fields.
+- Audit: `updatedBy` (uid) + `updatedAt` (server timestamp) on the doc, same as B5.
+
+**Priority:** **MEDIUM**. Until this ships, corrections go through the seed script (Kyron-only). Acceptable for the provisional period; once numbers are confirmed and stable, the in-app editor closes the loop.
+
+Banked: PR #TBD (`{TBD}`).
+
+---
+
+## Track J2 — Career-level qualification on trailing 2-year average annual API (MEDIUM, banked 2026-05-20)
+
+**Scope:** Per the board-signed `Sales_Career.pdf`, career-level qualification is based on a **trailing 2-year average of annual API**, not single-year point-in-time API. The Career Portal currently checks current-year API only (`CareerPortal.jsx` rows). This FU adds the 2-year trailing average computation feeding the Career Portal level-up criteria.
+
+**Out of PR #TBD's scope** — PR #TBD is the tenure Company Floor only; career-level API math stays as-is.
+
+**Suggested shape:**
+
+- New aggregation helper: `compute2YearAverageAPI(submissions, year)` — sums settled API across the trailing 24 months from a reference date, divides by 2.
+- Wire into `CareerPortal.jsx` `CriterionRow` for the API criterion (label clarifies "2-year avg").
+- Decide: does the average count partial early-tenure years (agent < 24mo)? Likely: use available months ÷ 12 as the denominator, but confirm with head of sales as part of the broader Track J reconciliation.
+- Acceptance criteria: API criterion on the Career Portal reflects 2-year trailing average, not current-year API.
+
+**Priority:** **MEDIUM**. Career Portal is a motivational surface; the gap is misleading agents about level eligibility. Not pilot-blocking (career-level surfacing is read-only motivational; tenure-floor enforcement on commitments is the binding piece — already shipped).
+
+Banked: PR #TBD (`{TBD}`).
+
+---
+
+## Track J3 → Track I — Manager levels 8–10 production model (LOW, banked 2026-05-20)
+
+**Scope:** The head-of-sales slide carries a manager-tier production model (manager levels 8, 9, 10) with three components per level: personal API + per-advisor production + unit total, all tenure-scaled. This is **Track I (Manager Activity Reporting) territory**, not Track J — recording here because it surfaced in the same slide as the tenure-floor table.
+
+**Where it lands:** Track I when that track is planned. Mention in the Track I scope brief that manager-level production targets carry forward from this slide (subject to the same provisional confirmation as tenure floors).
+
+**Priority:** **LOW**. Track I has not been scoped yet; this is a forward-reference note so the manager-production-model question doesn't get lost.
+
+Banked: PR #TBD (`{TBD}`).
+
+---
+
 ## Untracked legacy briefs + verification scripts cleanup (LOW, banked 2026-05-13) [RESOLVED PR #211, dff2847]
 
 **Scope:** `git status` on `main` surfaces 11 untracked files left over
