@@ -1934,7 +1934,7 @@ All other `scripts/cleanup/**` and `scripts/verification/shakedown/**` consumers
 
 **Banked from:** 2026-05-17 methodology batch audit. Surfaced as the second failure mode adjacent to Rule 15.
 
-**Scope:** The post-merge placeholder-fill sequence currently updates only `#TBD`/`{TBD}` literal placeholders in CONTEXT.md and FOLLOW_UPS.md. Non-placeholder per-PR state in CONTEXT.md — `Current main HEAD`, `Active track`, `Next track`, and the "Where we left off" prose — does NOT get updated unless the work brief's Phase 4 explicitly mandates it. As a result these fields go stale within hours of any PR landing.
+**Scope:** The post-merge placeholder-fill sequence currently updates only `#246`/`cded72f` literal placeholders in CONTEXT.md and FOLLOW_UPS.md. Non-placeholder per-PR state in CONTEXT.md — `Current main HEAD`, `Active track`, `Next track`, and the "Where we left off" prose — does NOT get updated unless the work brief's Phase 4 explicitly mandates it. As a result these fields go stale within hours of any PR landing.
 
 Evidence at banking time: even after PR #178's clean post-merge fill (`3e3afc0`), CONTEXT.md's top-table `Current main HEAD` was pinned to a pre-#178 SHA until this methodology PR's Phase 4 backfilled the state.
 
@@ -2093,7 +2093,7 @@ Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `
 
 - **[PLANNED] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design pass before build: lock category list with managers; cadence/wrap-up model; how manager targets are set. Roadmap §3.1.
 
-- **[SHIPPED — Joint-Call Log PR #244 `6694f30` + Prospect-Info PR #TBD `{TBD}` — Track F COMPLETE] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. Prospect-Info shipped: `prospectInfo` subcollection, **SUBMISSIONS-style privacy** (agent owns/reads/edits OWN; managers in scope READ; manager writes DENIED — opposite direction from F1/F2), appointment-bound (intendedAppointmentDate REQUIRED), agent-facing "Joint-Call Prep" NAV tab + third read-only "Prospect Info" tab in `CoachingNotesModal`. **Remaining fast-follows** (own PRs): F3.1 (observation↔prep link — manager selects the prep when logging the F2 observation), F2.1 (BM notification on submit), Track H/G needCovered + prospectingSource + policyType taxonomy confirmation — see § Track F F2 / F3 deferred items below. Roadmap §3.2.
+- **[SHIPPED — Joint-Call Log PR #244 `6694f30` + Prospect-Info PR #246 `cded72f` — Track F COMPLETE] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. Prospect-Info shipped: `prospectInfo` subcollection, **SUBMISSIONS-style privacy** (agent owns/reads/edits OWN; managers in scope READ; manager writes DENIED — opposite direction from F1/F2), appointment-bound (intendedAppointmentDate REQUIRED), agent-facing "Joint-Call Prep" NAV tab + third read-only "Prospect Info" tab in `CoachingNotesModal`. **Remaining fast-follows** (own PRs): F3.1 (observation↔prep link — manager selects the prep when logging the F2 observation), F2.1 (BM notification on submit), Track H/G needCovered + prospectingSource + policyType taxonomy confirmation — see § Track F F2 / F3 deferred items below. Roadmap §3.2.
 
 - **[DECISION LOGGED] Track H schema** — add Source-of-Prospect (enum) / Cash-with-Application / Date-Placed (= `dateIssued`) / Policy-Delivery-Date; hold demographics; Need-Covered → joint-call form. Apply at Track H design (update PRD §7.4 + §9). Roadmap §3.3.
 
@@ -2136,7 +2136,7 @@ Dispatcher decisions in F2 intentionally deferred the following for follow-up PR
 
 - **[PLANNED] F2.1 — BM notification on joint-call submit** — fast-follow. On joint-call create, queue a notification to the agent's branch manager (resolved via `tenants/{tid}/branches/{agent.branchId}.managerId`). Requires a tenant-scoped Cloud Function — the existing `createNotification` CF is legacy (top-level `/notifications` collection) and needs reworking to write into `tenants/{tid}/notifications`. Distinct concern from F2 (rules + UI surface); own PR + functions deploy. Roadmap §3.2(a) — "on submit → notification to branch manager".
 
-- **[SHIPPED PR #TBD `{TBD}`] F3 — Prospect-Info form.** Appointment-bound — captured for a specific joint call so the manager arrives informed. Fields shipped: client name/age/occupation, `prospectingSource` enum (11 values: seminar / booth-event / referral / cold-call / social-media / orphan / existing-client / family-friend / BOA / self / other), `appointmentType` enum (2nd-interview / closing-interview), `objections` enum multi-select (no-money / no-need / no-hurry / no-confidence), `policyType` (free text — no existing product taxonomy), `intendedAppointmentDate` (REQUIRED — appointment binding per §0 guardrail). **Distinct privacy direction from F1/F2**: SUBMISSIONS-style (agent owns/reads/edits OWN; managers in scope READ; manager writes DENIED). New agent NAV tab "Joint-Call Prep" + manager read-only "Prospect Info" tab in `CoachingNotesModal`. Track F is now **COMPLETE**.
+- **[SHIPPED PR #246 `cded72f`] F3 — Prospect-Info form.** Appointment-bound — captured for a specific joint call so the manager arrives informed. Fields shipped: client name/age/occupation, `prospectingSource` enum (11 values: seminar / booth-event / referral / cold-call / social-media / orphan / existing-client / family-friend / BOA / self / other), `appointmentType` enum (2nd-interview / closing-interview), `objections` enum multi-select (no-money / no-need / no-hurry / no-confidence), `policyType` (free text — no existing product taxonomy), `intendedAppointmentDate` (REQUIRED — appointment binding per §0 guardrail). **Distinct privacy direction from F1/F2**: SUBMISSIONS-style (agent owns/reads/edits OWN; managers in scope READ; manager writes DENIED). New agent NAV tab "Joint-Call Prep" + manager read-only "Prospect Info" tab in `CoachingNotesModal`. Track F is now **COMPLETE**.
 
 - **[FLAGGED PROVISIONAL] `needCovered` enum taxonomy** — F2 ships with 9 provisional values: `income_protection`, `mortgage_or_debt`, `education_funding`, `retirement_planning`, `final_expenses`, `wealth_accumulation`, `critical_illness_or_health`, `business_protection`, `other`. No existing codebase taxonomy at F2 banking time (Track G Money Needs Worksheet is planned but unbuilt; roadmap §3.3 routes Need-Covered to the Joint-Call Log from Track H). Confirm/adjust the enum during Track H column-decision design or Track G Money-Needs design — whichever lands first. Replacement is a one-line enum update in `jointCallsService.js` + `firestore.rules` (two `in` predicates in create + update rules). No data migration if values are added; if values are renamed/removed, audit existing docs first. Confirmed values should be moved to a shared `config/` collection or constants module so both surfaces share one source.
 
@@ -2148,7 +2148,7 @@ Banked from PR #244 (`6694f30`) (Track F F2 joint-call log).
 
 ---
 
-## Track F F3 — Prospect-Info deferred items (banked PR #TBD)
+## Track F F3 — Prospect-Info deferred items (banked PR #246)
 
 Dispatcher decisions in F3 intentionally deferred the following for follow-up PRs:
 
@@ -2164,4 +2164,4 @@ Dispatcher decisions in F3 intentionally deferred the following for follow-up PR
 
 - **[PLANNED] Cross-agent "manager prep summary" roll-up** — per-agent list is sufficient for F3. A manager-overview ("preps due this week across my unit/branch") is a later enhancement on the eventual Manager Overview / Track F drill-down route.
 
-Banked from PR #TBD (`{TBD}`) (Track F F3 prospect-info).
+Banked from PR #246 (`cded72f`) (Track F F3 prospect-info).
