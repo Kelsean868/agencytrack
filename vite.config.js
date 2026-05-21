@@ -44,6 +44,9 @@ export default defineConfig({
       '**/node_modules/**',
       '**/dist/**',
       '**/.claude/worktrees/**',
+      // Emulator rules tests require a running Firebase emulator — run via
+      // 'firebase emulators:exec --only firestore "node <test-file>"' instead.
+      'tests/rules/**',
     ],
   },
 })

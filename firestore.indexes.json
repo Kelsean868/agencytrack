@@ -91,6 +91,38 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "coachingNotes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "agentUnitId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "authorRoleRank",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "coachingNotes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "authorRoleRank",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

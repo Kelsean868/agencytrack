@@ -1,12 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
+import React from 'react';
 import StatusPill from '../ui/StatusPill';
-import { Download, Search } from 'lucide-react';
+import { Download, Search, MessageSquare } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 import { extractFields, computeRatios, extractTotalProductionCredit } from '../../utils/extractFields';
 import SubmissionViewer from '../submissions/SubmissionViewer';
+import CoachingNotesModal from './CoachingNotesModal';
 
 // Column definitions — drives both header and cell rendering
 const COLS = [
@@ -73,6 +75,8 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   const [error, setError]                   = useState('');
   const [search, setSearch]                 = useState('');
   const [viewingSubmission, setViewingSubmission] = useState(null);
+  // F1 coaching notes: agentId/agentName/agentUnitId of the agent whose notes panel is open
+  const [notesAgent, setNotesAgent] = useState(null);
 
   const sundays = getLastNSundays(8);
 
@@ -167,7 +171,27 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
   function cellContent(col, row) {
     const v = row[col.key];
     if (col.key === 'name') {
-      return <span className="font-medium text-ink whitespace-nowrap">{v}</span>;
+      return (
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-ink whitespace-nowrap">{v}</span>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setNotesAgent({
+                agentId:    row.id,
+                agentName:  v,
+                agentUnitId: row._submission?.unitId ?? null,
+              });
+            }}
+            className="opacity-0 group-hover:opacity-100 focus:opacity-100 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-all"
+            aria-label={`Coaching notes for ${v}`}
+            title="Coaching Notes"
+          >
+            <MessageSquare size={13} aria-hidden="true" />
+          </button>
+        </div>
+      );
     }
     if (col.key === 'status') {
       return <StatusPill variant={v === 'submitted' ? 'success' : 'warning'} label={v === 'submitted' ? 'Submitted' : 'Draft'} />;
@@ -194,6 +218,16 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* F1: Coaching notes modal — per-agent, no submission required */}
+      {notesAgent && (
+        <CoachingNotesModal
+          agentId={notesAgent.agentId}
+          agentName={notesAgent.agentName}
+          agentUnitId={notesAgent.agentUnitId}
+          onClose={() => setNotesAgent(null)}
+        />
+      )}
+
       {/* Submission viewer drawer */}
       {viewingSubmission && (
         <SubmissionViewer

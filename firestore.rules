@@ -382,6 +382,79 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // F1 (Track F): coaching notes — manager-chain private, agent EXCLUDED.
+      //
+      // Privacy model: rank-based visibility chain.
+      //   authorRoleRank denormalized on each note (UM=1, BM=2, SM=3, TA=4, PA=5).
+      //   A caller can read/write only notes authored by someone at or below their rank.
+      //   This means UM notes are visible to UM+BM+SM+TA+PA; SM notes to SM+TA+PA only.
+      //
+      // Scope: unit_manager is restricted to notes where agentUnitId == their uid.
+      //   branch_manager and above are tenant-scoped (mirrors the submissions pattern).
+      //   Peer-BM exclusion (BM reading notes on an agent in another branch) is a
+      //   known limitation — branch-scoped infra not yet built. See FOLLOW_UPS.md.
+      //
+      // No canAccessOwn branch — the agent NEVER reads their own coaching notes.
+      match /users/{agentId}/coachingNotes/{noteId} {
+
+        function cnRoleRank() {
+          return getRole() == 'unit_manager'   ? 1 :
+                 getRole() == 'branch_manager' ? 2 :
+                 getRole() == 'sales_manager'  ? 3 :
+                 getRole() == 'tenant_admin'   ? 4 :
+                 getRole() == 'platform_admin' ? 5 : 0;
+        }
+
+        function cnUMScopeOk() {
+          return getRole() != 'unit_manager'
+              || resource.data.agentUnitId == request.auth.uid;
+        }
+
+        function cnUMScopeOnWrite() {
+          return getRole() != 'unit_manager'
+              || request.resource.data.agentUnitId == request.auth.uid;
+        }
+
+        allow get: if isManager()
+          && getTenantId() == tenantId
+          && cnUMScopeOk()
+          && cnRoleRank() >= resource.data.authorRoleRank;
+
+        // list: evaluated per-document; client MUST include authorRoleRank <= callerRank
+        // filter (and agentUnitId == uid for unit_manager). Rule enforces same predicate
+        // so unscoped list queries are rejected.
+        allow list: if isManager()
+          && getTenantId() == tenantId
+          && (getRole() != 'unit_manager' || resource.data.agentUnitId == request.auth.uid)
+          && cnRoleRank() >= resource.data.authorRoleRank;
+
+        allow create: if isManager()
+          && getTenantId() == tenantId
+          && cnUMScopeOnWrite()
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorRoleRank == cnRoleRank()
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.agentId == agentId
+          && request.resource.data.category in
+               ['observation', 'goal', 'concern', 'win', 'action_item']
+          && request.resource.data.keys().hasAll([
+               'agentId', 'tenantId', 'agentUnitId', 'authorUid',
+               'authorName', 'authorRole', 'authorRoleRank', 'category',
+               'body', 'createdAt', 'updatedAt'
+             ]);
+
+        // update: author may edit their own note body/category only (no rank change, no delete).
+        allow update: if isManager()
+          && getTenantId() == tenantId
+          && resource.data.authorUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['body', 'category', 'updatedAt'])
+          && request.resource.data.category in
+               ['observation', 'goal', 'concern', 'win', 'action_item'];
+
+        allow delete: if false;
+      }
+
     }
   }
 }
