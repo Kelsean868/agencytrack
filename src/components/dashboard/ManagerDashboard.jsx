@@ -27,6 +27,7 @@ import Shell from '../shell/Shell';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
 import AgentOfMonthTab from '../manager/AgentOfMonthTab';
+import ManagerWarTab from '../manager/ManagerWarTab';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -35,6 +36,9 @@ import AgentOfMonthTab from '../manager/AgentOfMonthTab';
 // surfaced in the PR description.
 const NAV_ITEMS = [
   { id: 'overview',    label: 'Overview',     tabId: 'overview',    Icon: BarChart2,     sectionLabel: 'Manage' },
+  // I1.1: My WAR — UM/BM/SM file; tenant_admin/platform_admin read via I1.3 browse
+  { id: 'my-war', label: 'My WAR', tabId: 'my-war', Icon: ClipboardList,
+    roles: ['unit_manager', 'branch_manager', 'sales_manager'] },
   { id: 'team',        label: 'Team',         tabId: 'team',        Icon: Users },
   { id: 'campaigns',          label: 'Campaigns',         tabId: 'campaigns',          Icon: Gift },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: LineChart },
@@ -203,6 +207,8 @@ export default function ManagerDashboard() {
             onSubmitReport={() => setShowWizard(true)}
           />
         )}
+
+        {activeTab === 'my-war' && <ManagerWarTab />}
 
         {activeTab === 'team' && <UserManagementPanel />}
 
