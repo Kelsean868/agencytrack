@@ -4,6 +4,7 @@ const hoisted = vi.hoisted(() => ({
   mockAddDoc:          vi.fn(),
   mockUpdateDoc:       vi.fn(),
   mockGetDocs:         vi.fn(),
+  mockGetDoc:          vi.fn(),
   mockQuery:           vi.fn(),
   mockWhere:           vi.fn(),
   mockOrderBy:         vi.fn(),
@@ -20,6 +21,7 @@ vi.mock('firebase/firestore', () => ({
   addDoc:          (...args) => hoisted.mockAddDoc(...args),
   updateDoc:       (...args) => hoisted.mockUpdateDoc(...args),
   getDocs:         (...args) => hoisted.mockGetDocs(...args),
+  getDoc:          (...args) => hoisted.mockGetDoc(...args),
   query:           (...args) => hoisted.mockQuery(...args),
   where:           (...args) => hoisted.mockWhere(...args),
   orderBy:         (...args) => hoisted.mockOrderBy(...args),
@@ -39,7 +41,12 @@ function makeSnap(...docs) {
   return { docs: docs.map((d) => ({ id: d.id, data: () => d })) };
 }
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  // Default: agent doc not found → resolveBmInfo short-circuits; no notification attempt.
+  // Existing addJointCall tests stay green: mockAddDoc is called exactly once (joint-call save only).
+  hoisted.mockGetDoc.mockResolvedValue({ exists: () => false });
+});;
 
 describe('getRoleRank', () => {
   it('returns correct rank for each manager role', () => {
@@ -318,5 +325,69 @@ describe('updateJointCall', () => {
     });
     const [, data] = hoisted.mockUpdateDoc.mock.calls[0];
     expect(data.prospectInfoId).toBe('');
+  });
+});
+
+describe('addJointCall — BM notification (best-effort)', () => {
+  const BASE = {
+    tenantId: 'tid', agentId: 'agent1', agentUnitId: 'um1',
+    authorUid: 'author-uid', authorName: 'UM Test', authorRole: 'unit_manager',
+    appointmentDate: '2026-05-21', appointmentTime: '10:00',
+    appointmentKept: true, nextMeetingDate: '',
+    meetingType: 'observation', needCovered: 'other',
+    comments: '', saleMade: false, coachingMinutes: 0, trainingIdentified: '',
+  };
+
+  it('(a) writes notification with correct shape when BM resolved', async () => {
+    hoisted.mockGetDoc
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ branchId: 'branch1', name: 'Test Agent' }) })
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ managerId: 'bm-uid' }) });
+    hoisted.mockAddDoc.mockResolvedValue({});
+
+    await addJointCall(BASE);
+
+    expect(hoisted.mockAddDoc).toHaveBeenCalledTimes(2);
+    const [, notifData] = hoisted.mockAddDoc.mock.calls[1];
+    expect(notifData.userId).toBe('bm-uid');
+    expect(notifData.type).toBe('manager_alert');
+    expect(notifData.title).toBe('Joint call logged for Test Agent');
+    expect(notifData.body).toBe('UM Test logged a joint-call observation for Test Agent.');
+    expect(notifData.link).toBeNull();
+    expect(notifData.read).toBe(false);
+    expect(notifData.tenantId).toBe('tid');
+    expect('createdAt' in notifData).toBe(true);
+  });
+
+  it('(b) skips notification when author is the BM (self-notification guard)', async () => {
+    hoisted.mockGetDoc
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ branchId: 'branch1', name: 'Test Agent' }) })
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ managerId: 'author-uid' }) });
+    hoisted.mockAddDoc.mockResolvedValue({});
+
+    await addJointCall(BASE); // authorUid === bmUid → skip
+
+    expect(hoisted.mockAddDoc).toHaveBeenCalledTimes(1); // joint-call save only
+  });
+
+  it('(c) skips notification when no BM (agent has no branchId)', async () => {
+    hoisted.mockGetDoc
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ name: 'Test Agent' }) }); // no branchId
+    hoisted.mockAddDoc.mockResolvedValue({});
+
+    await addJointCall(BASE);
+
+    expect(hoisted.mockAddDoc).toHaveBeenCalledTimes(1); // joint-call save only
+  });
+
+  it('(d) notification failure is swallowed — joint-call save still resolves', async () => {
+    hoisted.mockGetDoc
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ branchId: 'branch1', name: 'Test Agent' }) })
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ managerId: 'bm-uid' }) });
+    hoisted.mockAddDoc
+      .mockResolvedValueOnce({})                              // joint-call save succeeds
+      .mockRejectedValueOnce(new Error('Notification write failed')); // notification fails
+
+    await expect(addJointCall(BASE)).resolves.not.toThrow();
+    expect(hoisted.mockAddDoc).toHaveBeenCalledTimes(2);
   });
 });

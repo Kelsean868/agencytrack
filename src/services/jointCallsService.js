@@ -1,6 +1,6 @@
 import { db } from '../firebase';
 import {
-  collection, doc, addDoc, updateDoc, getDocs,
+  collection, doc, getDoc, addDoc, updateDoc, getDocs,
   query, where, orderBy, serverTimestamp,
 } from 'firebase/firestore';
 
@@ -43,6 +43,17 @@ export function getRoleRank(role) {
 
 function callsRef(tenantId, agentId) {
   return collection(db, `tenants/${tenantId}/users/${agentId}/jointCalls`);
+}
+
+async function resolveBmInfo(tenantId, agentId) {
+  const agentSnap = await getDoc(doc(db, `tenants/${tenantId}/users/${agentId}`));
+  if (!agentSnap.exists()) return { bmUid: null, agentName: null };
+  const agentData = agentSnap.data();
+  const agentName = agentData.name ?? agentData.email ?? 'the agent';
+  if (!agentData.branchId) return { bmUid: null, agentName };
+  const branchSnap = await getDoc(doc(db, `tenants/${tenantId}/branches/${agentData.branchId}`));
+  if (!branchSnap.exists()) return { bmUid: null, agentName };
+  return { bmUid: branchSnap.data().managerId ?? null, agentName };
 }
 
 function trim(str, max) {
@@ -94,6 +105,24 @@ export async function addJointCall({
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
+
+  try {
+    const { bmUid, agentName } = await resolveBmInfo(tenantId, agentId);
+    if (bmUid && bmUid !== authorUid) {
+      await addDoc(collection(db, `tenants/${tenantId}/notifications`), {
+        userId: bmUid,
+        tenantId,
+        type: 'manager_alert',
+        title: `Joint call logged for ${agentName}`,
+        body: `${authorName} logged a joint-call observation for ${agentName}.`,
+        link: null,
+        read: false,
+        createdAt: serverTimestamp(),
+      });
+    }
+  } catch (err) {
+    console.warn('[addJointCall] BM notification failed (best-effort):', err.message);
+  }
 }
 
 /**
