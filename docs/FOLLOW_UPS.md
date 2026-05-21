@@ -7,7 +7,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ## I1.x — Hoist duplicated WAR/cn/jc role-rank helpers to shared top-level rules function (LOW, banked 2026-05-21)
 
-**Scope:** `firestore.rules` now has three block-local `warRoleRank()` helpers with identical bodies (`unit_manager` → 1, `branch_manager` → 2, `sales_manager` → 3, `tenant_admin` → 4, `platform_admin` → 5): `cnRoleRank()` inside the `coachingNotes` block (≈ line 400), `jcRoleRank()` inside the `jointCalls` block (≈ line 553), and `warRoleRank()` inside the `managerWeeklyReports` block added in I1.1 (PR #TBD). This is intentional duplication per the block-local helper convention — a pre-existing cn/jc pattern; WAR mirrors it.
+**Scope:** `firestore.rules` now has three block-local `warRoleRank()` helpers with identical bodies (`unit_manager` → 1, `branch_manager` → 2, `sales_manager` → 3, `tenant_admin` → 4, `platform_admin` → 5): `cnRoleRank()` inside the `coachingNotes` block (≈ line 400), `jcRoleRank()` inside the `jointCalls` block (≈ line 553), and `warRoleRank()` inside the `managerWeeklyReports` block added in I1.1 (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254)). This is intentional duplication per the block-local helper convention — a pre-existing cn/jc pattern; WAR mirrors it.
 
 **Action (single rules-only PR when ready):**
 
@@ -18,13 +18,13 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 **Priority:** **LOW**. No functional impact. The duplication is readable and correct as-is; hoisting is a housekeeping improvement.
 
-Banked: I1.1 PR #TBD (`{TBD}`).
+Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6fa6b5`).
 
 ---
 
 ## I1.x — `isProducingManager` setter (admin-set or self-service — policy TBD) (LOW, banked 2026-05-21)
 
-**Scope:** `ManagerWarTab.jsx` reads `userProfile.isProducingManager` to gate the personal-production sub-panel (Personal API TTD + Personal Applications). The field does not exist on any user doc — the panel ships dormant. No setter is built in I1.1 (PR #TBD).
+**Scope:** `ManagerWarTab.jsx` reads `userProfile.isProducingManager` to gate the personal-production sub-panel (Personal API TTD + Personal Applications). The field does not exist on any user doc — the panel ships dormant. No setter is built in I1.1 (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254)).
 
 **Action (when policy is decided):**
 
@@ -34,7 +34,7 @@ Banked: I1.1 PR #TBD (`{TBD}`).
 
 **Priority:** **LOW**. No user-visible impact until the field is set. The dormant panel means the feature is invisible, not broken.
 
-Banked: I1.1 PR #TBD (`{TBD}`).
+Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6fa6b5`).
 
 ---
 
