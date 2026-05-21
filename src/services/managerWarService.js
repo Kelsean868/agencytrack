@@ -1,5 +1,6 @@
 import {
   doc, setDoc, getDoc, serverTimestamp,
+  collectionGroup, getDocs, query, where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { validateSundayDate } from '../utils/validators';
@@ -104,4 +105,29 @@ export async function getWarById(tenantId, docId) {
   const ref = doc(db, `tenants/${tenantId}/managerWeeklyReports/${docId}`);
   const snap = await getDoc(ref);
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+/**
+ * Count the manager's own completed joint-field-work calls for a given week.
+ * Uses a collectionGroup query scoped to the caller's authorUid (I1.2 author arm
+ * in firestore.rules). appointmentKept filter applied client-side to keep the
+ * Firestore index 2-field: (authorUid, appointmentDate).
+ */
+export async function getOwnJfwCount({ tenantId: _tenantId, managerId, weekStart }) {
+  const d = new Date(weekStart + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 7);
+  const weekEnd = [
+    d.getUTCFullYear(),
+    String(d.getUTCMonth() + 1).padStart(2, '0'),
+    String(d.getUTCDate()).padStart(2, '0'),
+  ].join('-');
+
+  const q = query(
+    collectionGroup(db, 'jointCalls'),
+    where('authorUid', '==', managerId),
+    where('appointmentDate', '>=', weekStart),
+    where('appointmentDate', '<', weekEnd),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.filter((d) => d.data().appointmentKept === true).length;
 }

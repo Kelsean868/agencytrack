@@ -157,6 +157,20 @@
       ]
     },
     {
+      "collectionGroup": "jointCalls",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "authorUid",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "appointmentDate",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "prospectInfo",
       "queryScope": "COLLECTION",
       "fields": [

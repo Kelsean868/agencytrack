@@ -9,8 +9,9 @@
  * The emulator is auto-started by firebase emulators:exec and
  * FIRESTORE_EMULATOR_HOST is set before the script is invoked.
  *
- * Test matrix (13 cases, mirrors F1 coaching-notes matrix + F3.1 link field):
- *   READ
+ * Test matrix (15 cases, mirrors F1 coaching-notes matrix + F3.1 link field
+ *              + I1.2 author collectionGroup arm):
+ *   READ (single-doc)
  *   1.  UM1 reads own-unit UM call             → ALLOW
  *   2.  UM1 reads own-unit BM call             → DENY  (rank)
  *   3.  UM1 reads own-unit SM call             → DENY  (rank)
@@ -27,6 +28,9 @@
  *   11. Author updates own call                → ALLOW
  *   12a. Author sets prospectInfoId on call    → ALLOW (F3.1 link field)
  *   12b. AGENT reads call with prospectInfoId  → DENY  (F2 boundary holds)
+ *   READ (collectionGroup — I1.2 author arm)
+ *   13. BM reads own authored calls via collectionGroup(authorUid==caller) → ALLOW
+ *   14. BM reads another BM's calls via collectionGroup(authorUid!=caller) → DENY
  */
 
 import {
@@ -34,7 +38,10 @@ import {
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
-import { getDoc, setDoc, updateDoc, doc } from 'firebase/firestore';
+import {
+  getDoc, setDoc, updateDoc, doc,
+  collectionGroup, getDocs, query, where,
+} from 'firebase/firestore';
 
 const PROJECT_ID   = process.env.GCLOUD_PROJECT ?? 'agencytrack-2a610';
 const TENANT_ID    = 'jc-rules-test-tenant';
@@ -199,6 +206,29 @@ async function main() {
   await run('12b. AGENT reads call with prospectInfoId [DENY — F2 boundary holds]', false, () => {
     const db = testEnv.authenticatedContext(AGENT_ID, authToken('agent')).firestore();
     return getDoc(callRef(db, 'call_um'));
+  });
+
+  // ── I1.2 author collectionGroup arm ──────────────────────────────────────
+  // Note: emulator does not enforce indexes — these tests verify the security
+  // rule evaluation only (ALLOW / DENY). The COLLECTION_GROUP index is
+  // verified in smoke against the deployed production environment.
+
+  // 13. BM reads own authored calls via authorUid collectionGroup — ALLOW
+  await run('13. BM reads own authored calls via collectionGroup [ALLOW — author arm]', true, () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    return getDocs(query(
+      collectionGroup(db, 'jointCalls'),
+      where('authorUid', '==', 'bm1'),
+    ));
+  });
+
+  // 14. BM2 queries for BM1's calls via authorUid — DENY (new arm only matches own uid)
+  await run('14. BM2 queries bm1 calls via collectionGroup [DENY — authorUid != caller]', false, () => {
+    const db = testEnv.authenticatedContext('bm2', authToken('branch_manager')).firestore();
+    return getDocs(query(
+      collectionGroup(db, 'jointCalls'),
+      where('authorUid', '==', 'bm1'),
+    ));
   });
 
   // ── Report ────────────────────────────────────────────────────────────────

@@ -573,13 +573,19 @@ service cloud.firestore {
           && jcUMScopeOk()
           && jcRoleRank() >= resource.data.authorRoleRank;
 
-        // list: evaluated per-document; client MUST include authorRoleRank <= callerRank
-        // filter (and agentUnitId == uid for unit_manager). Rule enforces same predicate
-        // so unscoped list queries are rejected.
+        // list: two allowed paths:
+        //   1. Author reads own calls (authorUid == caller) — satisfiable from the query
+        //      constraint alone; supports the collectionGroup JFW count query in I1.2.
+        //   2. Upline rank-scoped list (existing path): caller MUST include
+        //      authorRoleRank <= callerRank filter (and agentUnitId == uid for UM).
+        //      Rule enforces same predicate so unscoped upline queries are rejected.
         allow list: if isManager()
           && getTenantId() == tenantId
-          && (getRole() != 'unit_manager' || resource.data.agentUnitId == request.auth.uid)
-          && jcRoleRank() >= resource.data.authorRoleRank;
+          && (
+            resource.data.authorUid == request.auth.uid
+            || ( (getRole() != 'unit_manager' || resource.data.agentUnitId == request.auth.uid)
+                 && jcRoleRank() >= resource.data.authorRoleRank )
+          );
 
         allow create: if isManager()
           && getTenantId() == tenantId
