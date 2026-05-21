@@ -76,12 +76,14 @@ export async function getCoachingNotes({ tenantId, agentId, callerRole, callerUi
       ref,
       where('agentUnitId', '==', callerUid),
       where('authorRoleRank', '<=', callerRank),
+      orderBy('authorRoleRank', 'asc'),
       orderBy('createdAt', 'desc'),
     );
   } else {
     q = query(
       ref,
       where('authorRoleRank', '<=', callerRank),
+      orderBy('authorRoleRank', 'asc'),
       orderBy('createdAt', 'desc'),
     );
   }
