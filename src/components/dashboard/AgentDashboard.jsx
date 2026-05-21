@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   X, Eye, Download, Loader2,
-  ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle, BarChart2,
+  ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle, BarChart2, UserSearch,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -37,6 +37,7 @@ import WelcomeScreen from '../onboarding/WelcomeScreen';
 import Shell from '../shell/Shell';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import AgentPersistencyTab from '../agent/PersistencyTab';
+import ProspectInfoPanel from '../agent/ProspectInfoPanel';
 
 const KPIS = [
   { key: 'dials',    label: 'Dials',         field: 'totalTelAttempts', isCurrency: false },
@@ -57,6 +58,7 @@ const KPIS = [
 const NAV_ITEMS = [
   { id: 'dashboard',   label: 'Dashboard',   tabId: 'dashboard',   Icon: ClipboardList, sectionLabel: 'Workspace' },
   { id: 'career',      label: 'Career',      tabId: 'career',      Icon: TrendingUp },
+  { id: 'prospect-info', label: 'Joint-Call Prep', tabId: 'prospect-info', Icon: UserSearch, testId: 'agent-tab-prospect-info' },
   { id: 'awards',             label: 'Awards',            tabId: 'awards',             Icon: Trophy },
   { id: 'persistency',        label: 'Persistency',       tabId: 'persistency',        Icon: TrendingUp,    testId: 'agent-tab-persistency' },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: BarChart2 },
@@ -713,6 +715,9 @@ export default function AgentDashboard() {
           </div>
         )
       )}
+
+      {/* ── PROSPECT INFO (Joint-Call Prep) TAB ── */}
+      {activeTab === 'prospect-info' && <ProspectInfoPanel />}
 
       {/* ── PERSISTENCY TAB ── */}
       {activeTab === 'persistency' && <AgentPersistencyTab />}
