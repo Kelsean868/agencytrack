@@ -1,29 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
-  mockAddDoc:    vi.fn(),
-  mockUpdateDoc: vi.fn(),
-  mockGetDocs:   vi.fn(),
-  mockQuery:     vi.fn(),
-  mockWhere:     vi.fn(),
-  mockOrderBy:   vi.fn(),
-  mockDoc:       vi.fn(),
-  mockCollection: vi.fn(),
-  mockServerTimestamp: vi.fn(() => ({ _type: 'serverTimestamp' })),
+  mockAddDoc:              vi.fn(),
+  mockUpdateDoc:           vi.fn(),
+  mockGetDocs:             vi.fn(),
+  mockGetDocsFromServer:   vi.fn(),
+  mockQuery:               vi.fn(),
+  mockWhere:               vi.fn(),
+  mockOrderBy:             vi.fn(),
+  mockDoc:                 vi.fn(),
+  mockCollection:          vi.fn(),
+  mockServerTimestamp:     vi.fn(() => ({ _type: 'serverTimestamp' })),
 }));
 
 vi.mock('../../firebase', () => ({ db: {} }));
 
 vi.mock('firebase/firestore', () => ({
-  collection:      (...args) => hoisted.mockCollection(...args),
-  doc:             (...args) => hoisted.mockDoc(...args),
-  addDoc:          (...args) => hoisted.mockAddDoc(...args),
-  updateDoc:       (...args) => hoisted.mockUpdateDoc(...args),
-  getDocs:         (...args) => hoisted.mockGetDocs(...args),
-  query:           (...args) => hoisted.mockQuery(...args),
-  where:           (...args) => hoisted.mockWhere(...args),
-  orderBy:         (...args) => hoisted.mockOrderBy(...args),
-  serverTimestamp: () => hoisted.mockServerTimestamp(),
+  collection:          (...args) => hoisted.mockCollection(...args),
+  doc:                 (...args) => hoisted.mockDoc(...args),
+  addDoc:              (...args) => hoisted.mockAddDoc(...args),
+  updateDoc:           (...args) => hoisted.mockUpdateDoc(...args),
+  getDocs:             (...args) => hoisted.mockGetDocs(...args),
+  getDocsFromServer:   (...args) => hoisted.mockGetDocsFromServer(...args),
+  query:               (...args) => hoisted.mockQuery(...args),
+  where:               (...args) => hoisted.mockWhere(...args),
+  orderBy:             (...args) => hoisted.mockOrderBy(...args),
+  serverTimestamp:     () => hoisted.mockServerTimestamp(),
 }));
 
 import {
@@ -203,7 +205,7 @@ describe('addJointCall', () => {
 
 describe('getJointCalls — unit_manager', () => {
   it('queries with agentUnitId + authorRoleRank <= 1 filters', async () => {
-    hoisted.mockGetDocs.mockResolvedValue(makeSnap(
+    hoisted.mockGetDocsFromServer.mockResolvedValue(makeSnap(
       { id: 'c1', agentId: 'a1', authorRoleRank: 1 },
     ));
 
@@ -217,7 +219,7 @@ describe('getJointCalls — unit_manager', () => {
   });
 
   it('orderBy authorRoleRank ASC comes BEFORE createdAt DESC (FAILED_PRECONDITION guard)', async () => {
-    hoisted.mockGetDocs.mockResolvedValue(makeSnap());
+    hoisted.mockGetDocsFromServer.mockResolvedValue(makeSnap());
     await getJointCalls({
       tenantId: 'tid', agentId: 'a1', callerRole: 'unit_manager', callerUid: 'um1',
     });
@@ -229,7 +231,7 @@ describe('getJointCalls — unit_manager', () => {
 
 describe('getJointCalls — branch_manager', () => {
   it('queries with authorRoleRank <= 2 only (no scope filter)', async () => {
-    hoisted.mockGetDocs.mockResolvedValue(makeSnap());
+    hoisted.mockGetDocsFromServer.mockResolvedValue(makeSnap());
 
     await getJointCalls({
       tenantId: 'tid', agentId: 'a1', callerRole: 'branch_manager', callerUid: 'bm1',
@@ -242,7 +244,7 @@ describe('getJointCalls — branch_manager', () => {
   });
 
   it('orderBy authorRoleRank ASC then createdAt DESC', async () => {
-    hoisted.mockGetDocs.mockResolvedValue(makeSnap());
+    hoisted.mockGetDocsFromServer.mockResolvedValue(makeSnap());
     await getJointCalls({
       tenantId: 'tid', agentId: 'a1', callerRole: 'branch_manager', callerUid: 'bm1',
     });
@@ -254,7 +256,7 @@ describe('getJointCalls — branch_manager', () => {
 
 describe('getJointCalls — result mapping', () => {
   it('maps snapshot docs to plain objects with id', async () => {
-    hoisted.mockGetDocs.mockResolvedValue(
+    hoisted.mockGetDocsFromServer.mockResolvedValue(
       makeSnap({ id: 'c1', agentId: 'a1', comments: 'hi', authorRoleRank: 1 }),
     );
 
