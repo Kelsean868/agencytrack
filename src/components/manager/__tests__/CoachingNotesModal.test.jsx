@@ -36,6 +36,33 @@ vi.mock('../../../services/coachingNotesService', () => ({
   ],
 }));
 
+// F2: CoachingNotesModal now imports JointCallsTab → jointCallsService → src/firebase.js.
+// Mock the service to prevent real firebase.js from loading getAuth() and throwing
+// auth/invalid-api-key in CI (where firebase env vars are unset). Notes is the default
+// tab, so JointCallsTab is rendered lazily on tab click — but its module is still
+// evaluated at import time and that pulls in src/firebase.js. Mock = surgical fix.
+vi.mock('../../../services/jointCallsService', () => ({
+  getJointCalls:   vi.fn().mockResolvedValue([]),
+  addJointCall:    vi.fn().mockResolvedValue({}),
+  updateJointCall: vi.fn().mockResolvedValue({}),
+  MEETING_TYPES: [
+    { value: 'demonstration', label: 'Demonstration' },
+    { value: 'observation',   label: 'Observation' },
+    { value: 'collaboration', label: 'Collaboration' },
+  ],
+  NEEDS_COVERED: [
+    { value: 'income_protection',        label: 'Income Protection' },
+    { value: 'mortgage_or_debt',         label: 'Mortgage / Debt' },
+    { value: 'education_funding',        label: 'Education Funding' },
+    { value: 'retirement_planning',      label: 'Retirement Planning' },
+    { value: 'final_expenses',           label: 'Final Expenses' },
+    { value: 'wealth_accumulation',      label: 'Wealth Accumulation' },
+    { value: 'critical_illness_or_health', label: 'Critical Illness / Health' },
+    { value: 'business_protection',      label: 'Business Protection' },
+    { value: 'other',                    label: 'Other' },
+  ],
+}));
+
 import CoachingNotesModal from '../CoachingNotesModal';
 
 const defaultProps = {

@@ -455,6 +455,92 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // F2 (Track F): joint-call observations — manager-chain private, agent EXCLUDED.
+      //
+      // Privacy model: identical to F1 coachingNotes (rank-based visibility chain).
+      //   authorRoleRank denormalized on each call (UM=1, BM=2, SM=3, TA=4, PA=5).
+      //   A caller can read/write only calls authored by someone at or below their rank.
+      //
+      // Scope: unit_manager is restricted to calls where agentUnitId == their uid.
+      //   branch_manager and above are tenant-scoped (mirrors F1).
+      //
+      // No canAccessOwn branch — the agent NEVER reads their own joint-call observations.
+      match /users/{agentId}/jointCalls/{callId} {
+
+        function jcRoleRank() {
+          return getRole() == 'unit_manager'   ? 1 :
+                 getRole() == 'branch_manager' ? 2 :
+                 getRole() == 'sales_manager'  ? 3 :
+                 getRole() == 'tenant_admin'   ? 4 :
+                 getRole() == 'platform_admin' ? 5 : 0;
+        }
+
+        function jcUMScopeOk() {
+          return getRole() != 'unit_manager'
+              || resource.data.agentUnitId == request.auth.uid;
+        }
+
+        function jcUMScopeOnWrite() {
+          return getRole() != 'unit_manager'
+              || request.resource.data.agentUnitId == request.auth.uid;
+        }
+
+        allow get: if isManager()
+          && getTenantId() == tenantId
+          && jcUMScopeOk()
+          && jcRoleRank() >= resource.data.authorRoleRank;
+
+        // list: evaluated per-document; client MUST include authorRoleRank <= callerRank
+        // filter (and agentUnitId == uid for unit_manager). Rule enforces same predicate
+        // so unscoped list queries are rejected.
+        allow list: if isManager()
+          && getTenantId() == tenantId
+          && (getRole() != 'unit_manager' || resource.data.agentUnitId == request.auth.uid)
+          && jcRoleRank() >= resource.data.authorRoleRank;
+
+        allow create: if isManager()
+          && getTenantId() == tenantId
+          && jcUMScopeOnWrite()
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.authorRoleRank == jcRoleRank()
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.agentId == agentId
+          && request.resource.data.meetingType in
+               ['demonstration', 'observation', 'collaboration']
+          && request.resource.data.needCovered in
+               ['income_protection', 'mortgage_or_debt', 'education_funding',
+                'retirement_planning', 'final_expenses', 'wealth_accumulation',
+                'critical_illness_or_health', 'business_protection', 'other']
+          && request.resource.data.keys().hasAll([
+               'agentId', 'tenantId', 'agentUnitId', 'authorUid',
+               'authorName', 'authorRole', 'authorRoleRank',
+               'appointmentDate', 'appointmentTime', 'appointmentKept',
+               'nextMeetingDate', 'meetingType', 'needCovered',
+               'comments', 'saleMade', 'coachingMinutes', 'trainingIdentified',
+               'createdAt', 'updatedAt'
+             ]);
+
+        // update: author may edit body-shape fields only; never authorUid/rank/audit/agent identity.
+        allow update: if isManager()
+          && getTenantId() == tenantId
+          && resource.data.authorUid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly([
+                 'appointmentDate', 'appointmentTime', 'appointmentKept',
+                 'nextMeetingDate', 'meetingType', 'needCovered',
+                 'comments', 'saleMade', 'coachingMinutes', 'trainingIdentified',
+                 'updatedAt'
+               ])
+          && request.resource.data.meetingType in
+               ['demonstration', 'observation', 'collaboration']
+          && request.resource.data.needCovered in
+               ['income_protection', 'mortgage_or_debt', 'education_funding',
+                'retirement_planning', 'final_expenses', 'wealth_accumulation',
+                'critical_illness_or_health', 'business_protection', 'other'];
+
+        allow delete: if false;
+      }
+
     }
   }
 }
