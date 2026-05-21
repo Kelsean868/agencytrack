@@ -2074,3 +2074,21 @@ Roadmap §3.5.
 - **[RESOLVED] Workshop decisions** — Manager WAR = new Track I; prospect-info form lives in AgencyTrack (Tatil has no company CRM); Track H columns per §3.3; CRM stance = reporting/coaching side, behind §0 guardrail; future tightly-integrated CRM separately scoped.
 
 Banked from PR #236 (`58ebb2c`) (workshop-driven roadmap revision). Each PLANNED item closes when its design/implementation pass ships; the DECISION LOGGED item closes when Track H design absorbs the column decision; the RESOLVED item is for audit trail only.
+
+---
+
+## Track F F1 — Coaching Notes deferred items (banked PR #TBD)
+
+Dispatcher decisions in F1 intentionally deferred the following for follow-up PRs:
+
+- **[PLANNED] Delete/archive own notes** — F1 allows edit of own note body/category only; no hard-delete, no archive. Author must be able to withdraw a mistaken note. Scope: `allow delete: if isManager() && getTenantId() == tenantId && resource.data.authorUid == request.auth.uid` rule addition + soft-delete UI (archive flag) vs hard-delete (dispatcher decision at design time). Low risk to rules; no schema migration needed.
+
+- **[PLANNED] `isPinned` field** — Omitted for F1 (store-forward compatible: notes written before the field is added will sort correctly once pinned notes sort to top). Scope: add `isPinned: boolean` default-false to `addCoachingNote`; add pin toggle to `NoteCard`; `updateCoachingNote` `hasOnly()` allowlist must include `isPinned`. Composite index update: add `isPinned DESC` before `createdAt DESC` in both indexes.
+
+- **[PLANNED] Branch-scoped peer-BM exclusion** — Currently a BM can read coaching notes on agents in any branch (tenant-scoped). The correct model is: BM reads only notes on agents in their own branch. Unblocked when `branchId` is denormalized on every coaching note (mirrors `agentUnitId` for UM). Requires: `agentBranchId` field on each note; new Firestore composite index; rule update for `branch_manager` scope check. Low priority — no peer BMs currently exist in tatillife_south.
+
+- **[PLANNED] Full per-agent drill-down route** — F1 uses the MasterSheet Notes icon button as interim entry point (per-agent, no submission required). The PRD's intended entry point is a `/manager/agent/:agentId` route with an agent-mirror dashboard (Track F F3+). `CoachingNotesModal` is designed as a modal for now; it can be embedded as a panel on the full route once that route exists.
+
+- **[PLANNED] PH7-8-Q3 resolution** — Decide whether `concern`-category coaching notes surface in any manager-overview dashboard signal. F1 answer: individual-agent only. Design pass for Track F F3+ should revisit.
+
+Banked from PR #TBD (`{TBD}`) (Track F F1 coaching notes).
