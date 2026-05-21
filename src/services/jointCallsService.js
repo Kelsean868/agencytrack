@@ -1,6 +1,6 @@
 import { db } from '../firebase';
 import {
-  collection, doc, addDoc, updateDoc, getDocsFromServer,
+  collection, doc, addDoc, updateDoc, getDocs,
   query, where, orderBy, serverTimestamp,
 } from 'firebase/firestore';
 
@@ -127,7 +127,7 @@ export async function getJointCalls({ tenantId, agentId, callerRole, callerUid }
     );
   }
 
-  const snap = await getDocsFromServer(q);
+  const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
