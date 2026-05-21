@@ -702,9 +702,14 @@ service cloud.firestore {
           && resource.data.managerId == request.auth.uid
           && validWarWrite();
 
+        // resource == null when doc doesn't exist (owner's pre-write getDoc check).
+        // Extract managerId from warId (format: {managerId}_{weekStart}) to allow
+        // owner existence-check without hitting a null-pointer on resource.data.
         allow read: if isSignedIn()
           && getTenantId() == tenantId
-          && (resource.data.managerId == request.auth.uid || uplineCanRead());
+          && (resource == null
+              ? warId.split('_')[0] == request.auth.uid
+              : resource.data.managerId == request.auth.uid || uplineCanRead());
 
         allow delete: if false;
       }
