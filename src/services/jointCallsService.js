@@ -70,6 +70,7 @@ export async function addJointCall({
   saleMade,
   coachingMinutes,
   trainingIdentified,
+  prospectInfoId,
 }) {
   await addDoc(callsRef(tenantId, agentId), {
     agentId,
@@ -89,6 +90,7 @@ export async function addJointCall({
     saleMade: !!saleMade,
     coachingMinutes: parseFloat(coachingMinutes) || 0,
     trainingIdentified: trim(trainingIdentified, 1000),
+    prospectInfoId: trim(prospectInfoId ?? '', 128),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -148,6 +150,7 @@ export async function updateJointCall({
   saleMade,
   coachingMinutes,
   trainingIdentified,
+  prospectInfoId,
 }) {
   await updateDoc(
     doc(db, `tenants/${tenantId}/users/${agentId}/jointCalls/${callId}`),
@@ -162,6 +165,7 @@ export async function updateJointCall({
       saleMade: !!saleMade,
       coachingMinutes: parseFloat(coachingMinutes) || 0,
       trainingIdentified: trim(trainingIdentified, 1000),
+      prospectInfoId: trim(prospectInfoId ?? '', 128),
       updatedAt: serverTimestamp(),
     },
   );

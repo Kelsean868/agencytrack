@@ -610,6 +610,7 @@ service cloud.firestore {
                  'appointmentDate', 'appointmentTime', 'appointmentKept',
                  'nextMeetingDate', 'meetingType', 'needCovered',
                  'comments', 'saleMade', 'coachingMinutes', 'trainingIdentified',
+                 'prospectInfoId',
                  'updatedAt'
                ])
           && request.resource.data.meetingType in

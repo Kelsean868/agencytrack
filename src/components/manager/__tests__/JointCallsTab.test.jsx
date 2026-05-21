@@ -45,6 +45,12 @@ vi.mock('../../../services/jointCallsService', () => ({
   ],
 }));
 
+// Prevent transitive prospectInfoService → firebase.js auth/invalid-api-key in CI (F2/F3 lesson)
+const mockGetProspectInfo = vi.fn();
+vi.mock('../../../services/prospectInfoService', () => ({
+  getProspectInfo: (...args) => mockGetProspectInfo(...args),
+}));
+
 import JointCallsTab from '../JointCallsTab';
 
 const defaultProps = {
@@ -52,7 +58,10 @@ const defaultProps = {
   agentUnitId: 'um1',
 };
 
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockGetProspectInfo.mockResolvedValue([]);
+});
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
@@ -197,5 +206,99 @@ describe('JointCallsTab — tabbed modal integration (smoke)', () => {
     mockGetJointCalls.mockResolvedValue([]);
     const { container } = render(<JointCallsTab {...defaultProps} />);
     expect(container).toBeTruthy();
+  });
+});
+
+describe('JointCallsTab — prospect-info link (F3.1)', () => {
+  const preps = [
+    {
+      id: 'prep1',
+      agentId: 'agent1',
+      clientName: 'Alice Smith',
+      intendedAppointmentDate: '2026-05-28',
+    },
+    {
+      id: 'prep2',
+      agentId: 'agent1',
+      clientName: 'Bob Jones',
+      intendedAppointmentDate: '2026-06-03',
+    },
+  ];
+
+  it('shows prospect-prep selector in add form when preps are available', async () => {
+    mockGetJointCalls.mockResolvedValue([]);
+    mockGetProspectInfo.mockResolvedValue(preps);
+
+    render(<JointCallsTab {...defaultProps} />);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Link to prospect prep')).toBeInTheDocument()
+    );
+    expect(screen.getByText('Alice Smith · 2026-05-28')).toBeInTheDocument();
+    expect(screen.getByText('Bob Jones · 2026-06-03')).toBeInTheDocument();
+  });
+
+  it('does not show selector when no preps exist', async () => {
+    mockGetJointCalls.mockResolvedValue([]);
+    mockGetProspectInfo.mockResolvedValue([]);
+
+    render(<JointCallsTab {...defaultProps} />);
+    await waitFor(() => screen.getByText('No joint-call observations yet.'));
+    expect(screen.queryByLabelText('Link to prospect prep')).toBeNull();
+  });
+
+  it('passes prospectInfoId to addJointCall when a prep is selected', async () => {
+    mockGetJointCalls.mockResolvedValue([]);
+    mockGetProspectInfo.mockResolvedValue(preps);
+    mockAddJointCall.mockResolvedValue({});
+
+    render(<JointCallsTab {...defaultProps} />);
+    await waitFor(() =>
+      expect(screen.getByLabelText('Link to prospect prep')).toBeInTheDocument()
+    );
+
+    fireEvent.change(screen.getByLabelText('Appointment date'), {
+      target: { value: '2026-05-28' },
+    });
+    fireEvent.change(screen.getByLabelText('Link to prospect prep'), {
+      target: { value: 'prep1' },
+    });
+
+    mockGetJointCalls.mockResolvedValueOnce([]);
+    fireEvent.click(screen.getByRole('button', { name: /log joint call/i }));
+
+    await waitFor(() =>
+      expect(mockAddJointCall).toHaveBeenCalledWith(
+        expect.objectContaining({ prospectInfoId: 'prep1' })
+      )
+    );
+  });
+
+  it('shows linked-prep summary on observation card (manager view)', async () => {
+    const callWithLink = {
+      id: 'c1',
+      agentId: 'agent1',
+      authorUid: 'bm1',
+      authorName: 'Branch Manager 1',
+      authorRole: 'branch_manager',
+      authorRoleRank: 2,
+      appointmentDate: '2026-05-30', appointmentTime: '10:00',
+      appointmentKept: true, nextMeetingDate: '',
+      meetingType: 'observation', needCovered: 'income_protection',
+      comments: 'Good call.',
+      saleMade: false, coachingMinutes: 10,
+      trainingIdentified: '',
+      prospectInfoId: 'prep1',
+      createdAt: { toDate: () => new Date('2026-05-30') },
+      updatedAt: { toDate: () => new Date('2026-05-30') },
+    };
+    mockGetJointCalls.mockResolvedValue([callWithLink]);
+    mockGetProspectInfo.mockResolvedValue(preps);
+
+    render(<JointCallsTab {...defaultProps} />);
+    await waitFor(() => screen.getByText('Good call.'));
+    // 'Prep:' label is unique to the observation card linked-prep summary
+    expect(screen.getByText('Prep:')).toBeInTheDocument();
+    // The prep name appears in both the card summary and the selector option
+    expect(screen.getAllByText(/Alice Smith/).length).toBeGreaterThan(0);
   });
 });

@@ -5,6 +5,29 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Smoke harness — stable helpers for controlled selects + overflow visibility + REST-vs-cache (MEDIUM, banked 2026-05-21)
+
+**Scope:** PR #248 smoke debugging surfaced three classes of repeatable thrash that future smokes will hit again unless we bank reusable patterns into `scripts/verification/lib/walk-helpers.mjs`:
+
+1. **React 19 controlled-select automation.** Playwright's `selectOption()` works in real Chromium when used alone, but the smoke initially layered an `evaluate()` block that fired untrusted generic `Event('change')` after `selectOption()`. The extra dispatch wasn't needed (selectOption already fires a trusted Chromium change event React handles) and may interact badly with React 19's event handling. Need a banked helper `selectReactOption(page, locator, value)` that does the One Right Thing and is the canonical way smokes interact with controlled `<select>` elements.
+2. **Scrollable-container visibility.** `Prep:` (and any card-level data in joint-calls, coaching notes, prospect-info) renders inside an `overflow-y-auto` modal. Playwright's `waitFor({ state: 'visible' })` treats scrolled-off-screen-within-overflow content as not visible, which is correct for human-visible smokes but wrong for "is this rendered with the right data" smokes. Need a banked helper `domTextCount(page, selector, text)` (returns count of matching elements regardless of viewport position) and a documented decision rule: viewport-visibility for layout/UX checks, DOM-presence for data-rendering checks.
+3. **REST-write vs persistentLocalCache reads.** Smokes that write via Firestore REST in a fresh browser context can't always observe their own writes via the SDK in the same context — the SDK fetches from server on the first query (no cache), then caches; subsequent queries hit cache. This led PR #248 to chase a (wrong) `getDocsFromServer` theory in production code. Need either: (a) a banked pattern for "verify a REST-written doc landed" that uses REST-side verification (read it back via REST), not SDK queries, OR (b) a banked decision rule that says "smokes verify the UI path end-to-end (addDoc + SDK reload); REST writes are diagnostic only and don't gate on SDK-side observation."
+
+**Action:**
+
+1. Audit existing smokes (`prospect-link-smoke.mjs`, `joint-calls-smoke.mjs`, `prospect-info-smoke.mjs`, others) for the three patterns above and identify which use ad-hoc approaches.
+2. Extend `walk-helpers.mjs` with the helpers + inline JSDoc explaining when to reach for each.
+3. Refactor existing smokes to use the helpers; drop the ad-hoc evaluate blocks.
+4. Add a short section to `CLAUDE.md` (under § Methodology requirements or banked patterns) documenting the three patterns and the decision rules.
+
+**Priority:** **MEDIUM**. None of this is broken — PR #248 ships green. But the same thrash will recur on the next smoke that touches a controlled select inside an overflow modal (E5 kiosk fields, M1 modal forms, daily activity, weekly wizard step transitions). Banking now is cheaper than rediscovering each time.
+
+**Why:** PR #248 spent ~90 min on smoke debugging that produced two correct-but-wrongly-motivated commits: the smoke's DOM-presence check (correct, banked) and a production code change to `getDocsFromServer` (wrong, reverted in `6b3c252`). The DOM-presence helper would have collapsed both decisions into one.
+
+Banked: PR #248 revert commit (`6b3c252`).
+
+---
+
 ## CI doc drift — CLAUDE.md says "lint + build" but CI runs lint + test + build (LOW, banked 2026-05-21)
 
 **Scope:** CLAUDE.md § Lint Policy: "This is enforced by `.github/workflows/ci.yml` (lint + build on every PR to main)." and Session Protocol step 7: "Push branch, open PR — CI will run lint + build automatically on GitHub". Both are wrong as of PR #244 — `.github/workflows/ci.yml` runs three steps: **Lint** (`npm run lint`), **Run tests** (`npm test -- --run`), **Build** (`npm run build`). The doc drift caused a false-green local on PR #244: the local `npm test` ran with `.env.local` populated, hiding a transitive firebase-init throw in `CoachingNotesModal.test.jsx`; CI ran the same test with env unset and failed.
@@ -2152,7 +2175,7 @@ Banked from PR #244 (`6694f30`) (Track F F2 joint-call log).
 
 Dispatcher decisions in F3 intentionally deferred the following for follow-up PRs:
 
-- **[PLANNED] F3.1 — Observation ↔ Prep link (fast-follow).** When a manager logs a F2 joint-call observation, surface the agent's prospect-info prep records for the matching `intendedAppointmentDate` and let the manager select the prep to link. Adds a `prospectInfoId` field to `jointCalls` (denormalized for read), plus an "Add to observation" affordance in the F2 form. Bidirectional surfaces: F2 observation card shows linked prep summary; F3 prep card shows linked observation. Rule + index changes minimal (a single new optional field). Roadmap §3.2.
+- **[SHIPPED — PR #TBD `{TBD}`] F3.1 — Observation ↔ Prep link.** `prospectInfoId` optional field on the `jointCalls` doc; `affectedKeys().hasOnly([...])` update rule extended; `addJointCall`/`updateJointCall` accept `prospectInfoId`; "Link to prospect prep" selector in `JointCallsTab` add form + `CallCard` edit; linked-prep summary (name · date) on observation card in view mode. Agent prep view unchanged (link lives on the observation, not the prep — no leak). Emulator rules 13/13 (12a author sets prospectInfoId ALLOW; 12b agent read with new field DENY — F2 boundary re-confirmed). **F2.1 (BM notification) still queued.**
 
 - **[FLAGGED PROVISIONAL] `prospectingSource` enum taxonomy** — F3 ships with 11 provisional values: `seminar`, `booth-event`, `referral`, `cold-call`, `social-media`, `orphan`, `existing-client`, `family-friend`, `BOA`, `self`, `other`. This enum also feeds Track H §3.3 Source-of-Prospect (when Track H lands, import from `prospectInfoService` rather than re-defining). Confirm/adjust during Track H column-decision design or before Tatil pilot. Replacement: enum update in `prospectInfoService.js` + `firestore.rules` (two `in` predicates in create + update rules). Same shape as F2's `needCovered` provisional flag.
 

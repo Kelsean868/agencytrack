@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
-  mockAddDoc:    vi.fn(),
-  mockUpdateDoc: vi.fn(),
-  mockGetDocs:   vi.fn(),
-  mockQuery:     vi.fn(),
-  mockWhere:     vi.fn(),
-  mockOrderBy:   vi.fn(),
-  mockDoc:       vi.fn(),
-  mockCollection: vi.fn(),
+  mockAddDoc:          vi.fn(),
+  mockUpdateDoc:       vi.fn(),
+  mockGetDocs:         vi.fn(),
+  mockQuery:           vi.fn(),
+  mockWhere:           vi.fn(),
+  mockOrderBy:         vi.fn(),
+  mockDoc:             vi.fn(),
+  mockCollection:      vi.fn(),
   mockServerTimestamp: vi.fn(() => ({ _type: 'serverTimestamp' })),
 }));
 
@@ -170,6 +170,35 @@ describe('addJointCall', () => {
     const [, data] = hoisted.mockAddDoc.mock.calls[0];
     expect(data.coachingMinutes).toBe(22.5);
   });
+
+  it('stores prospectInfoId when provided', async () => {
+    hoisted.mockAddDoc.mockResolvedValue({});
+    await addJointCall({
+      tenantId: 'tid', agentId: 'a1', agentUnitId: 'u1',
+      authorUid: 'u1', authorName: 'UM', authorRole: 'unit_manager',
+      appointmentDate: '2026-05-20', appointmentTime: '10:00',
+      appointmentKept: true, nextMeetingDate: '',
+      meetingType: 'observation', needCovered: 'other',
+      comments: '', saleMade: false, coachingMinutes: 0, trainingIdentified: '',
+      prospectInfoId: 'prep_abc123',
+    });
+    const [, data] = hoisted.mockAddDoc.mock.calls[0];
+    expect(data.prospectInfoId).toBe('prep_abc123');
+  });
+
+  it('stores empty string for prospectInfoId when omitted', async () => {
+    hoisted.mockAddDoc.mockResolvedValue({});
+    await addJointCall({
+      tenantId: 'tid', agentId: 'a1', agentUnitId: 'u1',
+      authorUid: 'u1', authorName: 'UM', authorRole: 'unit_manager',
+      appointmentDate: '2026-05-20', appointmentTime: '10:00',
+      appointmentKept: true, nextMeetingDate: '',
+      meetingType: 'observation', needCovered: 'other',
+      comments: '', saleMade: false, coachingMinutes: 0, trainingIdentified: '',
+    });
+    const [, data] = hoisted.mockAddDoc.mock.calls[0];
+    expect(data.prospectInfoId).toBe('');
+  });
 });
 
 describe('getJointCalls — unit_manager', () => {
@@ -261,5 +290,33 @@ describe('updateJointCall', () => {
     expect(data.nextMeetingDate).toBe('2026-06-01');
     expect(data.coachingMinutes).toBe(30);
     expect('updatedAt' in data).toBe(true);
+  });
+
+  it('includes prospectInfoId in the update payload', async () => {
+    hoisted.mockUpdateDoc.mockResolvedValue({});
+    await updateJointCall({
+      tenantId: 'tid', agentId: 'a1', callId: 'c1',
+      appointmentDate: '2026-05-21', appointmentTime: '11:00',
+      appointmentKept: true, nextMeetingDate: '',
+      meetingType: 'observation', needCovered: 'other',
+      comments: '', saleMade: false, coachingMinutes: 0, trainingIdentified: '',
+      prospectInfoId: 'prep_xyz',
+    });
+    const [, data] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(data.prospectInfoId).toBe('prep_xyz');
+  });
+
+  it('writes empty string for prospectInfoId when cleared', async () => {
+    hoisted.mockUpdateDoc.mockResolvedValue({});
+    await updateJointCall({
+      tenantId: 'tid', agentId: 'a1', callId: 'c1',
+      appointmentDate: '2026-05-21', appointmentTime: '11:00',
+      appointmentKept: true, nextMeetingDate: '',
+      meetingType: 'observation', needCovered: 'other',
+      comments: '', saleMade: false, coachingMinutes: 0, trainingIdentified: '',
+      prospectInfoId: '',
+    });
+    const [, data] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(data.prospectInfoId).toBe('');
   });
 });

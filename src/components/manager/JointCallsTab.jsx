@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Phone, Pencil, Check, ChevronDown } from 'lucide-react';
+import { Phone, Pencil, Check, ChevronDown, Link2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   addJointCall,
@@ -8,6 +8,7 @@ import {
   MEETING_TYPES,
   NEEDS_COVERED,
 } from '../../services/jointCallsService';
+import { getProspectInfo } from '../../services/prospectInfoService';
 
 function formatCallDate(ts) {
   if (!ts) return '';
@@ -18,7 +19,7 @@ function formatCallDate(ts) {
 const MEETING_LABEL = Object.fromEntries(MEETING_TYPES.map((m) => [m.value, m.label]));
 const NEEDS_LABEL   = Object.fromEntries(NEEDS_COVERED.map((n) => [n.value, n.label]));
 
-function CallCard({ call, isAuthor, agentId, onEditSaved }) {
+function CallCard({ call, isAuthor, agentId, onEditSaved, preps }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm]       = useState({
     appointmentDate:    call.appointmentDate    ?? '',
@@ -31,6 +32,7 @@ function CallCard({ call, isAuthor, agentId, onEditSaved }) {
     saleMade:           !!call.saleMade,
     coachingMinutes:    call.coachingMinutes    ?? 0,
     trainingIdentified: call.trainingIdentified ?? '',
+    prospectInfoId:     call.prospectInfoId     ?? '',
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr]       = useState('');
@@ -73,6 +75,7 @@ function CallCard({ call, isAuthor, agentId, onEditSaved }) {
       saleMade:           !!call.saleMade,
       coachingMinutes:    call.coachingMinutes    ?? 0,
       trainingIdentified: call.trainingIdentified ?? '',
+      prospectInfoId:     call.prospectInfoId     ?? '',
     });
     setErr('');
     setEditing(false);
@@ -124,6 +127,16 @@ function CallCard({ call, isAuthor, agentId, onEditSaved }) {
               <span className="whitespace-pre-wrap break-words">{call.trainingIdentified}</span>
             </p>
           )}
+          {call.prospectInfoId && (() => {
+            const linked = preps?.find((p) => p.id === call.prospectInfoId);
+            return linked ? (
+              <p className="text-xs text-ink-muted flex items-center gap-1 pt-0.5">
+                <Link2 size={11} className="shrink-0 text-primary" aria-hidden="true" />
+                <span className="font-medium text-primary">Prep:</span>
+                {linked.clientName || '—'} · {linked.intendedAppointmentDate || '—'}
+              </p>
+            ) : null;
+          })()}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -211,6 +224,28 @@ function CallCard({ call, isAuthor, agentId, onEditSaved }) {
             className="w-full px-3 py-2 rounded-lg border border-border bg-card text-ink text-xs resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
             aria-label="Training identified"
           />
+          {preps && preps.length > 0 && (
+            <div className="relative">
+              <label htmlFor={`jc-prep-link-${call.id}`} className="block text-xs text-ink-muted mb-1">
+                Link to prospect prep
+              </label>
+              <select
+                id={`jc-prep-link-${call.id}`}
+                value={form.prospectInfoId}
+                onChange={set('prospectInfoId')}
+                className="h-9 pl-2 pr-8 w-full rounded-lg border border-border bg-card text-ink text-xs appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                aria-label="Link to prospect prep"
+              >
+                <option value="">— None —</option>
+                {preps.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.clientName || '—'} · {p.intendedAppointmentDate || '—'}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="pointer-events-none absolute right-2 top-[28px] text-ink-muted" aria-hidden="true" />
+            </div>
+          )}
           {err && <p className="text-xs text-danger" role="alert">{err}</p>}
           <div className="flex gap-2 justify-end">
             <button
@@ -245,6 +280,7 @@ const BLANK_FORM = {
   saleMade:           false,
   coachingMinutes:    '',
   trainingIdentified: '',
+  prospectInfoId:     '',
 };
 
 export default function JointCallsTab({ agentId, agentUnitId }) {
@@ -252,6 +288,8 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
   const [calls, setCalls]     = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
+
+  const [preps, setPreps] = useState([]);
 
   const [form, setForm]             = useState(BLANK_FORM);
   const [submitting, setSubmitting] = useState(false);
@@ -273,6 +311,13 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
         setError('Failed to load joint calls. Please try again.');
       })
       .finally(() => setLoading(false));
+  }, [tenantId, agentId, role, user?.uid]);
+
+  useEffect(() => {
+    if (!agentId || !role || !tenantId) return;
+    getProspectInfo({ tenantId, agentId, callerRole: role, callerUid: user?.uid })
+      .then(setPreps)
+      .catch((err) => console.error('Failed to load prospect preps:', err));
   }, [tenantId, agentId, role, user?.uid]);
 
   const handleAdd = useCallback(async (e) => {
@@ -340,6 +385,7 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
             agentId={agentId}
             isAuthor={call.authorUid === user?.uid}
             onEditSaved={handleEditSaved}
+            preps={preps}
           />
         ))}
       </div>
@@ -465,6 +511,28 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
           className="w-full px-3 py-2 rounded-xl border border-border bg-card text-ink text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 placeholder:text-ink-muted/60"
           aria-label="Training identified"
         />
+
+        {preps.length > 0 && (
+          <label className="flex flex-col gap-1 text-xs text-ink-muted">
+            Link to prospect prep (optional)
+            <div className="relative">
+              <select
+                value={form.prospectInfoId}
+                onChange={set('prospectInfoId')}
+                className="h-11 pl-3 pr-8 w-full rounded-xl border border-border bg-card text-ink text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40 cursor-pointer"
+                aria-label="Link to prospect prep"
+              >
+                <option value="">— None —</option>
+                {preps.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.clientName || '—'} · {p.intendedAppointmentDate || '—'}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+            </div>
+          </label>
+        )}
 
         {addError && (
           <p className="text-xs text-danger" role="alert">{addError}</p>

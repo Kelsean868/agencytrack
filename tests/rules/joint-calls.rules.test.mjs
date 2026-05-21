@@ -9,7 +9,7 @@
  * The emulator is auto-started by firebase emulators:exec and
  * FIRESTORE_EMULATOR_HOST is set before the script is invoked.
  *
- * Test matrix (11 cases, mirrors F1 coaching-notes matrix):
+ * Test matrix (13 cases, mirrors F1 coaching-notes matrix + F3.1 link field):
  *   READ
  *   1.  UM1 reads own-unit UM call             → ALLOW
  *   2.  UM1 reads own-unit BM call             → DENY  (rank)
@@ -25,6 +25,8 @@
  *   WRITE
  *   10. Non-author updates call                → DENY
  *   11. Author updates own call                → ALLOW
+ *   12a. Author sets prospectInfoId on call    → ALLOW (F3.1 link field)
+ *   12b. AGENT reads call with prospectInfoId  → DENY  (F2 boundary holds)
  */
 
 import {
@@ -182,6 +184,21 @@ async function main() {
       meetingType: 'collaboration',
       updatedAt: new Date(),
     });
+  });
+
+  // 12a. Author (um1) sets prospectInfoId on own call — ALLOW (F3.1 link field)
+  await run('12a. Author sets prospectInfoId [ALLOW — F3.1 link field]', true, () => {
+    const db = testEnv.authenticatedContext('um1', authToken('unit_manager')).firestore();
+    return updateDoc(callRef(db, 'call_um'), {
+      prospectInfoId: 'prep_test_id',
+      updatedAt: new Date(),
+    });
+  });
+
+  // 12b. AGENT reads own-doc call with prospectInfoId present — DENY (F2 boundary holds)
+  await run('12b. AGENT reads call with prospectInfoId [DENY — F2 boundary holds]', false, () => {
+    const db = testEnv.authenticatedContext(AGENT_ID, authToken('agent')).firestore();
+    return getDoc(callRef(db, 'call_um'));
   });
 
   // ── Report ────────────────────────────────────────────────────────────────
