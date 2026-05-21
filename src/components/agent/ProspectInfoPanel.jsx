@@ -15,13 +15,16 @@ import {
   getProspectInfo,
   updateProspectInfo,
   PROSPECTING_SOURCES,
+  PROSPECTING_SOURCE_LABELS,
   APPOINTMENT_TYPES,
   OBJECTIONS,
+  POLICY_TYPES,
 } from '../../services/prospectInfoService';
 
-const SOURCE_LABEL      = Object.fromEntries(PROSPECTING_SOURCES.map((s) => [s.value, s.label]));
+const SOURCE_LABEL      = PROSPECTING_SOURCE_LABELS;
 const APPT_TYPE_LABEL   = Object.fromEntries(APPOINTMENT_TYPES.map((a) => [a.value, a.label]));
 const OBJECTION_LABEL   = Object.fromEntries(OBJECTIONS.map((o) => [o.value, o.label]));
+const POLICY_TYPE_LABEL = Object.fromEntries(POLICY_TYPES.map((p) => [p.value, p.label]));
 
 const BLANK_FORM = {
   clientName:              '',
@@ -138,7 +141,8 @@ function PrepCard({ prep, isAuthor, onSaved }) {
           )}
           {prep.policyType && (
             <p className="text-xs text-ink-muted">
-              <span className="font-medium">Policy: </span>{prep.policyType}
+              <span className="font-medium">Policy: </span>
+              {POLICY_TYPE_LABEL[prep.policyType] ?? prep.policyType}
             </p>
           )}
           {Array.isArray(prep.objections) && prep.objections.length > 0 && (
@@ -205,15 +209,19 @@ function PrepCard({ prep, isAuthor, onSaved }) {
               ))}
             </select>
           </div>
-          <input
-            type="text"
+          <select
             value={form.policyType}
             onChange={set('policyType')}
-            placeholder="Policy type (e.g., Whole Life, Term)"
-            maxLength={200}
             className="h-11 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
             aria-label="Policy type"
-          />
+          >
+            <option value="">Select policy type…</option>
+            {POLICY_TYPES.map((p) => (
+              <option key={p.value} value={p.value}>{p.label}</option>
+            ))}
+            {/* Legacy free-text values (pre-pick-list) display verbatim in the
+                card view via the fallback; not offered as a new selection. */}
+          </select>
           <input
             type="date"
             value={form.intendedAppointmentDate}
@@ -419,15 +427,20 @@ export default function ProspectInfoPanel() {
               <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
             </div>
           </div>
-          <input
-            type="text"
-            value={form.policyType}
-            onChange={set('policyType')}
-            placeholder="Policy type (e.g., Whole Life, Term)"
-            maxLength={200}
-            className="h-11 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-            aria-label="Policy type"
-          />
+          <div className="relative">
+            <select
+              value={form.policyType}
+              onChange={set('policyType')}
+              className="h-11 w-full pl-3 pr-8 rounded-lg border border-border bg-card text-ink text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+              aria-label="Policy type"
+            >
+              <option value="">Select policy type…</option>
+              {POLICY_TYPES.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+            <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+          </div>
           <div>
             <label htmlFor="prospect-appt-date" className="block text-xs text-ink-muted mb-1">
               Intended appointment date <span className="text-danger">*</span>

@@ -21,6 +21,8 @@
  *
  *   WRITE
  *   8.  AGENT creates OWN prep                     → ALLOW
+ *   8a. AGENT creates OWN prep w/ bank-referral    → ALLOW (post-2026-05-21 enum addition)
+ *   8b. AGENT creates OWN prep w/ legacy BOA       → ALLOW (kept for transition)
  *   9.  AGENT creates on ANOTHER agent's path      → DENY  (agentId mismatch)
  *   10. UM creates prep (manager write)            → DENY  (manager-write blocked)
  *   11. BM creates prep (manager write)            → DENY  (manager-write blocked)
@@ -170,6 +172,22 @@ async function main() {
   await run('8. AGENT creates OWN prep [ALLOW]', true, () => {
     const db = testEnv.authenticatedContext(AGENT_ID, authToken('agent')).firestore();
     return setDoc(prospectRef(db, AGENT_ID, 'prep_A2'), newDocFields(AGENT_ID, AGENT_UNIT));
+  });
+
+  await run('8a. AGENT creates OWN prep w/ bank-referral source [ALLOW]', true, () => {
+    const db = testEnv.authenticatedContext(AGENT_ID, authToken('agent')).firestore();
+    return setDoc(
+      prospectRef(db, AGENT_ID, 'prep_A2a'),
+      { ...newDocFields(AGENT_ID, AGENT_UNIT), prospectingSource: 'bank-referral' },
+    );
+  });
+
+  await run('8b. AGENT creates OWN prep w/ legacy BOA source [ALLOW — transition]', true, () => {
+    const db = testEnv.authenticatedContext(AGENT_ID, authToken('agent')).firestore();
+    return setDoc(
+      prospectRef(db, AGENT_ID, 'prep_A2b'),
+      { ...newDocFields(AGENT_ID, AGENT_UNIT), prospectingSource: 'BOA' },
+    );
   });
 
   await run('9. AGENT creates on ANOTHER agent path [DENY]', false, () => {

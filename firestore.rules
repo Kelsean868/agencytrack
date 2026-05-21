@@ -501,7 +501,8 @@ service cloud.firestore {
           && request.resource.data.createdBy == request.auth.uid
           && request.resource.data.prospectingSource in
                ['seminar', 'booth-event', 'referral', 'cold-call', 'social-media',
-                'orphan', 'existing-client', 'family-friend', 'BOA', 'self', 'other']
+                'orphan', 'existing-client', 'family-friend',
+                'bank-referral', 'BOA', 'self', 'other']
           && request.resource.data.appointmentType in
                ['2nd-interview', 'closing-interview']
           && request.resource.data.objections is list
@@ -527,7 +528,8 @@ service cloud.firestore {
                ])
           && request.resource.data.prospectingSource in
                ['seminar', 'booth-event', 'referral', 'cold-call', 'social-media',
-                'orphan', 'existing-client', 'family-friend', 'BOA', 'self', 'other']
+                'orphan', 'existing-client', 'family-friend',
+                'bank-referral', 'BOA', 'self', 'other']
           && request.resource.data.appointmentType in
                ['2nd-interview', 'closing-interview']
           && request.resource.data.objections is list;

@@ -8,14 +8,16 @@ import { UserSearch } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   getProspectInfo,
-  PROSPECTING_SOURCES,
+  PROSPECTING_SOURCE_LABELS,
   APPOINTMENT_TYPES,
   OBJECTIONS,
+  POLICY_TYPES,
 } from '../../services/prospectInfoService';
 
-const SOURCE_LABEL    = Object.fromEntries(PROSPECTING_SOURCES.map((s) => [s.value, s.label]));
-const APPT_TYPE_LABEL = Object.fromEntries(APPOINTMENT_TYPES.map((a) => [a.value, a.label]));
-const OBJECTION_LABEL = Object.fromEntries(OBJECTIONS.map((o) => [o.value, o.label]));
+const SOURCE_LABEL      = PROSPECTING_SOURCE_LABELS;
+const APPT_TYPE_LABEL   = Object.fromEntries(APPOINTMENT_TYPES.map((a) => [a.value, a.label]));
+const OBJECTION_LABEL   = Object.fromEntries(OBJECTIONS.map((o) => [o.value, o.label]));
+const POLICY_TYPE_LABEL = Object.fromEntries(POLICY_TYPES.map((p) => [p.value, p.label]));
 
 function PrepReadOnlyCard({ prep }) {
   return (
@@ -42,7 +44,8 @@ function PrepReadOnlyCard({ prep }) {
         )}
         {prep.policyType && (
           <p className="text-xs text-ink-muted">
-            <span className="font-medium">Policy: </span>{prep.policyType}
+            <span className="font-medium">Policy: </span>
+            {POLICY_TYPE_LABEL[prep.policyType] ?? prep.policyType}
           </p>
         )}
         {Array.isArray(prep.objections) && prep.objections.length > 0 && (
