@@ -12,8 +12,11 @@ import {
 // Path: /tenants/{t}/users/{agentId}/prospectInfo/{prospectId}
 // Path-bound: agentId in path. agentUnitId denormalized for UM scope.
 
-// Provisional taxonomy — workshop-driven (2026-05-19 Tatil session).
-// Also feeds Track H §3.3 "Source of Prospect"; import from here when Track H lands.
+// Selectable prospecting sources (form options). Head-of-sales-confirmed
+// taxonomy 2026-05-21: BOA → bank-referral (Bank Originated Account, intra-ANSA
+// bank referral — distinct from generic `referral` because conversion rate and
+// average policy size differ materially). Also feeds Track H §3.3 "Source of
+// Prospect"; import from here when Track H lands.
 export const PROSPECTING_SOURCES = [
   { value: 'seminar',         label: 'Seminar' },
   { value: 'booth-event',     label: 'Booth Event' },
@@ -23,10 +26,19 @@ export const PROSPECTING_SOURCES = [
   { value: 'orphan',          label: 'Orphan Policy' },
   { value: 'existing-client', label: 'Existing Client' },
   { value: 'family-friend',   label: 'Family / Friend' },
-  { value: 'BOA',             label: 'BOA' },
+  { value: 'bank-referral',   label: 'Bank Referral (BOA)' },
   { value: 'self',            label: 'Self' },
   { value: 'other',           label: 'Other' },
 ];
+
+// Display-label superset — includes legacy values still present in docs created
+// before the BOA → bank-referral rename. Form no longer offers `BOA`; this map
+// keeps existing docs rendering with a friendly label. Drop the `BOA` entry
+// when the BOA-teardown FU completes (backfill + rule removal).
+export const PROSPECTING_SOURCE_LABELS = {
+  ...Object.fromEntries(PROSPECTING_SOURCES.map((s) => [s.value, s.label])),
+  BOA: 'Bank Referral (BOA)',
+};
 
 export const APPOINTMENT_TYPES = [
   { value: '2nd-interview',     label: '2nd Interview' },
@@ -40,9 +52,25 @@ export const OBJECTIONS = [
   { value: 'no-confidence', label: 'No Confidence' },
 ];
 
+// Tatil product pick-list — replaces the free-text policyType field. Head-of-sales
+// confirmed 2026-05-21 (Track I spec §9). Editable as product names are verified.
+// Existing free-text policyType values in docs display verbatim via fallback in
+// the consumers.
+export const POLICY_TYPES = [
+  { value: 'critical-illness',     label: 'Critical Illness (Life Span / Life Span Lite)' },
+  { value: 'final-expense',        label: 'Final Expense / Micro-Life (Rest Assured)' },
+  { value: 'term-life',            label: 'Term Life' },
+  { value: 'whole-life',           label: 'Whole Life / Permanent' },
+  { value: 'universal-life',       label: 'Universal Life' },
+  { value: 'endowment',            label: 'Endowment' },
+  { value: 'pension-annuity',      label: 'Pension / Annuity' },
+  { value: 'mortgage-credit-life', label: 'Mortgage / Credit Life' },
+];
+
 const PROSPECTING_SOURCE_VALUES = PROSPECTING_SOURCES.map((s) => s.value);
 const APPOINTMENT_TYPE_VALUES   = APPOINTMENT_TYPES.map((a) => a.value);
 const OBJECTION_VALUES          = OBJECTIONS.map((o) => o.value);
+const POLICY_TYPE_VALUES        = POLICY_TYPES.map((p) => p.value);
 
 function prospectRef(tenantId, agentId) {
   return collection(db, `tenants/${tenantId}/users/${agentId}/prospectInfo`);
@@ -161,4 +189,5 @@ export {
   PROSPECTING_SOURCE_VALUES,
   APPOINTMENT_TYPE_VALUES,
   OBJECTION_VALUES,
+  POLICY_TYPE_VALUES,
 };

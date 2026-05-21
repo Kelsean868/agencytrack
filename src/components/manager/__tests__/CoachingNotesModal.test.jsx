@@ -70,9 +70,16 @@ vi.mock('../../../services/prospectInfoService', () => ({
   addProspectInfo:    vi.fn().mockResolvedValue({}),
   updateProspectInfo: vi.fn().mockResolvedValue({}),
   PROSPECTING_SOURCES: [
-    { value: 'referral', label: 'Referral' },
-    { value: 'cold-call', label: 'Cold Call' },
+    { value: 'referral',      label: 'Referral' },
+    { value: 'cold-call',     label: 'Cold Call' },
+    { value: 'bank-referral', label: 'Bank Referral (BOA)' },
   ],
+  PROSPECTING_SOURCE_LABELS: {
+    referral:        'Referral',
+    'cold-call':     'Cold Call',
+    'bank-referral': 'Bank Referral (BOA)',
+    BOA:             'Bank Referral (BOA)',
+  },
   APPOINTMENT_TYPES: [
     { value: '2nd-interview',     label: '2nd Interview' },
     { value: 'closing-interview', label: 'Closing Interview' },
@@ -82,6 +89,10 @@ vi.mock('../../../services/prospectInfoService', () => ({
     { value: 'no-need',       label: 'No Need' },
     { value: 'no-hurry',      label: 'No Hurry' },
     { value: 'no-confidence', label: 'No Confidence' },
+  ],
+  POLICY_TYPES: [
+    { value: 'whole-life', label: 'Whole Life / Permanent' },
+    { value: 'term-life',  label: 'Term Life' },
   ],
 }));
 

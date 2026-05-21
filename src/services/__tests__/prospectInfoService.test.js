@@ -31,8 +31,10 @@ import {
   updateProspectInfo,
   getProspectInfo,
   PROSPECTING_SOURCES,
+  PROSPECTING_SOURCE_LABELS,
   APPOINTMENT_TYPES,
   OBJECTIONS,
+  POLICY_TYPES,
 } from '../prospectInfoService';
 
 function makeSnap(...docs) {
@@ -41,13 +43,52 @@ function makeSnap(...docs) {
 
 beforeEach(() => { vi.clearAllMocks(); });
 
-describe('PROSPECTING_SOURCES (provisional taxonomy)', () => {
-  it('contains the 11 workshop-specified values', () => {
+describe('PROSPECTING_SOURCES (head-of-sales-confirmed taxonomy)', () => {
+  it('offers the 11 selectable sources with bank-referral replacing BOA', () => {
     const values = PROSPECTING_SOURCES.map((s) => s.value);
     expect(values).toEqual([
       'seminar', 'booth-event', 'referral', 'cold-call', 'social-media',
-      'orphan', 'existing-client', 'family-friend', 'BOA', 'self', 'other',
+      'orphan', 'existing-client', 'family-friend', 'bank-referral', 'self', 'other',
     ]);
+  });
+
+  it('does NOT offer BOA as a selectable option (replaced by bank-referral)', () => {
+    const values = PROSPECTING_SOURCES.map((s) => s.value);
+    expect(values).not.toContain('BOA');
+  });
+
+  it('labels bank-referral as "Bank Referral (BOA)"', () => {
+    const bankReferral = PROSPECTING_SOURCES.find((s) => s.value === 'bank-referral');
+    expect(bankReferral).toBeDefined();
+    expect(bankReferral.label).toBe('Bank Referral (BOA)');
+  });
+});
+
+describe('PROSPECTING_SOURCE_LABELS (display superset)', () => {
+  it('includes labels for every selectable source', () => {
+    for (const { value, label } of PROSPECTING_SOURCES) {
+      expect(PROSPECTING_SOURCE_LABELS[value]).toBe(label);
+    }
+  });
+
+  it('keeps a label for legacy BOA value so existing docs render correctly', () => {
+    expect(PROSPECTING_SOURCE_LABELS.BOA).toBe('Bank Referral (BOA)');
+  });
+});
+
+describe('POLICY_TYPES (Tatil product pick-list)', () => {
+  it('contains the 8 Track-I §9 categories', () => {
+    const values = POLICY_TYPES.map((p) => p.value);
+    expect(values).toEqual([
+      'critical-illness', 'final-expense', 'term-life', 'whole-life',
+      'universal-life', 'endowment', 'pension-annuity', 'mortgage-credit-life',
+    ]);
+  });
+
+  it('exposes label for each value', () => {
+    for (const entry of POLICY_TYPES) {
+      expect(entry.label).toBeTruthy();
+    }
   });
 });
 

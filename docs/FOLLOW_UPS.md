@@ -5,6 +5,28 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## BOA-teardown — remove `BOA` from `prospectingSource` once legacy docs are backfilled (LOW, banked 2026-05-21)
+
+**Scope:** PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) added `'bank-referral'` to the selectable taxonomy and the rule allowlist (per head-of-sales 2026-05-21), keeping `'BOA'` valid for transition. Form no longer offers `'BOA'`; the only place it still appears in code is the rule allowlist + the legacy display label entry in `PROSPECTING_SOURCE_LABELS`. Any live `prospectInfo` docs with `prospectingSource: 'BOA'` are not yet backfilled.
+
+**Action (single follow-up PR when ready):**
+
+1. **Count live docs.** Read-only dry-run query: enumerate `/tenants/{tid}/users/*/prospectInfo` across all tenants where `prospectingSource == 'BOA'`. Use an Admin SDK script (`firebase-admin` from `functions/node_modules/firebase-admin`); commit it under `scripts/` with `--execute` opt-in flag per the CLAUDE.md dry-run pattern.
+2. **Backfill.** Re-run the same script with `--execute` to rewrite the matched docs as `prospectingSource: 'bank-referral'`. Pre-merge dry-run output captured in the PR body.
+3. **Cleanup.** Same PR:
+   - Remove `'BOA'` from `firestore.rules` allowlists (both create + update on `prospectInfo`).
+   - Remove the `BOA: 'Bank Referral (BOA)'` entry from `PROSPECTING_SOURCE_LABELS` in `prospectInfoService.js`.
+   - Remove the rules-test case 8b (legacy-BOA-allowed) and any component-test `BOA` fixtures.
+4. **Deploy.** Rule modification (not additive) — deploy post-merge per CLAUDE.md staging discipline.
+
+**Priority:** LOW. Both values render with the same human-facing label ("Bank Referral (BOA)"), so the transition window is invisible to users. The cleanup is purely about preventing the orphan-value drift trail from accumulating new writes (the rule still permits `'BOA'` writes today; that's the only behavior change at teardown).
+
+**Verification at teardown:** an emulator rules test case must DENY `prospectingSource: 'BOA'` after the rule change; ALLOW for `'bank-referral'` continues.
+
+Banked: PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD).
+
+---
+
 ## Smoke harness — stable helpers for controlled selects + overflow visibility + REST-vs-cache (MEDIUM, banked 2026-05-21)
 
 **Scope:** PR #248 smoke debugging surfaced three classes of repeatable thrash that future smokes will hit again unless we bank reusable patterns into `scripts/verification/lib/walk-helpers.mjs`:
@@ -2114,7 +2136,7 @@ Banked from PR #235 (`0b8d04d`) (Phase 7-8 docs integration). Each FU closes ind
 
 Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `docs/AgencyTrack_Workshop_Roadmap_Revision.md`. Each item resolves in its own design/implementation pass — these are scope registrations, not blockers.
 
-- **[PLANNED] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design pass before build: lock category list with managers; cadence/wrap-up model; how manager targets are set. Roadmap §3.1.
+- **[IN FLIGHT] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design spec committed at `docs/AgencyTrack_TrackI_ManagerWAR_DesignSpec.md` (PR #251 a1db795 → spec; PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) `{TBD}` → step 1: Track F taxonomy confirmations, lifting BOA + policyType provisional flags per spec §5 + §9). **Next: I1 — Manager WAR foundation** (`managerWeeklyReports/{managerId}_{weekStartISO}`, 7 tracked activities, JFW auto-counted from Track F joint-calls per spec §2). Open items §10 to resolve before I1 build: head-of-sales activity standards (JFW count, one-on-ones, recruiting, training); provisional-license window (compliance).
 
 - **[SHIPPED — F1 #242 + F2 #244 + F3 #246 + F3.1 #248 + F2.1 #250 — Track F arc COMPLETE] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. Prospect-Info shipped: `prospectInfo` subcollection, **SUBMISSIONS-style privacy** (agent owns/reads/edits OWN; managers in scope READ; manager writes DENIED — opposite direction from F1/F2), appointment-bound (intendedAppointmentDate REQUIRED), agent-facing "Joint-Call Prep" NAV tab + third read-only "Prospect Info" tab in `CoachingNotesModal`. F3.1 observation↔prep link shipped (#248). F2.1 BM in-app notification shipped ([#250](https://github.com/Kelsean868/agencytrack/pull/250)). **Remaining open items**: F2.2 (email-to-BM), Track H/G needCovered + prospectingSource + policyType taxonomy confirmation — see § Track F F2 / F3 deferred items below. Roadmap §3.2.
 
@@ -2179,9 +2201,9 @@ Dispatcher decisions in F3 intentionally deferred the following for follow-up PR
 
 - **[SHIPPED — PR [#248](https://github.com/Kelsean868/agencytrack/pull/248) `4281991`] F3.1 — Observation ↔ Prep link.** `prospectInfoId` optional field on the `jointCalls` doc; `affectedKeys().hasOnly([...])` update rule extended; `addJointCall`/`updateJointCall` accept `prospectInfoId`; "Link to prospect prep" selector in `JointCallsTab` add form + `CallCard` edit; linked-prep summary (name · date) on observation card in view mode. Agent prep view unchanged (link lives on the observation, not the prep — no leak). Emulator rules 13/13 (12a author sets prospectInfoId ALLOW; 12b agent read with new field DENY — F2 boundary re-confirmed).
 
-- **[FLAGGED PROVISIONAL] `prospectingSource` enum taxonomy** — F3 ships with 11 provisional values: `seminar`, `booth-event`, `referral`, `cold-call`, `social-media`, `orphan`, `existing-client`, `family-friend`, `BOA`, `self`, `other`. This enum also feeds Track H §3.3 Source-of-Prospect (when Track H lands, import from `prospectInfoService` rather than re-defining). Confirm/adjust during Track H column-decision design or before Tatil pilot. Replacement: enum update in `prospectInfoService.js` + `firestore.rules` (two `in` predicates in create + update rules). Same shape as F2's `needCovered` provisional flag.
+- **[RESOLVED — PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) `{TBD}`, 2026-05-21] `prospectingSource` enum taxonomy** — Head-of-sales confirmed the BOA → `bank-referral` rename per Track I spec §5 (intra-ANSA Bank Originated Account, distinct from generic `referral` because conversion rate and average policy size differ materially). Selectable form options now offer `'bank-referral'` (label "Bank Referral (BOA)"); rule additively accepts both `'bank-referral'` and `'BOA'` during transition. Display-label superset (`PROSPECTING_SOURCE_LABELS`) keeps a label for `'BOA'` so legacy docs render as "Bank Referral (BOA)". Track H §3.3 Source-of-Prospect import path unchanged.
 
-- **[FLAGGED PROVISIONAL] `policyType` free-text** — F3 ships with free text for `policyType` because no product taxonomy exists in `src/` at banking time. When Track G (Money Needs Worksheet) or Track H (Policy Ledger MVP) defines a canonical product taxonomy, swap `policyType` to a select with the canonical enum. Free-text values will need a one-time backfill mapping (no migration if values happen to match canonical labels; a thin transform script otherwise).
+- **[RESOLVED — PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) `{TBD}`, 2026-05-21] `policyType` free-text** — Replaced with exported `POLICY_TYPES` enum per Track I spec §9 (8 Tatil product categories: Critical Illness / Final Expense / Term Life / Whole Life / Universal Life / Endowment / Pension-Annuity / Mortgage-Credit Life). Both `ProspectInfoPanel` add and edit forms swapped from `<input type="text">` to `<select>`. Existing free-text values in legacy docs display verbatim via `POLICY_TYPE_LABEL[v] ?? v` fallback (no rule enum check — `policyType` was only key-present-validated, so no rule update needed). Backfill optional; not done as part of this PR.
 
 - **[PLANNED] Delete/archive own preps** — F3 prevents delete entirely (`allow delete: if false`). The agent should be able to retract a prep created for an appointment that no longer happens. Scope: rule update to allow agent-own delete OR soft-delete `archived: boolean` field. Mirror the dispatcher decision pattern from F1/F2 deferred-delete items.
 

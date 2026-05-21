@@ -25,9 +25,16 @@ vi.mock('../../../services/prospectInfoService', () => ({
   addProspectInfo: vi.fn(),
   updateProspectInfo: vi.fn(),
   PROSPECTING_SOURCES: [
-    { value: 'referral', label: 'Referral' },
-    { value: 'cold-call', label: 'Cold Call' },
+    { value: 'referral',      label: 'Referral' },
+    { value: 'cold-call',     label: 'Cold Call' },
+    { value: 'bank-referral', label: 'Bank Referral (BOA)' },
   ],
+  PROSPECTING_SOURCE_LABELS: {
+    referral:        'Referral',
+    'cold-call':     'Cold Call',
+    'bank-referral': 'Bank Referral (BOA)',
+    BOA:             'Bank Referral (BOA)',
+  },
   APPOINTMENT_TYPES: [
     { value: '2nd-interview',     label: '2nd Interview' },
     { value: 'closing-interview', label: 'Closing Interview' },
@@ -37,6 +44,11 @@ vi.mock('../../../services/prospectInfoService', () => ({
     { value: 'no-need',       label: 'No Need' },
     { value: 'no-hurry',      label: 'No Hurry' },
     { value: 'no-confidence', label: 'No Confidence' },
+  ],
+  POLICY_TYPES: [
+    { value: 'whole-life',           label: 'Whole Life / Permanent' },
+    { value: 'term-life',            label: 'Term Life' },
+    { value: 'mortgage-credit-life', label: 'Mortgage / Credit Life' },
   ],
 }));
 
@@ -113,6 +125,42 @@ describe('ProspectInfoTab — read-only render', () => {
         callerUid:  mockUser.uid,
       }),
     );
+  });
+});
+
+describe('ProspectInfoTab — taxonomy labels', () => {
+  it('renders legacy BOA source as "Bank Referral (BOA)" label', async () => {
+    mockGetProspectInfo.mockResolvedValue([{
+      id: 'legacy-boa',
+      agentId: 'agent1',
+      clientName: 'Legacy Prospect',
+      clientAge: 30,
+      clientOccupation: 'Mortgage Client',
+      prospectingSource: 'BOA',
+      appointmentType: '2nd-interview',
+      objections: [],
+      policyType: 'mortgage-credit-life',
+      intendedAppointmentDate: '2026-06-10',
+      createdBy: 'agent1',
+    }]);
+    render(<ProspectInfoTab {...defaultProps} />);
+    await waitFor(() => screen.getByText('Legacy Prospect'));
+    expect(screen.getByText('Bank Referral (BOA)')).toBeInTheDocument();
+    expect(screen.getByText('Mortgage / Credit Life', { exact: false })).toBeInTheDocument();
+  });
+
+  it('renders bank-referral + enum policyType using enum labels', async () => {
+    mockGetProspectInfo.mockResolvedValue([{
+      id: 'enum-pt', agentId: 'agent1', clientName: 'Enum Client',
+      clientAge: 0, clientOccupation: '',
+      prospectingSource: 'bank-referral', appointmentType: '2nd-interview',
+      objections: [], policyType: 'whole-life',
+      intendedAppointmentDate: '2026-06-12', createdBy: 'agent1',
+    }]);
+    render(<ProspectInfoTab {...defaultProps} />);
+    await waitFor(() => screen.getByText('Enum Client'));
+    expect(screen.getByText('Bank Referral (BOA)')).toBeInTheDocument();
+    expect(screen.getByText('Whole Life / Permanent', { exact: false })).toBeInTheDocument();
   });
 });
 
