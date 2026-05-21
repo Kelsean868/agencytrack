@@ -8,7 +8,7 @@
  * Or via:
  *   firebase emulators:exec --only firestore "node firestore.rules.test.mjs"
  *
- * Verified matrix (all 8 cases from the approved brief):
+ * Verified matrix (all 11 original cases + 2 null-resource cases = 13 passing):
  *   ✓ owner create ALLOW
  *   ✓ owner update ALLOW
  *   ✓ owner read   ALLOW
@@ -19,6 +19,8 @@
  *   ✓ peer-UM read DENY
  *   ✓ downline (UM reads BM WAR) DENY
  *   ✓ agent read DENY
+ *   ✓ owner reads non-existent doc ALLOW  (null-resource path: warId prefix == uid)
+ *   ✓ non-owner reads non-existent doc DENY  (null-resource path does NOT over-grant)
  */
 
 import {
@@ -195,6 +197,22 @@ describe('deny cases', () => {
   it('agent reads any WAR DENY', async () => {
     await seed();
     const ctx = testEnv.authenticatedContext('agent1', { role: 'agent', tenantId: TENANT_ID });
+    await assertFails(getDoc(doc(ctx.firestore(), `${WAR_PATH}/${UM1_DOC_ID}`)));
+  });
+});
+
+// ── Null-resource (non-existent doc) scope ────────────────────────────────────
+
+describe('null-resource (non-existent doc) scope', () => {
+  it('owner reads non-existent own WAR doc ALLOW (warId prefix == uid)', async () => {
+    // No seed() — doc intentionally absent; tests the resource==null path in allow read
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    await assertSucceeds(getDoc(doc(ctx.firestore(), `${WAR_PATH}/${UM1_DOC_ID}`)));
+  });
+
+  it('non-owner reads non-existent WAR doc DENY (null-resource path must not over-grant)', async () => {
+    // No seed() — doc absent; um2 reads um1's path: split('_')[0]='um1' != 'um2' → DENY
+    const ctx = testEnv.authenticatedContext('um2', tok('um2', 'unit_manager'));
     await assertFails(getDoc(doc(ctx.firestore(), `${WAR_PATH}/${UM1_DOC_ID}`)));
   });
 });
