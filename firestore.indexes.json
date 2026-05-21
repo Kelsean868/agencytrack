@@ -155,6 +155,20 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "prospectInfo",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "agentUnitId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "intendedAppointmentDate",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

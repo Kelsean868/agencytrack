@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, MessageSquare, Pencil, Check, ChevronDown, Phone } from 'lucide-react';
+import { X, MessageSquare, Pencil, Check, ChevronDown, Phone, UserSearch } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   addCoachingNote,
@@ -8,6 +8,7 @@ import {
   COACHING_CATEGORIES,
 } from '../../services/coachingNotesService';
 import JointCallsTab from './JointCallsTab';
+import ProspectInfoTab from './ProspectInfoTab';
 
 // Category display config — label + Tailwind badge classes (Nexus-token-safe)
 const CATEGORY_CONFIG = {
@@ -281,6 +282,20 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
               <Phone size={14} aria-hidden="true" />
               Joint Calls
             </button>
+            <button
+              role="tab"
+              aria-selected={activeTab === 'prospectInfo'}
+              aria-controls="coaching-prospect-info-panel"
+              onClick={() => setActiveTab('prospectInfo')}
+              className={`min-h-[44px] flex-1 flex items-center justify-center gap-2 px-4 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === 'prospectInfo'
+                  ? 'text-primary border-primary'
+                  : 'text-ink-muted border-transparent hover:text-ink'
+              }`}
+            >
+              <UserSearch size={14} aria-hidden="true" />
+              Prospect Info
+            </button>
           </div>
 
           {activeTab === 'jointCalls' ? (
@@ -291,6 +306,15 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
               className="flex-1 flex flex-col min-h-0"
             >
               <JointCallsTab agentId={agentId} agentUnitId={agentUnitId} />
+            </div>
+          ) : activeTab === 'prospectInfo' ? (
+            <div
+              id="coaching-prospect-info-panel"
+              role="tabpanel"
+              aria-labelledby="coaching-prospect-info-tab"
+              className="flex-1 flex flex-col min-h-0"
+            >
+              <ProspectInfoTab agentId={agentId} />
             </div>
           ) : (
             <>

@@ -63,6 +63,28 @@ vi.mock('../../../services/jointCallsService', () => ({
   ],
 }));
 
+// F3: CoachingNotesModal now also imports ProspectInfoTab → prospectInfoService
+// → src/firebase.js. Same surgical mock pattern as jointCallsService (F2 CI lesson).
+vi.mock('../../../services/prospectInfoService', () => ({
+  getProspectInfo:    vi.fn().mockResolvedValue([]),
+  addProspectInfo:    vi.fn().mockResolvedValue({}),
+  updateProspectInfo: vi.fn().mockResolvedValue({}),
+  PROSPECTING_SOURCES: [
+    { value: 'referral', label: 'Referral' },
+    { value: 'cold-call', label: 'Cold Call' },
+  ],
+  APPOINTMENT_TYPES: [
+    { value: '2nd-interview',     label: '2nd Interview' },
+    { value: 'closing-interview', label: 'Closing Interview' },
+  ],
+  OBJECTIONS: [
+    { value: 'no-money',      label: 'No Money' },
+    { value: 'no-need',       label: 'No Need' },
+    { value: 'no-hurry',      label: 'No Hurry' },
+    { value: 'no-confidence', label: 'No Confidence' },
+  ],
+}));
+
 import CoachingNotesModal from '../CoachingNotesModal';
 
 const defaultProps = {

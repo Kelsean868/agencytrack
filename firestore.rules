@@ -455,6 +455,87 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // F3 (Track F): prospect-info — agent-authored, manager-chain READABLE.
+      //
+      // Privacy model: SUBMISSIONS-style (NOT F1/F2's exclusion).
+      //   - Agent owns/reads/edits OWN records (request.auth.uid == path agentId).
+      //   - Managers in scope READ; managers do NOT write.
+      //
+      // Scope: unit_manager restricted to docs where agentUnitId == their uid;
+      //   branch_manager and above tenant-scoped (mirrors the submissions rule).
+      //
+      // Path-bound: {agentId} appears in path, so agent-own checks compare the
+      //   path segment to request.auth.uid directly (no resource.data lookup).
+      //
+      // Inversion vs F1/F2: NOT rank-based, NOT agent-excluded. The agent IS
+      //   the author and CAN read their own. Managers CANNOT write.
+      match /users/{agentId}/prospectInfo/{prospectId} {
+
+        // get: agent reads own (path agentId == uid), OR manager reads in scope.
+        allow get: if isSignedIn() && getTenantId() == tenantId && (
+          request.auth.uid == agentId
+          || (isManager() && (
+               getRole() != 'unit_manager'
+               || resource.data.agentUnitId == request.auth.uid
+             ))
+        );
+
+        // list: agent lists own (path agentId == uid), OR manager lists in scope.
+        // For UM the rule enforces agentUnitId == request.auth.uid per-doc, so
+        // the client query MUST include where('agentUnitId','==',callerUid).
+        allow list: if isSignedIn() && getTenantId() == tenantId && (
+          request.auth.uid == agentId
+          || (isManager() && (
+               getRole() != 'unit_manager'
+               || resource.data.agentUnitId == request.auth.uid
+             ))
+        );
+
+        // create: agent-only, must match path agentId. Managers DENIED.
+        allow create: if isSignedIn()
+          && getTenantId() == tenantId
+          && isAgent()
+          && request.auth.uid == agentId
+          && request.resource.data.agentId == agentId
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.prospectingSource in
+               ['seminar', 'booth-event', 'referral', 'cold-call', 'social-media',
+                'orphan', 'existing-client', 'family-friend', 'BOA', 'self', 'other']
+          && request.resource.data.appointmentType in
+               ['2nd-interview', 'closing-interview']
+          && request.resource.data.objections is list
+          && request.resource.data.keys().hasAll([
+               'agentId', 'tenantId', 'agentUnitId', 'createdBy',
+               'clientName', 'prospectingSource', 'appointmentType',
+               'objections', 'policyType', 'intendedAppointmentDate',
+               'createdAt', 'updatedAt'
+             ]);
+
+        // update: agent-only, must own path. Body-shape fields only;
+        //   never agentId/tenantId/createdBy/agentUnitId/audit timestamps (except updatedAt).
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && isAgent()
+          && request.auth.uid == agentId
+          && resource.data.createdBy == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly([
+                 'clientName', 'clientAge', 'clientOccupation',
+                 'prospectingSource', 'appointmentType', 'objections',
+                 'policyType', 'intendedAppointmentDate', 'updatedAt'
+               ])
+          && request.resource.data.prospectingSource in
+               ['seminar', 'booth-event', 'referral', 'cold-call', 'social-media',
+                'orphan', 'existing-client', 'family-friend', 'BOA', 'self', 'other']
+          && request.resource.data.appointmentType in
+               ['2nd-interview', 'closing-interview']
+          && request.resource.data.objections is list;
+
+        // No deletes (agent-immutable history); soft-delete is a future change.
+        allow delete: if false;
+      }
+
       // F2 (Track F): joint-call observations — manager-chain private, agent EXCLUDED.
       //
       // Privacy model: identical to F1 coachingNotes (rank-based visibility chain).
