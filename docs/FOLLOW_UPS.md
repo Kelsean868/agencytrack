@@ -2058,7 +2058,7 @@ Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `
 
 - **[PLANNED] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design pass before build: lock category list with managers; cadence/wrap-up model; how manager targets are set. Roadmap §3.1.
 
-- **[PLANNED] Track F extension — structured Joint-Call Observation Log** (`/tenants/{tid}/users/{agentId}/jointCalls/{callId}`, manager-chain visibility, same privacy model as coaching notes) + appointment-bound Prospect-Info form. Roadmap §3.2.
+- **[PARTIAL — Joint-Call Log SHIPPED PR #TBD `{TBD}`] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. **Remaining**: F2.1 (BM notification on submit), F3 (Prospect-Info form), Track H/G needCovered taxonomy confirmation — see § Track F F2 deferred items below. Roadmap §3.2.
 
 - **[DECISION LOGGED] Track H schema** — add Source-of-Prospect (enum) / Cash-with-Application / Date-Placed (= `dateIssued`) / Policy-Delivery-Date; hold demographics; Need-Covered → joint-call form. Apply at Track H design (update PRD §7.4 + §9). Roadmap §3.3.
 
@@ -2092,3 +2092,21 @@ Dispatcher decisions in F1 intentionally deferred the following for follow-up PR
 - **[PLANNED] PH7-8-Q3 resolution** — Decide whether `concern`-category coaching notes surface in any manager-overview dashboard signal. F1 answer: individual-agent only. Design pass for Track F F3+ should revisit.
 
 Banked from PR #242 (`d5102e5`) (Track F F1 coaching notes).
+
+---
+
+## Track F F2 — Joint-Call Log deferred items (banked PR #TBD)
+
+Dispatcher decisions in F2 intentionally deferred the following for follow-up PRs:
+
+- **[PLANNED] F2.1 — BM notification on joint-call submit** — fast-follow. On joint-call create, queue a notification to the agent's branch manager (resolved via `tenants/{tid}/branches/{agent.branchId}.managerId`). Requires a tenant-scoped Cloud Function — the existing `createNotification` CF is legacy (top-level `/notifications` collection) and needs reworking to write into `tenants/{tid}/notifications`. Distinct concern from F2 (rules + UI surface); own PR + functions deploy. Roadmap §3.2(a) — "on submit → notification to branch manager".
+
+- **[PLANNED] F3 — Prospect-Info form** (next in Track F). Appointment-bound — captured for a specific joint call so the manager arrives informed. Fields: client name/age/occupation, prospecting-activity-type enum (seminar / booth-event / referral / cold-call / social-media / orphan / existing-client / family-friend / BOA / self / other), appointment type (2nd interview / closing interview), objections enum (no-money / no-need / no-hurry / no-confidence), policy type discussed/sold. Bounded to the joint-call appointment per §0 guardrail — does not become a standing prospect list or disposition tracker. Roadmap §3.2(b).
+
+- **[FLAGGED PROVISIONAL] `needCovered` enum taxonomy** — F2 ships with 9 provisional values: `income_protection`, `mortgage_or_debt`, `education_funding`, `retirement_planning`, `final_expenses`, `wealth_accumulation`, `critical_illness_or_health`, `business_protection`, `other`. No existing codebase taxonomy at F2 banking time (Track G Money Needs Worksheet is planned but unbuilt; roadmap §3.3 routes Need-Covered to the Joint-Call Log from Track H). Confirm/adjust the enum during Track H column-decision design or Track G Money-Needs design — whichever lands first. Replacement is a one-line enum update in `jointCallsService.js` + `firestore.rules` (two `in` predicates in create + update rules). No data migration if values are added; if values are renamed/removed, audit existing docs first. Confirmed values should be moved to a shared `config/` collection or constants module so both surfaces share one source.
+
+- **[PLANNED] Cross-agent "manager joint-call summary" roll-up** — per-agent list is sufficient for F2 (mirrors F1 surface). A manager-overview roll-up (e.g., "joint calls logged this month across my unit/branch", "appointments-kept rate by agent") is a later enhancement. Could surface on a Manager Overview page or Track F F3+ drill-down route.
+
+- **[PLANNED] Client delete/archive + `isPinned`** — deferred together with the F1 equivalents (low risk; same shape). Joint-call observations are higher-value historic records than free-text notes — delete/archive is even more sensitive here; design pass should consider whether managers should be allowed to delete observations they authored, or whether only an "amended" state with an audit trail is acceptable.
+
+Banked from PR #TBD (`{TBD}`) (Track F F2 joint-call log).

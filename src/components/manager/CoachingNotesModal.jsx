@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, MessageSquare, Pencil, Check, ChevronDown } from 'lucide-react';
+import { X, MessageSquare, Pencil, Check, ChevronDown, Phone } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   addCoachingNote,
@@ -7,6 +7,7 @@ import {
   updateCoachingNote,
   COACHING_CATEGORIES,
 } from '../../services/coachingNotesService';
+import JointCallsTab from './JointCallsTab';
 
 // Category display config — label + Tailwind badge classes (Nexus-token-safe)
 const CATEGORY_CONFIG = {
@@ -143,6 +144,9 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
 
+  // F2: tab selection — Notes (F1) is the default.
+  const [activeTab, setActiveTab] = useState('notes');
+
   // Add-note form
   const [category, setCategory]     = useState('observation');
   const [body, setBody]             = useState('');
@@ -233,7 +237,7 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
             <div className="flex items-center gap-2">
               <MessageSquare size={18} className="text-primary" aria-hidden="true" />
               <h2 id="coaching-notes-title" className="text-base font-semibold text-ink">
-                Coaching Notes
+                Coaching
               </h2>
               <span className="text-sm text-ink-muted">— {agentName}</span>
             </div>
@@ -247,8 +251,55 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
             </button>
           </div>
 
+          {/* F2: tab strip */}
+          <div role="tablist" aria-label="Coaching surfaces" className="flex border-b border-border flex-shrink-0 bg-card">
+            <button
+              role="tab"
+              aria-selected={activeTab === 'notes'}
+              aria-controls="coaching-notes-panel"
+              onClick={() => setActiveTab('notes')}
+              className={`min-h-[44px] flex-1 flex items-center justify-center gap-2 px-4 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === 'notes'
+                  ? 'text-primary border-primary'
+                  : 'text-ink-muted border-transparent hover:text-ink'
+              }`}
+            >
+              <MessageSquare size={14} aria-hidden="true" />
+              Notes
+            </button>
+            <button
+              role="tab"
+              aria-selected={activeTab === 'jointCalls'}
+              aria-controls="coaching-jointcalls-panel"
+              onClick={() => setActiveTab('jointCalls')}
+              className={`min-h-[44px] flex-1 flex items-center justify-center gap-2 px-4 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === 'jointCalls'
+                  ? 'text-primary border-primary'
+                  : 'text-ink-muted border-transparent hover:text-ink'
+              }`}
+            >
+              <Phone size={14} aria-hidden="true" />
+              Joint Calls
+            </button>
+          </div>
+
+          {activeTab === 'jointCalls' ? (
+            <div
+              id="coaching-jointcalls-panel"
+              role="tabpanel"
+              aria-labelledby="coaching-jointcalls-tab"
+              className="flex-1 flex flex-col min-h-0"
+            >
+              <JointCallsTab agentId={agentId} agentUnitId={agentUnitId} />
+            </div>
+          ) : (
+            <>
           {/* Note list — scrollable */}
-          <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3 min-h-0">
+          <div
+            id="coaching-notes-panel"
+            role="tabpanel"
+            aria-labelledby="coaching-notes-tab"
+            className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3 min-h-0">
             {loading && (
               <div className="space-y-3">
                 {[1, 2].map((i) => (
@@ -327,6 +378,8 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
               {submitting ? 'Adding…' : 'Add Note'}
             </button>
           </form>
+            </>
+          )}
         </div>
       </div>
     </>
