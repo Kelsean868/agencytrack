@@ -5,6 +5,41 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## CI doc drift — CLAUDE.md says "lint + build" but CI runs lint + test + build (LOW, banked 2026-05-21)
+
+**Scope:** CLAUDE.md § Lint Policy: "This is enforced by `.github/workflows/ci.yml` (lint + build on every PR to main)." and Session Protocol step 7: "Push branch, open PR — CI will run lint + build automatically on GitHub". Both are wrong as of PR #244 — `.github/workflows/ci.yml` runs three steps: **Lint** (`npm run lint`), **Run tests** (`npm test -- --run`), **Build** (`npm run build`). The doc drift caused a false-green local on PR #244: the local `npm test` ran with `.env.local` populated, hiding a transitive firebase-init throw in `CoachingNotesModal.test.jsx`; CI ran the same test with env unset and failed.
+
+**Action:**
+
+1. Edit `CLAUDE.md` § Lint Policy to read: "`npm run lint`, `npm test`, and `npm run build` must all pass before any push. Enforced by `.github/workflows/ci.yml` on every PR to main."
+2. Edit Session Protocol step 7 (and any sibling references) to say "lint + tests + build" wherever it currently says "lint + build".
+
+**Priority:** LOW (doc-only fix; no behavior change).
+
+Banked: PR #244 fix commit (`cdb6aa7`).
+
+---
+
+## Vitest setup — global firebase stub to prevent transitive unmocked-firebase false-greens (LOW-MED, banked 2026-05-21)
+
+**Scope:** PR #244's CI failure root cause was a transitive import chain — `CoachingNotesModal` → `JointCallsTab` → `jointCallsService` → `src/firebase.js`. The existing test mocked `coachingNotesService` but not `jointCallsService`, and `src/firebase.js:22` `getAuth(app)` throws `auth/invalid-api-key` whenever the import chain reaches it without firebase env vars set. Local passed (env vars set via `.env.local`); CI failed (env vars unset).
+
+The PR #244 surgical fix mocks `jointCallsService` in the modal test. That works for THIS chain but does not prevent the next variant — any future component test whose component imports a NEW service that touches `src/firebase.js` will silently false-green locally and red on CI.
+
+**Suggested shape:**
+
+1. Add `vitest.setup.js` (or extend existing setup file referenced from `vitest.config.js`) with a default `vi.mock('@/firebase', () => ({...}))` and `vi.mock('../firebase', ...)` (path-relative shape used in services) returning empty stub objects for `auth`, `db`, `storage`. Each test can override per-suite.
+2. Alternative: stub `getAuth` / `initializeFirestore` from `firebase/auth` and `firebase/firestore` at the setup level so `src/firebase.js` itself can run but its calls become no-ops.
+3. Decide which is cleaner during implementation — the first is more targeted, the second covers any other module that calls firebase initialization directly.
+
+**Verification:** Move `.env.local` aside; run `npm test`. All tests should still pass with no `auth/invalid-api-key` throws. Per-test mocks added in PR #244 should still work (the global default is overridable). Restore `.env.local` and confirm full suite green again.
+
+**Priority:** LOW-MED. The surgical per-test mock from PR #244 patches the current chain; the systemic fix prevents recurrence. Low because the failure mode is loud and fast (suite fails to load, CI red within 2 min); med because each future occurrence costs one full PR cycle + dispatcher attention.
+
+Banked: PR #244 fix commit (`cdb6aa7`).
+
+---
+
 ## Track J — Tenure floor numbers PROVISIONAL — confirm with head of sales (HIGH, banked 2026-05-20)
 
 **Scope:** The `tenureApiFloors` band table seeded into `tatillife_south` via PR #240 (`scripts/seed/seed-tenure-api-floors.mjs`) comes from the head-of-sales slide of 2026-05-19. That slide also carried a divergent **career-level** API table (300/300/500/700) which we explicitly disregarded because the board-signed `Sales_Career.pdf` is authoritative on career levels and the app already matches it (L1–6 = 200/250/350/450/600/800K; L7 = Chairman's choice). Because the slide proved unreliable on career levels, the tenure numbers it provided are flagged provisional. The seed sets `tenureApiFloorsProvisional: true` on `config/companyMinimums` and renders nothing in-app from that flag yet.
