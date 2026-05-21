@@ -2077,7 +2077,7 @@ Banked from PR #236 (`58ebb2c`) (workshop-driven roadmap revision). Each PLANNED
 
 ---
 
-## Track F F1 — Coaching Notes deferred items (banked PR #TBD)
+## Track F F1 — Coaching Notes deferred items (banked PR #242)
 
 Dispatcher decisions in F1 intentionally deferred the following for follow-up PRs:
 
@@ -2091,4 +2091,4 @@ Dispatcher decisions in F1 intentionally deferred the following for follow-up PR
 
 - **[PLANNED] PH7-8-Q3 resolution** — Decide whether `concern`-category coaching notes surface in any manager-overview dashboard signal. F1 answer: individual-agent only. Design pass for Track F F3+ should revisit.
 
-Banked from PR #TBD (`{TBD}`) (Track F F1 coaching notes).
+Banked from PR #242 (`d5102e5`) (Track F F1 coaching notes).
