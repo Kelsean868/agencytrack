@@ -625,6 +625,90 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Track I I1.1: Manager Weekly Activity Report.
+      // Privacy model (submissions-direction, NOT coaching-notes-direction):
+      //   - Owner (the filing manager) creates, updates, and reads their own WAR.
+      //   - Upline reads read-only: reader rank strictly > WAR's managerRoleRank,
+      //     with BM limited to same branchId; SM+ tenant-wide.
+      //     SM=tenant-wide is valid while SM≈head-of-sales in a single-branch org.
+      //   - Peers (same/lower rank) and downline agents are DENIED.
+      //   - Filers: unit_manager, branch_manager, sales_manager.
+      //     tenant_admin / platform_admin read-only; they do not file a WAR.
+      // No collectionGroup query and no index in this PR (I1.1).
+      // I1.2 adds jfwCount auto-count via collectionGroup + index.
+      match /managerWeeklyReports/{warId} {
+
+        // Mirrors cnRoleRank()/jcRoleRank() — block-local per cn/jc/persistency pattern.
+        // FU banked: hoist all three (cn/jc/war) to a shared top-level rules helper.
+        function warRoleRank() {
+          return getRole() == 'unit_manager'   ? 1 :
+                 getRole() == 'branch_manager' ? 2 :
+                 getRole() == 'sales_manager'  ? 3 :
+                 getRole() == 'tenant_admin'   ? 4 :
+                 getRole() == 'platform_admin' ? 5 : 0;
+        }
+
+        // SEC-4 pattern: branchId is not a custom claim; read from Firestore user doc.
+        function callerBranchId(tenantId) {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
+        }
+
+        // Upline-in-scope: strictly greater than to deny peers.
+        function uplineCanRead() {
+          return warRoleRank() > resource.data.managerRoleRank
+            && (
+              getRole() in ['tenant_admin', 'platform_admin', 'sales_manager']
+              || (getRole() == 'branch_manager'
+                  && callerBranchId(tenantId) == resource.data.branchId)
+            );
+        }
+
+        // Field-shape validation. jfwCount: on create must be 0; on update client
+        // cannot change it (I1.2 auto-count writes via Admin SDK bypassing rules).
+        function validWarWrite() {
+          let d = request.resource.data;
+          return d.managerId == request.auth.uid
+            && d.tenantId == tenantId
+            && d.keys().hasAll([
+                 'managerId', 'tenantId', 'weekStart',
+                 'managerRole', 'managerRoleRank', 'branchId', 'unitId',
+                 'oneOnOnesConducted', 'namesSourced', 'interviewsConducted',
+                 'recruitsInFirstWeeks', 'trainingSessions', 'trainingTopic',
+                 'unitMeetingHeld', 'dashboardReviewDone',
+                 'jfwCount', 'status', 'updatedAt'
+               ])
+            && d.oneOnOnesConducted   is int
+            && d.namesSourced         is int
+            && d.interviewsConducted  is int
+            && d.recruitsInFirstWeeks is int
+            && d.trainingSessions     is int
+            && d.trainingTopic        is string
+            && d.dashboardReviewDone  is bool
+            && d.unitMeetingHeld      is bool
+            && d.jfwCount == (resource == null ? 0 : resource.data.jfwCount)
+            && d.status in ['draft', 'submitted']
+            && d.weekStart is string
+            && d.managerRole in ['unit_manager', 'branch_manager', 'sales_manager']
+            && d.managerRoleRank == warRoleRank();
+        }
+
+        allow create: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() in ['unit_manager', 'branch_manager', 'sales_manager']
+          && validWarWrite();
+
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.managerId == request.auth.uid
+          && validWarWrite();
+
+        allow read: if isSignedIn()
+          && getTenantId() == tenantId
+          && (resource.data.managerId == request.auth.uid || uplineCanRead());
+
+        allow delete: if false;
+      }
+
     }
   }
 }

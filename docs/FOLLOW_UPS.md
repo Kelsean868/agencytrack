@@ -5,6 +5,39 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## I1.x — Hoist duplicated WAR/cn/jc role-rank helpers to shared top-level rules function (LOW, banked 2026-05-21)
+
+**Scope:** `firestore.rules` now has three block-local `warRoleRank()` helpers with identical bodies (`unit_manager` → 1, `branch_manager` → 2, `sales_manager` → 3, `tenant_admin` → 4, `platform_admin` → 5): `cnRoleRank()` inside the `coachingNotes` block (≈ line 400), `jcRoleRank()` inside the `jointCalls` block (≈ line 553), and `warRoleRank()` inside the `managerWeeklyReports` block added in I1.1 (PR #TBD). This is intentional duplication per the block-local helper convention — a pre-existing cn/jc pattern; WAR mirrors it.
+
+**Action (single rules-only PR when ready):**
+
+1. Define `getRoleRank()` at the top of the `match /tenants/{tenantId}` block (or as a global, next to `getRole()`/`getTenantId()`).
+2. Replace all three block-local helpers with `getRoleRank()` calls.
+3. Deploy: rule modification (existing behavior unchanged, just deduplication) — post-merge per CLAUDE.md staging discipline.
+4. Phase 1 must verify the three blocks haven't diverged in body before hoisting (Rule 17: verify source-derived claim at authoring time).
+
+**Priority:** **LOW**. No functional impact. The duplication is readable and correct as-is; hoisting is a housekeeping improvement.
+
+Banked: I1.1 PR #TBD (`{TBD}`).
+
+---
+
+## I1.x — `isProducingManager` setter (admin-set or self-service — policy TBD) (LOW, banked 2026-05-21)
+
+**Scope:** `ManagerWarTab.jsx` reads `userProfile.isProducingManager` to gate the personal-production sub-panel (Personal API TTD + Personal Applications). The field does not exist on any user doc — the panel ships dormant. No setter is built in I1.1 (PR #TBD).
+
+**Action (when policy is decided):**
+
+1. **Policy decision (dispatcher):** who can set `isProducingManager`? Options: (A) admin-only — extend `EditUserDrawer` with a toggle, restricted to `tenant_admin`/`platform_admin`; (B) self-service — toggle on `ProfileScreen` or `ManagerWarTab` itself; (C) manager-set — branch_manager or sales_manager sets it for their reports.
+2. **Implementation:** once policy is locked, implement the setter in `EditUserDrawer` or `ProfileScreen` per Option A/B/C and extend the users-collection rules to allow the write from the authorized role tier.
+3. **Smoke leg:** verify that toggling the flag on a manager's user doc causes the personal-production sub-panel to appear/disappear on next `ManagerWarTab` render.
+
+**Priority:** **LOW**. No user-visible impact until the field is set. The dormant panel means the feature is invisible, not broken.
+
+Banked: I1.1 PR #TBD (`{TBD}`).
+
+---
+
 ## BOA-teardown — remove `BOA` from `prospectingSource` once legacy docs are backfilled (LOW, banked 2026-05-21)
 
 **Scope:** PR [#252](https://github.com/Kelsean868/agencytrack/pull/252) added `'bank-referral'` to the selectable taxonomy and the rule allowlist (per head-of-sales 2026-05-21), keeping `'BOA'` valid for transition. Form no longer offers `'BOA'`; the only place it still appears in code is the rule allowlist + the legacy display label entry in `PROSPECTING_SOURCE_LABELS`. Any live `prospectInfo` docs with `prospectingSource: 'BOA'` are not yet backfilled.

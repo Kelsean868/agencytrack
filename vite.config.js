@@ -47,6 +47,7 @@ export default defineConfig({
       // Emulator rules tests require a running Firebase emulator — run via
       // 'firebase emulators:exec --only firestore "node <test-file>"' instead.
       'tests/rules/**',
+      'firestore.rules.test.mjs',
     ],
   },
 })
