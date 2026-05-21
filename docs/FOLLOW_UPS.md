@@ -2093,7 +2093,7 @@ Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `
 
 - **[PLANNED] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design pass before build: lock category list with managers; cadence/wrap-up model; how manager targets are set. Roadmap §3.1.
 
-- **[PARTIAL — Joint-Call Log SHIPPED PR #TBD `{TBD}`] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. **Remaining**: F2.1 (BM notification on submit), F3 (Prospect-Info form), Track H/G needCovered taxonomy confirmation — see § Track F F2 deferred items below. Roadmap §3.2.
+- **[PARTIAL — Joint-Call Log SHIPPED PR #244 `6694f30`] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. **Remaining**: F2.1 (BM notification on submit), F3 (Prospect-Info form), Track H/G needCovered taxonomy confirmation — see § Track F F2 deferred items below. Roadmap §3.2.
 
 - **[DECISION LOGGED] Track H schema** — add Source-of-Prospect (enum) / Cash-with-Application / Date-Placed (= `dateIssued`) / Policy-Delivery-Date; hold demographics; Need-Covered → joint-call form. Apply at Track H design (update PRD §7.4 + §9). Roadmap §3.3.
 
@@ -2130,7 +2130,7 @@ Banked from PR #242 (`d5102e5`) (Track F F1 coaching notes).
 
 ---
 
-## Track F F2 — Joint-Call Log deferred items (banked PR #TBD)
+## Track F F2 — Joint-Call Log deferred items (banked PR #244)
 
 Dispatcher decisions in F2 intentionally deferred the following for follow-up PRs:
 
@@ -2144,4 +2144,4 @@ Dispatcher decisions in F2 intentionally deferred the following for follow-up PR
 
 - **[PLANNED] Client delete/archive + `isPinned`** — deferred together with the F1 equivalents (low risk; same shape). Joint-call observations are higher-value historic records than free-text notes — delete/archive is even more sensitive here; design pass should consider whether managers should be allowed to delete observations they authored, or whether only an "amended" state with an audit trail is acceptable.
 
-Banked from PR #TBD (`{TBD}`) (Track F F2 joint-call log).
+Banked from PR #244 (`6694f30`) (Track F F2 joint-call log).
