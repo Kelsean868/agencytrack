@@ -118,10 +118,21 @@ describe('saveWarDraft', () => {
     expect(payload.recruitsInFirstWeeks).toBe(1);
     expect(payload.trainingSessions).toBe(1);
     expect(payload.attendanceCount).toBe(12);
-    expect(payload.jfwCount).toBe(0);
+    expect(payload.jfwCount).toBe(0); // doc does not exist → create → storedJfwCount defaults to 0
     expect(payload.managerRoleRank).toBe(1);
     expect(payload.managerRole).toBe('unit_manager');
     expect(payload.branchId).toBe('branch-a');
+  });
+
+  it('preserves stored jfwCount from existing doc (I1.3a: CF writes, client preserves)', async () => {
+    hoisted.mockGetDoc.mockResolvedValue({
+      exists: () => true,
+      data:   () => ({ jfwCount: 3 }),
+    });
+    hoisted.mockSetDoc.mockResolvedValue(undefined);
+    await saveWarDraft(TENANT_ID, MANAGER_ID, 'Test UM', WEEK_START, FORM_DATA, MANAGER_META);
+    const [, payload] = hoisted.mockSetDoc.mock.calls[0];
+    expect(payload.jfwCount).toBe(3);
   });
 
   it('sets createdAt only on first save (when doc does not exist)', async () => {
@@ -183,6 +194,17 @@ describe('submitWar', () => {
     const [, payload] = hoisted.mockSetDoc.mock.calls[0];
     expect(payload.status).toBe('submitted');
     expect(payload.submittedAt).toBeDefined();
+  });
+
+  it('preserves stored jfwCount from existing doc on submit', async () => {
+    hoisted.mockGetDoc.mockResolvedValue({
+      exists: () => true,
+      data:   () => ({ jfwCount: 2 }),
+    });
+    hoisted.mockSetDoc.mockResolvedValue(undefined);
+    await submitWar(TENANT_ID, MANAGER_ID, 'Test UM', WEEK_START, FORM_DATA, MANAGER_META);
+    const [, payload] = hoisted.mockSetDoc.mock.calls[0];
+    expect(payload.jfwCount).toBe(2);
   });
 });
 

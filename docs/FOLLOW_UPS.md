@@ -2187,7 +2187,7 @@ Banked from PR #235 (`0b8d04d`) (Phase 7-8 docs integration). Each FU closes ind
 
 Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `docs/AgencyTrack_Workshop_Roadmap_Revision.md`. Each item resolves in its own design/implementation pass — these are scope registrations, not blockers.
 
-- **[IN FLIGHT] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design spec committed at `docs/AgencyTrack_TrackI_ManagerWAR_DesignSpec.md`. I1.1 Manager WAR foundation shipped (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) `a6fa6b5`). I1.2 JFW auto-count (owner-side, read-only collectionGroup query) shipped (PR [#256](https://github.com/Kelsean868/agencytrack/pull/256) `3dea3ad`). **Next: I1.3 — standards config + upline browse view + jfwCount denormalization/CF.** Upline BM/SM read surface for WARs; activity standards (head-of-sales floors for one-on-ones, recruiting, training); CF to denormalize `jfwCount` onto WAR docs for upline visibility; unlock `jfwCount==0` client lock once CF ships.
+- **[IN FLIGHT] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design spec committed at `docs/AgencyTrack_TrackI_ManagerWAR_DesignSpec.md`. I1.1 Manager WAR foundation shipped (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) `a6fa6b5`). I1.2 JFW auto-count (owner-side, read-only collectionGroup query) shipped (PR [#256](https://github.com/Kelsean868/agencytrack/pull/256) `3dea3ad`). I1.3a jfwCount denormalization CF shipped (PR [#{TBD}]({TBD}) `{TBD}`) — `onWarWrite` trigger writes `jfwCount` onto WAR doc post-save; loop-guarded; `sanitizeWar` fix preserves stored count. **CF deploy is post-merge** — run `firebase deploy --only functions` then production smoke (see CONTEXT.md "What shipped" for smoke steps). **Next: I1.3b — upline browse view.** BM/SM read surface for managers' WARs (the stored `jfwCount` from I1.3a is what makes it visible to uplines). After I1.3b: I1.3c standards config (head-of-sales floors for one-on-ones, recruiting, training).
 
 - **[SHIPPED — F1 #242 + F2 #244 + F3 #246 + F3.1 #248 + F2.1 #250 — Track F arc COMPLETE] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. Prospect-Info shipped: `prospectInfo` subcollection, **SUBMISSIONS-style privacy** (agent owns/reads/edits OWN; managers in scope READ; manager writes DENIED — opposite direction from F1/F2), appointment-bound (intendedAppointmentDate REQUIRED), agent-facing "Joint-Call Prep" NAV tab + third read-only "Prospect Info" tab in `CoachingNotesModal`. F3.1 observation↔prep link shipped (#248). F2.1 BM in-app notification shipped ([#250](https://github.com/Kelsean868/agencytrack/pull/250)). **Remaining open items**: F2.2 (email-to-BM), Track H/G needCovered + prospectingSource + policyType taxonomy confirmation — see § Track F F2 / F3 deferred items below. Roadmap §3.2.
 
@@ -2205,6 +2205,21 @@ Roadmap §3.5.
 - **[RESOLVED] Workshop decisions** — Manager WAR = new Track I; prospect-info form lives in AgencyTrack (Tatil has no company CRM); Track H columns per §3.3; CRM stance = reporting/coaching side, behind §0 guardrail; future tightly-integrated CRM separately scoped.
 
 Banked from PR #236 (`58ebb2c`) (workshop-driven roadmap revision). Each PLANNED item closes when its design/implementation pass ships; the DECISION LOGGED item closes when Track H design absorbs the column decision; the RESOLVED item is for audit trail only.
+
+---
+
+## Track I I1.3a — Full-freshness jointCalls-write trigger (banked PR #{TBD})
+
+Banked from I1.3a dispatcher decision (PR [#{TBD}]({TBD}), `{TBD}`).
+
+The `onWarWrite` CF recomputes `jfwCount` only when a WAR document is saved. A joint call logged *after* a save is not reflected until the manager saves again. For a weekly submission cadence this is acceptable, but a `jointCalls`-write trigger would provide full freshness (count updates immediately when a call is logged).
+
+- **[PLANNED] Full-freshness trigger** — Add a second trigger on `tenants/{tenantId}/users/{agentId}/jointCalls/{callId}` writes (create + update) that resolves the manager's WAR doc for the corresponding week and recomputes `jfwCount`. Requires:
+  - Reading the joint-call doc's `authorUid` + `appointmentDate` to resolve `weekStart` (Sunday of that week, using the UTC-noon `getTriniSundayString` pattern already in `functions/index.js`).
+  - Looking up the WAR doc at `tenants/{tenantId}/managerWeeklyReports/{authorUid}_{weekStart}` (the doc may not exist if the manager hasn't opened the WAR for that week yet — handle gracefully with an early return).
+  - Reusing `computeJfwCount` + `shouldWriteBack` from `functions/war/jfwCountLogic.js` — the query must re-run to get the current full count (can't just increment/decrement reliably under concurrent writes).
+  - Loop-guard: the write-back sets only `jfwCount` via Admin SDK `.update()`; the `onWarWrite` trigger fires on that update but immediately short-circuits (count unchanged → `shouldWriteBack` returns false).
+  - Performance note: the full collectionGroup re-query runs on every joint-call write for the manager's current week. Acceptable at pilot scale; at larger scale, an atomic counter (`FieldValue.increment`) would be safer but would drift on deletes.
 
 ---
 
