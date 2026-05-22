@@ -1,10 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
-  mockSetDoc:          vi.fn(),
-  mockGetDoc:          vi.fn(),
-  mockDoc:             vi.fn(),
-  mockServerTimestamp: vi.fn(() => ({ _type: 'serverTimestamp' })),
+  mockSetDoc:           vi.fn(),
+  mockGetDoc:           vi.fn(),
+  mockDoc:              vi.fn(),
+  mockServerTimestamp:  vi.fn(() => ({ _type: 'serverTimestamp' })),
+  mockCollectionGroup:  vi.fn(),
+  mockGetDocs:          vi.fn(),
+  mockQuery:            vi.fn((...args) => args),
+  mockWhere:            vi.fn((...args) => args),
 }));
 
 vi.mock('../../firebase', () => ({ db: {} }));
@@ -14,6 +18,10 @@ vi.mock('firebase/firestore', () => ({
   setDoc:          (...args) => hoisted.mockSetDoc(...args),
   getDoc:          (...args) => hoisted.mockGetDoc(...args),
   serverTimestamp: () => hoisted.mockServerTimestamp(),
+  collectionGroup: (...args) => hoisted.mockCollectionGroup(...args),
+  getDocs:         (...args) => hoisted.mockGetDocs(...args),
+  query:           (...args) => hoisted.mockQuery(...args),
+  where:           (...args) => hoisted.mockWhere(...args),
 }));
 
 vi.mock('../../utils/validators', () => ({
@@ -30,6 +38,7 @@ import {
   submitWar,
   getWar,
   getWarById,
+  getOwnJfwCount,
 } from '../managerWarService';
 
 const TENANT_ID   = 'test-tenant';
@@ -216,5 +225,62 @@ describe('getWarById', () => {
     });
     const result = await getWarById(TENANT_ID, 'um1_2026-05-18');
     expect(result).toEqual({ id: 'um1_2026-05-18', ...docData });
+  });
+});
+
+// ── getOwnJfwCount ────────────────────────────────────────────────────────────
+
+function makeDocs(records) {
+  return { docs: records.map((r) => ({ data: () => r })) };
+}
+
+describe('getOwnJfwCount', () => {
+  beforeEach(() => {
+    hoisted.mockCollectionGroup.mockReturnValue('mock-cg');
+    hoisted.mockWhere.mockReturnValue('mock-where');
+    hoisted.mockQuery.mockReturnValue('mock-query');
+  });
+
+  it('returns count of docs with appointmentKept=true', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeDocs([
+      { appointmentKept: true },
+      { appointmentKept: true },
+      { appointmentKept: false },
+    ]));
+    const count = await getOwnJfwCount({ tenantId: TENANT_ID, managerId: MANAGER_ID, weekStart: WEEK_START });
+    expect(count).toBe(2);
+  });
+
+  it('returns 0 for an empty result set', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeDocs([]));
+    const count = await getOwnJfwCount({ tenantId: TENANT_ID, managerId: MANAGER_ID, weekStart: WEEK_START });
+    expect(count).toBe(0);
+  });
+
+  it('excludes docs with appointmentKept=false', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeDocs([
+      { appointmentKept: false },
+      { appointmentKept: false },
+    ]));
+    const count = await getOwnJfwCount({ tenantId: TENANT_ID, managerId: MANAGER_ID, weekStart: WEEK_START });
+    expect(count).toBe(0);
+  });
+
+  it('passes authorUid, tenantId, inclusive weekStart, exclusive weekEnd to where()', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeDocs([]));
+    await getOwnJfwCount({ tenantId: TENANT_ID, managerId: MANAGER_ID, weekStart: '2026-05-17' });
+    const calls = hoisted.mockWhere.mock.calls;
+    expect(calls).toHaveLength(4);
+    expect(calls[0]).toEqual(['authorUid',       '==', MANAGER_ID]);
+    expect(calls[1]).toEqual(['tenantId',         '==', TENANT_ID]);
+    expect(calls[2]).toEqual(['appointmentDate',  '>=', '2026-05-17']);
+    expect(calls[3]).toEqual(['appointmentDate',  '<',  '2026-05-24']); // next Sunday, exclusive
+  });
+
+  it('weekEnd crosses month boundary correctly (2026-05-31 → 2026-06-07)', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeDocs([]));
+    await getOwnJfwCount({ tenantId: TENANT_ID, managerId: MANAGER_ID, weekStart: '2026-05-31' });
+    const calls = hoisted.mockWhere.mock.calls;
+    expect(calls[3]).toEqual(['appointmentDate', '<', '2026-06-07']);
   });
 });

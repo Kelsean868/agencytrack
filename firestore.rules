@@ -573,9 +573,24 @@ service cloud.firestore {
           && jcUMScopeOk()
           && jcRoleRank() >= resource.data.authorRoleRank;
 
-        // list: evaluated per-document; client MUST include authorRoleRank <= callerRank
-        // filter (and agentUnitId == uid for unit_manager). Rule enforces same predicate
-        // so unscoped list queries are rejected.
+        // list — TWO separate allow declarations (ORed by Firestore, each evaluated independently):
+        //
+        // 1. Author arm (collectionGroup-safe, I1.2): caller reads their OWN authored calls.
+        //    Split into its own allow list so Firestore evaluates it in isolation.
+        //    A combined || with arm 2 (which has a path-variable condition) causes production
+        //    Firestore to reject the entire expression for collectionGroup queries — it cannot
+        //    short-circuit OR when any arm is statically unverifiable. Separate declarations
+        //    are each evaluated independently; if arm 1 satisfies the query, access is granted
+        //    regardless of arm 2. Tenant isolation is enforced at the query level:
+        //    getOwnJfwCount includes where('tenantId','==',tid) and the create-rule invariant
+        //    (authorUid pinned + tenantId field == path tenantId) guarantees a uid can only
+        //    author docs in its own tenant.
+        allow list: if isManager()
+          && resource.data.authorUid == request.auth.uid;
+
+        // 2. Upline rank-scoped list (collection-scoped only): upline manager lists an agent's calls.
+        //    getTenantId()==tenantId uses a path variable — safe only for COLLECTION queries
+        //    (single-agent path). Never used as collectionGroup; the author arm above handles that.
         allow list: if isManager()
           && getTenantId() == tenantId
           && (getRole() != 'unit_manager' || resource.data.agentUnitId == request.auth.uid)
@@ -715,5 +730,24 @@ service cloud.firestore {
       }
 
     }
+
+    // ── I1.2: collectionGroup author arm for jointCalls ───────────────────────
+    // Firestore collectionGroup query security requires a top-level recursive
+    // wildcard match; path-specific rules (match /tenants/.../jointCalls/{id})
+    // are not reliably evaluated for collectionGroup queries. This rule handles
+    // ONLY the author-arm list (manager reads their own authored calls via the
+    // getOwnJfwCount collectionGroup query). All other jointCalls operations
+    // (get, create, update, delete, upline list) remain governed by the specific
+    // path rule inside match /tenants/{tenantId}/users/{agentId}/jointCalls/{callId}.
+    //
+    // Tenant isolation: enforced at query level — getOwnJfwCount always includes
+    // where('tenantId','==',tenantId). The create-rule invariant (authorUid pinned
+    // + tenantId field == path tenantId) guarantees a manager can only author docs
+    // in their own tenant, providing defense-in-depth against cross-tenant reads.
+    match /{path=**}/jointCalls/{callId} {
+      allow list: if isManager()
+        && resource.data.authorUid == request.auth.uid;
+    }
+
   }
 }

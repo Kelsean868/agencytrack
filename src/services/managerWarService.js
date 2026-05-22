@@ -1,5 +1,6 @@
 import {
   doc, setDoc, getDoc, serverTimestamp,
+  collectionGroup, getDocs, query, where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { validateSundayDate } from '../utils/validators';
@@ -104,4 +105,32 @@ export async function getWarById(tenantId, docId) {
   const ref = doc(db, `tenants/${tenantId}/managerWeeklyReports/${docId}`);
   const snap = await getDoc(ref);
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+/**
+ * Count the manager's own completed joint-field-work calls for a given week.
+ * Uses a collectionGroup query with authorUid + tenantId equality filters.
+ * The tenantId where clause enforces tenant isolation at the query level (the rule's
+ * author arm only verifies authorUid; tenant boundary is the query's responsibility).
+ * appointmentKept filter applied client-side; index: (authorUid, tenantId, appointmentDate)
+ * COLLECTION_GROUP.
+ */
+export async function getOwnJfwCount({ tenantId, managerId, weekStart }) {
+  const d = new Date(weekStart + 'T12:00:00Z');
+  d.setUTCDate(d.getUTCDate() + 7);
+  const weekEnd = [
+    d.getUTCFullYear(),
+    String(d.getUTCMonth() + 1).padStart(2, '0'),
+    String(d.getUTCDate()).padStart(2, '0'),
+  ].join('-');
+
+  const q = query(
+    collectionGroup(db, 'jointCalls'),
+    where('authorUid', '==', managerId),
+    where('tenantId', '==', tenantId),
+    where('appointmentDate', '>=', weekStart),
+    where('appointmentDate', '<', weekEnd),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.filter((d) => d.data().appointmentKept === true).length;
 }

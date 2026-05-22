@@ -24,14 +24,16 @@ vi.mock('../../../context/AuthContext', () => ({
 
 // ── Service mocks ─────────────────────────────────────────────────────────────
 
-const mockSaveWarDraft = vi.fn().mockResolvedValue(undefined);
-const mockSubmitWar    = vi.fn().mockResolvedValue(undefined);
-const mockGetWar       = vi.fn().mockResolvedValue(null);
+const mockSaveWarDraft   = vi.fn().mockResolvedValue(undefined);
+const mockSubmitWar      = vi.fn().mockResolvedValue(undefined);
+const mockGetWar         = vi.fn().mockResolvedValue(null);
+const mockGetOwnJfwCount = vi.fn().mockResolvedValue(0);
 
 vi.mock('../../../services/managerWarService', () => ({
-  saveWarDraft: (...args) => mockSaveWarDraft(...args),
-  submitWar:    (...args) => mockSubmitWar(...args),
-  getWar:       (...args) => mockGetWar(...args),
+  saveWarDraft:    (...args) => mockSaveWarDraft(...args),
+  submitWar:       (...args) => mockSubmitWar(...args),
+  getWar:          (...args) => mockGetWar(...args),
+  getOwnJfwCount:  (...args) => mockGetOwnJfwCount(...args),
 }));
 
 // ── Validators mock (stable Sunday list) ─────────────────────────────────────
@@ -78,6 +80,7 @@ function renderTab() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetWar.mockResolvedValue(null);
+  mockGetOwnJfwCount.mockResolvedValue(0);
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
 });
 
@@ -125,10 +128,12 @@ describe('ManagerWarTab — initial render', () => {
     expect(screen.getByRole('button', { name: /submit report/i })).toBeInTheDocument();
   });
 
-  it('shows the JFW coming-soon placeholder', async () => {
+  it('renders the JFW row with count from getOwnJfwCount', async () => {
+    mockGetOwnJfwCount.mockResolvedValue(3);
     renderTab();
     await flushMount();
     expect(screen.getByText(/joint field work/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/joint field work count: 3/i)).toBeInTheDocument();
   });
 });
 
@@ -270,5 +275,58 @@ describe('ManagerWarTab — toggle fields', () => {
     expect(screen.queryByLabelText('Attendance Count')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('checkbox', { name: /unit.*meeting held/i }));
     expect(screen.getByLabelText('Attendance Count')).toBeInTheDocument();
+  });
+});
+
+// ── JFW row ───────────────────────────────────────────────────────────────────
+
+describe('ManagerWarTab — JFW count row', () => {
+  it('shows count 0 cleanly', async () => {
+    mockGetOwnJfwCount.mockResolvedValue(0);
+    renderTab();
+    await flushMount();
+    expect(screen.getByLabelText(/joint field work count: 0/i)).toBeInTheDocument();
+  });
+
+  it('shows count > 0', async () => {
+    mockGetOwnJfwCount.mockResolvedValue(5);
+    renderTab();
+    await flushMount();
+    expect(screen.getByLabelText(/joint field work count: 5/i)).toBeInTheDocument();
+  });
+
+  it('shows error state when getOwnJfwCount rejects', async () => {
+    mockGetOwnJfwCount.mockRejectedValue(new Error('FAILED_PRECONDITION'));
+    renderTab();
+    await flushMount();
+    expect(screen.getByRole('alert')).toHaveTextContent(/error loading/i);
+  });
+
+  it('passes the selected weekStart to getOwnJfwCount', async () => {
+    mockGetOwnJfwCount.mockResolvedValue(0);
+    renderTab();
+    await flushMount();
+    // Default is sundays[0] = '2026-05-17'
+    expect(mockGetOwnJfwCount).toHaveBeenCalledWith(
+      expect.objectContaining({ weekStart: '2026-05-17' }),
+    );
+  });
+
+  it('recomputes count when the week selector changes', async () => {
+    mockGetOwnJfwCount.mockResolvedValue(2);
+    renderTab();
+    await flushMount();
+    expect(mockGetOwnJfwCount).toHaveBeenCalledTimes(1);
+
+    mockGetOwnJfwCount.mockResolvedValue(4);
+    fireEvent.change(screen.getByRole('combobox', { name: /select week/i }), {
+      target: { value: '2026-05-10' },
+    });
+    await flushMount();
+    expect(mockGetOwnJfwCount).toHaveBeenCalledTimes(2);
+    expect(mockGetOwnJfwCount).toHaveBeenLastCalledWith(
+      expect.objectContaining({ weekStart: '2026-05-10' }),
+    );
+    expect(screen.getByLabelText(/joint field work count: 4/i)).toBeInTheDocument();
   });
 });

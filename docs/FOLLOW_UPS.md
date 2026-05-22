@@ -5,6 +5,24 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## I1.2 methodology — Firestore collectionGroup rules require top-level recursive wildcard; emulator false-fails (CLOSED — learning banked in CLAUDE.md § Banked patterns, PR #256)
+
+**What happened:** The `allow list` rule for `jointCalls` was written inside `match /tenants/{tenantId}/users/{agentId}/jointCalls/{callId}`. Production Firestore returned `PERMISSION_DENIED` for the `getOwnJfwCount` collectionGroup query despite the rule logic being correct. Two root causes identified:
+
+1. **Combined OR with path-variable arm blocks collectionGroup static analysis.** A `allow list: if arm1 || arm2` rule where arm2 references a `{tenantId}` path wildcard causes Firestore to reject the ENTIRE OR expression for collectionGroup queries — it cannot short-circuit OR when any arm is statically unverifiable. Even splitting into two `allow list` declarations within the path-specific match did not resolve this.
+
+2. **Path-specific match rules are NOT reliably evaluated for collectionGroup queries.** The `match /tenants/{tenantId}/...` rule block is not picked up by Firestore's collectionGroup security evaluator in the same way as a top-level recursive wildcard. The fix: add `match /{path=**}/jointCalls/{callId} { allow list: if ...; }` at the top level.
+
+3. **Emulator false-fails.** The emulator also failed case 13 throughout the debugging cycle (16/17) for both combined-OR and split-rule forms. Only the recursive wildcard fixed both emulator and production.
+
+**Fix shipped:** Added top-level `match /{path=**}/jointCalls/{callId} { allow list: if isManager() && resource.data.authorUid == request.auth.uid; }` in PR [#256](https://github.com/Kelsean868/agencytrack/pull/256).
+
+**Learning banked:** See CLAUDE.md § Banked patterns — "Firestore collectionGroup rules require top-level recursive wildcard."
+
+**Status: CLOSED** — learning banked, no further action needed.
+
+---
+
 ## I1.x — Hoist duplicated WAR/cn/jc role-rank helpers to shared top-level rules function (LOW, banked 2026-05-21)
 
 **Scope:** `firestore.rules` now has three block-local `warRoleRank()` helpers with identical bodies (`unit_manager` → 1, `branch_manager` → 2, `sales_manager` → 3, `tenant_admin` → 4, `platform_admin` → 5): `cnRoleRank()` inside the `coachingNotes` block (≈ line 400), `jcRoleRank()` inside the `jointCalls` block (≈ line 553), and `warRoleRank()` inside the `managerWeeklyReports` block added in I1.1 (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254)). This is intentional duplication per the block-local helper convention — a pre-existing cn/jc pattern; WAR mirrors it.
@@ -2169,7 +2187,7 @@ Banked from PR #235 (`0b8d04d`) (Phase 7-8 docs integration). Each FU closes ind
 
 Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `docs/AgencyTrack_Workshop_Roadmap_Revision.md`. Each item resolves in its own design/implementation pass — these are scope registrations, not blockers.
 
-- **[IN FLIGHT] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design spec committed at `docs/AgencyTrack_TrackI_ManagerWAR_DesignSpec.md` (PR #251 a1db795 → spec; PR [#252](https://github.com/Kelsean868/agencytrack/pull/252) `3478ef0` → step 1: Track F taxonomy confirmations, lifting BOA + policyType provisional flags per spec §5 + §9). **Next: I1 — Manager WAR foundation** (`managerWeeklyReports/{managerId}_{weekStartISO}`, 7 tracked activities, JFW auto-counted from Track F joint-calls per spec §2). Open items §10 to resolve before I1 build: head-of-sales activity standards (JFW count, one-on-ones, recruiting, training); provisional-license window (compliance).
+- **[IN FLIGHT] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design spec committed at `docs/AgencyTrack_TrackI_ManagerWAR_DesignSpec.md`. I1.1 Manager WAR foundation shipped (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) `a6fa6b5`). I1.2 JFW auto-count (owner-side, read-only collectionGroup query) shipped (PR [#{TBD}](https://github.com/Kelsean868/agencytrack/pull/{TBD}) `{TBD}`). **Next: I1.3 — standards config + upline browse view + jfwCount denormalization/CF.** Upline BM/SM read surface for WARs; activity standards (head-of-sales floors for one-on-ones, recruiting, training); CF to denormalize `jfwCount` onto WAR docs for upline visibility; unlock `jfwCount==0` client lock once CF ships.
 
 - **[SHIPPED — F1 #242 + F2 #244 + F3 #246 + F3.1 #248 + F2.1 #250 — Track F arc COMPLETE] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. Prospect-Info shipped: `prospectInfo` subcollection, **SUBMISSIONS-style privacy** (agent owns/reads/edits OWN; managers in scope READ; manager writes DENIED — opposite direction from F1/F2), appointment-bound (intendedAppointmentDate REQUIRED), agent-facing "Joint-Call Prep" NAV tab + third read-only "Prospect Info" tab in `CoachingNotesModal`. F3.1 observation↔prep link shipped (#248). F2.1 BM in-app notification shipped ([#250](https://github.com/Kelsean868/agencytrack/pull/250)). **Remaining open items**: F2.2 (email-to-BM), Track H/G needCovered + prospectingSource + policyType taxonomy confirmation — see § Track F F2 / F3 deferred items below. Roadmap §3.2.
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CheckSquare, Square } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
-import { saveWarDraft, submitWar, getWar } from '../../services/managerWarService';
+import { saveWarDraft, submitWar, getWar, getOwnJfwCount } from '../../services/managerWarService';
 
 const AUTOSAVE_DELAY = 1500;
 
@@ -34,6 +34,8 @@ export default function ManagerWarTab() {
   const [submitting, setSubmitting]     = useState(false);
   const [submitError, setSubmitError]   = useState('');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [jfwCount, setJfwCount]         = useState(null);
+  const [jfwError, setJfwError]         = useState(false);
 
   const saveTimer  = useRef(null);
   const savedTimer = useRef(null);
@@ -75,6 +77,19 @@ export default function ManagerWarTab() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+  }, [weekStart, user, tenantId]);
+
+  // Fetch JFW count from joint-call logs for the selected week (I1.2)
+  useEffect(() => {
+    if (!user) return;
+    setJfwCount(null);
+    setJfwError(false);
+    getOwnJfwCount({ tenantId, managerId: user.uid, weekStart })
+      .then(setJfwCount)
+      .catch((err) => {
+        console.error('JFW count failed:', err);
+        setJfwError(true);
+      });
   }, [weekStart, user, tenantId]);
 
   // Always-current save executor (mirrors WizardForm pattern)
@@ -282,15 +297,24 @@ export default function ManagerWarTab() {
         </div>
       )}
 
-      {/* JFW — reserved field, auto-counted in I1.2 */}
-      <div className="bg-card-raised rounded-2xl p-4 flex items-center gap-3">
-        <div className="text-sm">
+      {/* JFW — read-only count from joint-call logs (I1.2) */}
+      <div className="bg-card-raised rounded-2xl p-4 flex items-center gap-3 min-h-[44px]">
+        <div className="text-sm flex-1">
           <span className="font-medium text-text">Joint Field Work (JFW)</span>
-          <span className="ml-2 text-text-muted">— auto-counted from joint-call logs</span>
+          <span className="ml-2 text-text-muted">— from joint-call logs</span>
         </div>
-        <span className="ml-auto text-xs text-text-muted bg-card px-2 py-1 rounded-full">
-          Coming in I1.2
-        </span>
+        {jfwError ? (
+          <span className="text-xs text-red-500" role="alert">Error loading</span>
+        ) : jfwCount === null ? (
+          <span className="text-xs text-text-muted" aria-label="Joint Field Work count loading">Loading…</span>
+        ) : (
+          <span
+            className="text-sm font-semibold text-text"
+            aria-label={`Joint Field Work count: ${jfwCount}`}
+          >
+            {jfwCount}
+          </span>
+        )}
       </div>
 
       {/* Submit area */}
