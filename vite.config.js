@@ -1,9 +1,37 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import { fileURLToPath } from 'url'
+import { dirname, resolve } from 'path'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// Vitest sets process.env.VITEST before loading this config.
+// The plugin below is activated ONLY when isTest is true and is never bundled
+// into a production build (Vite evaluates this file fresh each run; a production
+// `npm run build` has VITEST unset so the plugin list is empty).
+const isTest = !!process.env.VITEST
+const stubPath = resolve(__dirname, 'src/__mocks__/firebase.js')
+
+// Custom resolveId plugin — intercepts at the Rollup resolver level (enforce: 'pre')
+// before vite:import-analysis sees the import, so it catches relative imports that
+// resolve.alias regex does not reach in Vite 8.
+// Matches any import whose specifier ends in /firebase (covers ../firebase,
+// ../../firebase, etc.) and redirects to the inert test stub.
+// vi.mock(id, factory) in test files takes priority via Vitest's mock-hoisting layer,
+// so existing return-value service mocks remain fully backward-compatible.
+const firebaseTestStubPlugin = {
+  name: 'firebase-test-stub',
+  enforce: 'pre',
+  resolveId(source) {
+    if (/\/firebase$/.test(source)) return stubPath
+    return null
+  },
+}
 
 export default defineConfig({
   plugins: [
+    ...(isTest ? [firebaseTestStubPlugin] : []),
     react({ jsxRuntime: 'automatic' }),
     VitePWA({
       registerType: 'autoUpdate',

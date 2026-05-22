@@ -44,9 +44,10 @@ export default defineConfig([
       'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_|^React$' }],
     },
   },
-  // Node.js environment for Cloud Functions and scripts (CommonJS — require/exports/process are valid)
+  // Node.js environment for Cloud Functions, scripts, and Vite/Vitest config files
+  // (CommonJS — require/exports/process are valid; vite.config.js uses process.env.VITEST)
   {
-    files: ['functions/**/*.{js,cjs}', 'scripts/**/*.{js,cjs}'],
+    files: ['functions/**/*.{js,cjs}', 'scripts/**/*.{js,cjs}', 'vite.config.js', '*.config.{js,cjs}'],
     languageOptions: {
       globals: { ...globals.node },
     },

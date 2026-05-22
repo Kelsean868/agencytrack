@@ -318,6 +318,22 @@ When in doubt, surface and ask.
 
 **`_` prefix convention:** Variables that must appear in a destructuring/param list but are intentionally unused should be prefixed with `_` (e.g. `_agentId`, `_ws`). The lint rule is configured to ignore `/^_/` patterns.
 
+## Test Policy
+
+### Global Firebase stub
+
+`src/firebase.js` calls `initializeApp` / `getAuth` / `initializeFirestore` at module load. Any test that transitively imports it (via a service or component) without a local `vi.mock` factory would crash in CI (where no `VITE_FIREBASE_*` env vars are set) with `auth/invalid-api-key`.
+
+**`src/firebase.js` is globally stubbed in tests via a custom Vite plugin** in `vite.config.js` (the `firebaseTestStubPlugin`, active only when `process.env.VITEST` is set). The plugin intercepts any relative import ending in `/firebase` at the Rollup `resolveId` layer (before `vite:import-analysis`), redirecting it to `src/__mocks__/firebase.js` — an inert stub exporting `auth = {}`, `db = {}`, `storage = {}`, `functions = {}`, and `default = {}`.
+
+**Rules for test authors:**
+- **Never mock a service solely to avoid Firebase init.** The global stub handles init. Mock services only to control their return values for assertions.
+- **`vi.mock(id, factory)` takes priority** over the global stub for any service a test explicitly mocks — all existing return-value mocks are fully backward-compatible.
+
+**Env-unset parity is now the default gate, not a separate parity check.** `942/942` with `VITE_FIREBASE_*` env vars UNSET is the baseline, matching CI exactly. Run `npx vitest run` after temporarily removing (or not having) `.env.local` to confirm. Do not rely on local env vars masking failures that will surface in CI.
+
+Banked from PR #264 (2026-05-22). Surfaced 3× before the fix: F2 (#244), F3 (#246), I1.3c-i (#262).
+
 ## Session Protocol
 1. Always read this file before writing any code
 2. Run `npm run repomix` to get fresh codebase snapshot before each session

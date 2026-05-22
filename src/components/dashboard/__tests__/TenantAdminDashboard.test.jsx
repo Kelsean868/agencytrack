@@ -13,10 +13,6 @@ vi.mock('../../../context/AuthContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/authService', () => ({
-  signOut: vi.fn().mockResolvedValue(undefined),
-}));
-
 vi.mock('../../../services/managerService', () => ({
   getTenantUsers: vi.fn().mockResolvedValue([
     { uid: 'u1', role: 'agent',          branchId: 'branch_a', active: true },
@@ -74,10 +70,6 @@ vi.mock('../../shell/Shell', () => ({
       <main>{children}</main>
     </div>
   ),
-}));
-
-vi.mock('../../admin/ActivityStandardsPanel', () => ({
-  default: () => <div data-testid="activity-standards-panel">Activity Standards Panel</div>,
 }));
 
 vi.mock('../../admin/CompanyConfigPanel', () => ({
