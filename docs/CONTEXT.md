@@ -12,8 +12,8 @@
 
 | Field | Value |
 |---|---|
-| Last updated | `2026-05-22` (post-merge fill for #271) |
-| Current main HEAD | `032e38a` ([#271](https://github.com/Kelsean868/agencytrack/pull/271) — feat(track-i): I3a Tier-1 accountability flag) |
+| Last updated | `2026-05-22` (post-merge fill for #269) |
+| Current main HEAD | `36d1d93` ([#269](https://github.com/Kelsean868/agencytrack/pull/269) — docs(track-i): remaining prep notes — I2 / I3 / §6 license-state) |
 | Active track | **Track I I3a** — Tier-1 accountability flag merged (PR [#271](https://github.com/Kelsean868/agencytrack/pull/271), `032e38a`). Track I next: I3b (Tier 2 escalation), then I2 (recruiting roll-up), §6 (license-state). |
 | Next track | I3b (Tier 2 escalation — CF + upline-resolution + `manager_alert` notification on submit-transition). Then I2 (recruiting roll-up), §6 (license-state). |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). Workshop §3.5 Tenant-Admin floors editor; Expected/Actual relabel sweep; true telephone-contacts wizard field. Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D deferred behind workshop arc. |

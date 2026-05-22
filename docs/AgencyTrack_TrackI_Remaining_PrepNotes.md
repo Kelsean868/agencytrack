@@ -43,7 +43,7 @@ Mirror the existing weekly WAR doc-id pattern + the persistency collection's mon
 
 ## Proposed rule shape
 
-Direct mirror of `managerWeeklyReports` (lines 648-722 in `firestore.rules`). The hoist of `roleRank()` to top-level (PR #TBD) means I2's block doesn't need any block-local rank helper:
+Direct mirror of `managerWeeklyReports` (lines 648-722 in `firestore.rules`). The hoist of `roleRank()` to top-level (PR #268) means I2's block doesn't need any block-local rank helper:
 
 ```
 // I2: manager monthly recruiting roll-up (candidatesAssessed + agentsContracted).
@@ -344,7 +344,7 @@ Either way, capture the deploy decision explicitly in the brief.
 
 ## Rank-fn-hoist dependency
 
-The rank-fn-hoist PR (this autonomous run's Task 1, PR #TBD) introduces top-level `roleRank()`. I2's proposed rule shape above uses `roleRank()` directly (no block-local re-declaration). I3 and §6 don't use rank in their rule paths.
+The rank-fn-hoist PR (this autonomous run's Task 1, PR #268) introduces top-level `roleRank()`. I2's proposed rule shape above uses `roleRank()` directly (no block-local re-declaration). I3 and §6 don't use rank in their rule paths.
 
 If the rank-fn-hoist PR has NOT merged at the time an I2 kickoff brief is written, the I2 brief must either (a) wait for the hoist PR, or (b) declare a block-local `warRoleRank()` copy and add a "post-hoist swap" follow-up note. Option (a) is cleaner.
 
