@@ -5,6 +5,24 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## I1.2 methodology — Firestore collectionGroup rules require top-level recursive wildcard; emulator false-fails (CLOSED — learning banked in CLAUDE.md § Banked patterns, PR #256)
+
+**What happened:** The `allow list` rule for `jointCalls` was written inside `match /tenants/{tenantId}/users/{agentId}/jointCalls/{callId}`. Production Firestore returned `PERMISSION_DENIED` for the `getOwnJfwCount` collectionGroup query despite the rule logic being correct. Two root causes identified:
+
+1. **Combined OR with path-variable arm blocks collectionGroup static analysis.** A `allow list: if arm1 || arm2` rule where arm2 references a `{tenantId}` path wildcard causes Firestore to reject the ENTIRE OR expression for collectionGroup queries — it cannot short-circuit OR when any arm is statically unverifiable. Even splitting into two `allow list` declarations within the path-specific match did not resolve this.
+
+2. **Path-specific match rules are NOT reliably evaluated for collectionGroup queries.** The `match /tenants/{tenantId}/...` rule block is not picked up by Firestore's collectionGroup security evaluator in the same way as a top-level recursive wildcard. The fix: add `match /{path=**}/jointCalls/{callId} { allow list: if ...; }` at the top level.
+
+3. **Emulator false-fails.** The emulator also failed case 13 throughout the debugging cycle (16/17) for both combined-OR and split-rule forms. Only the recursive wildcard fixed both emulator and production.
+
+**Fix shipped:** Added top-level `match /{path=**}/jointCalls/{callId} { allow list: if isManager() && resource.data.authorUid == request.auth.uid; }` in PR [#256](https://github.com/Kelsean868/agencytrack/pull/256).
+
+**Learning banked:** See CLAUDE.md § Banked patterns — "Firestore collectionGroup rules require top-level recursive wildcard."
+
+**Status: CLOSED** — learning banked, no further action needed.
+
+---
+
 ## I1.x — Hoist duplicated WAR/cn/jc role-rank helpers to shared top-level rules function (LOW, banked 2026-05-21)
 
 **Scope:** `firestore.rules` now has three block-local `warRoleRank()` helpers with identical bodies (`unit_manager` → 1, `branch_manager` → 2, `sales_manager` → 3, `tenant_admin` → 4, `platform_admin` → 5): `cnRoleRank()` inside the `coachingNotes` block (≈ line 400), `jcRoleRank()` inside the `jointCalls` block (≈ line 553), and `warRoleRank()` inside the `managerWeeklyReports` block added in I1.1 (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254)). This is intentional duplication per the block-local helper convention — a pre-existing cn/jc pattern; WAR mirrors it.

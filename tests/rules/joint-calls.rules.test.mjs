@@ -214,6 +214,7 @@ async function main() {
   // verified in smoke against the deployed production environment.
 
   // 13. BM reads own authored calls via authorUid collectionGroup — ALLOW
+  // (author arm: resource.data.authorUid == request.auth.uid, no path variable)
   await run('13. BM reads own authored calls via collectionGroup [ALLOW — author arm]', true, () => {
     const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
     return getDocs(query(
@@ -222,12 +223,13 @@ async function main() {
     ));
   });
 
-  // 14. BM2 queries for BM1's calls via authorUid — DENY (new arm only matches own uid)
+  // 14. BM2 queries for BM1's calls via authorUid+tenantId — DENY (authorUid != caller)
   await run('14. BM2 queries bm1 calls via collectionGroup [DENY — authorUid != caller]', false, () => {
     const db = testEnv.authenticatedContext('bm2', authToken('branch_manager')).firestore();
     return getDocs(query(
       collectionGroup(db, 'jointCalls'),
       where('authorUid', '==', 'bm1'),
+      where('tenantId', '==', TENANT_ID),
     ));
   });
 

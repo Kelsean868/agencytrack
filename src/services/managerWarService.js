@@ -109,11 +109,13 @@ export async function getWarById(tenantId, docId) {
 
 /**
  * Count the manager's own completed joint-field-work calls for a given week.
- * Uses a collectionGroup query scoped to the caller's authorUid (I1.2 author arm
- * in firestore.rules). appointmentKept filter applied client-side to keep the
- * Firestore index 2-field: (authorUid, appointmentDate).
+ * Uses a collectionGroup query with authorUid + tenantId equality filters.
+ * The tenantId where clause enforces tenant isolation at the query level (the rule's
+ * author arm only verifies authorUid; tenant boundary is the query's responsibility).
+ * appointmentKept filter applied client-side; index: (authorUid, tenantId, appointmentDate)
+ * COLLECTION_GROUP.
  */
-export async function getOwnJfwCount({ tenantId: _tenantId, managerId, weekStart }) {
+export async function getOwnJfwCount({ tenantId, managerId, weekStart }) {
   const d = new Date(weekStart + 'T12:00:00Z');
   d.setUTCDate(d.getUTCDate() + 7);
   const weekEnd = [
@@ -125,6 +127,7 @@ export async function getOwnJfwCount({ tenantId: _tenantId, managerId, weekStart
   const q = query(
     collectionGroup(db, 'jointCalls'),
     where('authorUid', '==', managerId),
+    where('tenantId', '==', tenantId),
     where('appointmentDate', '>=', weekStart),
     where('appointmentDate', '<', weekEnd),
   );

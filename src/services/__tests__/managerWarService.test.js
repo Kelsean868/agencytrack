@@ -266,20 +266,21 @@ describe('getOwnJfwCount', () => {
     expect(count).toBe(0);
   });
 
-  it('passes authorUid, inclusive weekStart, exclusive weekEnd (weekStart + 7 days) to where()', async () => {
+  it('passes authorUid, tenantId, inclusive weekStart, exclusive weekEnd to where()', async () => {
     hoisted.mockGetDocs.mockResolvedValue(makeDocs([]));
     await getOwnJfwCount({ tenantId: TENANT_ID, managerId: MANAGER_ID, weekStart: '2026-05-17' });
     const calls = hoisted.mockWhere.mock.calls;
-    expect(calls).toHaveLength(3);
-    expect(calls[0]).toEqual(['authorUid', '==', MANAGER_ID]);
-    expect(calls[1]).toEqual(['appointmentDate', '>=', '2026-05-17']);
-    expect(calls[2]).toEqual(['appointmentDate', '<',  '2026-05-24']); // next Sunday, exclusive
+    expect(calls).toHaveLength(4);
+    expect(calls[0]).toEqual(['authorUid',       '==', MANAGER_ID]);
+    expect(calls[1]).toEqual(['tenantId',         '==', TENANT_ID]);
+    expect(calls[2]).toEqual(['appointmentDate',  '>=', '2026-05-17']);
+    expect(calls[3]).toEqual(['appointmentDate',  '<',  '2026-05-24']); // next Sunday, exclusive
   });
 
   it('weekEnd crosses month boundary correctly (2026-05-31 → 2026-06-07)', async () => {
     hoisted.mockGetDocs.mockResolvedValue(makeDocs([]));
     await getOwnJfwCount({ tenantId: TENANT_ID, managerId: MANAGER_ID, weekStart: '2026-05-31' });
     const calls = hoisted.mockWhere.mock.calls;
-    expect(calls[2]).toEqual(['appointmentDate', '<', '2026-06-07']);
+    expect(calls[3]).toEqual(['appointmentDate', '<', '2026-06-07']);
   });
 });
