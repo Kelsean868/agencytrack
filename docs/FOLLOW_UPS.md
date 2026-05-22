@@ -33,7 +33,7 @@ Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6f
 
 ---
 
-## Track I I3a — Tier-1 accountability flag (visibility) (SHIPPED — PR #TBD `{TBD}`)
+## Track I I3a — Tier-1 accountability flag (visibility) (SHIPPED — PR #271 `032e38a`)
 
 **Shipped 2026-05-22:** Client-side Tier-1 flag — pure `computeMissedActivities(war, resolvedStandards)` util drives a shared `AccountabilityFlagPanel` on `ManagerWarTab` + `ManagerWarDetail`, plus a per-row "N under" pill on `TeamWarsTab`. Nexus warning tokens (informational, not alarm). New `getResolvedStandardsForMany` bulk helper (1 org-default doc + N parallel by-id override gets; degrades to org-default-only on per-row override fetch failure). NO rule/CF/index/deploy.
 
@@ -60,7 +60,7 @@ Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6f
 
 **Priority:** HIGH — completes the Track I accountability arc.
 
-Banked: I3a PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`). See `docs/AgencyTrack_TrackI_Remaining_PrepNotes.md` § I3 for the full design analysis.
+Banked: I3a PR [#271](https://github.com/Kelsean868/agencytrack/pull/271) (`032e38a`). See `docs/AgencyTrack_TrackI_Remaining_PrepNotes.md` § I3 for the full design analysis.
 
 ---
 
@@ -72,7 +72,7 @@ Banked: I3a PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD
 
 **Priority:** LOW. Sharpens an already-visible signal; not blocking.
 
-Banked: I3a PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+Banked: I3a PR [#271](https://github.com/Kelsean868/agencytrack/pull/271) (`032e38a`).
 
 ---
 
@@ -84,7 +84,7 @@ Banked: I3a PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD
 
 **Priority:** LOW. WAR tab is the primary surface; this is a discoverability nudge.
 
-Banked: I3a PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+Banked: I3a PR [#271](https://github.com/Kelsean868/agencytrack/pull/271) (`032e38a`).
 
 ---
 
