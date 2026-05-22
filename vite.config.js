@@ -76,6 +76,8 @@ export default defineConfig({
       // 'firebase emulators:exec --only firestore "node <test-file>"' instead.
       'tests/rules/**',
       'firestore.rules.test.mjs',
+      // CF tests use Jest (not Vitest) — run via `npm test` in functions/
+      'functions/**',
     ],
   },
 })
