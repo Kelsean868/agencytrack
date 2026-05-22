@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
+  Activity,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -28,6 +29,7 @@ import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
 import AgentOfMonthTab from '../manager/AgentOfMonthTab';
 import ManagerWarTab from '../manager/ManagerWarTab';
+import TeamWarsTab from '../manager/TeamWarsTab';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -36,9 +38,12 @@ import ManagerWarTab from '../manager/ManagerWarTab';
 // surfaced in the PR description.
 const NAV_ITEMS = [
   { id: 'overview',    label: 'Overview',     tabId: 'overview',    Icon: BarChart2,     sectionLabel: 'Manage' },
-  // I1.1: My WAR — UM/BM/SM file; tenant_admin/platform_admin read via I1.3 browse
+  // I1.1: My WAR — UM/BM/SM file; tenant_admin/platform_admin read via I1.3b browse
   { id: 'my-war', label: 'My WAR', tabId: 'my-war', Icon: ClipboardList,
     roles: ['unit_manager', 'branch_manager', 'sales_manager'] },
+  // I1.3b: Team WARs — upline browse (BM sees own branch; SM+ sees tenant-wide)
+  { id: 'team-wars', label: 'Team WARs', tabId: 'team-wars', Icon: Activity,
+    roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
   { id: 'team',        label: 'Team',         tabId: 'team',        Icon: Users },
   { id: 'campaigns',          label: 'Campaigns',         tabId: 'campaigns',          Icon: Gift },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: LineChart },
@@ -208,7 +213,8 @@ export default function ManagerDashboard() {
           />
         )}
 
-        {activeTab === 'my-war' && <ManagerWarTab />}
+        {activeTab === 'my-war'    && <ManagerWarTab />}
+        {activeTab === 'team-wars' && <TeamWarsTab />}
 
         {activeTab === 'team' && <UserManagementPanel />}
 

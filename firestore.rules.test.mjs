@@ -1,5 +1,5 @@
 /**
- * Firestore Security Rules — managerWeeklyReports emulator tests (I1.1 + I1.3a).
+ * Firestore Security Rules — managerWeeklyReports emulator tests (I1.1 + I1.3a + I1.3b).
  *
  * Run with the Firestore emulator active:
  *   firebase emulators:start --only firestore
@@ -8,7 +8,7 @@
  * Or via:
  *   firebase emulators:exec --only firestore "node firestore.rules.test.mjs"
  *
- * Verified matrix (all 11 original cases + 2 null-resource + 1 jfwCount lock = 14 passing):
+ * Verified matrix (14 original + 5 list cases = 19 passing):
  *   ✓ owner create ALLOW
  *   ✓ owner update ALLOW
  *   ✓ owner read   ALLOW
@@ -23,6 +23,12 @@
  *   ✓ non-owner reads non-existent doc DENY  (null-resource path does NOT over-grant)
  *   ✓ owner create with jfwCount==0 ALLOW  (covered by case 1 above; explicit below)
  *   ✓ owner update CHANGING jfwCount DENY  (CF is the only writer — I1.3a)
+ *   [I1.3b list cases]
+ *   ✓ BM lists own-branch WARs ALLOW
+ *   ✓ BM lists another-branch WARs DENY  (scope boundary — mandatory)
+ *   ✓ SM lists tenant-wide WARs ALLOW
+ *   ✓ UM list DENY  (rank < 2)
+ *   ✓ agent list DENY
  */
 
 import {
@@ -31,7 +37,7 @@ import {
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'fs';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, query, collection, where } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-agencytrack-test';
 const TENANT_ID  = 'test-tenant';
@@ -216,6 +222,64 @@ describe('jfwCount field lock', () => {
       setDoc(doc(ctx.firestore(), `${WAR_PATH}/${UM1_DOC_ID}`),
         { ...UM1_WAR, jfwCount: 2 }, { merge: true })
     );
+  });
+});
+
+// ── List queries (I1.3b upline browse) ───────────────────────────────────────
+
+describe('list (I1.3b)', () => {
+  it('BM lists own-branch WARs ALLOW', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('bm1', tok('bm1', 'branch_manager'));
+    const q = query(
+      collection(ctx.firestore(), WAR_PATH),
+      where('branchId', '==', 'branch-a'),
+      where('weekStart', '==', '2026-05-18'),
+    );
+    await assertSucceeds(getDocs(q));
+  });
+
+  it('BM lists another-branch WARs DENY (scope boundary — mandatory)', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('bm2', tok('bm2', 'branch_manager'));
+    // bm2 is branch-b; branch-a docs must be denied
+    const q = query(
+      collection(ctx.firestore(), WAR_PATH),
+      where('branchId', '==', 'branch-a'),
+      where('weekStart', '==', '2026-05-18'),
+    );
+    await assertFails(getDocs(q));
+  });
+
+  it('SM lists tenant-wide WARs ALLOW', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('sm1', tok('sm1', 'sales_manager'));
+    const q = query(
+      collection(ctx.firestore(), WAR_PATH),
+      where('weekStart', '==', '2026-05-18'),
+    );
+    await assertSucceeds(getDocs(q));
+  });
+
+  it('UM list DENY (rank < 2)', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    const q = query(
+      collection(ctx.firestore(), WAR_PATH),
+      where('branchId', '==', 'branch-a'),
+      where('weekStart', '==', '2026-05-18'),
+    );
+    await assertFails(getDocs(q));
+  });
+
+  it('agent list DENY', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('agent1', { role: 'agent', tenantId: TENANT_ID });
+    const q = query(
+      collection(ctx.firestore(), WAR_PATH),
+      where('weekStart', '==', '2026-05-18'),
+    );
+    await assertFails(getDocs(q));
   });
 });
 

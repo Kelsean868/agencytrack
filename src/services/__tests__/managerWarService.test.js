@@ -5,6 +5,7 @@ const hoisted = vi.hoisted(() => ({
   mockGetDoc:           vi.fn(),
   mockDoc:              vi.fn(),
   mockServerTimestamp:  vi.fn(() => ({ _type: 'serverTimestamp' })),
+  mockCollection:       vi.fn(),
   mockCollectionGroup:  vi.fn(),
   mockGetDocs:          vi.fn(),
   mockQuery:            vi.fn((...args) => args),
@@ -18,6 +19,7 @@ vi.mock('firebase/firestore', () => ({
   setDoc:          (...args) => hoisted.mockSetDoc(...args),
   getDoc:          (...args) => hoisted.mockGetDoc(...args),
   serverTimestamp: () => hoisted.mockServerTimestamp(),
+  collection:      (...args) => hoisted.mockCollection(...args),
   collectionGroup: (...args) => hoisted.mockCollectionGroup(...args),
   getDocs:         (...args) => hoisted.mockGetDocs(...args),
   query:           (...args) => hoisted.mockQuery(...args),
@@ -39,6 +41,7 @@ import {
   getWar,
   getWarById,
   getOwnJfwCount,
+  getWarsForUpline,
 } from '../managerWarService';
 
 const TENANT_ID   = 'test-tenant';
@@ -304,5 +307,84 @@ describe('getOwnJfwCount', () => {
     await getOwnJfwCount({ tenantId: TENANT_ID, managerId: MANAGER_ID, weekStart: '2026-05-31' });
     const calls = hoisted.mockWhere.mock.calls;
     expect(calls[3]).toEqual(['appointmentDate', '<', '2026-06-07']);
+  });
+});
+
+// ── getWarsForUpline ──────────────────────────────────────────────────────────
+
+const WAR_DOC = {
+  managerId: 'bm1', managerName: 'Branch Mgr 1', tenantId: TENANT_ID,
+  weekStart: WEEK_START, managerRole: 'branch_manager', managerRoleRank: 2,
+  branchId: 'branch-a', unitId: null, jfwCount: 2, status: 'submitted',
+  oneOnOnesConducted: 3, namesSourced: 4, interviewsConducted: 2,
+  recruitsInFirstWeeks: 1, trainingSessions: 1, trainingTopic: '',
+  unitMeetingHeld: true, dashboardReviewDone: true,
+};
+
+function makeDocSnaps(records) {
+  return { docs: records.map((r, i) => ({ id: `doc${i}`, data: () => r })) };
+}
+
+describe('getWarsForUpline', () => {
+  beforeEach(() => {
+    hoisted.mockCollection.mockReturnValue('mock-coll');
+    hoisted.mockWhere.mockReturnValue('mock-where');
+    hoisted.mockQuery.mockReturnValue('mock-query');
+  });
+
+  it('BM: queries by branchId + weekStart (composite index path)', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeDocSnaps([WAR_DOC]));
+    const results = await getWarsForUpline({
+      tenantId: TENANT_ID, weekStart: WEEK_START,
+      role: 'branch_manager', branchId: 'branch-a',
+    });
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ id: 'doc0', managerRole: 'branch_manager' });
+    const whereCalls = hoisted.mockWhere.mock.calls;
+    expect(whereCalls).toHaveLength(2);
+    expect(whereCalls[0]).toEqual(['branchId',  '==', 'branch-a']);
+    expect(whereCalls[1]).toEqual(['weekStart', '==', WEEK_START]);
+  });
+
+  it('SM: queries by weekStart only (tenant-wide)', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeDocSnaps([WAR_DOC]));
+    await getWarsForUpline({
+      tenantId: TENANT_ID, weekStart: WEEK_START,
+      role: 'sales_manager', branchId: null,
+    });
+    const whereCalls = hoisted.mockWhere.mock.calls;
+    expect(whereCalls).toHaveLength(1);
+    expect(whereCalls[0]).toEqual(['weekStart', '==', WEEK_START]);
+  });
+
+  it('tenant_admin: also uses tenant-wide (weekStart only)', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeDocSnaps([]));
+    await getWarsForUpline({
+      tenantId: TENANT_ID, weekStart: WEEK_START,
+      role: 'tenant_admin', branchId: null,
+    });
+    const whereCalls = hoisted.mockWhere.mock.calls;
+    expect(whereCalls).toHaveLength(1);
+    expect(whereCalls[0]).toEqual(['weekStart', '==', WEEK_START]);
+  });
+
+  it('returns empty array when no WARs found', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeDocSnaps([]));
+    const results = await getWarsForUpline({
+      tenantId: TENANT_ID, weekStart: WEEK_START,
+      role: 'branch_manager', branchId: 'branch-a',
+    });
+    expect(results).toEqual([]);
+  });
+
+  it('maps docs to { id, ...data } shape incl. jfwCount', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeDocSnaps([WAR_DOC]));
+    const [result] = await getWarsForUpline({
+      tenantId: TENANT_ID, weekStart: WEEK_START,
+      role: 'sales_manager', branchId: null,
+    });
+    expect(result.id).toBe('doc0');
+    expect(result.jfwCount).toBe(2);
+    expect(result.managerName).toBe('Branch Mgr 1');
   });
 });

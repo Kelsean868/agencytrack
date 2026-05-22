@@ -1,6 +1,6 @@
 import {
   doc, setDoc, getDoc, serverTimestamp,
-  collectionGroup, getDocs, query, where,
+  collection, collectionGroup, getDocs, query, where,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { validateSundayDate } from '../utils/validators';
@@ -109,6 +109,21 @@ export async function getWarById(tenantId, docId) {
   const ref = doc(db, `tenants/${tenantId}/managerWeeklyReports/${docId}`);
   const snap = await getDoc(ref);
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
+}
+
+/**
+ * Fetch WARs for the upline browse view (I1.3b).
+ * BM (rank 2): own-branch query (branchId + weekStart composite index).
+ * SM+ (rank ≥ 3): tenant-wide query (weekStart single-field auto-index).
+ */
+export async function getWarsForUpline({ tenantId, weekStart, role, branchId }) {
+  const coll = collection(db, `tenants/${tenantId}/managerWeeklyReports`);
+  const rank = getWarRoleRank(role);
+  const q = rank >= 3
+    ? query(coll, where('weekStart', '==', weekStart))
+    : query(coll, where('branchId', '==', branchId), where('weekStart', '==', weekStart));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 /**
