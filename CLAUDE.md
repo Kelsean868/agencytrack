@@ -324,7 +324,7 @@ When in doubt, surface and ask.
 
 `src/firebase.js` calls `initializeApp` / `getAuth` / `initializeFirestore` at module load. Any test that transitively imports it (via a service or component) without a local `vi.mock` factory would crash in CI (where no `VITE_FIREBASE_*` env vars are set) with `auth/invalid-api-key`.
 
-**`src/firebase.js` is globally stubbed in tests via a custom Vite plugin** in `vite.config.js` (the `firebaseTestStubPlugin`, active only when `process.env.VITEST` is set). The plugin intercepts any relative import ending in `/firebase` at the Rollup `resolveId` layer (before `vite:import-analysis`), redirecting it to `src/__mocks__/firebase.js` — an inert stub exporting `auth = {}`, `db = {}`, `storage = {}`, `functions = {}`, and `default = {}`.
+**`src/firebase.js` is globally stubbed in tests via a custom Vite plugin** in `vite.config.js` (the `firebaseTestStubPlugin`, active only when `process.env.VITEST` is set). The plugin intercepts any relative import ending in `/firebase` at the Rollup `resolveId` layer (before `vite:import-analysis`), redirecting it to `src/__mocks__/firebase.js` — an inert stub exporting `auth = {}`, `db = {}`, `storage = {}`, `functions = {}`, and `default = {}`. **Note (Vite 8):** `test.alias` (Vitest) and `resolve.alias` (Vite) do not intercept relative transitive imports in Vite 8 — `vite:import-analysis` processes relative specifiers before the alias resolver fires. The custom `resolveId` plugin with `enforce: 'pre'` is the only approach that works.
 
 **Rules for test authors:**
 - **Never mock a service solely to avoid Firebase init.** The global stub handles init. Mock services only to control their return values for assertions.
