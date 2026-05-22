@@ -37,7 +37,7 @@ import {
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'fs';
-import { doc, setDoc, getDoc, getDocs, query, collection, where } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, deleteDoc, query, collection, where } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-agencytrack-test';
 const TENANT_ID  = 'test-tenant';
@@ -351,5 +351,154 @@ describe('config/managerActivityStandards — inherited wildcard (I1.3c-i)', () 
   it('cross-tenant write DENY (tenant_admin of different tenant)', async () => {
     const ctx = testEnv.authenticatedContext('admin-other', { role: 'tenant_admin', tenantId: 'other-tenant' });
     await assertFails(setDoc(doc(ctx.firestore(), STD_PATH), STD_PAYLOAD));
+  });
+});
+
+// ── managerActivityStandardOverrides — I1.3c-ii ───────────────────────────────
+//
+// Rule: get(M's user doc) is the authoritative source for M's role+branchId.
+// The payload's branchId field (if any) is ignored — prevents forgery.
+//
+// Matrix:
+//   ✓ owner read ALLOW
+//   ✓ upline (BM same-branch) read ALLOW
+//   ✓ peer UM read DENY
+//   ✓ cross-tenant read DENY
+//   ✓ BM same-branch create ALLOW
+//   ✓ BM cross-branch create DENY
+//   ✓ SM→BM create ALLOW
+//   ✓ UM self-write DENY (uplineInScope requires strictly-greater rank)
+//   ✓ UM→peer UM create DENY
+//   ✓ UM→BM create DENY  (downline-up)
+//   ✓ KEY FORGERY DENY — BM2 forges branchId in payload for UM1 → rule reads get(M) → DENY
+
+const OVR_PATH = `tenants/${TENANT_ID}/managerActivityStandardOverrides`;
+
+function ovrPayload(managerId, extra = {}) {
+  return { managerId, tenantId: TENANT_ID, jfwCount: 5, updatedBy: 'bm1', updatedAt: null, ...extra };
+}
+
+async function seedOverride(managerId = 'um1') {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), `${OVR_PATH}/${managerId}`), ovrPayload(managerId));
+  });
+}
+
+describe('managerActivityStandardOverrides — read', () => {
+  it('owner read ALLOW (request.auth.uid == managerId)', async () => {
+    await seed();
+    await seedOverride('um1');
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    await assertSucceeds(getDoc(doc(ctx.firestore(), `${OVR_PATH}/um1`)));
+  });
+
+  it('upline BM same-branch read ALLOW', async () => {
+    await seed();
+    await seedOverride('um1');
+    const ctx = testEnv.authenticatedContext('bm1', tok('bm1', 'branch_manager'));
+    await assertSucceeds(getDoc(doc(ctx.firestore(), `${OVR_PATH}/um1`)));
+  });
+
+  it('peer UM read DENY', async () => {
+    await seed();
+    await seedOverride('um1');
+    const ctx = testEnv.authenticatedContext('um2', tok('um2', 'unit_manager'));
+    await assertFails(getDoc(doc(ctx.firestore(), `${OVR_PATH}/um1`)));
+  });
+
+  it('cross-tenant read DENY', async () => {
+    await seed();
+    await seedOverride('um1');
+    const ctx = testEnv.authenticatedContext('bm1', { role: 'branch_manager', tenantId: 'other-tenant' });
+    await assertFails(getDoc(doc(ctx.firestore(), `${OVR_PATH}/um1`)));
+  });
+});
+
+describe('managerActivityStandardOverrides — write', () => {
+  it('BM same-branch creates override for UM ALLOW', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('bm1', tok('bm1', 'branch_manager'));
+    await assertSucceeds(
+      setDoc(doc(ctx.firestore(), `${OVR_PATH}/um1`), ovrPayload('um1'))
+    );
+  });
+
+  it('BM cross-branch creates override for UM DENY', async () => {
+    await seed();
+    // bm2 is branch-b; um1 is branch-a → not in scope
+    const ctx = testEnv.authenticatedContext('bm2', tok('bm2', 'branch_manager'));
+    await assertFails(
+      setDoc(doc(ctx.firestore(), `${OVR_PATH}/um1`), ovrPayload('um1'))
+    );
+  });
+
+  it('SM creates override for BM ALLOW (rank 3 >= 3)', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('sm1', tok('sm1', 'sales_manager'));
+    await assertSucceeds(
+      setDoc(doc(ctx.firestore(), `${OVR_PATH}/bm1`), ovrPayload('bm1', { updatedBy: 'sm1' }))
+    );
+  });
+
+  it('UM self-write DENY (uplineInScope requires strictly-greater rank)', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    await assertFails(
+      setDoc(doc(ctx.firestore(), `${OVR_PATH}/um1`), ovrPayload('um1', { updatedBy: 'um1' }))
+    );
+  });
+
+  it('UM creates override for peer UM DENY', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('um2', tok('um2', 'unit_manager'));
+    await assertFails(
+      setDoc(doc(ctx.firestore(), `${OVR_PATH}/um1`), ovrPayload('um1'))
+    );
+  });
+
+  it('UM creates override for upline BM DENY (downline-up)', async () => {
+    await seed();
+    // UM rank 1 cannot be upline of BM rank 2
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    await assertFails(
+      setDoc(doc(ctx.firestore(), `${OVR_PATH}/bm1`), ovrPayload('bm1', { managerId: 'bm1', updatedBy: 'um1' }))
+    );
+  });
+
+  it('KEY FORGERY DENY — BM2 forges branchId in payload for UM1 → rule reads get(M) → DENY', async () => {
+    await seed();
+    // bm2 is branch-b; um1 is branch-a. Payload includes forged branchId:'branch-b'.
+    // The rule reads subjectBranchId() from get(users/um1).data.branchId = 'branch-a',
+    // not from request.resource.data. callerBranchId = 'branch-b' != 'branch-a' → DENY.
+    const ctx = testEnv.authenticatedContext('bm2', tok('bm2', 'branch_manager'));
+    const forgeryPayload = {
+      managerId: 'um1',
+      tenantId:  TENANT_ID,
+      branchId:  'branch-b', // forged — rule ignores this
+      jfwCount:  5,
+      updatedBy: 'bm2',
+      updatedAt: null,
+    };
+    await assertFails(
+      setDoc(doc(ctx.firestore(), `${OVR_PATH}/um1`), forgeryPayload)
+    );
+  });
+});
+
+describe('managerActivityStandardOverrides — delete', () => {
+  it('upline BM deletes own-branch UM override ALLOW', async () => {
+    await seed();
+    await seedOverride('um1');
+    const ctx = testEnv.authenticatedContext('bm1', tok('bm1', 'branch_manager'));
+    await assertSucceeds(deleteDoc(doc(ctx.firestore(), `${OVR_PATH}/um1`)));
+  });
+});
+
+describe('managerActivityStandardOverrides — list always DENY', () => {
+  it('BM list query DENY (allow list: if false)', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('bm1', tok('bm1', 'branch_manager'));
+    const q = query(collection(ctx.firestore(), OVR_PATH));
+    await assertFails(getDocs(q));
   });
 });

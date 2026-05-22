@@ -1,17 +1,40 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-vi.mock('../../../services/managerActivityStandardsService', () => ({
-  getRoleStandards: (stds, role) => stds?.[role] ?? {},
+// ── Auth mock (mutable — isUpline gate tests override role) ───────────────────
+
+const DEFAULT_MOCK_AUTH = {
+  user:        { uid: 'sm1' },
+  role:        'sales_manager',
+  userProfile: { branchId: null },
+  tenantId:    'test-tenant',
+};
+let mockAuth = { ...DEFAULT_MOCK_AUTH };
+
+vi.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({ ...mockAuth }),
+}));
+
+// ── Component mocks ───────────────────────────────────────────────────────────
+
+vi.mock('../ManagerOverrideModal', () => ({
+  default: () => <div data-testid="override-modal" />,
 }));
 
 import ManagerWarDetail from '../ManagerWarDetail';
 
+beforeEach(() => {
+  mockAuth = { ...DEFAULT_MOCK_AUTH };
+});
+
 const BASE_WAR = {
+  managerId:            'bm1',
   managerName:          'Branch Mgr 1',
   managerRole:          'branch_manager',
+  managerRoleRank:      2,
+  branchId:             'branch-a',
   weekStart:            '2026-05-18',
   status:               'submitted',
   oneOnOnesConducted:   3,
@@ -26,9 +49,13 @@ const BASE_WAR = {
   jfwCount:             2,
 };
 
-function renderDetail(overrides = {}, onBack = vi.fn(), standards = undefined) {
+function renderDetail(overrides = {}, onBack = vi.fn(), resolvedStds = undefined) {
   return render(
-    <ManagerWarDetail warData={{ ...BASE_WAR, ...overrides }} onBack={onBack} standards={standards} />
+    <ManagerWarDetail
+      warData={{ ...BASE_WAR, ...overrides }}
+      onBack={onBack}
+      resolvedStds={resolvedStds}
+    />
   );
 }
 
@@ -114,36 +141,32 @@ describe('ManagerWarDetail — navigation', () => {
 
 // ── Activity standards overlay ─────────────────────────────────────────────────
 
+// resolvedStds is already a flat map (pre-resolved by getResolvedStandards).
 const BM_STANDARDS = {
-  branch_manager: {
-    jfwCount:             3,
-    oneOnOnesConducted:   5,
-    namesSourced:         10,
-    interviewsConducted:  4,
-    recruitsInFirstWeeks: 2,
-    trainingSessions:     2,
-    unitMeetingHeld:      true,
-    dashboardReviewDone:  true,
-  },
+  jfwCount:             3,
+  oneOnOnesConducted:   5,
+  namesSourced:         10,
+  interviewsConducted:  4,
+  recruitsInFirstWeeks: 2,
+  trainingSessions:     2,
+  unitMeetingHeld:      true,
+  dashboardReviewDone:  true,
 };
 
 describe('ManagerWarDetail — standards overlay', () => {
-  it('shows actual-only (no target) when no standards prop', () => {
+  it('shows actual-only (no target) when no resolvedStds prop', () => {
     renderDetail({ oneOnOnesConducted: 3 }, vi.fn(), undefined);
-    // ReadOnlyField for one-on-ones shows value, no "/ N" composite
     expect(screen.queryByLabelText(/one-on-one.*of \d/i)).not.toBeInTheDocument();
   });
 
   it('shows actual / target for a numeric field when standard is set', () => {
     renderDetail({ oneOnOnesConducted: 3 }, vi.fn(), BM_STANDARDS);
-    // aria-label: "One-on-One Pipeline Reviews: 3 of 5"
     expect(screen.getByLabelText(/one-on-one pipeline reviews: 3 of 5/i)).toBeInTheDocument();
   });
 
   it('shows met styling for a numeric field when actual >= target', () => {
     renderDetail({ oneOnOnesConducted: 5 }, vi.fn(), BM_STANDARDS);
-    const el = screen.getByLabelText(/one-on-one pipeline reviews: 5 of 5/i);
-    expect(el).toBeInTheDocument();
+    expect(screen.getByLabelText(/one-on-one pipeline reviews: 5 of 5/i)).toBeInTheDocument();
   });
 
   it('shows actual / target on JFW when standard is set', () => {
@@ -152,7 +175,7 @@ describe('ManagerWarDetail — standards overlay', () => {
   });
 
   it('shows actual-only on JFW when no jfwCount standard', () => {
-    renderDetail({ jfwCount: 2 }, vi.fn(), { branch_manager: {} });
+    renderDetail({ jfwCount: 2 }, vi.fn(), {});
     expect(screen.getByLabelText(/joint field work count: 2$/i)).toBeInTheDocument();
   });
 
@@ -169,7 +192,31 @@ describe('ManagerWarDetail — standards overlay', () => {
   });
 
   it('shows no badge when no boolean standard', () => {
-    renderDetail({ unitMeetingHeld: true }, vi.fn(), { branch_manager: {} });
+    renderDetail({ unitMeetingHeld: true }, vi.fn(), {});
     expect(screen.queryByLabelText(/standard (met|not met)/i)).not.toBeInTheDocument();
+  });
+});
+
+// ── Custom standards button (isUpline gate) ────────────────────────────────────
+
+describe('ManagerWarDetail — custom standards button (isUpline gate)', () => {
+  it('shows Custom standards button when viewer outranks the subject', () => {
+    // Default: SM (rank 3) viewing BM (rank 2) → 3 > 2 && rank >= 3 → isUpline
+    renderDetail();
+    expect(screen.getByRole('button', { name: /custom standards/i })).toBeInTheDocument();
+  });
+
+  it('hides Custom standards button when viewer does not outrank the subject', () => {
+    // UM (rank 1) viewing BM (rank 2) → 1 > 2 = false → not upline
+    mockAuth = { ...DEFAULT_MOCK_AUTH, user: { uid: 'um1' }, role: 'unit_manager',
+                 userProfile: { branchId: 'branch-a' } };
+    renderDetail(); // BASE_WAR: BM rank 2
+    expect(screen.queryByRole('button', { name: /custom standards/i })).not.toBeInTheDocument();
+  });
+
+  it('opens ManagerOverrideModal when Custom standards button is clicked', () => {
+    renderDetail();
+    fireEvent.click(screen.getByRole('button', { name: /custom standards/i }));
+    expect(screen.getByTestId('override-modal')).toBeInTheDocument();
   });
 });
