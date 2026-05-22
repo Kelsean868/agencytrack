@@ -387,3 +387,83 @@ describe('ManagerWarTab — standards overlay', () => {
     expect(screen.queryByLabelText(/standard (met|not met)/i)).not.toBeInTheDocument();
   });
 });
+
+// ── I3a Tier-1 accountability flag ────────────────────────────────────────────
+
+describe('ManagerWarTab — I3a accountability flag panel', () => {
+  it('is hidden when no standards are resolved', async () => {
+    mockGetResolvedStandards.mockResolvedValue({});
+    renderTab();
+    await flushMount();
+    expect(screen.queryByTestId('accountability-flag-panel')).not.toBeInTheDocument();
+  });
+
+  it('is hidden when all standards are met', async () => {
+    mockGetResolvedStandards.mockResolvedValue({
+      namesSourced: 3, unitMeetingHeld: true,
+    });
+    mockGetWar.mockResolvedValue({
+      id: 'um1_2026-05-17', managerId: 'um1', tenantId: 'test-tenant',
+      weekStart: '2026-05-17', managerRole: 'unit_manager', managerRoleRank: 1,
+      branchId: 'branch-a', unitId: 'um1', jfwCount: 0, status: 'draft',
+      oneOnOnesConducted: 0, namesSourced: 5, interviewsConducted: 0,
+      recruitsInFirstWeeks: 0, trainingSessions: 0, trainingTopic: '',
+      unitMeetingHeld: true, dashboardReviewDone: false,
+    });
+    renderTab();
+    await flushMount();
+    expect(screen.queryByTestId('accountability-flag-panel')).not.toBeInTheDocument();
+  });
+
+  it('renders the panel listing the under-target numeric activity', async () => {
+    mockGetResolvedStandards.mockResolvedValue({ namesSourced: 5 });
+    mockGetWar.mockResolvedValue({
+      id: 'um1_2026-05-17', managerId: 'um1', tenantId: 'test-tenant',
+      weekStart: '2026-05-17', managerRole: 'unit_manager', managerRoleRank: 1,
+      branchId: 'branch-a', unitId: 'um1', jfwCount: 0, status: 'draft',
+      oneOnOnesConducted: 0, namesSourced: 2, interviewsConducted: 0,
+      recruitsInFirstWeeks: 0, trainingSessions: 0, trainingTopic: '',
+      unitMeetingHeld: false, dashboardReviewDone: false,
+    });
+    renderTab();
+    await flushMount();
+    const panel = screen.getByTestId('accountability-flag-panel');
+    expect(panel).toBeInTheDocument();
+    expect(screen.getByTestId('accountability-flag-row-namesSourced')).toBeInTheDocument();
+    expect(panel).toHaveTextContent(/1 standard under target/i);
+    expect(panel).toHaveTextContent(/2 \/ 5/);
+  });
+
+  it('flags a boolean expectation that is not met', async () => {
+    mockGetResolvedStandards.mockResolvedValue({ unitMeetingHeld: true });
+    mockGetWar.mockResolvedValue({
+      id: 'um1_2026-05-17', managerId: 'um1', tenantId: 'test-tenant',
+      weekStart: '2026-05-17', managerRole: 'unit_manager', managerRoleRank: 1,
+      branchId: 'branch-a', unitId: 'um1', jfwCount: 0, status: 'draft',
+      oneOnOnesConducted: 0, namesSourced: 0, interviewsConducted: 0,
+      recruitsInFirstWeeks: 0, trainingSessions: 0, trainingTopic: '',
+      unitMeetingHeld: false, dashboardReviewDone: false,
+    });
+    renderTab();
+    await flushMount();
+    expect(screen.getByTestId('accountability-flag-row-unitMeetingHeld')).toBeInTheDocument();
+  });
+
+  it('factors JFW count into the missed calculation when target is set', async () => {
+    // jfwCount comes from getOwnJfwCount, NOT from the WAR form
+    mockGetResolvedStandards.mockResolvedValue({ jfwCount: 3 });
+    mockGetOwnJfwCount.mockResolvedValue(1);
+    renderTab();
+    await flushMount();
+    expect(screen.getByTestId('accountability-flag-row-jfwCount')).toBeInTheDocument();
+  });
+
+  it('pluralizes header correctly for multiple missed standards', async () => {
+    mockGetResolvedStandards.mockResolvedValue({
+      namesSourced: 5, interviewsConducted: 3,
+    });
+    renderTab();
+    await flushMount();
+    expect(screen.getByTestId('accountability-flag-panel')).toHaveTextContent(/2 standards under target/i);
+  });
+});

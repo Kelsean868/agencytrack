@@ -15,15 +15,17 @@ vi.mock('../../../context/AuthContext', () => ({
 
 // ── Service mocks ─────────────────────────────────────────────────────────────
 
-const mockGetWarsForUpline   = vi.fn();
-const mockGetResolvedStandards = vi.fn();
+const mockGetWarsForUpline           = vi.fn();
+const mockGetResolvedStandards        = vi.fn();
+const mockGetResolvedStandardsForMany = vi.fn();
 
 vi.mock('../../../services/managerWarService', () => ({
   getWarsForUpline: (...args) => mockGetWarsForUpline(...args),
 }));
 
 vi.mock('../../../services/managerStandardOverrideService', () => ({
-  getResolvedStandards: (...args) => mockGetResolvedStandards(...args),
+  getResolvedStandards:        (...args) => mockGetResolvedStandards(...args),
+  getResolvedStandardsForMany: (...args) => mockGetResolvedStandardsForMany(...args),
 }));
 
 // ── Validators mock ───────────────────────────────────────────────────────────
@@ -47,6 +49,7 @@ import TeamWarsTab from '../TeamWarsTab';
 
 const WAR_BM = {
   id: 'bm1_2026-05-18',
+  managerId: 'bm1',
   managerName: 'Branch Mgr 1',
   managerRole: 'branch_manager',
   branchId: 'branch-a',
@@ -58,6 +61,7 @@ const WAR_BM = {
 
 const WAR_UM = {
   id: 'um1_2026-05-18',
+  managerId: 'um1',
   managerName: 'Unit Mgr 1',
   managerRole: 'unit_manager',
   branchId: 'branch-a',
@@ -76,6 +80,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetWarsForUpline.mockResolvedValue([]);
   mockGetResolvedStandards.mockResolvedValue({});
+  mockGetResolvedStandardsForMany.mockResolvedValue(new Map());
 });
 
 describe('TeamWarsTab — initial render', () => {
@@ -168,5 +173,92 @@ describe('TeamWarsTab — drill-down', () => {
     fireEvent.click(screen.getByRole('button', { name: /back/i }));
     await flush();
     expect(screen.getByText('Team Activity Reports')).toBeInTheDocument();
+  });
+});
+
+// ── I3a Tier-1 accountability flag — per-row "N under" badge ──────────────────
+
+describe('TeamWarsTab — I3a per-row under badge', () => {
+  it('renders no badge when row has no missed activities', async () => {
+    const compliantWar = {
+      ...WAR_BM,
+      managerId: 'bm-met',
+      managerName: 'Compliant BM',
+      namesSourced: 10, oneOnOnesConducted: 5,
+    };
+    mockGetWarsForUpline.mockResolvedValue([compliantWar]);
+    mockGetResolvedStandardsForMany.mockResolvedValue(
+      new Map([['bm-met', { namesSourced: 5, oneOnOnesConducted: 5 }]]),
+    );
+    render(<TeamWarsTab />);
+    await flush();
+    await flush(); // let bulk resolve settle
+    expect(screen.queryByTestId('team-war-under-badge-bm-met')).not.toBeInTheDocument();
+  });
+
+  it('renders "N under" badge when a row has missed activities', async () => {
+    const underWar = {
+      ...WAR_UM,
+      managerId: 'um-under',
+      managerName: 'Under UM',
+      namesSourced: 1, interviewsConducted: 0, oneOnOnesConducted: 0,
+      unitMeetingHeld: false, dashboardReviewDone: true,
+      jfwCount: 0,
+    };
+    mockGetWarsForUpline.mockResolvedValue([underWar]);
+    mockGetResolvedStandardsForMany.mockResolvedValue(
+      new Map([['um-under', {
+        namesSourced: 5,
+        interviewsConducted: 3,
+        unitMeetingHeld: true,
+      }]]),
+    );
+    render(<TeamWarsTab />);
+    await flush();
+    await flush();
+    const badge = screen.getByTestId('team-war-under-badge-um-under');
+    expect(badge).toBeInTheDocument();
+    expect(badge).toHaveTextContent(/3 under/i);
+  });
+
+  it('renders badges only on rows with misses (mixed list)', async () => {
+    const compliantWar = { ...WAR_BM, managerId: 'bm-ok', managerName: 'OK BM', namesSourced: 10 };
+    const underWar    = { ...WAR_UM, managerId: 'um-bad', managerName: 'Bad UM', namesSourced: 0 };
+    mockGetWarsForUpline.mockResolvedValue([compliantWar, underWar]);
+    mockGetResolvedStandardsForMany.mockResolvedValue(
+      new Map([
+        ['bm-ok',  { namesSourced: 5 }],
+        ['um-bad', { namesSourced: 5 }],
+      ]),
+    );
+    render(<TeamWarsTab />);
+    await flush();
+    await flush();
+    expect(screen.queryByTestId('team-war-under-badge-bm-ok')).not.toBeInTheDocument();
+    expect(screen.getByTestId('team-war-under-badge-um-bad')).toBeInTheDocument();
+  });
+
+  it('does not crash when bulk resolution rejects (no badges, list still renders)', async () => {
+    mockGetWarsForUpline.mockResolvedValue([WAR_BM]);
+    mockGetResolvedStandardsForMany.mockRejectedValue(new Error('network'));
+    render(<TeamWarsTab />);
+    await flush();
+    await flush();
+    expect(screen.getByText('Branch Mgr 1')).toBeInTheDocument();
+    expect(screen.queryByTestId(/^team-war-under-badge-/)).not.toBeInTheDocument();
+  });
+
+  it('passes the WAR list managers to getResolvedStandardsForMany once on load', async () => {
+    mockGetWarsForUpline.mockResolvedValue([WAR_BM, WAR_UM]);
+    render(<TeamWarsTab />);
+    await flush();
+    await flush();
+    expect(mockGetResolvedStandardsForMany).toHaveBeenCalledWith({
+      tenantId: 'test-tenant',
+      managers: [
+        { managerId: 'bm1', managerRole: 'branch_manager' },
+        { managerId: 'um1', managerRole: 'unit_manager' },
+      ],
+    });
   });
 });

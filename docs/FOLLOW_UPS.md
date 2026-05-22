@@ -33,6 +33,61 @@ Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6f
 
 ---
 
+## Track I I3a — Tier-1 accountability flag (visibility) (SHIPPED — PR #TBD `{TBD}`)
+
+**Shipped 2026-05-22:** Client-side Tier-1 flag — pure `computeMissedActivities(war, resolvedStandards)` util drives a shared `AccountabilityFlagPanel` on `ManagerWarTab` + `ManagerWarDetail`, plus a per-row "N under" pill on `TeamWarsTab`. Nexus warning tokens (informational, not alarm). New `getResolvedStandardsForMany` bulk helper (1 org-default doc + N parallel by-id override gets; degrades to org-default-only on per-row override fetch failure). NO rule/CF/index/deploy.
+
+**Status: SHIPPED.** Next: I3b (Tier 2 escalation).
+
+---
+
+## Track I I3b — Tier-2 escalation (CF + upline notification) (NEXT — banked 2026-05-22)
+
+**Scope:** Track I spec §4 Tier 2 — escalate a missed weekly standard to the direct upline via the existing `manager_alert` notification on the submit-transition of the WAR doc.
+
+**Action (own PR after I3a closes):**
+1. New CF export `onWarSubmitNotifyUpline` keyed to the same `onWrite` trigger as `onWarWrite`. Fires only on `before.status !== 'submitted' && after.status === 'submitted'` (de-dup on resubmit).
+2. New `src/services/uplineResolveService.js` — `resolveUpline({tenantId, managerRole, managerBranchId}) → { uid, role, name } | null`. Direct upline: UM → BM via `branches/{branchId}.managerId` (reuses F2.1 `resolveBmInfo` pattern); BM → SM tenant-wide; SM → TA (or stop — open decision).
+3. Compute missed-activities server-side using the same logic as the client util (the WAR has all activity fields; standards fetched via Admin SDK reads to `config/managerActivityStandards` + the manager's override doc).
+4. Write `manager_alert` notification doc to upline's `/notifications` via Admin SDK (rules bypass). Body lists count + activities; link deep-targets `ManagerWarDetail`. Best-effort try/catch — never block submission.
+
+**No rule changes.** Existing `manager_alert` type already rendered by `NotificationDrawer.jsx:9`. CF is a NEW export → pre-merge deploy-safe per CLAUDE.md additive policy.
+
+**Open decisions (need dispatcher input before kickoff brief):**
+- SM tier — does TA receive escalation, or does the chain stop at SM?
+- Multiple SMs/TAs per tenant — notify all, or first by sort key?
+- Self-escalation (the upline themselves miss a standard) — escalation skips to next upline?
+
+**Priority:** HIGH — completes the Track I accountability arc.
+
+Banked: I3a PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`). See `docs/AgencyTrack_TrackI_Remaining_PrepNotes.md` § I3 for the full design analysis.
+
+---
+
+## Track I I3 — 2-consecutive-week intensifier (LOW, banked 2026-05-22)
+
+**Scope:** Track I spec §4 — "two consecutive missed weeks can raise the flag's prominence on the upline dashboard. Still purely a flag."
+
+**Action:** at render-time, fetch the previous week's WAR doc by predictable id (`{managerId}_{prevWeekStart}`); if the previous week's missed-activity set intersects the current week's, render the intersecting chips with stronger visual (red border + ⚠ icon, or escalate from warning to error tone). For Tier 2, the CF could optionally include "Nth consecutive" in the notification body via the same previous-week read.
+
+**Priority:** LOW. Sharpens an already-visible signal; not blocking.
+
+Banked: I3a PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+
+---
+
+## Track I I3 — `ManagerDashboard` Overview accountability chip (LOW, banked 2026-05-22)
+
+**Scope:** Track I spec §4 Tier 1 says "on the manager's own dashboard" — currently I3a surfaces the flag on the WAR tab only. Top-level `ManagerDashboard` Overview tab could surface a small "N standards under target this week" chip linking to the WAR tab.
+
+**Action:** on `ManagerDashboard` mount (when viewer is a `unit_manager` / `branch_manager` / `sales_manager`), fetch the latest-week WAR doc + `getResolvedStandards` for the viewer; render a small warning chip with the missed count when > 0. Chip click → routes to "My WAR" tab.
+
+**Priority:** LOW. WAR tab is the primary surface; this is a discoverability nudge.
+
+Banked: I3a PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+
+---
+
 ## I1.x — `isProducingManager` setter (admin-set or self-service — policy TBD) (LOW, banked 2026-05-21)
 
 **Scope:** `ManagerWarTab.jsx` reads `userProfile.isProducingManager` to gate the personal-production sub-panel (Personal API TTD + Personal Applications). The field does not exist on any user doc — the panel ships dormant. No setter is built in I1.1 (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254)).

@@ -4,6 +4,8 @@ import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
 import { saveWarDraft, submitWar, getWar, getOwnJfwCount } from '../../services/managerWarService';
 import { getResolvedStandards } from '../../services/managerStandardOverrideService';
+import { computeMissedActivities } from '../../utils/accountabilityFlag';
+import AccountabilityFlagPanel from './AccountabilityFlagPanel';
 
 const AUTOSAVE_DELAY = 1500;
 
@@ -205,6 +207,15 @@ export default function ManagerWarTab() {
           )}
         </div>
       )}
+
+      {/* I3a Tier-1 accountability flag — visible when one or more standards
+           are under target. Includes the auto-counted JFW in the comparison. */}
+      <AccountabilityFlagPanel
+        missed={computeMissedActivities(
+          { ...form, jfwCount: jfwCount ?? 0 },
+          roleStds,
+        )}
+      />
 
       {/* Activities card */}
       <div className="bg-card rounded-2xl p-5 space-y-5">

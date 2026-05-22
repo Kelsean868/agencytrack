@@ -220,3 +220,52 @@ describe('ManagerWarDetail — custom standards button (isUpline gate)', () => {
     expect(screen.getByTestId('override-modal')).toBeInTheDocument();
   });
 });
+
+// ── I3a Tier-1 accountability flag ────────────────────────────────────────────
+
+describe('ManagerWarDetail — I3a accountability flag panel', () => {
+  it('is hidden when no resolvedStds prop', () => {
+    renderDetail({}, vi.fn(), undefined);
+    expect(screen.queryByTestId('accountability-flag-panel')).not.toBeInTheDocument();
+  });
+
+  it('is hidden when all standards are met', () => {
+    renderDetail(
+      {
+        oneOnOnesConducted: 5, namesSourced: 10, interviewsConducted: 4,
+        recruitsInFirstWeeks: 2, trainingSessions: 2,
+        unitMeetingHeld: true, dashboardReviewDone: true, jfwCount: 3,
+      },
+      vi.fn(),
+      BM_STANDARDS,
+    );
+    expect(screen.queryByTestId('accountability-flag-panel')).not.toBeInTheDocument();
+  });
+
+  it('renders the panel listing under-target activities', () => {
+    renderDetail(
+      { namesSourced: 4, oneOnOnesConducted: 1 },
+      vi.fn(),
+      BM_STANDARDS,
+    );
+    const panel = screen.getByTestId('accountability-flag-panel');
+    expect(panel).toBeInTheDocument();
+    expect(screen.getByTestId('accountability-flag-row-namesSourced')).toBeInTheDocument();
+    expect(screen.getByTestId('accountability-flag-row-oneOnOnesConducted')).toBeInTheDocument();
+    expect(panel).toHaveTextContent(/standards under target/i);
+  });
+
+  it('flags a boolean expectation that is not met', () => {
+    renderDetail(
+      { unitMeetingHeld: false },
+      vi.fn(),
+      { unitMeetingHeld: true },
+    );
+    expect(screen.getByTestId('accountability-flag-row-unitMeetingHeld')).toBeInTheDocument();
+  });
+
+  it('flags JFW when stored jfwCount < target', () => {
+    renderDetail({ jfwCount: 1 }, vi.fn(), { jfwCount: 3 });
+    expect(screen.getByTestId('accountability-flag-row-jfwCount')).toBeInTheDocument();
+  });
+});

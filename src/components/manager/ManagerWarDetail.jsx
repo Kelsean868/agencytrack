@@ -3,6 +3,8 @@ import { ChevronLeft, CheckSquare, Square, Settings } from 'lucide-react';
 import { getRoleLabel } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
 import ManagerOverrideModal from './ManagerOverrideModal';
+import { computeMissedActivities } from '../../utils/accountabilityFlag';
+import AccountabilityFlagPanel from './AccountabilityFlagPanel';
 
 function warRoleRank(r) {
   return r === 'unit_manager'   ? 1
@@ -69,6 +71,12 @@ export default function ManagerWarDetail({ warData, onBack, resolvedStds }) {
           </button>
         )}
       </div>
+
+      {/* I3a Tier-1 accountability flag — same panel the owner sees on
+           ManagerWarTab; renders nothing when all standards are met. */}
+      <AccountabilityFlagPanel
+        missed={computeMissedActivities(warData, stds)}
+      />
 
       {/* Activities */}
       <div className="bg-card rounded-2xl p-5 space-y-5">

@@ -2,8 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
 import { getRoleLabel } from '../../utils/formatters';
+import { AlertTriangle } from 'lucide-react';
 import { getWarsForUpline } from '../../services/managerWarService';
-import { getResolvedStandards } from '../../services/managerStandardOverrideService';
+import {
+  getResolvedStandards,
+  getResolvedStandardsForMany,
+} from '../../services/managerStandardOverrideService';
+import { computeMissedActivities } from '../../utils/accountabilityFlag';
 import ManagerWarDetail from './ManagerWarDetail';
 
 export default function TeamWarsTab() {
@@ -11,12 +16,15 @@ export default function TeamWarsTab() {
   const sundays   = getRecentSundays(8);
   const branchId  = userProfile?.branchId ?? null;
 
-  const [weekStart,    setWeekStart]    = useState(sundays[0]);
-  const [wars,         setWars]         = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState(null);
-  const [selectedWar,  setSelectedWar]  = useState(null);
-  const [resolvedStds, setResolvedStds] = useState({});
+  const [weekStart,      setWeekStart]      = useState(sundays[0]);
+  const [wars,           setWars]           = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [error,          setError]          = useState(null);
+  const [selectedWar,    setSelectedWar]    = useState(null);
+  const [resolvedStds,   setResolvedStds]   = useState({});
+  // I3a — per-manager resolved standards for the list-row badges.
+  // Map<managerId, resolvedStandards>. Failure leaves the map empty (no badges).
+  const [listStandards,  setListStandards]  = useState(new Map());
 
   useEffect(() => {
     setLoading(true);
@@ -29,6 +37,26 @@ export default function TeamWarsTab() {
       })
       .finally(() => setLoading(false));
   }, [tenantId, weekStart, role, branchId]);
+
+  // I3a — bulk-resolve standards once per WAR list (org-default fetched once;
+  // override docs fetched per-manager in parallel). Degrades silently — a
+  // failed bulk resolve leaves listStandards empty so rows render without
+  // badges, mirroring the no-data baseline.
+  useEffect(() => {
+    if (!tenantId || wars.length === 0) {
+      setListStandards(new Map());
+      return;
+    }
+    const managers = wars.map((w) => ({
+      managerId:   w.managerId,
+      managerRole: w.managerRole,
+    }));
+    let cancelled = false;
+    getResolvedStandardsForMany({ tenantId, managers })
+      .then((map) => { if (!cancelled) setListStandards(map); })
+      .catch(() => { if (!cancelled) setListStandards(new Map()); });
+    return () => { cancelled = true; };
+  }, [tenantId, wars]);
 
   function handleSelectWar(war) {
     setSelectedWar(war);
@@ -89,20 +117,25 @@ export default function TeamWarsTab() {
 
       {!loading && !error && wars.length > 0 && (
         <div className="space-y-2">
-          {wars.map((war) => (
-            <WarSummaryRow
-              key={war.id}
-              war={war}
-              onSelect={() => handleSelectWar(war)}
-            />
-          ))}
+          {wars.map((war) => {
+            const stds   = listStandards.get(war.managerId) ?? {};
+            const missed = computeMissedActivities(war, stds);
+            return (
+              <WarSummaryRow
+                key={war.id}
+                war={war}
+                missedCount={missed.length}
+                onSelect={() => handleSelectWar(war)}
+              />
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
 
-function WarSummaryRow({ war, onSelect }) {
+function WarSummaryRow({ war, missedCount, onSelect }) {
   const roleLabel = getRoleLabel(war.managerRole);
   return (
     <button
@@ -111,8 +144,20 @@ function WarSummaryRow({ war, onSelect }) {
       className="w-full text-left bg-card rounded-xl p-4 hover:bg-card-raised transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary min-h-[44px]"
     >
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-semibold text-text">{war.managerName}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold text-text">{war.managerName}</p>
+            {missedCount > 0 && (
+              <span
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/15 text-warning text-[10px] font-bold uppercase tracking-wide"
+                aria-label={`${missedCount} standard${missedCount === 1 ? '' : 's'} under target`}
+                data-testid={`team-war-under-badge-${war.managerId}`}
+              >
+                <AlertTriangle size={10} aria-hidden="true" />
+                {missedCount} under
+              </span>
+            )}
+          </div>
           <p className="text-xs text-text-muted">{roleLabel}</p>
         </div>
         <div className="text-right shrink-0">
