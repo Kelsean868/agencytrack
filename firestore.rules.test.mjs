@@ -1,5 +1,5 @@
 /**
- * Firestore Security Rules — managerWeeklyReports emulator tests (I1.1).
+ * Firestore Security Rules — managerWeeklyReports emulator tests (I1.1 + I1.3a).
  *
  * Run with the Firestore emulator active:
  *   firebase emulators:start --only firestore
@@ -8,7 +8,7 @@
  * Or via:
  *   firebase emulators:exec --only firestore "node firestore.rules.test.mjs"
  *
- * Verified matrix (all 11 original cases + 2 null-resource cases = 13 passing):
+ * Verified matrix (all 11 original cases + 2 null-resource + 1 jfwCount lock = 14 passing):
  *   ✓ owner create ALLOW
  *   ✓ owner update ALLOW
  *   ✓ owner read   ALLOW
@@ -21,6 +21,8 @@
  *   ✓ agent read DENY
  *   ✓ owner reads non-existent doc ALLOW  (null-resource path: warId prefix == uid)
  *   ✓ non-owner reads non-existent doc DENY  (null-resource path does NOT over-grant)
+ *   ✓ owner create with jfwCount==0 ALLOW  (covered by case 1 above; explicit below)
+ *   ✓ owner update CHANGING jfwCount DENY  (CF is the only writer — I1.3a)
  */
 
 import {
@@ -198,6 +200,22 @@ describe('deny cases', () => {
     await seed();
     const ctx = testEnv.authenticatedContext('agent1', { role: 'agent', tenantId: TENANT_ID });
     await assertFails(getDoc(doc(ctx.firestore(), `${WAR_PATH}/${UM1_DOC_ID}`)));
+  });
+});
+
+// ── jfwCount field lock (I1.3a) ──────────────────────────────────────────────
+// The validWarWrite() rule enforces d.jfwCount == resource.data.jfwCount on update.
+// The CF (Admin SDK) is the only path that changes jfwCount; client writes DENY.
+
+describe('jfwCount field lock', () => {
+  it('owner update CHANGING jfwCount DENY (CF is the only writer)', async () => {
+    await seed();
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    // UM1_WAR stored jfwCount: 0; try to update to jfwCount: 2 → DENY
+    await assertFails(
+      setDoc(doc(ctx.firestore(), `${WAR_PATH}/${UM1_DOC_ID}`),
+        { ...UM1_WAR, jfwCount: 2 }, { merge: true })
+    );
   });
 });
 

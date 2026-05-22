@@ -11,6 +11,9 @@ admin.initializeApp();
 const { aggregateDailyToWeeklyCron } = require('./aggregators/sundayDailyToWeekly');
 exports.aggregateDailyToWeekly = aggregateDailyToWeeklyCron;
 
+// Track I I1.3a: denormalize jfwCount onto WAR docs for upline visibility
+exports.onWarWrite = require('./war/recomputeJfwCount').onWarWrite;
+
 // E5: TV Display Kiosk Mode — token-based public display
 exports.validateKioskToken = require('./kiosk/validateToken').validateKioskToken;
 exports.createKioskToken   = require('./kiosk/createToken').createKioskToken;

@@ -23,7 +23,7 @@ export function warDocId(managerId, weekStart) {
   return `${managerId}_${weekStart}`;
 }
 
-function sanitizeWar(data, isProducingManager = false) {
+function sanitizeWar(data, isProducingManager = false, storedJfwCount = 0) {
   const float = (v) => parseFloat(v ?? 0) || 0;
   const int   = (v) => parseInt(v ?? 0, 10) || 0;
 
@@ -37,7 +37,9 @@ function sanitizeWar(data, isProducingManager = false) {
     unitMeetingHeld:      Boolean(data.unitMeetingHeld),
     attendanceCount:      data.unitMeetingHeld ? int(data.attendanceCount) : null,
     dashboardReviewDone:  Boolean(data.dashboardReviewDone),
-    jfwCount:             0,
+    // Preserve the CF-written jfwCount so the update rule's preserve-check passes.
+    // On create (storedJfwCount=0) this equals 0, satisfying the create rule.
+    jfwCount:             storedJfwCount,
   };
 
   if (isProducingManager) {
@@ -67,12 +69,13 @@ export async function saveWarDraft(tenantId, managerId, managerName, weekStart, 
   const ref = doc(db, `tenants/${tenantId}/managerWeeklyReports/${warDocId(managerId, weekStart)}`);
   const existing = await getDoc(ref);
   const createdAt = existing.exists() ? {} : { createdAt: serverTimestamp() };
+  const storedJfwCount = existing.data?.()?.jfwCount ?? 0;
   await setDoc(
     ref,
     {
       ...createdAt,
       ...warMeta(managerId, managerName, tenantId, weekStart, managerMeta),
-      ...sanitizeWar(data, managerMeta.isProducingManager),
+      ...sanitizeWar(data, managerMeta.isProducingManager, storedJfwCount),
       status:    'draft',
       updatedAt: serverTimestamp(),
     },
@@ -85,10 +88,11 @@ export async function submitWar(tenantId, managerId, managerName, weekStart, dat
   const ref = doc(db, `tenants/${tenantId}/managerWeeklyReports/${warDocId(managerId, weekStart)}`);
   const existing = await getDoc(ref);
   const createdAt = existing.exists() ? {} : { createdAt: serverTimestamp() };
+  const storedJfwCount = existing.data?.()?.jfwCount ?? 0;
   await setDoc(ref, {
     ...createdAt,
     ...warMeta(managerId, managerName, tenantId, weekStart, managerMeta),
-    ...sanitizeWar(data, managerMeta.isProducingManager),
+    ...sanitizeWar(data, managerMeta.isProducingManager, storedJfwCount),
     status:      'submitted',
     updatedAt:   serverTimestamp(),
     submittedAt: serverTimestamp(),
