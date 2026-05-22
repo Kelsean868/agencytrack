@@ -10,6 +10,7 @@ import { listBranches } from '../../services/branchService';
 import { extractFields } from '../../utils/extractFields';
 import Shell from '../shell/Shell';
 import CompanyConfigPanel from '../admin/CompanyConfigPanel';
+import ActivityStandardsPanel from '../admin/ActivityStandardsPanel';
 import RoleDistributionCard from '../admin/RoleDistributionCard';
 import BranchHealthCards from '../admin/BranchHealthCards';
 import BranchesPanel from '../admin/BranchesPanel';
@@ -184,7 +185,12 @@ export default function TenantAdminDashboard() {
 
       {activeTab === 'branches' && <BranchesPanel />}
 
-      {activeTab === 'config' && <CompanyConfigPanel />}
+      {activeTab === 'config' && (
+        <>
+          <CompanyConfigPanel />
+          <ActivityStandardsPanel />
+        </>
+      )}
 
       {activeTab === 'users' && <UserManagementPanel />}
 

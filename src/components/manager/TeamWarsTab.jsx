@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
 import { getRoleLabel } from '../../utils/formatters';
 import { getWarsForUpline } from '../../services/managerWarService';
+import { getManagerActivityStandards } from '../../services/managerActivityStandardsService';
 import ManagerWarDetail from './ManagerWarDetail';
 
 export default function TeamWarsTab() {
@@ -15,6 +16,15 @@ export default function TeamWarsTab() {
   const [loading,      setLoading]      = useState(true);
   const [error,        setError]        = useState(null);
   const [selectedWar,  setSelectedWar]  = useState(null);
+  const [standards,    setStandards]    = useState({});
+
+  // Fetch standards once on mount — failure is silent, overlay falls back to actual-only.
+  useEffect(() => {
+    if (!tenantId) return;
+    getManagerActivityStandards(tenantId)
+      .then(setStandards)
+      .catch(() => setStandards({}));
+  }, [tenantId]);
 
   useEffect(() => {
     setLoading(true);
@@ -29,7 +39,7 @@ export default function TeamWarsTab() {
   }, [tenantId, weekStart, role, branchId]);
 
   if (selectedWar) {
-    return <ManagerWarDetail warData={selectedWar} onBack={() => setSelectedWar(null)} />;
+    return <ManagerWarDetail warData={selectedWar} onBack={() => setSelectedWar(null)} standards={standards} />;
   }
 
   return (

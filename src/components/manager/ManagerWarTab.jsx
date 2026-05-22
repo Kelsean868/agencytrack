@@ -3,6 +3,7 @@ import { CheckSquare, Square } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
 import { saveWarDraft, submitWar, getWar, getOwnJfwCount } from '../../services/managerWarService';
+import { getManagerActivityStandards, getRoleStandards } from '../../services/managerActivityStandardsService';
 
 const AUTOSAVE_DELAY = 1500;
 
@@ -36,6 +37,7 @@ export default function ManagerWarTab() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [jfwCount, setJfwCount]         = useState(null);
   const [jfwError, setJfwError]         = useState(false);
+  const [roleStds, setRoleStds]         = useState({});
 
   const saveTimer  = useRef(null);
   const savedTimer = useRef(null);
@@ -91,6 +93,15 @@ export default function ManagerWarTab() {
         setJfwError(true);
       });
   }, [weekStart, user, tenantId]);
+
+  // Fetch org-default activity standards for this manager's role (I1.3c-i).
+  // Failure is silent — overlay falls back to actual-only.
+  useEffect(() => {
+    if (!tenantId || !role) return;
+    getManagerActivityStandards(tenantId)
+      .then((stds) => setRoleStds(getRoleStandards(stds, role)))
+      .catch(() => setRoleStds({}));
+  }, [tenantId, role]);
 
   // Always-current save executor (mirrors WizardForm pattern)
   doSave.current = async () => {
@@ -204,30 +215,35 @@ export default function ManagerWarTab() {
         <NumericField
           label="One-on-One Pipeline Reviews"
           value={form.oneOnOnesConducted}
+          target={roleStds.oneOnOnesConducted}
           onChange={handleChange('oneOnOnesConducted')}
           disabled={isSubmitted}
         />
         <NumericField
           label="Names Sourced"
           value={form.namesSourced}
+          target={roleStds.namesSourced}
           onChange={handleChange('namesSourced')}
           disabled={isSubmitted}
         />
         <NumericField
           label="Initial Interviews Conducted"
           value={form.interviewsConducted}
+          target={roleStds.interviewsConducted}
           onChange={handleChange('interviewsConducted')}
           disabled={isSubmitted}
         />
         <NumericField
           label="New Recruits in First Weeks"
           value={form.recruitsInFirstWeeks}
+          target={roleStds.recruitsInFirstWeeks}
           onChange={handleChange('recruitsInFirstWeeks')}
           disabled={isSubmitted}
         />
         <NumericField
           label="Training Sessions Delivered"
           value={form.trainingSessions}
+          target={roleStds.trainingSessions}
           onChange={handleChange('trainingSessions')}
           disabled={isSubmitted}
         />
@@ -250,6 +266,7 @@ export default function ManagerWarTab() {
         <ToggleField
           label="Unit / Branch Meeting Held"
           checked={form.unitMeetingHeld}
+          expected={roleStds.unitMeetingHeld}
           onToggle={handleToggle('unitMeetingHeld')}
           disabled={isSubmitted}
         />
@@ -265,6 +282,7 @@ export default function ManagerWarTab() {
         <ToggleField
           label="Planning & Dashboard Review Done"
           checked={form.dashboardReviewDone}
+          expected={roleStds.dashboardReviewDone}
           onToggle={handleToggle('dashboardReviewDone')}
           disabled={isSubmitted}
         />
@@ -308,12 +326,11 @@ export default function ManagerWarTab() {
         ) : jfwCount === null ? (
           <span className="text-xs text-text-muted" aria-label="Joint Field Work count loading">Loading…</span>
         ) : (
-          <span
-            className="text-sm font-semibold text-text"
-            aria-label={`Joint Field Work count: ${jfwCount}`}
-          >
-            {jfwCount}
-          </span>
+          <ActualTarget
+            actual={jfwCount}
+            target={roleStds.jfwCount}
+            ariaLabel="Joint Field Work count"
+          />
         )}
       </div>
 
@@ -346,25 +363,75 @@ export default function ManagerWarTab() {
   );
 }
 
-function NumericField({ label, value, onChange, disabled, step = '1' }) {
+// ── Overlay helpers ───────────────────────────────────────────────────────────
+
+// met/under: teal = met, muted = under — informational only, NOT alarm (I3 flag).
+function ActualTarget({ actual, target, ariaLabel }) {
+  const hasTarget = target != null && Number.isFinite(Number(target)) && Number(target) > 0;
+  if (!hasTarget) {
+    return (
+      <span className="text-sm font-semibold text-text" aria-label={`${ariaLabel}: ${actual}`}>
+        {actual}
+      </span>
+    );
+  }
+  const met = Number(actual) >= Number(target);
+  return (
+    <span
+      className={`text-sm font-semibold ${met ? 'text-primary' : 'text-text-muted'}`}
+      aria-label={`${ariaLabel}: ${actual} of ${target}`}
+    >
+      {actual} / {target}
+    </span>
+  );
+}
+
+function BoolStandardBadge({ checked, expected }) {
+  if (expected !== true) return null;
+  const met = checked === true;
+  return (
+    <span
+      className={`ml-2 text-xs font-medium ${met ? 'text-primary' : 'text-text-muted'}`}
+      aria-label={met ? 'standard met' : 'standard not met'}
+    >
+      {met ? '✓ met' : '· expected'}
+    </span>
+  );
+}
+
+// ── Input components ──────────────────────────────────────────────────────────
+
+function NumericField({ label, value, target, onChange, disabled, step = '1' }) {
+  const hasTarget = target != null && Number.isFinite(Number(target)) && Number(target) > 0;
+  const met = hasTarget && Number(value) >= Number(target);
   return (
     <div className="flex items-center justify-between gap-4">
       <span className="text-sm font-medium text-text flex-1">{label}</span>
-      <input
-        type="number"
-        min="0"
-        step={step}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        aria-label={label}
-        className="w-24 h-11 px-3 rounded-lg bg-card-raised border border-border text-text text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
-      />
+      <div className="flex items-center gap-2">
+        {hasTarget && (
+          <span
+            className={`text-xs ${met ? 'text-primary' : 'text-text-muted'}`}
+            aria-label={`target: ${target}`}
+          >
+            / {target}
+          </span>
+        )}
+        <input
+          type="number"
+          min="0"
+          step={step}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          aria-label={label}
+          className="w-24 h-11 px-3 rounded-lg bg-card-raised border border-border text-text text-sm text-right focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-60"
+        />
+      </div>
     </div>
   );
 }
 
-function ToggleField({ label, checked, onToggle, disabled }) {
+function ToggleField({ label, checked, expected, onToggle, disabled }) {
   return (
     <button
       type="button"
@@ -378,6 +445,7 @@ function ToggleField({ label, checked, onToggle, disabled }) {
         {checked ? <CheckSquare size={20} /> : <Square size={20} />}
       </span>
       <span className="text-sm font-medium text-text">{label}</span>
+      <BoolStandardBadge checked={checked} expected={expected} />
     </button>
   );
 }
