@@ -3,7 +3,7 @@ import { CheckSquare, Square } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getRecentSundays } from '../../utils/validators';
 import { saveWarDraft, submitWar, getWar, getOwnJfwCount } from '../../services/managerWarService';
-import { getManagerActivityStandards, getRoleStandards } from '../../services/managerActivityStandardsService';
+import { getResolvedStandards } from '../../services/managerStandardOverrideService';
 
 const AUTOSAVE_DELAY = 1500;
 
@@ -94,14 +94,14 @@ export default function ManagerWarTab() {
       });
   }, [weekStart, user, tenantId]);
 
-  // Fetch org-default activity standards for this manager's role (I1.3c-i).
+  // Fetch resolved standards (org-default ?? override) for the owner (I1.3c-ii).
   // Failure is silent — overlay falls back to actual-only.
   useEffect(() => {
-    if (!tenantId || !role) return;
-    getManagerActivityStandards(tenantId)
-      .then((stds) => setRoleStds(getRoleStandards(stds, role)))
+    if (!tenantId || !role || !user) return;
+    getResolvedStandards({ tenantId, managerId: user.uid, role })
+      .then(setRoleStds)
       .catch(() => setRoleStds({}));
-  }, [tenantId, role]);
+  }, [tenantId, role, user]);
 
   // Always-current save executor (mirrors WizardForm pattern)
   doSave.current = async () => {

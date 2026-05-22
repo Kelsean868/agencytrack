@@ -13,12 +13,17 @@ vi.mock('../../../context/AuthContext', () => ({
   }),
 }));
 
-// ── Service mock ──────────────────────────────────────────────────────────────
+// ── Service mocks ─────────────────────────────────────────────────────────────
 
-const mockGetWarsForUpline = vi.fn();
+const mockGetWarsForUpline   = vi.fn();
+const mockGetResolvedStandards = vi.fn();
 
 vi.mock('../../../services/managerWarService', () => ({
   getWarsForUpline: (...args) => mockGetWarsForUpline(...args),
+}));
+
+vi.mock('../../../services/managerStandardOverrideService', () => ({
+  getResolvedStandards: (...args) => mockGetResolvedStandards(...args),
 }));
 
 // ── Validators mock ───────────────────────────────────────────────────────────
@@ -70,6 +75,7 @@ const flush = () => act(async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetWarsForUpline.mockResolvedValue([]);
+  mockGetResolvedStandards.mockResolvedValue({});
 });
 
 describe('TeamWarsTab — initial render', () => {
@@ -145,6 +151,7 @@ describe('TeamWarsTab — drill-down', () => {
     await flush();
 
     fireEvent.click(screen.getByText('Branch Mgr 1').closest('button'));
+    await flush(); // let getResolvedStandards resolve
     expect(screen.getByTestId('war-detail')).toBeInTheDocument();
     expect(screen.queryByText('Team Activity Reports')).not.toBeInTheDocument();
   });
@@ -155,6 +162,7 @@ describe('TeamWarsTab — drill-down', () => {
     await flush();
 
     fireEvent.click(screen.getByText('Branch Mgr 1').closest('button'));
+    await flush(); // let getResolvedStandards resolve
     expect(screen.getByTestId('war-detail')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /back/i }));

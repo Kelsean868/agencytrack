@@ -1,18 +1,36 @@
-import React from 'react';
-import { ChevronLeft, CheckSquare, Square } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronLeft, CheckSquare, Square, Settings } from 'lucide-react';
 import { getRoleLabel } from '../../utils/formatters';
-import { getRoleStandards } from '../../services/managerActivityStandardsService';
+import { useAuth } from '../../context/AuthContext';
+import ManagerOverrideModal from './ManagerOverrideModal';
 
-export default function ManagerWarDetail({ warData, onBack, standards }) {
+function warRoleRank(r) {
+  return r === 'unit_manager'   ? 1
+       : r === 'branch_manager' ? 2
+       : r === 'sales_manager'  ? 3
+       : r === 'tenant_admin'   ? 4
+       : r === 'platform_admin' ? 5 : 0;
+}
+
+export default function ManagerWarDetail({ warData, onBack, resolvedStds }) {
+  const { user, role: viewerRole, userProfile: viewerProfile, tenantId } = useAuth();
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+
   const {
-    managerName, managerRole, weekStart, status,
+    managerId, managerName, managerRole, managerRoleRank, branchId,
+    weekStart, status,
     oneOnOnesConducted, namesSourced, interviewsConducted,
     recruitsInFirstWeeks, trainingSessions, trainingTopic,
     unitMeetingHeld, attendanceCount, dashboardReviewDone,
     jfwCount, personalApi, personalApps,
   } = warData;
 
-  const roleStds = getRoleStandards(standards, managerRole);
+  const stds = resolvedStds ?? {};
+
+  const viewerRank = warRoleRank(viewerRole);
+  const isUpline = viewerRank > (managerRoleRank ?? 0)
+    && (viewerRank >= 3
+        || (viewerRole === 'branch_manager' && viewerProfile?.branchId === branchId));
 
   const roleLabel = getRoleLabel(managerRole);
   const hasPersonalProduction = personalApi != null && personalApps != null;
@@ -30,7 +48,7 @@ export default function ManagerWarDetail({ warData, onBack, standards }) {
         >
           <ChevronLeft size={20} className="text-text" />
         </button>
-        <div>
+        <div className="flex-1 min-w-0">
           <h2 className="text-xl font-semibold text-text">{managerName}</h2>
           <p className="text-sm text-text-muted">
             {roleLabel} · {weekStart} ·{' '}
@@ -39,6 +57,17 @@ export default function ManagerWarDetail({ warData, onBack, standards }) {
             </span>
           </p>
         </div>
+        {isUpline && (
+          <button
+            type="button"
+            onClick={() => setShowOverrideModal(true)}
+            aria-label="Set custom standards for this manager"
+            className="h-11 px-3 flex items-center gap-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-card transition-colors text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 shrink-0"
+          >
+            <Settings size={15} aria-hidden="true" />
+            <span className="hidden sm:inline">Custom standards</span>
+          </button>
+        )}
       </div>
 
       {/* Activities */}
@@ -46,11 +75,11 @@ export default function ManagerWarDetail({ warData, onBack, standards }) {
         <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
           Activities
         </h3>
-        <ReadOnlyField label="One-on-One Pipeline Reviews"   value={oneOnOnesConducted} target={roleStds.oneOnOnesConducted} />
-        <ReadOnlyField label="Names Sourced"                 value={namesSourced}         target={roleStds.namesSourced} />
-        <ReadOnlyField label="Initial Interviews Conducted"  value={interviewsConducted}  target={roleStds.interviewsConducted} />
-        <ReadOnlyField label="New Recruits in First Weeks"   value={recruitsInFirstWeeks} target={roleStds.recruitsInFirstWeeks} />
-        <ReadOnlyField label="Training Sessions Delivered"   value={trainingSessions}     target={roleStds.trainingSessions} />
+        <ReadOnlyField label="One-on-One Pipeline Reviews"   value={oneOnOnesConducted} target={stds.oneOnOnesConducted} />
+        <ReadOnlyField label="Names Sourced"                 value={namesSourced}         target={stds.namesSourced} />
+        <ReadOnlyField label="Initial Interviews Conducted"  value={interviewsConducted}  target={stds.interviewsConducted} />
+        <ReadOnlyField label="New Recruits in First Weeks"   value={recruitsInFirstWeeks} target={stds.recruitsInFirstWeeks} />
+        <ReadOnlyField label="Training Sessions Delivered"   value={trainingSessions}     target={stds.trainingSessions} />
 
         {trainingTopic && (
           <div className="space-y-1">
@@ -59,11 +88,11 @@ export default function ManagerWarDetail({ warData, onBack, standards }) {
           </div>
         )}
 
-        <ReadOnlyToggle label="Unit / Branch Meeting Held"       checked={Boolean(unitMeetingHeld)}    expected={roleStds.unitMeetingHeld} />
+        <ReadOnlyToggle label="Unit / Branch Meeting Held"       checked={Boolean(unitMeetingHeld)}    expected={stds.unitMeetingHeld} />
         {unitMeetingHeld && attendanceCount != null && (
           <ReadOnlyField label="Attendance Count" value={attendanceCount} />
         )}
-        <ReadOnlyToggle label="Planning & Dashboard Review Done" checked={Boolean(dashboardReviewDone)} expected={roleStds.dashboardReviewDone} />
+        <ReadOnlyToggle label="Planning & Dashboard Review Done" checked={Boolean(dashboardReviewDone)} expected={stds.dashboardReviewDone} />
       </div>
 
       {/* Personal production — only when fields are present on the WAR doc */}
@@ -88,8 +117,19 @@ export default function ManagerWarDetail({ warData, onBack, standards }) {
           <span className="font-medium text-text">Joint Field Work (JFW)</span>
           <span className="ml-2 text-text-muted">— from joint-call logs</span>
         </div>
-        <ActualTarget actual={jfwCount ?? 0} target={roleStds.jfwCount} ariaLabel="Joint Field Work count" />
+        <ActualTarget actual={jfwCount ?? 0} target={stds.jfwCount} ariaLabel="Joint Field Work count" />
       </div>
+
+      {showOverrideModal && (
+        <ManagerOverrideModal
+          tenantId={tenantId}
+          managerId={managerId}
+          managerName={managerName}
+          currentUid={user?.uid}
+          onClose={() => setShowOverrideModal(false)}
+          onSaved={() => setShowOverrideModal(false)}
+        />
+      )}
     </div>
   );
 }

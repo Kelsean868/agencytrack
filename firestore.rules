@@ -737,6 +737,81 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ── I1.3c-ii: per-manager activity standard overrides ────────────────────
+      // /tenants/{tid}/managerActivityStandardOverrides/{managerId}
+      // Fields: tenantId, managerId, updatedBy, updatedAt, + partial activity map.
+      // NO branchId/role denormalization — rule reads M's real role+branchId via
+      // get(M's user doc) to prevent forgery (request.resource.data fields about
+      // M are controllable by the writer; resource.data is null on create).
+      // get(M) via subjectData(): Firestore caches same-path get() within one
+      // rule evaluation, so subjectRank() + subjectBranchId() cost one read.
+      match /managerActivityStandardOverrides/{managerId} {
+
+        // Block-local rank fn — mirrors warRoleRank(). Rank-fn-hoist FU already banked.
+        function warRoleRank() {
+          return getRole() == 'unit_manager'   ? 1 :
+                 getRole() == 'branch_manager' ? 2 :
+                 getRole() == 'sales_manager'  ? 3 :
+                 getRole() == 'tenant_admin'   ? 4 :
+                 getRole() == 'platform_admin' ? 5 : 0;
+        }
+
+        // Caller's branchId via get() — branchId is not a claim (SEC-4 pattern).
+        function callerBranchId(tenantId) {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
+        }
+
+        // Subject (M)'s real role + branchId from M's user doc.
+        // managerId == M's uid (the doc path ID).
+        function subjectData() {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(managerId)).data;
+        }
+
+        function subjectRank() {
+          let r = subjectData().role;
+          return r == 'unit_manager'   ? 1 :
+                 r == 'branch_manager' ? 2 :
+                 r == 'sales_manager'  ? 3 : 0;
+        }
+
+        function subjectBranchId() {
+          return subjectData().branchId;
+        }
+
+        // Upline-in-scope: strictly greater rank (denies peers + self); BM branch-scoped.
+        function uplineInScope() {
+          return warRoleRank() > subjectRank()
+            && (warRoleRank() >= 3
+                || (getRole() == 'branch_manager'
+                    && callerBranchId(tenantId) == subjectBranchId()));
+        }
+
+        // Owner reads own (uid == managerId — no resource access needed, handles null doc).
+        // Upline reads by id when browsing M's WAR. No list rule.
+        allow get: if isSignedIn()
+          && getTenantId() == tenantId
+          && (request.auth.uid == managerId || uplineInScope());
+
+        // Payload managerId + tenantId validated against path/tenant.
+        // Subject rank + branch from get(M), NOT request.resource.data — forgery prevention.
+        allow create: if isSignedIn()
+          && getTenantId() == tenantId
+          && request.resource.data.managerId == managerId
+          && request.resource.data.tenantId  == tenantId
+          && uplineInScope();
+
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && uplineInScope();
+
+        // Delete reverts M to org-defaults (clears entire override doc).
+        allow delete: if isSignedIn()
+          && getTenantId() == tenantId
+          && uplineInScope();
+
+        allow list: if false;
+      }
+
     }
 
     // ── I1.2: collectionGroup author arm for jointCalls ───────────────────────
