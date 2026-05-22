@@ -31,6 +31,7 @@ import {
   setManagerActivityStandardOverride,
   clearManagerActivityStandardOverride,
   getResolvedStandards,
+  getResolvedStandardsForMany,
 } from '../managerStandardOverrideService';
 
 const { mockGetDoc, mockSetDoc, mockDeleteDoc } = hoisted;
@@ -183,5 +184,90 @@ describe('getResolvedStandards', () => {
     mockGetDoc.mockResolvedValue({ exists: () => false });
     const result = await getResolvedStandards({ tenantId: 't1', managerId: 'um1', role: 'unknown_role' });
     expect(result).toEqual({});
+  });
+});
+
+// ── getResolvedStandardsForMany (I3a — bulk per-row standards) ───────────────
+
+describe('getResolvedStandardsForMany', () => {
+  it('returns empty Map when managers list is empty', async () => {
+    const result = await getResolvedStandardsForMany({ tenantId: 't1', managers: [] });
+    expect(result).toBeInstanceOf(Map);
+    expect(result.size).toBe(0);
+    expect(vi.mocked(getManagerActivityStandards)).not.toHaveBeenCalled();
+  });
+
+  it('fetches org-default standards exactly once', async () => {
+    vi.mocked(getManagerActivityStandards).mockResolvedValue({
+      unit_manager:   { namesSourced: 5 },
+      branch_manager: { namesSourced: 8 },
+    });
+    mockGetDoc.mockResolvedValue({ exists: () => false });
+    await getResolvedStandardsForMany({
+      tenantId: 't1',
+      managers: [
+        { managerId: 'um1', managerRole: 'unit_manager' },
+        { managerId: 'um2', managerRole: 'unit_manager' },
+        { managerId: 'bm1', managerRole: 'branch_manager' },
+      ],
+    });
+    expect(vi.mocked(getManagerActivityStandards)).toHaveBeenCalledOnce();
+  });
+
+  it('returns org-default standards keyed by managerId when no overrides exist', async () => {
+    vi.mocked(getManagerActivityStandards).mockResolvedValue({
+      unit_manager:   { namesSourced: 5 },
+      branch_manager: { namesSourced: 8 },
+    });
+    mockGetDoc.mockResolvedValue({ exists: () => false });
+    const result = await getResolvedStandardsForMany({
+      tenantId: 't1',
+      managers: [
+        { managerId: 'um1', managerRole: 'unit_manager' },
+        { managerId: 'bm1', managerRole: 'branch_manager' },
+      ],
+    });
+    expect(result.get('um1')).toEqual({ namesSourced: 5 });
+    expect(result.get('bm1')).toEqual({ namesSourced: 8 });
+  });
+
+  it('applies per-manager overrides over org-default', async () => {
+    vi.mocked(getManagerActivityStandards).mockResolvedValue({
+      unit_manager: { namesSourced: 5, jfwCount: 2 },
+    });
+    // First call → um1 override; second call → um2 no override
+    mockGetDoc
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ namesSourced: 10 }) })
+      .mockResolvedValueOnce({ exists: () => false });
+    const result = await getResolvedStandardsForMany({
+      tenantId: 't1',
+      managers: [
+        { managerId: 'um1', managerRole: 'unit_manager' },
+        { managerId: 'um2', managerRole: 'unit_manager' },
+      ],
+    });
+    // um1 has override on namesSourced; jfwCount falls back to org-default
+    expect(result.get('um1')).toEqual({ namesSourced: 10, jfwCount: 2 });
+    // um2 only the org-default
+    expect(result.get('um2')).toEqual({ namesSourced: 5, jfwCount: 2 });
+  });
+
+  it('degrades to org-default when a single override fetch rejects', async () => {
+    vi.mocked(getManagerActivityStandards).mockResolvedValue({
+      unit_manager: { namesSourced: 5 },
+    });
+    mockGetDoc
+      .mockResolvedValueOnce({ exists: () => true, data: () => ({ namesSourced: 10 }) })
+      .mockRejectedValueOnce(new Error('PERMISSION_DENIED'));
+    const result = await getResolvedStandardsForMany({
+      tenantId: 't1',
+      managers: [
+        { managerId: 'um1', managerRole: 'unit_manager' },
+        { managerId: 'um2', managerRole: 'unit_manager' },
+      ],
+    });
+    expect(result.get('um1')).toEqual({ namesSourced: 10 });
+    // Override rejected → fall back to org-default
+    expect(result.get('um2')).toEqual({ namesSourced: 5 });
   });
 });
