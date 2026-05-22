@@ -76,6 +76,10 @@ vi.mock('../../shell/Shell', () => ({
   ),
 }));
 
+vi.mock('../../admin/ActivityStandardsPanel', () => ({
+  default: () => <div data-testid="activity-standards-panel">Activity Standards Panel</div>,
+}));
+
 vi.mock('../../admin/CompanyConfigPanel', () => ({
   default: () => <div data-testid="company-config-panel">Company Config Panel</div>,
 }));

@@ -3,6 +3,10 @@ import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
+vi.mock('../../../services/managerActivityStandardsService', () => ({
+  getRoleStandards: (stds, role) => stds?.[role] ?? {},
+}));
+
 import ManagerWarDetail from '../ManagerWarDetail';
 
 const BASE_WAR = {
@@ -22,8 +26,10 @@ const BASE_WAR = {
   jfwCount:             2,
 };
 
-function renderDetail(overrides = {}, onBack = vi.fn()) {
-  return render(<ManagerWarDetail warData={{ ...BASE_WAR, ...overrides }} onBack={onBack} />);
+function renderDetail(overrides = {}, onBack = vi.fn(), standards = undefined) {
+  return render(
+    <ManagerWarDetail warData={{ ...BASE_WAR, ...overrides }} onBack={onBack} standards={standards} />
+  );
 }
 
 describe('ManagerWarDetail — rendering', () => {
@@ -103,5 +109,67 @@ describe('ManagerWarDetail — navigation', () => {
     renderDetail({}, onBack);
     fireEvent.click(screen.getByRole('button', { name: /back to list/i }));
     expect(onBack).toHaveBeenCalledOnce();
+  });
+});
+
+// ── Activity standards overlay ─────────────────────────────────────────────────
+
+const BM_STANDARDS = {
+  branch_manager: {
+    jfwCount:             3,
+    oneOnOnesConducted:   5,
+    namesSourced:         10,
+    interviewsConducted:  4,
+    recruitsInFirstWeeks: 2,
+    trainingSessions:     2,
+    unitMeetingHeld:      true,
+    dashboardReviewDone:  true,
+  },
+};
+
+describe('ManagerWarDetail — standards overlay', () => {
+  it('shows actual-only (no target) when no standards prop', () => {
+    renderDetail({ oneOnOnesConducted: 3 }, vi.fn(), undefined);
+    // ReadOnlyField for one-on-ones shows value, no "/ N" composite
+    expect(screen.queryByLabelText(/one-on-one.*of \d/i)).not.toBeInTheDocument();
+  });
+
+  it('shows actual / target for a numeric field when standard is set', () => {
+    renderDetail({ oneOnOnesConducted: 3 }, vi.fn(), BM_STANDARDS);
+    // aria-label: "One-on-One Pipeline Reviews: 3 of 5"
+    expect(screen.getByLabelText(/one-on-one pipeline reviews: 3 of 5/i)).toBeInTheDocument();
+  });
+
+  it('shows met styling for a numeric field when actual >= target', () => {
+    renderDetail({ oneOnOnesConducted: 5 }, vi.fn(), BM_STANDARDS);
+    const el = screen.getByLabelText(/one-on-one pipeline reviews: 5 of 5/i);
+    expect(el).toBeInTheDocument();
+  });
+
+  it('shows actual / target on JFW when standard is set', () => {
+    renderDetail({ jfwCount: 2 }, vi.fn(), BM_STANDARDS);
+    expect(screen.getByLabelText(/joint field work count: 2 of 3/i)).toBeInTheDocument();
+  });
+
+  it('shows actual-only on JFW when no jfwCount standard', () => {
+    renderDetail({ jfwCount: 2 }, vi.fn(), { branch_manager: {} });
+    expect(screen.getByLabelText(/joint field work count: 2$/i)).toBeInTheDocument();
+  });
+
+  it('shows boolean badge(s) when boolean standards are expected', () => {
+    renderDetail({ unitMeetingHeld: true, dashboardReviewDone: true }, vi.fn(), BM_STANDARDS);
+    const metBadges = screen.getAllByLabelText(/standard met/i);
+    expect(metBadges.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows "expected" badge when standard set but boolean is false', () => {
+    renderDetail({ unitMeetingHeld: false, dashboardReviewDone: false }, vi.fn(), BM_STANDARDS);
+    const notMetBadges = screen.getAllByLabelText(/standard not met/i);
+    expect(notMetBadges.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows no badge when no boolean standard', () => {
+    renderDetail({ unitMeetingHeld: true }, vi.fn(), { branch_manager: {} });
+    expect(screen.queryByLabelText(/standard (met|not met)/i)).not.toBeInTheDocument();
   });
 });

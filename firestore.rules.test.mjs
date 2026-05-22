@@ -298,3 +298,58 @@ describe('null-resource (non-existent doc) scope', () => {
     await assertFails(getDoc(doc(ctx.firestore(), `${WAR_PATH}/${UM1_DOC_ID}`)));
   });
 });
+
+// ── config/managerActivityStandards — inherited wildcard (I1.3c-i) ────────────
+//
+// The doc lives at tenants/{tid}/config/managerActivityStandards.
+// It is governed by the existing match /config/{docId} wildcard rule:
+//   read:  isSignedIn() && getTenantId() == tenantId  (all tenant members)
+//   write: platform_admin | tenant_admin only
+// No rule was edited — these tests verify inherited behaviour.
+
+const STD_PATH  = `tenants/${TENANT_ID}/config/managerActivityStandards`;
+const STD_PAYLOAD = {
+  unit_manager:   { jfwCount: 2, oneOnOnesConducted: 5 },
+  branch_manager: { jfwCount: 3 },
+  sales_manager:  {},
+  updatedBy: 'admin1',
+  updatedAt: null,
+};
+
+describe('config/managerActivityStandards — inherited wildcard (I1.3c-i)', () => {
+  it('tenant_admin write ALLOW', async () => {
+    const ctx = testEnv.authenticatedContext('admin1', { role: 'tenant_admin', tenantId: TENANT_ID });
+    await assertSucceeds(setDoc(doc(ctx.firestore(), STD_PATH), STD_PAYLOAD));
+  });
+
+  it('unit_manager write DENY (not platform_admin or tenant_admin)', async () => {
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    await assertFails(setDoc(doc(ctx.firestore(), STD_PATH), STD_PAYLOAD));
+  });
+
+  it('agent write DENY', async () => {
+    const ctx = testEnv.authenticatedContext('agent1', { role: 'agent', tenantId: TENANT_ID });
+    await assertFails(setDoc(doc(ctx.firestore(), STD_PATH), STD_PAYLOAD));
+  });
+
+  it('branch_manager read ALLOW (all tenant members can read)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), STD_PATH), STD_PAYLOAD);
+    });
+    const ctx = testEnv.authenticatedContext('bm1', tok('bm1', 'branch_manager'));
+    await assertSucceeds(getDoc(doc(ctx.firestore(), STD_PATH)));
+  });
+
+  it('unit_manager read ALLOW (all tenant members can read)', async () => {
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await setDoc(doc(ctx.firestore(), STD_PATH), STD_PAYLOAD);
+    });
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    await assertSucceeds(getDoc(doc(ctx.firestore(), STD_PATH)));
+  });
+
+  it('cross-tenant write DENY (tenant_admin of different tenant)', async () => {
+    const ctx = testEnv.authenticatedContext('admin-other', { role: 'tenant_admin', tenantId: 'other-tenant' });
+    await assertFails(setDoc(doc(ctx.firestore(), STD_PATH), STD_PAYLOAD));
+  });
+});

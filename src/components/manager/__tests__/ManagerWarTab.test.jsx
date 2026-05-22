@@ -24,16 +24,22 @@ vi.mock('../../../context/AuthContext', () => ({
 
 // ── Service mocks ─────────────────────────────────────────────────────────────
 
-const mockSaveWarDraft   = vi.fn().mockResolvedValue(undefined);
-const mockSubmitWar      = vi.fn().mockResolvedValue(undefined);
-const mockGetWar         = vi.fn().mockResolvedValue(null);
-const mockGetOwnJfwCount = vi.fn().mockResolvedValue(0);
+const mockSaveWarDraft              = vi.fn().mockResolvedValue(undefined);
+const mockSubmitWar                 = vi.fn().mockResolvedValue(undefined);
+const mockGetWar                    = vi.fn().mockResolvedValue(null);
+const mockGetOwnJfwCount            = vi.fn().mockResolvedValue(0);
+const mockGetManagerActivityStandards = vi.fn().mockResolvedValue({});
 
 vi.mock('../../../services/managerWarService', () => ({
   saveWarDraft:    (...args) => mockSaveWarDraft(...args),
   submitWar:       (...args) => mockSubmitWar(...args),
   getWar:          (...args) => mockGetWar(...args),
   getOwnJfwCount:  (...args) => mockGetOwnJfwCount(...args),
+}));
+
+vi.mock('../../../services/managerActivityStandardsService', () => ({
+  getManagerActivityStandards: (...args) => mockGetManagerActivityStandards(...args),
+  getRoleStandards: (stds, role) => stds?.[role] ?? {},
 }));
 
 // ── Validators mock (stable Sunday list) ─────────────────────────────────────
@@ -81,6 +87,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockGetWar.mockResolvedValue(null);
   mockGetOwnJfwCount.mockResolvedValue(0);
+  mockGetManagerActivityStandards.mockResolvedValue({});
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval'] });
 });
 
@@ -328,5 +335,66 @@ describe('ManagerWarTab — JFW count row', () => {
       expect.objectContaining({ weekStart: '2026-05-10' }),
     );
     expect(screen.getByLabelText(/joint field work count: 4/i)).toBeInTheDocument();
+  });
+});
+
+// ── Activity standards overlay ─────────────────────────────────────────────────
+
+describe('ManagerWarTab — standards overlay', () => {
+  it('shows actual-only (no target) when no standards are set', async () => {
+    mockGetManagerActivityStandards.mockResolvedValue({});
+    mockGetOwnJfwCount.mockResolvedValue(3);
+    renderTab();
+    await flushMount();
+    // JFW pill: aria-label has just the count, no "of N"
+    expect(screen.getByLabelText(/joint field work count: 3$/i)).toBeInTheDocument();
+  });
+
+  it('shows actual / target on the JFW pill when a standard is set', async () => {
+    mockGetManagerActivityStandards.mockResolvedValue({
+      unit_manager: { jfwCount: 4 },
+    });
+    mockGetOwnJfwCount.mockResolvedValue(2);
+    renderTab();
+    await flushMount();
+    expect(screen.getByLabelText(/joint field work count: 2 of 4/i)).toBeInTheDocument();
+  });
+
+  it('shows actual-only on numeric field when that field has no standard', async () => {
+    mockGetManagerActivityStandards.mockResolvedValue({
+      unit_manager: { jfwCount: 4 }, // only jfwCount set, not oneOnOnesConducted
+    });
+    renderTab();
+    await flushMount();
+    // oneOnOnesConducted input exists with no "/ N" target label nearby
+    expect(screen.getByLabelText('One-on-One Pipeline Reviews')).toBeInTheDocument();
+    expect(screen.queryByLabelText(/target: \d/i)).not.toBeInTheDocument();
+  });
+
+  it('shows the target label on a numeric field when that field has a standard', async () => {
+    mockGetManagerActivityStandards.mockResolvedValue({
+      unit_manager: { oneOnOnesConducted: 5 },
+    });
+    renderTab();
+    await flushMount();
+    expect(screen.getByLabelText(/target: 5/i)).toBeInTheDocument();
+  });
+
+  it('shows the boolean badge when unitMeetingHeld standard is expected', async () => {
+    mockGetManagerActivityStandards.mockResolvedValue({
+      unit_manager: { unitMeetingHeld: true },
+    });
+    renderTab();
+    await flushMount();
+    // badge renders — either "✓ met" or "· expected"
+    const badge = screen.getByLabelText(/standard (met|not met)/i);
+    expect(badge).toBeInTheDocument();
+  });
+
+  it('does not show badge when no boolean standard is set', async () => {
+    mockGetManagerActivityStandards.mockResolvedValue({});
+    renderTab();
+    await flushMount();
+    expect(screen.queryByLabelText(/standard (met|not met)/i)).not.toBeInTheDocument();
   });
 });
