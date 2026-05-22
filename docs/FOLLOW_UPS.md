@@ -23,13 +23,13 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## I1.x — Hoist duplicated WAR/cn/jc role-rank helpers to shared top-level rules function (CLOSED — PR #TBD `{TBD}`)
+## I1.x — Hoist duplicated WAR/cn/jc role-rank helpers to shared top-level rules function (CLOSED — PR #268 `065a7d7`)
 
-**Resolved 2026-05-22:** Single top-level `roleRank()` function added at the top of `match /databases/{database}/documents` (adjacent to `isManager()` / `isAgent()`). Phase 1 verified all four block-local copies byte-identical (the third `warRoleRank` in `managerActivityStandardOverrides` was added by PR #266 after this FU was banked — same body, included in the hoist). All four duplicates removed; all 14 call sites swapped to `roleRank()`. No `allow` predicate logic changed; emulator suite 38/38 unchanged before/after. No rules deploy required (behavior identical, proven by unchanged emulator pass-set). Closed in PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+**Resolved 2026-05-22:** Single top-level `roleRank()` function added at the top of `match /databases/{database}/documents` (adjacent to `isManager()` / `isAgent()`). Phase 1 verified all four block-local copies byte-identical (the third `warRoleRank` in `managerActivityStandardOverrides` was added by PR #266 after this FU was banked — same body, included in the hoist). All four duplicates removed; all 14 call sites swapped to `roleRank()`. No `allow` predicate logic changed; emulator suite 38/38 unchanged before/after. No rules deploy required (behavior identical, proven by unchanged emulator pass-set). Closed in PR [#268](https://github.com/Kelsean868/agencytrack/pull/268) (`065a7d7`).
 
 **Status: CLOSED.**
 
-Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6fa6b5`). Resolved: PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6fa6b5`). Resolved: PR [#268](https://github.com/Kelsean868/agencytrack/pull/268) (`065a7d7`).
 
 ---
 
