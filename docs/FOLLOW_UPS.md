@@ -23,20 +23,13 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## I1.x — Hoist duplicated WAR/cn/jc role-rank helpers to shared top-level rules function (LOW, banked 2026-05-21)
+## I1.x — Hoist duplicated WAR/cn/jc role-rank helpers to shared top-level rules function (CLOSED — PR #TBD `{TBD}`)
 
-**Scope:** `firestore.rules` now has three block-local `warRoleRank()` helpers with identical bodies (`unit_manager` → 1, `branch_manager` → 2, `sales_manager` → 3, `tenant_admin` → 4, `platform_admin` → 5): `cnRoleRank()` inside the `coachingNotes` block (≈ line 400), `jcRoleRank()` inside the `jointCalls` block (≈ line 553), and `warRoleRank()` inside the `managerWeeklyReports` block added in I1.1 (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254)). This is intentional duplication per the block-local helper convention — a pre-existing cn/jc pattern; WAR mirrors it.
+**Resolved 2026-05-22:** Single top-level `roleRank()` function added at the top of `match /databases/{database}/documents` (adjacent to `isManager()` / `isAgent()`). Phase 1 verified all four block-local copies byte-identical (the third `warRoleRank` in `managerActivityStandardOverrides` was added by PR #266 after this FU was banked — same body, included in the hoist). All four duplicates removed; all 14 call sites swapped to `roleRank()`. No `allow` predicate logic changed; emulator suite 38/38 unchanged before/after. No rules deploy required (behavior identical, proven by unchanged emulator pass-set). Closed in PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
 
-**Action (single rules-only PR when ready):**
+**Status: CLOSED.**
 
-1. Define `getRoleRank()` at the top of the `match /tenants/{tenantId}` block (or as a global, next to `getRole()`/`getTenantId()`).
-2. Replace all three block-local helpers with `getRoleRank()` calls.
-3. Deploy: rule modification (existing behavior unchanged, just deduplication) — post-merge per CLAUDE.md staging discipline.
-4. Phase 1 must verify the three blocks haven't diverged in body before hoisting (Rule 17: verify source-derived claim at authoring time).
-
-**Priority:** **LOW**. No functional impact. The duplication is readable and correct as-is; hoisting is a housekeeping improvement.
-
-Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6fa6b5`).
+Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6fa6b5`). Resolved: PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
 
 ---
 

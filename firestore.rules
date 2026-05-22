@@ -22,6 +22,16 @@ service cloud.firestore {
       return getRole() == 'agent';
     }
 
+    // Manager-role rank for upline/downline comparisons.
+    // Hoisted from block-local *RoleRank copies (cn/jc/war x2) — all were byte-identical.
+    function roleRank() {
+      return getRole() == 'unit_manager'   ? 1 :
+             getRole() == 'branch_manager' ? 2 :
+             getRole() == 'sales_manager'  ? 3 :
+             getRole() == 'tenant_admin'   ? 4 :
+             getRole() == 'platform_admin' ? 5 : 0;
+    }
+
     function canManage(tenantId) {
       return isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || (isManager() && getTenantId() == tenantId));
     }
@@ -397,14 +407,6 @@ service cloud.firestore {
       // No canAccessOwn branch — the agent NEVER reads their own coaching notes.
       match /users/{agentId}/coachingNotes/{noteId} {
 
-        function cnRoleRank() {
-          return getRole() == 'unit_manager'   ? 1 :
-                 getRole() == 'branch_manager' ? 2 :
-                 getRole() == 'sales_manager'  ? 3 :
-                 getRole() == 'tenant_admin'   ? 4 :
-                 getRole() == 'platform_admin' ? 5 : 0;
-        }
-
         function cnUMScopeOk() {
           return getRole() != 'unit_manager'
               || resource.data.agentUnitId == request.auth.uid;
@@ -418,7 +420,7 @@ service cloud.firestore {
         allow get: if isManager()
           && getTenantId() == tenantId
           && cnUMScopeOk()
-          && cnRoleRank() >= resource.data.authorRoleRank;
+          && roleRank() >= resource.data.authorRoleRank;
 
         // list: evaluated per-document; client MUST include authorRoleRank <= callerRank
         // filter (and agentUnitId == uid for unit_manager). Rule enforces same predicate
@@ -426,13 +428,13 @@ service cloud.firestore {
         allow list: if isManager()
           && getTenantId() == tenantId
           && (getRole() != 'unit_manager' || resource.data.agentUnitId == request.auth.uid)
-          && cnRoleRank() >= resource.data.authorRoleRank;
+          && roleRank() >= resource.data.authorRoleRank;
 
         allow create: if isManager()
           && getTenantId() == tenantId
           && cnUMScopeOnWrite()
           && request.resource.data.authorUid == request.auth.uid
-          && request.resource.data.authorRoleRank == cnRoleRank()
+          && request.resource.data.authorRoleRank == roleRank()
           && request.resource.data.tenantId == tenantId
           && request.resource.data.agentId == agentId
           && request.resource.data.category in
@@ -550,14 +552,6 @@ service cloud.firestore {
       // No canAccessOwn branch — the agent NEVER reads their own joint-call observations.
       match /users/{agentId}/jointCalls/{callId} {
 
-        function jcRoleRank() {
-          return getRole() == 'unit_manager'   ? 1 :
-                 getRole() == 'branch_manager' ? 2 :
-                 getRole() == 'sales_manager'  ? 3 :
-                 getRole() == 'tenant_admin'   ? 4 :
-                 getRole() == 'platform_admin' ? 5 : 0;
-        }
-
         function jcUMScopeOk() {
           return getRole() != 'unit_manager'
               || resource.data.agentUnitId == request.auth.uid;
@@ -571,7 +565,7 @@ service cloud.firestore {
         allow get: if isManager()
           && getTenantId() == tenantId
           && jcUMScopeOk()
-          && jcRoleRank() >= resource.data.authorRoleRank;
+          && roleRank() >= resource.data.authorRoleRank;
 
         // list — TWO separate allow declarations (ORed by Firestore, each evaluated independently):
         //
@@ -594,13 +588,13 @@ service cloud.firestore {
         allow list: if isManager()
           && getTenantId() == tenantId
           && (getRole() != 'unit_manager' || resource.data.agentUnitId == request.auth.uid)
-          && jcRoleRank() >= resource.data.authorRoleRank;
+          && roleRank() >= resource.data.authorRoleRank;
 
         allow create: if isManager()
           && getTenantId() == tenantId
           && jcUMScopeOnWrite()
           && request.resource.data.authorUid == request.auth.uid
-          && request.resource.data.authorRoleRank == jcRoleRank()
+          && request.resource.data.authorRoleRank == roleRank()
           && request.resource.data.tenantId == tenantId
           && request.resource.data.agentId == agentId
           && request.resource.data.meetingType in
@@ -653,16 +647,6 @@ service cloud.firestore {
       // I1.2 adds jfwCount auto-count via collectionGroup + index.
       match /managerWeeklyReports/{warId} {
 
-        // Mirrors cnRoleRank()/jcRoleRank() — block-local per cn/jc/persistency pattern.
-        // FU banked: hoist all three (cn/jc/war) to a shared top-level rules helper.
-        function warRoleRank() {
-          return getRole() == 'unit_manager'   ? 1 :
-                 getRole() == 'branch_manager' ? 2 :
-                 getRole() == 'sales_manager'  ? 3 :
-                 getRole() == 'tenant_admin'   ? 4 :
-                 getRole() == 'platform_admin' ? 5 : 0;
-        }
-
         // SEC-4 pattern: branchId is not a custom claim; read from Firestore user doc.
         function callerBranchId(tenantId) {
           return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
@@ -670,7 +654,7 @@ service cloud.firestore {
 
         // Upline-in-scope: strictly greater than to deny peers.
         function uplineCanRead() {
-          return warRoleRank() > resource.data.managerRoleRank
+          return roleRank() > resource.data.managerRoleRank
             && (
               getRole() in ['tenant_admin', 'platform_admin', 'sales_manager']
               || (getRole() == 'branch_manager'
@@ -704,7 +688,7 @@ service cloud.firestore {
             && d.status in ['draft', 'submitted']
             && d.weekStart is string
             && d.managerRole in ['unit_manager', 'branch_manager', 'sales_manager']
-            && d.managerRoleRank == warRoleRank();
+            && d.managerRoleRank == roleRank();
         }
 
         allow create: if isSignedIn()
@@ -728,11 +712,11 @@ service cloud.firestore {
               : resource.data.managerId == request.auth.uid || uplineCanRead());
 
         // Query-safe list: BM (rank 2) sees own branch; SM+ (rank ≥ 3) sees tenant-wide.
-        // UM (rank 1) denied by the warRoleRank()>=2 gate. warRoleRank() and
+        // UM (rank 1) denied by the roleRank()>=2 gate. roleRank() and
         // callerBranchId() are block-local — no hoisting needed (I1.x FU).
         allow list: if getTenantId() == tenantId
-          && warRoleRank() >= 2
-          && (resource.data.branchId == callerBranchId(tenantId) || warRoleRank() >= 3);
+          && roleRank() >= 2
+          && (resource.data.branchId == callerBranchId(tenantId) || roleRank() >= 3);
 
         allow delete: if false;
       }
@@ -746,15 +730,6 @@ service cloud.firestore {
       // get(M) via subjectData(): Firestore caches same-path get() within one
       // rule evaluation, so subjectRank() + subjectBranchId() cost one read.
       match /managerActivityStandardOverrides/{managerId} {
-
-        // Block-local rank fn — mirrors warRoleRank(). Rank-fn-hoist FU already banked.
-        function warRoleRank() {
-          return getRole() == 'unit_manager'   ? 1 :
-                 getRole() == 'branch_manager' ? 2 :
-                 getRole() == 'sales_manager'  ? 3 :
-                 getRole() == 'tenant_admin'   ? 4 :
-                 getRole() == 'platform_admin' ? 5 : 0;
-        }
 
         // Caller's branchId via get() — branchId is not a claim (SEC-4 pattern).
         function callerBranchId(tenantId) {
@@ -780,8 +755,8 @@ service cloud.firestore {
 
         // Upline-in-scope: strictly greater rank (denies peers + self); BM branch-scoped.
         function uplineInScope() {
-          return warRoleRank() > subjectRank()
-            && (warRoleRank() >= 3
+          return roleRank() > subjectRank()
+            && (roleRank() >= 3
                 || (getRole() == 'branch_manager'
                     && callerBranchId(tenantId) == subjectBranchId()));
         }
