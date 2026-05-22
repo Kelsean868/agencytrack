@@ -717,14 +717,22 @@ service cloud.firestore {
           && resource.data.managerId == request.auth.uid
           && validWarWrite();
 
+        // Single-doc: owner (or pre-write existence check via warId prefix) OR upline.
         // resource == null when doc doesn't exist (owner's pre-write getDoc check).
         // Extract managerId from warId (format: {managerId}_{weekStart}) to allow
         // owner existence-check without hitting a null-pointer on resource.data.
-        allow read: if isSignedIn()
+        allow get: if isSignedIn()
           && getTenantId() == tenantId
           && (resource == null
               ? warId.split('_')[0] == request.auth.uid
               : resource.data.managerId == request.auth.uid || uplineCanRead());
+
+        // Query-safe list: BM (rank 2) sees own branch; SM+ (rank ≥ 3) sees tenant-wide.
+        // UM (rank 1) denied by the warRoleRank()>=2 gate. warRoleRank() and
+        // callerBranchId() are block-local — no hoisting needed (I1.x FU).
+        allow list: if getTenantId() == tenantId
+          && warRoleRank() >= 2
+          && (resource.data.branchId == callerBranchId(tenantId) || warRoleRank() >= 3);
 
         allow delete: if false;
       }
