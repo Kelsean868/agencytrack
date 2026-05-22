@@ -21,13 +21,6 @@ vi.mock('../../../services/managerWarService', () => ({
   getWarsForUpline: (...args) => mockGetWarsForUpline(...args),
 }));
 
-// ── Standards service mock ────────────────────────────────────────────────────
-
-vi.mock('../../../services/managerActivityStandardsService', () => ({
-  getManagerActivityStandards: vi.fn().mockResolvedValue({}),
-  getRoleStandards: (stds, role) => stds?.[role] ?? {},
-}));
-
 // ── Validators mock ───────────────────────────────────────────────────────────
 
 vi.mock('../../../utils/validators', () => ({

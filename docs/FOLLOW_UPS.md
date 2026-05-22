@@ -116,23 +116,32 @@ Banked: PR #244 fix commit (`cdb6aa7`).
 
 ---
 
-## Vitest setup — global firebase stub to prevent transitive unmocked-firebase false-greens (LOW-MED, banked 2026-05-21)
+## ✅ Vitest setup — global firebase stub to prevent transitive unmocked-firebase false-greens (LOW-MED, banked 2026-05-21) — RESOLVED in PR #TBD
 
-**Scope:** PR #244's CI failure root cause was a transitive import chain — `CoachingNotesModal` → `JointCallsTab` → `jointCallsService` → `src/firebase.js`. The existing test mocked `coachingNotesService` but not `jointCallsService`, and `src/firebase.js:22` `getAuth(app)` throws `auth/invalid-api-key` whenever the import chain reaches it without firebase env vars set. Local passed (env vars set via `.env.local`); CI failed (env vars unset).
+**RESOLVED 2026-05-22 in PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).**
 
-The PR #244 surgical fix mocks `jointCallsService` in the modal test. That works for THIS chain but does not prevent the next variant — any future component test whose component imports a NEW service that touches `src/firebase.js` will silently false-green locally and red on CI.
+`src/__mocks__/firebase.js` inert stub (auth/db/storage/functions = {}, default = {}). Custom Vite `resolveId` plugin (`firebaseTestStubPlugin`, `enforce: 'pre'`) gated on `process.env.VITEST` intercepts relative `/firebase` imports at the Rollup resolver level. `942/942` with env UNSET is now the default gate (not a separate parity run). Three #262 init-only band-aids removed as proof. CLAUDE.md § Test Policy documents the pattern.
 
-**Suggested shape:**
+**Banked:** PR #244 fix commit (`cdb6aa7`).
 
-1. Add `vitest.setup.js` (or extend existing setup file referenced from `vitest.config.js`) with a default `vi.mock('@/firebase', () => ({...}))` and `vi.mock('../firebase', ...)` (path-relative shape used in services) returning empty stub objects for `auth`, `db`, `storage`. Each test can override per-suite.
-2. Alternative: stub `getAuth` / `initializeFirestore` from `firebase/auth` and `firebase/firestore` at the setup level so `src/firebase.js` itself can run but its calls become no-ops.
-3. Decide which is cleaner during implementation — the first is more targeted, the second covers any other module that calls firebase initialization directly.
+---
 
-**Verification:** Move `.env.local` aside; run `npm test`. All tests should still pass with no `auth/invalid-api-key` throws. Per-test mocks added in PR #244 should still work (the global default is overridable). Restore `.env.local` and confirm full suite green again.
+## Vitest — redundant-mock sweep (remove init-only `vi.mock` calls now obsolete with global stub) (LOW, banked 2026-05-22)
 
-**Priority:** LOW-MED. The surgical per-test mock from PR #244 patches the current chain; the systemic fix prevents recurrence. Low because the failure mode is loud and fast (suite fails to load, CI red within 2 min); med because each future occurrence costs one full PR cycle + dispatcher attention.
+**Scope:** The global firebase stub (PR #TBD) intercepts all relative `/firebase` imports globally. Several pre-existing `vi.mock(serviceId, factory)` calls in component tests exist SOLELY to prevent the transitive firebase-init throw (init-only) — they were not needed for return-value control and remain harmless but dead scaffolding now that the global stub handles init.
 
-Banked: PR #244 fix commit (`cdb6aa7`).
+The two #262 init-only mocks (`managerActivityStandardsService` in `TeamWarsTab.test`, `ActivityStandardsPanel` + `authService` in `TenantAdminDashboard.test`) were removed as proof in PR #TBD. Additional init-only mocks likely exist in other component tests that mocked a firebase-importing service solely to avoid the CI crash, without asserting on the mocked service's return values.
+
+**Action when convenient:**
+
+1. Grep for `vi.mock` in `src/` component tests (not service tests — those have return-value mocks by design): `git grep -n "vi.mock" -- "src/**/__tests__/*.jsx"`
+2. For each match: confirm whether ANY test in the file asserts on the mocked module's return values. If NO test does — it's init-only and can be removed.
+3. Remove the confirmed init-only mocks. Each removal is safe because the global stub now handles init; run `npx vitest run <file>` after each removal to confirm.
+4. Do NOT remove mocks where tests DO assert on return values — those remain necessary.
+
+**Priority:** LOW. All tests pass correctly with the redundant mocks still in place — they're dead but harmless. Sweep when convenient as a housekeeping PR. No behavioral change.
+
+Banked: PR #TBD (`{TBD}`).
 
 ---
 
