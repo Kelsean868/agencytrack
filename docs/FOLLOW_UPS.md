@@ -23,6 +23,70 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Track I I2 — Monthly Recruiting Roll-up (IN FLIGHT — PR #280 open, pre-merge)
+
+**Shipped gates (pre-merge):** 21/21 emulator rule tests (CREATE owner ✓ ×2 incl. BM unitId:null, DENY ×7; UPDATE ×2; GET ×7; LIST ×3); 1066/1066 app tests env-unset; lint 0; build clean. Rules + index deployed pre-merge (additive: new `managerMonthlyRollups` match block + `(branchId ASC, monthKey ASC)` COLLECTION index). PR #280 open for dispatcher review. Merge pending Kyron's browser smoke legs (incognito on preview).
+
+**Status: IN FLIGHT — pending merge.**
+
+---
+
+## Track I I2 — Monthly recruiting standards + accountability flag (LOW, banked 2026-05-23)
+
+**Scope:** I2 ships raw capture only — `candidatesAssessed` + `agentsContracted` with no targets or flags. Once data flows and definitions are confirmed (see FU below), add monthly recruiting numeric standards to `config/managerActivityStandards` (extend `NUMERIC_STANDARDS` keys: `candidatesAssessedTarget`, `agentsContractedTarget`). Wire accountability flag logic (`computeMissedActivities`) to the monthly rollup. Surface as an informational warning panel on `MonthlyRecruitingTab` analogous to `AccountabilityFlagPanel`.
+
+**Action:** After definitional confirmation FU closes (head-of-sales confirms semantics), extend `ActivityStandardsModal`/`ActivityStandardsPanel` with a "Monthly Recruiting" section; extend override layer; extend flag display.
+
+**Priority:** LOW. No targets set yet; flag meaningless until definitions confirmed and baseline data collected.
+
+Banked: I2 PR #280.
+
+---
+
+## Track I I2 — `recruitsInFirstWeeks` auto-derive from `contractStartDate` (LOW, banked 2026-05-23)
+
+**Scope:** Track I design spec §5 lists `recruitsInFirstWeeks` as a potential field — how many of the `agentsContracted` completed a milestone (e.g. first sale, first WAR submission) within N weeks of contracting. This requires `contractStartDate` on the agent user doc + a query or Cloud Function aggregation. Not built in I2 (capture only).
+
+**Action:** When `contractStartDate` is available and the field definition is confirmed, auto-derive `recruitsInFirstWeeks` by querying the contracted agents' user docs + submission records. Consider a nightly CF aggregation.
+
+**Priority:** LOW. Deferred until baseline `agentsContracted` data flows for a few months and the definition is validated with head-of-sales.
+
+Banked: I2 PR #280.
+
+---
+
+## Track I I2 — Head-of-sales definitional confirmation for `candidatesAssessed` + `agentsContracted` (LOW, banked 2026-05-23)
+
+**Scope:** Both fields are labelled "Provisional — pending head-of-sales confirmation" in `MonthlyRecruitingTab.jsx`. Definitions used:
+- `candidatesAssessed`: recruiting candidates who completed a formal assessment this month
+- `agentsContracted`: new agents who signed a contract this month; logged under the month the contract is issued
+
+**Action:** When Kyron has a head-of-sales conversation confirming or amending these definitions:
+1. Update the `help` prop text on both `NumberField` instances in `MonthlyRecruitingTab.jsx` (remove "Provisional" / "pending head-of-sales confirmation" qualifiers).
+2. Update any FU comments in service / test files that reference "provisional".
+3. Close this FU.
+
+**Priority:** LOW. Provisional labels are safe to leave in until confirmed; they don't block data collection.
+
+Banked: I2 PR #280.
+
+---
+
+## Track I I2 — Possible compliance edit-freeze for submitted monthly rollups (LOW, banked 2026-05-23)
+
+**Scope:** The I2 rule allows the owner to overwrite a submitted rollup (no status-transition lock). The brief locked "no time gate" as the I2 decision (mirrors WAR + persistency behaviour). A compliance freeze (status `submitted` → read-only at the rule layer) is a possible future hardening.
+
+**Action:** If Kyron decides a compliance freeze is needed:
+1. Add `resource.data.status != 'submitted'` guard to the `allow update` arm in the `managerMonthlyRollups` rule block.
+2. Confirm UI already prevents edit when `isSubmitted` (it does — buttons are hidden and fields are disabled).
+3. Deploy as a standalone additive rule edit; no service/UI changes needed.
+
+**Priority:** LOW. No compliance requirement surfaced yet.
+
+Banked: I2 PR #280.
+
+---
+
 ## I1.x — Hoist duplicated WAR/cn/jc role-rank helpers to shared top-level rules function (CLOSED — PR #268 `065a7d7`)
 
 **Resolved 2026-05-22:** Single top-level `roleRank()` function added at the top of `match /databases/{database}/documents` (adjacent to `isManager()` / `isAgent()`). Phase 1 verified all four block-local copies byte-identical (the third `warRoleRank` in `managerActivityStandardOverrides` was added by PR #266 after this FU was banked — same body, included in the hoist). All four duplicates removed; all 14 call sites swapped to `roleRank()`. No `allow` predicate logic changed; emulator suite 38/38 unchanged before/after. No rules deploy required (behavior identical, proven by unchanged emulator pass-set). Closed in PR [#268](https://github.com/Kelsean868/agencytrack/pull/268) (`065a7d7`).

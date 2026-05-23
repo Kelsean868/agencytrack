@@ -721,6 +721,72 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ── I2: manager monthly recruiting roll-up ───────────────────────────────
+      // /tenants/{tid}/managerMonthlyRollups/{managerId}_{YYYY_MM}
+      // Privacy = WAR direction: owner RW, upline R; peers + downline DENY.
+      // callerBranchId + uplineCanRead are block-local (mirror managerWeeklyReports
+      // at :651/:656) — they scope tenantId from the surrounding match block.
+      // No jfwCount-immutability analog (no CF auto-count for monthly fields).
+      match /managerMonthlyRollups/{rollupId} {
+
+        function callerBranchId(tenantId) {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
+        }
+
+        function uplineCanRead() {
+          return roleRank() > resource.data.managerRoleRank
+            && (
+              getRole() in ['tenant_admin', 'platform_admin', 'sales_manager']
+              || (getRole() == 'branch_manager'
+                  && callerBranchId(tenantId) == resource.data.branchId)
+            );
+        }
+
+        function validRollupWrite() {
+          let d = request.resource.data;
+          return d.managerId == request.auth.uid
+            && d.tenantId == tenantId
+            && d.keys().hasAll([
+                 'managerId', 'tenantId', 'monthKey',
+                 'managerRole', 'managerRoleRank', 'branchId', 'unitId',
+                 'candidatesAssessed', 'agentsContracted',
+                 'status', 'updatedAt'
+               ])
+            && d.candidatesAssessed is int && d.candidatesAssessed >= 0
+            && d.agentsContracted   is int && d.agentsContracted   >= 0
+            && d.status in ['draft', 'submitted']
+            && d.monthKey is string
+            && d.managerRole in ['unit_manager', 'branch_manager', 'sales_manager']
+            && d.managerRoleRank == roleRank();
+        }
+
+        allow create: if isSignedIn() && getTenantId() == tenantId
+          && getRole() in ['unit_manager', 'branch_manager', 'sales_manager']
+          && validRollupWrite();
+
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && resource.data.managerId == request.auth.uid
+          && validRollupWrite();
+
+        // Single-doc: owner (or pre-write existence check via rollupId prefix) OR upline.
+        // resource == null when doc doesn't exist (owner's pre-write getDoc check).
+        // Extract managerId from rollupId (format: {managerId}_{YYYY-MM}) to allow
+        // owner existence-check without hitting a null-pointer on resource.data.
+        allow get: if isSignedIn() && getTenantId() == tenantId
+          && (resource == null
+              ? rollupId.split('_')[0] == request.auth.uid
+              : resource.data.managerId == request.auth.uid || uplineCanRead());
+
+        // Query-safe list: BM (rank 2) sees own branch; SM+ (rank ≥ 3) sees tenant-wide.
+        // UM (rank 1) denied by the roleRank()>=2 gate.
+        allow list: if isSignedIn() && getTenantId() == tenantId
+          && roleRank() >= 2
+          && (resource.data.branchId == callerBranchId(tenantId) || roleRank() >= 3);
+
+        allow delete: if false;
+      }
+
       // ── I1.3c-ii: per-manager activity standard overrides ────────────────────
       // /tenants/{tid}/managerActivityStandardOverrides/{managerId}
       // Fields: tenantId, managerId, updatedBy, updatedAt, + partial activity map.

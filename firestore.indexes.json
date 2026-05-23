@@ -189,6 +189,20 @@
       ]
     },
     {
+      "collectionGroup": "managerMonthlyRollups",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "branchId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "monthKey",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "managerWeeklyReports",
       "queryScope": "COLLECTION",
       "fields": [

@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
-  Activity,
+  Activity, UserPlus,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -30,6 +30,7 @@ import KioskModeTab from '../kiosk/KioskModeTab';
 import AgentOfMonthTab from '../manager/AgentOfMonthTab';
 import ManagerWarTab from '../manager/ManagerWarTab';
 import TeamWarsTab from '../manager/TeamWarsTab';
+import MonthlyRecruitingTab from '../manager/MonthlyRecruitingTab';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -44,6 +45,8 @@ const NAV_ITEMS = [
   // I1.3b: Team WARs — upline browse (BM sees own branch; SM+ sees tenant-wide)
   { id: 'team-wars', label: 'Team WARs', tabId: 'team-wars', Icon: Activity,
     roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
+  // I2: Monthly Recruiting — UM/BM/SM file; BM/SM/TA/PA view the team
+  { id: 'monthly-recruiting', label: 'Monthly Recruiting', tabId: 'monthly-recruiting', Icon: UserPlus },
   { id: 'team',        label: 'Team',         tabId: 'team',        Icon: Users },
   { id: 'campaigns',          label: 'Campaigns',         tabId: 'campaigns',          Icon: Gift },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: LineChart },
@@ -213,8 +216,9 @@ export default function ManagerDashboard() {
           />
         )}
 
-        {activeTab === 'my-war'    && <ManagerWarTab />}
-        {activeTab === 'team-wars' && <TeamWarsTab />}
+        {activeTab === 'my-war'             && <ManagerWarTab />}
+        {activeTab === 'team-wars'          && <TeamWarsTab />}
+        {activeTab === 'monthly-recruiting' && <MonthlyRecruitingTab />}
 
         {activeTab === 'team' && <UserManagementPanel />}
 
