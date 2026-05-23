@@ -1,5 +1,6 @@
 // Pure computation engine — zero Firebase imports, zero side effects
 import { extractFields, extractTotalProductionCredit } from './extractFields';
+import { DEFAULT_RULESET_2026 } from '../config/awardsRuleset/2026';
 
 const p = (v) => parseFloat(v) || 0;
 
@@ -44,8 +45,9 @@ function criterion(label, target, current, unit) {
 // submittedData: array of submission docs
 // agentProfile: user doc { monthsInIndustry, monthsAtTatil, isBdoDso, ... }
 // currentDate: Date or date string
+// ruleset: award rules data (defaults to DEFAULT_RULESET_2026)
 // ──────────────────────────────────────────────────────
-export function computeAgentAwards(confirmedData, submittedData, agentProfile, currentDate) {
+export function computeAgentAwards(confirmedData, submittedData, agentProfile, currentDate, ruleset = DEFAULT_RULESET_2026) {
   const now = currentDate instanceof Date ? currentDate : new Date(currentDate ?? Date.now());
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
@@ -132,8 +134,8 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
       annualSource = 'estimated';
     }
   });
-  // Centurion counts PPP increases as apps, capped at 20 per year
-  const centurionApps = annualApps + Math.min(estPppApps, 20);
+  // Centurion counts PPP increases as apps, capped per ruleset
+  const centurionApps = annualApps + Math.min(estPppApps, ruleset.centurionAward.pppCap);
 
   const confPersistVals = annualConf.map((d) => p(d.persistency)).filter((v) => v > 0);
   const subPersistVals = yearSubs.map((s) => p(s.persistencyRate)).filter((v) => v > 0);
@@ -149,221 +151,176 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
   const awards = {};
 
   // ── MONTHLY ──
-  if (!isBdoDso) {
-    const mPersOk = monthlyPersist >= 90 || monthlySource === 'estimated';
+  if (!isBdoDso || !ruleset.advisorMonth.excludesBdoDso) {
+    const mPersOk = monthlyPersist >= ruleset.advisorMonth.persistGate || monthlySource === 'estimated';
 
     awards.advisor_month_api = makeAward({
       id: 'advisor_month_api', name: 'Advisor of the Month — API', category: 'monthly',
-      eligible: monthlyAPI >= 50000 && mPersOk,
-      inContention: monthlyAPI >= 25000 && monthlyAPI < 50000,
+      eligible: monthlyAPI >= ruleset.advisorMonth.api.threshold && mPersOk,
+      inContention: monthlyAPI >= ruleset.advisorMonth.api.inContention && monthlyAPI < ruleset.advisorMonth.api.threshold,
       criteria: [
-        criterion('Monthly API', 50000, monthlyAPI, 'TTD'),
-        criterion('Persistency', 90, monthlyPersist, '%'),
+        criterion('Monthly API', ruleset.advisorMonth.api.threshold, monthlyAPI, 'TTD'),
+        criterion('Persistency', ruleset.advisorMonth.persistGate, monthlyPersist, '%'),
       ],
-      prize: 'Recognition + Gift',
-      dataSource: monthlySource, progressPercent: (monthlyAPI / 50000) * 100, note: monthlyNote,
+      prize: ruleset.advisorMonth.api.prize,
+      dataSource: monthlySource, progressPercent: (monthlyAPI / ruleset.advisorMonth.api.threshold) * 100, note: monthlyNote,
     });
 
     awards.advisor_month_apps = makeAward({
       id: 'advisor_month_apps', name: 'Advisor of the Month — Apps', category: 'monthly',
-      eligible: monthlyApps >= 15 && mPersOk,
-      inContention: monthlyApps >= 8 && monthlyApps < 15,
+      eligible: monthlyApps >= ruleset.advisorMonth.apps.threshold && mPersOk,
+      inContention: monthlyApps >= ruleset.advisorMonth.apps.inContention && monthlyApps < ruleset.advisorMonth.apps.threshold,
       criteria: [
-        criterion('Monthly Apps', 15, monthlyApps, 'apps'),
-        criterion('Persistency', 90, monthlyPersist, '%'),
+        criterion('Monthly Apps', ruleset.advisorMonth.apps.threshold, monthlyApps, 'apps'),
+        criterion('Persistency', ruleset.advisorMonth.persistGate, monthlyPersist, '%'),
       ],
-      prize: 'Recognition + Gift',
-      dataSource: monthlySource, progressPercent: (monthlyApps / 15) * 100, note: monthlyNote,
+      prize: ruleset.advisorMonth.apps.prize,
+      dataSource: monthlySource, progressPercent: (monthlyApps / ruleset.advisorMonth.apps.threshold) * 100, note: monthlyNote,
     });
   }
 
   // ── QUARTERLY ──
-  const qPersOk = quarterlyPersist >= 90 || quarterlySource === 'estimated';
+  const qPersOk = quarterlyPersist >= ruleset.quarterlyAward.persistGate || quarterlySource === 'estimated';
 
   awards.quarterly_api = makeAward({
     id: 'quarterly_api', name: 'Quarterly API Award', category: 'quarterly',
-    eligible: quarterlyAPI >= 125000 && qPersOk,
-    inContention: quarterlyAPI >= 62500 && quarterlyAPI < 125000,
+    eligible: quarterlyAPI >= ruleset.quarterlyAward.api.threshold && qPersOk,
+    inContention: quarterlyAPI >= ruleset.quarterlyAward.api.inContention && quarterlyAPI < ruleset.quarterlyAward.api.threshold,
     criteria: [
-      criterion('Quarterly Net API', 125000, quarterlyAPI, 'TTD'),
-      criterion('Persistency', 90, quarterlyPersist, '%'),
+      criterion('Quarterly Net API', ruleset.quarterlyAward.api.threshold, quarterlyAPI, 'TTD'),
+      criterion('Persistency', ruleset.quarterlyAward.persistGate, quarterlyPersist, '%'),
     ],
-    prize: 'Quarterly Bonus',
-    dataSource: quarterlySource, progressPercent: (quarterlyAPI / 125000) * 100, note: quarterlyNote,
+    prize: ruleset.quarterlyAward.api.prize,
+    dataSource: quarterlySource, progressPercent: (quarterlyAPI / ruleset.quarterlyAward.api.threshold) * 100, note: quarterlyNote,
   });
 
   awards.quarterly_apps = makeAward({
     id: 'quarterly_apps', name: 'Quarterly Apps Award', category: 'quarterly',
-    eligible: quarterlyApps >= 45 && qPersOk,
-    inContention: quarterlyApps >= 22 && quarterlyApps < 45,
+    eligible: quarterlyApps >= ruleset.quarterlyAward.apps.threshold && qPersOk,
+    inContention: quarterlyApps >= ruleset.quarterlyAward.apps.inContention && quarterlyApps < ruleset.quarterlyAward.apps.threshold,
     criteria: [
-      criterion('Quarterly Apps', 45, quarterlyApps, 'apps'),
-      criterion('Persistency', 90, quarterlyPersist, '%'),
+      criterion('Quarterly Apps', ruleset.quarterlyAward.apps.threshold, quarterlyApps, 'apps'),
+      criterion('Persistency', ruleset.quarterlyAward.persistGate, quarterlyPersist, '%'),
     ],
-    prize: 'Quarterly Bonus',
-    dataSource: quarterlySource, progressPercent: (quarterlyApps / 45) * 100, note: quarterlyNote,
+    prize: ruleset.quarterlyAward.apps.prize,
+    dataSource: quarterlySource, progressPercent: (quarterlyApps / ruleset.quarterlyAward.apps.threshold) * 100, note: quarterlyNote,
   });
 
   // ── ANNUAL ──
   awards.persistency_silver = makeAward({
     id: 'persistency_silver', name: 'Persistency Award — Silver', category: 'annual',
-    eligible: annualAPI >= 250000 && annualApps >= 45 && annualPersist >= 92,
-    inContention: annualAPI >= 125000 && annualApps >= 22,
+    eligible: annualAPI >= ruleset.persistencyAward.silver.apiThreshold && annualApps >= ruleset.persistencyAward.silver.appsThreshold && annualPersist >= ruleset.persistencyAward.silver.persistGate,
+    inContention: annualAPI >= ruleset.persistencyAward.silver.apiInContention && annualApps >= ruleset.persistencyAward.silver.appsInContention,
     criteria: [
-      criterion('Annual API', 250000, annualAPI, 'TTD'),
-      criterion('Annual Apps', 45, annualApps, 'apps'),
-      criterion('Avg Persistency', 92, annualPersist, '%'),
+      criterion('Annual API', ruleset.persistencyAward.silver.apiThreshold, annualAPI, 'TTD'),
+      criterion('Annual Apps', ruleset.persistencyAward.silver.appsThreshold, annualApps, 'apps'),
+      criterion('Avg Persistency', ruleset.persistencyAward.silver.persistGate, annualPersist, '%'),
     ],
-    prize: 'Silver Trophy + Bonus',
-    dataSource: annualSource, progressPercent: (annualAPI / 250000) * 100, note: annualNote,
+    prize: ruleset.persistencyAward.silver.prize,
+    dataSource: annualSource, progressPercent: (annualAPI / ruleset.persistencyAward.silver.apiThreshold) * 100, note: annualNote,
   });
 
   awards.persistency_gold = makeAward({
     id: 'persistency_gold', name: 'Persistency Award — Gold', category: 'annual',
-    eligible: annualAPI >= 250000 && annualApps >= 45 && annualPersist >= 95,
-    inContention: annualAPI >= 125000 && annualPersist >= 90,
+    eligible: annualAPI >= ruleset.persistencyAward.gold.apiThreshold && annualApps >= ruleset.persistencyAward.gold.appsThreshold && annualPersist >= ruleset.persistencyAward.gold.persistGate,
+    inContention: annualAPI >= ruleset.persistencyAward.gold.apiInContention && annualPersist >= ruleset.persistencyAward.gold.persistInContention,
     criteria: [
-      criterion('Annual API', 250000, annualAPI, 'TTD'),
-      criterion('Annual Apps', 45, annualApps, 'apps'),
-      criterion('Avg Persistency', 95, annualPersist, '%'),
+      criterion('Annual API', ruleset.persistencyAward.gold.apiThreshold, annualAPI, 'TTD'),
+      criterion('Annual Apps', ruleset.persistencyAward.gold.appsThreshold, annualApps, 'apps'),
+      criterion('Avg Persistency', ruleset.persistencyAward.gold.persistGate, annualPersist, '%'),
     ],
-    prize: 'Gold Trophy + Premium Bonus',
-    dataSource: annualSource, progressPercent: (annualAPI / 250000) * 100, note: annualNote,
+    prize: ruleset.persistencyAward.gold.prize,
+    dataSource: annualSource, progressPercent: (annualAPI / ruleset.persistencyAward.gold.apiThreshold) * 100, note: annualNote,
   });
 
-  if (monthsInIndustry <= 18 || monthsInIndustry === 0) {
+  if (monthsInIndustry <= ruleset.rookieAward.maxMonthsInIndustry || monthsInIndustry === 0) {
     awards.rookie_of_year = makeAward({
       id: 'rookie_of_year', name: 'Rookie of the Year', category: 'annual',
-      eligible: annualAPI >= 325000 && annualApps >= 52 && annualPersist >= 95,
-      inContention: annualAPI >= 162500 && annualApps >= 26,
+      eligible: annualAPI >= ruleset.rookieAward.apiThreshold && annualApps >= ruleset.rookieAward.appsThreshold && annualPersist >= ruleset.rookieAward.persistGate,
+      inContention: annualAPI >= ruleset.rookieAward.apiInContention && annualApps >= ruleset.rookieAward.appsInContention,
       criteria: [
-        criterion('Annual API', 325000, annualAPI, 'TTD'),
-        criterion('Annual Apps', 52, annualApps, 'apps'),
-        criterion('Avg Persistency', 95, annualPersist, '%'),
+        criterion('Annual API', ruleset.rookieAward.apiThreshold, annualAPI, 'TTD'),
+        criterion('Annual Apps', ruleset.rookieAward.appsThreshold, annualApps, 'apps'),
+        criterion('Avg Persistency', ruleset.rookieAward.persistGate, annualPersist, '%'),
       ],
-      prize: 'Rookie Trophy + Premium Recognition',
-      dataSource: annualSource, progressPercent: (annualAPI / 325000) * 100, note: annualNote,
+      prize: ruleset.rookieAward.prize,
+      dataSource: annualSource, progressPercent: (annualAPI / ruleset.rookieAward.apiThreshold) * 100, note: annualNote,
     });
   }
 
-  if (monthsAtTatil <= 18 || monthsAtTatil === 0) {
+  if (monthsAtTatil <= ruleset.newBsAward.maxMonthsAtTatil || monthsAtTatil === 0) {
     awards.new_bs_award = makeAward({
       id: 'new_bs_award', name: 'New Business Advisor Award', category: 'annual',
-      eligible: annualAPI >= 250000 && annualApps >= 52 && annualPersist >= 95,
-      inContention: annualAPI >= 125000 && annualApps >= 26,
+      eligible: annualAPI >= ruleset.newBsAward.apiThreshold && annualApps >= ruleset.newBsAward.appsThreshold && annualPersist >= ruleset.newBsAward.persistGate,
+      inContention: annualAPI >= ruleset.newBsAward.apiInContention && annualApps >= ruleset.newBsAward.appsInContention,
       criteria: [
-        criterion('Annual API', 250000, annualAPI, 'TTD'),
-        criterion('Annual Apps', 52, annualApps, 'apps'),
-        criterion('Avg Persistency', 95, annualPersist, '%'),
+        criterion('Annual API', ruleset.newBsAward.apiThreshold, annualAPI, 'TTD'),
+        criterion('Annual Apps', ruleset.newBsAward.appsThreshold, annualApps, 'apps'),
+        criterion('Avg Persistency', ruleset.newBsAward.persistGate, annualPersist, '%'),
       ],
-      prize: 'New Advisor Trophy + Bonus',
-      dataSource: annualSource, progressPercent: (annualAPI / 250000) * 100, note: annualNote,
+      prize: ruleset.newBsAward.prize,
+      dataSource: annualSource, progressPercent: (annualAPI / ruleset.newBsAward.apiThreshold) * 100, note: annualNote,
     });
   }
 
   awards.centurion = makeAward({
     id: 'centurion', name: 'Centurion Award', category: 'annual',
-    eligible: centurionApps >= 100 && annualPersist >= 90,
-    inContention: centurionApps >= 50 && centurionApps < 100,
+    eligible: centurionApps >= ruleset.centurionAward.appsThreshold && annualPersist >= ruleset.centurionAward.persistGate,
+    inContention: centurionApps >= ruleset.centurionAward.appsInContention && centurionApps < ruleset.centurionAward.appsThreshold,
     criteria: [
-      criterion('Annual Apps', 100, centurionApps, 'apps'),
-      criterion('Avg Persistency', 90, annualPersist, '%'),
+      criterion('Annual Apps', ruleset.centurionAward.appsThreshold, centurionApps, 'apps'),
+      criterion('Avg Persistency', ruleset.centurionAward.persistGate, annualPersist, '%'),
     ],
-    prize: 'Centurion Trophy',
-    dataSource: annualSource, progressPercent: (centurionApps / 100) * 100, note: annualNote,
+    prize: ruleset.centurionAward.prize,
+    dataSource: annualSource, progressPercent: (centurionApps / ruleset.centurionAward.appsThreshold) * 100, note: annualNote,
   });
 
   // ── CLUB ──
-  const clubApps = annualApps >= 50;
-  const clubPers = annualPersist >= 90;
+  const clubApps = annualApps >= ruleset.clubAward.appsMin;
+  const clubPers = annualPersist >= ruleset.clubAward.persistGate;
 
-  awards.bronze_club_l3 = makeAward({
-    id: 'bronze_club_l3', name: 'Bronze Club — Level 3', category: 'club',
-    eligible: annualAPI >= 250000 && annualAPI < 350000 && clubApps && clubPers,
-    inContention: annualAPI >= 125000 && annualAPI < 350000 && annualApps >= 25,
-    criteria: [
-      criterion('Annual API ($250K–$349K)', 250000, annualAPI, 'TTD'),
-      criterion('Annual Apps', 50, annualApps, 'apps'),
-      criterion('Avg Persistency', 90, annualPersist, '%'),
-    ],
-    prize: 'Bronze Club Membership',
-    dataSource: annualSource, progressPercent: (annualAPI / 350000) * 100, note: annualNote,
+  ruleset.clubAward.tiers.forEach((tier) => {
+    const { id, name, apiMin, apiMax, apiInContention, prize } = tier;
+    const inContentionUpperBound = apiMax !== null ? apiMax : apiMin;
+    const bandLabel = apiMax !== null
+      ? `Annual API ($${apiMin / 1000}K–$${apiMax / 1000 - 1}K)`
+      : `Annual API (≥$${apiMin / 1000}K)`;
+    awards[id] = makeAward({
+      id, name, category: 'club',
+      eligible: annualAPI >= apiMin && (apiMax === null || annualAPI < apiMax) && clubApps && clubPers,
+      inContention: annualAPI >= apiInContention && annualAPI < inContentionUpperBound && annualApps >= ruleset.clubAward.appsInContention,
+      criteria: [
+        criterion(bandLabel, apiMin, annualAPI, 'TTD'),
+        criterion('Annual Apps', ruleset.clubAward.appsMin, annualApps, 'apps'),
+        criterion('Avg Persistency', ruleset.clubAward.persistGate, annualPersist, '%'),
+      ],
+      prize,
+      dataSource: annualSource, progressPercent: (annualAPI / (apiMax ?? apiMin)) * 100, note: annualNote,
+    });
   });
 
-  awards.bronze_club_l2 = makeAward({
-    id: 'bronze_club_l2', name: 'Bronze Club — Level 2', category: 'club',
-    eligible: annualAPI >= 350000 && annualAPI < 450000 && clubApps && clubPers,
-    inContention: annualAPI >= 175000 && annualAPI < 450000 && annualApps >= 25,
-    criteria: [
-      criterion('Annual API ($350K–$449K)', 350000, annualAPI, 'TTD'),
-      criterion('Annual Apps', 50, annualApps, 'apps'),
-      criterion('Avg Persistency', 90, annualPersist, '%'),
-    ],
-    prize: 'Bronze Club Membership + Bonus',
-    dataSource: annualSource, progressPercent: (annualAPI / 450000) * 100, note: annualNote,
-  });
-
-  awards.bronze_club_l1 = makeAward({
-    id: 'bronze_club_l1', name: 'Bronze Club — Level 1', category: 'club',
-    eligible: annualAPI >= 450000 && annualAPI < 550000 && clubApps && clubPers,
-    inContention: annualAPI >= 225000 && annualAPI < 550000 && annualApps >= 25,
-    criteria: [
-      criterion('Annual API ($450K–$549K)', 450000, annualAPI, 'TTD'),
-      criterion('Annual Apps', 50, annualApps, 'apps'),
-      criterion('Avg Persistency', 90, annualPersist, '%'),
-    ],
-    prize: 'Bronze Club Level 1 + Trip',
-    dataSource: annualSource, progressPercent: (annualAPI / 550000) * 100, note: annualNote,
-  });
-
-  awards.silver_club = makeAward({
-    id: 'silver_club', name: 'Silver Club', category: 'club',
-    eligible: annualAPI >= 550000 && annualAPI < 650000 && clubApps && clubPers,
-    inContention: annualAPI >= 275000 && annualAPI < 650000 && annualApps >= 25,
-    criteria: [
-      criterion('Annual API ($550K–$649K)', 550000, annualAPI, 'TTD'),
-      criterion('Annual Apps', 50, annualApps, 'apps'),
-      criterion('Avg Persistency', 90, annualPersist, '%'),
-    ],
-    prize: 'Silver Club + Premium Trip',
-    dataSource: annualSource, progressPercent: (annualAPI / 650000) * 100, note: annualNote,
-  });
-
-  awards.gold_club = makeAward({
-    id: 'gold_club', name: 'Gold Club', category: 'club',
-    eligible: annualAPI >= 650000 && clubApps && clubPers,
-    inContention: annualAPI >= 325000 && annualAPI < 650000 && annualApps >= 25,
-    criteria: [
-      criterion('Annual API (≥$650K)', 650000, annualAPI, 'TTD'),
-      criterion('Annual Apps', 50, annualApps, 'apps'),
-      criterion('Avg Persistency', 90, annualPersist, '%'),
-    ],
-    prize: 'Gold Club + Luxury Trip',
-    dataSource: annualSource, progressPercent: (annualAPI / 650000) * 100, note: annualNote,
-  });
-
-  if (!isBdoDso) {
+  if (!isBdoDso || !ruleset.agentOfYearAward.excludesBdoDso) {
     awards.agent_of_year = makeAward({
       id: 'agent_of_year', name: 'Agent of the Year', category: 'annual',
-      eligible: annualAPI >= 1000000 && annualApps >= 50 && annualPersist >= 90,
-      inContention: annualAPI >= 500000 && annualApps >= 25,
+      eligible: annualAPI >= ruleset.agentOfYearAward.apiThreshold && annualApps >= ruleset.agentOfYearAward.appsThreshold && annualPersist >= ruleset.agentOfYearAward.persistGate,
+      inContention: annualAPI >= ruleset.agentOfYearAward.apiInContention && annualApps >= ruleset.agentOfYearAward.appsInContention,
       criteria: [
-        criterion('Annual API', 1000000, annualAPI, 'TTD'),
-        criterion('Annual Apps', 50, annualApps, 'apps'),
-        criterion('Avg Persistency', 90, annualPersist, '%'),
+        criterion('Annual API', ruleset.agentOfYearAward.apiThreshold, annualAPI, 'TTD'),
+        criterion('Annual Apps', ruleset.agentOfYearAward.appsThreshold, annualApps, 'apps'),
+        criterion('Avg Persistency', ruleset.agentOfYearAward.persistGate, annualPersist, '%'),
       ],
-      prize: 'Agent of the Year Trophy + Grand Prize',
-      dataSource: annualSource, progressPercent: (annualAPI / 1000000) * 100, note: annualNote,
+      prize: ruleset.agentOfYearAward.prize,
+      dataSource: annualSource, progressPercent: (annualAPI / ruleset.agentOfYearAward.apiThreshold) * 100, note: annualNote,
     });
   }
 
   awards.mdrt = makeAward({
     id: 'mdrt', name: 'MDRT', category: 'annual',
-    eligible: annualAPI >= 500000,
-    inContention: annualAPI >= 250000 && annualAPI < 500000,
-    criteria: [criterion('Annual API', 500000, annualAPI, 'TTD')],
-    prize: 'MDRT Membership + Recognition',
-    dataSource: annualSource, progressPercent: (annualAPI / 500000) * 100, note: annualNote,
+    eligible: annualAPI >= ruleset.mdrtAward.apiThreshold,
+    inContention: annualAPI >= ruleset.mdrtAward.apiInContention && annualAPI < ruleset.mdrtAward.apiThreshold,
+    criteria: [criterion('Annual API', ruleset.mdrtAward.apiThreshold, annualAPI, 'TTD')],
+    prize: ruleset.mdrtAward.prize,
+    dataSource: annualSource, progressPercent: (annualAPI / ruleset.mdrtAward.apiThreshold) * 100, note: annualNote,
   });
 
   return awards;
@@ -377,8 +334,9 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
 // recruitData: { newAdvisors: number }
 // currentDate: Date
 // role: 'unit_manager' | 'branch_manager'
+// ruleset: award rules data (defaults to DEFAULT_RULESET_2026)
 // ──────────────────────────────────────────────────────
-export function computeManagerAwards(confirmedData, unitAgentIds, allAgentConfirmed, recruitData, currentDate, role) {
+export function computeManagerAwards(confirmedData, unitAgentIds, allAgentConfirmed, recruitData, currentDate, role, ruleset = DEFAULT_RULESET_2026) {
   const now = currentDate instanceof Date ? currentDate : new Date(currentDate ?? Date.now());
   const year = now.getFullYear();
   const month = now.getMonth() + 1;
@@ -395,18 +353,24 @@ export function computeManagerAwards(confirmedData, unitAgentIds, allAgentConfir
   const monthTotalAPI = monthConf.reduce((s, d) => s + p(d.settledAPI), 0);
   const avgMonthlyAPI = agentCount > 0 ? monthTotalAPI / agentCount : 0;
 
+  const sortedBonusTiers = [...ruleset.managerMonthlyBonus.tiers].sort((a, b) => b.minAvgApi - a.minAvgApi);
   let bonusPct = 0;
   let nextTier = null;
-  if (avgMonthlyAPI >= 30000) {
-    bonusPct = 1.5;
-  } else if (avgMonthlyAPI >= 20000) {
-    bonusPct = 1.0;
-    nextTier = { threshold: 30000, pct: 1.5 };
-  } else if (avgMonthlyAPI >= 15000) {
-    bonusPct = 0.75;
-    nextTier = { threshold: 20000, pct: 1.0 };
-  } else {
-    nextTier = { threshold: 15000, pct: 0.75 };
+  let matchIdx = -1;
+
+  for (let i = 0; i < sortedBonusTiers.length; i++) {
+    if (avgMonthlyAPI >= sortedBonusTiers[i].minAvgApi) {
+      bonusPct = sortedBonusTiers[i].bonusPct;
+      matchIdx = i;
+      break;
+    }
+  }
+
+  if (matchIdx > 0) {
+    nextTier = { threshold: sortedBonusTiers[matchIdx - 1].minAvgApi, pct: sortedBonusTiers[matchIdx - 1].bonusPct };
+  } else if (matchIdx === -1) {
+    const lowestTier = sortedBonusTiers[sortedBonusTiers.length - 1];
+    nextTier = { threshold: lowestTier.minAvgApi, pct: lowestTier.bonusPct };
   }
 
   const bonusAmount = monthTotalAPI * (bonusPct / 100);
@@ -449,11 +413,7 @@ export function computeManagerAwards(confirmedData, unitAgentIds, allAgentConfir
   const note = dataSource === 'estimated' ? 'Estimated — pending confirmation' : null;
 
   // Recruiting
-  [
-    { id: 'recruiting_bronze', name: 'Recruiting Award — Bronze', min: 3, max: 4,  prize: 'Bronze Recruiting Award' },
-    { id: 'recruiting_silver', name: 'Recruiting Award — Silver', min: 5, max: 6,  prize: 'Silver Recruiting Award' },
-    { id: 'recruiting_gold',   name: 'Recruiting Award — Gold',   min: 7, max: null, prize: 'Gold Recruiting Award'  },
-  ].forEach(({ id, name, min, max, prize }) => {
+  ruleset.recruitingAwards.forEach(({ id, name, min, max, prize }) => {
     const eligible = max !== null ? (newAdvisors >= min && newAdvisors <= max) : newAdvisors >= min;
     awards[id] = {
       id, name, category: 'annual', eligible,
@@ -464,12 +424,7 @@ export function computeManagerAwards(confirmedData, unitAgentIds, allAgentConfir
   });
 
   // Activity
-  [
-    { id: 'activity_bronze',   name: 'Activity Award — Bronze',   target: 40, prize: 'Bronze Activity Award'  },
-    { id: 'activity_silver',   name: 'Activity Award — Silver',   target: 50, prize: 'Silver Activity Award'  },
-    { id: 'activity_gold',     name: 'Activity Award — Gold',     target: 60, prize: 'Gold Activity Award'    },
-    { id: 'highest_activity',  name: 'Highest Activity Award',    target: 61, prize: 'Highest Activity Trophy' },
-  ].forEach(({ id, name, target, prize }) => {
+  ruleset.activityAwards.forEach(({ id, name, target, prize }) => {
     const eligible = avgAppsPerAdvisor >= target;
     awards[id] = {
       id, name, category: 'annual', eligible,
@@ -480,70 +435,78 @@ export function computeManagerAwards(confirmedData, unitAgentIds, allAgentConfir
   });
 
   // Production
-  const prodAPImet = avgAPIPerAdvisor >= 250000;
-  const prodPersMet = avgPersist >= 90;
+  const prodAPImet = avgAPIPerAdvisor >= ruleset.managerProductionAward.avgApiThreshold;
+  const prodPersMet = avgPersist >= ruleset.managerProductionAward.persistGate;
   awards.production_award = {
     id: 'production_award', name: 'Production Award', category: 'annual',
     eligible: prodAPImet && prodPersMet,
-    inContention: !prodAPImet || !prodPersMet ? avgAPIPerAdvisor >= 125000 : false,
+    inContention: !prodAPImet || !prodPersMet ? avgAPIPerAdvisor >= ruleset.managerProductionAward.avgApiInContention : false,
     criteria: [
-      { label: 'Avg API / Advisor', target: 250000, current: Math.round(avgAPIPerAdvisor), met: prodAPImet, unit: 'TTD' },
-      { label: 'Avg Persistency', target: 90, current: Math.round(avgPersist), met: prodPersMet, unit: '%' },
+      { label: 'Avg API / Advisor', target: ruleset.managerProductionAward.avgApiThreshold, current: Math.round(avgAPIPerAdvisor), met: prodAPImet, unit: 'TTD' },
+      { label: 'Avg Persistency', target: ruleset.managerProductionAward.persistGate, current: Math.round(avgPersist), met: prodPersMet, unit: '%' },
     ],
-    prize: 'Production Award + Bonus', dataSource, progressPercent: Math.min(100, (avgAPIPerAdvisor / 250000) * 100), note,
+    prize: ruleset.managerProductionAward.prize, dataSource, progressPercent: Math.min(100, (avgAPIPerAdvisor / ruleset.managerProductionAward.avgApiThreshold) * 100), note,
   };
 
   awards.persistency_silver = {
     id: 'persistency_silver', name: 'Agency Persistency — Silver', category: 'annual',
-    eligible: prodAPImet && avgPersist >= 92,
-    inContention: avgAPIPerAdvisor >= 125000 && avgPersist >= 85,
+    eligible: prodAPImet && avgPersist >= ruleset.managerPersistencyAward.silver.persistGate,
+    inContention: avgAPIPerAdvisor >= ruleset.managerPersistencyAward.silver.avgApiInContention && avgPersist >= ruleset.managerPersistencyAward.silver.persistInContention,
     criteria: [
-      { label: 'Avg API / Advisor', target: 250000, current: Math.round(avgAPIPerAdvisor), met: prodAPImet, unit: 'TTD' },
-      { label: 'Avg Persistency', target: 92, current: Math.round(avgPersist), met: avgPersist >= 92, unit: '%' },
+      { label: 'Avg API / Advisor', target: ruleset.managerProductionAward.avgApiThreshold, current: Math.round(avgAPIPerAdvisor), met: prodAPImet, unit: 'TTD' },
+      { label: 'Avg Persistency', target: ruleset.managerPersistencyAward.silver.persistGate, current: Math.round(avgPersist), met: avgPersist >= ruleset.managerPersistencyAward.silver.persistGate, unit: '%' },
     ],
-    prize: 'Persistency Silver Trophy', dataSource, progressPercent: Math.min(100, (avgAPIPerAdvisor / 250000) * 100), note,
+    prize: ruleset.managerPersistencyAward.silver.prize, dataSource, progressPercent: Math.min(100, (avgAPIPerAdvisor / ruleset.managerProductionAward.avgApiThreshold) * 100), note,
   };
 
   awards.persistency_gold = {
     id: 'persistency_gold', name: 'Agency Persistency — Gold', category: 'annual',
-    eligible: prodAPImet && avgPersist >= 95,
-    inContention: avgAPIPerAdvisor >= 125000 && avgPersist >= 90,
+    eligible: prodAPImet && avgPersist >= ruleset.managerPersistencyAward.gold.persistGate,
+    inContention: avgAPIPerAdvisor >= ruleset.managerPersistencyAward.gold.avgApiInContention && avgPersist >= ruleset.managerPersistencyAward.gold.persistInContention,
     criteria: [
-      { label: 'Avg API / Advisor', target: 250000, current: Math.round(avgAPIPerAdvisor), met: prodAPImet, unit: 'TTD' },
-      { label: 'Avg Persistency', target: 95, current: Math.round(avgPersist), met: avgPersist >= 95, unit: '%' },
+      { label: 'Avg API / Advisor', target: ruleset.managerProductionAward.avgApiThreshold, current: Math.round(avgAPIPerAdvisor), met: prodAPImet, unit: 'TTD' },
+      { label: 'Avg Persistency', target: ruleset.managerPersistencyAward.gold.persistGate, current: Math.round(avgPersist), met: avgPersist >= ruleset.managerPersistencyAward.gold.persistGate, unit: '%' },
     ],
-    prize: 'Persistency Gold Trophy', dataSource, progressPercent: Math.min(100, (avgAPIPerAdvisor / 250000) * 100), note,
+    prize: ruleset.managerPersistencyAward.gold.prize, dataSource, progressPercent: Math.min(100, (avgAPIPerAdvisor / ruleset.managerProductionAward.avgApiThreshold) * 100), note,
   };
 
   if (role === 'unit_manager') {
-    const eligible = totalAPI >= 2000000 && avgAPIPerAdvisor >= 250000 && agentCount >= 5 && newAdvisors >= 2 && avgPersist >= 90;
+    const eligible = totalAPI >= ruleset.unitOfYearAward.totalApiThreshold
+      && avgAPIPerAdvisor >= ruleset.unitOfYearAward.avgApiThreshold
+      && agentCount >= ruleset.unitOfYearAward.agentCountMin
+      && newAdvisors >= ruleset.unitOfYearAward.newAdvisorsMin
+      && avgPersist >= ruleset.unitOfYearAward.persistGate;
     awards.unit_of_year = {
       id: 'unit_of_year', name: 'Unit of the Year', category: 'annual',
-      eligible, inContention: !eligible && totalAPI >= 1000000,
+      eligible, inContention: !eligible && totalAPI >= ruleset.unitOfYearAward.totalApiInContention,
       criteria: [
-        { label: 'Total Unit API', target: 2000000, current: Math.round(totalAPI), met: totalAPI >= 2000000, unit: 'TTD' },
-        { label: 'Avg API / Advisor', target: 250000, current: Math.round(avgAPIPerAdvisor), met: avgAPIPerAdvisor >= 250000, unit: 'TTD' },
-        { label: 'Advisors', target: 5, current: agentCount, met: agentCount >= 5, unit: 'advisors' },
-        { label: 'New Recruits', target: 2, current: newAdvisors, met: newAdvisors >= 2, unit: 'advisors' },
-        { label: 'Avg Persistency', target: 90, current: Math.round(avgPersist), met: avgPersist >= 90, unit: '%' },
+        { label: 'Total Unit API', target: ruleset.unitOfYearAward.totalApiThreshold, current: Math.round(totalAPI), met: totalAPI >= ruleset.unitOfYearAward.totalApiThreshold, unit: 'TTD' },
+        { label: 'Avg API / Advisor', target: ruleset.unitOfYearAward.avgApiThreshold, current: Math.round(avgAPIPerAdvisor), met: avgAPIPerAdvisor >= ruleset.unitOfYearAward.avgApiThreshold, unit: 'TTD' },
+        { label: 'Advisors', target: ruleset.unitOfYearAward.agentCountMin, current: agentCount, met: agentCount >= ruleset.unitOfYearAward.agentCountMin, unit: 'advisors' },
+        { label: 'New Recruits', target: ruleset.unitOfYearAward.newAdvisorsMin, current: newAdvisors, met: newAdvisors >= ruleset.unitOfYearAward.newAdvisorsMin, unit: 'advisors' },
+        { label: 'Avg Persistency', target: ruleset.unitOfYearAward.persistGate, current: Math.round(avgPersist), met: avgPersist >= ruleset.unitOfYearAward.persistGate, unit: '%' },
       ],
-      prize: 'Unit of the Year Trophy + Grand Prize', dataSource, progressPercent: Math.min(100, (totalAPI / 2000000) * 100), note,
+      prize: ruleset.unitOfYearAward.prize, dataSource, progressPercent: Math.min(100, (totalAPI / ruleset.unitOfYearAward.totalApiThreshold) * 100), note,
     };
   }
 
   if (role === 'branch_manager' || role === 'tenant_admin' || role === 'platform_admin') {
-    const eligible = totalAPI >= 5000000 && avgAPIPerAdvisor >= 250000 && agentCount >= 15 && newAdvisors >= 3 && avgPersist >= 90;
+    const eligible = totalAPI >= ruleset.agencyOfYearAward.totalApiThreshold
+      && avgAPIPerAdvisor >= ruleset.agencyOfYearAward.avgApiThreshold
+      && agentCount >= ruleset.agencyOfYearAward.agentCountMin
+      && newAdvisors >= ruleset.agencyOfYearAward.newAdvisorsMin
+      && avgPersist >= ruleset.agencyOfYearAward.persistGate;
     awards.agency_of_year = {
       id: 'agency_of_year', name: 'Agency of the Year', category: 'annual',
-      eligible, inContention: !eligible && totalAPI >= 2500000,
+      eligible, inContention: !eligible && totalAPI >= ruleset.agencyOfYearAward.totalApiInContention,
       criteria: [
-        { label: 'Total Agency API', target: 5000000, current: Math.round(totalAPI), met: totalAPI >= 5000000, unit: 'TTD' },
-        { label: 'Avg API / Advisor', target: 250000, current: Math.round(avgAPIPerAdvisor), met: avgAPIPerAdvisor >= 250000, unit: 'TTD' },
-        { label: 'Advisors', target: 15, current: agentCount, met: agentCount >= 15, unit: 'advisors' },
-        { label: 'New Recruits', target: 3, current: newAdvisors, met: newAdvisors >= 3, unit: 'advisors' },
-        { label: 'Avg Persistency', target: 90, current: Math.round(avgPersist), met: avgPersist >= 90, unit: '%' },
+        { label: 'Total Agency API', target: ruleset.agencyOfYearAward.totalApiThreshold, current: Math.round(totalAPI), met: totalAPI >= ruleset.agencyOfYearAward.totalApiThreshold, unit: 'TTD' },
+        { label: 'Avg API / Advisor', target: ruleset.agencyOfYearAward.avgApiThreshold, current: Math.round(avgAPIPerAdvisor), met: avgAPIPerAdvisor >= ruleset.agencyOfYearAward.avgApiThreshold, unit: 'TTD' },
+        { label: 'Advisors', target: ruleset.agencyOfYearAward.agentCountMin, current: agentCount, met: agentCount >= ruleset.agencyOfYearAward.agentCountMin, unit: 'advisors' },
+        { label: 'New Recruits', target: ruleset.agencyOfYearAward.newAdvisorsMin, current: newAdvisors, met: newAdvisors >= ruleset.agencyOfYearAward.newAdvisorsMin, unit: 'advisors' },
+        { label: 'Avg Persistency', target: ruleset.agencyOfYearAward.persistGate, current: Math.round(avgPersist), met: avgPersist >= ruleset.agencyOfYearAward.persistGate, unit: '%' },
       ],
-      prize: 'Agency of the Year Trophy + Grand Prize', dataSource, progressPercent: Math.min(100, (totalAPI / 5000000) * 100), note,
+      prize: ruleset.agencyOfYearAward.prize, dataSource, progressPercent: Math.min(100, (totalAPI / ruleset.agencyOfYearAward.totalApiThreshold) * 100), note,
     };
   }
 
