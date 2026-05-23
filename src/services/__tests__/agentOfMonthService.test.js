@@ -1,11 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// Must mock firebase dependencies before importing the service module
-vi.mock('../../firebase', () => ({
-  db: {},
-  functions: {},
-}));
-
 vi.mock('firebase/firestore', () => ({
   doc: vi.fn(),
   getDoc: vi.fn(),

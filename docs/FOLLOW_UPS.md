@@ -264,20 +264,11 @@ Banked: PR #244 fix commit (`cdb6aa7`).
 
 ---
 
-## Vitest — redundant-mock sweep (remove init-only `vi.mock` calls now obsolete with global stub) (LOW, banked 2026-05-22)
+## ✅ Vitest — redundant-mock sweep (remove init-only `vi.mock` calls now obsolete with global stub) (LOW, banked 2026-05-22) — RESOLVED in PR #TBD
 
-**Scope:** The global firebase stub (PR #264) intercepts all relative `/firebase` imports globally. Several pre-existing `vi.mock(serviceId, factory)` calls in component tests exist SOLELY to prevent the transitive firebase-init throw (init-only) — they were not needed for return-value control and remain harmless but dead scaffolding now that the global stub handles init.
+**RESOLVED 2026-05-23 in PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).**
 
-The two #262 init-only mocks (`managerActivityStandardsService` in `TeamWarsTab.test`, `ActivityStandardsPanel` + `authService` in `TenantAdminDashboard.test`) were removed as proof in PR #264. Additional init-only mocks likely exist in other component tests that mocked a firebase-importing service solely to avoid the CI crash, without asserting on the mocked service's return values.
-
-**Action when convenient:**
-
-1. Grep for `vi.mock` in `src/` component tests (not service tests — those have return-value mocks by design): `git grep -n "vi.mock" -- "src/**/__tests__/*.jsx"`
-2. For each match: confirm whether ANY test in the file asserts on the mocked module's return values. If NO test does — it's init-only and can be removed.
-3. Remove the confirmed init-only mocks. Each removal is safe because the global stub now handles init; run `npx vitest run <file>` after each removal to confirm.
-4. Do NOT remove mocks where tests DO assert on return values — those remain necessary.
-
-**Priority:** LOW. All tests pass correctly with the redundant mocks still in place — they're dead but harmless. Sweep when convenient as a housekeeping PR. No behavioral change.
+11 init-only `vi.mock('../firebase'|'../../firebase'|'../../../firebase', () => ({ db: {} }))` calls removed from service/wizard test files. Grep-based classification (no full-file reads beyond 3 for ambiguous multi-line factories). LEAVE list (7 files, all with hoisted refs or non-bare sub-objects): AuthContext.test.jsx, authService.test.js, persistencyService.test.js, agentManagementService.test.js, managerService.test.js, userService.test.js, KioskModeTab.toast.test.jsx. Suite 1066/1066 unchanged; lint 0; build green.
 
 Banked: PR #264 (`b97e925`).
 

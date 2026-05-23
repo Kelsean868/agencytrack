@@ -6,8 +6,6 @@ const hoisted = vi.hoisted(() => ({
 }));
 const { mockGetDoc, mockSetDoc } = hoisted;
 
-vi.mock('../../firebase', () => ({ db: {} }));
-
 vi.mock('firebase/firestore', () => ({
   doc:             (db, path) => ({ __ref: path }),
   getDoc:          (...args) => hoisted.mockGetDoc(...args),

@@ -6,8 +6,6 @@ const hoisted = vi.hoisted(() => ({
   mockServerTimestamp: vi.fn(() => '__ts__'),
 }));
 
-vi.mock('../../firebase', () => ({ db: {} }));
-
 vi.mock('firebase/firestore', () => ({
   doc: (...args) => hoisted.mockDoc(...args),
   setDoc: (...args) => hoisted.mockSetDoc(...args),

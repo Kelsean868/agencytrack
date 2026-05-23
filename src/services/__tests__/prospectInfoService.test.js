@@ -12,8 +12,6 @@ const hoisted = vi.hoisted(() => ({
   mockServerTimestamp: vi.fn(() => ({ _type: 'serverTimestamp' })),
 }));
 
-vi.mock('../../firebase', () => ({ db: {} }));
-
 vi.mock('firebase/firestore', () => ({
   collection:      (...args) => hoisted.mockCollection(...args),
   doc:             (...args) => hoisted.mockDoc(...args),

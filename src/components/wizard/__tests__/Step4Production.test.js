@@ -13,10 +13,6 @@ vi.mock('firebase/firestore', () => ({
   getDocs:       vi.fn(() => Promise.resolve({ empty: true, docs: [] })),
 }));
 
-vi.mock('../../../firebase', () => ({
-  db: {},
-}));
-
 import { sanitize } from '../../../services/submissionService';
 
 const BASE = {
