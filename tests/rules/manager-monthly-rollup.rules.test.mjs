@@ -7,7 +7,7 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (21 cases):
+ * Test matrix (23 cases):
  *   CREATE (owner)
  *   1.  UM owner creates own rollup                          → ALLOW
  *   2.  BM owner creates own rollup (unitId: null — Item 3) → ALLOW
@@ -33,6 +33,9 @@
  *   19. BM own-branch list                                  → ALLOW
  *   20. SM tenant-wide list                                 → ALLOW
  *   21. UM list                                             → DENY (rank < 2)
+ *   NEW — catches rule-deviation gaps:
+ *   22. BM lists rollups for a different branch             → DENY (cross-branch)
+ *   23. Manager A updates Manager B's rollup (payload.managerId=A) → DENY (ownership guard)
  */
 
 import {
@@ -277,11 +280,31 @@ async function main() {
     await assertFails(getDocs(q));
   });
 
+  await t('22. BM lists rollups for a different branch → DENY (cross-branch)', async () => {
+    // BM2 is branch-b; querying for branch-a docs should be denied.
+    const db  = testEnv.authenticatedContext(BM2_ID, authToken('branch_manager')).firestore();
+    const q   = query(
+      collection(db, `tenants/${TENANT_ID}/managerMonthlyRollups`),
+      where('branchId', '==', BRANCH_A),
+      where('monthKey', '==', MONTH_KEY),
+    );
+    await assertFails(getDocs(q));
+  });
+
+  await t('23. Manager A updates Manager B rollup (payload.managerId=A, resource.managerId=B) → DENY', async () => {
+    // BM2 (branch-b) tries to update UM1 (branch-a)'s existing doc.
+    // Payload has managerId = BM2_ID (the caller's own uid), but
+    // resource.data.managerId = UM1_ID — ownership guard must fire.
+    const db  = testEnv.authenticatedContext(BM2_ID, authToken('branch_manager')).firestore();
+    const ref = rollupRef(db, UM1_ID, MONTH_KEY);  // UM1's pre-seeded doc
+    await assertFails(setDoc(ref, validPayload(BM2_ID, 'branch_manager', 2, BRANCH_B, null)));
+  });
+
   // ── Teardown ────────────────────────────────────────────────────────────────
 
   await testEnv.cleanup();
 
-  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
+  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed (23 expected)`);
   if (failed > 0) {
     process.exit(1);
   }

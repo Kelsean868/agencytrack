@@ -727,7 +727,6 @@ service cloud.firestore {
       // callerBranchId + uplineCanRead are block-local (mirror managerWeeklyReports
       // at :651/:656) — they scope tenantId from the surrounding match block.
       // No jfwCount-immutability analog (no CF auto-count for monthly fields).
-      // list mirrors the WAR's no-isSignedIn shape (getTenantId() requires a token).
       match /managerMonthlyRollups/{rollupId} {
 
         function callerBranchId(tenantId) {
@@ -765,7 +764,8 @@ service cloud.firestore {
           && getRole() in ['unit_manager', 'branch_manager', 'sales_manager']
           && validRollupWrite();
 
-        allow update: if isSignedIn() && getTenantId() == tenantId
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
           && resource.data.managerId == request.auth.uid
           && validRollupWrite();
 
@@ -780,7 +780,7 @@ service cloud.firestore {
 
         // Query-safe list: BM (rank 2) sees own branch; SM+ (rank ≥ 3) sees tenant-wide.
         // UM (rank 1) denied by the roleRank()>=2 gate.
-        allow list: if getTenantId() == tenantId
+        allow list: if isSignedIn() && getTenantId() == tenantId
           && roleRank() >= 2
           && (resource.data.branchId == callerBranchId(tenantId) || roleRank() >= 3);
 
