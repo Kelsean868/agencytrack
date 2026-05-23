@@ -21,6 +21,7 @@ export async function generateAgentPDF({
   confirmedSettlements,
   agentProfile,
   persistency,
+  ruleset,
 }) {
   const doc = createElement(AgentReportDocument, {
     agentInfo,
@@ -30,6 +31,7 @@ export async function generateAgentPDF({
     confirmedSettlements,
     agentProfile,
     persistency,
+    ruleset,
   });
 
   const blob = await pdf(doc).toBlob();
