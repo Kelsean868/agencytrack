@@ -65,11 +65,11 @@ Banked: PR #274 (`751c65c`).
 
 ---
 
-## Track I I3b — Tier-2 escalation (CF + upline notification) (SHIPPED — PR #TBD `{TBD}`)
+## Track I I3b — Tier-2 escalation (CF + upline notification) (SHIPPED — PR #275 `49617e3`)
 
-**Shipped 2026-05-22:** New `onWarSubmitNotifyUpline` gen-1 CF (`functions/war/onWarSubmitNotifyUpline.js`) + `functions/war/escalationLogic.js` pure CJS module (mirrors `src/utils/accountabilityFlag.js`). First-submit-transition gate (`before.status !== 'submitted' && after.status === 'submitted'`) de-dups jfwCount write-backs naturally. Upline topology locked: UM→all branch_managers same branchId (composite index `users role+branchId` deployed pre-merge); BM→all sales_managers tenant-wide (single-field, auto); SM→chain stops. Notifications: `manager_alert` type, title + body include manager name + week + count + activity list; best-effort `.catch` per recipient. No rule change; no frontend change. CF registered additively in `functions/index.js`. Tests: 18 escalationLogic unit + 6 handler tests. 48/48 functions tests + 1015/1015 app tests green env-unset. CF deploys POST-merge; production smoke post-merge.
+**Shipped 2026-05-22:** New `onWarSubmitNotifyUpline` gen-1 CF (`functions/war/onWarSubmitNotifyUpline.js`) + `functions/war/escalationLogic.js` pure CJS module (mirrors `src/utils/accountabilityFlag.js`). First-submit-transition gate (`before.status !== 'submitted' && after.status === 'submitted'`) de-dups jfwCount write-backs naturally. Upline topology locked: UM→all branch_managers same branchId (composite index `users role+branchId` deployed pre-merge); BM→all sales_managers tenant-wide (single-field, auto); SM→chain stops. Notifications: `manager_alert` type, title + body include manager name + week + count + activity list; best-effort `.catch` per recipient. No rule change; no frontend change. CF registered additively in `functions/index.js`. Tests: 18 escalationLogic unit + 6 handler tests. 48/48 functions tests + 1015/1015 app tests green env-unset. CF deployed post-merge (us-central1, Successful create operation); 6-leg production smoke passed.
 
-**I3 COMPLETE** (Tier 1 accountability flag — PR [#271](https://github.com/Kelsean868/agencytrack/pull/271) `032e38a`; Tier 2 escalation — PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) `{TBD}`).
+**I3 COMPLETE** (Tier 1 accountability flag — PR [#271](https://github.com/Kelsean868/agencytrack/pull/271) `032e38a`; Tier 2 escalation — PR [#275](https://github.com/Kelsean868/agencytrack/pull/275) `49617e3`).
 
 **Status: SHIPPED.**
 
@@ -77,7 +77,7 @@ Banked: PR #274 (`751c65c`).
 
 ## Track I I3b — `escalationLogic.js` ↔ `accountabilityFlag.js` sync (LOW, banked 2026-05-22)
 
-**Scope:** `functions/war/escalationLogic.js` was introduced in PR #TBD as a CJS copy-in of the ESM module `src/utils/accountabilityFlag.js`. The two files share `NUMERIC_STANDARDS`, `BOOLEAN_STANDARDS`, `STANDARD_LABELS`, `resolveStandards`, and `computeMissed` — any drift between them causes silent divergence between Tier 1 (client-side flags) and Tier 2 (upline notifications). A copy-in comment (`// Mirrors src/utils/accountabilityFlag.js — sync if either changes`) is the only guard.
+**Scope:** `functions/war/escalationLogic.js` was introduced in PR #275 as a CJS copy-in of the ESM module `src/utils/accountabilityFlag.js`. The two files share `NUMERIC_STANDARDS`, `BOOLEAN_STANDARDS`, `STANDARD_LABELS`, `resolveStandards`, and `computeMissed` — any drift between them causes silent divergence between Tier 1 (client-side flags) and Tier 2 (upline notifications). A copy-in comment (`// Mirrors src/utils/accountabilityFlag.js — sync if either changes`) is the only guard.
 
 **Action (no immediate urgency — guard works until the domain is stable):**
 
@@ -86,7 +86,7 @@ Banked: PR #274 (`751c65c`).
 
 **Priority:** LOW. Both files are currently in sync. The comment guard is sufficient while the domain is stable.
 
-Banked: I3b PR #TBD.
+Banked: I3b PR #275.
 
 ---
 
