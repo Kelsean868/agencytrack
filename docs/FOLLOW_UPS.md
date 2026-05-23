@@ -33,11 +33,27 @@ Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6f
 
 ---
 
-## TOOLING — CF unit test harness (SHIPPED — PR #TBD `{TBD}`)
+## TOOLING — CF unit test harness (SHIPPED — PR #274 `751c65c`)
 
 **Shipped 2026-05-22:** `firebase-functions-test` + `jest` in `functions/` devDependencies. 4 test files / 24 tests: `jfwCountLogic.test.js` (8 pure-logic), `onWarWrite.test.js` (4 trigger-level, firebase-admin mocked via jest.mock — write-back / loop-guard / delete-event / missing-fields), `dailyToWeekly.test.js` (6 aggregation), `sundayHelpers.test.js` (3 helpers). Vitest exclude + ESLint Jest-globals override added. Zero CF runtime changes. The 16 CFs with inline logic in `functions/index.js` are not trigger-tested (STOP-condition B); I3b's new `escalationLogic.js` module will use this harness.
 
 **Status: SHIPPED.**
+
+---
+
+## TOOLING — extract + unit-test the 16 inline CFs in `functions/index.js` (LOW, banked 2026-05-22)
+
+**Scope:** PR #274 (`751c65c`) wired the CF test harness and produced trigger-level tests for `onWarWrite` plus pure-logic tests for `jfwCountLogic`, `dailyToWeekly`, and `sundayHelpers`. The 16 remaining CF exports in `functions/index.js` (`createUser`, `setUserClaims`, `resendInviteEmail`, the 4 scheduled CFs, kiosk CFs, etc.) all have inline handler logic — extracting and testing them would require pulling handlers into sibling modules, which was declared STOP-condition B in the brief.
+
+**Action (own PR when convenient):**
+
+1. For each CF export in `functions/index.js`, extract the handler body to a named function in a sibling module (e.g. `functions/auth/createUserLogic.js`). Keep `exports.functionName = functions.XYZ.handler(extracted)` in `index.js`.
+2. Write unit tests per the established pattern: pure-logic tests (no mocks) for transformations + trigger-level tests (firebase-admin mocked via `jest.mock`) for Firestore/Admin calls.
+3. The harness is ready — `npm test` in `functions/` and CI's `functions-tests` job both run automatically after PR #274.
+
+**Priority:** **LOW**. Coverage expansion only; no behavior change. I3b's new `escalationLogic.js` module uses the harness first.
+
+Banked: PR #274 (`751c65c`).
 
 ---
 
