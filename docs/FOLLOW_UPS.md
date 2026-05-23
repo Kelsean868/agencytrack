@@ -23,9 +23,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Track I I2 — Monthly Recruiting Roll-up (IN FLIGHT — PR #{TBD} open, pre-merge)
+## Track I I2 — Monthly Recruiting Roll-up (IN FLIGHT — PR #280 open, pre-merge)
 
-**Shipped gates (pre-merge):** 21/21 emulator rule tests (CREATE owner ✓ ×2 incl. BM unitId:null, DENY ×7; UPDATE ×2; GET ×7; LIST ×3); 1066/1066 app tests env-unset; lint 0; build clean. Rules + index deployed pre-merge (additive: new `managerMonthlyRollups` match block + `(branchId ASC, monthKey ASC)` COLLECTION index). PR #{TBD} open for dispatcher review. Merge pending Kyron's browser smoke legs (incognito on preview).
+**Shipped gates (pre-merge):** 21/21 emulator rule tests (CREATE owner ✓ ×2 incl. BM unitId:null, DENY ×7; UPDATE ×2; GET ×7; LIST ×3); 1066/1066 app tests env-unset; lint 0; build clean. Rules + index deployed pre-merge (additive: new `managerMonthlyRollups` match block + `(branchId ASC, monthKey ASC)` COLLECTION index). PR #280 open for dispatcher review. Merge pending Kyron's browser smoke legs (incognito on preview).
 
 **Status: IN FLIGHT — pending merge.**
 
@@ -39,7 +39,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 **Priority:** LOW. No targets set yet; flag meaningless until definitions confirmed and baseline data collected.
 
-Banked: I2 PR #{TBD}.
+Banked: I2 PR #280.
 
 ---
 
@@ -51,7 +51,7 @@ Banked: I2 PR #{TBD}.
 
 **Priority:** LOW. Deferred until baseline `agentsContracted` data flows for a few months and the definition is validated with head-of-sales.
 
-Banked: I2 PR #{TBD}.
+Banked: I2 PR #280.
 
 ---
 
@@ -68,7 +68,7 @@ Banked: I2 PR #{TBD}.
 
 **Priority:** LOW. Provisional labels are safe to leave in until confirmed; they don't block data collection.
 
-Banked: I2 PR #{TBD}.
+Banked: I2 PR #280.
 
 ---
 
@@ -83,7 +83,7 @@ Banked: I2 PR #{TBD}.
 
 **Priority:** LOW. No compliance requirement surfaced yet.
 
-Banked: I2 PR #{TBD}.
+Banked: I2 PR #280.
 
 ---
 
