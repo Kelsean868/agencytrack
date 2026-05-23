@@ -14,6 +14,9 @@ exports.aggregateDailyToWeekly = aggregateDailyToWeeklyCron;
 // Track I I1.3a: denormalize jfwCount onto WAR docs for upline visibility
 exports.onWarWrite = require('./war/recomputeJfwCount').onWarWrite;
 
+// Track I I3b: escalate missed standards to upline on first WAR submit-transition
+exports.onWarSubmitNotifyUpline = require('./war/onWarSubmitNotifyUpline').onWarSubmitNotifyUpline;
+
 // E5: TV Display Kiosk Mode — token-based public display
 exports.validateKioskToken = require('./kiosk/validateToken').validateKioskToken;
 exports.createKioskToken   = require('./kiosk/createToken').createKioskToken;
