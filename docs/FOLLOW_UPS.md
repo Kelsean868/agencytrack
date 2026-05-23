@@ -264,9 +264,9 @@ Banked: PR #244 fix commit (`cdb6aa7`).
 
 ---
 
-## ✅ Vitest — redundant-mock sweep (remove init-only `vi.mock` calls now obsolete with global stub) (LOW, banked 2026-05-22) — RESOLVED in PR #TBD
+## ✅ Vitest — redundant-mock sweep (remove init-only `vi.mock` calls now obsolete with global stub) (LOW, banked 2026-05-22) — RESOLVED in PR #281
 
-**RESOLVED 2026-05-23 in PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).**
+**RESOLVED 2026-05-23 in PR [#281](https://github.com/Kelsean868/agencytrack/pull/281) (`5581fd2`).**
 
 11 init-only `vi.mock('../firebase'|'../../firebase'|'../../../firebase', () => ({ db: {} }))` calls removed from service/wizard test files. Grep-based classification (no full-file reads beyond 3 for ambiguous multi-line factories). LEAVE list (7 files, all with hoisted refs or non-bare sub-objects): AuthContext.test.jsx, authService.test.js, persistencyService.test.js, agentManagementService.test.js, managerService.test.js, userService.test.js, KioskModeTab.toast.test.jsx. Suite 1066/1066 unchanged; lint 0; build green.
 
