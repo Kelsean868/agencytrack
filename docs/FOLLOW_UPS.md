@@ -33,6 +33,14 @@ Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6f
 
 ---
 
+## TOOLING — CF unit test harness (SHIPPED — PR #TBD `{TBD}`)
+
+**Shipped 2026-05-22:** `firebase-functions-test` + `jest` in `functions/` devDependencies. 4 test files / 24 tests: `jfwCountLogic.test.js` (8 pure-logic), `onWarWrite.test.js` (4 trigger-level, firebase-admin mocked via jest.mock — write-back / loop-guard / delete-event / missing-fields), `dailyToWeekly.test.js` (6 aggregation), `sundayHelpers.test.js` (3 helpers). Vitest exclude + ESLint Jest-globals override added. Zero CF runtime changes. The 16 CFs with inline logic in `functions/index.js` are not trigger-tested (STOP-condition B); I3b's new `escalationLogic.js` module will use this harness.
+
+**Status: SHIPPED.**
+
+---
+
 ## Track I I3a — Tier-1 accountability flag (visibility) (SHIPPED — PR #271 `032e38a`)
 
 **Shipped 2026-05-22:** Client-side Tier-1 flag — pure `computeMissedActivities(war, resolvedStandards)` util drives a shared `AccountabilityFlagPanel` on `ManagerWarTab` + `ManagerWarDetail`, plus a per-row "N under" pill on `TeamWarsTab`. Nexus warning tokens (informational, not alarm). New `getResolvedStandardsForMany` bulk helper (1 org-default doc + N parallel by-id override gets; degrades to org-default-only on per-row override fetch failure). NO rule/CF/index/deploy.

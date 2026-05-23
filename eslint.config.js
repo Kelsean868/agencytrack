@@ -52,6 +52,13 @@ export default defineConfig([
       globals: { ...globals.node },
     },
   },
+  // Jest globals for Cloud Function unit tests (functions/__tests__/)
+  {
+    files: ['functions/__tests__/**/*.test.js'],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.jest },
+    },
+  },
   // jsx-a11y rules — flipped to 'error' in PR3 after PR1/PR2/PR3 fixes
   // brought all violations to zero. Future regressions now fail CI.
   // control-has-associated-label remains 'off' (intentional — it duplicates
