@@ -87,7 +87,7 @@ Banked: I2 PR #280.
 
 ---
 
-## ~~Track D D1b — Firestore `awardsRuleset` doc + loader service + consumer threading~~ (SHIPPED [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD), `{TBD}`)
+## ~~Track D D1b — Firestore `awardsRuleset` doc + loader service + consumer threading~~ (SHIPPED [#285](https://github.com/Kelsean868/agencytrack/pull/285), `2f0364a`)
 
 **RESOLVED.** `getAwardsRuleset(tenantId, year)` in `src/services/awardsRulesetService.js` reads `tenants/{tid}/config/awardsRuleset_${year}`, returns stored doc AS-IS if present, else `DEFAULT_RULESET_2026`. All three consumers threaded (AgentAwardsPanel prop, ManagerAwardsPanel self-load, AgentReportDocument via exportService). No rule/index change. Existing `match /config/{docId}` wildcard covers the path. Schema: flat doc ID `awardsRuleset_${year}` under existing `config` collection (not subcollection — FU-body path was malformed; flat doc is the correct shape). 81 files / 1109 tests; lint 0; build clean.
 
