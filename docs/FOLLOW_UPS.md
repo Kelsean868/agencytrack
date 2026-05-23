@@ -89,7 +89,7 @@ Banked: I2 PR #280.
 
 ## Track D D1b — Firestore `awardsRuleset` doc + loader service + consumer threading (LOW, banked 2026-05-23)
 
-**Context:** D1 (PR [{TBD}], `{TBD}`) extracted all hardcoded 2026 award constants into `src/config/awardsRuleset/2026.js` (`DEFAULT_RULESET_2026`) and made `computeAgentAwards`/`computeManagerAwards` accept an optional `ruleset` last param. D1b is the next slice: persist the ruleset as a Firestore doc and wire a loader so tenants can override constants without a code deploy.
+**Context:** D1 (PR [#283](https://github.com/Kelsean868/agencytrack/pull/283), `759a1b9`) extracted all hardcoded 2026 award constants into `src/config/awardsRuleset/2026.js` (`DEFAULT_RULESET_2026`) and made `computeAgentAwards`/`computeManagerAwards` accept an optional `ruleset` last param. D1b is the next slice: persist the ruleset as a Firestore doc and wire a loader so tenants can override constants without a code deploy.
 
 **Scope (D1b):**
 
@@ -101,7 +101,7 @@ Banked: I2 PR #280.
 
 **Priority:** LOW. D1 already ships the behavior-preserving engine refactor. D1b unlocks tenant-level config overrides. Not blocking any other track.
 
-Banked: D1 PR [{TBD}] (`{TBD}`).
+Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`).
 
 ---
 
@@ -118,7 +118,7 @@ Banked: D1 PR [{TBD}] (`{TBD}`).
 
 **Priority:** DEFER. No business ask yet — all Tatil values match the 2026 defaults. Implement when a tenant needs a non-default value.
 
-Banked: D1 PR [{TBD}] (`{TBD}`).
+Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`).
 
 ---
 
@@ -136,7 +136,7 @@ Banked: D1 PR [{TBD}] (`{TBD}`).
 
 **Priority:** DEFER until D1b lands and the PRD design pass for the at-risk view is complete.
 
-Banked: D1 PR [{TBD}] (`{TBD}`).
+Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`).
 
 ---
 
