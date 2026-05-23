@@ -373,7 +373,7 @@ function AwardRow({ name, requirement, progress, status }) {
 // ── Main report component (named export — used by exportService) ──────────────
 export function AgentReportDocument({
   agentInfo, submissions, goals, weekRange,
-  confirmedSettlements, agentProfile, persistency,
+  confirmedSettlements, agentProfile, persistency, ruleset,
 }) {
   const now     = new Date();
   const year    = now.getFullYear();
@@ -574,7 +574,8 @@ export function AgentReportDocument({
     confirmedSettlements ?? [],
     submissions ?? [],
     agentProfile ?? {},
-    now
+    now,
+    ruleset
   );
   const awardList = Object.values(awardsObj);
   const inProgressAwards = awardList.filter((a) => (a.progressPercent ?? 0) > 0 && (a.progressPercent ?? 0) < 100);

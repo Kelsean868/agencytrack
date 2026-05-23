@@ -9,6 +9,8 @@ import { getRoleLabel, formatCurrency, formatDateDisplay } from '../../utils/for
 import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
 import { getGoals, getCompanyMinimums, getGoalHierarchy } from '../../services/goalsService';
+import { getAwardsRuleset } from '../../services/awardsRulesetService';
+import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 import { resolveWeeklyAPIFloor, FLAT_WEEKLY_API_FALLBACK } from '../../utils/tenureFloors';
 import { getAgentHistory } from '../../services/persistencyService';
 import { getSettlements } from '../../services/settlementService';
@@ -96,6 +98,7 @@ export default function AgentDashboard() {
   // E3: persistency now an array of E3-shaped records (oldest-first, ≤12 months).
   const [persistency, setPersistency]          = useState([]);
   const [settlements, setSettlements]          = useState([]);
+  const [awardsRuleset, setAwardsRuleset]       = useState(DEFAULT_RULESET_2026);
   const [loading, setLoading]                  = useState(true);
   const [activeCampaigns, setActiveCampaigns]   = useState([]);
   const [campaignSubs, setCampaignSubs]         = useState({});
@@ -138,13 +141,15 @@ export default function AgentDashboard() {
       getAgentHistory(tenantId, user.uid, 12).catch(() => []),
       getSettlements(tenantId, user.uid, thisYear).catch(() => []),
       getCompanyMinimums(tenantId).catch(() => null),
-    ]).then(([weekSub, subs, agentGoals, pers, setts, mins]) => {
+      getAwardsRuleset(tenantId, thisYear).catch(() => DEFAULT_RULESET_2026),
+    ]).then(([weekSub, subs, agentGoals, pers, setts, mins, ruleset]) => {
       setCurrentWeekSub(weekSub);
       setAllSubmissions(subs);
       setGoals(agentGoals);
       setPersistency(pers);
       setSettlements(setts);
       setCompanyMinimums(mins);
+      setAwardsRuleset(ruleset);
     }).catch(console.error).finally(() => setLoading(false));
   }, [user?.uid, tenantId, currentWeek, thisYear]);
 
@@ -346,6 +351,7 @@ export default function AgentDashboard() {
         confirmedSettlements: settlements,
         agentProfile: userProfile,
         persistency,
+        ruleset: awardsRuleset,
       });
     } catch (err) {
       console.error('PDF generation failed:', err);
@@ -711,6 +717,7 @@ export default function AgentDashboard() {
               confirmedSettlements={settlements}
               agentProfile={userProfile}
               currentDate={new Date()}
+              ruleset={awardsRuleset}
             />
           </div>
         )

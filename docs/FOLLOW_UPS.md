@@ -87,21 +87,12 @@ Banked: I2 PR #280.
 
 ---
 
-## Track D D1b — Firestore `awardsRuleset` doc + loader service + consumer threading (LOW, banked 2026-05-23)
+## ~~Track D D1b — Firestore `awardsRuleset` doc + loader service + consumer threading~~ (SHIPPED [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD), `{TBD}`)
 
-**Context:** D1 (PR [#283](https://github.com/Kelsean868/agencytrack/pull/283), `759a1b9`) extracted all hardcoded 2026 award constants into `src/config/awardsRuleset/2026.js` (`DEFAULT_RULESET_2026`) and made `computeAgentAwards`/`computeManagerAwards` accept an optional `ruleset` last param. D1b is the next slice: persist the ruleset as a Firestore doc and wire a loader so tenants can override constants without a code deploy.
+**RESOLVED.** `getAwardsRuleset(tenantId, year)` in `src/services/awardsRulesetService.js` reads `tenants/{tid}/config/awardsRuleset_${year}`, returns stored doc AS-IS if present, else `DEFAULT_RULESET_2026`. All three consumers threaded (AgentAwardsPanel prop, ManagerAwardsPanel self-load, AgentReportDocument via exportService). No rule/index change. Existing `match /config/{docId}` wildcard covers the path. Schema: flat doc ID `awardsRuleset_${year}` under existing `config` collection (not subcollection — FU-body path was malformed; flat doc is the correct shape). 81 files / 1109 tests; lint 0; build clean.
 
-**Scope (D1b):**
-
-1. **Firestore doc shape.** Create `/tenants/{tid}/config/awardsRuleset/{year}` (e.g. `2026`) using the same `config/` path family as `companyMinimums`. Write a seed script (`scripts/seed/seed-awardsRuleset-2026.mjs`) that writes `DEFAULT_RULESET_2026` for `tatillife_south`.
-2. **Loader service.** New `src/services/awardsRulesetService.js` — `getAwardsRuleset(tenantId, year)` reads the Firestore doc; falls back to `DEFAULT_RULESET_2026` if absent (mirrors `getCompanyMinimums` shallow-merge pattern).
-3. **Consumer threading.** `AgentAwardsPanel.jsx`, `ManagerAwardsPanel.jsx`, and `AgentReportDocument.jsx` call the loader on mount and pass the resolved ruleset to `computeAgentAwards`/`computeManagerAwards`. Until this ships, the three consumers use the JS default.
-4. **Rules.** The `config/{docId}` wildcard rule already covers this path — verify before opening a rule block. If `awardsRuleset/{year}` reads are needed for non-admin roles, add an explicit `allow read: if isManager()` arm.
-5. **Tests.** Service unit tests (getAwardsRuleset with doc present, fallback, year mismatch); smoke: seed doc → `getAwardsRuleset` returns seeded values; golden parity: output from seeded ruleset equals output from `DEFAULT_RULESET_2026`.
-
-**Priority:** LOW. D1 already ships the behavior-preserving engine refactor. D1b unlocks tenant-level config overrides. Not blocking any other track.
-
-Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`).
+**Queued (Tenant-Admin ruleset editor, separate D PR):** see Track D — Tenant-Admin ruleset editor UI section below.
+**Queued (parity expansion + BM at-risk view):** see Track D parity section below.
 
 ---
 

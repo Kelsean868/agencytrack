@@ -7,6 +7,10 @@ vi.mock('../../../services/settlementService', () => ({
   getSettlementsForUnit: vi.fn(() => Promise.resolve([])),
 }));
 
+vi.mock('../../../services/awardsRulesetService', () => ({
+  getAwardsRuleset: vi.fn(() => Promise.resolve(undefined)),
+}));
+
 vi.mock('../../../utils/awardsEngine', () => ({
   computeManagerAwards: vi.fn(),
 }));

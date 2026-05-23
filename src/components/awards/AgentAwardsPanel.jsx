@@ -149,7 +149,7 @@ function RatioCard({ label, value4w, value12w, trend, format }) {
   );
 }
 
-export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate }) {
+export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate, ruleset }) {
   const [activeCategory, setActiveCategory] = useState('monthly');
 
   const now = useMemo(() => currentDate ?? new Date(), [currentDate]);
@@ -157,7 +157,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   const computation = useMemo(() => {
     try {
       return {
-        awards: computeAgentAwards(confirmedSettlements, submissions, agentProfile, now),
+        awards: computeAgentAwards(confirmedSettlements, submissions, agentProfile, now, ruleset),
         ratioTrends: computeRatioTrends(submissions),
         error: null,
       };
@@ -165,7 +165,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       console.error(e);
       return { awards: {}, ratioTrends: null, error: 'Failed to compute awards.' };
     }
-  }, [confirmedSettlements, submissions, agentProfile, now]);
+  }, [confirmedSettlements, submissions, agentProfile, now, ruleset]);
 
   const { awards, ratioTrends, error } = computation;
 
