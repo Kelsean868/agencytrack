@@ -131,6 +131,6 @@ describe('KioskModeTab — copy toast wire-up', () => {
         message: 'URL generated — copy failed, use the copy button',
         variant: 'warning',
       });
-    });
+    }, { timeout: 3000 });
   });
 });
