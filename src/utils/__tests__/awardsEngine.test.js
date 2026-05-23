@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { computeAgentAwards } from '../awardsEngine';
+import { computeAgentAwards, computeManagerAwards } from '../awardsEngine';
+
+// Helper: build a manager settlement doc
+function settled(agentId, periodKey, settledAPI, settledApps, persistency = 0) {
+  return { agentId, periodKey, settledAPI, settledApps, persistency };
+}
 
 // Helper: build a V2 submission doc for a given month
 function v2Sub(yearMonth, nb = { apps: 0, api: 0 }, ppp = { apps: 0, apiIncrease: 0 }, lmps = { grossAmount: 0 }) {
@@ -154,5 +159,338 @@ describe('computeAgentAwards — Centurion apps cap', () => {
       const bronzeApps = bronze.criteria.find((c) => c.label === 'Annual Apps');
       expect(bronzeApps?.current).toBe(90); // NB apps only, PPP not added
     }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Manager parity tests — verify each award category against the pre-refactor
+// constants from the Phase-1 inventory. All calls use the default 6-arg form
+// (consumers unchanged); the 7th ruleset param defaults to DEFAULT_RULESET_2026.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('computeManagerAwards — monthly bonus tiers', () => {
+  const DATE = new Date('2026-06-15');
+  const IDS  = ['a1', 'a2'];
+
+  it('bonusPct 1.5 when avgMonthlyAPI >= 30000', () => {
+    const data = [settled('a1', '2026-06', 35000, 5), settled('a2', '2026-06', 35000, 5)];
+    const m = computeManagerAwards(data, IDS, {}, { newAdvisors: 0 }, DATE, 'unit_manager');
+    expect(m.agency_monthly_bonus.bonusPct).toBe(1.5);
+    expect(m.agency_monthly_bonus.nextTier).toBeNull();
+  });
+
+  it('bonusPct 1.0 when avgMonthlyAPI in [20000, 30000)', () => {
+    const data = [settled('a1', '2026-06', 22000, 5), settled('a2', '2026-06', 22000, 5)];
+    const m = computeManagerAwards(data, IDS, {}, { newAdvisors: 0 }, DATE, 'unit_manager');
+    expect(m.agency_monthly_bonus.bonusPct).toBe(1.0);
+    expect(m.agency_monthly_bonus.nextTier).toEqual({ threshold: 30000, pct: 1.5 });
+  });
+
+  it('bonusPct 0.75 when avgMonthlyAPI in [15000, 20000)', () => {
+    const data = [settled('a1', '2026-06', 16000, 5), settled('a2', '2026-06', 16000, 5)];
+    const m = computeManagerAwards(data, IDS, {}, { newAdvisors: 0 }, DATE, 'unit_manager');
+    expect(m.agency_monthly_bonus.bonusPct).toBe(0.75);
+    expect(m.agency_monthly_bonus.nextTier).toEqual({ threshold: 20000, pct: 1.0 });
+  });
+
+  it('bonusPct 0 when avgMonthlyAPI < 15000, nextTier shows lowest threshold', () => {
+    const data = [settled('a1', '2026-06', 10000, 5), settled('a2', '2026-06', 10000, 5)];
+    const m = computeManagerAwards(data, IDS, {}, { newAdvisors: 0 }, DATE, 'unit_manager');
+    expect(m.agency_monthly_bonus.bonusPct).toBe(0);
+    expect(m.agency_monthly_bonus.nextTier).toEqual({ threshold: 15000, pct: 0.75 });
+  });
+});
+
+describe('computeManagerAwards — recruiting awards', () => {
+  const DATE = new Date('2026-06-15');
+  const IDS  = ['a1'];
+
+  it('gold eligible at newAdvisors=8 (>= 7)', () => {
+    const m = computeManagerAwards([], IDS, {}, { newAdvisors: 8 }, DATE, 'unit_manager');
+    expect(m.recruiting_gold.eligible).toBe(true);
+  });
+
+  it('silver eligible at newAdvisors=5, gold not eligible', () => {
+    const m = computeManagerAwards([], IDS, {}, { newAdvisors: 5 }, DATE, 'unit_manager');
+    expect(m.recruiting_silver.eligible).toBe(true);
+    expect(m.recruiting_gold.eligible).toBe(false);
+  });
+
+  it('bronze eligible at newAdvisors=3, silver not eligible', () => {
+    const m = computeManagerAwards([], IDS, {}, { newAdvisors: 3 }, DATE, 'unit_manager');
+    expect(m.recruiting_bronze.eligible).toBe(true);
+    expect(m.recruiting_silver.eligible).toBe(false);
+  });
+
+  it('bronze inContention at newAdvisors=2 (== ceil(3/2))', () => {
+    const m = computeManagerAwards([], IDS, {}, { newAdvisors: 2 }, DATE, 'unit_manager');
+    expect(m.recruiting_bronze.eligible).toBe(false);
+    expect(m.recruiting_bronze.inContention).toBe(true);
+  });
+
+  it('below all at newAdvisors=1 (< ceil(3/2)=2)', () => {
+    const m = computeManagerAwards([], IDS, {}, { newAdvisors: 1 }, DATE, 'unit_manager');
+    expect(m.recruiting_bronze.eligible).toBe(false);
+    expect(m.recruiting_bronze.inContention).toBe(false);
+  });
+});
+
+describe('computeManagerAwards — activity awards', () => {
+  const IDS = ['a1'];
+
+  function withApps(targetAnnualAvgApps) {
+    // 1 agent, 12 monthly settled docs.
+    // avgAppsPerAdvisor = totalApps / agentCount = (12 * appsPerMonth) / 1 = 12 * appsPerMonth
+    // So appsPerMonth = targetAnnualAvgApps / 12 to get the desired avgAppsPerAdvisor.
+    const appsPerMonth = targetAnnualAvgApps / 12;
+    const data = Array.from({ length: 12 }, (_, i) =>
+      settled('a1', `2026-${String(i + 1).padStart(2, '0')}`, 10000, appsPerMonth)
+    );
+    return computeManagerAwards(data, IDS, {}, { newAdvisors: 0 }, new Date('2026-12-15'), 'unit_manager');
+  }
+
+  it('highest_activity eligible at avgApps=62 (>= 61)', () => {
+    const m = withApps(62);
+    expect(m.highest_activity.eligible).toBe(true);
+  });
+
+  it('activity_gold eligible at avgApps=60, highest_activity inContention', () => {
+    const m = withApps(60);
+    expect(m.activity_gold.eligible).toBe(true);
+    expect(m.highest_activity.eligible).toBe(false);
+    expect(m.highest_activity.inContention).toBe(true);
+  });
+
+  it('activity_silver eligible at avgApps=55, activity_gold inContention', () => {
+    const m = withApps(55);
+    expect(m.activity_silver.eligible).toBe(true);
+    expect(m.activity_gold.eligible).toBe(false);
+    expect(m.activity_gold.inContention).toBe(true);
+  });
+
+  it('activity_bronze inContention at avgApps=20 (== 40 * 0.5)', () => {
+    const m = withApps(20);
+    expect(m.activity_bronze.eligible).toBe(false);
+    expect(m.activity_bronze.inContention).toBe(true);
+  });
+});
+
+describe('computeManagerAwards — production and persistency awards', () => {
+  const DATE = new Date('2026-12-15');
+  const IDS  = ['a1'];
+
+  function annualData(apiPerMonth, persist) {
+    return Array.from({ length: 12 }, (_, i) =>
+      settled('a1', `2026-${String(i + 1).padStart(2, '0')}`, apiPerMonth, 5, persist)
+    );
+  }
+
+  it('production eligible: avgAPI=252000 >= 250000 and persist=91 >= 90', () => {
+    const m = computeManagerAwards(annualData(21000, 91), IDS, {}, { newAdvisors: 0 }, DATE, 'unit_manager');
+    expect(m.production_award.eligible).toBe(true);
+    expect(m.persistency_silver.eligible).toBe(false); // 91 < 92
+    expect(m.persistency_gold.eligible).toBe(false);
+  });
+
+  it('persistency_silver eligible: avgAPI=252000, persist=93 >= 92', () => {
+    const m = computeManagerAwards(annualData(21000, 93), IDS, {}, { newAdvisors: 0 }, DATE, 'unit_manager');
+    expect(m.persistency_silver.eligible).toBe(true);
+    expect(m.persistency_gold.eligible).toBe(false); // 93 < 95
+  });
+
+  it('persistency_gold eligible: avgAPI=252000, persist=96 >= 95', () => {
+    const m = computeManagerAwards(annualData(21000, 96), IDS, {}, { newAdvisors: 0 }, DATE, 'unit_manager');
+    expect(m.persistency_gold.eligible).toBe(true);
+  });
+
+  it('production inContention: avgAPI=132000 in [125000, 250000)', () => {
+    const m = computeManagerAwards(annualData(11000, 80), IDS, {}, { newAdvisors: 0 }, DATE, 'unit_manager');
+    expect(m.production_award.eligible).toBe(false);
+    expect(m.production_award.inContention).toBe(true);
+  });
+
+  it('persistency_silver inContention: avgAPI=132000 >= 125000 and persist=86 >= 85', () => {
+    const m = computeManagerAwards(annualData(11000, 86), IDS, {}, { newAdvisors: 0 }, DATE, 'unit_manager');
+    expect(m.persistency_silver.eligible).toBe(false);
+    expect(m.persistency_silver.inContention).toBe(true);
+  });
+
+  it('persistency_gold inContention: avgAPI=132000 >= 125000 and persist=91 >= 90', () => {
+    const m = computeManagerAwards(annualData(11000, 91), IDS, {}, { newAdvisors: 0 }, DATE, 'unit_manager');
+    expect(m.persistency_gold.eligible).toBe(false);
+    expect(m.persistency_gold.inContention).toBe(true);
+  });
+});
+
+describe('computeManagerAwards — unit of year', () => {
+  const DATE = new Date('2026-12-15');
+
+  function buildUnit(agentCount, apiPerMonth, persist, newAdvisors) {
+    const ids = Array.from({ length: agentCount }, (_, i) => `agent${i}`);
+    const data = ids.flatMap((id) =>
+      Array.from({ length: 12 }, (_, m) =>
+        settled(id, `2026-${String(m + 1).padStart(2, '0')}`, apiPerMonth, 5, persist)
+      )
+    );
+    return computeManagerAwards(data, ids, {}, { newAdvisors }, DATE, 'unit_manager');
+  }
+
+  it('eligible: 5 agents, totalAPI=2100000, avgAPI=420000, persist=91, recruits=2', () => {
+    // 5 agents × 12 months × 35000/month = 2100000 total, avg=420000>=250000
+    const m = buildUnit(5, 35000, 91, 2);
+    expect(m.unit_of_year.eligible).toBe(true);
+  });
+
+  it('inContention: 3 agents, totalAPI=1080000 in [1M, 2M)', () => {
+    // 3 agents × 12 months × 30000/month = 1080000 total >= 1M (inContention threshold)
+    // agentCount=3 < 5 so never eligible regardless
+    const m = buildUnit(3, 30000, 85, 1);
+    expect(m.unit_of_year.eligible).toBe(false);
+    expect(m.unit_of_year.inContention).toBe(true);
+  });
+
+  it('not computed for branch_manager role (agency_of_year computed instead)', () => {
+    const ids = ['a1'];
+    const m = computeManagerAwards([], ids, {}, { newAdvisors: 0 }, DATE, 'branch_manager');
+    expect(m.unit_of_year).toBeUndefined();
+    expect(m.agency_of_year).toBeDefined();
+  });
+});
+
+describe('computeManagerAwards — agency of year', () => {
+  const DATE = new Date('2026-12-15');
+
+  it('eligible: 15 agents, totalAPI=5400000, avgAPI=360000, persist=91, recruits=4', () => {
+    const ids = Array.from({ length: 15 }, (_, i) => `a${i}`);
+    const data = ids.flatMap((id) =>
+      Array.from({ length: 12 }, (_, m) =>
+        settled(id, `2026-${String(m + 1).padStart(2, '0')}`, 30000, 5, 91)
+      )
+    );
+    const m = computeManagerAwards(data, ids, {}, { newAdvisors: 4 }, DATE, 'branch_manager');
+    expect(m.agency_of_year.eligible).toBe(true);
+  });
+
+  it('inContention: totalAPI=2700000 in [2.5M, 5M)', () => {
+    const ids = Array.from({ length: 3 }, (_, i) => `a${i}`);
+    const data = ids.flatMap((id) =>
+      Array.from({ length: 12 }, (_, m) =>
+        settled(id, `2026-${String(m + 1).padStart(2, '0')}`, 75000, 5, 91)
+      )
+    );
+    // totalAPI = 3 * 900000 = 2700000 >= 2500000
+    const m = computeManagerAwards(data, ids, {}, { newAdvisors: 0 }, DATE, 'branch_manager');
+    expect(m.agency_of_year.eligible).toBe(false);
+    expect(m.agency_of_year.inContention).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Golden parity — explicit expected values derived from the pre-refactor
+// constants. Proves the refactored engine produces identical award outputs.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('golden parity — computeAgentAwards', () => {
+  // 12 monthly confirmed docs: 50000 API, 5 apps, persist=93 each
+  // annualAPI=600000, annualApps=60, avgPersist=93
+  // currentDate=2026-06-15: month=Jun, Q2(Apr-Jun)
+  // monthlyAPI=50000, monthlyApps=5, monthlyPersist=93
+  // quarterlyAPI=150000 (3 months × 50000), quarterlyApps=15, quarterlyPersist=93
+  const GOLDEN_DATE = new Date('2026-06-15');
+  const agentConfirmed = Array.from({ length: 12 }, (_, i) => ({
+    periodKey: `2026-${String(i + 1).padStart(2, '0')}`,
+    settledAPI: 50000,
+    settledApps: 5,
+    persistency: 93,
+  }));
+
+  it('silver_club eligible (600K in [550K,650K)), gold_club not eligible', () => {
+    const a = computeAgentAwards(agentConfirmed, [], {}, GOLDEN_DATE);
+    expect(a.silver_club.eligible).toBe(true);
+    expect(a.gold_club.eligible).toBe(false);
+    expect(a.gold_club.inContention).toBe(true); // 600K >= 325K && < 650K
+  });
+
+  it('mdrt eligible (600K >= 500K)', () => {
+    const a = computeAgentAwards(agentConfirmed, [], {}, GOLDEN_DATE);
+    expect(a.mdrt.eligible).toBe(true);
+  });
+
+  it('persistency_silver eligible (600K, 60 apps, 93% >= 92%)', () => {
+    const a = computeAgentAwards(agentConfirmed, [], {}, GOLDEN_DATE);
+    expect(a.persistency_silver.eligible).toBe(true);
+    expect(a.persistency_gold.eligible).toBe(false); // 93 < 95
+    expect(a.persistency_gold.inContention).toBe(true); // 600K >= 125K && 93 >= 90
+  });
+
+  it('agent_of_year inContention (600K >= 500K), not eligible (< 1M)', () => {
+    const a = computeAgentAwards(agentConfirmed, [], {}, GOLDEN_DATE);
+    expect(a.agent_of_year.eligible).toBe(false);
+    expect(a.agent_of_year.inContention).toBe(true);
+  });
+
+  it('quarterly_api eligible (150K >= 125K, persist=93 >= 90)', () => {
+    const a = computeAgentAwards(agentConfirmed, [], {}, GOLDEN_DATE);
+    expect(a.quarterly_api.eligible).toBe(true);
+  });
+
+  it('advisor_month_api eligible (50K >= 50K, persist=93 >= 90)', () => {
+    const a = computeAgentAwards(agentConfirmed, [], {}, GOLDEN_DATE);
+    expect(a.advisor_month_api.eligible).toBe(true);
+  });
+
+  it('advisor_month_apps not eligible (5 < 15), not inContention (5 < 8)', () => {
+    const a = computeAgentAwards(agentConfirmed, [], {}, GOLDEN_DATE);
+    expect(a.advisor_month_apps.eligible).toBe(false);
+    expect(a.advisor_month_apps.inContention).toBe(false);
+  });
+});
+
+describe('golden parity — computeManagerAwards', () => {
+  // 6 agents, 25000 API/month each, 8 apps/month, persist=93
+  // totalAPI=1800000, avgAPIPerAdvisor=300000, avgAppsPerAdvisor=96, avgPersist=93
+  // monthly: avgMonthlyAPI=25000 → bonusPct=1.0
+  // 4 new advisors
+  const DATE = new Date('2026-12-15');
+  const IDS  = ['m1', 'm2', 'm3', 'm4', 'm5', 'm6'];
+  const mgrConfirmed = IDS.flatMap((id) =>
+    Array.from({ length: 12 }, (_, i) =>
+      settled(id, `2026-${String(i + 1).padStart(2, '0')}`, 25000, 8, 93)
+    )
+  );
+
+  it('bonusPct=1.0 (avgMonthlyAPI=25000 in [20000,30000))', () => {
+    const m = computeManagerAwards(mgrConfirmed, IDS, {}, { newAdvisors: 4 }, DATE, 'unit_manager');
+    expect(m.agency_monthly_bonus.bonusPct).toBe(1.0);
+    expect(m.agency_monthly_bonus.nextTier).toEqual({ threshold: 30000, pct: 1.5 });
+  });
+
+  it('production eligible (avgAPI=300K, persist=93)', () => {
+    const m = computeManagerAwards(mgrConfirmed, IDS, {}, { newAdvisors: 4 }, DATE, 'unit_manager');
+    expect(m.production_award.eligible).toBe(true);
+  });
+
+  it('persistency_silver eligible (avgAPI=300K, persist=93 >= 92), gold not (93 < 95)', () => {
+    const m = computeManagerAwards(mgrConfirmed, IDS, {}, { newAdvisors: 4 }, DATE, 'unit_manager');
+    expect(m.persistency_silver.eligible).toBe(true);
+    expect(m.persistency_gold.eligible).toBe(false);
+  });
+
+  it('unit_of_year inContention (totalAPI=1.8M in [1M,2M)), not eligible', () => {
+    const m = computeManagerAwards(mgrConfirmed, IDS, {}, { newAdvisors: 4 }, DATE, 'unit_manager');
+    expect(m.unit_of_year.eligible).toBe(false);
+    expect(m.unit_of_year.inContention).toBe(true);
+  });
+
+  it('highest_activity eligible (avgApps=96 >= 61)', () => {
+    const m = computeManagerAwards(mgrConfirmed, IDS, {}, { newAdvisors: 4 }, DATE, 'unit_manager');
+    expect(m.highest_activity.eligible).toBe(true);
+  });
+
+  it('recruiting_bronze eligible (newAdvisors=4 in [3,4]), gold inContention (4 >= ceil(7/2)=4)', () => {
+    const m = computeManagerAwards(mgrConfirmed, IDS, {}, { newAdvisors: 4 }, DATE, 'unit_manager');
+    expect(m.recruiting_bronze.eligible).toBe(true);
+    expect(m.recruiting_gold.eligible).toBe(false);
+    expect(m.recruiting_gold.inContention).toBe(true);
   });
 });

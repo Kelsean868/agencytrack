@@ -87,6 +87,59 @@ Banked: I2 PR #280.
 
 ---
 
+## Track D D1b — Firestore `awardsRuleset` doc + loader service + consumer threading (LOW, banked 2026-05-23)
+
+**Context:** D1 (PR [{TBD}], `{TBD}`) extracted all hardcoded 2026 award constants into `src/config/awardsRuleset/2026.js` (`DEFAULT_RULESET_2026`) and made `computeAgentAwards`/`computeManagerAwards` accept an optional `ruleset` last param. D1b is the next slice: persist the ruleset as a Firestore doc and wire a loader so tenants can override constants without a code deploy.
+
+**Scope (D1b):**
+
+1. **Firestore doc shape.** Create `/tenants/{tid}/config/awardsRuleset/{year}` (e.g. `2026`) using the same `config/` path family as `companyMinimums`. Write a seed script (`scripts/seed/seed-awardsRuleset-2026.mjs`) that writes `DEFAULT_RULESET_2026` for `tatillife_south`.
+2. **Loader service.** New `src/services/awardsRulesetService.js` — `getAwardsRuleset(tenantId, year)` reads the Firestore doc; falls back to `DEFAULT_RULESET_2026` if absent (mirrors `getCompanyMinimums` shallow-merge pattern).
+3. **Consumer threading.** `AgentAwardsPanel.jsx`, `ManagerAwardsPanel.jsx`, and `AgentReportDocument.jsx` call the loader on mount and pass the resolved ruleset to `computeAgentAwards`/`computeManagerAwards`. Until this ships, the three consumers use the JS default.
+4. **Rules.** The `config/{docId}` wildcard rule already covers this path — verify before opening a rule block. If `awardsRuleset/{year}` reads are needed for non-admin roles, add an explicit `allow read: if isManager()` arm.
+5. **Tests.** Service unit tests (getAwardsRuleset with doc present, fallback, year mismatch); smoke: seed doc → `getAwardsRuleset` returns seeded values; golden parity: output from seeded ruleset equals output from `DEFAULT_RULESET_2026`.
+
+**Priority:** LOW. D1 already ships the behavior-preserving engine refactor. D1b unlocks tenant-level config overrides. Not blocking any other track.
+
+Banked: D1 PR [{TBD}] (`{TBD}`).
+
+---
+
+## Track D — Tenant-Admin ruleset editor UI (DEFER, banked 2026-05-23)
+
+**Context:** The D1/D1b arc (engine refactor + Firestore loader) is the foundation. The editor UI lets a `tenant_admin` adjust award thresholds in the browser without touching code.
+
+**Scope (separate D PR, after D1b):**
+
+- New config tab panel `AwardsRulesetPanel.jsx` in `TenantAdminDashboard.jsx` (mirrors `CompanyConfigPanel` / `ActivityStandardsPanel` pattern).
+- Form fields map to `DEFAULT_RULESET_2026` shape: per-award threshold + inContention fields; club-tier table; manager bonus tier table.
+- Save: `setAwardsRuleset(tenantId, year, patch)` — Firestore `merge: true` write; rule must allow `tenant_admin` write on `config/awardsRuleset/{year}`.
+- Reset-to-default button restores `DEFAULT_RULESET_2026` values.
+
+**Priority:** DEFER. No business ask yet — all Tatil values match the 2026 defaults. Implement when a tenant needs a non-default value.
+
+Banked: D1 PR [{TBD}] (`{TBD}`).
+
+---
+
+## Track D — Awards parity expansion + BM at-risk view (DEFER, banked 2026-05-23)
+
+**Context:** `docs/phase7-8-implementation.md` §3.2 (agent awards parity) and §3.3 (BM at-risk view) are Track D items that build on the ruleset-driven engine from D1/D1b.
+
+**Scope (separate D PRs, after D1b):**
+
+- **Agent awards parity (§3.2):** Verify `computeAgentAwards` covers all Tatil 2026 awards (cross-reference the full award list in the PRD against the current engine output set). Add any missing awards as new award keys in the engine, driven by their `DEFAULT_RULESET_2026` config entries.
+- **Manager awards parity (§3.2):** Same pass for `computeManagerAwards`. Current engine covers Advisor Month, Quarterly, Persistency, Rookie, New BS, Centurion, AoY, MDRT, Club, Manager Monthly Bonus, Recruiting, Activity, Production, Manager Persistency, Unit of Year, Agency of Year. Confirm completeness.
+- **BM at-risk view (§3.3):** Manager-facing panel showing which of the BM's agents are on track / in contention / at-risk for each award. Relies on ruleset-driven `inContention` fields from D1. Firestore queries + aggregation approach TBD in the D PRD design pass.
+
+**Note:** PH7-8-Q1 (at-risk threshold design — per-award configurable vs single percentage) resolves in the D PRD design pass before the at-risk view PR ships.
+
+**Priority:** DEFER until D1b lands and the PRD design pass for the at-risk view is complete.
+
+Banked: D1 PR [{TBD}] (`{TBD}`).
+
+---
+
 ## I1.x — Hoist duplicated WAR/cn/jc role-rank helpers to shared top-level rules function (CLOSED — PR #268 `065a7d7`)
 
 **Resolved 2026-05-22:** Single top-level `roleRank()` function added at the top of `match /databases/{database}/documents` (adjacent to `isManager()` / `isAgent()`). Phase 1 verified all four block-local copies byte-identical (the third `warRoleRank` in `managerActivityStandardOverrides` was added by PR #266 after this FU was banked — same body, included in the hoist). All four duplicates removed; all 14 call sites swapped to `roleRank()`. No `allow` predicate logic changed; emulator suite 38/38 unchanged before/after. No rules deploy required (behavior identical, proven by unchanged emulator pass-set). Closed in PR [#268](https://github.com/Kelsean868/agencytrack/pull/268) (`065a7d7`).
