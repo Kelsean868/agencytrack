@@ -644,6 +644,8 @@ Confirmed across 2 cycles: PR #217 (d84a752) /post-merge invocation, PR #219 (0b
 
 Banked: PR #217 (d84a752).
 
+- Dispatch Orchestrator (sibling folder, not this repo; see `docs/orchestrator/README.md`): local Python tool that runs the dispatch workflow headlessly - Phase 0 gate -> `claude -p` (opusplan) -> full-transcript capture -> hard-stop pause. v1 supports `--resume` (Phase 2+ after lock) and `--build` (Edit/Write); writes confined to feature branches, never main; PR-open pauses for manual merge. Post-merge fill stays manual (v2 planned). Digests in its `logs/` are the rule-banking source; `cost-ledger.json` tracks burn.
+
 ---
 
 ## Banked patterns (also from 2026-05-14 session)
