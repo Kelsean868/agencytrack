@@ -65,26 +65,28 @@ Banked: PR #274 (`751c65c`).
 
 ---
 
-## Track I I3b — Tier-2 escalation (CF + upline notification) (NEXT — banked 2026-05-22)
+## Track I I3b — Tier-2 escalation (CF + upline notification) (SHIPPED — PR #TBD `{TBD}`)
 
-**Scope:** Track I spec §4 Tier 2 — escalate a missed weekly standard to the direct upline via the existing `manager_alert` notification on the submit-transition of the WAR doc.
+**Shipped 2026-05-22:** New `onWarSubmitNotifyUpline` gen-1 CF (`functions/war/onWarSubmitNotifyUpline.js`) + `functions/war/escalationLogic.js` pure CJS module (mirrors `src/utils/accountabilityFlag.js`). First-submit-transition gate (`before.status !== 'submitted' && after.status === 'submitted'`) de-dups jfwCount write-backs naturally. Upline topology locked: UM→all branch_managers same branchId (composite index `users role+branchId` deployed pre-merge); BM→all sales_managers tenant-wide (single-field, auto); SM→chain stops. Notifications: `manager_alert` type, title + body include manager name + week + count + activity list; best-effort `.catch` per recipient. No rule change; no frontend change. CF registered additively in `functions/index.js`. Tests: 18 escalationLogic unit + 6 handler tests. 48/48 functions tests + 1015/1015 app tests green env-unset. CF deploys POST-merge; production smoke post-merge.
 
-**Action (own PR after I3a closes):**
-1. New CF export `onWarSubmitNotifyUpline` keyed to the same `onWrite` trigger as `onWarWrite`. Fires only on `before.status !== 'submitted' && after.status === 'submitted'` (de-dup on resubmit).
-2. New `src/services/uplineResolveService.js` — `resolveUpline({tenantId, managerRole, managerBranchId}) → { uid, role, name } | null`. Direct upline: UM → BM via `branches/{branchId}.managerId` (reuses F2.1 `resolveBmInfo` pattern); BM → SM tenant-wide; SM → TA (or stop — open decision).
-3. Compute missed-activities server-side using the same logic as the client util (the WAR has all activity fields; standards fetched via Admin SDK reads to `config/managerActivityStandards` + the manager's override doc).
-4. Write `manager_alert` notification doc to upline's `/notifications` via Admin SDK (rules bypass). Body lists count + activities; link deep-targets `ManagerWarDetail`. Best-effort try/catch — never block submission.
+**I3 COMPLETE** (Tier 1 accountability flag — PR [#271](https://github.com/Kelsean868/agencytrack/pull/271) `032e38a`; Tier 2 escalation — PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) `{TBD}`).
 
-**No rule changes.** Existing `manager_alert` type already rendered by `NotificationDrawer.jsx:9`. CF is a NEW export → pre-merge deploy-safe per CLAUDE.md additive policy.
+**Status: SHIPPED.**
 
-**Open decisions (need dispatcher input before kickoff brief):**
-- SM tier — does TA receive escalation, or does the chain stop at SM?
-- Multiple SMs/TAs per tenant — notify all, or first by sort key?
-- Self-escalation (the upline themselves miss a standard) — escalation skips to next upline?
+---
 
-**Priority:** HIGH — completes the Track I accountability arc.
+## Track I I3b — `escalationLogic.js` ↔ `accountabilityFlag.js` sync (LOW, banked 2026-05-22)
 
-Banked: I3a PR [#271](https://github.com/Kelsean868/agencytrack/pull/271) (`032e38a`). See `docs/AgencyTrack_TrackI_Remaining_PrepNotes.md` § I3 for the full design analysis.
+**Scope:** `functions/war/escalationLogic.js` was introduced in PR #TBD as a CJS copy-in of the ESM module `src/utils/accountabilityFlag.js`. The two files share `NUMERIC_STANDARDS`, `BOOLEAN_STANDARDS`, `STANDARD_LABELS`, `resolveStandards`, and `computeMissed` — any drift between them causes silent divergence between Tier 1 (client-side flags) and Tier 2 (upline notifications). A copy-in comment (`// Mirrors src/utils/accountabilityFlag.js — sync if either changes`) is the only guard.
+
+**Action (no immediate urgency — guard works until the domain is stable):**
+
+1. When either file is edited, grep the other for the same constant/function and apply the same change.
+2. Longer-term: if this pattern recurs across multiple copy-in pairs, consider a `scripts/check-mirror-sync.mjs` that diffs the two files and CI-fails on divergence. Not worth the complexity for one pair.
+
+**Priority:** LOW. Both files are currently in sync. The comment guard is sufficient while the domain is stable.
+
+Banked: I3b PR #TBD.
 
 ---
 
