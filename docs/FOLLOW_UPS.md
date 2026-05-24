@@ -238,21 +238,38 @@ Banked: hotfix PR [#298](https://github.com/Kelsean868/agencytrack/pull/298), 20
 
 ---
 
-## `deactivateUser` CF returns `FirebaseError: internal` — investigate before pilot (MEDIUM, banked 2026-05-24)
+## ~~`deactivateUser` CF returns `FirebaseError: internal` — investigate before pilot~~ (RESOLVED — empirical confirm 2026-05-24)
 
-**Context:** Surfaced in the #296 Phase-5 smoke. Clicking Deactivate in UserManagementPanel → filling confirm modal → submitting produced `[UserManagementPanel] deactivate: FirebaseError: internal` in the browser console. The CF call failed server-side. PR #296 does not touch `deactivateUser` — this is a pre-existing issue.
+**Context:** Surfaced in the #296 Phase-5 smoke. Clicking Deactivate in UserManagementPanel → filling confirm modal → submitting produced `[UserManagementPanel] deactivate: FirebaseError: internal` in the browser console.
 
-`internal` (not `permission-denied`) means an unhandled exception was thrown inside the CF, not a clean permissions rejection. The same deployed CF instance serves both the Vercel preview and production — if this is a code-level crash, it is prod-broken. Alternatively, it may be test-data-specific: the BM test account (`A11Y_BRANCH_MANAGER_EMAIL`) may not be in the same unit/branch as the test agent (`A11Y_AGENT_EMAIL`), causing a CREATION_MATRIX check to throw rather than return a permission error.
+**RESOLVED — not a CF bug.** Empirically confirmed: a real deactivation (`active:false`, hitting `revokeRefreshTokens`) called as the BM test account succeeded at HTTP 200 with a clean CF log pair (`23:03:06Z` started → `[deactivateUser] Deactivated + revoked tokens` → `23:03:07Z` HTTP 200, 1094 ms). The #296 `internal` was transient/transport: no CF log entry for the failure = the call never reached the function (cold-start timeout or network blip). The CF code and CREATION_MATRIX are correct for the BM→agent path.
 
-**Action (Phase-1 verify):**
-1. Check `CREATION_MATRIX` in `functions/index.js` — does the BM test account's UID match the test agent's `unitId` chain? A mismatch that falls through without a clean permission-denied path would produce `internal`.
-2. Check Firebase Functions logs (Console → Functions → `deactivateUser` → Logs) for the actual server-side exception.
-3. If the error is CREATION_MATRIX / unitId mismatch with the test accounts only: update test-data setup or use a TA account for the deactivation smoke.
-4. If the error is a code-level crash independent of test data: treat as prod-broken — fix before Tatil demo.
+Banked: #296 smoke (`27b1c8a`, 2026-05-24). Resolved: empirical confirm 2026-05-24.
 
-**Priority:** MEDIUM (investigate next). If the deactivation write path is broken, the termination capability is non-functional end-to-end. This must be resolved before the Tatil demo.
+---
 
-Banked: #296 smoke (`27b1c8a`, 2026-05-24).
+## `deactivateUser` CF — wrap naked awaits in try/catch for diagnostics (LOW, banked 2026-05-24)
+
+**Scope:** `functions/index.js` ~line 791 (`await targetRef.update(updatePayload)`) and ~line 796 (`await admin.auth().revokeRefreshTokens(targetUid)`) are bare unhandled awaits. If either throws (Firestore write error, Auth API failure, rate limit), the CF surfaces `FirebaseError: internal` to the client with no diagnostic message — identical to the transient that fired the #296 FU. Wrapping both in try/catch → typed `HttpsError('internal', <diagnostic message>)` makes future transients debuggable without requiring CF log access.
+
+**Suggested fix (minutes):**
+```js
+try {
+  await targetRef.update(updatePayload);
+} catch (e) {
+  throw new functions.https.HttpsError('internal', `Firestore update failed: ${e.message}`);
+}
+// and for revokeRefreshTokens:
+try {
+  await admin.auth().revokeRefreshTokens(targetUid);
+} catch (e) {
+  throw new functions.https.HttpsError('internal', `Token revocation failed: ${e.message}`);
+}
+```
+
+**Priority:** LOW. The CF is functionally correct; this is observability hardening only. Fold into the `.catch` observability sweep or Track H's first CF-touching PR.
+
+Banked: 2026-05-24 (deactivateUser diagnosis session).
 
 ---
 
@@ -475,20 +492,27 @@ Banked: PR #264 (`b97e925`).
 
 ---
 
-## Track J — Tenure floor numbers PROVISIONAL — confirm with head of sales (HIGH, banked 2026-05-20)
+## ~~Track J — Tenure floor numbers PROVISIONAL — confirm with head of sales~~ (RESOLVED — confirmed 2026-05-21)
 
-**Scope:** The `tenureApiFloors` band table seeded into `tatillife_south` via PR #240 (`scripts/seed/seed-tenure-api-floors.mjs`) comes from the head-of-sales slide of 2026-05-19. That slide also carried a divergent **career-level** API table (300/300/500/700) which we explicitly disregarded because the board-signed `Sales_Career.pdf` is authoritative on career levels and the app already matches it (L1–6 = 200/250/350/450/600/800K; L7 = Chairman's choice). Because the slide proved unreliable on career levels, the tenure numbers it provided are flagged provisional. The seed sets `tenureApiFloorsProvisional: true` on `config/companyMinimums` and renders nothing in-app from that flag yet.
+**Scope:** The `tenureApiFloors` band table seeded into `tatillife_south` via PR #240 (`scripts/seed/seed-tenure-api-floors.mjs`) came from the head-of-sales slide of 2026-05-19.
 
-**Action required:**
+**RESOLVED — bands confirmed by head of sales on 2026-05-21.** The seeded values (m<12 → 150K / 12–24 → 200K / 25–36 → 250K / 37–48 → 300K / 49–60 → 400K / m>60 → 500K) are correct. No re-seed needed. The `// PROVISIONAL` comment in `tenureFloors.js` and the `tenureApiFloorsProvisional: true` flag in `config/companyMinimums` are stale residue — see cleanup FU below.
 
-1. **Surface the slide-vs-doc career-level discrepancy to the head of sales** so the diverged copy can be reconciled to `Sales_Career.pdf`.
-2. **Confirm or correct the tenure-band table** (m<12 → 150K / 12–24 → 200K / 25–36 → 250K / 37–48 → 300K / 49–60 → 400K / m>60 → 500K) with the head of sales.
-3. **Re-run the seed with corrected numbers** if any band changes — no code change required, the script is idempotent and re-runnable.
-4. **Clear the provisional flag** (`tenureApiFloorsProvisional: false`) once confirmed.
+Banked: PR #240 (`4134d2c`). Resolved: 2026-05-21 (head-of-sales confirmation).
 
-**Priority:** **HIGH**. The Company Floor binds personal commitment enforcement and the Weekly Standard card's API row — production decisions are tied to these numbers. Until confirmation, defenders (managers + agents) may discover discrepancies.
+---
 
-Banked: PR #240 (`4134d2c`).
+## Track J — Clear stale provisional signals for tenure bands (LOW, banked 2026-05-24)
+
+**Scope:** Following head-of-sales confirmation (2026-05-21), two stale provisional signals remain in the codebase:
+
+1. `src/utils/tenureFloors.js:2-3` — comment reads `// PROVISIONAL: numbers below await head-of-sales confirmation. The board-signed Sales_Career.pdf governs...` Drop the provisional qualifier; leave the source-of-truth attribution (slide date, script reference).
+2. `scripts/seed/seed-tenure-api-floors.mjs` — sets `tenureApiFloorsProvisional: true` on write. Change to `false` (or remove the field entirely since the app never reads it from Firestore).
+3. *(Optional)* Clear the dormant `tenureApiFloorsProvisional` field on the live `config/companyMinimums` doc via a one-off Admin SDK update or re-run of the seed with the corrected flag.
+
+**Priority:** LOW. Production behavior is unaffected (the flag is never read by `src/`). Fold into Track H's first CF/config-touching PR or a later housekeeping sweep.
+
+Banked: 2026-05-24 (post-confirmation cleanup).
 
 ---
 
@@ -498,13 +522,13 @@ Banked: PR #240 (`4134d2c`).
 
 **Suggested shape:**
 
-- New tile on `CompanyConfigPanel.jsx` for "Tenure API Floors" (table preview with 6 rows + provisional badge if `tenureApiFloorsProvisional === true`).
-- New modal sibling to `EditConfigModal` that lets tenant_admin edit the 6 band values + flip the provisional flag.
+- New tile on `CompanyConfigPanel.jsx` for "Tenure API Floors" (table preview with 6 rows). ~~Provisional badge if `tenureApiFloorsProvisional === true`~~ — moot; bands confirmed 2026-05-21, flag is stale residue (see cleanup FU above).
+- New modal sibling to `EditConfigModal` that lets tenant_admin edit the 6 band values.
 - Validation: each band ≥ 0, ≤ 10,000,000 (mirror `EditConfigModal` annualAPI bounds); bands monotonically non-decreasing across tenure (band0_lt12 ≤ band12_to_24 ≤ ... ≤ band_gt60) — surface a non-blocking warning if the manager violates this.
-- Write path: extend `setCompanyMinimums()` (or a new `setTenureApiFloors()` peer) to take the 6 values + provisional flag; `merge: true` semantics preserve unrelated fields.
+- Write path: extend `setCompanyMinimums()` (or a new `setTenureApiFloors()` peer) to take the 6 values; `merge: true` semantics preserve unrelated fields.
 - Audit: `updatedBy` (uid) + `updatedAt` (server timestamp) on the doc, same as B5.
 
-**Priority:** **MEDIUM**. Until this ships, corrections go through the seed script (Kyron-only). Acceptable for the provisional period; once numbers are confirmed and stable, the in-app editor closes the loop.
+**Priority:** **MEDIUM**. Until this ships, corrections go through the seed script (Kyron-only). The in-app editor remains worthwhile for future adjustments independent of the provisional-badge concern.
 
 Banked: PR #240 (`4134d2c`).
 
