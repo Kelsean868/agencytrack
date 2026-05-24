@@ -186,6 +186,35 @@ Banked: #296 smoke (`27b1c8a`, 2026-05-24).
 
 ---
 
+## Silent query-error swallow in `AgentDashboard` masked submissions rules regression (MEDIUM, banked 2026-05-24)
+
+**Context:** Surfaced during the D3 smoke investigation (hotfix PR [#TBD](#)). `AgentDashboard` calls `getAgentSubmissions(tenantId, uid)` inside a `useEffect` and swallows any error with `.catch(() => [])`. When the submissions `allow list` rule regression denied the query, the component received an empty array silently — as if the agent had no submissions — instead of surfacing the `permission-denied`. The awards panel, history, and ratio trends rendered their empty states without any error indication, masking a production-breaking rules bug for ~10 days.
+
+**Fix:** Replace the silent swallow with a surfaced error state. Options:
+1. Show a toast or inline error banner when the submissions query fails (distinction: `permission-denied` vs other errors).
+2. Log a `console.error` at minimum so devtools reveals the failure immediately.
+3. Ideally, render an error state in the dependent panels (`AgentAwardsPanel`, `SubmissionHistory`) rather than an empty state.
+
+**Priority:** MEDIUM. The immediate regression is fixed by the hotfix PR. But the silent swallow is still in the code — the next rules regression will mask the same way. Surface before the Tatil demo.
+
+Banked: hotfix PR [#TBD](#), 2026-05-24.
+
+---
+
+## Methodology — self-service list queries must be smoke-tested as the owning user (LOW, banked 2026-05-24)
+
+**Context:** The submissions `allow list` regression (SHAKEDOWN-002B #144 → hotfix #TBD) is the second `list`-rule regression to slip past `get`-only coverage. Pattern: a `read` → `get`/`list` split drops the agent `canAccessOwn` arm from `list`; smoke verified by admin SDK (bypasses rules) or by manager login (has `canManage`); nobody signs in as the owning agent and queries the collection directly.
+
+**Rule to bank in CLAUDE.md:** For any Firestore collection where an agent (or any `canAccessOwn` user) should be able to list their own docs, the smoke MUST include a write-then-list cycle signed in as that user: `signInAs(agentUid) → getDocs(query where ownerId == uid) → assert non-empty`. Admin SDK reads (bypass) and manager reads (canManage) do not prove agent list access.
+
+**Action:** Incorporate into the CLAUDE.md § Banked patterns smoke-standard bullet when the next methodology batch lands.
+
+**Priority:** LOW. Methodology documentation only; no code change required.
+
+Banked: hotfix PR [#TBD](#), 2026-05-24.
+
+---
+
 ## `deactivateUser` CF returns `FirebaseError: internal` — investigate before pilot (MEDIUM, banked 2026-05-24)
 
 **Context:** Surfaced in the #296 Phase-5 smoke. Clicking Deactivate in UserManagementPanel → filling confirm modal → submitting produced `[UserManagementPanel] deactivate: FirebaseError: internal` in the browser console. The CF call failed server-side. PR #296 does not touch `deactivateUser` — this is a pre-existing issue.

@@ -199,7 +199,14 @@ service cloud.firestore {
                getRole() != 'unit_manager'
                || resource.data.unitId == request.auth.uid
              ));
+        // list: canAccessOwn restored after the SHAKEDOWN-002B read->get/list split
+        //       dropped it. resource.data.agentId IS evaluable in list evaluation, so
+        //       an agent self-list query — which MUST be constrained
+        //       where('agentId','==',uid) — is allowed; any broader/unconstrained agent
+        //       query is denied because the other clauses are false for an agent caller.
+        //       UM unit-scope clause below is unchanged.
         allow list: if kioskCanRead(tenantId)
+          || canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
                getRole() != 'unit_manager'
                || resource.data.unitId == request.auth.uid
