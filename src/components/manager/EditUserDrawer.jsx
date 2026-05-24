@@ -40,6 +40,9 @@ function getEditableFieldsFor(editorRole, targetRole) {
     fields.add('unitId');
     fields.add('agentNumber');
     fields.add('contractStartDate');
+    fields.add('licenseStatus');
+    fields.add('cbttExamPassedDate');
+    fields.add('cbttExtensionGranted');
   }
 
   if (targetRole === 'unit_manager' && editorRole !== 'unit_manager') {
@@ -64,6 +67,7 @@ function getAllowedRoleTransitions(editorRole, targetCurrentRole) {
 
 function normaliseSaveValue(key, raw) {
   if (key === 'canConfirmSettlements') return Boolean(raw);
+  if (key === 'cbttExtensionGranted') return Boolean(raw);
   if (typeof raw === 'string') return raw.trim();
   return raw ?? '';
 }
@@ -101,6 +105,9 @@ export default function EditUserDrawer({
     agentNumber: user?.agentNumber ?? '',
     contractStartDate: user?.contractStartDate ?? '',
     canConfirmSettlements: Boolean(user?.canConfirmSettlements),
+    licenseStatus: user?.licenseStatus ?? '',
+    cbttExamPassedDate: user?.cbttExamPassedDate ?? '',
+    cbttExtensionGranted: Boolean(user?.cbttExtensionGranted),
     role: user?.role ?? '',
     branchId: user?.branchId ?? '',
   });
@@ -585,6 +592,57 @@ export default function EditUserDrawer({
                 className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
             </div>
+          )}
+
+          {editable.has('licenseStatus') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="edit-user-license-status" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">License Status</label>
+              <select
+                id="edit-user-license-status"
+                value={form.licenseStatus}
+                onChange={(e) => setField('licenseStatus', e.target.value)}
+                className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">— Not tracked —</option>
+                <option value="provisional">Provisional</option>
+                <option value="official">Official</option>
+              </select>
+            </div>
+          )}
+
+          {editable.has('cbttExamPassedDate') && form.licenseStatus === 'official' && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="edit-user-cbtt-passed" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">CBTT Exam Passed Date</label>
+              <input
+                id="edit-user-cbtt-passed"
+                type="date"
+                value={form.cbttExamPassedDate}
+                onChange={(e) => setField('cbttExamPassedDate', e.target.value)}
+                max={TODAY()}
+                className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+          )}
+
+          {editable.has('cbttExtensionGranted') && form.licenseStatus === 'provisional' && (
+            <label
+              htmlFor="edit-user-cbtt-extension"
+              className="flex items-start gap-3 px-3 py-3 rounded-xl border border-border cursor-pointer hover:bg-border/20 transition-colors"
+            >
+              <input
+                id="edit-user-cbtt-extension"
+                type="checkbox"
+                checked={form.cbttExtensionGranted}
+                onChange={(e) => setField('cbttExtensionGranted', e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-primary"
+              />
+              <span className="flex-1 text-sm font-semibold text-ink">
+                CBTT exam extension granted
+                <span className="block text-[11px] font-normal text-ink-muted leading-snug mt-0.5">
+                  Extends the 12-month provisional window to 24 months.
+                </span>
+              </span>
+            </label>
           )}
 
           {showUnitDropdown && (

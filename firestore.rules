@@ -158,6 +158,8 @@ service cloud.firestore {
                   'unitId', 'unitName',
                   'agentNumber', 'contractStartDate',
                   'canConfirmSettlements',
+                  // manager-editable license fields; no CF/claim mirror
+                  'licenseStatus', 'cbttExamPassedDate', 'cbttExtensionGranted',
                   'updatedAt', 'updatedBy'
                 ])
           ) || (isSignedIn()

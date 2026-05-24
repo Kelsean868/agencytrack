@@ -1,11 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { CheckCircle, Clock, AlertTriangle, LockOpen, Eye } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, LockOpen, Eye, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { unlockSubmission } from '../../services/unlockService';
 import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
+import { cbttComplianceFlag } from '../../utils/cbttCompliance';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 
 const MANAGER_ROLES = ['unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'];
@@ -184,6 +185,17 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
     return { submitted, pending, missing };
   }, [users, usersLoaded, submissions]);
 
+  const cbttFlags = useMemo(() => {
+    return users
+      .map((u) => {
+        const flag = cbttComplianceFlag(u);
+        if (!flag) return null;
+        return { id: u.id, name: u.name ?? u.email ?? u.id, flag };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.flag.daysRemaining - b.flag.daysRemaining);
+  }, [users]);
+
   const handleUnlock = async (submissionId, agentName) => {
     if (!user?.uid || !tenantId) return;
     const managerName = userProfile?.name ?? userProfile?.email ?? 'Manager';
@@ -307,6 +319,56 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
             ))
           )}
         </Column>
+      </div>
+
+      {/* CBTT License Compliance */}
+      <div className="mt-2">
+        <div className="flex items-center gap-2 mb-3">
+          <ShieldAlert size={16} className="text-primary" />
+          <h3 className="text-sm font-semibold text-ink">CBTT License Compliance</h3>
+          {cbttFlags.length > 0 && (
+            <span className="ml-auto text-xs text-ink-muted">
+              {cbttFlags.length} provisional agent{cbttFlags.length !== 1 ? 's' : ''} tracked
+            </span>
+          )}
+        </div>
+        {!usersLoaded ? (
+          <p className="text-sm text-ink-muted">Loading…</p>
+        ) : cbttFlags.length === 0 ? (
+          <p className="text-sm text-ink-muted">No provisional agents with a contract start date.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {cbttFlags.map(({ id, name, flag }) => {
+              const rowCls = flag.daysRemaining <= 0
+                ? 'border-danger/40 bg-danger/5'
+                : flag.atRisk
+                  ? 'border-warning/40 bg-warning/5'
+                  : 'border-border';
+              const badgeCls = flag.daysRemaining <= 0
+                ? 'text-danger font-semibold'
+                : flag.atRisk
+                  ? 'text-warning font-semibold'
+                  : 'text-ink-muted';
+              const daysLabel = flag.daysRemaining <= 0
+                ? 'Overdue'
+                : `${flag.daysRemaining} day${flag.daysRemaining !== 1 ? 's' : ''} remaining`;
+              const deadlineLabel = flag.deadline.toLocaleDateString('en-TT', {
+                month: 'short', day: 'numeric', year: 'numeric',
+              });
+              return (
+                <div key={id} className={`flex items-start justify-between gap-3 px-4 py-3 rounded-xl border ${rowCls}`}>
+                  <div>
+                    <p className="text-sm font-medium text-ink">{name}</p>
+                    <p className="text-xs text-ink-muted mt-0.5">
+                      Deadline: {deadlineLabel}{flag.extended ? ' · extended to 24 mo' : ''}
+                    </p>
+                  </div>
+                  <span className={`text-xs shrink-0 mt-0.5 ${badgeCls}`}>{daysLabel}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

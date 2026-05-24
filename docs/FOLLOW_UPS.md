@@ -23,11 +23,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Track I I2 — Monthly Recruiting Roll-up (IN FLIGHT — PR #280 open, pre-merge)
+## Track I I2 — Monthly Recruiting Roll-up (SHIPPED — PR #280)
 
-**Shipped gates (pre-merge):** 21/21 emulator rule tests (CREATE owner ✓ ×2 incl. BM unitId:null, DENY ×7; UPDATE ×2; GET ×7; LIST ×3); 1066/1066 app tests env-unset; lint 0; build clean. Rules + index deployed pre-merge (additive: new `managerMonthlyRollups` match block + `(branchId ASC, monthKey ASC)` COLLECTION index). PR #280 open for dispatcher review. Merge pending Kyron's browser smoke legs (incognito on preview).
-
-**Status: IN FLIGHT — pending merge.**
+**Shipped gates:** 21/21 emulator rule tests; 1066/1066 app tests env-unset; lint 0; build clean. Rules + index deployed pre-merge. **SHIPPED PR #280 (`5605312`).**
 
 ---
 
@@ -378,6 +376,22 @@ Banked: I3a PR [#271](https://github.com/Kelsean868/agencytrack/pull/271) (`032e
 **Priority:** **LOW**. No user-visible impact until the field is set. The dormant panel means the feature is invisible, not broken.
 
 Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6fa6b5`).
+
+---
+
+## I §6 — Default new agents to `licenseStatus: 'provisional'` at creation (LOW, banked 2026-05-24)
+
+**Scope:** Currently `licenseStatus` is manager-set post-creation. New agents start with no `licenseStatus` field, meaning they are "untracked" and won't appear in the CBTT compliance list until a manager manually marks them provisional. The design intent for Tatil is that every new agent should be provisional from day one.
+
+**Action (when ready):**
+
+1. Extend `doCreateUser` Cloud Function in `functions/index.js` to include `licenseStatus: 'provisional'` in the user doc written at creation. This is the ONLY place user docs are created server-side — no client-path change needed.
+2. Optionally backfill existing agent docs that have no `licenseStatus` set (one-off admin script).
+3. No rule change required — `licenseStatus` is already in the manager-update allowlist (PR #TBD). Creation is CF-side (Admin SDK, bypasses rules).
+
+**Priority:** **LOW**. Tracking works today via manual set; this makes it automatic.
+
+Banked: Track I §6 PR #TBD.
 
 ---
 
@@ -2512,7 +2526,7 @@ Banked from PR #235 (`0b8d04d`) (Phase 7-8 docs integration). Each FU closes ind
 
 Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `docs/AgencyTrack_Workshop_Roadmap_Revision.md`. Each item resolves in its own design/implementation pass — these are scope registrations, not blockers.
 
-- **[IN FLIGHT — I1 CORE COMPLETE PENDING MERGE] Track I — Manager Activity Reporting** (manager WAR + recruitment activity). Design spec committed at `docs/AgencyTrack_TrackI_ManagerWAR_DesignSpec.md`. I1.1 Manager WAR foundation shipped (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) `a6fa6b5`). I1.2 JFW auto-count (owner-side, read-only collectionGroup query) shipped (PR [#256](https://github.com/Kelsean868/agencytrack/pull/256) `3dea3ad`). I1.3a jfwCount denormalization CF shipped (PR [#258](https://github.com/Kelsean868/agencytrack/pull/258) `fe494be`) — `onWarWrite` trigger writes `jfwCount` onto WAR doc post-save; loop-guarded; `sanitizeWar` fix preserves stored count. CF deployed post-merge 2026-05-22; production smoke 4/4 legs passed. **I1.3b — upline browse view shipped PR [#260](https://github.com/Kelsean868/agencytrack/pull/260) `ee66875`** — new `allow list` on `managerWeeklyReports` (query-safe; `warRoleRank()>=2` gate; UM denied; BM own-branch via `resource.data.branchId==callerBranchId(tenantId)`; SM+ tenant-wide); composite index `(branchId ASC, weekStart ASC)` COLLECTION deployed pre-merge (READY); `getWarsForUpline` service; `ManagerWarDetail` + `TeamWarsTab` components; 'Team WARs' nav item. Smoke 14/14 passed (incl. mandatory cross-branch DENY). **I1.3c-i — org-default activity standards + overlay shipped PR [#262](https://github.com/Kelsean868/agencytrack/pull/262) `86da3dc`** — new `config/managerActivityStandards` doc (no rule/index change — existing `config/{docId}` wildcard governs); `managerActivityStandardsService.js`; `ActivityStandardsPanel` + `ActivityStandardsModal` in TenantAdminDashboard; actual-vs-target overlay on `ManagerWarTab` + `ManagerWarDetail`; 27 new tests. **I1.3c-ii — upline-override layer shipped PR [#266](https://github.com/Kelsean868/agencytrack/pull/266) `a8ca321`** — new `managerActivityStandardOverrides/{managerId}` Firestore collection; non-denormalized rule (get(M's user doc) for role+branchId, forgery-prevention); `managerStandardOverrideService.js` (getManagerActivityStandardOverride / setManagerActivityStandardOverride / clearManagerActivityStandardOverride / getResolvedStandards); `ManagerOverrideModal.jsx` (per-manager overrides, isUpline-gated from ManagerWarDetail header); `ManagerWarDetail.jsx` updated (resolvedStds prop); `TeamWarsTab.jsx` + `ManagerWarTab.jsx` updated; 978/978 tests; lint 0; build green. Rules deployed pre-merge. **I1 CORE COMPLETE.** Next: I2 (recruiting roll-up), I3 (accountability flag), §6 (license-state).
+- **[SHIPPED — I1/I2/I3/§6 ALL SHIPPED] Track I — Manager Activity Reporting.** Design spec at `docs/AgencyTrack_TrackI_ManagerWAR_DesignSpec.md`. I1 (Manager WAR + JFW + upline browse + activity standards + overrides) shipped PRs [#254](https://github.com/Kelsean868/agencytrack/pull/254)→[#266](https://github.com/Kelsean868/agencytrack/pull/266) + [#268](https://github.com/Kelsean868/agencytrack/pull/268). I2 (Monthly Recruiting Roll-up) shipped PR [#280](https://github.com/Kelsean868/agencytrack/pull/280). I3 (Accountability Flag tier-1/tier-2) shipped PRs [#271](https://github.com/Kelsean868/agencytrack/pull/271) + [#275](https://github.com/Kelsean868/agencytrack/pull/275). §6 (License-state + CBTT compliance signal) shipped PR #TBD. **Track I §9 (isProducingManager personal-production panel) and §6 doCreateUser default remain open — see LOW items below.**
 
 - **[SHIPPED — F1 #242 + F2 #244 + F3 #246 + F3.1 #248 + F2.1 #250 — Track F arc COMPLETE] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. Prospect-Info shipped: `prospectInfo` subcollection, **SUBMISSIONS-style privacy** (agent owns/reads/edits OWN; managers in scope READ; manager writes DENIED — opposite direction from F1/F2), appointment-bound (intendedAppointmentDate REQUIRED), agent-facing "Joint-Call Prep" NAV tab + third read-only "Prospect Info" tab in `CoachingNotesModal`. F3.1 observation↔prep link shipped (#248). F2.1 BM in-app notification shipped ([#250](https://github.com/Kelsean868/agencytrack/pull/250)). **Remaining open items**: F2.2 (email-to-BM), Track H/G needCovered + prospectingSource + policyType taxonomy confirmation — see § Track F F2 / F3 deferred items below. Roadmap §3.2.
 

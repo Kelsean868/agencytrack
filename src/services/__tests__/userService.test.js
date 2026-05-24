@@ -111,12 +111,13 @@ describe('userService.updateUserFields', () => {
     expect(hoisted.mockUpdateDoc).not.toHaveBeenCalled();
   });
 
-  it('allowlist export contains exactly the v1 manager-editable field set', () => {
+  it('allowlist export contains the manager-editable field set including license fields', () => {
     expect(Array.from(MANAGER_EDITABLE_FIELDS)).toEqual([
       'name', 'phone', 'bio',
       'unitId', 'unitName',
       'agentNumber', 'contractStartDate',
       'canConfirmSettlements',
+      'licenseStatus', 'cbttExamPassedDate', 'cbttExtensionGranted',
     ]);
   });
 });
