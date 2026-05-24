@@ -75,6 +75,9 @@ vi.mock('../../shell/Shell', () => ({
 vi.mock('../../admin/CompanyConfigPanel', () => ({
   default: () => <div data-testid="company-config-panel">Company Config Panel</div>,
 }));
+vi.mock('../../admin/AwardsRulesetPanel', () => ({
+  default: () => <div data-testid="awards-ruleset-panel">Awards Ruleset Panel</div>,
+}));
 vi.mock('../../admin/RoleDistributionCard', () => ({
   default: () => <div data-testid="role-distribution-card">Role Distribution</div>,
 }));
@@ -216,6 +219,12 @@ describe('TenantAdminDashboard — tab routing', () => {
     render(<TenantAdminDashboard />);
     fireEvent.click(screen.getByTestId('sidebar-config'));
     await waitFor(() => expect(screen.getByTestId('company-config-panel')).toBeInTheDocument());
+  });
+
+  it('clicking Company Config sidebar also renders AwardsRulesetPanel', async () => {
+    render(<TenantAdminDashboard />);
+    fireEvent.click(screen.getByTestId('sidebar-config'));
+    await waitFor(() => expect(screen.getByTestId('awards-ruleset-panel')).toBeInTheDocument());
   });
 
   it('clicking Campaigns sidebar routes to CampaignPanel', async () => {
