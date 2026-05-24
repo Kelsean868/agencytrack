@@ -122,6 +122,8 @@ Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1
 
 Banked: D2a PR [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`77814ed`).
 
+**RESOLVED {DATE-TBD} in PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`) — D2b array/tier editors shipped. All 4 array groups editable; `arrayState` + `ARRAY_GROUP_SCHEMAS` + `buildPayload` array-injection; `validateNumericFields` extended with element recursion + empty-array rejection. Awards editor complete for all 16 groups.**
+
 ---
 
 ## Track D — Awards parity expansion + BM at-risk view (DEFER, banked 2026-05-23)

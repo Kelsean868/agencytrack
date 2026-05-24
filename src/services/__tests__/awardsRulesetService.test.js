@@ -167,4 +167,71 @@ describe('setAwardsRuleset', () => {
     await expect(setAwardsRuleset('tenant1', 2026, bad, 'uid1')).rejects.toThrow();
     expect(mockSetDoc).not.toHaveBeenCalled();
   });
+
+  // ── Array-element validation (D2b) ────────────────────────────────────────
+
+  it('rejects NaN inside a clubAward tier element', async () => {
+    const bad = {
+      ...DEFAULT_RULESET_2026,
+      clubAward: {
+        ...DEFAULT_RULESET_2026.clubAward,
+        tiers: [
+          { ...DEFAULT_RULESET_2026.clubAward.tiers[0], apiMin: NaN },
+          ...DEFAULT_RULESET_2026.clubAward.tiers.slice(1),
+        ],
+      },
+    };
+    await expect(setAwardsRuleset('tenant1', 2026, bad, 'uid1')).rejects.toThrow();
+  });
+
+  it('rejects a negative value inside a managerMonthlyBonus tier', async () => {
+    const bad = {
+      ...DEFAULT_RULESET_2026,
+      managerMonthlyBonus: {
+        tiers: [
+          { minAvgApi: -1, bonusPct: 1.5 },
+          ...DEFAULT_RULESET_2026.managerMonthlyBonus.tiers.slice(1),
+        ],
+      },
+    };
+    await expect(setAwardsRuleset('tenant1', 2026, bad, 'uid1')).rejects.toThrow();
+  });
+
+  it('accepts null for nullable open-ended fields (apiMax / max)', async () => {
+    // clubAward.tiers already has apiMax: null on the gold tier — the default ruleset must pass
+    await expect(setAwardsRuleset('tenant1', 2026, { ...DEFAULT_RULESET_2026 }, 'uid1'))
+      .resolves.not.toThrow();
+    // recruitingAwards last tier has max: null — also must pass
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.clubAward.tiers.find((t) => t.id === 'gold_club').apiMax).toBeNull();
+    expect(payload.recruitingAwards.find((r) => r.id === 'recruiting_gold').max).toBeNull();
+  });
+
+  it('rejects an empty array (e.g. activityAwards = [])', async () => {
+    const bad = { ...DEFAULT_RULESET_2026, activityAwards: [] };
+    await expect(setAwardsRuleset('tenant1', 2026, bad, 'uid1')).rejects.toThrow();
+  });
+
+  it('save with BOTH scalar edits and array edits writes the complete 16-group ruleset', async () => {
+    const editedTiers = [
+      ...DEFAULT_RULESET_2026.clubAward.tiers.slice(0, 4),
+      { ...DEFAULT_RULESET_2026.clubAward.tiers[4], apiInContention: 400000 },
+    ];
+    const ruleset = {
+      ...DEFAULT_RULESET_2026,
+      advisorMonth: { ...DEFAULT_RULESET_2026.advisorMonth, persistGate: 91 },
+      clubAward: { ...DEFAULT_RULESET_2026.clubAward, tiers: editedTiers },
+    };
+    await setAwardsRuleset('tenant1', 2026, ruleset, 'uid1');
+    const [, payload] = mockSetDoc.mock.calls[0];
+
+    // Scalar edit persisted
+    expect(payload.advisorMonth.persistGate).toBe(91);
+    // Array edit persisted
+    expect(payload.clubAward.tiers[4].apiInContention).toBe(400000);
+    // All 16 top-level groups present
+    for (const key of Object.keys(DEFAULT_RULESET_2026)) {
+      expect(payload).toHaveProperty(key);
+    }
+  });
 });
