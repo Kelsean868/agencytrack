@@ -94,17 +94,19 @@ social-media · orphan · existing-client · family-friend · self · other
 
 **Anchor:** tenure = months since `contractDate`. The contract is only issued once the person can sell (provisionally), so contract date is the start of selling ability — the correct, fair anchor.
 
-**Two license states** (the official CBTT license can lag the contract by up to 24 months):
+**Two license states** (the CBTT exam window is **12 months from contract start, extendable to 24** — binary extension):
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `contractDate` | date | Tenure clock start. |
-| `licenseStatus` | enum `provisional` \| `official` | `provisional` = sells under supervision. |
-| `cbttExamDeadline` | date (derived) | `contractDate` + 24 months. |
-| `cbttExamPassedDate` | date \| null | Set when status flips to `official`. |
+| `contractStartDate` | date | Tenure + CBTT clock start. Already on user doc (manager-editable). |
+| `licenseStatus` | enum `provisional` \| `official` | `provisional` = sells under supervision. **Missing = untracked** (not flagged). |
+| `cbttExtensionGranted` | boolean (default false) | `true` = 12-month window extended to 24. |
+| `cbttExamPassedDate` | date \| null | Set when status flips to `official`. Manager-editable. |
+| `cbttExamDeadline` | date (**derived, never stored**) | `contractStartDate + (cbttExtensionGranted ? 24 : 12) months`. Computed at render time. |
 
 - Provisional agents carry the **same** tenure-based company floors — no branching in the floor engine.
 - **Compliance signal:** flag any `provisional` agent within ~90 days of `cbttExamDeadline` on the manager/compliance view (missing it stops them selling).
+- **SHIPPED PR #TBD** — `licenseStatus`, `cbttExamPassedDate`, `cbttExtensionGranted` manager-editable; `cbttCompliance.js` pure helper; `CompliancePanel` CBTT section.
 - Feeds directly into the **tenure Company Floor** build already next in queue.
 
 **Tenure Company Floor (confirmed bands)** — annual ÷ 40 for weekly:
@@ -160,5 +162,5 @@ Generic category + Tatil product name. Editable as names are verified.
 ## 10. Open items before build
 
 1. **Activity standards (§2):** head of sales to supply default weekly numbers for JFW, one-on-ones, recruiting, training.
-2. **Provisional-license rule (§6):** confirm with compliance that the window is a flat 24 months and whether any grace/extension exists.
+2. ~~**Provisional-license rule (§6):** confirm with compliance that the window is a flat 24 months and whether any grace/extension exists.~~ **RESOLVED 2026-05-24:** Window is 12 months, extendable to 24 via binary `cbttExtensionGranted` flag. Partial extensions not currently in scope (if needed later, swap boolean for a stored `cbttExamDeadline` date capped at +24mo — additive change).
 3. **Next step:** convert this spec to a CC kickoff brief in `docs/briefs/` (per the kickoff-brief commit convention) when ready to build.
