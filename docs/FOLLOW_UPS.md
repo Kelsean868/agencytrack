@@ -126,17 +126,17 @@ Banked: D2a PR [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`7781
 
 ---
 
-## ~~Track D — Awards parity expansion + BM at-risk view~~ (RESOLVED — D3 closed [#TBD](#TBD), `#TBD`)
+## ~~Track D — Awards parity expansion + BM at-risk view~~ (RESOLVED — D3 closed [#297](https://github.com/Kelsean868/agencytrack/pull/297), `0bb1337`)
 
 **Context:** `docs/phase7-8-implementation.md` Track D section lists D3 (agent panel parity), D4 (manager panel parity), D5 (BM at-risk view). Section numbering §3.2/§3.3 in the brief refers to this Track D block — the doc's §3 is "Track Dependencies"; parity/at-risk content is in §2 "Build Tracks".
 
 **RESOLVED: D4 — Manager awards `newAdvisors` hardcode** ([#291](https://github.com/Kelsean868/agencytrack/pull/291), `94ba440`). `ManagerAwardsPanel.jsx:95` was passing `{ newAdvisors: 0 }` to `computeManagerAwards`, making recruiting awards always 0. Fixed: `ManagerDashboard` now computes `newAdvisors` = count of agents in scope whose `contractStartDate` starts with the current calendar year, passes as prop to `ManagerAwardsPanel`, which forwards to `computeManagerAwards`. UM-view verified — no rendering gaps found. 4 new prop-threading tests.
 
-**RESOLVED: D3 — Agent awards parity (`AgentAwardsPanel` enhancements)** ([#TBD](#TBD), `#TBD`). Three new pure engine exports in `awardsEngine.js`: `getPeriodCtx(category, date)` (lifted verbatim from `BmAtRiskPanel.jsx:17` inline helper), `nextTierDistance(annualApi, tiers)` (returns `{ nextTier, distance }` for the tier immediately above agent's current standing, or `null` at Gold), `isPersistencyOnlyBlock(award)` (confirmed data + persistency is sole unmet criterion). Panel augments each award in `useMemo`: `paceStatus` (via `computeAtRiskStatus`), `tierGap` (club only), `persistencyBlock`. `AwardCard` renders: (1) per-criterion "X to go" `GapBadge` (non-club), TTD-distance-to-next-tier badge (club); (2) `PacePill` (Achieved/On Track/At Risk/Far Off); (3) amber persistency-only-block banner (confirmed data only — silent on estimated). 25 new engine tests; 1178/1178; lint 0; build clean. No rule/index/ruleset/CF/Firestore change.
+**RESOLVED: D3 — Agent awards parity (`AgentAwardsPanel` enhancements)** ([#297](https://github.com/Kelsean868/agencytrack/pull/297), `0bb1337`). Three new pure engine exports in `awardsEngine.js`: `getPeriodCtx(category, date)` (lifted verbatim from `BmAtRiskPanel.jsx:17` inline helper), `nextTierDistance(annualApi, tiers)` (returns `{ nextTier, distance }` for the tier immediately above agent's current standing, or `null` at Gold), `isPersistencyOnlyBlock(award)` (confirmed data + persistency is sole unmet criterion). Panel augments each award in `useMemo`: `paceStatus` (via `computeAtRiskStatus`), `tierGap` (club only), `persistencyBlock`. `AwardCard` renders: (1) per-criterion "X to go" `GapBadge` (non-club), TTD-distance-to-next-tier badge (club); (2) `PacePill` (Achieved/On Track/At Risk/Far Off); (3) amber persistency-only-block banner (confirmed data only — silent on estimated). 25 new engine tests; 1178/1178; lint 0; build clean. No rule/index/ruleset/CF/Firestore change.
 
 **RESOLVED: D5 — BM at-risk view** ([#293](https://github.com/Kelsean868/agencytrack/pull/293), `efc69e5`). New `computeAtRiskStatus(award, { weeksElapsed, periodWeeks })` pure function in `awardsEngine.js` — 4-state (achieved / on_track / at_risk / far_off). Uses `inContention` flag as the "gettable" boundary (no ruleset change, no atRiskPct). New `BmAtRiskPanel.jsx` with per-agent risk rows, danger pill list, All/At Risk filter; BM+ gated. `ManagerAwardsPanel` self-loads `ytdSubs` in existing `Promise.all`. `ManagerDashboard` threads new `agentProfiles` state. Agent termination filter deferred (see "Agent termination flag" FU below). 11 engine tests + 3 panel gating tests. 1151/1151; lint 0; build clean. No rule/index/ruleset/config/editor change.
 
-**Track D arc complete:** D1 [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`) → D1b [#285](https://github.com/Kelsean868/agencytrack/pull/285) (`2f0364a`) → D2a [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`77814ed`) → D2b [#289](https://github.com/Kelsean868/agencytrack/pull/289) (`fa5d050`) → D4 [#291](https://github.com/Kelsean868/agencytrack/pull/291) (`94ba440`) → D5 [#293](https://github.com/Kelsean868/agencytrack/pull/293) (`efc69e5`) → D3 [#TBD](#TBD) (`#TBD`).
+**Track D arc complete:** D1 [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`) → D1b [#285](https://github.com/Kelsean868/agencytrack/pull/285) (`2f0364a`) → D2a [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`77814ed`) → D2b [#289](https://github.com/Kelsean868/agencytrack/pull/289) (`fa5d050`) → D4 [#291](https://github.com/Kelsean868/agencytrack/pull/291) (`94ba440`) → D5 [#293](https://github.com/Kelsean868/agencytrack/pull/293) (`efc69e5`) → D3 [#297](https://github.com/Kelsean868/agencytrack/pull/297) (`0bb1337`).
 
 ---
 
@@ -160,7 +160,7 @@ Banked: D2a PR [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`7781
 
 **Priority:** LOW. No functional regression; issue is dead code + misleading signal. Resolve before Track H (Policy Ledger) if persistency becomes agent-writeable.
 
-Banked: D3 PR [#TBD](#TBD) (`#TBD`).
+Banked: D3 PR [#297](https://github.com/Kelsean868/agencytrack/pull/297) (`0bb1337`).
 
 ---
 
@@ -174,7 +174,7 @@ Banked: D3 PR [#TBD](#TBD) (`#TBD`).
 
 **Priority:** LOW. Pure dedupe; no business ask. Can combine with any future BmAtRiskPanel touch.
 
-Banked: D3 PR [#TBD](#TBD) (`#TBD`).
+Banked: D3 PR [#297](https://github.com/Kelsean868/agencytrack/pull/297) (`0bb1337`).
 
 ---
 
@@ -258,7 +258,7 @@ Banked: #296 smoke (`27b1c8a`, 2026-05-24).
 
 ---
 
-## ~~D3 — Agent awards parity (`AgentAwardsPanel` enhancements)~~ (RESOLVED — [#TBD](#TBD), `#TBD`)
+## ~~D3 — Agent awards parity (`AgentAwardsPanel` enhancements)~~ (RESOLVED — [#297](https://github.com/Kelsean868/agencytrack/pull/297), `0bb1337`)
 
 **Context:** D3 was scoped in the D5 Phase 1 session. Three gaps vs. the Phase 7-8 spec identified in `AgentAwardsPanel.jsx`:
 
@@ -268,9 +268,9 @@ Banked: #296 smoke (`27b1c8a`, 2026-05-24).
 
 Source badge is already present — no gap there.
 
-**RESOLVED in PR [#TBD](#TBD) (`#TBD`).** All three legs shipped. Two new LOW FUs banked: `submissions[].persistencyRate` dead read + `getPeriodCtx` duplication in `BmAtRiskPanel.jsx`.
+**RESOLVED in PR [#297](https://github.com/Kelsean868/agencytrack/pull/297) (`0bb1337`).** All three legs shipped. Two new LOW FUs banked: `submissions[].persistencyRate` dead read + `getPeriodCtx` duplication in `BmAtRiskPanel.jsx`.
 
-Banked: D5 PR [#293](https://github.com/Kelsean868/agencytrack/pull/293). Resolved: [#TBD](#TBD) (`#TBD`).
+Banked: D5 PR [#293](https://github.com/Kelsean868/agencytrack/pull/293). Resolved: [#297](https://github.com/Kelsean868/agencytrack/pull/297) (`0bb1337`).
 
 ---
 
