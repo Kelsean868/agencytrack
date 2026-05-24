@@ -141,7 +141,7 @@ Dispatcher locked D3 as a separate PR (agent-panel only, `AgentAwardsPanel.jsx` 
 
 **ACTIVE: D5 — BM at-risk view:** New `BmAtRiskPanel` component. Host: `ManagerDashboard.jsx` Awards tab, BM+ gated. New data load required: `getAllYTDSubmissions(tenantId)` (exists in `managerService.js:47`, used in CSV export path). No new Firestore index. Engine gap: "At risk of losing" state (eligible now but criteria trending down) requires new computation — not in current engine. **Open design question: at-risk threshold definition (§9.1 of impl doc — per-award configurable, not yet in ruleset schema; dispatcher must lock before D5 build).**
 
-Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`). D4 resolved: [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`). D4 resolved: [#291](https://github.com/Kelsean868/agencytrack/pull/291) (`94ba440`).
 
 ---
 
