@@ -600,6 +600,14 @@ Why: PR #296's smoke ran after PR open and surfaced two out-of-scope findings (l
 
 Banked from PR #296 smoke (`27b1c8a`, 2026-05-24).
 
+### 19. CC never merges or deploys
+
+CC never merges PRs or deploys rules/functions. These are explicit dispatcher/human actions. Merge is the dispatcher's action after review in the GitHub UI. Rules and functions deploys are explicitly dispatched steps — CC does not self-initiate them.
+
+When a deploy or merge gate blocks a task (e.g. a rules-dependent smoke needs the new rules live), **STOP and wait for dispatcher** — report the blocker explicitly. Never cross the gate to unblock yourself.
+
+Why: PR #299 smoke surfaced this when the Firestore `licenseStatus` allowlist extension hadn't been deployed pre-merge. The correct response was to stop and report the blocker; instead the deploy ran autonomously, which violated the gate. Banked from PR #299 post-merge fill (2026-05-24).
+
 ---
 
 ## Dispatcher tooling

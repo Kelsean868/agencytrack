@@ -387,11 +387,11 @@ Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6f
 
 1. Extend `doCreateUser` Cloud Function in `functions/index.js` to include `licenseStatus: 'provisional'` in the user doc written at creation. This is the ONLY place user docs are created server-side — no client-path change needed.
 2. Optionally backfill existing agent docs that have no `licenseStatus` set (one-off admin script).
-3. No rule change required — `licenseStatus` is already in the manager-update allowlist (PR #TBD). Creation is CF-side (Admin SDK, bypasses rules).
+3. No rule change required — `licenseStatus` is already in the manager-update allowlist (PR #299). Creation is CF-side (Admin SDK, bypasses rules).
 
 **Priority:** **LOW**. Tracking works today via manual set; this makes it automatic.
 
-Banked: Track I §6 PR #TBD.
+Banked: Track I §6 PR #299 (`71717af`).
 
 ---
 
@@ -2526,7 +2526,7 @@ Banked from PR #235 (`0b8d04d`) (Phase 7-8 docs integration). Each FU closes ind
 
 Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `docs/AgencyTrack_Workshop_Roadmap_Revision.md`. Each item resolves in its own design/implementation pass — these are scope registrations, not blockers.
 
-- **[SHIPPED — I1/I2/I3/§6 ALL SHIPPED] Track I — Manager Activity Reporting.** Design spec at `docs/AgencyTrack_TrackI_ManagerWAR_DesignSpec.md`. I1 (Manager WAR + JFW + upline browse + activity standards + overrides) shipped PRs [#254](https://github.com/Kelsean868/agencytrack/pull/254)→[#266](https://github.com/Kelsean868/agencytrack/pull/266) + [#268](https://github.com/Kelsean868/agencytrack/pull/268). I2 (Monthly Recruiting Roll-up) shipped PR [#280](https://github.com/Kelsean868/agencytrack/pull/280). I3 (Accountability Flag tier-1/tier-2) shipped PRs [#271](https://github.com/Kelsean868/agencytrack/pull/271) + [#275](https://github.com/Kelsean868/agencytrack/pull/275). §6 (License-state + CBTT compliance signal) shipped PR #TBD. **Track I §9 (isProducingManager personal-production panel) and §6 doCreateUser default remain open — see LOW items below.**
+- **[SHIPPED — I1/I2/I3/§6 ALL SHIPPED] Track I — Manager Activity Reporting.** Design spec at `docs/AgencyTrack_TrackI_ManagerWAR_DesignSpec.md`. I1 (Manager WAR + JFW + upline browse + activity standards + overrides) shipped PRs [#254](https://github.com/Kelsean868/agencytrack/pull/254)→[#266](https://github.com/Kelsean868/agencytrack/pull/266) + [#268](https://github.com/Kelsean868/agencytrack/pull/268). I2 (Monthly Recruiting Roll-up) shipped PR [#280](https://github.com/Kelsean868/agencytrack/pull/280). I3 (Accountability Flag tier-1/tier-2) shipped PRs [#271](https://github.com/Kelsean868/agencytrack/pull/271) + [#275](https://github.com/Kelsean868/agencytrack/pull/275). §6 (License-state + CBTT compliance signal) shipped PR [#299](https://github.com/Kelsean868/agencytrack/pull/299) (`71717af`). **Track I §9 (isProducingManager personal-production panel) and §6 doCreateUser default remain open — see LOW items below.**
 
 - **[SHIPPED — F1 #242 + F2 #244 + F3 #246 + F3.1 #248 + F2.1 #250 — Track F arc COMPLETE] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. Prospect-Info shipped: `prospectInfo` subcollection, **SUBMISSIONS-style privacy** (agent owns/reads/edits OWN; managers in scope READ; manager writes DENIED — opposite direction from F1/F2), appointment-bound (intendedAppointmentDate REQUIRED), agent-facing "Joint-Call Prep" NAV tab + third read-only "Prospect Info" tab in `CoachingNotesModal`. F3.1 observation↔prep link shipped (#248). F2.1 BM in-app notification shipped ([#250](https://github.com/Kelsean868/agencytrack/pull/250)). **Remaining open items**: F2.2 (email-to-BM), Track H/G needCovered + prospectingSource + policyType taxonomy confirmation — see § Track F F2 / F3 deferred items below. Roadmap §3.2.
 
