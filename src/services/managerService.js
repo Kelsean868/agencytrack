@@ -26,7 +26,7 @@ export async function getWeeklySubmissions(tenantId, weekStarting) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
-export async function getTenantUsers(tenantId) {
+export async function getTenantUsers(tenantId, { includeInactive = false } = {}) {
   const { claims } = await auth.currentUser.getIdTokenResult();
   const callerUid = auth.currentUser.uid;
 
@@ -38,10 +38,9 @@ export async function getTenantUsers(tenantId) {
     : col;
 
   const snap = await getDocs(q);
-  // PR-1: hide provisioning users from every list-style UI consumer (9 callers).
   return snap.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((u) => u.provisioning !== true);
+    .filter((u) => u.provisioning !== true && (includeInactive || u.active !== false));
 }
 
 export async function getAllYTDSubmissions(tenantId) {

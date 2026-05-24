@@ -98,6 +98,7 @@ export default function Leaderboard() {
         snap.forEach((d) => {
           const data = d.data();
           if (data.provisioning === true) return;
+          if (data.active === false) return;
           if (data.photoURL) map[d.id] = data.photoURL;
         });
         setPhotoMap(map);

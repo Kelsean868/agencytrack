@@ -145,6 +145,87 @@ describe('managerService.getTenantUsers — SHAKEDOWN-002 unit scoping', () => {
   });
 });
 
+describe('managerService.getTenantUsers — active: false filtering', () => {
+  beforeEach(() => {
+    hoisted.mockGetDocs.mockReset();
+    hoisted.mockWhere.mockReset();
+    hoisted.mockQuery.mockReset();
+    hoisted.mockCollection.mockReset();
+
+    hoisted.mockGetDocs.mockResolvedValue(makeSnap());
+    hoisted.mockCollection.mockReturnValue('__col__');
+    hoisted.mockWhere.mockReturnValue('__where__');
+    hoisted.mockQuery.mockReturnValue('__query__');
+
+    hoisted.mockCurrentUser = {
+      uid: 'bm-uid-001',
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'branch_manager' } }),
+    };
+  });
+
+  it('default call excludes active: false users', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeSnap(
+      makeDoc('agent-active',   { name: 'Active Agent',   role: 'agent', active: true }),
+      makeDoc('agent-inactive', { name: 'Inactive Agent', role: 'agent', active: false }),
+    ));
+
+    const users = await getTenantUsers('tenant1');
+
+    expect(users).toHaveLength(1);
+    expect(users[0].id).toBe('agent-active');
+  });
+
+  it('{ includeInactive: true } returns active: false users', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeSnap(
+      makeDoc('agent-active',   { name: 'Active Agent',   role: 'agent', active: true }),
+      makeDoc('agent-inactive', { name: 'Inactive Agent', role: 'agent', active: false }),
+    ));
+
+    const users = await getTenantUsers('tenant1', { includeInactive: true });
+
+    expect(users).toHaveLength(2);
+  });
+
+  it('absent active field treated as active (truthy)', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeSnap(
+      makeDoc('agent-no-field', { name: 'Legacy Agent', role: 'agent' }),
+    ));
+
+    const users = await getTenantUsers('tenant1');
+
+    expect(users).toHaveLength(1);
+    expect(users[0].id).toBe('agent-no-field');
+  });
+
+  it('provisioning + active: false both filtered in default call', async () => {
+    hoisted.mockGetDocs.mockResolvedValue(makeSnap(
+      makeDoc('agent-ok',       { name: 'OK',           active: true }),
+      makeDoc('agent-inactive', { name: 'Inactive',     active: false }),
+      makeDoc('agent-prov',     { name: 'Provisioning', provisioning: true }),
+    ));
+
+    const users = await getTenantUsers('tenant1');
+
+    expect(users).toHaveLength(1);
+    expect(users[0].id).toBe('agent-ok');
+  });
+
+  it('SHAKEDOWN-002 unit scoping unaffected: unit_manager still applies unitId where filter', async () => {
+    hoisted.mockCurrentUser = {
+      uid: 'um-uid-001',
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'unit_manager' } }),
+    };
+    hoisted.mockGetDocs.mockResolvedValue(makeSnap(
+      makeDoc('agent-a', { name: 'Agent A', role: 'agent', unitId: 'um-uid-001', active: true }),
+    ));
+
+    const users = await getTenantUsers('tenant1');
+
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('unitId', '==', 'um-uid-001');
+    expect(users).toHaveLength(1);
+  });
+});
+
 describe('managerService.getWeeklySubmissions — unitId direct query (post-denorm)', () => {
   beforeEach(() => {
     hoisted.mockGetDocs.mockReset();
