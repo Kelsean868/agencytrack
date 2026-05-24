@@ -588,3 +588,55 @@ export function computeRatioTrends(submissions) {
     ffiToDialRatio: { trailing4w: r1(ffi4),      trailing12w: r1(ffi12),     trend: trend(ffi4,     ffi12)     },
   };
 }
+
+// ──────────────────────────────────────────────────────
+// getPeriodCtx
+// Returns { weeksElapsed, periodWeeks } for use with computeAtRiskStatus.
+// category: 'monthly' | 'quarterly' | 'annual' | 'club'
+// currentDate: Date
+// ──────────────────────────────────────────────────────
+export function getPeriodCtx(category, currentDate) {
+  const now = currentDate instanceof Date ? currentDate : new Date(currentDate ?? Date.now());
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
+  if (category === 'monthly') {
+    const daysInMonth = new Date(y, m, 0).getDate();
+    return { weeksElapsed: Math.floor((now.getDate() - 1) / 7), periodWeeks: daysInMonth / 7 };
+  }
+  if (category === 'quarterly') {
+    const qStartMonth = Math.floor((m - 1) / 3) * 3;
+    const daysElapsed = Math.floor((now - new Date(y, qStartMonth, 1)) / 86400000);
+    return { weeksElapsed: Math.floor(daysElapsed / 7), periodWeeks: 13 };
+  }
+  // annual and club
+  const daysElapsed = Math.floor((now - new Date(y, 0, 1)) / 86400000);
+  return { weeksElapsed: Math.max(1, Math.floor(daysElapsed / 7)), periodWeeks: 52 };
+}
+
+// ──────────────────────────────────────────────────────
+// nextTierDistance
+// tiers: ruleset.clubAward.tiers (array, any order)
+// annualApi: the agent's current annual API (number or parseable)
+// Returns { nextTier, distance } for the tier immediately above the agent's
+// current standing, or null if already at the top tier (Gold / apiMax === null).
+// ──────────────────────────────────────────────────────
+export function nextTierDistance(annualApi, tiers) {
+  const api = p(annualApi);
+  const sorted = [...tiers].sort((a, b) => a.apiMin - b.apiMin);
+  // Find the lowest tier whose apiMin > api (i.e. the next tier up)
+  const next = sorted.find((t) => api < t.apiMin);
+  if (!next) return null; // already at or above the top tier entry
+  return { nextTier: next, distance: Math.max(0, next.apiMin - api) };
+}
+
+// ──────────────────────────────────────────────────────
+// isPersistencyOnlyBlock
+// Returns true iff the award has confirmed data AND the persistency criterion
+// is the sole unmet criterion (all other criteria are met).
+// ──────────────────────────────────────────────────────
+export function isPersistencyOnlyBlock(award) {
+  if (award.dataSource !== 'confirmed') return false;
+  const unmet = (award.criteria ?? []).filter((c) => !c.met);
+  if (unmet.length === 0) return false;
+  return unmet.every((c) => /persistency/i.test(c.label));
+}

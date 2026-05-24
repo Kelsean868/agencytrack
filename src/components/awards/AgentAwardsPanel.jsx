@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { CheckCircle, XCircle, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
-import { computeAgentAwards, computeRatioTrends } from '../../utils/awardsEngine';
+import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
 import { formatCurrency } from '../../utils/formatters';
 
 const CATEGORY_TABS = [
@@ -21,6 +21,34 @@ function DataSourceBadge({ source }) {
   return (
     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warning/10 text-warning">
       Estimated
+    </span>
+  );
+}
+
+function GapBadge({ gap, target, label }) {
+  if (gap === null || gap === undefined || gap <= 0) return null;
+  const isClose = target > 0 && gap <= target * 0.2;
+  return (
+    <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
+      isClose ? 'bg-warning/15 text-warning' : 'bg-border/60 text-ink-muted'
+    }`}>
+      {label}
+    </span>
+  );
+}
+
+const PACE_CONFIG = {
+  achieved:  { label: 'Achieved',  cls: 'bg-success/15 text-success'   },
+  on_track:  { label: 'On Track',  cls: 'bg-primary/10 text-primary'   },
+  at_risk:   { label: 'At Risk',   cls: 'bg-warning/15 text-warning'   },
+  far_off:   { label: 'Far Off',   cls: 'bg-border/60 text-ink-muted'  },
+};
+
+function PacePill({ status }) {
+  const cfg = PACE_CONFIG[status] ?? PACE_CONFIG.far_off;
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${cfg.cls}`}>
+      {cfg.label}
     </span>
   );
 }
@@ -59,7 +87,7 @@ function formatCriterionTarget(c) {
   return String(c.target);
 }
 
-function AwardCard({ award }) {
+function AwardCard({ award, paceStatus, tierGap, persistencyBlock }) {
   const isGreyed = !award.eligible && !award.inContention;
 
   return (
@@ -79,6 +107,9 @@ function AwardCard({ award }) {
         </div>
       </div>
 
+      {/* Leg 2 — pace pill */}
+      {paceStatus && <PacePill status={paceStatus} />}
+
       {/* Progress bar (primary criterion only) */}
       <div>
         <div className="flex justify-between text-[10px] text-ink-muted mb-1">
@@ -95,22 +126,57 @@ function AwardCard({ award }) {
         </div>
       </div>
 
-      {/* Criteria checklist */}
+      {/* Criteria checklist + leg 1 gap badges (non-club) */}
       <div className="flex flex-col gap-1.5">
-        {award.criteria.map((c) => (
-          <div key={c.label} className="flex items-center gap-2 text-xs">
-            {c.met
-              ? <CheckCircle size={13} className="text-success shrink-0" />
-              : <XCircle    size={13} className="text-danger/60 shrink-0" />
-            }
-            <span className={c.met ? 'text-ink' : 'text-ink-muted'}>
-              {c.label}:&nbsp;
-              <span className="font-semibold">{formatCriterionValue(c)}</span>
-              <span className="text-ink-muted"> / {formatCriterionTarget(c)}</span>
-            </span>
-          </div>
-        ))}
+        {award.criteria.map((c) => {
+          const gap = !c.met && award.category !== 'club' ? c.target - c.current : null;
+          const gapLabel = c.unit === 'TTD'
+            ? `${formatCurrency(Math.round(gap))} to go`
+            : c.unit === '%'
+              ? `${Number(gap).toFixed(1)}% to go`
+              : `${Math.round(gap)} to go`;
+          return (
+            <div key={c.label} className="flex items-center gap-2 text-xs">
+              {c.met
+                ? <CheckCircle size={13} className="text-success shrink-0" />
+                : <XCircle    size={13} className="text-danger/60 shrink-0" />
+              }
+              <span className={`flex-1 ${c.met ? 'text-ink' : 'text-ink-muted'}`}>
+                {c.label}:&nbsp;
+                <span className="font-semibold">{formatCriterionValue(c)}</span>
+                <span className="text-ink-muted"> / {formatCriterionTarget(c)}</span>
+              </span>
+              {gap !== null && gap > 0 && (
+                <GapBadge gap={gap} target={c.target} label={gapLabel} />
+              )}
+            </div>
+          );
+        })}
       </div>
+
+      {/* Leg 1 — club tier gap badge */}
+      {tierGap && !award.eligible && (
+        <div className="flex items-center gap-2">
+          <GapBadge
+            gap={tierGap.distance}
+            target={tierGap.nextTier.apiMin}
+            label={`${formatCurrency(Math.round(tierGap.distance))} to ${tierGap.nextTier.name}`}
+          />
+        </div>
+      )}
+
+      {/* Leg 3 — persistency-only block banner */}
+      {persistencyBlock && (() => {
+        const pc = award.criteria.find((c) => /persistency/i.test(c.label));
+        return pc ? (
+          <div className="flex items-start gap-1.5 p-2 rounded-lg bg-warning/8 border border-warning/20">
+            <Info size={11} className="text-warning mt-0.5 shrink-0" />
+            <p className="text-[10px] text-warning leading-snug">
+              Production targets met — only persistency ({Number(pc.current).toFixed(1)}% of {pc.target}% required) stands between you and this award.
+            </p>
+          </div>
+        ) : null;
+      })()}
 
       {/* Note */}
       {award.note && (
@@ -156,8 +222,20 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
 
   const computation = useMemo(() => {
     try {
+      const rawAwards = computeAgentAwards(confirmedSettlements, submissions, agentProfile, now, ruleset);
+      const awards = {};
+      for (const [id, award] of Object.entries(rawAwards)) {
+        const paceStatus = computeAtRiskStatus(award, getPeriodCtx(award.category, now));
+        const persistencyBlock = isPersistencyOnlyBlock(award);
+        let tierGap = null;
+        if (award.category === 'club' && !award.eligible) {
+          const annualApi = award.criteria[0]?.current ?? 0;
+          tierGap = nextTierDistance(annualApi, ruleset.clubAward.tiers);
+        }
+        awards[id] = { ...award, paceStatus, persistencyBlock, tierGap };
+      }
       return {
-        awards: computeAgentAwards(confirmedSettlements, submissions, agentProfile, now, ruleset),
+        awards,
         ratioTrends: computeRatioTrends(submissions),
         error: null,
       };
@@ -219,7 +297,13 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       ) : (
         <div className="flex flex-col gap-3">
           {categoryAwards.map((award) => (
-            <AwardCard key={award.id} award={award} />
+            <AwardCard
+              key={award.id}
+              award={award}
+              paceStatus={award.paceStatus}
+              tierGap={award.tierGap}
+              persistencyBlock={award.persistencyBlock}
+            />
           ))}
         </div>
       )}
