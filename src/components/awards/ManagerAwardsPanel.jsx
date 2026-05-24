@@ -2,11 +2,13 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { computeManagerAwards } from '../../utils/awardsEngine';
 import { getSettlementsForUnit } from '../../services/settlementService';
 import { getAwardsRuleset } from '../../services/awardsRulesetService';
+import { getAllYTDSubmissions } from '../../services/managerService';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 import { formatCurrency } from '../../utils/formatters';
 import TabPills from '../ui/TabPills';
 import GoalDonut from '../dashboard/GoalDonut';
 import AwardMedalCard from './AwardMedalCard';
+import BmAtRiskPanel from './BmAtRiskPanel';
 
 // Bonus tier hero — replaces the old MonthlyBonusCard with a role-hero strip.
 // Headline value = bonusAmount (TTD earned). Bar fill = avgMonthlyAPI / nextTier.threshold.
@@ -67,8 +69,9 @@ const ANNUAL_TABS = [
 const ACTIVITY_IDS = ['activity_bronze','activity_silver','activity_gold','highest_activity'];
 const RECRUIT_IDS  = ['recruiting_bronze','recruiting_silver','recruiting_gold'];
 
-export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenantId, newAdvisors = 0 }) {
+export default function ManagerAwardsPanel({ agentIds, agentProfiles = [], currentDate, role, tenantId, newAdvisors = 0 }) {
   const [settlements, setSettlements]   = useState([]);
+  const [ytdSubs, setYtdSubs]           = useState([]);
   const [ruleset, setRuleset]           = useState(DEFAULT_RULESET_2026);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState('');
@@ -82,10 +85,12 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
     Promise.all([
       getSettlementsForUnit(tenantId, agentIds, year),
       getAwardsRuleset(tenantId, year).catch(() => DEFAULT_RULESET_2026),
+      getAllYTDSubmissions(tenantId).catch(() => []),
     ])
-      .then(([setts, loadedRuleset]) => {
+      .then(([setts, loadedRuleset, subs]) => {
         setSettlements(setts);
         setRuleset(loadedRuleset);
+        setYtdSubs(subs);
       })
       .catch((e) => { console.error(e); setError('Failed to load settlement data.'); })
       .finally(() => setLoading(false));
@@ -145,6 +150,8 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
     );
   }
 
+  const isBmPlus = role === 'branch_manager' || role === 'tenant_admin' || role === 'platform_admin';
+
   return (
     <div className="flex flex-col gap-4">
       {bonus && <MonthlyBonusHero bonus={bonus} />}
@@ -159,6 +166,17 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
         <div className="badge-grid">
           {activeAwards.map((award) => <AwardMedalCard key={award.id} award={award} />)}
         </div>
+      )}
+
+      {isBmPlus && (
+        <BmAtRiskPanel
+          agentProfiles={agentProfiles}
+          settlements={settlements}
+          ytdSubs={ytdSubs}
+          agentIds={agentIds}
+          currentDate={currentDate ?? new Date()}
+          ruleset={ruleset}
+        />
       )}
     </div>
   );
