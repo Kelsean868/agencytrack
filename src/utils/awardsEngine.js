@@ -514,6 +514,24 @@ export function computeManagerAwards(confirmedData, unitAgentIds, allAgentConfir
 }
 
 // ──────────────────────────────────────────────────────
+// computeAtRiskStatus
+// award: a single award object from computeAgentAwards (makeAward shape)
+// { weeksElapsed, periodWeeks }: period context supplied by the caller
+//   - annual:    weeksElapsed = ISO week of year; periodWeeks = 52
+//   - monthly:   weeksElapsed = weeks elapsed in month; periodWeeks = daysInMonth / 7
+//   - quarterly: weeksElapsed = weeks elapsed in quarter; periodWeeks = 13
+// Returns: 'achieved' | 'on_track' | 'at_risk' | 'far_off'
+// ──────────────────────────────────────────────────────
+export function computeAtRiskStatus(award, { weeksElapsed, periodWeeks }) {
+  if (award.eligible) return 'achieved';
+  const notMet = (award.criteria ?? []).filter((c) => !c.met);
+  const onTrack = weeksElapsed > 0
+    && notMet.every((c) => (c.current / weeksElapsed) * periodWeeks >= c.target);
+  if (onTrack) return 'on_track';
+  return award.inContention ? 'at_risk' : 'far_off';
+}
+
+// ──────────────────────────────────────────────────────
 // computeRatioTrends
 // submissions: array of submission docs
 // ──────────────────────────────────────────────────────

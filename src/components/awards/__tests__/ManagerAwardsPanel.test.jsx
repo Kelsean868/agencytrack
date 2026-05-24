@@ -11,8 +11,20 @@ vi.mock('../../../services/awardsRulesetService', () => ({
   getAwardsRuleset: vi.fn(() => Promise.resolve(undefined)),
 }));
 
+vi.mock('../../../services/managerService', () => ({
+  getAllYTDSubmissions: vi.fn(() => Promise.resolve([])),
+}));
+
 vi.mock('../../../utils/awardsEngine', () => ({
   computeManagerAwards: vi.fn(),
+}));
+
+vi.mock('../BmAtRiskPanel', () => ({
+  default: () => (
+    <section aria-labelledby="at-risk-heading" data-testid="bm-at-risk-panel">
+      <h3 id="at-risk-heading">Agent Award Risk View</h3>
+    </section>
+  ),
 }));
 
 // Mock GoalDonut to avoid pulling in a sibling component that uses JSX without
@@ -263,5 +275,27 @@ describe('ManagerAwardsPanel — empty state', () => {
       />,
     );
     expect(screen.getByText(/No agents in your unit yet/i)).toBeInTheDocument();
+  });
+});
+
+describe('ManagerAwardsPanel — BmAtRiskPanel gating', () => {
+  it('renders at-risk section for branch_manager role', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel({ role: 'branch_manager' });
+    expect(screen.getByTestId('bm-at-risk-panel')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /agent award risk view/i })).toBeInTheDocument();
+  });
+
+  it('renders at-risk section for tenant_admin role', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel({ role: 'tenant_admin' });
+    expect(screen.getByTestId('bm-at-risk-panel')).toBeInTheDocument();
+  });
+
+  it('does NOT render at-risk section for unit_manager role', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel({ role: 'unit_manager' });
+    expect(screen.queryByTestId('bm-at-risk-panel')).toBeNull();
+    expect(screen.queryByRole('heading', { name: /agent award risk view/i })).toBeNull();
   });
 });

@@ -126,11 +126,11 @@ Banked: D2a PR [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`7781
 
 ---
 
-## Track D — Awards parity expansion + BM at-risk view (ACTIVE — D3 + D5 remain)
+## Track D — Awards parity expansion + BM at-risk view (ACTIVE — D3 remains)
 
 **Context:** `docs/phase7-8-implementation.md` Track D section lists D3 (agent panel parity), D4 (manager panel parity), D5 (BM at-risk view). Section numbering §3.2/§3.3 in the brief refers to this Track D block — the doc's §3 is "Track Dependencies"; parity/at-risk content is in §2 "Build Tracks".
 
-**RESOLVED: D4 — Manager awards `newAdvisors` hardcode** ([#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD), `{TBD}`). `ManagerAwardsPanel.jsx:95` was passing `{ newAdvisors: 0 }` to `computeManagerAwards`, making recruiting awards always 0. Fixed: `ManagerDashboard` now computes `newAdvisors` = count of agents in scope whose `contractStartDate` starts with the current calendar year, passes as prop to `ManagerAwardsPanel`, which forwards to `computeManagerAwards`. UM-view verified — no rendering gaps found. 4 new prop-threading tests.
+**RESOLVED: D4 — Manager awards `newAdvisors` hardcode** ([#291](https://github.com/Kelsean868/agencytrack/pull/291), `94ba440`). `ManagerAwardsPanel.jsx:95` was passing `{ newAdvisors: 0 }` to `computeManagerAwards`, making recruiting awards always 0. Fixed: `ManagerDashboard` now computes `newAdvisors` = count of agents in scope whose `contractStartDate` starts with the current calendar year, passes as prop to `ManagerAwardsPanel`, which forwards to `computeManagerAwards`. UM-view verified — no rendering gaps found. 4 new prop-threading tests.
 
 **ACTIVE: D3 — Agent awards parity (`AgentAwardsPanel` enhancements):** Phase 1 scoping (this session) identified three gaps vs the spec:
 - **Distance-to-tier:** `criteria[i].target - criteria[i].current` derivable but no "X to go" callout displayed. `GapBadge` in `GapAnalysisPanel.jsx:17` is the reuse model.
@@ -139,9 +139,57 @@ Banked: D2a PR [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`7781
 - Source badge: already present. No gap.
 Dispatcher locked D3 as a separate PR (agent-panel only, `AgentAwardsPanel.jsx` + possibly minimal engine additions; does NOT touch `ManagerAwardsPanel`).
 
-**ACTIVE: D5 — BM at-risk view:** New `BmAtRiskPanel` component. Host: `ManagerDashboard.jsx` Awards tab, BM+ gated. New data load required: `getAllYTDSubmissions(tenantId)` (exists in `managerService.js:47`, used in CSV export path). No new Firestore index. Engine gap: "At risk of losing" state (eligible now but criteria trending down) requires new computation — not in current engine. **Open design question: at-risk threshold definition (§9.1 of impl doc — per-award configurable, not yet in ruleset schema; dispatcher must lock before D5 build).**
+**RESOLVED: D5 — BM at-risk view** ([#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD), `{TBD}`). New `computeAtRiskStatus(award, { weeksElapsed, periodWeeks })` pure function in `awardsEngine.js` — 4-state (achieved / on_track / at_risk / far_off). Uses `inContention` flag as the "gettable" boundary (no ruleset change, no atRiskPct). New `BmAtRiskPanel.jsx` with per-agent risk rows, danger pill list, All/At Risk filter; BM+ gated. `ManagerAwardsPanel` self-loads `ytdSubs` in existing `Promise.all`. `ManagerDashboard` threads new `agentProfiles` state. Agent termination filter deferred (see "Agent termination flag" FU below). 11 engine tests + 3 panel gating tests. 1151/1151; lint 0; build clean. No rule/index/ruleset/config/editor change.
 
-Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`). D4 resolved: [#291](https://github.com/Kelsean868/agencytrack/pull/291) (`94ba440`).
+Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`). D4 resolved: [#291](https://github.com/Kelsean868/agencytrack/pull/291) (`94ba440`). D5 resolved: [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+
+---
+
+## Agent termination flag — soft-delete model cross-cutting (MEDIUM, banked 2026-05-24)
+
+**Context:** D4/D5 build identified that terminated agents should not appear in award computations, leaderboards, or the BM at-risk view. A code comment in `BmAtRiskPanel.jsx` (agent-iteration site) defers the filter pending a `terminated` (or `active: false`) flag on user docs. No such flag exists yet.
+
+**Scope (own PR when the flag design is settled):**
+
+The terminated flag is cross-cutting — every roster consumer needs to honour it once it exists:
+
+- `getTenantUsers` in `managerService.js` — return only non-terminated agents (or expose a `{ includeTerminated }` option).
+- Leaderboard queries — filter terminated agents from rankings.
+- Awards computations — `BmAtRiskPanel.jsx` agent-iteration loop; `ManagerAwardsPanel` `agentIds` feed.
+- Master Sheet roll-up — terminated agents should either be excluded or shown with a visual distinction.
+- Persistency entries — historical entries for terminated agents may need to be preserved but excluded from active averages.
+- Monthly Recruiting / WAR browsing — terminated managers' docs still visible to upline but not in active roll-up stats.
+
+**Design questions (dispatcher must lock before build):**
+
+1. Field name: `active: boolean` (missing = truthy) vs. `terminatedAt: Timestamp | null` vs. `status: 'active' | 'terminated'`?
+2. Who can set the flag? `tenant_admin` / `branch_manager` via `EditUserDrawer` (already supports role/branch edits)?
+3. Soft-delete vs. hard-delete? Soft-delete is the safe path (preserve historical submission/persistency/settlement data).
+4. UI: "Show terminated" toggle on UserManagementPanel analogous to the deactivated toggle?
+
+**Action:** when flag design is locked, implement a single PR that: (a) adds the field to the Firestore rules + `EditUserDrawer`, (b) adds `{ includeTerminated: false }` default to all roster-consumer queries, (c) updates `BmAtRiskPanel`, leaderboard, and any other consumer that currently iterates all agents.
+
+**Priority:** MEDIUM. Terminated agents showing up in an active manager's at-risk view is a real UX noise issue, but it requires data (no agent has been terminated yet) and a design decision before implementation.
+
+Banked: D5 PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD).
+
+---
+
+## D3 — Agent awards parity (`AgentAwardsPanel` enhancements) (MEDIUM, banked 2026-05-24)
+
+**Context:** D3 was scoped in the D5 Phase 1 session. Three gaps vs. the Phase 7-8 spec identified in `AgentAwardsPanel.jsx`:
+
+1. **Distance-to-tier callout:** `criteria[i].target - criteria[i].current` is derivable but no "X to go" callout is displayed. `GapBadge` in `GapAnalysisPanel.jsx:17` is the reuse model.
+2. **Per-award trend indicator:** `computeRatioTrends` in `awardsEngine.js` provides aggregate activity ratios (not per-award pacing). A trailing-4w vs trailing-12w pace indicator toward annual thresholds is not yet computed.
+3. **Persistency gate prominence:** when persistency is the sole criterion blocking eligibility, it is shown inline in the criteria checklist but not called out as the blocking criterion with any visual emphasis.
+
+Source badge is already present — no gap there.
+
+**Dispatcher lock (from D5 session):** D3 is a separate PR scoped to `AgentAwardsPanel.jsx` + possibly minimal engine additions. Does NOT touch `ManagerAwardsPanel`.
+
+**Priority:** MEDIUM. Agent-facing polish; not blocking pilot. `AgentAwardsPanel` is already the primary awards surface for agents — this makes it more actionable.
+
+Banked: D5 PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD).
 
 ---
 

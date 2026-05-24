@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAgentAwards, computeManagerAwards } from '../awardsEngine';
+import { computeAgentAwards, computeManagerAwards, computeAtRiskStatus } from '../awardsEngine';
 
 // Helper: build a manager settlement doc
 function settled(agentId, periodKey, settledAPI, settledApps, persistency = 0) {
@@ -492,5 +492,84 @@ describe('golden parity — computeManagerAwards', () => {
     expect(m.recruiting_bronze.eligible).toBe(true);
     expect(m.recruiting_gold.eligible).toBe(false);
     expect(m.recruiting_gold.inContention).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// computeAtRiskStatus — 4-state classification
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('computeAtRiskStatus', () => {
+  function award({ eligible = false, inContention = false, criteria = [] } = {}) {
+    return { eligible, inContention: inContention ?? false, criteria };
+  }
+  function crit(current, target, unit = 'TTD') {
+    return { current, target, met: current >= target, unit };
+  }
+
+  const ANNUAL = { weeksElapsed: 20, periodWeeks: 52 };
+
+  it('"achieved" when eligible is true, regardless of pace', () => {
+    const a = award({ eligible: true, criteria: [crit(100000, 50000)] });
+    expect(computeAtRiskStatus(a, ANNUAL)).toBe('achieved');
+  });
+
+  it('"on_track" when projection >= target for a single not-met criterion', () => {
+    // projected = (20000/20)*52 = 52000 >= 50000
+    const a = award({ criteria: [crit(20000, 50000)] });
+    expect(computeAtRiskStatus(a, ANNUAL)).toBe('on_track');
+  });
+
+  it('"on_track" at exact boundary: projected === target', () => {
+    // target=52000; current = 52000*(20/52) = 20000 exactly
+    const a = award({ criteria: [crit(20000, 52000)] });
+    expect(computeAtRiskStatus(a, ANNUAL)).toBe('on_track');
+  });
+
+  it('"at_risk" when projection < target and inContention is true', () => {
+    // projected = (10000/20)*52 = 26000 < 50000
+    const a = award({ inContention: true, criteria: [crit(10000, 50000)] });
+    expect(computeAtRiskStatus(a, ANNUAL)).toBe('at_risk');
+  });
+
+  it('"far_off" when projection < target and inContention is false', () => {
+    // projected = (2000/20)*52 = 5200 < 50000
+    const a = award({ inContention: false, criteria: [crit(2000, 50000)] });
+    expect(computeAtRiskStatus(a, ANNUAL)).toBe('far_off');
+  });
+
+  it('weeksElapsed === 0: no NaN/throw; routes via inContention → "at_risk"', () => {
+    const a = award({ inContention: true, criteria: [crit(0, 50000)] });
+    expect(computeAtRiskStatus(a, { weeksElapsed: 0, periodWeeks: 52 })).toBe('at_risk');
+  });
+
+  it('weeksElapsed === 0: no NaN/throw; routes via !inContention → "far_off"', () => {
+    const a = award({ inContention: false, criteria: [crit(0, 50000)] });
+    expect(computeAtRiskStatus(a, { weeksElapsed: 0, periodWeeks: 52 })).toBe('far_off');
+  });
+
+  it('multi-criterion: "on_track" only when ALL not-met criteria project to >= target', () => {
+    // crit1: (20000/20)*52=52000 >= 50000 ✓  crit2: (12/20)*52=31.2 >= 30 ✓
+    const a = award({ criteria: [crit(20000, 50000), crit(12, 30, 'apps')] });
+    expect(computeAtRiskStatus(a, ANNUAL)).toBe('on_track');
+  });
+
+  it('multi-criterion: "at_risk" when any one criterion projects below target (inContention)', () => {
+    // crit1 projects OK, crit2 does not: (5/20)*52=13 < 30
+    const a = award({ inContention: true, criteria: [crit(20000, 50000), crit(5, 30, 'apps')] });
+    expect(computeAtRiskStatus(a, ANNUAL)).toBe('at_risk');
+  });
+
+  it('already-met criteria are excluded from projection (all notMet project OK → on_track)', () => {
+    // crit1 already met; crit2 not met but projects OK
+    const a = award({
+      criteria: [crit(60000, 50000), crit(20000, 52000)], // crit1.met=true, crit2.met=false
+    });
+    expect(computeAtRiskStatus(a, ANNUAL)).toBe('on_track');
+  });
+
+  it('empty criteria array (no not-met criteria) → "on_track" when weeksElapsed > 0', () => {
+    const a = award({ criteria: [] });
+    expect(computeAtRiskStatus(a, ANNUAL)).toBe('on_track');
   });
 });
