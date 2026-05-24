@@ -96,13 +96,13 @@ Banked: I2 PR #280.
 
 ---
 
-## ~~Track D — Tenant-Admin ruleset editor UI~~ (SHIPPED — scalar groups, PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD), `{TBD}`)
+## ~~Track D — Tenant-Admin ruleset editor UI~~ (SHIPPED — scalar groups, PR [#287](https://github.com/Kelsean868/agencytrack/pull/287), `77814ed`)
 
 **RESOLVED (scalar groups / P-a).** `AwardsRulesetPanel.jsx` mounted on the TenantAdminDashboard config tab. SCALAR_GROUPS config schema drives 12 accordion sections (all scalar-only award groups). `setAwardsRuleset` write function with completeness guard + recursive numeric validation + monolithic `setDoc`. 4 array groups (clubAward, managerMonthlyBonus, recruitingAwards, activityAwards) rendered read-only with "coming in follow-up" note. 82 files / 1122 tests; lint 0; build clean. No rule/index change.
 
 **P-b (array/tier editors) queued:** see Track D P-b section below.
 
-Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`). Resolved: PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`). Resolved: PR [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`77814ed`).
 
 ---
 
@@ -120,7 +120,7 @@ Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1
 
 **Priority:** LOW. No business ask yet — Tatil values match defaults. Implement when a tenant needs custom tier definitions.
 
-Banked: D2a PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+Banked: D2a PR [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`77814ed`).
 
 ---
 
