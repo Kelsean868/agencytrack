@@ -11,6 +11,7 @@ import { extractFields } from '../../utils/extractFields';
 import Shell from '../shell/Shell';
 import CompanyConfigPanel from '../admin/CompanyConfigPanel';
 import ActivityStandardsPanel from '../admin/ActivityStandardsPanel';
+import AwardsRulesetPanel from '../admin/AwardsRulesetPanel';
 import RoleDistributionCard from '../admin/RoleDistributionCard';
 import BranchHealthCards from '../admin/BranchHealthCards';
 import BranchesPanel from '../admin/BranchesPanel';
@@ -189,6 +190,7 @@ export default function TenantAdminDashboard() {
         <>
           <CompanyConfigPanel />
           <ActivityStandardsPanel />
+          <AwardsRulesetPanel />
         </>
       )}
 

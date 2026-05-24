@@ -96,20 +96,31 @@ Banked: I2 PR #280.
 
 ---
 
-## Track D — Tenant-Admin ruleset editor UI (DEFER, banked 2026-05-23)
+## ~~Track D — Tenant-Admin ruleset editor UI~~ (SHIPPED — scalar groups, PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD), `{TBD}`)
 
-**Context:** The D1/D1b arc (engine refactor + Firestore loader) is the foundation. The editor UI lets a `tenant_admin` adjust award thresholds in the browser without touching code.
+**RESOLVED (scalar groups / P-a).** `AwardsRulesetPanel.jsx` mounted on the TenantAdminDashboard config tab. SCALAR_GROUPS config schema drives 12 accordion sections (all scalar-only award groups). `setAwardsRuleset` write function with completeness guard + recursive numeric validation + monolithic `setDoc`. 4 array groups (clubAward, managerMonthlyBonus, recruitingAwards, activityAwards) rendered read-only with "coming in follow-up" note. 82 files / 1122 tests; lint 0; build clean. No rule/index change.
 
-**Scope (separate D PR, after D1b):**
+**P-b (array/tier editors) queued:** see Track D P-b section below.
 
-- New config tab panel `AwardsRulesetPanel.jsx` in `TenantAdminDashboard.jsx` (mirrors `CompanyConfigPanel` / `ActivityStandardsPanel` pattern).
-- Form fields map to `DEFAULT_RULESET_2026` shape: per-award threshold + inContention fields; club-tier table; manager bonus tier table.
-- Save: `setAwardsRuleset(tenantId, year, patch)` — Firestore `merge: true` write; rule must allow `tenant_admin` write on `config/awardsRuleset/{year}`.
-- Reset-to-default button restores `DEFAULT_RULESET_2026` values.
+Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`). Resolved: PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
 
-**Priority:** DEFER. No business ask yet — all Tatil values match the 2026 defaults. Implement when a tenant needs a non-default value.
+---
 
-Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`).
+## Track D D2a P-b — Array/tier editors (LOW, banked 2026-05-23)
+
+**Context:** D2a shipped scalar-only editing. Four array groups are rendered read-only in `AwardsRulesetPanel.jsx` with a "coming in follow-up" note: `clubAward.tiers` (5 tiers with `label`/`apiThreshold`/`inContention`/`prize`), `managerMonthlyBonus.tiers` (3 tiers), `recruitingAwards` (top-level array of 3 items), `activityAwards` (top-level array of 4 items).
+
+**Scope (P-b, separate D PR after D2a):**
+
+- Replace read-only summaries for the 4 ARRAY_GROUPS with inline editable table rows.
+- Each tier/item row: per-field inputs matching the existing tier shape (label text, apiThreshold currency, prize text, inContention currency where applicable).
+- Add/remove tier rows for `clubAward.tiers` and `managerMonthlyBonus.tiers` (user-controlled tier count, minimum 1).
+- Save: same `setAwardsRuleset` path — arrays survive via the existing `buildPayload` deep-clone + overlay design (scalar pass remains unchanged; P-b adds an array overlay pass).
+- Validation: tier apiThresholds must be increasing (ascending sort guard); no empty prize strings; non-negative numerics (already enforced by `validateNumericFields` since arrays are iterated by the recursive validator once tier objects are present — verify this in Phase 1).
+
+**Priority:** LOW. No business ask yet — Tatil values match defaults. Implement when a tenant needs custom tier definitions.
+
+Banked: D2a PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
 
 ---
 
