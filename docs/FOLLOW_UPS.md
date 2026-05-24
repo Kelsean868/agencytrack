@@ -126,21 +126,22 @@ Banked: D2a PR [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`7781
 
 ---
 
-## Track D — Awards parity expansion + BM at-risk view (DEFER, banked 2026-05-23)
+## Track D — Awards parity expansion + BM at-risk view (ACTIVE — D3 + D5 remain)
 
-**Context:** `docs/phase7-8-implementation.md` §3.2 (agent awards parity) and §3.3 (BM at-risk view) are Track D items that build on the ruleset-driven engine from D1/D1b.
+**Context:** `docs/phase7-8-implementation.md` Track D section lists D3 (agent panel parity), D4 (manager panel parity), D5 (BM at-risk view). Section numbering §3.2/§3.3 in the brief refers to this Track D block — the doc's §3 is "Track Dependencies"; parity/at-risk content is in §2 "Build Tracks".
 
-**Scope (separate D PRs, after D1b):**
+**RESOLVED: D4 — Manager awards `newAdvisors` hardcode** ([#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD), `{TBD}`). `ManagerAwardsPanel.jsx:95` was passing `{ newAdvisors: 0 }` to `computeManagerAwards`, making recruiting awards always 0. Fixed: `ManagerDashboard` now computes `newAdvisors` = count of agents in scope whose `contractStartDate` starts with the current calendar year, passes as prop to `ManagerAwardsPanel`, which forwards to `computeManagerAwards`. UM-view verified — no rendering gaps found. 4 new prop-threading tests.
 
-- **Agent awards parity (§3.2):** Verify `computeAgentAwards` covers all Tatil 2026 awards (cross-reference the full award list in the PRD against the current engine output set). Add any missing awards as new award keys in the engine, driven by their `DEFAULT_RULESET_2026` config entries.
-- **Manager awards parity (§3.2):** Same pass for `computeManagerAwards`. Current engine covers Advisor Month, Quarterly, Persistency, Rookie, New BS, Centurion, AoY, MDRT, Club, Manager Monthly Bonus, Recruiting, Activity, Production, Manager Persistency, Unit of Year, Agency of Year. Confirm completeness.
-- **BM at-risk view (§3.3):** Manager-facing panel showing which of the BM's agents are on track / in contention / at-risk for each award. Relies on ruleset-driven `inContention` fields from D1. Firestore queries + aggregation approach TBD in the D PRD design pass.
+**ACTIVE: D3 — Agent awards parity (`AgentAwardsPanel` enhancements):** Phase 1 scoping (this session) identified three gaps vs the spec:
+- **Distance-to-tier:** `criteria[i].target - criteria[i].current` derivable but no "X to go" callout displayed. `GapBadge` in `GapAnalysisPanel.jsx:17` is the reuse model.
+- **Trend indicator:** `computeRatioTrends` provides aggregate activity ratios (not per-award pacing). Per-award trend indicator (trailing-4w vs trailing-12w pacing toward annual thresholds) is not computed.
+- **Persistency gate prominence:** shown in criteria checklist inline but not called out as the blocking criterion when it is the sole gate failing.
+- Source badge: already present. No gap.
+Dispatcher locked D3 as a separate PR (agent-panel only, `AgentAwardsPanel.jsx` + possibly minimal engine additions; does NOT touch `ManagerAwardsPanel`).
 
-**Note:** PH7-8-Q1 (at-risk threshold design — per-award configurable vs single percentage) resolves in the D PRD design pass before the at-risk view PR ships.
+**ACTIVE: D5 — BM at-risk view:** New `BmAtRiskPanel` component. Host: `ManagerDashboard.jsx` Awards tab, BM+ gated. New data load required: `getAllYTDSubmissions(tenantId)` (exists in `managerService.js:47`, used in CSV export path). No new Firestore index. Engine gap: "At risk of losing" state (eligible now but criteria trending down) requires new computation — not in current engine. **Open design question: at-risk threshold definition (§9.1 of impl doc — per-award configurable, not yet in ruleset schema; dispatcher must lock before D5 build).**
 
-**Priority:** DEFER until D1b lands and the PRD design pass for the at-risk view is complete.
-
-Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`).
+Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`). D4 resolved: [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
 
 ---
 
