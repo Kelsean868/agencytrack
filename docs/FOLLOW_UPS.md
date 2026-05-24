@@ -172,6 +172,38 @@ Banked: roster-honors-active PR [#296](https://github.com/Kelsean868/agencytrack
 
 ---
 
+## Leaderboard ranking not filtered by `active` flag (MEDIUM, banked 2026-05-24)
+
+**Context:** Surfaced in the #296 Phase-5 smoke. After setting `active: false` on a test agent, the agent still appeared in the Leaderboard ranking. PR #296 guarded only the photo-map fetch in `Leaderboard.jsx` (line ~102, `if (data.active === false) return`). The ranking rows come from the `leaderboard` subcollection (`tenants/{tenantId}/leaderboard`) queried at `Leaderboard.jsx:74` — an independent `onSnapshot` that has no `active`-flag filter. The subcollection is populated by a cron/CF.
+
+Phase-1 undercounting: the #296 Phase-1 enumeration audited the photo-map fetch but missed the ranking subcollection as a second leaderboard surface. Both are in `Leaderboard.jsx` but serve different data paths.
+
+**Fix (CF/cron, not client filter):** The subcollection write path is the correct place to enforce this — either (a) the cron that populates `leaderboard/` should skip users where `active === false`, or (b) the subcollection write should delete existing entries when a user is deactivated. A client-side filter on the read is an option but less durable (cached data can outlast the client session). Group with the `terminatedAt` / deeper-termination family.
+
+**Priority:** MEDIUM. Deactivated agents appearing in rankings is visible UX noise, not a security issue. No agents have been deactivated in production yet. Not blocking pilot.
+
+Banked: #296 smoke (`27b1c8a`, 2026-05-24).
+
+---
+
+## `deactivateUser` CF returns `FirebaseError: internal` — investigate before pilot (MEDIUM, banked 2026-05-24)
+
+**Context:** Surfaced in the #296 Phase-5 smoke. Clicking Deactivate in UserManagementPanel → filling confirm modal → submitting produced `[UserManagementPanel] deactivate: FirebaseError: internal` in the browser console. The CF call failed server-side. PR #296 does not touch `deactivateUser` — this is a pre-existing issue.
+
+`internal` (not `permission-denied`) means an unhandled exception was thrown inside the CF, not a clean permissions rejection. The same deployed CF instance serves both the Vercel preview and production — if this is a code-level crash, it is prod-broken. Alternatively, it may be test-data-specific: the BM test account (`A11Y_BRANCH_MANAGER_EMAIL`) may not be in the same unit/branch as the test agent (`A11Y_AGENT_EMAIL`), causing a CREATION_MATRIX check to throw rather than return a permission error.
+
+**Action (Phase-1 verify):**
+1. Check `CREATION_MATRIX` in `functions/index.js` — does the BM test account's UID match the test agent's `unitId` chain? A mismatch that falls through without a clean permission-denied path would produce `internal`.
+2. Check Firebase Functions logs (Console → Functions → `deactivateUser` → Logs) for the actual server-side exception.
+3. If the error is CREATION_MATRIX / unitId mismatch with the test accounts only: update test-data setup or use a TA account for the deactivation smoke.
+4. If the error is a code-level crash independent of test data: treat as prod-broken — fix before Tatil demo.
+
+**Priority:** MEDIUM (investigate next). If the deactivation write path is broken, the termination capability is non-functional end-to-end. This must be resolved before the Tatil demo.
+
+Banked: #296 smoke (`27b1c8a`, 2026-05-24).
+
+---
+
 ## D3 — Agent awards parity (`AgentAwardsPanel` enhancements) (MEDIUM, banked 2026-05-24)
 
 **Context:** D3 was scoped in the D5 Phase 1 session. Three gaps vs. the Phase 7-8 spec identified in `AgentAwardsPanel.jsx`:

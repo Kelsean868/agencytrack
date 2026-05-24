@@ -588,11 +588,23 @@ Two Rule 9 in-PR extensions on a single PR is a signal the brief under-specified
 
 Banked from PR #231 (`5be20e7`). Motivating catch: PR #229 (`0fdebc0`, Resend invite server-side + `auditInviteResends`). Brief covered rules, CF write, frontend swap, and smoke, but missed the smoke's composite index (4-field: `tenantId + actorUid + targetUid + timestamp DESC`) and the smoke query's required `tenantId` filter clause for the rules to accept the read. Both surfaced during operator smoke as Rule 9 extensions: `848c16c` (smoke query tenantId filter), `cd2ef7b` (composite index add).
 
+### 18. PR checklist from ground truth
+
+When opening a PR, fill the template checklist by what is actually verified at PR-creation time — not what is expected to be true:
+
+- Check `[x]` only for items confirmed true at the moment the PR is opened: tests passing, lint/build clean, docs updated, scope matches brief.
+- Leave the smoke box **unchecked** (`[ ]`) until the smoke actually runs. After the smoke completes, edit the PR description to reflect the real result and annotate any findings inline (e.g., `[x] smoke — 4/4 pass; Finding: leaderboard ranking not filtered (out of scope)`).
+- An unchecked or annotated box is information, not a failure of process. A reflexively checked box that doesn't reflect reality is the failure.
+
+Why: PR #296's smoke ran after PR open and surfaced two out-of-scope findings (leaderboard ranking gap, `deactivateUser` CF crash). A checklist pre-checked at creation would have obscured both. The checklist's value is as a live signal, not a formality.
+
+Banked from PR #296 smoke (`27b1c8a`, 2026-05-24).
+
 ---
 
 ## Dispatcher tooling
 
-These helpers reduce per-PR copy-paste between dispatcher (Claude chat), operator (Kyron), and Claude Code. The canonical methodology (Session Protocol, § Post-merge local cleanup, Methodology Rules 1–17) remains authoritative — these tools embed the rules, they do not replace them.
+These helpers reduce per-PR copy-paste between dispatcher (Claude chat), operator (Kyron), and Claude Code. The canonical methodology (Session Protocol, § Post-merge local cleanup, Methodology Rules 1–18) remains authoritative — these tools embed the rules, they do not replace them.
 
 ### `scripts/dispatcher/new-brief.ps1`
 
