@@ -1,5 +1,6 @@
 /**
- * Firestore Security Rules — managerWeeklyReports emulator tests (I1.1 + I1.3a + I1.3b).
+ * Firestore Security Rules — managerWeeklyReports emulator tests (I1.1 + I1.3a + I1.3b)
+ * + submissions allow list regression tests (hotfix — SHAKEDOWN-002B regression).
  *
  * Run with the Firestore emulator active:
  *   firebase emulators:start --only firestore
@@ -8,7 +9,7 @@
  * Or via:
  *   firebase emulators:exec --only firestore "node firestore.rules.test.mjs"
  *
- * Verified matrix (14 original + 5 list cases = 19 passing):
+ * Verified matrix (14 original + 5 list cases = 19 passing) + 4 submissions list cases:
  *   ✓ owner create ALLOW
  *   ✓ owner update ALLOW
  *   ✓ owner read   ALLOW
@@ -499,6 +500,82 @@ describe('managerActivityStandardOverrides — list always DENY', () => {
     await seed();
     const ctx = testEnv.authenticatedContext('bm1', tok('bm1', 'branch_manager'));
     const q = query(collection(ctx.firestore(), OVR_PATH));
+    await assertFails(getDocs(q));
+  });
+});
+
+// ── submissions allow list — SHAKEDOWN-002B regression (hotfix) ───────────────
+//
+// SHAKEDOWN-002B split `allow read` into `allow get` + `allow list` but dropped
+// `canAccessOwn` from the list arm. These 4 cases verify the restored clause and
+// guard the UM unit-scope constraint from regressing.
+//
+// Matrix:
+//   ✓ agent self-list ALLOW   (canAccessOwn satisfied via where agentId==uid)
+//   ✓ agent cross-list DENY   (canAccessOwn false, canManage false)
+//   ✓ UM own-unit list ALLOW  (canManage + unitId==uid)
+//   ✓ UM cross/unconstrained DENY (canManage but unitId clause not satisfied)
+
+const SUB_PATH = `tenants/${TENANT_ID}/submissions`;
+
+async function seedSubmissions() {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+    // agent1 owns this submission, in unit um1
+    await setDoc(doc(db, `${SUB_PATH}/agent1_2026-05-18`), {
+      agentId:  'agent1',
+      unitId:   'um1',
+      tenantId: TENANT_ID,
+      status:   'submitted',
+    });
+    // agent2 owns this submission, also in unit um1
+    await setDoc(doc(db, `${SUB_PATH}/agent2_2026-05-18`), {
+      agentId:  'agent2',
+      unitId:   'um1',
+      tenantId: TENANT_ID,
+      status:   'submitted',
+    });
+    // agent3's submission is in unit um2
+    await setDoc(doc(db, `${SUB_PATH}/agent3_2026-05-18`), {
+      agentId:  'agent3',
+      unitId:   'um2',
+      tenantId: TENANT_ID,
+      status:   'submitted',
+    });
+    // user docs so canManage lookups resolve
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/um1`),
+      { role: 'unit_manager', branchId: 'branch-a', unitId: 'um1' });
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/um2`),
+      { role: 'unit_manager', branchId: 'branch-b', unitId: 'um2' });
+  });
+}
+
+describe('submissions allow list (hotfix — SHAKEDOWN-002B regression)', () => {
+  it('agent self-list ALLOW — where agentId==ownUid satisfies canAccessOwn', async () => {
+    await seedSubmissions();
+    const ctx = testEnv.authenticatedContext('agent1', { role: 'agent', tenantId: TENANT_ID });
+    const q = query(collection(ctx.firestore(), SUB_PATH), where('agentId', '==', 'agent1'));
+    await assertSucceeds(getDocs(q));
+  });
+
+  it('agent cross-list DENY — where agentId==otherUid: canAccessOwn false, not a manager', async () => {
+    await seedSubmissions();
+    const ctx = testEnv.authenticatedContext('agent1', { role: 'agent', tenantId: TENANT_ID });
+    const q = query(collection(ctx.firestore(), SUB_PATH), where('agentId', '==', 'agent2'));
+    await assertFails(getDocs(q));
+  });
+
+  it('UM own-unit list ALLOW — where unitId==umUid satisfies the UM clause', async () => {
+    await seedSubmissions();
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    const q = query(collection(ctx.firestore(), SUB_PATH), where('unitId', '==', 'um1'));
+    await assertSucceeds(getDocs(q));
+  });
+
+  it('UM cross-unit list DENY — where unitId==otherUmUid: UM clause fails (unitId != request.auth.uid)', async () => {
+    await seedSubmissions();
+    const ctx = testEnv.authenticatedContext('um1', tok('um1', 'unit_manager'));
+    const q = query(collection(ctx.firestore(), SUB_PATH), where('unitId', '==', 'um2'));
     await assertFails(getDocs(q));
   });
 });
