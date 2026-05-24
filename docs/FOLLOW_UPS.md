@@ -139,9 +139,9 @@ Banked: D2a PR [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`7781
 - Source badge: already present. No gap.
 Dispatcher locked D3 as a separate PR (agent-panel only, `AgentAwardsPanel.jsx` + possibly minimal engine additions; does NOT touch `ManagerAwardsPanel`).
 
-**RESOLVED: D5 — BM at-risk view** ([#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD), `{TBD}`). New `computeAtRiskStatus(award, { weeksElapsed, periodWeeks })` pure function in `awardsEngine.js` — 4-state (achieved / on_track / at_risk / far_off). Uses `inContention` flag as the "gettable" boundary (no ruleset change, no atRiskPct). New `BmAtRiskPanel.jsx` with per-agent risk rows, danger pill list, All/At Risk filter; BM+ gated. `ManagerAwardsPanel` self-loads `ytdSubs` in existing `Promise.all`. `ManagerDashboard` threads new `agentProfiles` state. Agent termination filter deferred (see "Agent termination flag" FU below). 11 engine tests + 3 panel gating tests. 1151/1151; lint 0; build clean. No rule/index/ruleset/config/editor change.
+**RESOLVED: D5 — BM at-risk view** ([#293](https://github.com/Kelsean868/agencytrack/pull/293), `efc69e5`). New `computeAtRiskStatus(award, { weeksElapsed, periodWeeks })` pure function in `awardsEngine.js` — 4-state (achieved / on_track / at_risk / far_off). Uses `inContention` flag as the "gettable" boundary (no ruleset change, no atRiskPct). New `BmAtRiskPanel.jsx` with per-agent risk rows, danger pill list, All/At Risk filter; BM+ gated. `ManagerAwardsPanel` self-loads `ytdSubs` in existing `Promise.all`. `ManagerDashboard` threads new `agentProfiles` state. Agent termination filter deferred (see "Agent termination flag" FU below). 11 engine tests + 3 panel gating tests. 1151/1151; lint 0; build clean. No rule/index/ruleset/config/editor change.
 
-Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`). D4 resolved: [#291](https://github.com/Kelsean868/agencytrack/pull/291) (`94ba440`). D5 resolved: [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) (`{TBD}`).
+Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1b9`). D4 resolved: [#291](https://github.com/Kelsean868/agencytrack/pull/291) (`94ba440`). D5 resolved: [#293](https://github.com/Kelsean868/agencytrack/pull/293) (`efc69e5`).
 
 ---
 
@@ -171,7 +171,7 @@ The terminated flag is cross-cutting — every roster consumer needs to honour i
 
 **Priority:** MEDIUM. Terminated agents showing up in an active manager's at-risk view is a real UX noise issue, but it requires data (no agent has been terminated yet) and a design decision before implementation.
 
-Banked: D5 PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD).
+Banked: D5 PR [#293](https://github.com/Kelsean868/agencytrack/pull/293).
 
 ---
 
@@ -189,7 +189,7 @@ Source badge is already present — no gap there.
 
 **Priority:** MEDIUM. Agent-facing polish; not blocking pilot. `AgentAwardsPanel` is already the primary awards surface for agents — this makes it more actionable.
 
-Banked: D5 PR [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD).
+Banked: D5 PR [#293](https://github.com/Kelsean868/agencytrack/pull/293).
 
 ---
 
