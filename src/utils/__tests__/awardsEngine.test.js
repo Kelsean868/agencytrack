@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeAgentAwards, computeManagerAwards, computeAtRiskStatus } from '../awardsEngine';
+import { computeAgentAwards, computeManagerAwards, computeAtRiskStatus, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../awardsEngine';
 
 // Helper: build a manager settlement doc
 function settled(agentId, periodKey, settledAPI, settledApps, persistency = 0) {
@@ -571,5 +571,215 @@ describe('computeAtRiskStatus', () => {
   it('empty criteria array (no not-met criteria) → "on_track" when weeksElapsed > 0', () => {
     const a = award({ criteria: [] });
     expect(computeAtRiskStatus(a, ANNUAL)).toBe('on_track');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// getPeriodCtx — correct weeksElapsed / periodWeeks for each category
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('getPeriodCtx', () => {
+  // Use local-noon constructors (year, month0, day, 12) to avoid UTC-midnight
+  // ISO strings shifting to the previous calendar day in UTC-4 (Trinidad local time).
+
+  it('monthly: first day of month → weeksElapsed=0, periodWeeks≈days/7', () => {
+    // Jan 1 noon local — floor((1-1)/7) = 0
+    const ctx = getPeriodCtx('monthly', new Date(2026, 0, 1, 12));
+    expect(ctx.weeksElapsed).toBe(0);
+    // January has 31 days → periodWeeks = 31/7 ≈ 4.43
+    expect(ctx.periodWeeks).toBeCloseTo(31 / 7, 5);
+  });
+
+  it('monthly: Jan 15 → weeksElapsed=2', () => {
+    // floor((15-1)/7) = floor(14/7) = 2
+    const ctx = getPeriodCtx('monthly', new Date(2026, 0, 15, 12));
+    expect(ctx.weeksElapsed).toBe(2);
+  });
+
+  it('monthly: last day of Feb (non-leap) → weeksElapsed=3, periodWeeks=28/7=4', () => {
+    // floor((28-1)/7) = floor(27/7) = 3
+    const ctx = getPeriodCtx('monthly', new Date(2026, 1, 28, 12));
+    expect(ctx.weeksElapsed).toBe(3);
+    expect(ctx.periodWeeks).toBeCloseTo(28 / 7, 5);
+  });
+
+  it('quarterly: Q2 start (Apr 1 noon) → weeksElapsed=0', () => {
+    // daysElapsed from Apr 1 midnight to Apr 1 noon = 0.5 day → floor(0.5) = 0
+    const ctx = getPeriodCtx('quarterly', new Date(2026, 3, 1, 12));
+    expect(ctx.weeksElapsed).toBe(0);
+    expect(ctx.periodWeeks).toBe(13);
+  });
+
+  it('quarterly: mid-Q2 (May 15 noon) → weeksElapsed=6', () => {
+    // Q2 starts Apr 1 midnight. daysElapsed = floor(44.5) = 44 → floor(44/7) = 6
+    const ctx = getPeriodCtx('quarterly', new Date(2026, 4, 15, 12));
+    expect(ctx.weeksElapsed).toBe(6);
+    expect(ctx.periodWeeks).toBe(13);
+  });
+
+  it('annual: Jan 15 noon → weeksElapsed=2, periodWeeks=52', () => {
+    // daysElapsed from Jan 1 midnight = floor(14.5) = 14 → floor(14/7) = 2; max(1,2) = 2
+    const ctx = getPeriodCtx('annual', new Date(2026, 0, 15, 12));
+    expect(ctx.weeksElapsed).toBe(2);
+    expect(ctx.periodWeeks).toBe(52);
+  });
+
+  it('annual: Jan 1 noon → weeksElapsed clamped to 1 (max guard)', () => {
+    // daysElapsed from Jan 1 midnight = floor(0.5) = 0 → max(1, 0) = 1
+    const ctx = getPeriodCtx('annual', new Date(2026, 0, 1, 12));
+    expect(ctx.weeksElapsed).toBe(1);
+    expect(ctx.periodWeeks).toBe(52);
+  });
+
+  it('club category routes to annual path (weeksElapsed clamped, periodWeeks=52)', () => {
+    // Jul 1 noon: daysElapsed from Jan 1 midnight = floor(181.5) = 181 → floor(181/7) = 25
+    const ctx = getPeriodCtx('club', new Date(2026, 6, 1, 12));
+    expect(ctx.periodWeeks).toBe(52);
+    expect(ctx.weeksElapsed).toBe(25);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// nextTierDistance — correct next-tier and distance
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('nextTierDistance', () => {
+  // Club tiers from DEFAULT_RULESET_2026:
+  // Bronze L3: 250K–350K, Bronze L2: 350K–450K, Bronze L1: 450K–550K,
+  // Silver: 550K–650K, Gold: 650K+
+  const TIERS = [
+    { id: 'bronze_club_l3', name: 'Bronze Club — Level 3', apiMin: 250000, apiMax: 350000, apiInContention: 125000, prize: '' },
+    { id: 'bronze_club_l2', name: 'Bronze Club — Level 2', apiMin: 350000, apiMax: 450000, apiInContention: 175000, prize: '' },
+    { id: 'bronze_club_l1', name: 'Bronze Club — Level 1', apiMin: 450000, apiMax: 550000, apiInContention: 225000, prize: '' },
+    { id: 'silver_club',    name: 'Silver Club',           apiMin: 550000, apiMax: 650000, apiInContention: 275000, prize: '' },
+    { id: 'gold_club',      name: 'Gold Club',             apiMin: 650000, apiMax: null,   apiInContention: 325000, prize: '' },
+  ];
+
+  it('below all tiers (100K) → next tier is Bronze L3, distance = 150K', () => {
+    const result = nextTierDistance(100000, TIERS);
+    expect(result).not.toBeNull();
+    expect(result.nextTier.id).toBe('bronze_club_l3');
+    expect(result.distance).toBe(150000);
+  });
+
+  it('mid-ladder: 300K (in Bronze L3 band) → next tier Bronze L2, distance = 50K', () => {
+    const result = nextTierDistance(300000, TIERS);
+    expect(result).not.toBeNull();
+    expect(result.nextTier.id).toBe('bronze_club_l2');
+    expect(result.distance).toBe(50000);
+  });
+
+  it('exact boundary: 350K (Bronze L2 apiMin) → next tier Bronze L1, distance = 100K', () => {
+    const result = nextTierDistance(350000, TIERS);
+    expect(result).not.toBeNull();
+    expect(result.nextTier.id).toBe('bronze_club_l1');
+    expect(result.distance).toBe(100000);
+  });
+
+  it('one below Gold (649999) → next tier Gold, distance = 1', () => {
+    const result = nextTierDistance(649999, TIERS);
+    expect(result).not.toBeNull();
+    expect(result.nextTier.id).toBe('gold_club');
+    expect(result.distance).toBe(1);
+  });
+
+  it('at Gold apiMin (650K) → null (already at/above top tier)', () => {
+    const result = nextTierDistance(650000, TIERS);
+    expect(result).toBeNull();
+  });
+
+  it('above Gold (800K) → null (already past top tier)', () => {
+    const result = nextTierDistance(800000, TIERS);
+    expect(result).toBeNull();
+  });
+
+  it('distance floored at 0 (never negative)', () => {
+    // 700K is above all tier apiMins — no next tier → null
+    const result = nextTierDistance(700000, TIERS);
+    expect(result).toBeNull();
+  });
+
+  it('tiers supplied unsorted → still returns correct result', () => {
+    const unsorted = [...TIERS].reverse();
+    const result = nextTierDistance(300000, unsorted);
+    expect(result).not.toBeNull();
+    expect(result.nextTier.id).toBe('bronze_club_l2');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// isPersistencyOnlyBlock — four key cases
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('isPersistencyOnlyBlock', () => {
+  function mkAward({ dataSource, criteria }) {
+    return { dataSource, criteria };
+  }
+  function crit(label, current, target) {
+    return { label, current, target, met: current >= target };
+  }
+
+  it('confirmed + sole persistency unmet → true', () => {
+    const a = mkAward({
+      dataSource: 'confirmed',
+      criteria: [
+        crit('Annual API', 300000, 250000),   // met
+        crit('Annual Apps', 50, 45),            // met
+        crit('Avg Persistency', 88, 92),        // NOT met
+      ],
+    });
+    expect(isPersistencyOnlyBlock(a)).toBe(true);
+  });
+
+  it('estimated + sole persistency unmet → false (gate waived on estimated)', () => {
+    const a = mkAward({
+      dataSource: 'estimated',
+      criteria: [
+        crit('Annual API', 300000, 250000),
+        crit('Avg Persistency', 0, 92),
+      ],
+    });
+    expect(isPersistencyOnlyBlock(a)).toBe(false);
+  });
+
+  it('confirmed + persistency met → false', () => {
+    const a = mkAward({
+      dataSource: 'confirmed',
+      criteria: [
+        crit('Annual API', 200000, 250000),    // NOT met
+        crit('Avg Persistency', 94, 92),        // met
+      ],
+    });
+    expect(isPersistencyOnlyBlock(a)).toBe(false);
+  });
+
+  it('confirmed + multiple unmet (API + persistency) → false', () => {
+    const a = mkAward({
+      dataSource: 'confirmed',
+      criteria: [
+        crit('Annual API', 200000, 250000),    // NOT met
+        crit('Avg Persistency', 88, 92),        // NOT met
+      ],
+    });
+    expect(isPersistencyOnlyBlock(a)).toBe(false);
+  });
+
+  it('confirmed + all criteria met → false (nothing is blocking)', () => {
+    const a = mkAward({
+      dataSource: 'confirmed',
+      criteria: [
+        crit('Annual API', 300000, 250000),
+        crit('Avg Persistency', 95, 92),
+      ],
+    });
+    expect(isPersistencyOnlyBlock(a)).toBe(false);
+  });
+
+  it('case-insensitive label match: "Avg Persistency" and "persistency" both match', () => {
+    const a = mkAward({
+      dataSource: 'confirmed',
+      criteria: [crit('persistency', 85, 90)],
+    });
+    expect(isPersistencyOnlyBlock(a)).toBe(true);
   });
 });
