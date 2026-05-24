@@ -147,7 +147,7 @@ Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1
 
 ## ~~Agent termination flag — soft-delete model cross-cutting~~ RESOLVED, REFRAMED (banked 2026-05-24)
 
-**RESOLVED:** Closed by PR [#TBD] (`{TBD}`) — `getTenantUsers` in `managerService.js` now honors the existing `active: false` field (soft-delete already shipped in user-mgmt PR-2). No new field needed. Added `{ includeInactive = false }` option mirroring `agentManagementService.getAllUsers`; 14+ consumers get inactive filtering for free. Leaderboard photo-map fetch independently guards `active: false`. Deferred comment removed from `BmAtRiskPanel.jsx`.
+**RESOLVED:** Closed by PR [#296](https://github.com/Kelsean868/agencytrack/pull/296) (`27b1c8a`) — `getTenantUsers` in `managerService.js` now honors the existing `active: false` field (soft-delete already shipped in user-mgmt PR-2). No new field needed. Added `{ includeInactive = false }` option mirroring `agentManagementService.getAllUsers`; 14+ consumers get inactive filtering for free. Leaderboard photo-map fetch independently guards `active: false`. Deferred comment removed from `BmAtRiskPanel.jsx`.
 
 **REFRAMED remaining work:** see "terminatedAt timestamp + D4 net-new refinement" FU below.
 
@@ -155,7 +155,7 @@ Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1
 
 ## terminatedAt timestamp + D4 net-new refinement (LOW, banked 2026-05-24)
 
-**Context:** PR [#TBD] closed the core roster-filtering gap by honoring `active: false` in `getTenantUsers`. Two net-new items remain if the pilot requires them:
+**Context:** PR [#296](https://github.com/Kelsean868/agencytrack/pull/296) closed the core roster-filtering gap by honoring `active: false` in `getTenantUsers`. Two net-new items remain if the pilot requires them:
 
 1. **`terminatedAt: Timestamp | null`** — an explicit termination timestamp on user docs, set by `deactivateUser` CF when an optional `isTermination: true` flag is passed. Enables "terminated this year" counting, audit trails, and date-range reporting without scanning submission history.
 2. **D4 net-new: contracted-this-year minus terminated-this-year** — the `MasterSheet`/manager overview "contracted this year" KPI could show a net figure. Requires `terminatedAt` to count terminations within the same period.
@@ -168,7 +168,7 @@ Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1
 
 **Priority:** LOW. `active: false` filtering covers the immediate UX noise problem. `terminatedAt` and D4 net-new are pilot-data-dependent and non-urgent. Pilot is postponed.
 
-Banked: roster-honors-active PR [#TBD] (`{TBD}`).
+Banked: roster-honors-active PR [#296](https://github.com/Kelsean868/agencytrack/pull/296) (`27b1c8a`).
 
 ---
 
