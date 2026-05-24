@@ -145,33 +145,30 @@ Banked: D1 PR [#283](https://github.com/Kelsean868/agencytrack/pull/283) (`759a1
 
 ---
 
-## Agent termination flag — soft-delete model cross-cutting (MEDIUM, banked 2026-05-24)
+## ~~Agent termination flag — soft-delete model cross-cutting~~ RESOLVED, REFRAMED (banked 2026-05-24)
 
-**Context:** D4/D5 build identified that terminated agents should not appear in award computations, leaderboards, or the BM at-risk view. A code comment in `BmAtRiskPanel.jsx` (agent-iteration site) defers the filter pending a `terminated` (or `active: false`) flag on user docs. No such flag exists yet.
+**RESOLVED:** Closed by PR [#TBD] (`{TBD}`) — `getTenantUsers` in `managerService.js` now honors the existing `active: false` field (soft-delete already shipped in user-mgmt PR-2). No new field needed. Added `{ includeInactive = false }` option mirroring `agentManagementService.getAllUsers`; 14+ consumers get inactive filtering for free. Leaderboard photo-map fetch independently guards `active: false`. Deferred comment removed from `BmAtRiskPanel.jsx`.
 
-**Scope (own PR when the flag design is settled):**
+**REFRAMED remaining work:** see "terminatedAt timestamp + D4 net-new refinement" FU below.
 
-The terminated flag is cross-cutting — every roster consumer needs to honour it once it exists:
+---
 
-- `getTenantUsers` in `managerService.js` — return only non-terminated agents (or expose a `{ includeTerminated }` option).
-- Leaderboard queries — filter terminated agents from rankings.
-- Awards computations — `BmAtRiskPanel.jsx` agent-iteration loop; `ManagerAwardsPanel` `agentIds` feed.
-- Master Sheet roll-up — terminated agents should either be excluded or shown with a visual distinction.
-- Persistency entries — historical entries for terminated agents may need to be preserved but excluded from active averages.
-- Monthly Recruiting / WAR browsing — terminated managers' docs still visible to upline but not in active roll-up stats.
+## terminatedAt timestamp + D4 net-new refinement (LOW, banked 2026-05-24)
+
+**Context:** PR [#TBD] closed the core roster-filtering gap by honoring `active: false` in `getTenantUsers`. Two net-new items remain if the pilot requires them:
+
+1. **`terminatedAt: Timestamp | null`** — an explicit termination timestamp on user docs, set by `deactivateUser` CF when an optional `isTermination: true` flag is passed. Enables "terminated this year" counting, audit trails, and date-range reporting without scanning submission history.
+2. **D4 net-new: contracted-this-year minus terminated-this-year** — the `MasterSheet`/manager overview "contracted this year" KPI could show a net figure. Requires `terminatedAt` to count terminations within the same period.
 
 **Design questions (dispatcher must lock before build):**
 
-1. Field name: `active: boolean` (missing = truthy) vs. `terminatedAt: Timestamp | null` vs. `status: 'active' | 'terminated'`?
-2. Who can set the flag? `tenant_admin` / `branch_manager` via `EditUserDrawer` (already supports role/branch edits)?
-3. Soft-delete vs. hard-delete? Soft-delete is the safe path (preserve historical submission/persistency/settlement data).
-4. UI: "Show terminated" toggle on UserManagementPanel analogous to the deactivated toggle?
+1. Extend `deactivateUser` CF: accept optional `isTermination: boolean`; if true, also write `terminatedAt: admin.firestore.FieldValue.serverTimestamp()` alongside `active: false`.
+2. `EditUserDrawer`: expose an "Mark as Terminated" action (distinct from simple deactivation) for `branch_manager` / `tenant_admin`.
+3. Firestore rules: `terminatedAt` follows the same CF-only write path as `active` (client `updateDoc` blocked).
 
-**Action:** when flag design is locked, implement a single PR that: (a) adds the field to the Firestore rules + `EditUserDrawer`, (b) adds `{ includeTerminated: false }` default to all roster-consumer queries, (c) updates `BmAtRiskPanel`, leaderboard, and any other consumer that currently iterates all agents.
+**Priority:** LOW. `active: false` filtering covers the immediate UX noise problem. `terminatedAt` and D4 net-new are pilot-data-dependent and non-urgent. Pilot is postponed.
 
-**Priority:** MEDIUM. Terminated agents showing up in an active manager's at-risk view is a real UX noise issue, but it requires data (no agent has been terminated yet) and a design decision before implementation.
-
-Banked: D5 PR [#293](https://github.com/Kelsean868/agencytrack/pull/293).
+Banked: roster-honors-active PR [#TBD] (`{TBD}`).
 
 ---
 

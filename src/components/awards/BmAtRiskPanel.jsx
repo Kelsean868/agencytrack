@@ -83,9 +83,6 @@ export default function BmAtRiskPanel({ agentProfiles, settlements, ytdSubs, age
 
   const agentRows = useMemo(() => {
     const now = currentDate instanceof Date ? currentDate : new Date();
-    // Terminated agents are not filtered here — deferred until the terminated-flag feature
-    // lands. That feature is cross-cutting: getTenantUsers, leaderboard, awards, and this
-    // panel all need to honour the flag once it exists.
     return agentIds
       .map((agentId) => {
         const profile = agentProfiles.find((u) => u.id === agentId) ?? {};
