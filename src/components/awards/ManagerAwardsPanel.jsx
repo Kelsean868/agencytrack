@@ -67,7 +67,7 @@ const ANNUAL_TABS = [
 const ACTIVITY_IDS = ['activity_bronze','activity_silver','activity_gold','highest_activity'];
 const RECRUIT_IDS  = ['recruiting_bronze','recruiting_silver','recruiting_gold'];
 
-export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenantId }) {
+export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenantId, newAdvisors = 0 }) {
   const [settlements, setSettlements]   = useState([]);
   const [ruleset, setRuleset]           = useState(DEFAULT_RULESET_2026);
   const [loading, setLoading]           = useState(true);
@@ -92,8 +92,8 @@ export default function ManagerAwardsPanel({ agentIds, currentDate, role, tenant
   }, [tenantId, agentIds, year]);
 
   const awards = useMemo(
-    () => computeManagerAwards(settlements, agentIds, {}, { newAdvisors: 0 }, currentDate ?? new Date(), role, ruleset),
-    [settlements, agentIds, currentDate, role, ruleset]
+    () => computeManagerAwards(settlements, agentIds, {}, { newAdvisors }, currentDate ?? new Date(), role, ruleset),
+    [settlements, agentIds, newAdvisors, currentDate, role, ruleset]
   );
 
   const { bonus, annualAwards, activityAwards, recruitAwards } = useMemo(() => {

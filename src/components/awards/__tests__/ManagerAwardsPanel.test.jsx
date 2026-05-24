@@ -208,6 +208,50 @@ describe('ManagerAwardsPanel — Monthly Bonus hero', () => {
   });
 });
 
+describe('ManagerAwardsPanel — newAdvisors prop threading', () => {
+  it('defaults newAdvisors to 0 when prop is omitted', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel();
+    const callArgs = computeManagerAwards.mock.calls[0];
+    expect(callArgs[3]).toEqual({ newAdvisors: 0 });
+  });
+
+  it('forwards newAdvisors={5} to computeManagerAwards', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel({ newAdvisors: 5 });
+    const callArgs = computeManagerAwards.mock.calls[0];
+    expect(callArgs[3]).toEqual({ newAdvisors: 5 });
+  });
+
+  it('does NOT pass newAdvisors: 0 when a non-zero value is provided', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel({ newAdvisors: 3 });
+    const callArgs = computeManagerAwards.mock.calls[0];
+    expect(callArgs[3].newAdvisors).not.toBe(0);
+    expect(callArgs[3].newAdvisors).toBe(3);
+  });
+
+  it('renders qualified recruiting award when engine returns eligible=true (newAdvisors propagated)', async () => {
+    const RECRUIT_AWARD = {
+      id: 'recruiting_bronze',
+      name: 'Recruiting Award — Bronze',
+      category: 'annual',
+      eligible: true,
+      inContention: false,
+      criteria: [{ label: 'Net New Advisors', target: 3, current: 3, met: true, unit: 'advisors' }],
+      prize: 'Bronze Recruiting Trophy',
+      dataSource: 'confirmed',
+      progressPercent: 100,
+      note: null,
+    };
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [RECRUIT_AWARD] });
+    await renderPanel({ newAdvisors: 3 });
+    fireEvent.click(screen.getByRole('tab', { name: /recruiting/i }));
+    expect(screen.getByText('Recruiting Award — Bronze')).toBeInTheDocument();
+    expect(screen.getByText('Qualified')).toBeInTheDocument();
+  });
+});
+
 describe('ManagerAwardsPanel — empty state', () => {
   it('renders "No agents" empty state when agentIds is empty', () => {
     render(

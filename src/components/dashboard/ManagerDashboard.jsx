@@ -83,13 +83,22 @@ export default function ManagerDashboard() {
   const [meetingActive, setMeetingActive] = useState(false);
   const [meetingSubmissions, setMeetingSubmissions] = useState([]);
 
-  // Agent IDs for manager awards
-  const [agentIds, setAgentIds] = useState([]);
+  // Agent IDs and new-advisor count for manager awards.
+  // newAdvisors = agents in scope whose contractStartDate falls in the current calendar year.
+  const [agentIds, setAgentIds]       = useState([]);
+  const [newAdvisors, setNewAdvisors] = useState(0);
 
   useEffect(() => {
+    const currentYearStr = String(new Date().getFullYear());
     getTenantUsers(tenantId)
       .then((userList) => {
-        setAgentIds(userList.filter((u) => u.role === 'agent').map((u) => u.id));
+        const agents = userList.filter((u) => u.role === 'agent');
+        setAgentIds(agents.map((u) => u.id));
+        setNewAdvisors(
+          agents.filter(
+            (u) => typeof u.contractStartDate === 'string' && u.contractStartDate.startsWith(currentYearStr)
+          ).length
+        );
       })
       .catch(console.error);
   }, [tenantId]);
@@ -232,6 +241,7 @@ export default function ManagerDashboard() {
             currentDate={new Date()}
             role={role}
             tenantId={tenantId}
+            newAdvisors={newAdvisors}
           />
         )}
 
