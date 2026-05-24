@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Trophy, ChevronDown, ChevronRight, Loader2, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Trophy, ChevronDown, ChevronRight, Loader2, AlertTriangle, CheckCircle, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getAwardsRuleset, setAwardsRuleset } from '../../services/awardsRulesetService';
 
 // Field schema for the 12 scalar-only award groups (P-a).
-// Array groups (clubAward.tiers, managerMonthlyBonus.tiers, recruitingAwards,
-// activityAwards) are read-only here; their editors ship in P-b.
 const SCALAR_GROUPS = [
   {
     key: 'advisorMonth',
@@ -175,12 +173,66 @@ const SCALAR_GROUPS = [
   },
 ];
 
-// Rendered read-only in P-a; tier/array editors ship in P-b.
-const ARRAY_GROUPS = [
-  { key: 'clubAward',           label: 'Club Award — Tiers'                       },
-  { key: 'managerMonthlyBonus', label: 'Agency Monthly Production Bonus — Tiers'  },
-  { key: 'recruitingAwards',    label: 'Recruiting Awards'                        },
-  { key: 'activityAwards',      label: 'Activity Awards'                          },
+// Schema for the 4 array-driven groups (P-b). Each entry describes the array's
+// element shape, field types, nullability, and how to read/write it in the payload.
+const ARRAY_GROUP_SCHEMAS = [
+  {
+    key:      'clubAward',
+    label:    'Club Award — Tiers',
+    category: 'Agent Awards',
+    getArray: (ruleset) => ruleset?.clubAward?.tiers ?? [],
+    setArray: (payload, arr) => { payload.clubAward.tiers = arr; },
+    makeRow:  () => ({ id: '', name: '', apiMin: '', apiMax: '', apiInContention: '', prize: '' }),
+    fields: [
+      { key: 'id',              label: 'ID',                            type: 'text',     nullable: false },
+      { key: 'name',            label: 'Name',                          type: 'text',     nullable: false },
+      { key: 'apiMin',          label: 'API Min (TTD)',                  type: 'currency', nullable: false },
+      { key: 'apiMax',          label: 'API Max (TTD, optional)',        type: 'currency', nullable: true  },
+      { key: 'apiInContention', label: 'API In-Contention (TTD)',        type: 'currency', nullable: false },
+      { key: 'prize',           label: 'Prize',                         type: 'text',     nullable: false },
+    ],
+  },
+  {
+    key:      'managerMonthlyBonus',
+    label:    'Agency Monthly Production Bonus — Tiers',
+    category: 'Manager Awards',
+    getArray: (ruleset) => ruleset?.managerMonthlyBonus?.tiers ?? [],
+    setArray: (payload, arr) => { payload.managerMonthlyBonus.tiers = arr; },
+    makeRow:  () => ({ minAvgApi: '', bonusPct: '' }),
+    fields: [
+      { key: 'minAvgApi', label: 'Min Avg API (TTD)', type: 'currency', nullable: false },
+      { key: 'bonusPct',  label: 'Bonus %',           type: 'percent',  nullable: false },
+    ],
+  },
+  {
+    key:      'recruitingAwards',
+    label:    'Recruiting Awards',
+    category: 'Manager Awards',
+    getArray: (ruleset) => ruleset?.recruitingAwards ?? [],
+    setArray: (payload, arr) => { payload.recruitingAwards = arr; },
+    makeRow:  () => ({ id: '', name: '', min: '', max: '', prize: '' }),
+    fields: [
+      { key: 'id',    label: 'ID',                    type: 'text',  nullable: false },
+      { key: 'name',  label: 'Name',                  type: 'text',  nullable: false },
+      { key: 'min',   label: 'Min',                   type: 'count', nullable: false },
+      { key: 'max',   label: 'Max (optional)',         type: 'count', nullable: true  },
+      { key: 'prize', label: 'Prize',                 type: 'text',  nullable: false },
+    ],
+  },
+  {
+    key:      'activityAwards',
+    label:    'Activity Awards',
+    category: 'Manager Awards',
+    getArray: (ruleset) => ruleset?.activityAwards ?? [],
+    setArray: (payload, arr) => { payload.activityAwards = arr; },
+    makeRow:  () => ({ id: '', name: '', target: '', prize: '' }),
+    fields: [
+      { key: 'id',     label: 'ID',     type: 'text',  nullable: false },
+      { key: 'name',   label: 'Name',   type: 'text',  nullable: false },
+      { key: 'target', label: 'Target', type: 'count', nullable: false },
+      { key: 'prize',  label: 'Prize',  type: 'text',  nullable: false },
+    ],
+  },
 ];
 
 // ── Utilities ──────────────────────────────────────────────────────────────────
@@ -211,8 +263,29 @@ function initFormState(ruleset) {
   return state;
 }
 
-function buildPayload(loadedRuleset, formState) {
+// Converts a raw ruleset's array groups into string-keyed form-state maps so inputs
+// can be controlled consistently. null numeric values (open-ended tier markers like
+// apiMax / max) become '' for display; parseBack reverses this on save.
+function initArrayState(ruleset) {
+  const state = {};
+  for (const schema of ARRAY_GROUP_SCHEMAS) {
+    const rawArr = schema.getArray(ruleset);
+    state[schema.key] = rawArr.map((el) => {
+      const row = {};
+      for (const f of schema.fields) {
+        const v = el[f.key];
+        row[f.key] = (v === null || v === undefined) ? '' : String(v);
+      }
+      return row;
+    });
+  }
+  return state;
+}
+
+function buildPayload(loadedRuleset, formState, arrayState) {
   const payload = JSON.parse(JSON.stringify(loadedRuleset));
+
+  // Scalars
   for (const { key, fields } of SCALAR_GROUPS) {
     for (const { path, type } of fields) {
       const fullPath = `${key}.${path}`;
@@ -226,16 +299,28 @@ function buildPayload(loadedRuleset, formState) {
       }
     }
   }
-  return payload;
-}
 
-function arrayGroupSummary(ruleset, key) {
-  const group = ruleset?.[key];
-  if (!group) return '—';
-  if (Array.isArray(group)) return `${group.length} item${group.length !== 1 ? 's' : ''}`;
-  const tiers = group.tiers;
-  if (Array.isArray(tiers)) return `${tiers.length} tier${tiers.length !== 1 ? 's' : ''}`;
-  return '—';
+  // Arrays — inject edited rows, parsing strings back to typed values
+  for (const schema of ARRAY_GROUP_SCHEMAS) {
+    const rows = arrayState[schema.key] ?? [];
+    const parsed = rows.map((row) => {
+      const el = {};
+      for (const f of schema.fields) {
+        const raw = String(row[f.key] ?? '').trim();
+        if (f.type === 'text') {
+          el[f.key] = raw;
+        } else if (f.nullable && raw === '') {
+          el[f.key] = null;
+        } else {
+          el[f.key] = parseFloat(raw);
+        }
+      }
+      return el;
+    });
+    schema.setArray(payload, parsed);
+  }
+
+  return payload;
 }
 
 // ── Field input row ────────────────────────────────────────────────────────────
@@ -299,6 +384,8 @@ export default function AwardsRulesetPanel() {
   const [ruleset,          setRuleset]          = useState(null);
   const [formState,        setFormState]        = useState(null);
   const [initialFormState, setInitialFormState] = useState(null);
+  const [arrayState,       setArrayState]       = useState(null);
+  const [initialArrayState,setInitialArrayState]= useState(null);
   const [loading,          setLoading]          = useState(true);
   const [loadError,        setLoadError]        = useState(null);
   const [saving,           setSaving]           = useState(false);
@@ -318,6 +405,8 @@ export default function AwardsRulesetPanel() {
       setRuleset(data);
       setFormState({ ...init });
       setInitialFormState({ ...init });
+      setArrayState(initArrayState(data));
+      setInitialArrayState(initArrayState(data));
     } catch (err) {
       setLoadError(err?.message ?? 'Failed to load awards ruleset.');
     } finally {
@@ -338,6 +427,29 @@ export default function AwardsRulesetPanel() {
       next.add(fullPath);
       return next;
     });
+  }
+
+  function handleArrayAdd(schemaKey) {
+    const schema = ARRAY_GROUP_SCHEMAS.find((s) => s.key === schemaKey);
+    setArrayState((prev) => ({ ...prev, [schemaKey]: [...prev[schemaKey], schema.makeRow()] }));
+    setSaveSuccess(false);
+  }
+
+  function handleArrayRemove(schemaKey, rowIdx) {
+    setArrayState((prev) => ({
+      ...prev,
+      [schemaKey]: prev[schemaKey].filter((_, i) => i !== rowIdx),
+    }));
+    setSaveSuccess(false);
+  }
+
+  function handleArrayFieldChange(schemaKey, rowIdx, fieldKey, val) {
+    setArrayState((prev) => {
+      const rows = [...prev[schemaKey]];
+      rows[rowIdx] = { ...rows[rowIdx], [fieldKey]: val };
+      return { ...prev, [schemaKey]: rows };
+    });
+    setSaveSuccess(false);
   }
 
   function toggleSection(key) {
@@ -370,8 +482,44 @@ export default function AwardsRulesetPanel() {
     return errors;
   }, [formState, touched, allTouched]);
 
+  // Per-row, per-field errors for array groups — only shown after allTouched (Save click)
+  const arrayValidationErrors = useMemo(() => {
+    if (!arrayState || !allTouched) return {};
+    const result = {};
+    for (const schema of ARRAY_GROUP_SCHEMAS) {
+      const rows = arrayState[schema.key] ?? [];
+      const schemaErrs = {};
+      rows.forEach((row, rowIdx) => {
+        const rowErrs = {};
+        for (const f of schema.fields) {
+          const v = String(row[f.key] ?? '');
+          let err = null;
+          if (f.type === 'text') {
+            if (!v || v.trim() === '') err = 'Required.';
+          } else {
+            const trimmed = v.trim();
+            if (f.nullable && trimmed === '') {
+              // empty nullable is valid (→ null in payload)
+            } else if (!trimmed) {
+              err = 'Required.';
+            } else {
+              const n = parseFloat(trimmed);
+              if (!Number.isFinite(n)) err = 'Must be a number.';
+              else if (n < 0) err = 'Must be non-negative.';
+            }
+          }
+          if (err) rowErrs[f.key] = err;
+        }
+        if (Object.keys(rowErrs).length > 0) schemaErrs[rowIdx] = rowErrs;
+      });
+      if (Object.keys(schemaErrs).length > 0) result[schema.key] = schemaErrs;
+    }
+    return result;
+  }, [arrayState, allTouched]);
+
   const hasErrors = useMemo(() => {
     if (!formState) return false;
+    // Scalar checks
     for (const { key, fields } of SCALAR_GROUPS) {
       for (const { path, type } of fields) {
         if (type === 'bool') continue;
@@ -382,13 +530,33 @@ export default function AwardsRulesetPanel() {
         if (!Number.isFinite(n) || n < 0) return true;
       }
     }
+    // Array row checks
+    for (const schema of ARRAY_GROUP_SCHEMAS) {
+      const rows = arrayState?.[schema.key] ?? [];
+      for (const row of rows) {
+        for (const f of schema.fields) {
+          const v = String(row[f.key] ?? '');
+          if (f.type === 'text') {
+            if (!v || v.trim() === '') return true;
+          } else {
+            const trimmed = v.trim();
+            if (f.nullable && trimmed === '') continue;
+            if (!trimmed) return true;
+            const n = parseFloat(trimmed);
+            if (!Number.isFinite(n) || n < 0) return true;
+          }
+        }
+      }
+    }
     return false;
-  }, [formState]);
+  }, [formState, arrayState]);
 
   const isDirty = useMemo(() => {
     if (!formState || !initialFormState) return false;
-    return JSON.stringify(formState) !== JSON.stringify(initialFormState);
-  }, [formState, initialFormState]);
+    if (JSON.stringify(formState) !== JSON.stringify(initialFormState)) return true;
+    if (!arrayState || !initialArrayState) return false;
+    return JSON.stringify(arrayState) !== JSON.stringify(initialArrayState);
+  }, [formState, initialFormState, arrayState, initialArrayState]);
 
   const canSave = !saving && !hasErrors && isDirty;
 
@@ -399,7 +567,7 @@ export default function AwardsRulesetPanel() {
     setSaveError(null);
     setSaveSuccess(false);
     try {
-      const payload = buildPayload(ruleset, formState);
+      const payload = buildPayload(ruleset, formState, arrayState);
       await setAwardsRuleset(tenantId, 2026, payload, user?.uid ?? null);
       setSaveSuccess(true);
       await loadRuleset();
@@ -422,7 +590,8 @@ export default function AwardsRulesetPanel() {
   }
 
   function groupHasErrors(groupKey) {
-    return Object.keys(validationErrors).some((k) => k.startsWith(`${groupKey}.`));
+    if (Object.keys(validationErrors).some((k) => k.startsWith(`${groupKey}.`))) return true;
+    return !!arrayValidationErrors[groupKey] && Object.keys(arrayValidationErrors[groupKey]).length > 0;
   }
 
   return (
@@ -437,8 +606,7 @@ export default function AwardsRulesetPanel() {
           </h2>
           <p className="text-sm text-ink-muted mt-0.5">
             Configure award thresholds and criteria for agents and managers.
-            Saving writes the complete ruleset — arrays (club tiers, recruiting, activity) are
-            carried through unchanged and editable in a follow-up.
+            Saving writes the complete ruleset (all 16 groups, scalars and arrays).
           </p>
         </div>
       </div>
@@ -460,8 +628,9 @@ export default function AwardsRulesetPanel() {
         </div>
       )}
 
-      {!loading && !loadError && formState && (
+      {!loading && !loadError && formState && arrayState && (
         <div className="space-y-2">
+          {/* ── Scalar groups ── */}
           {SCALAR_GROUPS.map((group, idx) => {
             const prevCategory = idx > 0 ? SCALAR_GROUPS[idx - 1].category : null;
             const isOpen = openSections.has(group.key);
@@ -529,24 +698,93 @@ export default function AwardsRulesetPanel() {
             );
           })}
 
-          <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted pt-3 pb-1">
-            Array-Driven Groups — Read-only in this release
-          </div>
+          {/* ── Array groups (editable row editors) ── */}
+          {ARRAY_GROUP_SCHEMAS.map((schema, idx) => {
+            const prevCategory = idx > 0 ? ARRAY_GROUP_SCHEMAS[idx - 1].category : null;
+            const isOpen   = openSections.has(schema.key);
+            const rows     = arrayState[schema.key] ?? [];
+            const schemaErrors = arrayValidationErrors[schema.key];
+            const groupErrors  = !!schemaErrors && Object.keys(schemaErrors).length > 0;
 
-          {ARRAY_GROUPS.map(({ key, label }) => (
-            <div
-              key={key}
-              className="rounded-xl border border-dashed border-border px-4 py-3 flex items-center justify-between gap-4"
-            >
-              <div>
-                <p className="text-sm font-medium text-ink">{label}</p>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  {arrayGroupSummary(ruleset, key)} · Tier/array editing coming in a follow-up
-                </p>
-              </div>
-            </div>
-          ))}
+            return (
+              <React.Fragment key={schema.key}>
+                {schema.category !== prevCategory && (
+                  <div className="text-xs font-semibold uppercase tracking-wide text-ink-muted pt-3 pb-1">
+                    {schema.category}
+                  </div>
+                )}
 
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(schema.key)}
+                    aria-expanded={isOpen}
+                    className="w-full flex items-center justify-between gap-3 py-3 px-4 bg-card-raised hover:bg-primary/5 transition-colors text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40"
+                  >
+                    <span className="font-semibold text-sm text-ink">{schema.label}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs text-ink-muted">{rows.length} row{rows.length !== 1 ? 's' : ''}</span>
+                      {groupErrors && (
+                        <AlertTriangle size={14} className="text-red-500" aria-hidden="true" />
+                      )}
+                      {isOpen
+                        ? <ChevronDown  size={16} className="text-ink-muted" aria-hidden="true" />
+                        : <ChevronRight size={16} className="text-ink-muted" aria-hidden="true" />}
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-4 pb-4 pt-3 border-t border-border space-y-3">
+                      {rows.map((row, rowIdx) => (
+                        <div key={rowIdx} className="rounded-lg border border-border bg-card-raised p-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                            {schema.fields.map((f) => {
+                              const fieldId = `arf-${schema.key}-${rowIdx}-${f.key}`;
+                              const err = schemaErrors?.[rowIdx]?.[f.key];
+                              return (
+                                <FieldRow
+                                  key={f.key}
+                                  id={fieldId}
+                                  label={f.label}
+                                  type={f.type}
+                                  value={row[f.key] ?? ''}
+                                  error={err}
+                                  onChange={(val) => handleArrayFieldChange(schema.key, rowIdx, f.key, val)}
+                                  onBlur={() => {}}
+                                />
+                              );
+                            })}
+                          </div>
+                          <div className="flex justify-end mt-3">
+                            <button
+                              type="button"
+                              onClick={() => handleArrayRemove(schema.key, rowIdx)}
+                              disabled={rows.length <= 1}
+                              aria-label={`Remove row ${rowIdx + 1}`}
+                              className="min-h-11 min-w-11 flex items-center justify-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              <Trash2 size={16} aria-hidden="true" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <button
+                        type="button"
+                        onClick={() => handleArrayAdd(schema.key)}
+                        className="flex items-center gap-1.5 text-sm font-medium text-primary hover:text-primary/80 transition-colors min-h-11 px-2"
+                      >
+                        <Plus size={16} aria-hidden="true" />
+                        Add row
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </React.Fragment>
+            );
+          })}
+
+          {/* ── Save bar ── */}
           <div className="pt-4 border-t border-border mt-2">
             {saveError && (
               <div

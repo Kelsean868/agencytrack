@@ -10,14 +10,26 @@ export async function getAwardsRuleset(tenantId, year = 2026) {
 
 const REQUIRED_GROUPS = Object.keys(DEFAULT_RULESET_2026);
 
-// Recursively validates all numeric scalar fields are finite and non-negative.
-// Skips arrays (P-b scope), booleans, and known string-only fields.
+// Recursively validates all numeric fields are finite and non-negative.
+// Top-level array groups (recruitingAwards, activityAwards) are called directly
+// with an array obj — the entry guard handles the empty-array check and recurses
+// into each element. Nested arrays (clubAward.tiers, managerMonthlyBonus.tiers)
+// are caught by the inner Array.isArray(v) branch.
 function validateNumericFields(obj, path) {
-  if (Array.isArray(obj) || obj === null || typeof obj !== 'object') return;
+  if (Array.isArray(obj)) {
+    if (obj.length === 0) throw new Error(`"${path}" must not be empty.`);
+    obj.forEach((el, i) => validateNumericFields(el, `${path}[${i}]`));
+    return;
+  }
+  if (obj === null || typeof obj !== 'object') return;
   for (const [k, v] of Object.entries(obj)) {
     if (['prize', 'id', 'name'].includes(k)) continue;
     if (typeof v === 'boolean') continue;
-    if (Array.isArray(v)) continue;
+    if (Array.isArray(v)) {
+      if (v.length === 0) throw new Error(`"${path}.${k}" must not be empty.`);
+      v.forEach((el, i) => validateNumericFields(el, `${path}.${k}[${i}]`));
+      continue;
+    }
     if (v !== null && v !== undefined && typeof v === 'object') {
       validateNumericFields(v, `${path}.${k}`);
     } else if (v !== null && v !== undefined) {
