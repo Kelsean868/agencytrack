@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { X, Unlock } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { extractFields } from '../../utils/extractFields';
