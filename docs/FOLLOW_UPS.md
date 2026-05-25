@@ -9,7 +9,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 G1 (walking skeleton) is the current PR (FOUNDATION GATE). Remaining slices:
 
-**G2 — PAYE Engine** — ✅ DONE PR #TBD (`{TBD}`). `src/utils/payeEngine.js` exports `DEFAULT_PAYE_CONFIG` (T&T 2026: allowance $90,000, chargeable brackets 25% ≤$1M / 30% above), `computePAYE(gross, config)`, `grossFromNet(net, config)`. Config-driven chargeable-bracket band walk; 43 unit tests covering all brief vectors, band formulas, pivot continuity, and round-trip property. Tenant `/config/payeFormula` doc + `payeBracketsSnapshot` versioning + refresh-banner deferred to G3 or a dedicated config slice.
+**G2 — PAYE Engine** — ✅ DONE PR #344 (`59d2291`). `src/utils/payeEngine.js` exports `DEFAULT_PAYE_CONFIG` (T&T 2026: allowance $90,000, chargeable brackets 25% ≤$1M / 30% above), `computePAYE(gross, config)`, `grossFromNet(net, config)`. Config-driven chargeable-bracket band walk; 43 unit tests covering all brief vectors, band formulas, pivot continuity, and round-trip property. Tenant `/config/payeFormula` doc + `payeBracketsSnapshot` versioning + refresh-banner deferred to G3 or a dedicated config slice.
 
 **G3 — Expense Group Entry** (core data-entry loop)
 - Line-item add/edit/delete per group.
