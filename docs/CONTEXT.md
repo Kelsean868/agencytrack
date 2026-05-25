@@ -12,9 +12,9 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (#342 post-merge fill — 1330061) |
-| Current main HEAD | `1330061` (PR #342 — infra(smoke): extract smoke-runner.mjs harness lib) |
-| Active track | Queue complete — all mergeable items done. PR-OPEN drafts (G skeleton, H4, BEH-1) need briefs or external input. |
+| Last updated | 2026-05-25 (#323 post-merge fill — af07a34) |
+| Current main HEAD | `af07a34` (PR #323 — feat(awards): H3 — usesPolicyLedger flag + settlementShapeFromPolicies + parity tests) |
+| Active track | Queue complete. H3 FLIP-GATE banked HIGH — see FOLLOW_UPS.md. |
 | Next track | H4 plan config (needs brief); Track G skeleton (needs brief); BEH-1 WelcomeScreen stub (blocked on copy from Kyron). |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |

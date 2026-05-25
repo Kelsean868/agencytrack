@@ -227,6 +227,26 @@ Banked: #296 smoke (`27b1c8a`, 2026-05-24). Resolved: empirical confirm 2026-05-
 
 ---
 
+## H3 FLIP-GATE — `usesPolicyLedger:true` requires end-to-end parity validation before any agent is flipped (HIGH, banked 2026-05-25)
+
+**Context:** H3 (PR [#323](https://github.com/Kelsean868/agencytrack/pull/323), `af07a34`) ships a dormant feature flag (`usesPolicyLedger: boolean` on agent user docs, default absent/false). `AgentAwardsPanel` branches on this flag: `false` → existing settlements path; `true` → new `settlementShapeFromPolicies()` ledger path. The flag is per-agent and must be set explicitly via user-doc update; merging H3 flips nothing for any real agent.
+
+**Gate: DO NOT set `usesPolicyLedger:true` for any agent until ALL three of the following are confirmed on representative-volume data:**
+
+1. **Ledger completeness vs settlements collection.** Verify that `policies` docs (filtered `status: 'settled'`, `agentId == uid`) return the same set of settled items as `settlements` docs for the same agent and period. Any missing policy doc (e.g., pre-H3 settlements entered via the old path) silently drops from awards computation.
+
+2. **Period attribution alignment: `dateIssued`/Date-Placed bucketing vs settlement-period bucketing.** The ledger path uses `dateIssued` on the policy doc to bucket into YTD/period windows. The settlements path uses the `periodKey` field set at confirmation time. For agents with multi-quarter tenure, verify these two bucketing schemes produce the same period membership for every settled policy — a mismatch assigns policies to wrong periods and inflates/deflates annual API.
+
+3. **Persistency `periodKey` alignment.** The ledger path calls `computePersistency(confPersistVals, ledgerSettlements)` where `confPersistVals` are keyed by `periodKey` (e.g., `"2026-Q1"`). `settlementShapeFromPolicies()` must produce objects with `periodKey` values that match the format `persistencyService` writes. A format mismatch (e.g., `"2026-01"` vs `"2026-Q1"`) causes persistency to default to 0, silently failing all 90%-gated awards.
+
+**Validation approach:** Run `settlementShapeFromPolicies(agentUid, tenantId)` against the pilot agent's real data and diff the output against `getAgentSettlements(tenantId, agentUid, year)` field-by-field. Log both arrays and compare: doc count, API totals per period, periodKey values, persistency match. Only flip the flag when diffs are zero or explained.
+
+**Priority:** HIGH. The flag is safe while unset; the risk is ONLY on the flip. No action needed until the first agent flip is proposed.
+
+Banked: H3 PR [#323](https://github.com/Kelsean868/agencytrack/pull/323) (`af07a34`), dispatcher-cleared 2026-05-25.
+
+---
+
 ## `deactivateUser` CF — wrap naked awaits in try/catch for diagnostics (LOW, banked 2026-05-24)
 
 **Scope:** `functions/index.js` ~line 791 (`await targetRef.update(updatePayload)`) and ~line 796 (`await admin.auth().revokeRefreshTokens(targetUid)`) are bare unhandled awaits. If either throws (Firestore write error, Auth API failure, rate limit), the CF surfaces `FirebaseError: internal` to the client with no diagnostic message — identical to the transient that fired the #296 FU. Wrapping both in try/catch → typed `HttpsError('internal', <diagnostic message>)` makes future transients debuggable without requiring CF log access.
