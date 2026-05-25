@@ -3,6 +3,7 @@ import { Pencil, X, Check, CheckCircle2, XCircle, Trophy, Star } from 'lucide-re
 import { formatCurrency } from '../../utils/formatters';
 import { getGoals, setGoals, getCompanyMinimums } from '../../services/goalsService';
 import { resolveAnnualAPIFloor, FLAT_ANNUAL_API_FALLBACK } from '../../utils/tenureFloors';
+import { compute2YearAverageAPI } from '../../utils/careerLevelHelpers';
 import { aggregatePersistency } from '../../lib/persistency/calculations';
 import { useAuth } from '../../context/AuthContext';
 import BadgeGrid from '../gamification/BadgeGrid';
@@ -295,7 +296,7 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
 export default function CareerPortal({ submissions, user, persistencyData, hierarchy, hierarchyLoading, hierarchyError, ytdTotals }) {
   const thisYear = new Date().getFullYear();
 
-  const { ytdAPI, ytdApps, avgPersistency, yearsOfService } = useMemo(() => {
+  const { ytdAPI, ytdApps, avgPersistency, yearsOfService, trailing2YrAPI } = useMemo(() => {
     const ytdSubs = (submissions ?? []).filter(
       (s) => s.status === 'submitted' && s.weekStarting?.startsWith(String(thisYear))
     );
@@ -320,13 +321,15 @@ export default function CareerPortal({ submissions, user, persistencyData, hiera
       }
     }
 
-    return { ytdAPI, ytdApps, avgPersistency, yearsOfService };
+    const trailing2YrAPI = compute2YearAverageAPI(submissions, thisYear);
+
+    return { ytdAPI, ytdApps, avgPersistency, yearsOfService, trailing2YrAPI };
   }, [submissions, persistencyData, user, thisYear]);
 
   const currentLevel = useMemo(() => {
     let highest = CAREER_LEVELS[0];
     for (const lvl of CAREER_LEVELS) {
-      const apiOk   = lvl.minApi === null   || ytdAPI >= lvl.minApi;
+      const apiOk   = lvl.minApi === null   || trailing2YrAPI >= lvl.minApi;
       const appsOk  = lvl.minApps === null  || ytdApps >= lvl.minApps;
       const persOk  = lvl.minPersistency === null || (avgPersistency !== null && avgPersistency >= lvl.minPersistency);
       const yearsOk = lvl.minYears === 0 || (yearsOfService !== null && yearsOfService >= lvl.minYears);
@@ -337,7 +340,7 @@ export default function CareerPortal({ submissions, user, persistencyData, hiera
       }
     }
     return highest;
-  }, [ytdAPI, ytdApps, avgPersistency, yearsOfService]);
+  }, [trailing2YrAPI, ytdApps, avgPersistency, yearsOfService]);
 
   const nextLevel = CAREER_LEVELS.find((l) => l.level === currentLevel.level + 1) ?? null;
 
@@ -379,10 +382,10 @@ export default function CareerPortal({ submissions, user, persistencyData, hiera
 
           {nextLevel.minApi !== null && (
             <CriterionRow
-              label="Annual API (TTD)"
-              current={ytdAPI}
+              label="2-yr Avg API (TTD)"
+              current={trailing2YrAPI}
               target={nextLevel.minApi}
-              met={ytdAPI >= nextLevel.minApi}
+              met={trailing2YrAPI >= nextLevel.minApi}
               formatVal={formatCurrency}
             />
           )}
