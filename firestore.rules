@@ -391,6 +391,11 @@ service cloud.firestore {
             && (getRole() != 'unit_manager'
                 || get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.unitId == request.auth.uid)
             && request.resource.data.actorUid == request.auth.uid
+            // H2b: agentId in history doc must match the parent policy's agentId
+            // (prevents managers from writing history docs with a forged agentId).
+            && request.resource.data.agentId == get(
+                 /databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)
+               ).data.agentId
             && request.resource.data.keys().hasAll([
                  'fromStatus', 'toStatus', 'changedFields', 'actorUid',
                  'actorRole', 'at', 'agentId', 'unitId'
