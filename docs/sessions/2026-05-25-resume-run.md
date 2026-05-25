@@ -30,6 +30,8 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 
 | Hygiene — awardsEngine dead subPersistVals removal; close getPeriodCtx + silent-error-swallow FUs | [#341](https://github.com/Kelsean868/agencytrack/pull/341) | `7ae73ea` | ✅ MERGED — CI green, no smoke (pure logic cleanup), post-merge fill done |
 
+| infra(smoke): extract smoke-runner.mjs harness lib; refactor regression-smoke-sweep | [#342](https://github.com/Kelsean868/agencytrack/pull/342) | `1330061` | ✅ MERGED — CI green (syntax-check + 1401/1401 tests + lint + build), no smoke (infra-only), post-merge fill done |
+
 ## Smoke artifacts needing manual Firebase Console cleanup
 
 Two smoke policies cannot be deleted via REST (`allow delete: if false` in rules):
