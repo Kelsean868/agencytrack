@@ -2734,16 +2734,16 @@ Banked: H1.2 PR #302 (`6886ed1`).
 
 ---
 
-## ~~Track H H1.2 — policies Arm B per-target field tightening~~ ✅ RESOLVED H2a #TBD
+## ~~Track H H1.2 — policies Arm B per-target field tightening~~ ✅ RESOLVED H2a #304
 
 ~~**Issue:** Arm B's `allow update` uses `affectedKeys().hasOnly([union of all per-transition fields])` — the full union covers every field any transition could write. A transition to a status that uses none of the settled-specific fields (e.g. `ntu`, `postponed`) could carry `settledAPI`, `dateIssued`, etc. alongside the status update — data pollution on non-counting statuses.~~
 
-**RESOLVED in H2a PR #TBD (`#TBD`):** Arm B rewritten with per-target conditional `affectedKeys().hasOnly([...])` — each target status only allows `status + statusUpdatedAt + that status's own fields`. Two emulator DENY cases added (`ntu` transition with `settledAPI` field DENY; `settled` transition with `ratedPremium` field DENY). Banked: H1.2 PR #302 (`6886ed1`).
+**RESOLVED in H2a PR #304 (`86541fe`):** Arm B rewritten with per-target conditional `affectedKeys().hasOnly([...])` — each target status only allows `status + statusUpdatedAt + that status's own fields`. Two emulator DENY cases added (`ntu` transition with `settledAPI` field DENY; `settled` transition with `ratedPremium` field DENY). Banked: H1.2 PR #302 (`6886ed1`).
 
 ---
 
-## ~~Track H H1.2 — policies history `create` ownership/shape tightening~~ ✅ RESOLVED H2a #TBD
+## ~~Track H H1.2 — policies history `create` ownership/shape tightening~~ ✅ RESOLVED H2a #304
 
 ~~**Issue:** The history `create` rule did NOT verify that the agent owns the parent policy. A crafted client could write an orphan history doc under another agent's policy path.~~
 
-**RESOLVED in H2a PR #TBD (`#TBD`):** Agent arm now includes `get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.agentId == request.auth.uid`, confirming parent-policy ownership before allowing history create. One emulator DENY case added (`agent-b write history on agent-a policy → DENY`). Banked: H1.2 PR #302 (`6886ed1`).
+**RESOLVED in H2a PR #304 (`86541fe`):** Agent arm now includes `get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.agentId == request.auth.uid`, confirming parent-policy ownership before allowing history create. One emulator DENY case added (`agent-b write history on agent-a policy → DENY`). Banked: H1.2 PR #302 (`6886ed1`).
