@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (#340 post-merge fill — 9d69fb4) |
-| Current main HEAD | `9d69fb4` (PR #340 — test(components): SubmissionViewer + GoalCarousel + BranchesPanel test backfill 56 cases) |
-| Active track | Queue filler: a11y/states hardening; PR-OPEN drafts (G skeleton, H4, BEH-1); E2E harness generalize. |
-| Next track | H4 plan config; Track G skeleton; BEH-1 WelcomeScreen stub; E2E harness generalize; a11y/states hardening. |
+| Last updated | 2026-05-25 (#341 post-merge fill — 7ae73ea) |
+| Current main HEAD | `7ae73ea` (PR #341 — hygiene(awards-engine): remove dead subPersistVals derivation) |
+| Active track | Queue filler: PR-OPEN drafts (G skeleton, H4, BEH-1); E2E harness generalize. |
+| Next track | H4 plan config; Track G skeleton; BEH-1 WelcomeScreen stub (blocked on copy); E2E harness generalize. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
