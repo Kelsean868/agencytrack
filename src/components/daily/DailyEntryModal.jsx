@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Plus, Loader2, Check } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { Card, NumericField, CurrencyField } from '../wizard/CardStack';
