@@ -215,3 +215,12 @@ export async function getMoneyNeeds(tenantId, uid, year) {
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
 }
+
+export async function updateVisibility(tenantId, uid, year, visibility) {
+  const parsedYear = parseInt(year, 10);
+  if (!parsedYear) throw new Error('Invalid year');
+  if (visibility !== 'private' && visibility !== 'shared') throw new Error('Invalid visibility');
+  const docRef = doc(db, 'tenants', tenantId, 'users', uid, 'moneyNeeds', String(parsedYear));
+  await updateDoc(docRef, { visibility, updatedAt: serverTimestamp(), updatedBy: uid });
+  return { visibility };
+}

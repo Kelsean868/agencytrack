@@ -1061,16 +1061,44 @@ service cloud.firestore {
         allow list: if false;
       }
 
-      // G1: Money Needs Worksheet — agent-only (own create/get/update).
-      // No manager read arm in G1 — all manager visibility, consent, audit,
-      // and sharing are deferred to G5 (opt-in privacy model).
-      // visibility defaults to 'private' (off). Sharing is built in G5.
+      // G5: Money Needs Worksheet — agent-own + manager-read arms (opt-in consent model).
       match /users/{uid}/moneyNeeds/{year} {
-        allow get: if canAccessOwn(tenantId, uid);
-        allow list: if canAccessOwn(tenantId, uid);
+        // Owner: full read/write
+        allow get, list: if canAccessOwn(tenantId, uid);
+
+        // UM: read if shared AND same unit
+        allow get, list: if canManage(tenantId)
+          && getRole() == 'unit_manager'
+          && resource.data.visibility == 'shared'
+          && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(uid)).data.unitId == callerUnitId(tenantId);
+
+        // BM: read if shared
+        allow get, list: if canManage(tenantId)
+          && getRole() == 'branch_manager'
+          && resource.data.visibility == 'shared';
+
+        // SM: read if shareWithSm
+        allow get, list: if canManage(tenantId)
+          && getRole() == 'sales_manager'
+          && resource.data.shareWithSm == true;
+
+        // Tenant admin: read if shared OR shareWithSm
+        allow get, list: if canManage(tenantId)
+          && getRole() == 'tenant_admin'
+          && (resource.data.visibility == 'shared' || resource.data.shareWithSm == true);
+
+        // Create: owner, must start private
         allow create: if canAccessOwn(tenantId, uid)
           && request.resource.data.visibility == 'private';
+
+        // Update: owner only (agent controls visibility)
         allow update: if canAccessOwn(tenantId, uid);
+
+        // BM update: only allowed to flip shareWithSm field
+        allow update: if canManage(tenantId)
+          && getRole() == 'branch_manager'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shareWithSm', 'updatedAt', 'updatedBy']);
+
         allow delete: if false;
       }
 

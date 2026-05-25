@@ -7,6 +7,7 @@ import {
   createMoneyNeeds, getMoneyNeeds,
   updateExpenseGroup, annualizeAmount, computeGroupTotal,
   updateSubCalculator, updateCommissionTargets, refreshPAYECalculation,
+  updateVisibility,
   PLAYGROUND_INCOME_GOAL_KEY, PAYE_BRACKETS_VERSION,
 } from '../../services/moneyNeedsService';
 import { formatCurrency } from '../../utils/formatters';
@@ -715,6 +716,16 @@ export default function MoneyNeedsPanel() {
     setWorksheet((prev) => ({ ...prev, ...rollup, payeBracketsVersionId: PAYE_BRACKETS_VERSION }));
   }
 
+  async function handleVisibilityToggle(checked) {
+    const newVisibility = checked ? 'shared' : 'private';
+    setWorksheet((prev) => ({ ...prev, visibility: newVisibility }));
+    try {
+      await updateVisibility(tenantId, uid, worksheet.year, newVisibility);
+    } catch {
+      setWorksheet((prev) => ({ ...prev, visibility: checked ? 'private' : 'shared' }));
+    }
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       {/* Header */}
@@ -784,12 +795,18 @@ export default function MoneyNeedsPanel() {
           <PAYERefreshBanner worksheet={worksheet} onRefreshed={handlePAYERefreshed} />
 
           <div className="rounded-xl bg-card border border-border px-4 py-3 mb-2">
-            <p className="text-xs text-ink-muted">
-              Visibility: <span className="font-semibold text-ink">
-                {worksheet.visibility === 'private' ? 'Private (only you)' : 'Shared'}
+            <label className="flex items-center gap-3 cursor-pointer min-h-[44px]">
+              <input
+                type="checkbox"
+                checked={worksheet.visibility === 'shared'}
+                onChange={(e) => handleVisibilityToggle(e.target.checked)}
+                className="h-4 w-4 rounded border-border accent-primary"
+                aria-label="Share with my Unit Manager and Branch Manager"
+              />
+              <span className="text-sm text-ink">
+                Share with my Unit Manager &amp; Branch Manager
               </span>
-              {' · '}Sharing controls coming in G5.
-            </p>
+            </label>
           </div>
 
           {EXPENSE_GROUPS.map(({ key, label }) => (

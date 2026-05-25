@@ -33,7 +33,7 @@ import {
   createMoneyNeeds, getMoneyNeeds,
   annualizeAmount, computeGroupTotal, computeWorksheetRollup,
   updateExpenseGroup, mergeSubCalcRef, updateSubCalculator,
-  updateCommissionTargets, refreshPAYECalculation,
+  updateCommissionTargets, refreshPAYECalculation, updateVisibility,
   FREQUENCY_MULTIPLIERS, PAYE_BRACKETS_VERSION,
 } from '../moneyNeedsService';
 
@@ -594,5 +594,30 @@ describe('refreshPAYECalculation', () => {
     await expect(
       refreshPAYECalculation(TENANT_ID, UID, 'bad', REFRESH_GROUPS),
     ).rejects.toThrow();
+  });
+});
+
+// ── updateVisibility ──────────────────────────────────────────────────────────
+
+describe('updateVisibility', () => {
+  it('patches visibility field', async () => {
+    await updateVisibility(TENANT_ID, UID, YEAR, 'shared');
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.visibility).toBe('shared');
+  });
+
+  it('stamps updatedAt serverTimestamp and updatedBy uid', async () => {
+    await updateVisibility(TENANT_ID, UID, YEAR, 'private');
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.updatedAt).toEqual({ _type: 'serverTimestamp' });
+    expect(patch.updatedBy).toBe(UID);
+  });
+
+  it('throws for invalid year', async () => {
+    await expect(updateVisibility(TENANT_ID, UID, 'bad', 'private')).rejects.toThrow();
+  });
+
+  it('throws for invalid visibility value', async () => {
+    await expect(updateVisibility(TENANT_ID, UID, YEAR, 'default')).rejects.toThrow();
   });
 });
