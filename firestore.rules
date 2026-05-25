@@ -219,6 +219,49 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // H1: policy ledger — walking skeleton (new collection, no lifecycle).
+      // Agent creates + owns entries; managers-in-scope read.
+      // unitId + branchId denormalized for UM/BM query filtering (mirrors submissions).
+      // Manager two-arm confirmation update is DEFERRED to H1.2.
+      match /policies/{policyId} {
+        allow get: if canAccessOwn(tenantId, resource.data.agentId)
+          || (canManage(tenantId) && (
+               getRole() != 'unit_manager'
+               || resource.data.unitId == request.auth.uid
+             ));
+        allow list: if canAccessOwn(tenantId, resource.data.agentId)
+          || (canManage(tenantId) && (
+               getRole() != 'unit_manager'
+               || resource.data.unitId == request.auth.uid
+             ));
+        allow create: if isSignedIn()
+          && isAgent()
+          && getTenantId() == tenantId
+          && request.resource.data.agentId == request.auth.uid
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.status == 'submitted'
+          && request.resource.data.sourceOfProspect in [
+               'seminar', 'booth-event', 'referral', 'cold-call', 'social-media',
+               'orphan', 'existing-client', 'family-friend', 'bank-referral', 'self', 'other'
+             ]
+          && request.resource.data.dateWritten <= request.time
+          && request.resource.data.proposedAPI > 0;
+        allow update: if isSignedIn()
+          && isAgent()
+          && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid
+          && resource.data.status == 'submitted'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+               'ownerName', 'insuredName', 'policyNumber', 'productLine',
+               'newBusinessType', 'policyClass', 'planId', 'planName',
+               'proposedPremium', 'proposedFrequency', 'proposedAPI',
+               'proposedCoverage', 'dateWritten', 'dateSubmitted', 'notes',
+               'isSelfOrFamily', 'replacedPolicyAPI',
+               'sourceOfProspect', 'cashWithApp'
+             ]);
+        allow delete: if false;
+      }
+
       // E3: persistency — role-scoped by agent's branchId/unitId. Replaces the
       // pre-E3 manager-can-write-anywhere block. Agents can write their own
       // doc (manager wins on collision via app-layer audit-trail precedence).
