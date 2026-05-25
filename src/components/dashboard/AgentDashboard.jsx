@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
   X, Eye, Download, Loader2, AlertTriangle,
-  ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle, BarChart2, UserSearch, BookOpen,
+  ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle, BarChart2, UserSearch, BookOpen, Calculator,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -41,6 +41,7 @@ import ProductionReportTab from '../productionReport/ProductionReportTab';
 import AgentPersistencyTab from '../agent/PersistencyTab';
 import ProspectInfoPanel from '../agent/ProspectInfoPanel';
 import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
+import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import DailyFAB from '../daily/DailyFAB';
 
 const KPIS = [
@@ -64,6 +65,7 @@ const NAV_ITEMS = [
   { id: 'career',            label: 'Career',           tabId: 'career',            Icon: TrendingUp,    testId: 'agent-tab-career' },
   { id: 'prospect-info',     label: 'Joint-Call Prep',  tabId: 'prospect-info',     Icon: UserSearch,    testId: 'agent-tab-prospect-info' },
   { id: 'policy-ledger',     label: 'Policy Ledger',    tabId: 'policy-ledger',     Icon: BookOpen,      testId: 'agent-tab-policy-ledger' },
+  { id: 'money-needs',       label: 'Money Needs',      tabId: 'money-needs',       Icon: Calculator,    testId: 'agent-tab-money-needs' },
   { id: 'awards',            label: 'Awards',           tabId: 'awards',            Icon: Trophy,        testId: 'agent-tab-awards' },
   { id: 'persistency',       label: 'Persistency',      tabId: 'persistency',       Icon: TrendingUp,    testId: 'agent-tab-persistency' },
   { id: 'production-report', label: 'Production Report',tabId: 'production-report', Icon: BarChart2,     testId: 'agent-tab-production-report' },
@@ -771,6 +773,8 @@ export default function AgentDashboard() {
 
       {/* ── POLICY LEDGER TAB ── */}
       {activeTab === 'policy-ledger' && <PolicyLedgerPanel />}
+
+      {activeTab === 'money-needs' && <MoneyNeedsPanel />}
 
       {/* ── PERSISTENCY TAB ── */}
       {activeTab === 'persistency' && <AgentPersistencyTab />}

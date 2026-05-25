@@ -1061,6 +1061,19 @@ service cloud.firestore {
         allow list: if false;
       }
 
+      // G1: Money Needs Worksheet — agent-only (own create/get/update).
+      // No manager read arm in G1 — all manager visibility, consent, audit,
+      // and sharing are deferred to G5 (opt-in privacy model).
+      // visibility defaults to 'private' (off). Sharing is built in G5.
+      match /users/{uid}/moneyNeeds/{year} {
+        allow get: if canAccessOwn(tenantId, uid);
+        allow list: if canAccessOwn(tenantId, uid);
+        allow create: if canAccessOwn(tenantId, uid)
+          && request.resource.data.visibility == 'private';
+        allow update: if canAccessOwn(tenantId, uid);
+        allow delete: if false;
+      }
+
     }
 
     // ── I1.2: collectionGroup author arm for jointCalls ───────────────────────
