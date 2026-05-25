@@ -8,6 +8,7 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 | E(d) — DailyEntryModal a11y: PPP id collision + role=status + inputMode=decimal | [#322](https://github.com/Kelsean868/agencytrack/pull/322) | `75c0e33` | ✅ MERGED — CI green, no smoke needed (pure a11y attrs), post-merge fill done |
 | H3 — usesPolicyLedger flag + settlementShapeFromPolicies + parity tests | [#323](https://github.com/Kelsean868/agencytrack/pull/323) | — | 🔓 PR-OPEN — DO NOT MERGE (money-adjacent flag flip, dispatcher decision required); 1345/1345 tests, lint+build clean |
 | H12 — A&H / non-life 'does not count toward awards' cue (form + card) | [#324](https://github.com/Kelsean868/agencytrack/pull/324) | — | ⏳ CI pending — await green then preview smoke before merge |
+| J2 — trailing 2-year average API for career-level qualification | [#325](https://github.com/Kelsean868/agencytrack/pull/325) | — | ⏳ CI pending — await green then preview smoke before merge |
 
 ## Smoke artifacts needing manual Firebase Console cleanup
 
