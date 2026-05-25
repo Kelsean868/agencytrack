@@ -12,9 +12,9 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (#330 + #332 post-merge fill — e3f66ae, 89fd201) |
-| Current main HEAD | `e3f66ae` (PR #330 — submissions error surface) |
-| Active track | Queue filler: console/network capture helpers (walk-helpers.mjs, next PR); a11y/states hardening; PR-OPEN drafts (G skeleton, H4, BEH-1); E2E harness generalize. |
+| Last updated | 2026-05-25 (#333 post-merge fill — 3d76d9a) |
+| Current main HEAD | `3d76d9a` (PR #333 — smoke harness console/network capture) |
+| Active track | Queue filler: #334 sidebar touch target (CI pending); a11y/states hardening; PR-OPEN drafts (G skeleton, H4, BEH-1); E2E harness generalize. |
 | Next track | H4 plan config; Track G skeleton; BEH-1 WelcomeScreen stub; E2E harness generalize; a11y/states hardening. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
