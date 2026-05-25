@@ -168,7 +168,7 @@ describe('getGoalHierarchy — companyFloor.api resolves per-agent from tenure',
 });
 
 describe('setCompanyMinimums — preserves weeklyActivityFloors via merge', () => {
-  it('writes only the editable B5 fields; merge: true preserves the floors block', async () => {
+  it('writes only annualAPI fields when no floors provided; merge: true preserves existing floors block', async () => {
     mockSetDoc.mockResolvedValue(undefined);
     await setCompanyMinimums('tenant1', { annualAPI: 250000 }, 'kyron-uid');
 
@@ -181,8 +181,8 @@ describe('setCompanyMinimums — preserves weeklyActivityFloors via merge', () =
       updatedAt: '__SERVER_TIMESTAMP__',
     });
     expect(opts).toEqual({ merge: true });
-    // Critically: the payload does NOT include weeklyActivityFloors, so a
-    // pre-seeded floors block on the doc is preserved under merge: true.
+    // When floors are not passed, the payload omits weeklyActivityFloors.
+    // Firestore merge: true preserves whatever is already on the doc.
     expect(payload).not.toHaveProperty('weeklyActivityFloors');
   });
 
@@ -190,5 +190,74 @@ describe('setCompanyMinimums — preserves weeklyActivityFloors via merge', () =
     await expect(setCompanyMinimums('tenant1', { annualAPI: 0 }, 'kyron-uid'))
       .rejects.toThrow(/positive/i);
     expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+});
+
+describe('setCompanyMinimums — weeklyActivityFloors validation and write (Track E b)', () => {
+  const VALID_FLOORS = {
+    callsMade: 60,
+    contactsMade: 40,
+    appointmentsScheduled: 20,
+    interviewsKept: 15,
+    factFindsCompleted: 10,
+    closingInterviewsKept: 10,
+    applicationsSubmitted: 1,
+    clientsSold: 1,
+    api: 4800,
+    referralsNewLeads: 100,
+  };
+
+  it('writes weeklyActivityFloors block when valid floors are provided', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setCompanyMinimums('tenant1', { annualAPI: 250000, weeklyActivityFloors: VALID_FLOORS }, 'kyron-uid');
+
+    const [, payload, opts] = mockSetDoc.mock.calls[0];
+    expect(opts).toEqual({ merge: true });
+    expect(payload.weeklyActivityFloors).toEqual(VALID_FLOORS);
+    expect(payload.annualAPI).toBe(250000);
+  });
+
+  it('accepts decimal value for api floor', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setCompanyMinimums('tenant1', {
+      annualAPI: 200000,
+      weeklyActivityFloors: { ...VALID_FLOORS, api: 4800.5 },
+    }, 'uid');
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.weeklyActivityFloors.api).toBe(4800.5);
+  });
+
+  it('rejects non-integer value for non-api floor key', async () => {
+    await expect(setCompanyMinimums('tenant1', {
+      annualAPI: 200000,
+      weeklyActivityFloors: { ...VALID_FLOORS, callsMade: 60.5 },
+    }, 'uid')).rejects.toThrow(/whole number/i);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('rejects negative floor value', async () => {
+    await expect(setCompanyMinimums('tenant1', {
+      annualAPI: 200000,
+      weeklyActivityFloors: { ...VALID_FLOORS, callsMade: -1 },
+    }, 'uid')).rejects.toThrow(/non-negative/i);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('rejects zero api floor', async () => {
+    await expect(setCompanyMinimums('tenant1', {
+      annualAPI: 200000,
+      weeklyActivityFloors: { ...VALID_FLOORS, api: 0 },
+    }, 'uid')).rejects.toThrow(/positive/i);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('accepts zero for non-api floor (allows disabling a floor)', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setCompanyMinimums('tenant1', {
+      annualAPI: 200000,
+      weeklyActivityFloors: { ...VALID_FLOORS, referralsNewLeads: 0 },
+    }, 'uid');
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.weeklyActivityFloors.referralsNewLeads).toBe(0);
   });
 });
