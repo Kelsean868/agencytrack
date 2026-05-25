@@ -11,6 +11,8 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 | J2 — trailing 2-year average API for career-level qualification | [#325](https://github.com/Kelsean868/agencytrack/pull/325) | `77d2317` | ✅ MERGED — CI green, smoke 4/4 pass |
 | Rules test — persistency collection (18 cases: list/get/null-resource/create-update/delete) | [#326](https://github.com/Kelsean868/agencytrack/pull/326) | `d8298b6` | ✅ MERGED — CI green, no smoke (test-only) |
 | Hygiene — getPeriodCtx dedup (BmAtRiskPanel → engine export) + close J2 FU | [#327](https://github.com/Kelsean868/agencytrack/pull/327) | `7529d3a` | ✅ MERGED — CI green, no smoke (pure refactor) |
+| CI doc drift — CLAUDE.md lint+build → lint+tests+build (Lint Policy + Session Protocol) | [#328](https://github.com/Kelsean868/agencytrack/pull/328) | — | ⏳ CI pending — no smoke (docs-only) |
+| Hygiene — clear stale provisional signals for tenure bands (tenureFloors.js comment + seed flag) | [#329](https://github.com/Kelsean868/agencytrack/pull/329) | — | ⏳ CI pending — no smoke (comment + ops-only seed script) |
 
 ## Smoke artifacts needing manual Firebase Console cleanup
 
