@@ -395,8 +395,15 @@ describe('confirmPolicy', () => {
 });
 
 describe('getPolicyHistory', () => {
-  it('queries the history subcollection ordered by at desc', async () => {
+  it('without agentId — queries ordered by at desc only (manager path)', async () => {
     await getPolicyHistory('t1', 'p1');
+    expect(hoisted.mockOrderBy).toHaveBeenCalledWith('at', 'desc');
+    expect(hoisted.mockWhere).not.toHaveBeenCalledWith('agentId', '==', expect.anything());
+  });
+
+  it('with agentId — adds where(agentId==uid) filter for agent list rule', async () => {
+    await getPolicyHistory('t1', 'p1', 'agent-uid-1');
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('agentId', '==', 'agent-uid-1');
     expect(hoisted.mockOrderBy).toHaveBeenCalledWith('at', 'desc');
   });
 

@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "history",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "agentId", "order": "ASCENDING" },
+        { "fieldPath": "at", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "auditInviteResends",
       "queryScope": "COLLECTION",
       "fields": [

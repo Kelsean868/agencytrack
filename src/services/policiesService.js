@@ -232,11 +232,16 @@ export async function confirmPolicy(tenantId, managerProfile, policyId, policy, 
 
 /**
  * getPolicyHistory — returns history docs for a policy ordered by `at` desc.
- * Used by tests and smoke; history display UI is deferred (H1.2 FU).
+ * Pass `agentId` when calling as an agent so the `where('agentId','==',uid)` filter
+ * satisfies the Firestore list rule (which requires the caller to match `resource.data.agentId`).
+ * Managers omit `agentId` — their list rule branch doesn't require the filter.
  */
-export async function getPolicyHistory(tenantId, policyId) {
+export async function getPolicyHistory(tenantId, policyId, agentId) {
   const ref = collection(db, 'tenants', tenantId, 'policies', policyId, 'history');
-  const snap = await getDocs(query(ref, orderBy('at', 'desc')));
+  const q = agentId
+    ? query(ref, where('agentId', '==', agentId), orderBy('at', 'desc'))
+    : query(ref, orderBy('at', 'desc'));
+  const snap = await getDocs(q);
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
