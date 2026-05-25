@@ -12,8 +12,8 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (#336 post-merge fill — f0a5857) |
-| Current main HEAD | `f0a5857` (PR #336 — KioskShell + KioskRoute hex → presentation tokens) |
+| Last updated | 2026-05-25 (#337 post-merge fill — ab2aa81) |
+| Current main HEAD | `ab2aa81` (PR #337 — CampaignCard + GapAnalysisPanel bg-[#hex] → Tailwind palette) |
 | Active track | Queue filler: a11y/states hardening; PR-OPEN drafts (G skeleton, H4, BEH-1); E2E harness generalize. |
 | Next track | H4 plan config; Track G skeleton; BEH-1 WelcomeScreen stub; E2E harness generalize; a11y/states hardening. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |

@@ -2204,6 +2204,8 @@ next theme-system PR.
 
 Banked during PR-C-FU3 (2026-05-12 pilot-readiness audit).
 
+**Closure (PR #337, `ab2aa81`):** `bg-[var(--color-` → already clean (PR #155/#219). `MotivationalCarousel.jsx` deleted (PR #208). Remaining `bg-[#hex]` sites: `CampaignCard.jsx` medal badges (`bg-amber-500`/`bg-slate-400`/`bg-amber-700`) + `GapAnalysisPanel.jsx` unit-target bar (`bg-violet-600`). Both acceptance criteria verified: zero `bg-[#` hits outside `AgentReportDocument.jsx`; zero `bg-[var(--color-` hits. CLAUDE.md § Cosmetic Inconsistencies reference to `MotivationalCarousel.jsx:366` is stale (component deleted) — leave as historical artifact; the cosmetic inconsistency section itself can be pruned in a future housekeeping pass.
+
 ---
 
 ### SEC-9b residual: tenantId-in-deps exhaustive-deps warnings (RESOLVED 2026-05-16)
