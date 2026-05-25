@@ -25,9 +25,10 @@ export function Card({ badge, desc, children, variant = 'default' }) {
 export function NumericField({ label, name, value, onChange, desc }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-ink">{label}</label>
+      <label htmlFor={name} className="text-sm font-medium text-ink">{label}</label>
       {desc && <p className="text-xs text-ink-muted">{desc}</p>}
       <input
+        id={name}
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"
@@ -46,13 +47,14 @@ export function NumericField({ label, name, value, onChange, desc }) {
 export function CurrencyField({ label, name, value, onChange, desc }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-ink">{label}</label>
+      <label htmlFor={name} className="text-sm font-medium text-ink">{label}</label>
       {desc && <p className="text-xs text-ink-muted">{desc}</p>}
       <div className="flex h-11 rounded-lg border border-border/60 overflow-hidden bg-surface">
         <span className="flex items-center px-3 text-xs font-semibold text-ink-muted bg-surface border-r border-border/60 shrink-0">
           TTD
         </span>
         <input
+          id={name}
           type="text"
           inputMode="decimal"
           value={value === 0 ? '' : value}
@@ -83,9 +85,10 @@ export function ReadOnlyField({ label, value }) {
 export function SuggestedField({ label, name, value, onChange, suggestion, note, desc }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-sm font-medium text-ink">{label}</label>
+      <label htmlFor={name} className="text-sm font-medium text-ink">{label}</label>
       {desc && <p className="text-xs text-ink-muted">{desc}</p>}
       <input
+        id={name}
         type="text"
         inputMode="numeric"
         pattern="[0-9]*"

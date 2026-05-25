@@ -30,6 +30,7 @@ vi.mock('../steps/Step6DeliveriesService', () => ({ default: () => null }));
 vi.mock('../steps/Step7TimeManagement', () => ({ default: () => null }));
 vi.mock('../steps/Step8SelfEvaluation', () => ({ default: () => null }));
 vi.mock('../steps/Step9Goals', () => ({ default: () => null }));
+vi.mock('../steps/StepSocialMedia', () => ({ default: () => null }));
 
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({

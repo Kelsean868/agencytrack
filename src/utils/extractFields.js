@@ -57,6 +57,12 @@ export function extractFields(d) {
       targetAPI:                   p(s9.targetAPI),
       targetAppsSold:              p(s9.targetAppsSold),
       goalNotes:                   s9.goalNotes || '',
+      // Social & Content — stored flat even in nested schema submissions
+      socialPostsTotal:            p(d.socialPostsTotal),
+      socialEngagementTotal:       p(d.socialEngagementTotal),
+      socialInboxEnquiries:        p(d.socialInboxEnquiries),
+      namesFromSocial:             p(d.namesFromSocial),
+      socialPlatformBreakdown:     d.socialPlatformBreakdown ?? {},
     };
   } else {
     // Flat schema — current wizard + legacy submissions
@@ -103,6 +109,12 @@ export function extractFields(d) {
       targetAPI:                   p(d.targetAPI),
       targetAppsSold:              p(d.targetAppsSold),
       goalNotes:                   d.goalNotes || '',
+      // Social & Content
+      socialPostsTotal:            p(d.socialPostsTotal),
+      socialEngagementTotal:       p(d.socialEngagementTotal),
+      socialInboxEnquiries:        p(d.socialInboxEnquiries),
+      namesFromSocial:             p(d.namesFromSocial),
+      socialPlatformBreakdown:     d.socialPlatformBreakdown ?? {},
     };
   }
 

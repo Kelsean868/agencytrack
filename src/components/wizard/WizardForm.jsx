@@ -20,6 +20,7 @@ import Step6DeliveriesService from './steps/Step6DeliveriesService';
 import Step7TimeManagement    from './steps/Step7TimeManagement';
 import Step8SelfEvaluation    from './steps/Step8SelfEvaluation';
 import Step9Goals             from './steps/Step9Goals';
+import StepSocialMedia        from './steps/StepSocialMedia';
 
 const MAX_AUTOSAVE_RETRIES = 3;
 const FAILURE_STICKY_MS = 8000;
@@ -32,6 +33,7 @@ const SCREENS = [
     components: [
       [Step1Prospecting, false],
       [Step2Telephone,   false],
+      [StepSocialMedia,  false],
     ],
   },
   {
@@ -141,6 +143,17 @@ const INITIAL_DATA = {
   targetAppsSold:               0,
   targetAPI:                    0,
   goalNotes:                    '',
+  // Social & Content (StepSocialMedia)
+  socialPostsTotal:             0,
+  socialEngagementTotal:        0,
+  socialInboxEnquiries:         0,
+  namesFromSocial:              0,
+  socialPlatformBreakdown: {
+    facebook:  0,
+    instagram: 0,
+    whatsapp:  0,
+    linkedin:  0,
+  },
 };
 
 // screen: 'date' | 'step' | 'review' | 'done' | 'submitted'

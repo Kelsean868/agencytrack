@@ -2563,7 +2563,7 @@ Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `
   - **[PLANNED] Manager-side roll-up of floor adherence** — Track F adjacency: surface "agents below weekly floor" as a manager-overview signal alongside drill-down. Resolve in Track F design pass.
 Roadmap §3.5.
 
-- **[PLANNED] Small adds** — social/content KPIs (Track E sub-item: content pieces, engagement, inbox enquiries, names-from-social); Personal Growth/CPD log (Career Portal / Phase 8). Roadmap §3.4.
+- **[SHIPPED — Track E(c) PR #TBD `{SHA}`] Social/content KPIs wizard step** — new `StepSocialMedia.jsx` wired into WizardForm Screen 1 ("Prospecting & Calls") as 3rd sub-component; fields: `socialPostsTotal`, `socialEngagementTotal`, `socialInboxEnquiries`, `namesFromSocial`, `socialPlatformBreakdown` (Facebook/Instagram/WhatsApp/LinkedIn); collapsible per-platform breakdown toggle (local state, not persisted); `namesFromSocial` standalone (Step5NewNames frozen); `extractFields.js` updated for both schema variants; 7 tests in `StepSocialMedia.test.jsx`; `NumericField`/`CurrencyField`/`SuggestedField` in `CardStack.jsx` gain `htmlFor`/`id` a11y wiring. Personal Growth/CPD log (Career Portal / Phase 8) still planned. Roadmap §3.4.
 
 - **[RESOLVED] Workshop decisions** — Manager WAR = new Track I; prospect-info form lives in AgencyTrack (Tatil has no company CRM); Track H columns per §3.3; CRM stance = reporting/coaching side, behind §0 guardrail; future tightly-integrated CRM separately scoped.
 
