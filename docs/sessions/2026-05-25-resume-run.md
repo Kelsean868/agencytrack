@@ -17,7 +17,7 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 | Smoke harness — selectReactOption + domTextCount helpers; bank PR #248 lessons (LESSONS 6–8) | [#332](https://github.com/Kelsean868/agencytrack/pull/332) | `89fd201` | ✅ MERGED — CI green, no smoke (helpers-only), post-merge fill done |
 | Smoke harness — captureConsoleAndNetwork + formatCaptureReport; LESSON 9 | [#333](https://github.com/Kelsean868/agencytrack/pull/333) | `3d76d9a` | ✅ MERGED — CI green, no smoke (helpers-only), post-merge fill done |
 | A11y — sidebar-collapse-btn touch target 32×32 → 44×44 | [#334](https://github.com/Kelsean868/agencytrack/pull/334) | `5ba57cd` | ✅ MERGED — CI green, no smoke (CSS-only), post-merge fill done |
-| A11y — AgentDashboard KPI + Goals fake headings → h3 + section[aria-labelledby] | [#335](https://github.com/Kelsean868/agencytrack/pull/335) | — | ⏳ CI pending |
+| A11y — AgentDashboard KPI + Goals fake headings → h3 + section[aria-labelledby] | [#335](https://github.com/Kelsean868/agencytrack/pull/335) | `f4b679b` | ✅ MERGED — CI green, no smoke (semantic-only), post-merge fill done |
 
 ## Smoke artifacts needing manual Firebase Console cleanup
 
