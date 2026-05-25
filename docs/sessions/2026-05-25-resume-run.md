@@ -24,6 +24,8 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 
 | fix(smoke): e5-1-walk — fix 4 timing/selector checks (02/05/10/12) | [#338](https://github.com/Kelsean868/agencytrack/pull/338) | `e5d5aa1` | ✅ MERGED — CI green, no smoke (harness-only), post-merge fill done |
 
+| Rules test — submissions collection (21 cases: get/list agent-own+cross+BM+UM+kiosk, create/update/delete) | [#339](https://github.com/Kelsean868/agencytrack/pull/339) | — | ⏳ CI pending |
+
 ## Smoke artifacts needing manual Firebase Console cleanup
 
 Two smoke policies cannot be deleted via REST (`allow delete: if false` in rules):
