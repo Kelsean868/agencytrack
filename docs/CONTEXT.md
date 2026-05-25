@@ -12,8 +12,8 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (PR #311 — verification hygiene — merged ef32bd6) |
-| Current main HEAD | `ef32bd6` (PR #311 — reusable smoke scripts committed + .gitignore for ephemeral artifacts — merged) |
+| Last updated | 2026-05-25 (PR #312 — PolicyLedger A11Y label associations — merged d6a6ee9) |
+| Current main HEAD | `d6a6ee9` (PR #312 — FieldGroup htmlFor/id associations + role=alert error containers — merged) |
 | Active track | Track H — H2b (bulk/grouped policy polish), H2c (Lapsed status), H3 (`usesPolicyLedger` + awards engine switch); #305, #306 merged. Track E daily-entry FAB shipped (#307). |
 | Next track | H2b (§7.8 bulk/grouped policy polish); H2c (Lapsed status); H3 (usesPolicyLedger + awards engine switch). Track E: refined daily form field-mapping (dispatcher decisions needed). |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). Workshop §3.5 Tenant-Admin floors editor; Expected/Actual relabel sweep; true telephone-contacts wizard field. Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#312](https://github.com/Kelsean868/agencytrack/pull/312) | `d6a6ee9` | a11y(policy-ledger): FieldGroup label-input associations + role=alert error containers. `FieldGroup` gets `id`/`htmlFor` for label-input associations across both create form (18 fields) and transition modal (10 fields, `tx-` prefix). `role="alert"` on `saveError` and `txError` error display divs. 28/28 existing PolicyLedgerPanel tests pass; lint 0; build clean. No logic/behavior change. |
 | [#311](https://github.com/Kelsean868/agencytrack/pull/311) | `ef32bd6` | chore(verification): commit 17 reusable smoke scripts to repo (bm-notification, d3-awards, h1-2-history-display, h1-2-transition, h1-policy-ledger, h2-agent-conf-prod, h2-agent-conf-surfacing, h2a-confirmation, i1-3c-ii, i3b-escalation, pr296-roster-active, prospect-info, tenure-company-floor, tenure-prod-render, trackf-taxonomy, weekly-activity-floors, weekly-activity-floors-console-capture). `scripts/verification/.gitignore` ignores `*-screenshots/` dirs and `YYYY-MM-DDTHH-MM-SS-*` timestamped output files. `seed-weekly-floors-test-submission.mjs` committed. `_cleanup-temp.mjs` deleted. No source/UI change. |
 | [#310](https://github.com/Kelsean868/agencytrack/pull/310) | `738e5e9` | test(kiosk): deflake `KioskModeTab.toast.test.jsx` — "Generate fires a success toast on auto-copy success" added `{ timeout: 3000 }` to `waitFor`. Root cause: `handleCreate` has 3 sequential async hops (`httpsCallable fn()` → `loadTokens()` → `getDocs()` → `writeText()`) before `showToast` is called; default 1000ms was insufficient in slow CI. No source change. 1267/1267 vitest; lint 0; build clean. Closes banked KioskModeTab flakiness (PRs #276, #308). |
 | [#309](https://github.com/Kelsean868/agencytrack/pull/309) | `b4718fe` | test(agent): test backfill — PolicyLedgerPanel (+10 tests = 15 total: list view states, create form, transition modal), BadgeGrid (new, 7 tests: computeEarnedBadges logic + rendering), GapAnalysisPanel (new, 6 tests: loading/error/empty/layer-labels/title/Met-badge). `BadgeGrid.jsx` + `GapAnalysisPanel.jsx`: add `import React` (Vitest JSX transform). `vi.resetAllMocks()` fixes cross-test `mockResolvedValueOnce` queue contamination. 1267/1267 vitest; lint 0; build clean. |
@@ -220,11 +221,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**Overnight autonomous block (2026-05-25):** Queue 1 — regression smoke sweep 48/0/0 (`d1681f9`). Queue 2 — KioskModeTab deflake PR #310 (`738e5e9`). Queue 3 — repo hygiene PR #311 (`ef32bd6`). Queue 4 in flight — A11Y PR #312 (`a11y/policy-ledger-label-associations`) open, CI running.
+**Overnight autonomous block (2026-05-25):** Queue 1 — regression smoke sweep 48/0/0 (`d1681f9`). Queue 2 — KioskModeTab deflake PR #310 (`738e5e9`). Queue 3 — repo hygiene PR #311 (`ef32bd6`). Queue 4 — A11Y PR #312 (`d6a6ee9`) merged. Queue 5 — test backfill round 2 in progress on `test/backfill-round2`: DailyEntryModal (14 tests) + Leaderboard (10 tests) committed, PR pending.
 
-**Previous:** PR #310 (`738e5e9`) — kiosk deflake. PR #309 (`b4718fe`) — agent test backfill. PR #308 (`09b920f`) — nav testId. PR #307 (`f128deb`) — Track E DailyFAB.
+**Previous:** PR #312 (`d6a6ee9`) — PolicyLedger A11Y. PR #311 (`ef32bd6`) — verification hygiene. PR #310 (`738e5e9`) — kiosk deflake. PR #309 (`b4718fe`) — agent test backfill. PR #308 (`09b920f`) — nav testId.
 
-**Next:** Merge PR #312 (A11Y label associations) when CI green. Continue Queue 4 (DailyEntryModal minor a11y) + Queue 5 (test backfill round 2). H2b/H2c/H3 + Track G await dispatcher.
+**Next:** Open and merge `test/backfill-round2` PR. H2b/H2c/H3 + Track G await dispatcher.
 
 ---
 
