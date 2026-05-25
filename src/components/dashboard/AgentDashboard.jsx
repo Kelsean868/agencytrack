@@ -60,16 +60,16 @@ const KPIS = [
 // existing surfaces and are intentionally omitted from the rendered
 // sidebar (Submit Report stays as the bottom-nav action item below).
 const NAV_ITEMS = [
-  { id: 'dashboard',   label: 'Dashboard',   tabId: 'dashboard',   Icon: ClipboardList, sectionLabel: 'Workspace' },
-  { id: 'career',      label: 'Career',      tabId: 'career',      Icon: TrendingUp },
-  { id: 'prospect-info',  label: 'Joint-Call Prep', tabId: 'prospect-info',  Icon: UserSearch, testId: 'agent-tab-prospect-info' },
-  { id: 'policy-ledger', label: 'Policy Ledger',  tabId: 'policy-ledger',  Icon: BookOpen,   testId: 'agent-tab-policy-ledger' },
-  { id: 'awards',             label: 'Awards',            tabId: 'awards',             Icon: Trophy },
-  { id: 'persistency',        label: 'Persistency',       tabId: 'persistency',        Icon: TrendingUp,    testId: 'agent-tab-persistency' },
-  { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: BarChart2 },
-  { id: 'leaderboard',       label: 'Leaderboard',       tabId: 'leaderboard',       Icon: Star },
-  { id: 'history',     label: 'History',     tabId: 'history',     Icon: History },
-  { id: 'profile',     label: 'Profile',     tabId: 'profile',     Icon: UserCircle },
+  { id: 'dashboard',         label: 'Dashboard',        tabId: 'dashboard',         Icon: ClipboardList, sectionLabel: 'Workspace', testId: 'agent-tab-dashboard' },
+  { id: 'career',            label: 'Career',           tabId: 'career',            Icon: TrendingUp,    testId: 'agent-tab-career' },
+  { id: 'prospect-info',     label: 'Joint-Call Prep',  tabId: 'prospect-info',     Icon: UserSearch,    testId: 'agent-tab-prospect-info' },
+  { id: 'policy-ledger',     label: 'Policy Ledger',    tabId: 'policy-ledger',     Icon: BookOpen,      testId: 'agent-tab-policy-ledger' },
+  { id: 'awards',            label: 'Awards',           tabId: 'awards',            Icon: Trophy,        testId: 'agent-tab-awards' },
+  { id: 'persistency',       label: 'Persistency',      tabId: 'persistency',       Icon: TrendingUp,    testId: 'agent-tab-persistency' },
+  { id: 'production-report', label: 'Production Report',tabId: 'production-report', Icon: BarChart2,     testId: 'agent-tab-production-report' },
+  { id: 'leaderboard',       label: 'Leaderboard',      tabId: 'leaderboard',       Icon: Star,          testId: 'agent-tab-leaderboard' },
+  { id: 'history',           label: 'History',          tabId: 'history',           Icon: History,       testId: 'agent-tab-history' },
+  { id: 'profile',           label: 'Profile',          tabId: 'profile',           Icon: UserCircle,    testId: 'agent-tab-profile' },
 ];
 
 // Mobile bottom-nav per mock (lines 2227-2232). The "Submit" item is an
