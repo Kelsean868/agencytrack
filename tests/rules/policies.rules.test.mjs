@@ -148,6 +148,13 @@ async function main() {
       ...VALID_PAYLOAD,
       ...SETTLED_FIELDS,
     });
+    // H2c: dedicated rated policy untouched by Arm B tests — Arm D DENY (non-settled) test target.
+    // policy-a1-rated is mutated by the "rated → settled" ALLOW test, so we need a separate doc.
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-arm-d-rated`).set({
+      ...VALID_PAYLOAD,
+      status: 'rated',
+      ratedPremium: 1200,
+    });
   });
 
   const agentADb = testEnv.authenticatedContext('agent-a', authToken('agent')).firestore();
@@ -615,9 +622,11 @@ async function main() {
   );
 
   // BM tries to lapse a non-settled (rated) policy → DENY (resource.data.status != 'settled')
+  // Use policy-arm-d-rated (dedicated seed) — policy-a1-rated is transitioned to 'settled'
+  // by the earlier Arm B "rated → settled" ALLOW test and would incorrectly ALLOW here.
   await run('Arm D DENY: BM cannot lapse a non-settled (rated) policy', false, () =>
     updateDoc(
-      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-rated'),
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-arm-d-rated'),
       LAPSE_FIELDS
     )
   );
