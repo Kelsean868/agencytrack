@@ -22,7 +22,7 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 
 | Refactor — CampaignCard + GapAnalysisPanel bg-[#hex] → Tailwind palette utilities | [#337](https://github.com/Kelsean868/agencytrack/pull/337) | `ab2aa81` | ✅ MERGED — CI green, no smoke (CSS class swap, bundle verification), post-merge fill done |
 
-| fix(smoke): e5-1-walk — fix 4 timing/selector checks (02/05/10/12) | [#338](https://github.com/Kelsean868/agencytrack/pull/338) | — | ⏳ CI pending |
+| fix(smoke): e5-1-walk — fix 4 timing/selector checks (02/05/10/12) | [#338](https://github.com/Kelsean868/agencytrack/pull/338) | `e5d5aa1` | ✅ MERGED — CI green, no smoke (harness-only), post-merge fill done |
 
 ## Smoke artifacts needing manual Firebase Console cleanup
 

@@ -304,10 +304,6 @@ When in doubt, surface and ask.
 6. **WizardForm.jsx**: auto-save errors silently swallowed — **RESOLVED** (commit `57828d7`, 2026-05-02). Save errors surfaced via `AlertTriangle` + "Save failed — check connection" inline indicator in `WizardForm.jsx:153, 199-208, 306-311` (verified 2026-05-06). Genuine hardening opportunities (retry button, success indicator, offline-vs-failed distinction, `aria-live`) tracked in `docs/FOLLOW_UPS.md` § Wizard UX + A11y Hardening.
 7. **AgentDashboard.jsx**: dead html2canvas off-screen mount + 900ms setTimeout — **RESOLVED** (commit `0e9b6f2`, 2026-05-02): `refactor(dashboard): remove dead off-screen AgentReportDocument mount`. Verified: only an innocuous comment reference remains at `AgentReportDocument.jsx:5` (describes why react-pdf is used instead of html2canvas).
 
-## Cosmetic Inconsistencies (low priority, not blocking)
-- `MotivationalCarousel.jsx:367` uses hex literal `bg-[#01696f]/8` instead of CSS var
-- A few components use `bg-[var(--color-surface)]` arbitrary syntax instead of `bg-card` utility — works fine, just inconsistent
-
 ## Lint Policy
 
 `npm run lint`, `npm test`, and `npm run build` must all pass before any push. This is enforced by `.github/workflows/ci.yml` (lint + tests + build on every PR to main).

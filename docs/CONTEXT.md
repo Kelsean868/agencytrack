@@ -12,8 +12,8 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (#337 post-merge fill — ab2aa81) |
-| Current main HEAD | `ab2aa81` (PR #337 — CampaignCard + GapAnalysisPanel bg-[#hex] → Tailwind palette) |
+| Last updated | 2026-05-25 (#338 post-merge fill — e5d5aa1) |
+| Current main HEAD | `e5d5aa1` (PR #338 — fix(smoke): e5-1-walk 4 timing/selector checks) |
 | Active track | Queue filler: a11y/states hardening; PR-OPEN drafts (G skeleton, H4, BEH-1); E2E harness generalize. |
 | Next track | H4 plan config; Track G skeleton; BEH-1 WelcomeScreen stub; E2E harness generalize; a11y/states hardening. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
@@ -227,11 +227,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**2026-05-25 resume run — H2c COMPLETE:** PR #321 (`900a473`) — Track H H2c BM-only lapsed status + agent notification + H11 lapse chip. Emulator 57/57. Two-actor production smoke 13/13 (lapse written, REST-verified, agent ledger shows badge+chip, notification in drawer + REST). `firestore.rules` Arm D deployed. Two smoke-artifact policies left in prod (no delete rule) — manual Firebase Console cleanup needed: `HkCEEWHETEbXOPLN4Nay` (settled, ownerName SMOKE-H2C-1779718651986), `Cs3rA54SQkdByyZzoFQO` (lapsed, ownerName SMOKE-H2C-1779718879583).
+**2026-05-25 resume run — 18 PRs shipped, continuing:** #321 (H2c lapsed — emulator 57/57, smoke 13/13), #322 (E(d) a11y), #323 (H3 PR-OPEN), #324 (H12), #325 (J2), #326 (rules persistency), #327 (hygiene getPeriodCtx), #328 (CI doc), #329 (tenure floors cleanup), #330 (UX submissions error), #332–333 (smoke harness helpers), #334 (a11y sidebar), #335 (a11y headings), #336 (kiosk hex→tokens), #337 (campaign/gap hex→Tailwind), #338 (e5-1-walk selector fixes). Two smoke-artifact policies left in prod for manual Firebase Console cleanup: `HkCEEWHETEbXOPLN4Nay` (settled, SMOKE-H2C-1779718651986), `Cs3rA54SQkdByyZzoFQO` (lapsed, SMOKE-H2C-1779718879583).
 
-**Previous:** PR #319 (`fc5ea10`) — Track E(c) social/content KPIs. PR #313 (`23e7ecf`) — test backfill round 2. PR #312 (`d6a6ee9`) — PolicyLedger A11Y. PR #311 (`ef32bd6`) — verification hygiene.
+**#319 social-capture finding (operator record):** Placed in weekly WIZARD Screen 1 only. Fields: `socialPostsTotal`, `socialEngagementTotal`, `socialInboxEnquiries`, `namesFromSocial`, `socialPlatformBreakdown {facebook,instagram,whatsapp,linkedin}` (collapsible post-count-per-platform). Lead-source-by-platform NOT included — no `socialPlatform` on any source path; `namesFromSocial` is a single aggregate count.
 
-**Next:** Queue item 2 — Track E remainder (Expected/Actual relabel, E(d) daily-form refinements, report #319 social capture placement). Queue item 3 — H3 awards usesPolicyLedger flag (PR-OPEN only). Queue items 4–6 — expanded filler, PR-OPEN drafts, E2E harness generalize.
+**Expected/Actual relabel (queue item 2a):** Source audit complete — no code change required. WeeklyStandardCard (PR #238) is the authoritative "Expected vs Actual" surface; other panels use semantically-correct award-domain labels.
+
+**Next:** Continue queue items 4–6 — expanded filler PRs, PR-OPEN drafts (Track G skeleton, H4 config, BEH-1 stub), E2E harness generalize.
 
 ---
 
