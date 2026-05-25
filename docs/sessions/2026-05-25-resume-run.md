@@ -18,7 +18,7 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 | Smoke harness — captureConsoleAndNetwork + formatCaptureReport; LESSON 9 | [#333](https://github.com/Kelsean868/agencytrack/pull/333) | `3d76d9a` | ✅ MERGED — CI green, no smoke (helpers-only), post-merge fill done |
 | A11y — sidebar-collapse-btn touch target 32×32 → 44×44 | [#334](https://github.com/Kelsean868/agencytrack/pull/334) | `5ba57cd` | ✅ MERGED — CI green, no smoke (CSS-only), post-merge fill done |
 | A11y — AgentDashboard KPI + Goals fake headings → h3 + section[aria-labelledby] | [#335](https://github.com/Kelsean868/agencytrack/pull/335) | `f4b679b` | ✅ MERGED — CI green, no smoke (semantic-only), post-merge fill done |
-| Refactor — KioskShell + KioskRoute hex literals → presentation token family | [#336](https://github.com/Kelsean868/agencytrack/pull/336) | — | ⏳ CI pending |
+| Refactor — KioskShell + KioskRoute hex literals → presentation token family | [#336](https://github.com/Kelsean868/agencytrack/pull/336) | `f0a5857` | ✅ MERGED — CI green, no smoke (CSS token swap, static bundle verification), post-merge fill done |
 
 ## Smoke artifacts needing manual Firebase Console cleanup
 
