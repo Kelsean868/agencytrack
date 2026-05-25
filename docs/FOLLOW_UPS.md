@@ -1857,16 +1857,14 @@ the brief — `verifyBeforeUpdateEmail` is the correct safer API.
 
 ---
 
-## APP_MANUAL historical references cleanup
+## ~~APP_MANUAL historical references cleanup~~
 
 **Scope:** Several components contain `// APP_MANUAL` comments that were added during early
 development to flag hand-maintained data (e.g. hardcoded branch lists, company minimums
 duplicated in UI). Many of these are now served from Firestore (`config/settings`) but the
 comments were never removed.
 
-- `grep -r "APP_MANUAL" src/` to find all sites
-- For each: verify whether the value is now dynamic (remove comment) or still hardcoded (file a separate ticket)
-- Update this document with findings
+**Closure (audit 2026-05-25):** `git grep "APP_MANUAL" src/` → zero hits. All APP_MANUAL comments have already been removed in prior refactors. No code change required.
 
 ---
 
@@ -1886,7 +1884,7 @@ inconsistent.
 
 Priority: LOW. A11y-positive but cosmetic; B3 introduced no regressions. Surfaced during the B3 audit.
 
-**Closure (PR #335, `{TBD}`):** KPI + Goals sections now use `<h3>` + `<section aria-labelledby>`. ManagerDashboard clean (no fake headings). No heading levels skipped.
+**Closure (PR #335, `f4b679b`):** KPI + Goals sections now use `<h3>` + `<section aria-labelledby>`. ManagerDashboard clean (no fake headings). No heading levels skipped.
 
 ---
 
@@ -1906,7 +1904,7 @@ reachable as of PR #56.
 
 Priority: **LOW**. Surfaced as a Q2 deferral during the PR #56 triage.
 
-**Closure (PR #334, `{TBD}`):** Bumped to 44×44 in `src/index.css`.
+**Closure (PR #334, `5ba57cd`):** Bumped to 44×44 in `src/index.css`.
 
 ---
 
