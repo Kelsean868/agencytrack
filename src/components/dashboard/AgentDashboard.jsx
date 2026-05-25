@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
 import {
-  X, Eye, Download, Loader2,
+  X, Eye, Download, Loader2, AlertTriangle,
   ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle, BarChart2, UserSearch, BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -110,6 +110,7 @@ export default function AgentDashboard() {
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [hierarchyError, setHierarchyError]     = useState(null);
   const [showWelcome, setShowWelcome]           = useState(false);
+  const [submissionsError, setSubmissionsError] = useState(null);
 
   const currentWeek  = useMemo(() => getMostRecentSunday(), []);
   const thisYear     = new Date().getFullYear();
@@ -137,9 +138,13 @@ export default function AgentDashboard() {
   useEffect(() => {
     if (!user?.uid || !tenantId) return;
     setLoading(true);
+    setSubmissionsError(null);
     Promise.all([
       getDraft(tenantId, user.uid, currentWeek).catch(() => null),
-      getAgentSubmissions(tenantId, user.uid).catch(() => []),
+      getAgentSubmissions(tenantId, user.uid).catch((err) => {
+        setSubmissionsError(err?.code === 'permission-denied' ? 'permission-denied' : 'load-error');
+        return [];
+      }),
       getGoals(tenantId, user.uid).catch(() => null),
       getAgentHistory(tenantId, user.uid, 12).catch(() => []),
       getSettlements(tenantId, user.uid, thisYear).catch(() => []),
@@ -453,6 +458,23 @@ export default function AgentDashboard() {
             <p className="text-ink-muted text-sm">Welcome back,</p>
             <h2 className="text-xl font-bold text-ink">{displayName}</h2>
           </div>
+
+          {/* Submissions load-error banner — surfaces permission-denied and
+              other query failures that would otherwise render silently as an
+              empty dashboard. */}
+          {submissionsError && (
+            <div
+              role="alert"
+              className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-danger-tint border border-danger/20 text-danger"
+            >
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-sm font-medium">
+                {submissionsError === 'permission-denied'
+                  ? 'Could not load your activity data — permission denied. Contact your manager if this persists.'
+                  : 'Could not load your activity data. Check your connection and refresh.'}
+              </p>
+            </div>
+          )}
 
           {/* Goal carousel hero (Design System v2 — B2). Replaces the
               YTD API Progress card at the top-of-dashboard slot. */}
