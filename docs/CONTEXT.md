@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (Track G autonomous run — G6 post-merge fill) |
-| Current main HEAD | `2eac4c2` (PR #350 — feat(money-needs): Track G G6 — Commission Targets + Send to Playground) |
-| Active track | Track G G7 — Soft Validation + PAYE Refresh (next up in autonomous run) |
-| Next track | G7 — Soft Validation; G5 — Privacy (PR-OPEN). |
+| Last updated | 2026-05-25 (Track G autonomous run — G7 post-merge fill) |
+| Current main HEAD | `a14e64a` (PR #352 — feat(money-needs): Track G G7 — Soft Validation + PAYE Refresh) |
+| Active track | Track G G5 — Privacy + Opt-In Share (PR-OPEN only, final slice) |
+| Next track | G5 — Privacy (PR-OPEN dispatcher review before merge). Track G complete after G5. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
