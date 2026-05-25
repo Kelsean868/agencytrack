@@ -41,11 +41,15 @@ export async function getCompanyMinimums(tenantId) {
   };
 }
 
-// Write helper for the tenant_admin Company Config surface (Design System v2 — B5).
-// Only `annualAPI` is editable in B5; other fields on the doc (`annualApps`,
-// `persistency`) are preserved via merge. Validation: positive number, <=
-// 10,000,000 (10x Agent of the Year aspirational individual goal — basis
-// documented in B5 PR description).
+// Write helper for the tenant_admin Company Config surface (Design System v2 — B5;
+// extended Track E(b) to include weeklyActivityFloors).
+//
+// `data.annualAPI` — required; positive number ≤ 10,000,000.
+// `data.weeklyActivityFloors` — optional object. When present, each key is validated:
+//   - all keys: parseFloat, must be >= 0.
+//   - non-`api` keys: must be a whole number (integer).
+//   - `api` key: positive number (decimals OK).
+//   Absent = floor block unchanged (merge: true preserves existing doc value).
 //
 // Audit trail (locked, see B5 plan §7): `updatedBy` (uid) and `updatedAt`
 // (server timestamp) are written on the doc itself. No separate audit
@@ -59,12 +63,30 @@ export async function setCompanyMinimums(tenantId, data, updatedBy) {
     throw new Error('Company minimum API cannot exceed TTD 10,000,000.');
   }
 
+  const payload = { annualAPI, updatedBy, updatedAt: serverTimestamp() };
+
+  // Optional weeklyActivityFloors block — validate and include when provided.
+  if (data.weeklyActivityFloors && typeof data.weeklyActivityFloors === 'object') {
+    const validated = {};
+    for (const [key, rawVal] of Object.entries(data.weeklyActivityFloors)) {
+      const val = parseFloat(rawVal);
+      if (!Number.isFinite(val) || val < 0) {
+        throw new Error(`Weekly floor "${key}" must be a non-negative number.`);
+      }
+      if (key === 'api') {
+        if (val <= 0) throw new Error('Weekly API floor must be a positive number.');
+      } else {
+        if (!Number.isInteger(val)) {
+          throw new Error(`Weekly floor "${key}" must be a whole number.`);
+        }
+      }
+      validated[key] = val;
+    }
+    payload.weeklyActivityFloors = validated;
+  }
+
   const ref = doc(db, `tenants/${tenantId}/config/companyMinimums`);
-  await setDoc(ref, {
-    annualAPI,
-    updatedBy,
-    updatedAt: serverTimestamp(),
-  }, { merge: true });
+  await setDoc(ref, payload, { merge: true });
 }
 
 export async function setGoals(tenantId, agentId, data, setBy, setByName) {

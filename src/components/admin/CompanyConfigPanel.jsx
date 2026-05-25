@@ -109,7 +109,7 @@ export default function CompanyConfigPanel() {
             Company configuration
           </h2>
           <p className="text-sm text-ink-muted mt-0.5">
-            Tenant-wide defaults · Only the company minimum is editable in this release
+            Tenant-wide defaults · Annual API minimum and weekly activity floors are editable
           </p>
         </div>
         <button
@@ -117,10 +117,10 @@ export default function CompanyConfigPanel() {
           onClick={() => setEditing(true)}
           disabled={loading || !!readError}
           className="h-11 px-4 rounded-lg bg-primary/10 text-primary text-sm font-semibold flex items-center gap-2 hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-          aria-label="Edit company minimum API"
+          aria-label="Edit company configuration"
         >
           <Pencil size={14} aria-hidden="true" />
-          <span>Edit company minimum</span>
+          <span>Edit company config</span>
         </button>
       </div>
 
@@ -151,6 +151,7 @@ export default function CompanyConfigPanel() {
         <EditConfigModal
           tenantId={tenantId}
           currentAnnualAPI={annualAPI}
+          currentFloors={config?.weeklyActivityFloors}
           currentUid={user?.uid ?? null}
           onClose={() => setEditing(false)}
           onSaved={() => { loadConfig(); }}

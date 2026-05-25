@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { X, AlertTriangle, Loader2 } from 'lucide-react';
 import { setCompanyMinimums } from '../../services/goalsService';
 import { formatCurrency } from '../../utils/formatters';
+import { WEEKLY_ACTIVITY_FLOOR_ROWS, DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
 
 /**
  * Edit Company Configuration modal (Design System v2 — B5).
@@ -43,14 +44,38 @@ function focusableWithin(node) {
   ));
 }
 
+// Build initial floors draft from provided currentFloors (falling back to defaults).
+function initFloorsDraft(currentFloors) {
+  const merged = { ...DEFAULT_WEEKLY_ACTIVITY_FLOORS, ...(currentFloors ?? {}) };
+  return Object.fromEntries(
+    WEEKLY_ACTIVITY_FLOOR_ROWS.map((row) => [row.key, String(merged[row.key] ?? '')])
+  );
+}
+
+// Per-row validation — mirrors goalsService server-side rules.
+function floorError(key, rawVal) {
+  if (rawVal.trim() === '') return 'Required.';
+  const val = parseFloat(rawVal);
+  if (!Number.isFinite(val) || val < 0) return 'Must be a non-negative number.';
+  if (key === 'api') {
+    if (val <= 0) return 'Must be a positive number.';
+  } else {
+    if (!Number.isInteger(val)) return 'Must be a whole number (no decimals).';
+  }
+  return null;
+}
+
 export default function EditConfigModal({
   tenantId,
   currentAnnualAPI,
+  currentFloors,
   currentUid,
   onClose,
   onSaved,
 }) {
   const [value, setValue] = useState(String(currentAnnualAPI ?? ''));
+  const [floorsDraft, setFloorsDraft] = useState(() => initFloorsDraft(currentFloors));
+  const [floorsTouched, setFloorsTouched] = useState({});
   const [touched, setTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -113,12 +138,29 @@ export default function EditConfigModal({
     return null;
   }, [value, touched]);
 
+  // Per-row floor errors (only shown after the row has been touched).
+  const floorErrors = useMemo(() => {
+    const errs = {};
+    for (const row of WEEKLY_ACTIVITY_FLOOR_ROWS) {
+      if (floorsTouched[row.key]) {
+        const e = floorError(row.key, floorsDraft[row.key] ?? '');
+        if (e) errs[row.key] = e;
+      }
+    }
+    return errs;
+  }, [floorsDraft, floorsTouched]);
+
+  const hasAnyFloorError = useMemo(
+    () => WEEKLY_ACTIVITY_FLOOR_ROWS.some((r) => floorError(r.key, floorsDraft[r.key] ?? '') !== null),
+    [floorsDraft]
+  );
+
   const parsedValue = parseFloat(value);
   const hasUsableValue = Number.isFinite(parsedValue) && parsedValue > 0;
   const newValueDisplay = hasUsableValue ? formatCurrency(parsedValue) : '—';
   const currentDisplay = formatCurrency(currentAnnualAPI ?? 0);
   const noChange = hasUsableValue && parsedValue === currentAnnualAPI;
-  const canSave = !saving && !validationError && hasUsableValue && !noChange;
+  const canSave = !saving && !validationError && hasUsableValue && !noChange && !hasAnyFloorError;
 
   function handleChange(e) {
     // Strip everything except digits and a single decimal point.
@@ -128,15 +170,30 @@ export default function EditConfigModal({
     if (submitError) setSubmitError(null);
   }
 
+  function handleFloorChange(key, rawVal) {
+    // Allow only digits and a single decimal point.
+    const next = rawVal.replace(/[^0-9.]/g, '').replace(/(\..*)\./g, '$1');
+    setFloorsDraft((prev) => ({ ...prev, [key]: next }));
+    setFloorsTouched((prev) => ({ ...prev, [key]: true }));
+    if (submitError) setSubmitError(null);
+  }
+
   async function handleSave() {
     setTouched(true);
-    if (validationError || !hasUsableValue) return;
+    // Mark all floor rows as touched to surface any validation errors.
+    setFloorsTouched(Object.fromEntries(WEEKLY_ACTIVITY_FLOOR_ROWS.map((r) => [r.key, true])));
+    if (validationError || !hasUsableValue || hasAnyFloorError) return;
 
     setSaving(true);
     setSubmitError(null);
 
+    // Build validated floors payload.
+    const weeklyActivityFloors = Object.fromEntries(
+      WEEKLY_ACTIVITY_FLOOR_ROWS.map((r) => [r.key, parseFloat(floorsDraft[r.key])])
+    );
+
     try {
-      await setCompanyMinimums(tenantId, { annualAPI: parsedValue }, currentUid);
+      await setCompanyMinimums(tenantId, { annualAPI: parsedValue, weeklyActivityFloors }, currentUid);
       onSaved?.(parsedValue);
       onClose();
     } catch (err) {
@@ -169,102 +226,158 @@ export default function EditConfigModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
-        className="bg-surface-raised rounded-2xl shadow-xl w-full max-w-md p-6 border border-border"
+        className="bg-surface-raised rounded-2xl shadow-xl w-full max-w-md border border-border flex flex-col max-h-[90vh]"
       >
-        <div className="flex items-start justify-between mb-1 gap-4">
-          <h2 id={headingId} className="text-lg font-bold text-ink">Edit company minimum</h2>
+        {/* Fixed header */}
+        <div className="p-6 pb-0 shrink-0">
+          <div className="flex items-start justify-between mb-1 gap-4">
+            <h2 id={headingId} className="text-lg font-bold text-ink">Edit company config</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="w-11 h-11 -m-1.5 flex items-center justify-center rounded-full text-ink-muted hover:text-ink transition-colors shrink-0 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              aria-label="Close"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <p id={helpId} className="text-sm text-ink-muted mb-4">
+            Set the company minimum annual API and weekly activity floors. All personal commitments must meet these floors.
+          </p>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="overflow-y-auto px-6 pb-0 flex-1">
+          {/* Annual API */}
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
+            Annual API (TTD)
+          </p>
+          <div className="mb-4">
+            <label
+              htmlFor="annualAPI"
+              className="block text-xs text-ink-muted mb-1"
+            >
+              Minimum per agent (all personal commitments must meet this floor)
+            </label>
+            <input
+              id="annualAPI"
+              type="text"
+              inputMode="numeric"
+              value={value}
+              onChange={handleChange}
+              onBlur={() => setTouched(true)}
+              disabled={saving}
+              autoComplete="off"
+              aria-describedby={validationError ? `${helpId} ${errorId}` : helpId}
+              aria-invalid={validationError ? true : undefined}
+              className="w-full h-11 px-3 rounded-lg border border-border bg-card text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
+            />
+            {validationError && (
+              <div
+                id={errorId}
+                role="alert"
+                aria-live="polite"
+                className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"
+              >
+                <AlertTriangle size={14} aria-hidden="true" />
+                <span>{validationError}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="mb-4 p-3 rounded-lg bg-card border border-border text-sm">
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-ink-muted">Currently</span>
+              <span className="font-semibold text-ink">{currentDisplay}</span>
+            </div>
+            <div className="flex items-center justify-between gap-4 mt-1">
+              <span className="text-ink-muted">New</span>
+              <span className="font-semibold text-primary">{newValueDisplay}</span>
+            </div>
+          </div>
+
+          {/* Weekly Activity Floors */}
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2 mt-2">
+            Weekly Activity Floors
+          </p>
+          <p className="text-xs text-ink-muted mb-3">
+            Minimum weekly activity for each metric. Agents below a floor are shown "Below" on their dashboard.
+          </p>
+          <div className="flex flex-col gap-3 mb-4">
+            {WEEKLY_ACTIVITY_FLOOR_ROWS.map((row) => {
+              const rowErrId = `floor-err-${row.key}`;
+              const hasErr = !!floorErrors[row.key];
+              return (
+                <div key={row.key}>
+                  <div className="flex items-center gap-3">
+                    <label
+                      htmlFor={`floor-${row.key}`}
+                      className="flex-1 text-sm text-ink"
+                    >
+                      {row.label}
+                    </label>
+                    <input
+                      id={`floor-${row.key}`}
+                      type="text"
+                      inputMode={row.isCurrency ? 'decimal' : 'numeric'}
+                      value={floorsDraft[row.key] ?? ''}
+                      onChange={(e) => handleFloorChange(row.key, e.target.value)}
+                      onBlur={() => setFloorsTouched((prev) => ({ ...prev, [row.key]: true }))}
+                      disabled={saving}
+                      aria-invalid={hasErr ? true : undefined}
+                      aria-describedby={hasErr ? rowErrId : undefined}
+                      className="w-28 h-10 px-3 rounded-lg border border-border bg-card text-ink text-right text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
+                    />
+                  </div>
+                  {hasErr && (
+                    <p id={rowErrId} className="mt-1 text-xs text-red-600 dark:text-red-400 text-right">
+                      {floorErrors[row.key]}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Fixed footer */}
+        <div className="px-6 py-4 shrink-0 border-t border-border/60">
+          {submitError && (
+            <div
+              role="alert"
+              aria-live="polite"
+              className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300 flex items-start gap-2"
+            >
+              <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={!canSave}
+            className="btn-primary w-full mb-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? (
+              <>
+                <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                <span>Saving…</span>
+              </>
+            ) : (
+              <span>Save changes</span>
+            )}
+          </button>
           <button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="w-11 h-11 -m-1.5 flex items-center justify-center rounded-full text-ink-muted hover:text-ink transition-colors shrink-0 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-            aria-label="Close"
+            className="w-full h-11 text-center text-sm text-ink-muted hover:text-ink transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-lg"
           >
-            <X size={16} />
+            Cancel
           </button>
         </div>
-        <p id={helpId} className="text-sm text-ink-muted mb-5">
-          Minimum annual API per agent, in TTD. All personal commitments must meet this floor.
-        </p>
-
-        <div className="mb-4">
-          <label
-            htmlFor="annualAPI"
-            className="block text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2"
-          >
-            Annual API (TTD)
-          </label>
-          <input
-            id="annualAPI"
-            type="text"
-            inputMode="numeric"
-            value={value}
-            onChange={handleChange}
-            onBlur={() => setTouched(true)}
-            disabled={saving}
-            autoComplete="off"
-            aria-describedby={validationError ? `${helpId} ${errorId}` : helpId}
-            aria-invalid={validationError ? true : undefined}
-            className="w-full h-11 px-3 rounded-lg border border-border bg-card text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
-          />
-          {validationError && (
-            <div
-              id={errorId}
-              role="alert"
-              aria-live="polite"
-              className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1.5"
-            >
-              <AlertTriangle size={14} aria-hidden="true" />
-              <span>{validationError}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="mb-5 p-3 rounded-lg bg-card border border-border text-sm">
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-ink-muted">Currently</span>
-            <span className="font-semibold text-ink">{currentDisplay}</span>
-          </div>
-          <div className="flex items-center justify-between gap-4 mt-1">
-            <span className="text-ink-muted">New</span>
-            <span className="font-semibold text-primary">{newValueDisplay}</span>
-          </div>
-        </div>
-
-        {submitError && (
-          <div
-            role="alert"
-            aria-live="polite"
-            className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-700 dark:text-red-300 flex items-start gap-2"
-          >
-            <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-            <span>{submitError}</span>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={!canSave}
-          className="btn-primary w-full mb-3 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {saving ? (
-            <>
-              <Loader2 size={16} className="animate-spin" aria-hidden="true" />
-              <span>Saving…</span>
-            </>
-          ) : (
-            <span>Save changes</span>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          disabled={saving}
-          className="w-full h-11 text-center text-sm text-ink-muted hover:text-ink transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-lg"
-        >
-          Cancel
-        </button>
       </div>
     </div>
   );
