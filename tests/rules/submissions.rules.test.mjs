@@ -1,0 +1,312 @@
+/**
+ * Emulator rules tests — submissions collection.
+ *
+ * Run with:
+ *   firebase emulators:exec --only firestore \
+ *     "node tests/rules/submissions.rules.test.mjs"
+ *
+ * Requires: Java JDK 17+ for the Firestore emulator.
+ *
+ * Test matrix (21 cases):
+ *   allow get
+ *     1. Agent reads own submission → ALLOW
+ *     2. Agent reads another agent's submission → DENY
+ *     3. BM reads any in-tenant submission → ALLOW
+ *     4. UM reads submission where unitId == callerUid → ALLOW
+ *     5. UM reads submission where unitId != callerUid → DENY
+ *     6. Kiosk reads submission → ALLOW
+ *     7. Cross-tenant auth → DENY
+ *
+ *   allow list (CRITICAL — `canAccessOwn` arm was dropped in SHAKEDOWN-002B
+ *               regression; restored in hotfix PR #298)
+ *     8.  Agent self-list (agentId == uid query) → ALLOW
+ *     9.  Agent lists another agent's docs → DENY
+ *    10.  BM lists all in-tenant → ALLOW
+ *    11.  UM lists own-unit docs (unitId == callerUid resource) → ALLOW
+ *    12.  UM sees cross-unit doc → DENY
+ *
+ *   allow create
+ *    13. Agent creates own submission (agentId == uid) → ALLOW
+ *    14. Agent creates submission for another agent → DENY
+ *    15. BM creates submission → ALLOW
+ *
+ *   allow update
+ *    16. Agent updates own draft submission → ALLOW
+ *    17. Agent updates own non-draft (submitted) → DENY
+ *    18. BM updates any submission → ALLOW
+ *    19. Agent updates another agent's draft → DENY
+ *
+ *   allow delete
+ *    20. BM delete → DENY
+ *    21. Agent delete → DENY
+ */
+
+import {
+  initializeTestEnvironment,
+  assertFails,
+  assertSucceeds,
+} from '@firebase/rules-unit-testing';
+import {
+  getDoc,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  getDocs,
+  collection,
+  query,
+  where,
+  doc,
+} from 'firebase/firestore';
+
+const PROJECT_ID  = process.env.GCLOUD_PROJECT ?? 'agencytrack-2a610';
+const TENANT_ID   = 'submissions-rules-test-tenant';
+const OTHER_TENANT = 'other-tenant';
+
+const [EMU_HOST, EMU_PORT_STR] = (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':');
+const EMU_PORT = parseInt(EMU_PORT_STR ?? '8080', 10);
+
+// Actor UIDs
+const TA_ID     = 'ta1';
+const BM_ID     = 'bm1';
+const UM_ID     = 'um1';      // UM's UID also serves as the unit's ID
+const AGENT1_ID = 'agent1';   // unit-a (UM_ID)
+const AGENT2_ID = 'agent2';   // unit-b (different UM)
+const KIOSK_ID  = 'kiosk1';
+const AGENT_X   = 'agent-x';  // cross-tenant
+
+// Submission doc IDs
+const SUB_DRAFT_ID     = 'sub-draft-agent1';    // agent1's draft
+const SUB_SUBMITTED_ID = 'sub-submitted-agent1'; // agent1's submitted
+const SUB_AGENT2_ID    = 'sub-agent2';           // agent2's doc (different unit)
+
+function authToken(role, tenantId = TENANT_ID) {
+  return { role, tenantId };
+}
+
+function userRef(db, uid, tenantId = TENANT_ID) {
+  return doc(db, `tenants/${tenantId}/users/${uid}`);
+}
+
+function subRef(db, subId, tenantId = TENANT_ID) {
+  return doc(db, `tenants/${tenantId}/submissions/${subId}`);
+}
+
+function draftDoc(agentId, unitId) {
+  return {
+    agentId,
+    unitId,
+    branchId:     'branch-a',
+    tenantId:     TENANT_ID,
+    status:       'draft',
+    weekStarting: '2026-05-19',
+    apiSold:      0,
+    applicationsSold: 0,
+  };
+}
+
+function submittedDoc(agentId, unitId) {
+  return { ...draftDoc(agentId, unitId), status: 'submitted' };
+}
+
+async function seedDocs(testEnv) {
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    const db = ctx.firestore();
+
+    const user = (uid, role, unitId = null) => ({
+      uid, role, tenantId: TENANT_ID, branchId: 'branch-a', unitId, name: `User ${uid}`, active: true,
+    });
+
+    await setDoc(userRef(db, TA_ID),     user(TA_ID,     'tenant_admin'));
+    await setDoc(userRef(db, BM_ID),     user(BM_ID,     'branch_manager'));
+    await setDoc(userRef(db, UM_ID),     user(UM_ID,     'unit_manager', UM_ID));
+    await setDoc(userRef(db, AGENT1_ID), user(AGENT1_ID, 'agent',        UM_ID));
+    await setDoc(userRef(db, AGENT2_ID), user(AGENT2_ID, 'agent',        'um2'));
+
+    await setDoc(subRef(db, SUB_DRAFT_ID),     draftDoc(AGENT1_ID, UM_ID));
+    await setDoc(subRef(db, SUB_SUBMITTED_ID), submittedDoc(AGENT1_ID, UM_ID));
+    await setDoc(subRef(db, SUB_AGENT2_ID),    submittedDoc(AGENT2_ID, 'um2'));
+  });
+}
+
+// ── Test harness ──────────────────────────────────────────────────────────────
+let passed = 0;
+let failed = 0;
+
+async function t(label, fn) {
+  try {
+    await fn();
+    console.log(`  ✓ ${label}`);
+    passed++;
+  } catch (err) {
+    console.error(`  ✗ ${label}`);
+    console.error(`    ${err.message?.slice(0, 200) ?? err}`);
+    failed++;
+  }
+}
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+async function main() {
+  console.log('Submissions — Firestore emulator rules tests');
+  console.log(`Emulator: ${EMU_HOST}:${EMU_PORT}\n`);
+
+  const testEnv = await initializeTestEnvironment({
+    projectId: PROJECT_ID,
+    firestore:  { host: EMU_HOST, port: EMU_PORT },
+  });
+
+  await testEnv.clearFirestore();
+  await seedDocs(testEnv);
+
+  // ── allow get ─────────────────────────────────────────────────────────────
+  console.log('\nallow get:');
+
+  await t('1. Agent reads own submission → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    await assertSucceeds(getDoc(subRef(db, SUB_DRAFT_ID)));
+  });
+
+  await t("2. Agent reads another agent's submission → DENY", async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    await assertFails(getDoc(subRef(db, SUB_AGENT2_ID)));
+  });
+
+  await t('3. BM reads any in-tenant submission → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
+    await assertSucceeds(getDoc(subRef(db, SUB_DRAFT_ID)));
+  });
+
+  await t('4. UM reads submission where unitId == callerUid → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(UM_ID, authToken('unit_manager')).firestore();
+    await assertSucceeds(getDoc(subRef(db, SUB_DRAFT_ID)));
+  });
+
+  await t('5. UM reads submission where unitId != callerUid → DENY', async () => {
+    const db = testEnv.authenticatedContext(UM_ID, authToken('unit_manager')).firestore();
+    await assertFails(getDoc(subRef(db, SUB_AGENT2_ID)));
+  });
+
+  await t('6. Kiosk reads submission → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(KIOSK_ID, authToken('kiosk')).firestore();
+    await assertSucceeds(getDoc(subRef(db, SUB_DRAFT_ID)));
+  });
+
+  await t('7. Cross-tenant auth → DENY', async () => {
+    const db = testEnv.authenticatedContext(AGENT_X, authToken('agent', OTHER_TENANT)).firestore();
+    await assertFails(getDoc(subRef(db, SUB_DRAFT_ID)));
+  });
+
+  // ── allow list ────────────────────────────────────────────────────────────
+  console.log('\nallow list (CRITICAL — regression vector from SHAKEDOWN-002B / hotfix PR #298):');
+
+  await t('8. Agent self-list (agentId == uid query) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    const q  = query(
+      collection(db, `tenants/${TENANT_ID}/submissions`),
+      where('agentId', '==', AGENT1_ID),
+    );
+    await assertSucceeds(getDocs(q));
+  });
+
+  await t("9. Agent lists another agent's docs → DENY", async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    const q  = query(
+      collection(db, `tenants/${TENANT_ID}/submissions`),
+      where('agentId', '==', AGENT2_ID),
+    );
+    await assertFails(getDocs(q));
+  });
+
+  await t('10. BM lists all in-tenant submissions → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
+    await assertSucceeds(getDocs(collection(db, `tenants/${TENANT_ID}/submissions`)));
+  });
+
+  await t('11. UM own-unit list (unitId == callerUid resource) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(UM_ID, authToken('unit_manager')).firestore();
+    const q  = query(
+      collection(db, `tenants/${TENANT_ID}/submissions`),
+      where('unitId', '==', UM_ID),
+    );
+    await assertSucceeds(getDocs(q));
+  });
+
+  await t('12. UM sees cross-unit submission → DENY', async () => {
+    const db = testEnv.authenticatedContext(UM_ID, authToken('unit_manager')).firestore();
+    const q  = query(
+      collection(db, `tenants/${TENANT_ID}/submissions`),
+      where('unitId', '==', 'um2'),
+    );
+    await assertFails(getDocs(q));
+  });
+
+  // ── allow create ──────────────────────────────────────────────────────────
+  console.log('\nallow create:');
+
+  await t('13. Agent creates own submission (agentId == uid) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    await assertSucceeds(
+      setDoc(subRef(db, 'new-agent1-sub'), draftDoc(AGENT1_ID, UM_ID)),
+    );
+  });
+
+  await t("14. Agent creates submission for another agent → DENY", async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    await assertFails(
+      setDoc(subRef(db, 'new-agent2-by-agent1'), draftDoc(AGENT2_ID, 'um2')),
+    );
+  });
+
+  await t('15. BM creates submission → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
+    await assertSucceeds(
+      setDoc(subRef(db, 'bm-created-sub'), draftDoc(AGENT1_ID, UM_ID)),
+    );
+  });
+
+  // ── allow update ──────────────────────────────────────────────────────────
+  console.log('\nallow update:');
+
+  await t('16. Agent updates own draft submission → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    await assertSucceeds(updateDoc(subRef(db, SUB_DRAFT_ID), { apiSold: 5000 }));
+  });
+
+  await t('17. Agent updates own submitted (non-draft) → DENY', async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    await assertFails(updateDoc(subRef(db, SUB_SUBMITTED_ID), { apiSold: 5000 }));
+  });
+
+  await t('18. BM updates any submission → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
+    await assertSucceeds(updateDoc(subRef(db, SUB_SUBMITTED_ID), { apiSold: 9000 }));
+  });
+
+  await t("19. Agent updates another agent's draft → DENY", async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    // agent2's sub is submitted but test is about ownership, not status
+    await assertFails(updateDoc(subRef(db, SUB_AGENT2_ID), { apiSold: 1 }));
+  });
+
+  // ── allow delete ──────────────────────────────────────────────────────────
+  console.log('\nallow delete:');
+
+  await t('20. BM delete → DENY', async () => {
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
+    await assertFails(deleteDoc(subRef(db, SUB_DRAFT_ID)));
+  });
+
+  await t('21. Agent delete → DENY', async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    await assertFails(deleteDoc(subRef(db, SUB_DRAFT_ID)));
+  });
+
+  // ── Summary ───────────────────────────────────────────────────────────────
+  await testEnv.cleanup();
+  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exit(1);
+}
+
+main().catch((err) => {
+  console.error('Fatal:', err);
+  process.exit(1);
+});
