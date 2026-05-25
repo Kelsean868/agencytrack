@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Calculator, ChevronDown, Loader2, AlertCircle, Plus, Trash2,
+  Calculator, ChevronDown, Loader2, AlertCircle, Plus, Trash2, Send,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   createMoneyNeeds, getMoneyNeeds,
   updateExpenseGroup, annualizeAmount, computeGroupTotal,
-  updateSubCalculator,
+  updateSubCalculator, updateCommissionTargets,
+  PLAYGROUND_INCOME_GOAL_KEY,
 } from '../../services/moneyNeedsService';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -249,6 +250,114 @@ function PAYESummary({ worksheet }) {
       <div className="flex justify-between text-xs">
         <span className="text-ink-muted">Estimated PAYE</span>
         <span className="text-ink-muted tabular-nums">{formatCurrency(computedPAYE)}</span>
+      </div>
+    </div>
+  );
+}
+
+const PRODUCT_LINE_FIELDS = [
+  { key: 'life',     label: 'Life' },
+  { key: 'ah',       label: 'A&H' },
+  { key: 'property', label: 'Property' },
+  { key: 'motor',    label: 'Motor' },
+];
+
+function CommissionTargetsPanel({ worksheet, onTargetsSaved }) {
+  const { tenantId, user } = useAuth();
+  const [targets, setTargets] = useState(() => ({
+    life:     worksheet?.firstYearCommissionsTargets?.life     ?? 0,
+    ah:       worksheet?.firstYearCommissionsTargets?.ah       ?? 0,
+    property: worksheet?.firstYearCommissionsTargets?.property ?? 0,
+    motor:    worksheet?.firstYearCommissionsTargets?.motor    ?? 0,
+  }));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [sent, setSent] = useState(false);
+
+  useEffect(() => {
+    setTargets({
+      life:     worksheet?.firstYearCommissionsTargets?.life     ?? 0,
+      ah:       worksheet?.firstYearCommissionsTargets?.ah       ?? 0,
+      property: worksheet?.firstYearCommissionsTargets?.property ?? 0,
+      motor:    worksheet?.firstYearCommissionsTargets?.motor    ?? 0,
+    });
+  }, [worksheet]);
+
+  const renewalTotal = parseFloat(worksheet?.estimatedRenewalIncome?.total) || 0;
+  const required = (parseFloat(worksheet?.totalAnnualPreTax) || 0) - renewalTotal;
+  const targetsTotal = (parseFloat(targets.life) || 0) + (parseFloat(targets.ah) || 0)
+    + (parseFloat(targets.property) || 0) + (parseFloat(targets.motor) || 0);
+
+  async function save() {
+    setSaving(true); setSaveError('');
+    try {
+      const result = await updateCommissionTargets(tenantId, user.uid, worksheet.year, targets, worksheet);
+      onTargetsSaved(result);
+    } catch { setSaveError('Save failed — check connection.'); }
+    finally { setSaving(false); }
+  }
+
+  function handleSendToPlayground() {
+    localStorage.setItem(PLAYGROUND_INCOME_GOAL_KEY, JSON.stringify(required));
+    setSent(true);
+    setTimeout(() => setSent(false), 1500);
+  }
+
+  return (
+    <div className="rounded-xl bg-card border border-border px-4 py-4 space-y-3">
+      <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Commission Targets</p>
+
+      <div className="flex justify-between items-center">
+        <span className="text-sm text-ink-muted">Required 1st-Year Commissions</span>
+        <span className="text-base font-bold text-ink tabular-nums">{formatCurrency(required)}</span>
+      </div>
+      {renewalTotal > 0 && (
+        <div className="flex justify-between items-center text-xs text-ink-muted">
+          <span>Estimated Renewal Income</span>
+          <span className="tabular-nums">− {formatCurrency(renewalTotal)}</span>
+        </div>
+      )}
+
+      <div className="border-t border-border pt-3 space-y-2">
+        <p className="text-xs font-semibold text-ink-muted">Targets by Product Line</p>
+        {PRODUCT_LINE_FIELDS.map(({ key, label }) => (
+          <div key={key} className="flex items-center gap-3">
+            <label className="flex-1 text-sm text-ink-muted">{label}</label>
+            <input
+              type="number"
+              value={targets[key] === 0 ? '' : targets[key]}
+              onChange={(e) => setTargets((prev) => ({ ...prev, [key]: e.target.value }))}
+              onBlur={save}
+              placeholder="0"
+              min={0}
+              aria-label={`${label} commission target`}
+              className="w-36 h-9 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+        ))}
+        <div className="flex justify-between items-center pt-1 border-t border-border text-sm font-semibold">
+          <span className="text-ink-muted">Total</span>
+          <span className="tabular-nums text-ink">{formatCurrency(targetsTotal)}</span>
+        </div>
+      </div>
+
+      {saveError && (
+        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400">
+          <AlertCircle size={12} className="shrink-0" /><span>{saveError}</span>
+        </div>
+      )}
+
+      <div className="pt-1 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={handleSendToPlayground}
+          disabled={saving || required <= 0}
+          className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 min-h-[44px]"
+        >
+          <Send size={13} />
+          {sent ? 'Sent!' : 'Send to Playground'}
+        </button>
+        {saving && <Loader2 size={14} className="animate-spin text-ink-muted" />}
       </div>
     </div>
   );
@@ -555,6 +664,10 @@ export default function MoneyNeedsPanel() {
     }));
   }
 
+  function handleTargetsSaved({ firstYearCommissionsRequired, firstYearCommissionsTargets }) {
+    setWorksheet((prev) => ({ ...prev, firstYearCommissionsRequired, firstYearCommissionsTargets }));
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       {/* Header */}
@@ -657,6 +770,11 @@ export default function MoneyNeedsPanel() {
             calcData={worksheet.subCalculators?.loansDebt}
             worksheetDoc={worksheet}
             onSubCalcSaved={handleSubCalcSaved}
+          />
+
+          <CommissionTargetsPanel
+            worksheet={worksheet}
+            onTargetsSaved={handleTargetsSaved}
           />
 
           <PAYESummary worksheet={worksheet} />

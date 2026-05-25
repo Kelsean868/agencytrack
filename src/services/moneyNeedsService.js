@@ -8,6 +8,8 @@ export const PAYE_BRACKETS_VERSION = 'default-2026';
 
 export const FREQUENCY_MULTIPLIERS = { A: 1, S: 2, Q: 4, M: 12 };
 
+export const PLAYGROUND_INCOME_GOAL_KEY = 'agencytrack-playground-income-goal';
+
 export function annualizeAmount(amount, frequency) {
   return (parseFloat(amount) || 0) * (FREQUENCY_MULTIPLIERS[frequency] ?? 12);
 }
@@ -98,6 +100,31 @@ export async function updateSubCalculator(tenantId, uid, year, calcKey, calcData
 
   await updateDoc(docRef, patch);
   return { rollup, updatedGroups };
+}
+
+export async function updateCommissionTargets(tenantId, uid, year, targets, worksheet) {
+  const parsedYear = parseInt(year, 10);
+  if (!parsedYear) throw new Error('Invalid year');
+
+  const docRef = doc(db, 'tenants', tenantId, 'users', uid, 'moneyNeeds', String(parsedYear));
+  const life     = parseFloat(targets.life)     || 0;
+  const ah       = parseFloat(targets.ah)       || 0;
+  const property = parseFloat(targets.property) || 0;
+  const motor    = parseFloat(targets.motor)    || 0;
+  const total    = life + ah + property + motor;
+
+  const renewalTotal = parseFloat(worksheet.estimatedRenewalIncome?.total) || 0;
+  const firstYearCommissionsRequired = (parseFloat(worksheet.totalAnnualPreTax) || 0) - renewalTotal;
+  const firstYearCommissionsTargets = { life, ah, property, motor, total };
+
+  await updateDoc(docRef, {
+    firstYearCommissionsRequired,
+    firstYearCommissionsTargets,
+    updatedAt: serverTimestamp(),
+    updatedBy: uid,
+  });
+
+  return { firstYearCommissionsRequired, firstYearCommissionsTargets };
 }
 
 const EXPENSE_GROUP_SCAFFOLD = () => ({ lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 });
