@@ -41,6 +41,7 @@ import ProductionReportTab from '../productionReport/ProductionReportTab';
 import AgentPersistencyTab from '../agent/PersistencyTab';
 import ProspectInfoPanel from '../agent/ProspectInfoPanel';
 import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
+import DailyFAB from '../daily/DailyFAB';
 
 const KPIS = [
   { key: 'dials',    label: 'Dials',         field: 'totalTelAttempts', isCurrency: false },
@@ -391,6 +392,16 @@ export default function AgentDashboard() {
       topbarCrumb={`Week of ${formatDateDisplay(currentWeek)}`}
       onSignOut={handleSignOut}
     >
+      {/* Daily entry FAB — visible on all agent tabs when daily/hybrid mode.
+          Hidden when the modal/wizard takes full-screen (those branches return
+          early, so the FAB is never rendered alongside them). */}
+      {showDailyCTA && (
+        <DailyFAB
+          onClick={() => setShowDailyModal(true)}
+          todayLogged={todayDailyChecked ? !!todayDailyEntry : true}
+        />
+      )}
+
       {/* Welcome / onboarding overlay */}
       {showWelcome && (
         <WelcomeScreen onComplete={() => setShowWelcome(false)} />
