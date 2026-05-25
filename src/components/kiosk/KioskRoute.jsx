@@ -41,17 +41,17 @@ export default function KioskRoute() {
 
   if (state === 'loading') {
     return (
-      <div className="fixed inset-0 bg-[#1a1612] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-[#4ab5b8] border-t-transparent rounded-full animate-spin" />
+      <div className="fixed inset-0 bg-presentation flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-presentation-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   if (state === 'invalid') {
     return (
-      <div className="fixed inset-0 bg-[#1a1612] flex flex-col items-center justify-center gap-4">
-        <p className="text-[#f0ebe0] text-2xl font-semibold">Display unavailable</p>
-        <p className="text-[#b8aea0] text-base">Contact your manager to get a new kiosk URL.</p>
+      <div className="fixed inset-0 bg-presentation flex flex-col items-center justify-center gap-4">
+        <p className="text-presentation-text text-2xl font-semibold">Display unavailable</p>
+        <p className="text-presentation-muted text-base">Contact your manager to get a new kiosk URL.</p>
       </div>
     );
   }

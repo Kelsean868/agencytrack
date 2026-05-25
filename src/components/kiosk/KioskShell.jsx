@@ -77,8 +77,8 @@ export default function KioskShell({ tenantId, branchId }) {
 
   if (loading) {
     return (
-      <div className="fixed inset-0 bg-[#1a1612] flex items-center justify-center">
-        <div className="w-10 h-10 border-2 border-[#4ab5b8] border-t-transparent rounded-full animate-spin" />
+      <div className="fixed inset-0 bg-presentation flex items-center justify-center">
+        <div className="w-10 h-10 border-2 border-presentation-accent border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
