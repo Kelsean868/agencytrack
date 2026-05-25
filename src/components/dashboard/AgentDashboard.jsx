@@ -519,10 +519,13 @@ export default function AgentDashboard() {
 
           {/* KPI Activity Grid */}
           {kpiData.length > 0 && (
-            <div className="mb-6">
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
+            <section aria-labelledby="agent-dashboard-kpi-heading" className="mb-6">
+              <h3
+                id="agent-dashboard-kpi-heading"
+                className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3"
+              >
                 Activity Trend — Last {kpiData.length} Week{kpiData.length !== 1 ? 's' : ''}
-              </p>
+              </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-3">
                 {KPIS.map((kpi) => (
                   <KPICard
@@ -557,7 +560,7 @@ export default function AgentDashboard() {
                   })}
                 </div>
               )}
-            </div>
+            </section>
           )}
 
           {/* Weekly Standard — Expected vs Actual (Tatil workshop 2026-05-19,
@@ -574,8 +577,13 @@ export default function AgentDashboard() {
           />
 
           {/* Goals section */}
-          <div className="card mb-6">
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">Goals</p>
+          <section aria-labelledby="agent-dashboard-goals-heading" className="card mb-6">
+            <h3
+              id="agent-dashboard-goals-heading"
+              className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3"
+            >
+              Goals
+            </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs font-medium text-ink-muted mb-2">My Commitment</p>
@@ -623,7 +631,7 @@ export default function AgentDashboard() {
                 )}
               </div>
             </div>
-          </div>
+          </section>
 
           {/* Activity feed + Achievement badges (B4 — g4-mix 2-col layout
               absorbed from the deferred B3 deliverable). At ≥1024px these
