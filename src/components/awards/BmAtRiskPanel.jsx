@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { computeAgentAwards, computeAtRiskStatus } from '../../utils/awardsEngine';
+import { computeAgentAwards, computeAtRiskStatus, getPeriodCtx } from '../../utils/awardsEngine';
 
 const STATUS_PILL_CLASS = {
   achieved:  'bg-success-tint text-success',
@@ -14,22 +14,6 @@ const FILTER_OPTIONS = [
   { id: 'at_risk', label: 'At Risk' },
 ];
 
-function getPeriodCtx(category, now) {
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  if (category === 'monthly') {
-    const daysInMonth = new Date(y, m, 0).getDate();
-    return { weeksElapsed: Math.floor((now.getDate() - 1) / 7), periodWeeks: daysInMonth / 7 };
-  }
-  if (category === 'quarterly') {
-    const qStartMonth = Math.floor((m - 1) / 3) * 3;
-    const daysElapsed = Math.floor((now - new Date(y, qStartMonth, 1)) / 86400000);
-    return { weeksElapsed: Math.floor(daysElapsed / 7), periodWeeks: 13 };
-  }
-  // annual (covers 'annual', 'club', and any future categories)
-  const daysElapsed = Math.floor((now - new Date(y, 0, 1)) / 86400000);
-  return { weeksElapsed: Math.max(1, Math.floor(daysElapsed / 7)), periodWeeks: 52 };
-}
 
 function AgentRiskRow({ name, statusList }) {
   const counts = { achieved: 0, on_track: 0, at_risk: 0, far_off: 0 };

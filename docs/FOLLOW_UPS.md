@@ -534,7 +534,7 @@ Banked: PR #240 (`4134d2c`).
 
 ---
 
-## Track J2 — Career-level qualification on trailing 2-year average annual API (MEDIUM, banked 2026-05-20)
+## ~~Track J2 — Career-level qualification on trailing 2-year average annual API~~ (SHIPPED — PR [#325](https://github.com/Kelsean868/agencytrack/pull/325), `77d2317`)
 
 **Scope:** Per the board-signed `Sales_Career.pdf`, career-level qualification is based on a **trailing 2-year average of annual API**, not single-year point-in-time API. The Career Portal currently checks current-year API only (`CareerPortal.jsx` rows). This FU adds the 2-year trailing average computation feeding the Career Portal level-up criteria.
 
