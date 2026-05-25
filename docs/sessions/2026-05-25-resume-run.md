@@ -28,6 +28,8 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 
 | Test backfill — SubmissionViewer (19) + GoalCarousel (20) + BranchesPanel (17); React import fix for Vitest parity | [#340](https://github.com/Kelsean868/agencytrack/pull/340) | `9d69fb4` | ✅ MERGED — CI green, no smoke (test-only), post-merge fill done |
 
+| Hygiene — awardsEngine dead subPersistVals removal; close getPeriodCtx + silent-error-swallow FUs | [#341](https://github.com/Kelsean868/agencytrack/pull/341) | — | ⏳ CI pending |
+
 ## Smoke artifacts needing manual Firebase Console cleanup
 
 Two smoke policies cannot be deleted via REST (`allow delete: if false` in rules):
