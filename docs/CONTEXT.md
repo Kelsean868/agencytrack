@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (H2c implementation — PR #TBD — {SHA}) |
-| Current main HEAD | `fc5ea10` (PR #319 — Track E(c) social/content KPIs wizard step) |
-| Active track | H2c — BM-only lapsed status + agent notification + H11 lapse chip — PR open pending smoke |
-| Next track | H3 (awards engine usesPolicyLedger flag — PR-OPEN only); Track E(d) daily-form refinements (needs brief first — Rule 10); H12 A&H cue; expanded filler. |
+| Last updated | 2026-05-25 (H2c post-merge fill — PR #321 — 900a473) |
+| Current main HEAD | `900a473` (PR #321 — Track H H2c BM-only lapsed status + agent notification + H11 lapse chip) |
+| Active track | Queue: H3 (awards usesPolicyLedger flag, PR-OPEN only); Track E remainder (Expected/Actual relabel + E(d) daily-form refinements); expanded filler. |
+| Next track | H4 plan config; Track G skeleton; BEH-1 WelcomeScreen stub; E2E harness generalize. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
@@ -122,7 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
-| [#TBD](https://github.com/Kelsean868/agencytrack/pull/TBD) | `{SHA}` | feat(policy-ledger): Track H H2c — BM-only lapsed status + agent notification + H11 lapse chip. `policyLifecycle.js`: `lapsed` added to all enums (POLICY_STATUSES, TRANSITION_REQUIRED_FIELDS, TRANSITION_OPTIONAL_FIELDS, POLICY_STATUS_LABELS). `policiesService.js`: `lapsePolicy()` (BM+ role guard, settled-only, `dateLapsed` required, atomic batch: policy update + history + notification). `PolicyLedgerPanel.jsx`: muted grey lapsed badge + lapse date chip (H11 lapse half). `PolicyReconciliationPanel.jsx`: `allPoliciesRaw` state + Lapse tab (settled+lapsed filter, per-policy expand form, date input, optional lapseReason). `NotificationDrawer.jsx`: `policy_lapsed` TYPE_META entry. `firestore.rules`: Arm D (BM-only settled→lapsed, `dateLapsed is timestamp`, strict `hasOnly` key set). 11 unit tests + 7 emulator rules tests. 1337/1337 vitest; lint 0; build clean. |
+| [#321](https://github.com/Kelsean868/agencytrack/pull/321) | `900a473` | feat(policy-ledger): Track H H2c — BM-only lapsed status + agent notification + H11 lapse chip. `policyLifecycle.js`: `lapsed` added to all enums (POLICY_STATUSES, TRANSITION_REQUIRED_FIELDS, TRANSITION_OPTIONAL_FIELDS, POLICY_STATUS_LABELS). `policiesService.js`: `lapsePolicy()` (BM+ role guard, settled-only, `dateLapsed` required, atomic batch: policy update + history + notification). `PolicyLedgerPanel.jsx`: muted grey lapsed badge + lapse date chip (H11 lapse half). `PolicyReconciliationPanel.jsx`: `allPoliciesRaw` state + Lapse tab (settled+lapsed filter, per-policy expand form, date input, optional lapseReason). `NotificationDrawer.jsx`: `policy_lapsed` TYPE_META entry. `firestore.rules`: Arm D (BM-only settled→lapsed, `dateLapsed is timestamp`, strict `hasOnly` key set). 11 unit tests + 7 emulator rules tests. 1337/1337 vitest; lint 0; build clean. |
 | [#320](https://github.com/Kelsean868/agencytrack/pull/320) | `554c668` | docs(briefs): Track H H2c lapsed status kickoff — BM-only settled→lapsed + agent notification + H11 lapse chip brief committed per Rule 10. |
 | [#319](https://github.com/Kelsean868/agencytrack/pull/319) | `fc5ea10` | feat(wizard): Track E(c) — social/content KPIs wizard step. New `StepSocialMedia.jsx` + `socialMediaConstants.js` wired into WizardForm Screen 1 as 3rd sub-component; 5 new `INITIAL_DATA` fields (`socialPostsTotal`, `socialEngagementTotal`, `socialInboxEnquiries`, `namesFromSocial`, `socialPlatformBreakdown`); collapsible per-platform breakdown (Facebook/Instagram/WhatsApp/LinkedIn) via local-state toggle; `namesFromSocial` standalone (Step5NewNames frozen); `extractFields.js` updated both schema variants; `CardStack.jsx` `NumericField`/`CurrencyField`/`SuggestedField` gain `htmlFor`/`id` a11y wiring; 7 tests in `StepSocialMedia.test.jsx`; `WizardFormSaveStatus.test.jsx` mock added. 1326/1326 vitest; lint 0; build clean. |
 | [#317](https://github.com/Kelsean868/agencytrack/pull/317) | `364fbfc` | feat(admin): Track E(b) — weekly activity floors in-app editor. `EditConfigModal.jsx` extended with scrollable 10-row floors section (WEEKLY_ACTIVITY_FLOOR_ROWS) + per-row validation (integers; `api` decimals OK). `setCompanyMinimums` extended: optional `weeklyActivityFloors` block validated + written when provided; absent = no-op (merge preserves). `CompanyConfigPanel`: passes `currentFloors`; button "Edit company config"; subtitle updated. 6 new unit tests (valid floors write, decimal api, non-integer rejection, negative rejection, zero api rejection, zero-non-api allowed). 1319/1319 vitest; lint 0; build clean. |
@@ -227,11 +227,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**Overnight autonomous block (2026-05-25) — COMPLETE:** Queue 1 — regression smoke sweep 48/0/0 (`d1681f9`). Queue 2 — KioskModeTab deflake PR #310 (`738e5e9`). Queue 3 — repo hygiene PR #311 (`ef32bd6`). Queue 4 — A11Y PR #312 (`d6a6ee9`). Queue 5 — test backfill round 2 PR #313 (`23e7ecf`): 35 new tests across DailyEntryModal, Leaderboard, SyncIndicator, NotificationBell; React import fixes on 5 source files. Suite: 93 files / 1302 tests.
+**2026-05-25 resume run — H2c COMPLETE:** PR #321 (`900a473`) — Track H H2c BM-only lapsed status + agent notification + H11 lapse chip. Emulator 57/57. Two-actor production smoke 13/13 (lapse written, REST-verified, agent ledger shows badge+chip, notification in drawer + REST). `firestore.rules` Arm D deployed. Two smoke-artifact policies left in prod (no delete rule) — manual Firebase Console cleanup needed: `HkCEEWHETEbXOPLN4Nay` (settled, ownerName SMOKE-H2C-1779718651986), `Cs3rA54SQkdByyZzoFQO` (lapsed, ownerName SMOKE-H2C-1779718879583).
 
-**Previous:** PR #313 (`23e7ecf`) — backfill round 2. PR #312 (`d6a6ee9`) — PolicyLedger A11Y. PR #311 (`ef32bd6`) — verification hygiene. PR #310 (`738e5e9`) — kiosk deflake. PR #309 (`b4718fe`) — agent test backfill.
+**Previous:** PR #319 (`fc5ea10`) — Track E(c) social/content KPIs. PR #313 (`23e7ecf`) — test backfill round 2. PR #312 (`d6a6ee9`) — PolicyLedger A11Y. PR #311 (`ef32bd6`) — verification hygiene.
 
-**Next:** H2b/H2c/H3 + Track G await dispatcher. Test backfill continues — next candidates: SubmissionViewer, GoalCarousel, BranchesPanel, PolicyReconciliationPanel.
+**Next:** Queue item 2 — Track E remainder (Expected/Actual relabel, E(d) daily-form refinements, report #319 social capture placement). Queue item 3 — H3 awards usesPolicyLedger flag (PR-OPEN only). Queue items 4–6 — expanded filler, PR-OPEN drafts, E2E harness generalize.
 
 ---
 
