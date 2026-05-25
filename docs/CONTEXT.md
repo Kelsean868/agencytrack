@@ -12,8 +12,8 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (PR #307 Track E — DailyFAB floating action button — merged f128deb) |
-| Current main HEAD | `f128deb` (PR #307 — Track E DailyFAB for daily log entry — merged) |
+| Last updated | 2026-05-25 (PR #308 — agent-nav testId standardisation — merged 09b920f) |
+| Current main HEAD | `09b920f` (PR #308 — agent-nav data-testid standardised to agent-tab-* — merged) |
 | Active track | Track H — H2b (bulk/grouped policy polish), H2c (Lapsed status), H3 (`usesPolicyLedger` + awards engine switch); #305, #306 merged. Track E daily-entry FAB shipped (#307). |
 | Next track | H2b (§7.8 bulk/grouped policy polish); H2c (Lapsed status); H3 (usesPolicyLedger + awards engine switch). Track E: refined daily form field-mapping (dispatcher decisions needed). |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). Workshop §3.5 Tenant-Admin floors editor; Expected/Actual relabel sweep; true telephone-contacts wizard field. Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#308](https://github.com/Kelsean868/agencytrack/pull/308) | `09b920f` | chore(agent-nav): standardise `data-testid` to `agent-tab-*` across all 10 `NAV_ITEMS`. Sidebar already emitted `nav-{id}` fallback; 7 items (dashboard, career, awards, production-report, leaderboard, history, profile) now carry explicit `testId: 'agent-tab-{id}'` matching the pattern on the 3 existing items. Pure attribute addition — no logic, UI, or test change. 1244/1244 vitest; lint 0; build clean. |
 | [#307](https://github.com/Kelsean868/agencytrack/pull/307) | `f128deb` | feat(daily): Track E — DailyFAB floating action button. New `DailyFAB.jsx` — fixed-position pencil FAB (bottom-20 right-4) with amber state-dot when `todayLogged=false`. Wired into `AgentDashboard.jsx` shell branch (`showDailyCTA` gate). Naturally hidden when `DailyEntryModal`/`WizardForm` take full-screen. `DailyFAB.test.jsx`: 5 tests (accessible label, click handler, state-dot present/absent, `data-testid`). 1244/1244 vitest; lint 0; build clean. |
 | [#306](https://github.com/Kelsean868/agencytrack/pull/306) | `b5c07d5` | feat(policy-ledger): Track H H1.2 — history timeline display + getPolicyHistory agentId fix. `getPolicyHistory`: optional `agentId` param adds `where('agentId','==',uid)` filter so Firestore list rule can evaluate per-doc. `firestore.indexes.json`: composite index `(agentId ASC, at DESC)` on `history` subcollection (deployed pre-merge). `PolicyLedgerPanel.jsx`: expandable per-policy history timeline — toggle button, loading spinner, `fromStatus → toStatus` with status-badge colours, formatted timestamp, "No history yet" empty state. `tests/rules/policies.rules.test.mjs`: +2 emulator cases (agent list own history ALLOW; agent list other-agent DENY). `policiesService.test.js`: +2 unit tests (agentId path adds where filter; no-agentId manager path). 1239/1239 vitest; 49/49 emulator rules; lint 0; build clean. H1.2 loosening #3 RESOLVED. |
 | [#305](https://github.com/Kelsean868/agencytrack/pull/305) | `97a8493` | feat(policy-ledger): Track H — agent confirmation surfacing + `policy_discrepancy` notification icon. `PolicyLedgerPanel.jsx`: three-way footer (confirmed/settled-unconfirmed/non-terminal) — emerald "Confirmed by {manager}" chip, amber "Discrepancy" chip, value line (discrepancy: Your value · Manager; clean: Settled), manager note. `NotificationDrawer.jsx`: one `TYPE_META` entry for `policy_discrepancy` → `AlertTriangle`/warning palette. Pure additive display — reads H2a confirmation fields already on every policy object via `getOwnPolicies` spread. 5 `PolicyLedgerPanel` tests + 2 `NotificationDrawer` tests. 1238/1238 vitest; lint 0; build clean. No rule/index/service/CF change. |
@@ -216,11 +217,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**Track E DailyFAB merged** — PR #307 (`f128deb`). Fixed-position pencil FAB wired into `AgentDashboard` shell (`showDailyCTA` gate). Amber state-dot when today's daily entry is absent. Naturally hidden when `DailyEntryModal`/`WizardForm` take full-screen (those branches return early before the FAB renders). 5 unit tests; 1244/1244 vitest; lint 0; build clean. Smoke: 6/6 passed on preview — FAB visible, modal opens on tap.
+**Agent-nav testId standardisation merged** — PR #308 (`09b920f`). All 10 NAV_ITEMS now carry `testId: 'agent-tab-{id}'`; smoke scripts and future tests can target any tab with a consistent selector. Queue 4 (audit-driven squashing) complete.
 
-**Previous:** PR #306 (`b5c07d5`) — Track H H1.2 history timeline. PR #305 (`97a8493`) — agent confirmation surfacing. PR #304 (`86541fe`) — H2a manager confirmation arm.
+**Previous:** PR #307 (`f128deb`) — Track E DailyFAB. PR #306 (`b5c07d5`) — Track H H1.2 history timeline. PR #305 (`97a8493`) — agent confirmation surfacing.
 
-**Next:** Queue 4 — audit-driven squashing (stale comments, nav `data-testid` additions). Then H2b/H2c/H3 per dispatcher priority. Track E refined daily form deferred (field-mapping decisions needed — PRD §4.5 diverges from existing form).
+**Next:** Queue 5 — test backfill on untested agent paths (Step4/ProductionSummaryPanel, PolicyLedgerPanel create/transition flows, Leaderboard/GapAnalysisPanel/BadgeGrid). Then H2b/H2c/H3 per dispatcher priority. Track E refined daily form deferred (field-mapping decisions needed — PRD §4.5 diverges from existing form).
 
 ---
 
