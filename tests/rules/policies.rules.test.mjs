@@ -103,9 +103,17 @@ async function main() {
       ...VALID_PAYLOAD,
       status: 'ntu',
     });
-    // settled policy — for settled→rated illegal test
+    // settled policy — for Arm C confirmation tests + back-transition DENY
     await db.doc(`tenants/${TENANT_ID}/policies/policy-a1-settled`).set({
       ...VALID_PAYLOAD,
+      ...SETTLED_FIELDS,
+    });
+    // settled policy owned by agent-b in unit um-b —
+    // used to test UM unit-scope DENY (um-a trying to confirm um-b's policy)
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-b1-settled`).set({
+      ...VALID_PAYLOAD,
+      agentId: 'agent-b',
+      unitId: 'um-b',
       ...SETTLED_FIELDS,
     });
     // history doc for update/delete deny tests
@@ -119,12 +127,26 @@ async function main() {
       unitId: 'um-a',
       at: yesterday,
     });
+    // H2a: user doc for um-a — canConfirmSettlements: true (needed for Arm C get() check)
+    await db.doc(`tenants/${TENANT_ID}/users/um-a`).set({
+      role: 'unit_manager',
+      unitId: 'um-a',
+      canConfirmSettlements: true,
+    });
+    // user doc for um-b — no canConfirmSettlements flag (or false) — for DENY tests
+    await db.doc(`tenants/${TENANT_ID}/users/um-b`).set({
+      role: 'unit_manager',
+      unitId: 'um-b',
+      canConfirmSettlements: false,
+    });
   });
 
   const agentADb = testEnv.authenticatedContext('agent-a', authToken('agent')).firestore();
   const agentBDb = testEnv.authenticatedContext('agent-b', authToken('agent')).firestore();
   const umADb    = testEnv.authenticatedContext('um-a',    authToken('unit_manager')).firestore();
+  const umBDb    = testEnv.authenticatedContext('um-b',    authToken('unit_manager')).firestore();
   const bmADb    = testEnv.authenticatedContext('bm-a',    authToken('branch_manager')).firestore();
+  const taDb     = testEnv.authenticatedContext('ta-1',    authToken('tenant_admin')).firestore();
   const crossDb  = testEnv.authenticatedContext('other-user', { role: 'branch_manager', tenantId: 'other-tenant' }).firestore();
 
   // ── CREATE ──
@@ -333,6 +355,189 @@ async function main() {
 
   await run('BM list history on in-tenant policy → ALLOW', true, () =>
     getDocs(collection(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1', 'history'))
+  );
+
+  // ── ARM B TIGHTENED (loosening #1 closed) — per-target field sets ──
+  // A settled-only field written on an ntu transition must now DENY.
+  // Under the old union hasOnly, settledAPI was in the union and would ALLOW.
+  await run('Arm B tightened: ntu transition with settledAPI field → DENY', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1'),
+      { status: 'ntu', statusUpdatedAt: Timestamp.now(), settledAPI: 1000 }
+    )
+  );
+
+  // A rated-only field (ratedPremium) written on a settled transition must DENY.
+  await run('Arm B tightened: settled transition with ratedPremium field → DENY', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1'),
+      { ...SETTLED_FIELDS, ratedPremium: 1200 }
+    )
+  );
+
+  // ── HISTORY AGENT ARM — loosening #2 closed ──
+  // agent-b attempts to write a history doc on policy-a1 (owned by agent-a).
+  // Previously allowed because only request.resource.data.agentId == request.auth.uid
+  // was checked. After fix, the parent-policy get() also must match.
+  const ORPHAN_HISTORY = {
+    fromStatus: 'submitted',
+    toStatus:   'rated',
+    changedFields: { status: 'rated', ratedPremium: 1200 },
+    actorUid:   'agent-b',
+    actorRole:  'agent',
+    agentId:    'agent-b',
+    unitId:     'um-b',
+    at:         Timestamp.now(),
+  };
+  await run('agent-b write history on agent-a policy → DENY (loosening #2 closed)', false, () =>
+    addDoc(
+      collection(agentBDb, 'tenants', TENANT_ID, 'policies', 'policy-a1', 'history'),
+      ORPHAN_HISTORY
+    )
+  );
+
+  // ── ARM C — MANAGER CONFIRMATION ──
+  const CONFIRM_FIELDS = {
+    confirmedByManager: 'BM Name',
+    confirmedByUid:     'bm-a',
+    confirmedAt:        Timestamp.now(),
+    managerSettledAPI:  5000,
+    managerNote:        '',
+    hasDiscrepancy:     false,
+  };
+
+  // BM confirms in-scope settled policy → ALLOW
+  await run('Arm C ALLOW: BM confirms settled policy (6 fields only)', true, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled'),
+      CONFIRM_FIELDS
+    )
+  );
+
+  // tenant_admin confirms → ALLOW
+  await run('Arm C ALLOW: tenant_admin confirms settled policy', true, () =>
+    updateDoc(
+      doc(taDb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled'),
+      { ...CONFIRM_FIELDS, confirmedByUid: 'ta-1', confirmedByManager: 'TA Name' }
+    )
+  );
+
+  // UM with canConfirmSettlements flag confirms own-unit settled policy → ALLOW
+  // um-a has canConfirmSettlements: true in their user doc (seeded above).
+  // policy-a1-settled has unitId: 'um-a'.
+  await run('Arm C ALLOW: UM with canConfirmSettlements flag confirms own-unit settled policy', true, () =>
+    updateDoc(
+      doc(umADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled'),
+      { ...CONFIRM_FIELDS, confirmedByUid: 'um-a', confirmedByManager: 'UM Name' }
+    )
+  );
+
+  // Plain agent tries to write manager confirmation fields → DENY
+  await run('Arm C DENY: agent cannot write manager confirmation fields', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled'),
+      CONFIRM_FIELDS
+    )
+  );
+
+  // UM without canConfirmSettlements flag → DENY
+  // um-b has canConfirmSettlements: false in their user doc.
+  await run('Arm C DENY: UM without canConfirmSettlements flag', false, () =>
+    updateDoc(
+      doc(umBDb, 'tenants', TENANT_ID, 'policies', 'policy-b1-settled'),
+      { ...CONFIRM_FIELDS, confirmedByUid: 'um-b', confirmedByManager: 'UM-B Name' }
+    )
+  );
+
+  // UM with flag confirming another unit's policy → DENY (unit-scope check)
+  // um-a has the flag but policy-b1-settled has unitId: 'um-b'
+  await run('Arm C DENY: UM confirming another unit policy', false, () =>
+    updateDoc(
+      doc(umADb, 'tenants', TENANT_ID, 'policies', 'policy-b1-settled'),
+      { ...CONFIRM_FIELDS, confirmedByUid: 'um-a', confirmedByManager: 'UM-A Name' }
+    )
+  );
+
+  // Confirming a non-settled policy → DENY (status guard).
+  // policy-b1 is in submitted status and has not been modified by any prior test.
+  // (policy-a1 is not used here because prior transition tests leave it in 'settled' status.)
+  await run('Arm C DENY: confirming a non-settled (submitted) policy', false, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-b1'),
+      CONFIRM_FIELDS
+    )
+  );
+
+  // affectedKeys includes a status change → DENY.
+  // Write status: 'rated' (different from the doc's 'settled') so 'status' IS in affectedKeys.
+  // Writing status: 'settled' to an already-settled doc produces no diff for that field —
+  // Firestore's affectedKeys() only includes keys that actually changed.
+  await run('Arm C DENY: affectedKeys includes status field (changed to rated)', false, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled'),
+      { ...CONFIRM_FIELDS, status: 'rated' }
+    )
+  );
+
+  // affectedKeys includes an agent field (ownerName) → DENY
+  await run('Arm C DENY: affectedKeys includes agent field (ownerName)', false, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled'),
+      { ...CONFIRM_FIELDS, ownerName: 'Tampered' }
+    )
+  );
+
+  // confirmedByUid != request.auth.uid → DENY
+  await run('Arm C DENY: confirmedByUid does not match caller uid', false, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled'),
+      { ...CONFIRM_FIELDS, confirmedByUid: 'someone-else' }
+    )
+  );
+
+  // ── HISTORY — MANAGER ARM ──
+  const MANAGER_HISTORY = {
+    fromStatus:    'settled',
+    toStatus:      'settled',
+    changedFields: { managerSettledAPI: 5000, hasDiscrepancy: false },
+    actorUid:      'bm-a',
+    actorRole:     'branch_manager',
+    agentId:       'agent-a',
+    unitId:        'um-a',
+    at:            Timestamp.now(),
+  };
+
+  // BM creates manager history on in-scope settled policy → ALLOW
+  await run('History manager arm ALLOW: BM writes confirmation history doc', true, () =>
+    addDoc(
+      collection(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled', 'history'),
+      MANAGER_HISTORY
+    )
+  );
+
+  // Agent tries to write a manager-arm history shape (fromStatus==toStatus) → DENY
+  // The agent arm requires isLegalAgentTransition which rejects fromStatus==toStatus.
+  await run('History manager arm DENY: agent cannot write fromStatus==toStatus history', false, () =>
+    addDoc(
+      collection(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled', 'history'),
+      { ...MANAGER_HISTORY, actorUid: 'agent-a', actorRole: 'agent', agentId: 'agent-a' }
+    )
+  );
+
+  // UM with canConfirmSettlements writes manager history on own-unit policy → ALLOW
+  await run('History manager arm ALLOW: UM with flag writes confirmation history on own-unit policy', true, () =>
+    addDoc(
+      collection(umADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled', 'history'),
+      { ...MANAGER_HISTORY, actorUid: 'um-a', actorRole: 'unit_manager' }
+    )
+  );
+
+  // UM with flag writing history on another unit's policy → DENY
+  await run('History manager arm DENY: UM writes confirmation history on another unit policy', false, () =>
+    addDoc(
+      collection(umADb, 'tenants', TENANT_ID, 'policies', 'policy-b1-settled', 'history'),
+      { ...MANAGER_HISTORY, actorUid: 'um-a', actorRole: 'unit_manager', agentId: 'agent-b', unitId: 'um-b' }
+    )
   );
 
   // ── Results ──

@@ -162,6 +162,75 @@ export async function transitionPolicyStatus(tenantId, agentProfile, policyId, c
 }
 
 /**
+ * confirmPolicy — manager confirmation of a settled policy (H2a).
+ * Atomic writeBatch: updates policy confirmation fields + creates a manager
+ * history doc + (only on discrepancy) creates an agent notification.
+ *
+ * @param {string} tenantId        — tenant scoping key
+ * @param {object} managerProfile  — { uid, name, role }
+ * @param {string} policyId        — Firestore document ID
+ * @param {object} policy          — current policy doc data ({ agentId, unitId, settledAPI, ... })
+ * @param {number|string} managerSettledAPI — manager-entered settled API (parseFloat applied)
+ * @param {string} managerNote     — optional manager note (empty string allowed)
+ */
+export async function confirmPolicy(tenantId, managerProfile, policyId, policy, managerSettledAPI, managerNote) {
+  const parsedAPI = parseFloat(managerSettledAPI);
+  if (!(parsedAPI > 0)) throw new Error('managerSettledAPI must be a positive number');
+
+  const hasDiscrepancy = parsedAPI !== policy.settledAPI;
+  const note = managerNote ?? '';
+
+  const policyRef  = doc(db, 'tenants', tenantId, 'policies', policyId);
+  const historyRef = doc(collection(db, 'tenants', tenantId, 'policies', policyId, 'history'));
+
+  const confirmationFields = {
+    confirmedByManager: managerProfile.name,
+    confirmedByUid:     managerProfile.uid,
+    confirmedAt:        serverTimestamp(),
+    managerSettledAPI:  parsedAPI,
+    managerNote:        note,
+    hasDiscrepancy,
+  };
+
+  const changedFields = { managerSettledAPI: parsedAPI, hasDiscrepancy };
+  if (note.trim()) changedFields.managerNote = note.trim();
+
+  const historyDoc = {
+    fromStatus:   'settled',
+    toStatus:     'settled',
+    changedFields,
+    actorUid:     managerProfile.uid,
+    actorRole:    managerProfile.role,
+    agentId:      policy.agentId,
+    unitId:       policy.unitId ?? null,
+    at:           serverTimestamp(),
+  };
+
+  const batch = writeBatch(db);
+  batch.update(policyRef, confirmationFields);
+  batch.set(historyRef, historyDoc);
+
+  if (hasDiscrepancy) {
+    const notifRef = doc(collection(db, 'tenants', tenantId, 'notifications'));
+    const agentSettledDisplay = policy.settledAPI != null ? `$${Number(policy.settledAPI).toFixed(2)}` : '(unknown)';
+    const managerSettledDisplay = `$${parsedAPI.toFixed(2)}`;
+    const policyLabel = policy.ownerName ?? policy.insuredName ?? policy.policyNumber ?? policyId;
+    batch.set(notifRef, {
+      userId:    policy.agentId,
+      tenantId,
+      type:      'policy_discrepancy',
+      title:     'Policy Confirmation Discrepancy',
+      body:      `Your policy for ${policyLabel} was confirmed with manager API ${managerSettledDisplay} vs your settled API of ${agentSettledDisplay}.`,
+      link:      null,
+      read:      false,
+      createdAt: serverTimestamp(),
+    });
+  }
+
+  await batch.commit();
+}
+
+/**
  * getPolicyHistory — returns history docs for a policy ordered by `at` desc.
  * Used by tests and smoke; history display UI is deferred (H1.2 FU).
  */

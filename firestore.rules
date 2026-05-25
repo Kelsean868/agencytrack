@@ -283,44 +283,72 @@ service cloud.firestore {
           && request.resource.data.proposedAPI > 0;
 
         // Arm B — legal status transition (agent-owned subset of PRD §7).
-        // OR'd with Arm A by Firestore. Writes only status + statusUpdatedAt +
-        // the union of all per-transition fields; value-guards enforce required fields.
+        // OR'd with Arm A by Firestore. Per-target field sets (H2a loosening #1
+        // closed): each target status only allows status + statusUpdatedAt + that
+        // status's own fields. Value-guards enforce required fields.
         allow update: if isSignedIn()
           && isAgent()
           && getTenantId() == tenantId
           && resource.data.agentId == request.auth.uid
           && isLegalAgentTransition(resource.data.status, request.resource.data.status)
+          && (
+            // submitted (re-entry from postponed): no extra fields
+            (request.resource.data.status == 'submitted'
+             && request.resource.data.diff(resource.data).affectedKeys()
+                  .hasOnly(['status', 'statusUpdatedAt']))
+            || (request.resource.data.status == 'rated'
+                && request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['status', 'statusUpdatedAt', 'ratedPremium', 'rateReason'])
+                && request.resource.data.ratedPremium is number
+                && request.resource.data.ratedPremium > 0)
+            || (request.resource.data.status == 'postponed'
+                && request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['status', 'statusUpdatedAt', 'pendingReason']))
+            || (request.resource.data.status in ['ntu', 'denied']
+                && request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['status', 'statusUpdatedAt', 'reason']))
+            || (request.resource.data.status == 'settled'
+                && request.resource.data.diff(resource.data).affectedKeys()
+                     .hasOnly(['status', 'statusUpdatedAt',
+                               'dateIssued', 'settledAPI', 'issuedCoverage',
+                               'initialPremium', 'earnedCommission'])
+                && request.resource.data.dateIssued is timestamp
+                && request.resource.data.dateIssued >= resource.data.dateWritten
+                && request.resource.data.dateIssued <= request.time
+                && request.resource.data.settledAPI is number
+                && request.resource.data.settledAPI > 0
+                && request.resource.data.issuedCoverage is number
+                && request.resource.data.issuedCoverage > 0
+                && request.resource.data.initialPremium is number
+                && request.resource.data.initialPremium > 0
+                && request.resource.data.earnedCommission is number
+                && request.resource.data.earnedCommission >= 0)
+          );
+
+        // Arm C — manager confirmation (H2a). OR'd with Arms A + B by Firestore.
+        // Writes the 6 confirmation fields only; never status or any agent field.
+        // Gate mirrors the settlements write gate + the existing UM unit-scoping.
+        allow update: if isSignedIn()
+          && canManage(tenantId)
+          && (getRole() in ['platform_admin', 'tenant_admin']
+              || getRole() == 'branch_manager'
+              || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true)
+          && (getRole() != 'unit_manager' || resource.data.unitId == request.auth.uid)
+          && resource.data.status == 'settled'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-               'status', 'statusUpdatedAt',
-               'ratedPremium', 'rateReason',
-               'pendingReason',
-               'reason',
-               'dateIssued', 'settledAPI', 'issuedCoverage', 'initialPremium', 'earnedCommission'
+               'confirmedByManager', 'confirmedByUid', 'confirmedAt',
+               'managerSettledAPI', 'managerNote', 'hasDiscrepancy'
              ])
-          // rated: ratedPremium required + positive
-          && (request.resource.data.status != 'rated'
-              || (request.resource.data.ratedPremium is number
-                  && request.resource.data.ratedPremium > 0))
-          // settled: full §7.4 field set required
-          && (request.resource.data.status != 'settled'
-              || (request.resource.data.dateIssued is timestamp
-                  && request.resource.data.dateIssued >= resource.data.dateWritten
-                  && request.resource.data.dateIssued <= request.time
-                  && request.resource.data.settledAPI is number
-                  && request.resource.data.settledAPI > 0
-                  && request.resource.data.issuedCoverage is number
-                  && request.resource.data.issuedCoverage > 0
-                  && request.resource.data.initialPremium is number
-                  && request.resource.data.initialPremium > 0
-                  && request.resource.data.earnedCommission is number
-                  && request.resource.data.earnedCommission >= 0));
+          && request.resource.data.confirmedByUid == request.auth.uid
+          && request.resource.data.managerSettledAPI is number
+          && request.resource.data.managerSettledAPI > 0
+          && request.resource.data.hasDiscrepancy is bool;
 
         allow delete: if false;
 
         // H1.2: policy history subcollection — append-only audit (PRD §7.4).
-        // agentId + unitId denormalized into each doc for rules access control without
-        // a cross-doc get() on the parent policy. Written only via writeBatch alongside
-        // the status transition; update/delete are permanently closed.
+        // Written only via writeBatch alongside status transitions or confirmation;
+        // update/delete are permanently closed.
         match /history/{historyId} {
           allow get: if canAccessOwn(tenantId, resource.data.agentId)
             || (canManage(tenantId) && (
@@ -332,11 +360,16 @@ service cloud.firestore {
                  getRole() != 'unit_manager'
                  || resource.data.unitId == request.auth.uid
                ));
+
+          // Agent arm: agent writes their own policy's history (H2a loosening #2
+          // closed — parent-policy agentId must match the caller, preventing an
+          // agent from writing orphan history docs under another agent's policy).
           allow create: if isSignedIn()
             && isAgent()
             && getTenantId() == tenantId
             && request.resource.data.actorUid == request.auth.uid
             && request.resource.data.agentId == request.auth.uid
+            && get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.agentId == request.auth.uid
             && request.resource.data.keys().hasAll([
                  'fromStatus', 'toStatus', 'changedFields', 'actorUid',
                  'actorRole', 'at', 'agentId'
@@ -345,6 +378,24 @@ service cloud.firestore {
                  request.resource.data.fromStatus,
                  request.resource.data.toStatus
                );
+
+          // Manager arm: manager writes a confirmation event (H2a).
+          // fromStatus == toStatus == 'settled' is explicitly allowed (confirm
+          // is a field-change event, not a lifecycle transition).
+          // In-scope check mirrors Arm C: UM restricted to own unit via parent policy;
+          // BM/admin tenant-scoped via canManage.
+          allow create: if canManage(tenantId)
+            && (getRole() in ['platform_admin', 'tenant_admin']
+                || getRole() == 'branch_manager'
+                || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true)
+            && (getRole() != 'unit_manager'
+                || get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.unitId == request.auth.uid)
+            && request.resource.data.actorUid == request.auth.uid
+            && request.resource.data.keys().hasAll([
+                 'fromStatus', 'toStatus', 'changedFields', 'actorUid',
+                 'actorRole', 'at', 'agentId', 'unitId'
+               ]);
+
           allow update: if false;
           allow delete: if false;
         }
