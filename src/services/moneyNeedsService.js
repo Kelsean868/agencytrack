@@ -1,7 +1,55 @@
 import { db } from '../firebase';
 import {
-  doc, getDoc, setDoc, serverTimestamp,
+  doc, getDoc, setDoc, updateDoc, serverTimestamp,
 } from 'firebase/firestore';
+import { computePAYE, grossFromNet, DEFAULT_PAYE_CONFIG } from '../utils/payeEngine';
+
+export const PAYE_BRACKETS_VERSION = 'default-2026';
+
+export const FREQUENCY_MULTIPLIERS = { A: 1, S: 2, Q: 4, M: 12 };
+
+export function annualizeAmount(amount, frequency) {
+  return (parseFloat(amount) || 0) * (FREQUENCY_MULTIPLIERS[frequency] ?? 12);
+}
+
+export function computeGroupTotal(group) {
+  const lineTotal = (group.lineItems ?? []).reduce(
+    (sum, item) => sum + (parseFloat(item.annualizedAmount) || 0), 0,
+  );
+  const subCalcTotal = (group.subCalculatorRefs ?? []).reduce(
+    (sum, ref) => sum + (parseFloat(ref.annualTotal) || 0), 0,
+  );
+  return lineTotal + subCalcTotal;
+}
+
+export function computeWorksheetRollup(expenseGroups) {
+  const totalAnnualAfterTax = Object.values(expenseGroups).reduce(
+    (sum, g) => sum + (parseFloat(g.groupAnnualTotal) || 0), 0,
+  );
+  const totalAnnualPreTax = grossFromNet(totalAnnualAfterTax, DEFAULT_PAYE_CONFIG);
+  const computedPAYE = computePAYE(totalAnnualPreTax, DEFAULT_PAYE_CONFIG);
+  return { totalAnnualAfterTax, totalAnnualPreTax, computedPAYE };
+}
+
+export async function updateExpenseGroup(tenantId, uid, year, groupKey, updatedGroup, fullExpenseGroups) {
+  const parsedYear = parseInt(year, 10);
+  if (!parsedYear) throw new Error('Invalid year');
+
+  const docRef = doc(db, 'tenants', tenantId, 'users', uid, 'moneyNeeds', String(parsedYear));
+  const rollup = computeWorksheetRollup(fullExpenseGroups);
+
+  await updateDoc(docRef, {
+    [`expenseGroups.${groupKey}`]: updatedGroup,
+    totalAnnualAfterTax: rollup.totalAnnualAfterTax,
+    totalAnnualPreTax: rollup.totalAnnualPreTax,
+    computedPAYE: rollup.computedPAYE,
+    payeBracketsVersionId: PAYE_BRACKETS_VERSION,
+    updatedAt: serverTimestamp(),
+    updatedBy: uid,
+  });
+
+  return rollup;
+}
 
 const EXPENSE_GROUP_SCAFFOLD = () => ({ lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 });
 
