@@ -1,10 +1,7 @@
-// Tenure-based Company Floor — Tatil head-of-sales slide (2026-05-19).
-//
-// PROVISIONAL: numbers below await head-of-sales confirmation. The
-// board-signed Sales_Career.pdf governs CAREER LEVEL requirements (unchanged);
-// the tenure table is a separate retention minimum by months of service and
-// exists only on the slide. Numbers seeded into config/companyMinimums via
-// scripts/seed/seed-tenure-api-floors.mjs and editable at that path.
+// Tenure-based Company Floor — Tatil head-of-sales slide (2026-05-19),
+// confirmed by head-of-sales 2026-05-21. Numbers seeded into
+// config/companyMinimums via scripts/seed/seed-tenure-api-floors.mjs
+// and editable at that path.
 //
 // Boundaries (per kickoff brief):
 //   m < 12          → 150,000

@@ -502,7 +502,7 @@ Banked: PR #240 (`4134d2c`). Resolved: 2026-05-21 (head-of-sales confirmation).
 
 ---
 
-## Track J — Clear stale provisional signals for tenure bands (LOW, banked 2026-05-24)
+## ~~Track J — Clear stale provisional signals for tenure bands~~ (SHIPPED — see PR #329 closing)
 
 **Scope:** Following head-of-sales confirmation (2026-05-21), two stale provisional signals remain in the codebase:
 

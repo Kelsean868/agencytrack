@@ -2,11 +2,8 @@
  * Seed: write tenureApiFloors (Tatil head-of-sales slide 2026-05-19) into
  * tenants/tatillife_south/config/companyMinimums.
  *
- * PROVISIONAL: the slide proved unreliable on its career-level table; tenure
- * numbers below await head-of-sales confirmation. The doc is marked with
- * `tenureApiFloorsProvisional: true` to signal that the values were not
- * cross-confirmed against a board-signed source. Re-run with corrected
- * numbers (no code change) once confirmed.
+ * Bands confirmed by head-of-sales 2026-05-21. Previously marked provisional;
+ * flag removed post-confirmation.
  *
  * The block is written via merge: true so existing fields on the doc
  * (annualAPI / annualApps / persistency / updatedBy / updatedAt /
@@ -73,8 +70,6 @@ async function main() {
   console.log(`[seed] mode=${DRY_RUN ? 'DRY-RUN' : 'EXECUTE'}`);
   console.log(`[seed] target: tenants/${TENANT}/config/companyMinimums`);
   console.log(`[seed] tenureApiFloors: ${JSON.stringify(TENURE_API_FLOORS)}`);
-  console.log(`[seed] provisional flag will be set to true`);
-
   const ref = db.doc(`tenants/${TENANT}/config/companyMinimums`);
   const snap = await ref.get();
   const existing = snap.exists ? snap.data() : null;
@@ -83,12 +78,11 @@ async function main() {
     console.log(`[seed] doc exists. existing keys: ${Object.keys(existing).sort().join(', ')}`);
     if (existing.tenureApiFloors) {
       console.log(`[seed] existing tenureApiFloors: ${JSON.stringify(existing.tenureApiFloors)}`);
-      const provisionalMatches = existing.tenureApiFloorsProvisional === true;
-      if (floorsEqual(existing.tenureApiFloors, TENURE_API_FLOORS) && provisionalMatches) {
-        console.log(`[seed] existing block already matches seed table AND provisional flag is set — no-op.`);
+      if (floorsEqual(existing.tenureApiFloors, TENURE_API_FLOORS)) {
+        console.log(`[seed] existing block already matches seed table — no-op.`);
         process.exit(0);
       }
-      console.log(`[seed] existing block differs from seed table (or provisional flag missing) — will overwrite.`);
+      console.log(`[seed] existing block differs from seed table — will overwrite.`);
     } else {
       console.log(`[seed] no tenureApiFloors block yet — will add.`);
     }
@@ -97,14 +91,13 @@ async function main() {
   }
 
   if (DRY_RUN) {
-    console.log(`[seed] DRY-RUN: would merge tenureApiFloors + tenureApiFloorsProvisional + updatedBy/updatedAt.`);
+    console.log(`[seed] DRY-RUN: would merge tenureApiFloors + updatedBy/updatedAt.`);
     console.log(`[seed] Re-run with --execute to apply.`);
     process.exit(0);
   }
 
   const payload = {
     tenureApiFloors: TENURE_API_FLOORS,
-    tenureApiFloorsProvisional: true,
     updatedBy: 'seed:tenure-api-floors-2026-05-20',
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
@@ -115,7 +108,6 @@ async function main() {
   const verified = verifySnap.data();
   console.log(`[seed] wrote doc. verified tenureApiFloors:`);
   console.log(JSON.stringify(verified.tenureApiFloors, null, 2));
-  console.log(`[seed] tenureApiFloorsProvisional=${verified.tenureApiFloorsProvisional}`);
   console.log(`[seed] updatedBy=${verified.updatedBy}`);
   console.log(`[seed] preserved keys: annualAPI=${verified.annualAPI} annualApps=${verified.annualApps} persistency=${verified.persistency} weeklyActivityFloors=${!!verified.weeklyActivityFloors}`);
 
