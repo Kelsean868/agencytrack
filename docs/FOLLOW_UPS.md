@@ -2697,19 +2697,31 @@ Surfaced during H1 #300 Phase 6a deploy.
 
 ---
 
-## Track H H1.2 — policies `update` rule value-guards (LOW, banked H1 PR #300)
+## Track H H1.2 — policies `update` rule value-guards (RESOLVED — PR #TBD)
 
-**Scope:** The `policies` `allow update` rule currently enforces `hasOnly()` field-allowlist + own-agent + `status == 'submitted'` but does NOT mirror the create-time value-guards into the update path. When the agent-edit path is wired in H1.2, add:
-- `sourceOfProspect in [...]` enum membership check
-- `dateWritten <= request.time`
-- `proposedAPI > 0`
+**Was:** The `policies` `allow update` rule in H1 enforced `hasOnly()` field-allowlist + own-agent + `status == 'submitted'` but did NOT mirror the create-time value-guards into the update path.
 
-Without these guards an edit could write a bogus source or non-positive API value.
+**Resolution:** Arm A (body-edit) in H1.2's `firestore.rules` now includes all three FU Entry 2 value-guards:
+- `sourceOfProspect in ['seminar','booth-event','referral','cold-call','social-media','orphan','existing-client','family-friend','bank-referral','self','other']`
+- `request.resource.data.dateWritten <= request.time`
+- `request.resource.data.proposedAPI > 0`
 
-**No exposure today** — nothing invokes the `update` arm; the H1 walking skeleton has no client-side edit path.
+Also added: `request.resource.data.status == 'submitted'` guard (status unchanged) to Arm A, preventing Arm A from being used as a backdoor to set bogus statuses.
 
-**Fix shape:** Mirror the three value-guards from the `allow create` predicate into `allow update` when the H1.2 agent-edit UI is wired. Include in the H1.2 brief's Phase 2 `firestore.rules` edits.
+**Shipped:** PR #TBD (`#TBD`). Emulator DENY case confirmed (body-edit with bogus `sourceOfProspect` → DENY).
 
-**Priority:** LOW. No exposure until H1.2 ships an edit path.
+---
 
-Surfaced in H1 #300 review.
+## Track H H1.2 — history timeline display UI (LOW, banked H1.2 PR #TBD)
+
+**Scope:** The `history` subcollection (`/tenants/{tid}/policies/{policyId}/history/{historyId}`) is written atomically with every status transition and verified by emulator tests. No display surface exists — the audit trail is data-only.
+
+**Action:** Build a per-policy history timeline component:
+- Reads `getPolicyHistory(tenantId, policyId)` from `policiesService.js` (already exported)
+- Displays each `history` doc in chronological order: `fromStatus → toStatus`, `changedFields`, `actorUid`, `at` timestamp
+- Likely placement: expandable section on each policy card in `PolicyLedgerPanel.jsx` or a dedicated modal
+- Manager-visible too (BM+ read access already in rules via `canManage`)
+
+**Priority:** LOW. Data is written and tested; UI can ship independently. No rule/service changes needed.
+
+Banked: H1.2 PR #TBD.
