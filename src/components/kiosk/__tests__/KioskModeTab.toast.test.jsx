@@ -107,12 +107,14 @@ describe('KioskModeTab — copy toast wire-up', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('Generate URL'));
     });
+    // Explicit timeout: handleCreate awaits fn() → loadTokens() → getDocs() → writeText()
+    // before calling showToast — three async hops that need > default 1000ms in slow CI.
     await waitFor(() => {
       expect(hoisted.showToast).toHaveBeenCalledWith({
         message: 'Kiosk URL generated and copied',
         variant: 'success',
       });
-    });
+    }, { timeout: 3000 });
   });
 
   it('Generate fires a warning toast when auto-copy fails', async () => {
