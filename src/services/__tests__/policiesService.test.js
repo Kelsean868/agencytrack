@@ -36,7 +36,7 @@ vi.mock('firebase/firestore', () => ({
   doc:             (...args) => hoisted.mockDoc(...args),
 }));
 
-import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy } from '../policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy, lapsePolicy } from '../policiesService';
 
 const mockProfile = {
   uid: 'uid-1',
@@ -418,5 +418,112 @@ describe('getPolicyHistory', () => {
     expect(result[0].id).toBe('h1');
     expect(result[0].fromStatus).toBe('submitted');
     expect(result[0].toStatus).toBe('rated');
+  });
+});
+
+describe('lapsePolicy', () => {
+  const mockBMProfile = {
+    uid:  'bm-uid',
+    name: 'Branch Manager',
+    role: 'branch_manager',
+  };
+
+  const mockSettledPolicy = {
+    agentId:   'agent-1',
+    unitId:    'unit-1',
+    status:    'settled',
+    ownerName: 'Jane Smith',
+  };
+
+  const mockFields = {
+    dateLapsed: { _type: 'timestamp', ms: Date.now() },
+    lapseReason: '',
+  };
+
+  it('throws when role is not BM+', async () => {
+    const agentProfile = { uid: 'a1', name: 'Agent', role: 'agent' };
+    await expect(
+      lapsePolicy('t1', agentProfile, 'p1', mockSettledPolicy, mockFields)
+    ).rejects.toThrow('Only Branch Manager or above can lapse a policy.');
+  });
+
+  it('throws when role is unit_manager', async () => {
+    const umProfile = { uid: 'um1', name: 'UM', role: 'unit_manager' };
+    await expect(
+      lapsePolicy('t1', umProfile, 'p1', mockSettledPolicy, mockFields)
+    ).rejects.toThrow('Only Branch Manager or above can lapse a policy.');
+  });
+
+  it('throws when policy.status is not settled', async () => {
+    const ratedPolicy = { ...mockSettledPolicy, status: 'rated' };
+    await expect(
+      lapsePolicy('t1', mockBMProfile, 'p1', ratedPolicy, mockFields)
+    ).rejects.toThrow('Only settled policies can be lapsed.');
+  });
+
+  it('throws when dateLapsed is missing', async () => {
+    await expect(
+      lapsePolicy('t1', mockBMProfile, 'p1', mockSettledPolicy, { dateLapsed: null })
+    ).rejects.toThrow('dateLapsed is required to lapse a policy.');
+  });
+
+  it('writes 3 batch docs atomically: policy update + history + notification', async () => {
+    await lapsePolicy('t1', mockBMProfile, 'p1', mockSettledPolicy, mockFields);
+    expect(hoisted.mockBatchUpdate).toHaveBeenCalledOnce();
+    expect(hoisted.mockBatchSet).toHaveBeenCalledTimes(2);    // history + notification
+    expect(hoisted.mockBatchCommit).toHaveBeenCalledOnce();
+  });
+
+  it('policy update payload has status lapsed + dateLapsed', async () => {
+    await lapsePolicy('t1', mockBMProfile, 'p1', mockSettledPolicy, mockFields);
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.status).toBe('lapsed');
+    expect(policyPayload.dateLapsed).toEqual(mockFields.dateLapsed);
+    expect(policyPayload).toHaveProperty('statusUpdatedAt');
+  });
+
+  it('history doc has fromStatus settled + toStatus lapsed', async () => {
+    await lapsePolicy('t1', mockBMProfile, 'p1', mockSettledPolicy, mockFields);
+    const histPayload = hoisted.mockBatchSet.mock.calls[0][1];
+    expect(histPayload.fromStatus).toBe('settled');
+    expect(histPayload.toStatus).toBe('lapsed');
+    expect(histPayload.actorUid).toBe('bm-uid');
+    expect(histPayload.actorRole).toBe('branch_manager');
+    expect(histPayload.agentId).toBe('agent-1');
+    expect(histPayload.unitId).toBe('unit-1');
+  });
+
+  it('lapseReason written to policy + history when provided', async () => {
+    const fields = { ...mockFields, lapseReason: 'Non-payment' };
+    await lapsePolicy('t1', mockBMProfile, 'p1', mockSettledPolicy, fields);
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.lapseReason).toBe('Non-payment');
+    const histPayload = hoisted.mockBatchSet.mock.calls[0][1];
+    expect(histPayload.changedFields.lapseReason).toBe('Non-payment');
+  });
+
+  it('lapseReason NOT written to policy or history when absent/empty', async () => {
+    await lapsePolicy('t1', mockBMProfile, 'p1', mockSettledPolicy, { dateLapsed: mockFields.dateLapsed });
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.lapseReason).toBeUndefined();
+    const histPayload = hoisted.mockBatchSet.mock.calls[0][1];
+    expect(histPayload.changedFields.lapseReason).toBeUndefined();
+  });
+
+  it('notification has type policy_lapsed and userId = agentId', async () => {
+    await lapsePolicy('t1', mockBMProfile, 'p1', mockSettledPolicy, mockFields);
+    const notifPayload = hoisted.mockBatchSet.mock.calls[1][1];
+    expect(notifPayload.type).toBe('policy_lapsed');
+    expect(notifPayload.userId).toBe('agent-1');
+    expect(notifPayload.tenantId).toBe('t1');
+    expect(notifPayload.read).toBe(false);
+    expect(notifPayload.body).toContain('Jane Smith');
+  });
+
+  it('tenant_admin can also lapse a policy', async () => {
+    const taProfile = { uid: 'ta1', name: 'Tenant Admin', role: 'tenant_admin' };
+    await expect(
+      lapsePolicy('t1', taProfile, 'p1', mockSettledPolicy, mockFields)
+    ).resolves.toBeUndefined();
   });
 });

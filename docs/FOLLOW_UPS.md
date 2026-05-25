@@ -2736,7 +2736,7 @@ Also added: `request.resource.data.status == 'submitted'` guard (status unchange
 
 ---
 
-## Track H — H11 agent-side discrepancy/lapse surfacing (PARTIALLY RESOLVED — discrepancy half DONE by PR #305, lapse half remains for H2c)
+## Track H — H11 agent-side discrepancy/lapse surfacing (RESOLVED — both halves shipped)
 
 **Issue:** After H2a ships manager confirmation, the agent's own Policy Ledger shows no indication of confirmation state, and the `policy_discrepancy` notification renders with the generic Bell icon (fallback in `TYPE_META`).
 
@@ -2744,8 +2744,8 @@ Also added: `request.resource.data.status == 'submitted'` guard (status unchange
 - `PolicyLedgerPanel.jsx`: three-way footer (confirmed / settled-unconfirmed / non-terminal) with emerald "Confirmed by {manager}" chip, amber "Discrepancy" chip, value comparison line, and manager note.
 - `NotificationDrawer.jsx`: `policy_discrepancy` `TYPE_META` entry → `AlertTriangle`/warning palette.
 
-**Lapse half: REMAINS** — lands with H2c (Lapsed status). When `lapsed` becomes a terminal status, the agent should see a clear signal on their ledger (similar chip or muted line). Design: TBD at H2c authoring time.
-
-**Priority:** LOW (lapse half). No agent-visible gap until H2c ships the `lapsed` status.
+**Lapse half: RESOLVED** in Track H H2c PR #TBD (`{SHA}`):
+- `PolicyLedgerPanel.jsx`: `lapsed` muted grey badge + lapse date chip in policy footer.
+- `NotificationDrawer.jsx`: `policy_lapsed` `TYPE_META` entry → `AlertTriangle`/danger palette.
 
 Banked from Track H agent confirmation-surfacing PR #305 (`97a8493`).

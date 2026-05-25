@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { getPoliciesForManager, confirmPolicy } from '../../services/policiesService';
+import { getPoliciesForManager, confirmPolicy, lapsePolicy } from '../../services/policiesService';
 import { getTenantUsers } from '../../services/managerService';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -29,6 +30,13 @@ function fmtAPI(val) {
   return `$${Number(val).toFixed(2)}`;
 }
 
+/** Format a Firestore Timestamp or Date-like value as a readable date string */
+function fmtDate(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('en-TT', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 export default function PolicyReconciliationPanel() {
   const { userProfile, role, tenantId } = useAuth();
 
@@ -39,21 +47,31 @@ export default function PolicyReconciliationPanel() {
     role === 'platform_admin' ||
     Boolean(userProfile?.canConfirmSettlements);
 
+  // Lapse is BM+ only (not canConfirmSettlements-only)
+  const canLapse =
+    role === 'branch_manager' ||
+    role === 'tenant_admin'   ||
+    role === 'platform_admin';
+
   const now = new Date();
   const [selectedYear,  setSelectedYear]  = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1); // 1-based
+  const [activeTab,     setActiveTab]     = useState('confirm'); // 'confirm' | 'lapse'
 
-  const [policies,  setPolicies]  = useState([]);
-  const [agentMap,  setAgentMap]  = useState({});   // uid → name
-  const [loading,   setLoading]   = useState(false);
-  const [error,     setError]     = useState(null);
+  const [allPoliciesRaw, setAllPoliciesRaw] = useState([]); // unfiltered for both tabs
+  const [agentMap,       setAgentMap]       = useState({}); // uid → name
+  const [loading,        setLoading]        = useState(false);
+  const [error,          setError]          = useState(null);
 
-  // Per-policy form state keyed by policyId
+  // Per-policy confirm form state keyed by policyId
   const [formState, setFormState] = useState({});
 
   // Bulk-confirm selection (Set of policyIds)
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [bulkConfirming, setBulkConfirming] = useState(false);
+
+  // Per-policy lapse form state: { dateLapsed: string (YYYY-MM-DD), lapseReason: string, expanded: bool, submitting: bool, done: bool }
+  const [lapseState, setLapseState] = useState({});
 
   const loadData = useCallback(async () => {
     if (!tenantId || !userProfile) return;
@@ -71,7 +89,10 @@ export default function PolicyReconciliationPanel() {
       for (const u of users) map[u.id] = u.name ?? u.email ?? u.id;
       setAgentMap(map);
 
-      // Client-filter: settled, unconfirmed, dateIssued in selected year+month
+      // Store raw data for both tabs to filter from
+      setAllPoliciesRaw(allPolicies);
+
+      // Client-filter for Confirm tab: settled, unconfirmed, dateIssued in selected year+month
       const filtered = allPolicies.filter((p) => {
         if (p.status !== 'settled') return false;
         if (p.confirmedAt) return false;
@@ -79,9 +100,8 @@ export default function PolicyReconciliationPanel() {
         const d = p.dateIssued.toDate ? p.dateIssued.toDate() : new Date(p.dateIssued);
         return d.getFullYear() === selectedYear && (d.getMonth() + 1) === selectedMonth;
       });
-      setPolicies(filtered);
 
-      // Initialise form state for policies that don't already have it
+      // Initialise form state for confirm-tab policies that don't already have it
       setFormState((prev) => {
         const next = { ...prev };
         filtered.forEach((p) => {
@@ -187,6 +207,35 @@ export default function PolicyReconciliationPanel() {
     setTimeout(loadData, 800);
   };
 
+  /** Handle BM lapsing a settled policy */
+  const handleLapse = async (policy) => {
+    const ls = lapseState[policy.id];
+    if (!ls?.dateLapsed) {
+      setError('Date lapsed is required.');
+      return;
+    }
+    setError(null);
+    setLapseState((prev) => ({ ...prev, [policy.id]: { ...prev[policy.id], submitting: true } }));
+    try {
+      const managerProfile = {
+        uid:  userProfile.uid,
+        name: userProfile.name ?? userProfile.email ?? 'Manager',
+        role,
+      };
+      const dateLapsedTs = Timestamp.fromDate(new Date(ls.dateLapsed));
+      const fields = { dateLapsed: dateLapsedTs, lapseReason: ls.lapseReason?.trim() || '' };
+      await lapsePolicy(tenantId, managerProfile, policy.id, policy, fields);
+      setLapseState((prev) => ({
+        ...prev,
+        [policy.id]: { ...prev[policy.id], submitting: false, done: true, expanded: false },
+      }));
+      setTimeout(loadData, 800);
+    } catch (err) {
+      setLapseState((prev) => ({ ...prev, [policy.id]: { ...prev[policy.id], submitting: false } }));
+      setError(err.message ?? 'Lapse failed');
+    }
+  };
+
   const toggleSelect = (id) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -196,6 +245,37 @@ export default function PolicyReconciliationPanel() {
     });
   };
 
+
+  if (!canAccess) {
+    return (
+      <div className="bg-card rounded-xl p-8 text-center">
+        <p className="text-sm text-text-muted">You do not have access to Policy Reconciliation.</p>
+      </div>
+    );
+  }
+
+  const years = buildYearOptions();
+
+  // Confirm tab: settled, unconfirmed, dateIssued in selected period
+  const policies = allPoliciesRaw.filter((p) => {
+    if (p.status !== 'settled') return false;
+    if (p.confirmedAt) return false;
+    if (!p.dateIssued) return false;
+    const d = p.dateIssued.toDate ? p.dateIssued.toDate() : new Date(p.dateIssued);
+    return d.getFullYear() === selectedYear && (d.getMonth() + 1) === selectedMonth;
+  });
+
+  // Lapse tab: settled (any confirmation state) + already-lapsed, by dateIssued period
+  const lapseTabPolicies = allPoliciesRaw.filter((p) => {
+    if (p.status !== 'settled' && p.status !== 'lapsed') return false;
+    if (!p.dateIssued) return false;
+    const d = p.dateIssued.toDate ? p.dateIssued.toDate() : new Date(p.dateIssued);
+    return d.getFullYear() === selectedYear && (d.getMonth() + 1) === selectedMonth;
+  });
+
+  const grouped = groupBy(policies, (p) => p.agentId);
+  const lapseGrouped = groupBy(lapseTabPolicies, (p) => p.agentId);
+  const pendingSelectedCount = [...selectedIds].filter((id) => !formState[id]?.done).length;
   const unconfirmedPolicies = policies.filter((p) => !formState[p.id]?.done);
   const allSelected = unconfirmedPolicies.length > 0 && unconfirmedPolicies.every((p) => selectedIds.has(p.id));
 
@@ -207,26 +287,48 @@ export default function PolicyReconciliationPanel() {
     }
   };
 
-  if (!canAccess) {
-    return (
-      <div className="bg-card rounded-xl p-8 text-center">
-        <p className="text-sm text-text-muted">You do not have access to Policy Reconciliation.</p>
-      </div>
-    );
-  }
-
-  const years = buildYearOptions();
-  const grouped = groupBy(policies, (p) => p.agentId);
-  const pendingSelectedCount = [...selectedIds].filter((id) => !formState[id]?.done).length;
-
   return (
     <div className="space-y-6">
       <div className="bg-card rounded-xl p-6">
         <h2 className="text-lg font-semibold text-text mb-1">Policy Reconciliation</h2>
-        <p className="text-sm text-text-muted mb-5">
+        <p className="text-sm text-text-muted mb-3">
           Confirm settled policies for a selected month. Policies are grouped by agent.
           Leave "Manager API" blank to silently agree with the agent's value.
         </p>
+
+        {/* ── Tab selector ── */}
+        <div className="flex gap-1 mb-5 border-b border-border" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'confirm'}
+            onClick={() => setActiveTab('confirm')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+              activeTab === 'confirm'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-text-muted hover:text-text'
+            }`}
+            data-testid="tab-confirm"
+          >
+            Confirm
+          </button>
+          {canLapse && (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'lapse'}
+              onClick={() => setActiveTab('lapse')}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                activeTab === 'lapse'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-text-muted hover:text-text'
+              }`}
+              data-testid="tab-lapse"
+            >
+              Lapse
+            </button>
+          )}
+        </div>
 
         {/* ── Month selector ── */}
         <div className="flex flex-wrap gap-3 mb-6">
@@ -252,21 +354,27 @@ export default function PolicyReconciliationPanel() {
           </select>
         </div>
 
-        {/* ── Status states ── */}
+        {/* ── Status states (shared) ── */}
         {loading && (
           <p className="text-sm text-text-muted py-4" data-testid="reconcil-loading">Loading…</p>
         )}
         {error && (
           <p role="alert" className="text-sm text-red-600 dark:text-red-400 mb-4" data-testid="reconcil-error">{error}</p>
         )}
-        {!loading && !error && policies.length === 0 && (
+        {!loading && !error && activeTab === 'confirm' && policies.length === 0 && (
           <p className="text-sm text-text-muted py-4" data-testid="reconcil-empty">
             No unconfirmed settled policies for {MONTHS[selectedMonth - 1]} {selectedYear}.
           </p>
         )}
+        {!loading && !error && activeTab === 'lapse' && lapseTabPolicies.length === 0 && (
+          <p className="text-sm text-text-muted py-4" data-testid="lapse-empty">
+            No settled policies for {MONTHS[selectedMonth - 1]} {selectedYear}.
+          </p>
+        )}
 
+        {/* ── Confirm tab content ── */}
         {/* ── Bulk-confirm toolbar ── */}
-        {!loading && policies.length > 0 && (
+        {activeTab === 'confirm' && !loading && policies.length > 0 && (
           <div className="flex items-center gap-3 mb-4">
             <label className="flex items-center gap-2 cursor-pointer select-none text-sm text-text-muted">
               <input
@@ -295,8 +403,8 @@ export default function PolicyReconciliationPanel() {
           </div>
         )}
 
-        {/* ── Grouped policy list ── */}
-        {!loading && policies.length > 0 && (
+        {/* ── Grouped policy list (Confirm tab) ── */}
+        {activeTab === 'confirm' && !loading && policies.length > 0 && (
           <div className="space-y-8" data-testid="policy-groups">
             {[...grouped.entries()].map(([agentId, agentPolicies]) => (
               <div key={agentId} data-testid={`agent-group-${agentId}`}>
@@ -448,6 +556,121 @@ export default function PolicyReconciliationPanel() {
                                 {fs.submitting ? 'Confirming…' : 'Confirm'}
                               </button>
                             </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ── Lapse tab content ── */}
+        {activeTab === 'lapse' && !loading && lapseTabPolicies.length > 0 && (
+          <div className="space-y-8" data-testid="lapse-policy-groups">
+            {[...lapseGrouped.entries()].map(([agentId, agentPolicies]) => (
+              <div key={agentId} data-testid={`lapse-agent-group-${agentId}`}>
+                <h3 className="text-sm font-semibold text-text-muted uppercase tracking-wide mb-3">
+                  {agentMap[agentId] ?? agentId}
+                </h3>
+                <div className="space-y-4">
+                  {agentPolicies.map((policy) => {
+                    const ls = lapseState[policy.id] ?? { dateLapsed: '', lapseReason: '', expanded: false, submitting: false, done: false };
+                    const isAlreadyLapsed = policy.status === 'lapsed' || ls.done;
+
+                    return (
+                      <div
+                        key={policy.id}
+                        className="bg-surface rounded-xl border border-border p-5"
+                        data-testid={`lapse-policy-card-${policy.id}`}
+                      >
+                        {/* Card header */}
+                        <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                          <div>
+                            <p className="font-semibold text-text text-sm">
+                              {policy.ownerName ?? policy.insuredName ?? policy.policyNumber ?? policy.id}
+                            </p>
+                            {policy.insuredName && policy.ownerName !== policy.insuredName && (
+                              <p className="text-xs text-text-muted">Insured: {policy.insuredName}</p>
+                            )}
+                            {policy.productLine && (
+                              <p className="text-xs text-text-muted capitalize">{policy.productLine}</p>
+                            )}
+                          </div>
+                          {isAlreadyLapsed ? (
+                            <span className="inline-flex items-center text-xs font-semibold text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/40 px-3 py-1 rounded-full" data-testid={`lapsed-pill-${policy.id}`}>
+                              Lapsed{policy.dateLapsed ? ` on ${fmtDate(policy.dateLapsed)}` : ls.done ? '' : ''}
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setLapseState((prev) => ({
+                                ...prev,
+                                [policy.id]: { ...(prev[policy.id] ?? { dateLapsed: '', lapseReason: '', submitting: false, done: false }), expanded: !ls.expanded },
+                              }))}
+                              className="h-9 px-3 rounded-lg text-xs font-semibold text-danger border border-danger/30 hover:bg-danger/5 transition-colors min-w-[44px]"
+                              data-testid={`mark-lapsed-btn-${policy.id}`}
+                            >
+                              {ls.expanded ? 'Cancel' : 'Mark as Lapsed'}
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Lapse form — only when expanded and not yet lapsed */}
+                        {!isAlreadyLapsed && ls.expanded && (
+                          <div className="mt-3 space-y-3 pt-3 border-t border-border">
+                            <div>
+                              <label
+                                htmlFor={`date-lapsed-${policy.id}`}
+                                className="block text-xs font-medium text-text-muted mb-1"
+                              >
+                                Date Lapsed <span className="text-danger">*</span>
+                              </label>
+                              <input
+                                id={`date-lapsed-${policy.id}`}
+                                type="date"
+                                value={ls.dateLapsed}
+                                onChange={(e) => setLapseState((prev) => ({
+                                  ...prev,
+                                  [policy.id]: { ...prev[policy.id], dateLapsed: e.target.value },
+                                }))}
+                                disabled={ls.submitting}
+                                className="w-full h-11 rounded-lg border border-border bg-card text-text text-sm px-3 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                                data-testid={`date-lapsed-input-${policy.id}`}
+                              />
+                            </div>
+                            <div>
+                              <label
+                                htmlFor={`lapse-reason-${policy.id}`}
+                                className="block text-xs font-medium text-text-muted mb-1"
+                              >
+                                Lapse Reason <span className="font-normal">(optional)</span>
+                              </label>
+                              <input
+                                id={`lapse-reason-${policy.id}`}
+                                type="text"
+                                value={ls.lapseReason}
+                                onChange={(e) => setLapseState((prev) => ({
+                                  ...prev,
+                                  [policy.id]: { ...prev[policy.id], lapseReason: e.target.value },
+                                }))}
+                                placeholder="e.g. Non-payment of premium"
+                                disabled={ls.submitting}
+                                className="w-full h-11 rounded-lg border border-border bg-card text-text text-sm px-3 focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                                data-testid={`lapse-reason-input-${policy.id}`}
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleLapse(policy)}
+                              disabled={ls.submitting || !ls.dateLapsed}
+                              className="h-11 px-6 rounded-lg bg-danger text-white text-sm font-semibold hover:bg-danger/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger disabled:opacity-50 min-w-[44px]"
+                              data-testid={`confirm-lapse-btn-${policy.id}`}
+                            >
+                              {ls.submitting ? 'Lapsing…' : 'Confirm Lapse'}
+                            </button>
                           </div>
                         )}
                       </div>

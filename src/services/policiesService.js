@@ -231,6 +231,72 @@ export async function confirmPolicy(tenantId, managerProfile, policyId, policy, 
 }
 
 /**
+ * lapsePolicy — H2c: BM-only settled→lapsed transition.
+ * Writes atomically: policy update + history doc + agent notification.
+ *
+ * @param {string} tenantId
+ * @param {object} managerProfile — { uid, name, role }
+ * @param {string} policyId       — Firestore document ID
+ * @param {object} policy         — current policy doc data ({ agentId, unitId, status, ownerName, ... })
+ * @param {object} fields         — { dateLapsed: Firestore Timestamp, lapseReason?: string }
+ */
+export async function lapsePolicy(tenantId, managerProfile, policyId, policy, fields) {
+  const BM_PLUS = ['branch_manager', 'tenant_admin', 'platform_admin'];
+  if (!BM_PLUS.includes(managerProfile.role)) {
+    throw new Error('Only Branch Manager or above can lapse a policy.');
+  }
+  if (policy.status !== 'settled') {
+    throw new Error('Only settled policies can be lapsed.');
+  }
+  if (!fields?.dateLapsed) {
+    throw new Error('dateLapsed is required to lapse a policy.');
+  }
+
+  const policyRef  = doc(db, 'tenants', tenantId, 'policies', policyId);
+  const historyRef = doc(collection(db, 'tenants', tenantId, 'policies', policyId, 'history'));
+  const notifRef   = doc(collection(db, 'tenants', tenantId, 'notifications'));
+
+  const policyUpdate = {
+    status:          'lapsed',
+    statusUpdatedAt: serverTimestamp(),
+    dateLapsed:      fields.dateLapsed,
+  };
+  if (fields.lapseReason?.trim()) policyUpdate.lapseReason = fields.lapseReason.trim();
+
+  const changedFields = { dateLapsed: fields.dateLapsed };
+  if (fields.lapseReason?.trim()) changedFields.lapseReason = fields.lapseReason.trim();
+
+  const historyDoc = {
+    fromStatus:   'settled',
+    toStatus:     'lapsed',
+    changedFields,
+    actorUid:     managerProfile.uid,
+    actorRole:    managerProfile.role,
+    agentId:      policy.agentId,
+    unitId:       policy.unitId ?? null,
+    at:           serverTimestamp(),
+  };
+
+  const policyLabel = policy.ownerName ?? policy.insuredName ?? policy.policyNumber ?? policyId;
+  const notifDoc = {
+    userId:    policy.agentId,
+    tenantId,
+    type:      'policy_lapsed',
+    title:     'Policy Lapsed',
+    body:      `Policy for ${policyLabel} has lapsed. This has been deducted from your Centurion progress.`,
+    link:      null,
+    read:      false,
+    createdAt: serverTimestamp(),
+  };
+
+  const batch = writeBatch(db);
+  batch.update(policyRef, policyUpdate);
+  batch.set(historyRef, historyDoc);
+  batch.set(notifRef, notifDoc);
+  await batch.commit();
+}
+
+/**
  * getPolicyHistory — returns history docs for a policy ordered by `at` desc.
  * Pass `agentId` when calling as an agent so the `where('agentId','==',uid)` filter
  * satisfies the Firestore list rule (which requires the caller to match `resource.data.agentId`).
