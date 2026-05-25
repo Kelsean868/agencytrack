@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Pencil, X, Check, CheckCircle2, XCircle, Trophy, Star } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { getGoals, setGoals, getCompanyMinimums } from '../../services/goalsService';
+import { getMoneyNeeds } from '../../services/moneyNeedsService';
 import { resolveAnnualAPIFloor, FLAT_ANNUAL_API_FALLBACK } from '../../utils/tenureFloors';
 import { compute2YearAverageAPI } from '../../utils/careerLevelHelpers';
 import { aggregatePersistency } from '../../lib/persistency/calculations';
@@ -67,15 +68,20 @@ function commitmentColorClass(value, managerTarget, floor) {
 }
 
 // ── Goals Overview section ────────────────────────────────────────────────────
+const CAREER_PORTAL_YEAR = new Date().getFullYear();
+
 function GoalsOverview({ _submissions, _user, _persistencyData }) {
   const { user: authUser, userProfile, tenantId } = useAuth();
-  const [goals, setGoalsState]       = useState(null);
-  const [minimums, setMinimums]      = useState(null);
-  const [editing, setEditing]        = useState(false);
-  const [showDerived, setShowDerived] = useState(false);
-  const [saving, setSaving]          = useState(false);
-  const [saveError, setSaveError]    = useState('');
-  const [draft, setDraft]            = useState({
+  const [goals, setGoalsState]           = useState(null);
+  const [minimums, setMinimums]          = useState(null);
+  const [editing, setEditing]            = useState(false);
+  const [showDerived, setShowDerived]    = useState(false);
+  const [saving, setSaving]              = useState(false);
+  const [saveError, setSaveError]        = useState('');
+  const [moneyNeedsRequired, setMoneyNeedsRequired] = useState(0);
+  const [showNudge, setShowNudge]        = useState(false);
+  const [pendingDraft, setPendingDraft]  = useState(null);
+  const [draft, setDraft]                = useState({
     personalAnnualAPI:         '',
     personalAnnualApps:        '',
     personalAnnualPersistency: '',
@@ -86,9 +92,11 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
     Promise.all([
       getGoals(tenantId, authUser.uid).catch(() => null),
       getCompanyMinimums(tenantId).catch(() => ({ annualAPI: 200000, annualApps: 42, persistency: 90 })),
-    ]).then(([g, mins]) => {
+      getMoneyNeeds(tenantId, authUser.uid, CAREER_PORTAL_YEAR).catch(() => null),
+    ]).then(([g, mins, mn]) => {
       setGoalsState(g);
       setMinimums(mins);
+      setMoneyNeedsRequired(parseFloat(mn?.firstYearCommissionsRequired) || 0);
       setDraft({
         personalAnnualAPI:         g?.personalAnnualAPI         ?? '',
         personalAnnualApps:        g?.personalAnnualApps        ?? '',
@@ -97,16 +105,15 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
     });
   }, [authUser?.uid, tenantId]);
 
-  const handleSave = async () => {
-    if (!tenantId) return;
+  async function doSave(draftToSave) {
     setSaving(true);
     setSaveError('');
     try {
       const name = userProfile?.name ?? userProfile?.email ?? 'Agent';
       await setGoals(tenantId, authUser.uid, {
-        personalAnnualAPI:         draft.personalAnnualAPI,
-        personalAnnualApps:        draft.personalAnnualApps,
-        personalAnnualPersistency: draft.personalAnnualPersistency,
+        personalAnnualAPI:         draftToSave.personalAnnualAPI,
+        personalAnnualApps:        draftToSave.personalAnnualApps,
+        personalAnnualPersistency: draftToSave.personalAnnualPersistency,
       }, authUser.uid, name);
       const updated = await getGoals(tenantId, authUser.uid);
       setGoalsState(updated);
@@ -116,7 +123,29 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
     } finally {
       setSaving(false);
     }
+  }
+
+  const handleSave = async () => {
+    if (!tenantId) return;
+    const api = parseFloat(draft.personalAnnualAPI) || 0;
+    if (moneyNeedsRequired > 0 && api < moneyNeedsRequired) {
+      setPendingDraft({ ...draft });
+      setShowNudge(true);
+      return;
+    }
+    await doSave(draft);
   };
+
+  function handleNudgeConfirm() {
+    setShowNudge(false);
+    doSave(pendingDraft);
+    setPendingDraft(null);
+  }
+
+  function handleNudgeDismiss() {
+    setShowNudge(false);
+    setPendingDraft(null);
+  }
 
   const mins  = minimums ?? { annualAPI: 200000, annualApps: 42, persistency: 90 };
   // Tenure-resolved Annual API floor for this agent. The Apps + Persistency
@@ -281,6 +310,33 @@ function GoalsOverview({ _submissions, _user, _persistencyData }) {
 
       {saveError && (
         <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{saveError}</p>
+      )}
+
+      {showNudge && pendingDraft && (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700 px-4 py-3 space-y-2">
+          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">Commitment below Money Needs</p>
+          <p className="text-xs text-amber-700 dark:text-amber-300">
+            Your commitment ({formatCurrency(parseFloat(pendingDraft.personalAnnualAPI) || 0)}) is below
+            your Money Needs requirement ({formatCurrency(moneyNeedsRequired)}). Save anyway?
+          </p>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleNudgeConfirm}
+              disabled={saving}
+              className="h-9 px-4 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors disabled:opacity-50 min-h-[44px]"
+            >
+              Yes, continue
+            </button>
+            <button
+              type="button"
+              onClick={handleNudgeDismiss}
+              className="h-9 px-4 rounded-lg border border-border text-xs font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       )}
 
       <div className="flex flex-wrap gap-3 text-xs text-ink-muted pt-1 border-t border-border/60">

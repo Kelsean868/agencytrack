@@ -6,8 +6,8 @@ import { useAuth } from '../../context/AuthContext';
 import {
   createMoneyNeeds, getMoneyNeeds,
   updateExpenseGroup, annualizeAmount, computeGroupTotal,
-  updateSubCalculator, updateCommissionTargets,
-  PLAYGROUND_INCOME_GOAL_KEY,
+  updateSubCalculator, updateCommissionTargets, refreshPAYECalculation,
+  PLAYGROUND_INCOME_GOAL_KEY, PAYE_BRACKETS_VERSION,
 } from '../../services/moneyNeedsService';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -251,6 +251,49 @@ function PAYESummary({ worksheet }) {
         <span className="text-ink-muted">Estimated PAYE</span>
         <span className="text-ink-muted tabular-nums">{formatCurrency(computedPAYE)}</span>
       </div>
+    </div>
+  );
+}
+
+function PAYERefreshBanner({ worksheet, onRefreshed }) {
+  const { tenantId, user } = useAuth();
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshError, setRefreshError] = useState('');
+
+  const needsRefresh = worksheet?.payeBracketsVersionId &&
+    worksheet.payeBracketsVersionId !== PAYE_BRACKETS_VERSION;
+
+  if (!needsRefresh) return null;
+
+  async function handleRefresh() {
+    setRefreshing(true); setRefreshError('');
+    try {
+      const rollup = await refreshPAYECalculation(
+        tenantId, user.uid, worksheet.year, worksheet.expenseGroups,
+      );
+      onRefreshed(rollup);
+    } catch { setRefreshError('Refresh failed — check connection.'); }
+    finally { setRefreshing(false); }
+  }
+
+  return (
+    <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-700 px-4 py-3">
+      <AlertCircle size={16} className="shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-amber-800 dark:text-amber-200">
+          Your PAYE calculation is based on an older tax bracket version.
+        </p>
+        {refreshError && <p className="text-xs text-red-600 mt-1">{refreshError}</p>}
+      </div>
+      <button
+        type="button"
+        onClick={handleRefresh}
+        disabled={refreshing}
+        className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-amber-600 text-white text-xs font-semibold hover:bg-amber-700 transition-colors disabled:opacity-50 shrink-0 min-h-[44px]"
+      >
+        {refreshing ? <Loader2 size={12} className="animate-spin" /> : null}
+        Refresh PAYE Calculation
+      </button>
     </div>
   );
 }
@@ -668,6 +711,10 @@ export default function MoneyNeedsPanel() {
     setWorksheet((prev) => ({ ...prev, firstYearCommissionsRequired, firstYearCommissionsTargets }));
   }
 
+  function handlePAYERefreshed(rollup) {
+    setWorksheet((prev) => ({ ...prev, ...rollup, payeBracketsVersionId: PAYE_BRACKETS_VERSION }));
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       {/* Header */}
@@ -734,6 +781,8 @@ export default function MoneyNeedsPanel() {
       {/* Worksheet */}
       {!loading && worksheet && (
         <div className="space-y-2">
+          <PAYERefreshBanner worksheet={worksheet} onRefreshed={handlePAYERefreshed} />
+
           <div className="rounded-xl bg-card border border-border px-4 py-3 mb-2">
             <p className="text-xs text-ink-muted">
               Visibility: <span className="font-semibold text-ink">
