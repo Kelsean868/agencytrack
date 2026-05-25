@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Calendar } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import GoalDonut from './GoalDonut';
