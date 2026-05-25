@@ -138,10 +138,8 @@ export function computeAgentAwards(confirmedData, submittedData, agentProfile, c
   const centurionApps = annualApps + Math.min(estPppApps, ruleset.centurionAward.pppCap);
 
   const confPersistVals = annualConf.map((d) => p(d.persistency)).filter((v) => v > 0);
-  const subPersistVals = yearSubs.map((s) => p(s.persistencyRate)).filter((v) => v > 0);
-  const allPersistVals = [...confPersistVals, ...subPersistVals];
-  const annualPersist = allPersistVals.length > 0
-    ? allPersistVals.reduce((s, v) => s + v, 0) / allPersistVals.length
+  const annualPersist = confPersistVals.length > 0
+    ? confPersistVals.reduce((s, v) => s + v, 0) / confPersistVals.length
     : 0;
 
   const annualNote = annualSource === 'estimated' ? 'Estimated — pending Tatil Life confirmation' : null;

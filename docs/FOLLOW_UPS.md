@@ -146,33 +146,19 @@ Banked: D2a PR [#287](https://github.com/Kelsean868/agencytrack/pull/287) (`7781
 
 ---
 
-## `submissions[].persistencyRate` — dead read in `awardsEngine.js` (LOW, banked 2026-05-24)
+## ~~`submissions[].persistencyRate` — dead read in `awardsEngine.js`~~ (PARTIALLY RESOLVED — PR #341, 2026-05-25)
 
-**Root cause:** `awardsEngine.js:141` reads `s.persistencyRate` from submission docs when computing `annualPersist` for confirmed-data-absent months. `SubmissionViewer.jsx:158` also displays it. But no wizard step or submission service ever writes this field — it is always `undefined` / 0 on real docs.
+**Root cause:** `awardsEngine.js:141` read `s.persistencyRate` from submission docs when computing `annualPersist`. No wizard step or submission service ever writes this field — `subPersistVals` was always empty, so it had zero effect on computed persistency.
 
-**Effect:** The engine's `subPersistVals` array is always empty for real submissions, so `annualPersist` falls back entirely to confirmed settlement docs (`d.persistency`). The dead read is benign today (returns 0, no crash), but misleads readers into thinking submission-level persistency tracking works.
-
-**Resolution options (dispatcher decides before build):**
-1. **Wire it:** Add a `persistencyRate` field to the wizard (e.g., Step 3 or a new agent-facing input), write it via `submissionService`, and validate 0–100%. The engine read then becomes live.
-2. **Remove it:** Delete `awardsEngine.js:141`'s `subPersistVals` derivation and `SubmissionViewer.jsx:158`'s display row. Persist flows only through confirmed settlement docs (the manager-entered path), which is the actual data today.
-
-**Priority:** LOW. No functional regression; issue is dead code + misleading signal. Resolve before Track H (Policy Ledger) if persistency becomes agent-writeable.
-
-Banked: D3 PR [#297](https://github.com/Kelsean868/agencytrack/pull/297) (`0bb1337`).
+**Closure:** `awardsEngine.js` dead `subPersistVals` derivation removed in PR #341 (hygiene). `SubmissionViewer.jsx:158` Persistency Rate display row KEPT — it correctly renders the value if ever populated (e.g., future wizard step or manual migration), and currently shows "—" harmlessly. Track H (Policy Ledger) is the natural place to decide whether to wire the wizard field.
 
 ---
 
-## `getPeriodCtx` duplicated between `awardsEngine.js` and `BmAtRiskPanel.jsx` (LOW, banked 2026-05-24)
+## ~~`getPeriodCtx` duplicated between `awardsEngine.js` and `BmAtRiskPanel.jsx`~~ (RESOLVED — PR [#327](https://github.com/Kelsean868/agencytrack/pull/327), `7529d3a`, 2026-05-25)
 
 **Root cause:** D3 lifted `getPeriodCtx` to a named export in `awardsEngine.js`. The original inline copy at `BmAtRiskPanel.jsx:17–31` (14 lines) was intentionally left in place per the D3 brief scope boundary ("MUST NOT touch `BmAtRiskPanel.jsx`").
 
-**Action:** In a future PR, update `BmAtRiskPanel.jsx:3`'s import to include `getPeriodCtx` from `'../../utils/awardsEngine'` and delete lines 17–31. Zero behavior change — the two copies are identical.
-
-**Acceptance criteria:** `BmAtRiskPanel.jsx` calls `getPeriodCtx` from the engine export; no inline copy remains. All existing `BmAtRiskPanel` tests pass unchanged.
-
-**Priority:** LOW. Pure dedupe; no business ask. Can combine with any future BmAtRiskPanel touch.
-
-Banked: D3 PR [#297](https://github.com/Kelsean868/agencytrack/pull/297) (`0bb1337`).
+**Closure (PR #327, `7529d3a`):** `BmAtRiskPanel.jsx` updated to import `getPeriodCtx` from `'../../utils/awardsEngine'`; inline copy at lines 17–31 deleted. Zero behavior change.
 
 ---
 
