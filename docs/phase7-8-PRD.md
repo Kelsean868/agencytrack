@@ -639,6 +639,9 @@ Path: `/tenants/{tid}/policies/{policyId}`
 | `notes` | string | optional | Free text |
 | `isSelfOrFamily` | boolean | ✓ | Defaults false; excludes from awards if true |
 | `replacedPolicyAPI` | number | conditional | Required only when newBusinessType=replacement |
+| `sourceOfProspect` | enum | ✓ | 11-value taxonomy from `prospectInfoService.js`; confirmed 2026-05-21 (BOA → `bank-referral`). Added per workshop §3.3 decision. |
+| `cashWithApp` | object | optional | `{collected: boolean, amount: number\|null}`; amount populated only when collected=true. Added per workshop §3.3 decision. |
+| `policyDeliveryDate` | date | optional | Settled-state milestone; unpopulated in H1; set on physical policy delivery after issue. Added per workshop §3.3 decision. |
 
 **Status-update fields:**
 
@@ -746,7 +749,8 @@ Explicitly excluded:
 - Reinstatement Hit List
 - Record of Business Expense
 - Bulk import from head-office circular CSV (BM does manually for now)
-- Full Looking Ahead demographic columns (Occupation, Employer, Marital Status, Number of Children, Smoker, Email, DOB, Total Insurance Owned)
+- Full Looking Ahead demographic columns (Occupation, Employer, Marital Status, Number of Children, Smoker, Email, DOB, Total Insurance Owned) — held out per workshop 2026-05-19; these belong in a future CRM, not the Policy Ledger
+- Need Covered — routed to the Joint-Call Observation Log (Track F `jointCalls` collection), not the Policy Ledger; held out per workshop §3.3 decision
 - Service-form tracking (Date Policy Received by Agent, Date Delivered, Date of Last Review)
 - Plan-level awards (e.g., "top seller of Smart Life" specific awards)
 
