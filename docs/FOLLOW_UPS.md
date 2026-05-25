@@ -209,18 +209,11 @@ Banked: #296 smoke (`27b1c8a`, 2026-05-24).
 
 ---
 
-## Silent query-error swallow in `AgentDashboard` masked submissions rules regression (MEDIUM, banked 2026-05-24)
+## ~~Silent query-error swallow in `AgentDashboard` masked submissions rules regression~~ (RESOLVED — PR #330, `e3f66ae`, 2026-05-25)
 
 **Context:** Surfaced during the D3 smoke investigation (hotfix PR [#298](https://github.com/Kelsean868/agencytrack/pull/298)). `AgentDashboard` calls `getAgentSubmissions(tenantId, uid)` inside a `useEffect` and swallows any error with `.catch(() => [])`. When the submissions `allow list` rule regression denied the query, the component received an empty array silently — as if the agent had no submissions — instead of surfacing the `permission-denied`. The awards panel, history, and ratio trends rendered their empty states without any error indication, masking a production-breaking rules bug for ~10 days.
 
-**Fix:** Replace the silent swallow with a surfaced error state. Options:
-1. Show a toast or inline error banner when the submissions query fails (distinction: `permission-denied` vs other errors).
-2. Log a `console.error` at minimum so devtools reveals the failure immediately.
-3. Ideally, render an error state in the dependent panels (`AgentAwardsPanel`, `SubmissionHistory`) rather than an empty state.
-
-**Priority:** MEDIUM. The immediate regression is fixed by the hotfix PR. But the silent swallow is still in the code — the next rules regression will mask the same way. Surface before the Tatil demo.
-
-Banked: hotfix PR [#298](https://github.com/Kelsean868/agencytrack/pull/298), 2026-05-24.
+**Closure (PR #330, `e3f66ae`):** `submissionsError` state added; `getAgentSubmissions` now sets it on failure instead of swallowing; `role=alert` banner surfaced in AgentDashboard with `permission-denied`-specific copy. Smoke 4/4 pass.
 
 ---
 
