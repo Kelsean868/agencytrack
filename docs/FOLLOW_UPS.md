@@ -2748,7 +2748,7 @@ Also added: `request.resource.data.status == 'submitted'` guard (status unchange
 - `PolicyLedgerPanel.jsx`: three-way footer (confirmed / settled-unconfirmed / non-terminal) with emerald "Confirmed by {manager}" chip, amber "Discrepancy" chip, value comparison line, and manager note.
 - `NotificationDrawer.jsx`: `policy_discrepancy` `TYPE_META` entry → `AlertTriangle`/warning palette.
 
-**Lapse half: RESOLVED** in Track H H2c PR #TBD (`{SHA}`):
+**Lapse half: RESOLVED** in Track H H2c PR #321 (`900a473`):
 - `PolicyLedgerPanel.jsx`: `lapsed` muted grey badge + lapse date chip in policy footer.
 - `NotificationDrawer.jsx`: `policy_lapsed` `TYPE_META` entry → `AlertTriangle`/danger palette.
 
