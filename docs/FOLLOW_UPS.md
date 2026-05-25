@@ -434,7 +434,7 @@ Banked: PR [#252](https://github.com/Kelsean868/agencytrack/pull/252).
 
 ---
 
-## Smoke harness — stable helpers for controlled selects + overflow visibility + REST-vs-cache (MEDIUM, banked 2026-05-21)
+## ~~Smoke harness — stable helpers for controlled selects + overflow visibility + REST-vs-cache~~ (SHIPPED — helpers in walk-helpers.mjs + CLAUDE.md banked patterns, PR #332)
 
 **Scope:** PR #248 smoke debugging surfaced three classes of repeatable thrash that future smokes will hit again unless we bank reusable patterns into `scripts/verification/lib/walk-helpers.mjs`:
 

@@ -35,6 +35,28 @@
  *    redaction layer on the consumer side is whack-a-mole — the architecture
  *    must keep the token out of error paths entirely.
  *
+ *
+ * 6. REACT 19 CONTROLLED-SELECT AUTOMATION: use selectReactOption() below —
+ *    Playwright's selectOption() fires a trusted Chromium change event that
+ *    React 19 handles correctly. Do NOT layer an extra dispatchEvent('change')
+ *    with a generic (untrusted) Event — the extra dispatch may interact badly
+ *    with React's synthetic event system and can cause the select to appear
+ *    blank in subsequent reads. Banked from PR #248 smoke debugging.
+ *
+ * 7. OVERFLOW-CONTAINER DATA CHECKS: Playwright's waitFor({ state: 'visible' })
+ *    treats elements scrolled out of the viewport within an overflow:auto
+ *    container as not visible. Use domTextCount() below for "is this text
+ *    rendered anywhere in the DOM" checks; use isVisible() only for
+ *    "is this element in the user's viewport" checks. Banked from PR #248.
+ *
+ * 8. REST-WRITE vs SDK-READ VERIFICATION: smokes that write via Firestore REST
+ *    in a fresh browser context and then try to verify via SDK queries may see
+ *    stale cache or the pending write only. The canonical smoke pattern is
+ *    end-to-end via the UI path (addDoc via SDK → hard-reload → SDK read);
+ *    REST writes are diagnostic only and must not gate on SDK observation in
+ *    the same context. Banked from PR #248 (wrong getDocsFromServer theory,
+ *    reverted in 6b3c252).
+ *
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -254,4 +276,52 @@ export async function writeReadVerifyCycle(page, { writeFn, verifyFn, descriptio
 
   safeLog(`[writeReadVerifyCycle] PASS — ${description}`);
   return { pass: true, errors: [] };
+}
+
+/**
+ * selectReactOption — selects an option in a React 19 controlled <select>.
+ *
+ * LESSON 6: Playwright's page.selectOption() fires a trusted Chromium change
+ * event that React handles correctly. Do NOT add an extra dispatchEvent after
+ * selectOption — the extra untrusted Event can interact badly with React 19's
+ * synthetic event system.
+ *
+ * Usage (preferred over raw locator.selectOption):
+ *
+ *   await selectReactOption(page, page.locator('#productLine'), 'ah');
+ *
+ * @param {import('playwright').Page}    page
+ * @param {import('playwright').Locator} locator - The <select> element locator.
+ * @param {string}                       value   - The option value to select.
+ */
+export async function selectReactOption(page, locator, value) {
+  await locator.selectOption(value);
+}
+
+/**
+ * domTextCount — counts occurrences of `text` inside elements matching
+ * `selector` regardless of viewport or overflow visibility.
+ *
+ * LESSON 7: use this for "is this data rendered anywhere in the DOM" checks
+ * inside overflow-scroll containers (modals, drawers, infinite lists). Use
+ * locator.isVisible() only when you need viewport-level visibility (i.e. the
+ * user can actually see the element without scrolling).
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} selector  - CSS selector for the container (e.g. '.card')
+ * @param {string} text      - Text to search for (exact substring match).
+ * @returns {Promise<number>} Count of matching elements containing the text.
+ */
+export async function domTextCount(page, selector, text) {
+  return page.evaluate(
+    ([sel, txt]) => {
+      const nodes = document.querySelectorAll(sel);
+      let count = 0;
+      for (const n of nodes) {
+        if (n.textContent && n.textContent.includes(txt)) count++;
+      }
+      return count;
+    },
+    [selector, text],
+  );
 }
