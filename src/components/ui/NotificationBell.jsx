@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Bell } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
 import NotificationDrawer from './NotificationDrawer';

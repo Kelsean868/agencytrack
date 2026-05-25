@@ -1,3 +1,5 @@
+import React from 'react';
+
 export function Card({ badge, desc, children, variant = 'default' }) {
   return (
     <div
