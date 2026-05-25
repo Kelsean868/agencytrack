@@ -1870,7 +1870,7 @@ comments were never removed.
 
 ---
 
-## Dashboard heading-hierarchy harmonisation
+## ~~Dashboard heading-hierarchy harmonisation~~
 
 **Scope:** AgentDashboard's existing dashboard-tab sections (KPI Activity grid,
 Goals, Submit Weekly Report) use `<p class="text-xs uppercase">` as fake
@@ -1885,6 +1885,8 @@ inconsistent.
 - Verify nothing skips heading levels (h1 → h2 → h3 only)
 
 Priority: LOW. A11y-positive but cosmetic; B3 introduced no regressions. Surfaced during the B3 audit.
+
+**Closure (PR #335, `{TBD}`):** KPI + Goals sections now use `<h3>` + `<section aria-labelledby>`. ManagerDashboard clean (no fake headings). No heading levels skipped.
 
 ---
 
