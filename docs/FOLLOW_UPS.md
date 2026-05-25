@@ -2682,3 +2682,34 @@ Priority: **LOW**. Hygiene; no security impact. Bundle into the next PR that tou
 **Priority:** LOW. Awards engine reads correctly for agents whose profile has these set. Surfaced when closing PH7-8-Q5 during Track H H1 Phase 1 verify.
 
 Banked from H1 PR #300 (Track H H1, 2026-05-24).
+
+---
+
+## Track H — orphan `jointCalls` CG index reconciliation (LOW, banked H1 PR #300)
+
+**Scope:** `jointCalls` COLLECTION_GROUP index `authorUid + appointmentDate` (index ID `CICAgJiH2JAK`) is live in agencytrack-2a610 but NOT declared in `firestore.indexes.json`; superseded by the 3-field `authorUid + tenantId + appointmentDate` composite.
+
+**Action:** Grep for any `jointCalls` collection-group query filtering `authorUid + appointmentDate` WITHOUT `tenantId` — if dead, delete deliberately via `firebase deploy --only firestore:indexes --force` (after confirming no other orphan would be swept in the same run); if still used, re-declare it in `firestore.indexes.json` to stop the drift.
+
+**Priority:** LOW. No production query references the 2-field form today; the 3-field composite supersedes it. Resolve before any future `firestore:indexes` deploy to avoid deploying with undeclared live state.
+
+Surfaced during H1 #300 Phase 6a deploy.
+
+---
+
+## Track H H1.2 — policies `update` rule value-guards (LOW, banked H1 PR #300)
+
+**Scope:** The `policies` `allow update` rule currently enforces `hasOnly()` field-allowlist + own-agent + `status == 'submitted'` but does NOT mirror the create-time value-guards into the update path. When the agent-edit path is wired in H1.2, add:
+- `sourceOfProspect in [...]` enum membership check
+- `dateWritten <= request.time`
+- `proposedAPI > 0`
+
+Without these guards an edit could write a bogus source or non-positive API value.
+
+**No exposure today** — nothing invokes the `update` arm; the H1 walking skeleton has no client-side edit path.
+
+**Fix shape:** Mirror the three value-guards from the `allow create` predicate into `allow update` when the H1.2 agent-edit UI is wired. Include in the H1.2 brief's Phase 2 `firestore.rules` edits.
+
+**Priority:** LOW. No exposure until H1.2 ships an edit path.
+
+Surfaced in H1 #300 review.
