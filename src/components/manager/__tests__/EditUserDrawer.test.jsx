@@ -393,8 +393,12 @@ describe('EditUserDrawer', () => {
       />
     );
     expect(screen.getByTestId('edit-user-role')).toBeInTheDocument();
+    // Branch dropdown and its async-loaded options — wait for both the element
+    // AND the populated options (listBranches resolves in a useEffect after mount).
     await waitFor(() => {
-      expect(screen.getByTestId('edit-user-branch')).toBeInTheDocument();
+      const branchSel = screen.getByTestId('edit-user-branch');
+      const labels = within(branchSel).getAllByRole('option').map((o) => o.textContent);
+      expect(labels.some((l) => l === 'South Branch')).toBe(true);
     });
     // Branch dropdown filtered to active branches only.
     const branchSel = screen.getByTestId('edit-user-branch');

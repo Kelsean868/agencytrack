@@ -139,6 +139,22 @@ async function main() {
       unitId: 'um-b',
       canConfirmSettlements: false,
     });
+    // H2c: dedicated settled policies for Arm D lapse tests (one per ALLOW actor to avoid status-collision)
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-arm-d-bm`).set({
+      ...VALID_PAYLOAD,
+      ...SETTLED_FIELDS,
+    });
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-arm-d-ta`).set({
+      ...VALID_PAYLOAD,
+      ...SETTLED_FIELDS,
+    });
+    // H2c: dedicated rated policy untouched by Arm B tests — Arm D DENY (non-settled) test target.
+    // policy-a1-rated is mutated by the "rated → settled" ALLOW test, so we need a separate doc.
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-arm-d-rated`).set({
+      ...VALID_PAYLOAD,
+      status: 'rated',
+      ratedPremium: 1200,
+    });
   });
 
   const agentADb = testEnv.authenticatedContext('agent-a', authToken('agent')).firestore();
@@ -562,6 +578,72 @@ async function main() {
     addDoc(
       collection(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled', 'history'),
       { ...MANAGER_HISTORY, agentId: 'agent-b', unitId: 'um-b' }
+    )
+  );
+
+  // ── ARM D — BM-ONLY LAPSE (H2c) ──
+  const LAPSE_FIELDS = {
+    status:          'lapsed',
+    statusUpdatedAt: Timestamp.now(),
+    dateLapsed:      Timestamp.now(),
+  };
+
+  // BM lapses settled policy → ALLOW
+  await run('Arm D ALLOW: BM lapses settled policy', true, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-arm-d-bm'),
+      LAPSE_FIELDS
+    )
+  );
+
+  // tenant_admin lapses settled policy → ALLOW
+  await run('Arm D ALLOW: tenant_admin lapses settled policy', true, () =>
+    updateDoc(
+      doc(taDb, 'tenants', TENANT_ID, 'policies', 'policy-arm-d-ta'),
+      LAPSE_FIELDS
+    )
+  );
+
+  // agent tries to lapse → DENY (not a manager + Arm B rejects 'lapsed' as target)
+  await run('Arm D DENY: agent cannot lapse a policy', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-b1-settled'),
+      { ...LAPSE_FIELDS, agentId: 'agent-a' }
+    )
+  );
+
+  // unit_manager tries to lapse (even with canConfirmSettlements flag) → DENY
+  // um-a has canConfirmSettlements: true but role is 'unit_manager', not in Arm D role list
+  await run('Arm D DENY: UM (canConfirmSettlements) cannot lapse a policy', false, () =>
+    updateDoc(
+      doc(umADb, 'tenants', TENANT_ID, 'policies', 'policy-b1-settled'),
+      LAPSE_FIELDS
+    )
+  );
+
+  // BM tries to lapse a non-settled (rated) policy → DENY (resource.data.status != 'settled')
+  // Use policy-arm-d-rated (dedicated seed) — policy-a1-rated is transitioned to 'settled'
+  // by the earlier Arm B "rated → settled" ALLOW test and would incorrectly ALLOW here.
+  await run('Arm D DENY: BM cannot lapse a non-settled (rated) policy', false, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-arm-d-rated'),
+      LAPSE_FIELDS
+    )
+  );
+
+  // BM includes extra key beyond allowed affectedKeys → DENY
+  await run('Arm D DENY: extra key (managerNote) beyond affectedKeys', false, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-b1-settled'),
+      { ...LAPSE_FIELDS, managerNote: 'tampered' }
+    )
+  );
+
+  // BM omits dateLapsed (not a timestamp) → DENY (dateLapsed is timestamp guard fails)
+  await run('Arm D DENY: missing dateLapsed fails timestamp guard', false, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-b1-settled'),
+      { status: 'lapsed', statusUpdatedAt: Timestamp.now() }   // no dateLapsed
     )
   );
 

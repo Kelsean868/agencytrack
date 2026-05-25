@@ -8,6 +8,7 @@ const TYPE_META = {
   report_unlocked:     { Icon: Unlock,        color: 'text-warning',  bg: 'bg-warning/10' },
   manager_alert:       { Icon: AlertTriangle, color: 'text-warning',  bg: 'bg-warning/10' },
   policy_discrepancy:  { Icon: AlertTriangle, color: 'text-warning',  bg: 'bg-warning/10' },
+  policy_lapsed:       { Icon: AlertTriangle, color: 'text-danger',   bg: 'bg-danger/10'  },
   badge_earned:        { Icon: Award,         color: 'text-success',  bg: 'bg-success/10' },
   level_up:            { Icon: TrendingUp,    color: 'text-primary',  bg: 'bg-primary/10' },
 };

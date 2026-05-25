@@ -344,6 +344,18 @@ service cloud.firestore {
           && request.resource.data.managerSettledAPI > 0
           && request.resource.data.hasDiscrepancy is bool;
 
+        // Arm D — BM-only settled→lapsed (H2c). Explicitly excludes UM and
+        // canConfirmSettlements-only callers; only branch_manager / tenant_admin /
+        // platform_admin may lapse a policy. OR'd with Arms A/B/C.
+        allow update: if isSignedIn()
+          && canManage(tenantId)
+          && getRole() in ['platform_admin', 'tenant_admin', 'branch_manager']
+          && resource.data.status == 'settled'
+          && request.resource.data.status == 'lapsed'
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'statusUpdatedAt', 'dateLapsed', 'lapseReason'])
+          && request.resource.data.dateLapsed is timestamp;
+
         allow delete: if false;
 
         // H1.2: policy history subcollection — append-only audit (PRD §7.4).

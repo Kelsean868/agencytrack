@@ -3,18 +3,18 @@
  * Source of truth for status enum, legal transition map, and per-transition fields.
  * Importable by service + UI; mirrors the Firestore rules encoding.
  *
- * Lapsed status is DEFERRED to H2 (BM-only path).
+ * `lapsed` (H2c): BM-only terminal status. Agent cannot set lapsed.
  */
 
 /**
- * All statuses recognised in this slice. `lapsed` is H2.
+ * All statuses recognised in this slice.
  */
-export const POLICY_STATUSES = ['submitted', 'rated', 'postponed', 'ntu', 'denied', 'settled'];
+export const POLICY_STATUSES = ['submitted', 'rated', 'postponed', 'ntu', 'denied', 'settled', 'lapsed'];
 
 /**
  * Agent-owned legal transitions (PRD §7).
- * Terminal statuses (ntu, denied, settled) have no outbound entries.
- * settled → lapsed is H2.
+ * Terminal statuses (ntu, denied, settled, lapsed) have no outbound entries.
+ * settled → lapsed is BM-only (H2c), not an agent transition.
  */
 export const LEGAL_AGENT_TRANSITIONS = {
   submitted: ['rated', 'postponed', 'ntu', 'denied', 'settled'],
@@ -28,7 +28,7 @@ export const LEGAL_AGENT_TRANSITIONS = {
 /**
  * isLegalAgentTransition — JS mirror of the Firestore rules helper.
  * Returns true iff the agent may move a policy from `from` to `to`.
- * Explicitly rejects `lapsed` (H2).
+ * `lapsed` is BM-only (H2c) — explicitly rejected for agent callers.
  */
 export function isLegalAgentTransition(from, to) {
   if (to === 'lapsed') return false;
@@ -47,6 +47,7 @@ export const TRANSITION_REQUIRED_FIELDS = {
   denied:    [],
   settled:   ['dateIssued', 'settledAPI', 'issuedCoverage', 'initialPremium', 'earnedCommission'],
   submitted: [], // postponed → submitted re-entry; no new fields
+  lapsed:    ['dateLapsed'],    // H2c — BM-only; dateLapsed (Firestore Timestamp)
 };
 
 /**
@@ -59,6 +60,7 @@ export const TRANSITION_OPTIONAL_FIELDS = {
   denied:    ['reason'],
   settled:   [],
   submitted: [],
+  lapsed:    ['lapseReason'], // H2c — BM-only; free-text note from head-office circular
 };
 
 /** Human-readable labels for status values. */
@@ -69,4 +71,5 @@ export const POLICY_STATUS_LABELS = {
   ntu:       'NTU',
   denied:    'Denied',
   settled:   'Settled',
+  lapsed:    'Lapsed', // H2c — BM-only terminal status
 };
