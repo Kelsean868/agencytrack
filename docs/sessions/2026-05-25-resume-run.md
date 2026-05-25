@@ -13,6 +13,9 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 | Hygiene — getPeriodCtx dedup (BmAtRiskPanel → engine export) + close J2 FU | [#327](https://github.com/Kelsean868/agencytrack/pull/327) | `7529d3a` | ✅ MERGED — CI green, no smoke (pure refactor) |
 | CI doc drift — CLAUDE.md lint+build → lint+tests+build (Lint Policy + Session Protocol) | [#328](https://github.com/Kelsean868/agencytrack/pull/328) | `7b3769f` | ✅ MERGED — CI green (flaky rerun on DailyEntryModal), no smoke (docs-only) |
 | Hygiene — clear stale provisional signals for tenure bands (tenureFloors.js comment + seed flag) | [#329](https://github.com/Kelsean868/agencytrack/pull/329) | `9e527fe` | ✅ MERGED — CI green, no smoke (comment + ops-only seed script) |
+| UX — surface submissions query error in AgentDashboard (role=alert banner + submissionsError state) | [#330](https://github.com/Kelsean868/agencytrack/pull/330) | — | ⏳ CI pending, smoke 4/4 pass |
+| Docs — bank self-service list smoke rule in CLAUDE.md Banked patterns; close methodology FU | [#331](https://github.com/Kelsean868/agencytrack/pull/331) | `a62ec5d` | ✅ MERGED — CI green, no smoke (docs-only) |
+| Tooling — walk-helpers.mjs selectReactOption + domTextCount helpers; bank PR #248 lessons | [#332](https://github.com/Kelsean868/agencytrack/pull/332) | — | ⏳ CI pending — no smoke (tooling + docs only) |
 
 ## Smoke artifacts needing manual Firebase Console cleanup
 
