@@ -2734,24 +2734,16 @@ Banked: H1.2 PR #302 (`6886ed1`).
 
 ---
 
-## Track H H1.2 — policies Arm B per-target field tightening (LOW, banked H1.2 #302)
+## ~~Track H H1.2 — policies Arm B per-target field tightening~~ ✅ RESOLVED H2a #TBD
 
-**Issue:** Arm B's `allow update` uses `affectedKeys().hasOnly([union of all per-transition fields])` — the full union covers every field any transition could write (`status`, `statusUpdatedAt`, `ratedPremium`, `rateReason`, `pendingReason`, `reason`, `dateIssued`, `settledAPI`, `issuedCoverage`, `initialPremium`, `earnedCommission`). A transition to a status that uses none of the settled-specific fields (e.g. `ntu`, `postponed`) can still carry `settledAPI`, `dateIssued`, etc. alongside the status update — data pollution on non-counting statuses. Value-guards are conditional on target status only (e.g. `status != 'settled' || (dateIssued is timestamp && ...)`), so the conditional passes silently for non-settled targets.
+~~**Issue:** Arm B's `allow update` uses `affectedKeys().hasOnly([union of all per-transition fields])` — the full union covers every field any transition could write. A transition to a status that uses none of the settled-specific fields (e.g. `ntu`, `postponed`) could carry `settledAPI`, `dateIssued`, etc. alongside the status update — data pollution on non-counting statuses.~~
 
-**Risk:** App-path-safe — `transitionPolicyStatus` writes only the target status's fields. No awards vector (H3 gates on manager confirmation). Audit-only pollution.
-
-**Fix:** Replace the union `hasOnly` in Arm B with per-target conditional field sets, or restructure as separate `allow update` arms per target status. Natural moment to tighten: H2 rewrites this rule region to add the manager confirmation arm — incorporate per-target `hasOnly` in that rewrite rather than shipping a standalone rules-only PR now.
-
-Banked: H1.2 PR #302 (`6886ed1`).
+**RESOLVED in H2a PR #TBD (`#TBD`):** Arm B rewritten with per-target conditional `affectedKeys().hasOnly([...])` — each target status only allows `status + statusUpdatedAt + that status's own fields`. Two emulator DENY cases added (`ntu` transition with `settledAPI` field DENY; `settled` transition with `ratedPremium` field DENY). Banked: H1.2 PR #302 (`6886ed1`).
 
 ---
 
-## Track H H1.2 — policies history `create` ownership/shape tightening (LOW, banked H1.2 #302)
+## ~~Track H H1.2 — policies history `create` ownership/shape tightening~~ ✅ RESOLVED H2a #TBD
 
-**Issue:** The history `create` rule uses `keys().hasAll([required fields])` (extras permitted) and validates `actorUid == request.auth.uid` and `agentId == request.auth.uid` — confirming the actor is the authenticated user — but does NOT verify that the agent owns the parent policy (intentional: avoided a cross-doc `get()` on the parent). A crafted client could `addDoc` an orphan history doc under another agent's policy path (`/tenants/{tid}/policies/{otherAgentPolicyId}/history/{newId}`) with its own `agentId` and pass the create rule, as long as the policy path is a valid Firestore document path.
+~~**Issue:** The history `create` rule did NOT verify that the agent owns the parent policy. A crafted client could write an orphan history doc under another agent's policy path.~~
 
-**Risk:** Audit-pollution only. The orphan doc is self-tagged with the attacker's `agentId` and cannot be read by the other agent (list rule requires `canAccessOwn`). Cannot alter the other agent's policy status, proposedAPI, or any field that feeds awards. No data exfiltration vector.
-
-**Fix:** If audit integrity is required, add a `get()` of the parent policy doc to confirm `resource.data.agentId == request.auth.uid` before allowing history create. Alternatively, switch to `keys().hasOnly([required fields])` to at least lock the shape. Consider in H2 alongside the manager-arm rewrite, which will already touch this rule region.
-
-Banked: H1.2 PR #302 (`6886ed1`).
+**RESOLVED in H2a PR #TBD (`#TBD`):** Agent arm now includes `get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.agentId == request.auth.uid`, confirming parent-policy ownership before allowing history create. One emulator DENY case added (`agent-b write history on agent-a policy → DENY`). Banked: H1.2 PR #302 (`6886ed1`).

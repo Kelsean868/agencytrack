@@ -36,7 +36,7 @@ vi.mock('firebase/firestore', () => ({
   doc:             (...args) => hoisted.mockDoc(...args),
 }));
 
-import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory } from '../policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy } from '../policiesService';
 
 const mockProfile = {
   uid: 'uid-1',
@@ -292,6 +292,105 @@ describe('transitionPolicyStatus', () => {
     expect(hoisted.mockBatchCommit).toHaveBeenCalledOnce();
     const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
     expect(policyPayload.status).toBe('submitted');
+  });
+});
+
+describe('confirmPolicy', () => {
+  const mockManagerProfile = {
+    uid:  'bm-1',
+    name: 'BM Manager',
+    role: 'branch_manager',
+  };
+
+  const mockPolicy = {
+    agentId:    'agent-1',
+    unitId:     'unit-1',
+    settledAPI: 5000,
+    ownerName:  'Jane Smith',
+  };
+
+  it('throws when managerSettledAPI <= 0', async () => {
+    await expect(
+      confirmPolicy('t1', mockManagerProfile, 'p1', mockPolicy, '0', '')
+    ).rejects.toThrow('managerSettledAPI must be a positive number');
+  });
+
+  it('throws when managerSettledAPI is not a number', async () => {
+    await expect(
+      confirmPolicy('t1', mockManagerProfile, 'p1', mockPolicy, 'abc', '')
+    ).rejects.toThrow('managerSettledAPI must be a positive number');
+  });
+
+  it('parseFloat applied to managerSettledAPI string input', async () => {
+    await confirmPolicy('t1', mockManagerProfile, 'p1', mockPolicy, '5000.50', '');
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.managerSettledAPI).toBe(5000.5);
+  });
+
+  it('hasDiscrepancy false when managerSettledAPI === policy.settledAPI', async () => {
+    await confirmPolicy('t1', mockManagerProfile, 'p1', mockPolicy, '5000', '');
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.hasDiscrepancy).toBe(false);
+    // No notification when no discrepancy — batch.set called once (history only)
+    expect(hoisted.mockBatchSet).toHaveBeenCalledTimes(1);
+  });
+
+  it('hasDiscrepancy true when managerSettledAPI !== policy.settledAPI', async () => {
+    await confirmPolicy('t1', mockManagerProfile, 'p1', mockPolicy, '4500', '');
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.hasDiscrepancy).toBe(true);
+    // Notification written when discrepancy — batch.set called twice (history + notification)
+    expect(hoisted.mockBatchSet).toHaveBeenCalledTimes(2);
+  });
+
+  it('writes all 6 confirmation fields on the policy doc', async () => {
+    await confirmPolicy('t1', mockManagerProfile, 'p1', mockPolicy, '5000', 'all good');
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.confirmedByManager).toBe('BM Manager');
+    expect(policyPayload.confirmedByUid).toBe('bm-1');
+    expect(policyPayload.managerSettledAPI).toBe(5000);
+    expect(policyPayload.managerNote).toBe('all good');
+    expect(policyPayload.hasDiscrepancy).toBe(false);
+    expect(policyPayload).toHaveProperty('confirmedAt');
+  });
+
+  it('manager history doc has correct shape (fromStatus == toStatus == settled)', async () => {
+    await confirmPolicy('t1', mockManagerProfile, 'p1', mockPolicy, '5000', '');
+    const histPayload = hoisted.mockBatchSet.mock.calls[0][1];
+    expect(histPayload.fromStatus).toBe('settled');
+    expect(histPayload.toStatus).toBe('settled');
+    expect(histPayload.actorUid).toBe('bm-1');
+    expect(histPayload.actorRole).toBe('branch_manager');
+    expect(histPayload.agentId).toBe('agent-1');
+    expect(histPayload.unitId).toBe('unit-1');
+    expect(histPayload.changedFields.managerSettledAPI).toBe(5000);
+    expect(histPayload.changedFields.hasDiscrepancy).toBe(false);
+  });
+
+  it('notification doc has correct schema when discrepancy exists', async () => {
+    await confirmPolicy('t1', mockManagerProfile, 'p1', mockPolicy, '4500', '');
+    // batch.set calls: [0] = history, [1] = notification
+    const notifPayload = hoisted.mockBatchSet.mock.calls[1][1];
+    expect(notifPayload.userId).toBe('agent-1');
+    expect(notifPayload.tenantId).toBe('t1');
+    expect(notifPayload.type).toBe('policy_discrepancy');
+    expect(notifPayload.read).toBe(false);
+    expect(typeof notifPayload.title).toBe('string');
+    expect(typeof notifPayload.body).toBe('string');
+    expect(notifPayload.body).toContain('Jane Smith');
+  });
+
+  it('notification NOT written when no discrepancy', async () => {
+    await confirmPolicy('t1', mockManagerProfile, 'p1', mockPolicy, '5000', '');
+    // Only one batch.set call (history); no notification
+    expect(hoisted.mockBatchSet).toHaveBeenCalledTimes(1);
+    expect(hoisted.mockBatchCommit).toHaveBeenCalledOnce();
+  });
+
+  it('commits a single batch', async () => {
+    await confirmPolicy('t1', mockManagerProfile, 'p1', mockPolicy, '5000', '');
+    expect(hoisted.mockWriteBatch).toHaveBeenCalledOnce();
+    expect(hoisted.mockBatchCommit).toHaveBeenCalledOnce();
   });
 });
 
