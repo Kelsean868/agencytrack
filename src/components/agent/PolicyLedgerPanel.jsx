@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Loader2, AlertCircle, ArrowLeft, X } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Loader2, AlertCircle, ArrowLeft, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/formatters';
 import { PROSPECTING_SOURCES, PROSPECTING_SOURCE_LABELS } from '../../services/prospectInfoService';
-import { createPolicy, getOwnPolicies, transitionPolicyStatus } from '../../services/policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory } from '../../services/policiesService';
 import {
   LEGAL_AGENT_TRANSITIONS,
   POLICY_STATUS_LABELS,
@@ -107,6 +107,31 @@ export default function PolicyLedgerPanel() {
   const [sameAsOwner, setSameAsOwner] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+
+  // ── History timeline state ──
+  const [histExpanded, setHistExpanded] = useState(new Set());
+  const [histData,     setHistData]     = useState({});  // policyId → history[]
+  const [histLoading,  setHistLoading]  = useState({});  // policyId → boolean
+
+  const toggleHistory = useCallback(async (policyId) => {
+    setHistExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(policyId)) { next.delete(policyId); return next; }
+      next.add(policyId);
+      return next;
+    });
+    if (!histData[policyId]) {
+      setHistLoading((prev) => ({ ...prev, [policyId]: true }));
+      try {
+        const rows = await getPolicyHistory(tenantId, policyId, user?.uid);
+        setHistData((prev) => ({ ...prev, [policyId]: rows }));
+      } catch {
+        setHistData((prev) => ({ ...prev, [policyId]: [] }));
+      } finally {
+        setHistLoading((prev) => ({ ...prev, [policyId]: false }));
+      }
+    }
+  }, [tenantId, user?.uid, histData]);
 
   // ── Transition modal state ──
   const [txPolicy, setTxPolicy] = useState(null);  // policy object being transitioned, or null
@@ -316,6 +341,46 @@ export default function PolicyLedgerPanel() {
                   </button>
                 </div>
               ) : null}
+
+              {/* ── History timeline ── */}
+              <div className="border-t border-border pt-1">
+                <button
+                  onClick={() => toggleHistory(p.id)}
+                  className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink transition-colors h-8 min-w-[44px]"
+                  aria-expanded={histExpanded.has(p.id)}
+                  data-testid={`policy-history-toggle-${p.id}`}
+                >
+                  {histExpanded.has(p.id) ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  History
+                </button>
+                {histExpanded.has(p.id) && (
+                  <div className="mt-1 flex flex-col gap-1.5" data-testid={`policy-history-list-${p.id}`}>
+                    {histLoading[p.id] && (
+                      <div className="flex items-center gap-1.5 text-xs text-ink-muted">
+                        <Loader2 size={12} className="animate-spin" /> Loading…
+                      </div>
+                    )}
+                    {!histLoading[p.id] && histData[p.id]?.length === 0 && (
+                      <p className="text-xs text-ink-muted">No history yet.</p>
+                    )}
+                    {!histLoading[p.id] && histData[p.id]?.map((h) => (
+                      <div key={h.id} className="flex items-start gap-2 text-xs">
+                        <span className="text-ink-muted shrink-0">{fmtDate(h.at)}</span>
+                        <span className="text-ink">
+                          <span className={`inline-block px-1.5 py-0.5 rounded-full font-semibold ${STATUS_BADGE_CLS[h.fromStatus] ?? 'bg-primary/10 text-primary'}`}>
+                            {POLICY_STATUS_LABELS[h.fromStatus] ?? h.fromStatus}
+                          </span>
+                          {' → '}
+                          <span className={`inline-block px-1.5 py-0.5 rounded-full font-semibold ${STATUS_BADGE_CLS[h.toStatus] ?? 'bg-primary/10 text-primary'}`}>
+                            {POLICY_STATUS_LABELS[h.toStatus] ?? h.toStatus}
+                          </span>
+                          <span className="text-ink-muted ml-1.5">({h.actorRole})</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}

@@ -357,6 +357,22 @@ async function main() {
     getDocs(collection(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1', 'history'))
   );
 
+  // Agent list own history — requires where('agentId','==',uid) to satisfy the list rule.
+  await run('agent list own history (where agentId==uid) → ALLOW', true, () =>
+    getDocs(query(
+      collection(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1', 'history'),
+      where('agentId', '==', 'agent-a'),
+    ))
+  );
+
+  // Agent trying to list another agent's history should be denied.
+  await run('agent list other-agent history (where agentId==agent-b) → DENY', false, () =>
+    getDocs(query(
+      collection(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-a1', 'history'),
+      where('agentId', '==', 'agent-b'),
+    ))
+  );
+
   // ── ARM B TIGHTENED (loosening #1 closed) — per-target field sets ──
   // A settled-only field written on an ntu transition must now DENY.
   // Under the old union hasOnly, settledAPI was in the union and would ALLOW.
