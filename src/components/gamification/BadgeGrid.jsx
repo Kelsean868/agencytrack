@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import {
   Target, Flame, Zap, Star, Trophy, CheckCircle, TrendingUp, Crown, Phone, Lock,
 } from 'lucide-react';

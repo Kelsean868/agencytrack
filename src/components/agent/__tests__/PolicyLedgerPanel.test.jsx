@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
 const hoisted = vi.hoisted(() => ({
-  getOwnPolicies: vi.fn(),
-  useAuth: vi.fn(),
+  getOwnPolicies:         vi.fn(),
+  createPolicy:           vi.fn(),
+  transitionPolicyStatus: vi.fn(),
+  getPolicyHistory:       vi.fn(),
+  useAuth:                vi.fn(),
 }));
 
 vi.mock('../../../context/AuthContext', () => ({
@@ -16,8 +19,9 @@ vi.mock('../../../context/AuthContext', () => ({
 
 vi.mock('../../../services/policiesService', () => ({
   getOwnPolicies:          hoisted.getOwnPolicies,
-  createPolicy:            vi.fn(),
-  transitionPolicyStatus:  vi.fn(),
+  createPolicy:            hoisted.createPolicy,
+  transitionPolicyStatus:  hoisted.transitionPolicyStatus,
+  getPolicyHistory:        hoisted.getPolicyHistory,
 }));
 
 vi.mock('../../../services/prospectInfoService', () => ({
@@ -71,13 +75,17 @@ function makePolicy(overrides = {}) {
 // ── Setup ─────────────────────────────────────────────────────────────────────
 
 beforeEach(() => {
-  vi.clearAllMocks();
+  vi.resetAllMocks();  // also flushes mockResolvedValueOnce queues
   hoisted.useAuth.mockReturnValue({
     user:        { uid: 'agent1' },
     userProfile: { name: 'Agent Name' },
     role:        'agent',
     tenantId:    'tenant1',
   });
+  hoisted.getOwnPolicies.mockResolvedValue([]);  // default: empty list
+  hoisted.createPolicy.mockResolvedValue({ id: 'new-p1' });
+  hoisted.transitionPolicyStatus.mockResolvedValue();
+  hoisted.getPolicyHistory.mockResolvedValue([]);
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -186,5 +194,131 @@ describe('PolicyLedgerPanel — confirmation strip', () => {
 
     expect(screen.queryByText(/Confirmed by/)).not.toBeInTheDocument();
     expect(screen.queryByText('Awaiting manager confirmation.')).not.toBeInTheDocument();
+  });
+});
+
+// ── List view state tests ──────────────────────────────────────────────────────
+
+describe('PolicyLedgerPanel — list view states', () => {
+  it('renders "No policies yet" empty state when list is empty', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    render(<PolicyLedgerPanel />);
+    await waitFor(() =>
+      expect(screen.getByText(/No policies yet/)).toBeInTheDocument()
+    );
+  });
+
+  it('renders error banner when getOwnPolicies rejects', async () => {
+    hoisted.getOwnPolicies.mockRejectedValueOnce(new Error('network timeout'));
+    render(<PolicyLedgerPanel />);
+    await waitFor(() =>
+      expect(screen.getByText(/network timeout/)).toBeInTheDocument()
+    );
+  });
+
+  it('renders "New Policy" button in list view', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
+  });
+
+  it('renders policy owner name and status badge in list', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({ ownerName: 'Jane Doe', status: 'submitted' })]);
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
+    expect(screen.getByText('Submitted')).toBeInTheDocument();
+  });
+});
+
+// ── Create form tests ──────────────────────────────────────────────────────────
+
+describe('PolicyLedgerPanel — create form', () => {
+  it('clicking New Policy switches to create view with back button', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument()
+    );
+  });
+
+  it('successful create calls createPolicy and returns to list view', async () => {
+    hoisted.getOwnPolicies
+      .mockResolvedValueOnce([])              // initial load
+      .mockResolvedValueOnce([makePolicy()]); // reload after create
+
+    const { container } = render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+
+    // Submit via the form element to bypass JSDOM's per-browser submit-button semantics
+    await waitFor(() => container.querySelector('form'));
+    fireEvent.submit(container.querySelector('form'));
+
+    await waitFor(() => expect(hoisted.createPolicy).toHaveBeenCalledOnce());
+    await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
+  });
+
+  it('createPolicy failure shows inline error message', async () => {
+    hoisted.createPolicy.mockRejectedValueOnce(new Error('Permission denied'));
+
+    const { container } = render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+
+    await waitFor(() => container.querySelector('form'));
+    fireEvent.submit(container.querySelector('form'));
+
+    await waitFor(() => expect(screen.getByText(/Permission denied/)).toBeInTheDocument());
+  });
+});
+
+// ── Status transition modal tests ─────────────────────────────────────────────
+
+describe('PolicyLedgerPanel — transition modal', () => {
+  it('Update Status button opens transition modal for a submitted policy', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({ status: 'submitted' })]);
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByRole('button', { name: /Update Status/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Status/i }));
+    // Modal title is "Update Status" — it now appears twice (card button + modal heading)
+    await waitFor(() => {
+      const h3 = document.querySelector('h3');
+      expect(h3).toBeTruthy();
+      expect(h3.textContent).toMatch(/Update Status/i);
+    });
+  });
+
+  it('transition modal lists legal next statuses for submitted policy', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({ status: 'submitted' })]);
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByRole('button', { name: /Update Status/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Status/i }));
+    await waitFor(() => {
+      // Modal should list rated/postponed/ntu/denied/settled as options
+      const select = screen.getByRole('combobox');
+      expect(select).toBeInTheDocument();
+    });
+  });
+
+  it('successful transition calls transitionPolicyStatus and closes modal', async () => {
+    hoisted.getOwnPolicies
+      .mockResolvedValueOnce([makePolicy({ status: 'submitted' })])
+      .mockResolvedValueOnce([makePolicy({ status: 'rated' })]);
+
+    const { container } = render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByRole('button', { name: /Update Status/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Update Status/i }));
+
+    // Wait for transition modal form to appear
+    await waitFor(() => container.querySelector('form'));
+
+    // Submit via form element — Confirm button is type="submit" inside the form
+    fireEvent.submit(container.querySelector('form'));
+
+    await waitFor(() => expect(hoisted.transitionPolicyStatus).toHaveBeenCalledOnce());
+    // After successful transition, modal closes — h3 "Update Status" disappears
+    await waitFor(() => expect(document.querySelector('h3')).toBeNull());
   });
 });

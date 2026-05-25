@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 import { computeGapAnalysis } from '../../utils/gapAnalysis';
 import { formatCurrency } from '../../utils/formatters';
