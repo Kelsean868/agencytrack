@@ -6,6 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 import {
   createMoneyNeeds, getMoneyNeeds,
   updateExpenseGroup, annualizeAmount, computeGroupTotal,
+  updateSubCalculator,
 } from '../../services/moneyNeedsService';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -253,6 +254,251 @@ function PAYESummary({ worksheet }) {
   );
 }
 
+const CAR_PERSONAL_PCT = 33;
+const CAR_BUSINESS_PCT = 67;
+
+function SubCalcLineItems({ items, onChange, onDelete, onBlur }) {
+  return (
+    <div className="mb-2">
+      <div className="flex items-center gap-2 pb-1 border-b border-border mb-1">
+        <span className="flex-1 text-xs font-semibold text-ink-muted">Description</span>
+        <span className="w-24 text-right text-xs font-semibold text-ink-muted">Amount</span>
+        <span className="text-xs font-semibold text-ink-muted">Frequency</span>
+        <span className="w-28 text-right text-xs font-semibold text-ink-muted">Annual</span>
+        <span className="w-8" />
+      </div>
+      {items.map((item) => (
+        <LineItemRow
+          key={item.id}
+          item={item}
+          onChange={onChange}
+          onDelete={onDelete}
+          onBlur={onBlur}
+        />
+      ))}
+    </div>
+  );
+}
+
+function InsuranceIndustryCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
+  const { tenantId, user } = useAuth();
+  const [localItems, setLocalItems] = useState(() => calcData?.lineItems ?? []);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => { setLocalItems(calcData?.lineItems ?? []); }, [calcData]);
+
+  const annualTotal = localItems.reduce(
+    (sum, item) => sum + (parseFloat(annualizeAmount(parseFloat(item.amount) || 0, item.frequency)) || 0), 0,
+  );
+
+  async function save(items) {
+    setSaving(true); setSaveError('');
+    try {
+      const processed = items.map((i) => {
+        const amount = parseFloat(i.amount) || 0;
+        return { ...i, amount, annualizedAmount: annualizeAmount(amount, i.frequency) };
+      });
+      const total = processed.reduce((s, i) => s + (parseFloat(i.annualizedAmount) || 0), 0);
+      const updated = { lineItems: processed, annualTotal: total };
+      const result = await updateSubCalculator(tenantId, user.uid, worksheetDoc.year, 'insuranceIndustry', updated, worksheetDoc);
+      onSubCalcSaved('insuranceIndustry', updated, result);
+    } catch { setSaveError('Save failed — check connection.'); }
+    finally { setSaving(false); }
+  }
+
+  function handleAdd() {
+    const next = [...localItems, { id: makeItemId(), label: '', amount: 0, frequency: 'M', annualizedAmount: 0, isCustom: true }];
+    setLocalItems(next); save(next);
+  }
+  function handleDelete(id) { const next = localItems.filter((i) => i.id !== id); setLocalItems(next); save(next); }
+  function handleChange(id, field, value, saveNow = false) {
+    const next = localItems.map((i) => i.id === id ? { ...i, [field]: value } : i);
+    setLocalItems(next); if (saveNow) save(next);
+  }
+
+  return (
+    <div className="border border-border rounded-xl overflow-hidden">
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
+        aria-expanded={open}>
+        <span>Insurance Industry Expenses</span>
+        <div className="flex items-center gap-2">
+          {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
+          {annualTotal > 0 && <span className="text-xs font-medium text-ink-muted tabular-nums">{formatCurrency(annualTotal)} / yr</span>}
+          <ChevronDown size={16} className={`text-ink-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-2 border-t border-border">
+          <p className="text-xs text-ink-muted mb-2">Rolls into Business Expenses</p>
+          {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
+          {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
+          {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
+          <button type="button" onClick={handleAdd} disabled={saving}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50 min-h-[44px]">
+            <Plus size={13} />Add item
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CarExpensesCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
+  const { tenantId, user } = useAuth();
+  const [localItems, setLocalItems] = useState(() => calcData?.lineItems ?? []);
+  const [withLoan, setWithLoan] = useState(() => calcData?.withLoan ?? false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => { setLocalItems(calcData?.lineItems ?? []); setWithLoan(calcData?.withLoan ?? false); }, [calcData]);
+
+  const lineAnnual = localItems.reduce(
+    (sum, item) => sum + (parseFloat(annualizeAmount(parseFloat(item.amount) || 0, item.frequency)) || 0), 0,
+  );
+  const personalAnnual = Math.round((lineAnnual * CAR_PERSONAL_PCT) / 100);
+  const businessAnnual = Math.round((lineAnnual * CAR_BUSINESS_PCT) / 100);
+
+  async function save(items, loan) {
+    setSaving(true); setSaveError('');
+    try {
+      const processed = items.map((i) => {
+        const amount = parseFloat(i.amount) || 0;
+        return { ...i, amount, annualizedAmount: annualizeAmount(amount, i.frequency) };
+      });
+      const total = processed.reduce((s, i) => s + (parseFloat(i.annualizedAmount) || 0), 0);
+      const personal = Math.round((total * CAR_PERSONAL_PCT) / 100);
+      const business = Math.round((total * CAR_BUSINESS_PCT) / 100);
+      const updated = {
+        lineItems: processed, withLoan: loan,
+        personalSharePct: CAR_PERSONAL_PCT, businessSharePct: CAR_BUSINESS_PCT,
+        annualTotalPersonal: personal, annualTotalBusiness: business,
+      };
+      const result = await updateSubCalculator(tenantId, user.uid, worksheetDoc.year, 'carExpenses', updated, worksheetDoc);
+      onSubCalcSaved('carExpenses', updated, result);
+    } catch { setSaveError('Save failed — check connection.'); }
+    finally { setSaving(false); }
+  }
+
+  function handleAdd() {
+    const next = [...localItems, { id: makeItemId(), label: '', amount: 0, frequency: 'M', annualizedAmount: 0, isCustom: true }];
+    setLocalItems(next); save(next, withLoan);
+  }
+  function handleDelete(id) { const next = localItems.filter((i) => i.id !== id); setLocalItems(next); save(next, withLoan); }
+  function handleChange(id, field, value, saveNow = false) {
+    const next = localItems.map((i) => i.id === id ? { ...i, [field]: value } : i);
+    setLocalItems(next); if (saveNow) save(next, withLoan);
+  }
+  function handleLoanToggle() { const next = !withLoan; setWithLoan(next); save(localItems, next); }
+
+  return (
+    <div className="border border-border rounded-xl overflow-hidden">
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
+        aria-expanded={open}>
+        <span>Car Expenses</span>
+        <div className="flex items-center gap-2">
+          {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
+          {lineAnnual > 0 && <span className="text-xs font-medium text-ink-muted tabular-nums">{formatCurrency(lineAnnual)} / yr</span>}
+          <ChevronDown size={16} className={`text-ink-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-2 border-t border-border">
+          <div className="flex items-center gap-2 mb-2">
+            <button type="button" onClick={handleLoanToggle} disabled={saving}
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${withLoan ? 'bg-primary' : 'bg-border'}`}
+              role="switch" aria-checked={withLoan} aria-label="Includes loan payments">
+              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${withLoan ? 'translate-x-4' : 'translate-x-0.5'}`} />
+            </button>
+            <span className="text-xs text-ink-muted">Includes loan payments</span>
+          </div>
+          <div className="flex gap-4 mb-2 text-xs text-ink-muted">
+            <span>Personal ({CAR_PERSONAL_PCT}%): <span className="font-semibold text-ink tabular-nums">{formatCurrency(personalAnnual)}</span> → Living</span>
+            <span>Business ({CAR_BUSINESS_PCT}%): <span className="font-semibold text-ink tabular-nums">{formatCurrency(businessAnnual)}</span> → Business</span>
+          </div>
+          {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
+          {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems, withLoan)} />}
+          {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
+          <button type="button" onClick={handleAdd} disabled={saving}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50 min-h-[44px]">
+            <Plus size={13} />Add item
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LoansDebtCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
+  const { tenantId, user } = useAuth();
+  const [localItems, setLocalItems] = useState(() => calcData?.lineItems ?? []);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => { setLocalItems(calcData?.lineItems ?? []); }, [calcData]);
+
+  const annualTotal = localItems.reduce(
+    (sum, item) => sum + (parseFloat(annualizeAmount(parseFloat(item.amount) || 0, item.frequency)) || 0), 0,
+  );
+
+  async function save(items) {
+    setSaving(true); setSaveError('');
+    try {
+      const processed = items.map((i) => {
+        const amount = parseFloat(i.amount) || 0;
+        return { ...i, amount, annualizedAmount: annualizeAmount(amount, i.frequency) };
+      });
+      const total = processed.reduce((s, i) => s + (parseFloat(i.annualizedAmount) || 0), 0);
+      const updated = { lineItems: processed, annualTotal: total };
+      const result = await updateSubCalculator(tenantId, user.uid, worksheetDoc.year, 'loansDebt', updated, worksheetDoc);
+      onSubCalcSaved('loansDebt', updated, result);
+    } catch { setSaveError('Save failed — check connection.'); }
+    finally { setSaving(false); }
+  }
+
+  function handleAdd() {
+    const next = [...localItems, { id: makeItemId(), label: '', amount: 0, frequency: 'M', annualizedAmount: 0, isCustom: true }];
+    setLocalItems(next); save(next);
+  }
+  function handleDelete(id) { const next = localItems.filter((i) => i.id !== id); setLocalItems(next); save(next); }
+  function handleChange(id, field, value, saveNow = false) {
+    const next = localItems.map((i) => i.id === id ? { ...i, [field]: value } : i);
+    setLocalItems(next); if (saveNow) save(next);
+  }
+
+  return (
+    <div className="border border-border rounded-xl overflow-hidden">
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between px-4 h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
+        aria-expanded={open}>
+        <span>Loans &amp; Debt</span>
+        <div className="flex items-center gap-2">
+          {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
+          {annualTotal > 0 && <span className="text-xs font-medium text-ink-muted tabular-nums">{formatCurrency(annualTotal)} / yr</span>}
+          <ChevronDown size={16} className={`text-ink-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-2 border-t border-border">
+          <p className="text-xs text-ink-muted mb-2">Standalone total — not rolled into expense groups</p>
+          {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
+          {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
+          {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
+          <button type="button" onClick={handleAdd} disabled={saving}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50 min-h-[44px]">
+            <Plus size={13} />Add item
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MoneyNeedsPanel() {
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
@@ -296,6 +542,15 @@ export default function MoneyNeedsPanel() {
     setWorksheet((prev) => ({
       ...prev,
       expenseGroups: { ...prev.expenseGroups, [groupKey]: updatedGroup },
+      ...rollup,
+    }));
+  }
+
+  function handleSubCalcSaved(calcKey, calcData, { rollup, updatedGroups }) {
+    setWorksheet((prev) => ({
+      ...prev,
+      subCalculators: { ...prev.subCalculators, [calcKey]: calcData },
+      expenseGroups: { ...prev.expenseGroups, ...updatedGroups },
       ...rollup,
     }));
   }
@@ -385,6 +640,24 @@ export default function MoneyNeedsPanel() {
               onGroupSaved={handleGroupSaved}
             />
           ))}
+
+          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide pt-2">Sub-Calculators</p>
+
+          <InsuranceIndustryCalc
+            calcData={worksheet.subCalculators?.insuranceIndustry}
+            worksheetDoc={worksheet}
+            onSubCalcSaved={handleSubCalcSaved}
+          />
+          <CarExpensesCalc
+            calcData={worksheet.subCalculators?.carExpenses}
+            worksheetDoc={worksheet}
+            onSubCalcSaved={handleSubCalcSaved}
+          />
+          <LoansDebtCalc
+            calcData={worksheet.subCalculators?.loansDebt}
+            worksheetDoc={worksheet}
+            onSubCalcSaved={handleSubCalcSaved}
+          />
 
           <PAYESummary worksheet={worksheet} />
         </div>
