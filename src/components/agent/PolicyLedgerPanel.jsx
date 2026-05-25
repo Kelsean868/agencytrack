@@ -82,10 +82,10 @@ function fmtDate(ts) {
   return d.toLocaleDateString('en-TT', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-function FieldGroup({ label, children, required }) {
+function FieldGroup({ label, children, required, id }) {
   return (
     <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
+      <label htmlFor={id} className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </label>
       {children}
@@ -406,8 +406,9 @@ export default function PolicyLedgerPanel() {
 
             <form onSubmit={handleTxSubmit} className="flex flex-col gap-4">
               {/* Target status */}
-              <FieldGroup label="New Status" required>
+              <FieldGroup label="New Status" required id="tx-status">
                 <select
+                  id="tx-status"
                   value={txTo}
                   onChange={(e) => { setTxTo(e.target.value); setTxFields(EMPTY_TX_FIELDS); setTxError(null); }}
                   className={selectCls}
@@ -421,13 +422,13 @@ export default function PolicyLedgerPanel() {
               {/* Per-transition fields */}
               {txTo === 'rated' && (
                 <>
-                  <FieldGroup label="Rated Premium (TTD)" required>
-                    <input name="ratedPremium" type="number" step="0.01" min="0.01"
+                  <FieldGroup label="Rated Premium (TTD)" required id="tx-ratedPremium">
+                    <input id="tx-ratedPremium" name="ratedPremium" type="number" step="0.01" min="0.01"
                       value={txFields.ratedPremium} onChange={handleTxFieldChange}
                       placeholder="0.00" className={inputCls} required />
                   </FieldGroup>
-                  <FieldGroup label="Rate Reason">
-                    <input name="rateReason" type="text"
+                  <FieldGroup label="Rate Reason" id="tx-rateReason">
+                    <input id="tx-rateReason" name="rateReason" type="text"
                       value={txFields.rateReason} onChange={handleTxFieldChange}
                       placeholder="Optional" className={inputCls} />
                   </FieldGroup>
@@ -435,16 +436,16 @@ export default function PolicyLedgerPanel() {
               )}
 
               {txTo === 'postponed' && (
-                <FieldGroup label="Pending Reason">
-                  <input name="pendingReason" type="text"
+                <FieldGroup label="Pending Reason" id="tx-pendingReason">
+                  <input id="tx-pendingReason" name="pendingReason" type="text"
                     value={txFields.pendingReason} onChange={handleTxFieldChange}
                     placeholder="Optional" className={inputCls} />
                 </FieldGroup>
               )}
 
               {(txTo === 'ntu' || txTo === 'denied') && (
-                <FieldGroup label="Reason">
-                  <input name="reason" type="text"
+                <FieldGroup label="Reason" id="tx-reason">
+                  <input id="tx-reason" name="reason" type="text"
                     value={txFields.reason} onChange={handleTxFieldChange}
                     placeholder="Optional" className={inputCls} />
                 </FieldGroup>
@@ -452,28 +453,28 @@ export default function PolicyLedgerPanel() {
 
               {txTo === 'settled' && (
                 <>
-                  <FieldGroup label="Date Issued" required>
-                    <input name="dateIssued" type="date" max={today}
+                  <FieldGroup label="Date Issued" required id="tx-dateIssued">
+                    <input id="tx-dateIssued" name="dateIssued" type="date" max={today}
                       value={txFields.dateIssued} onChange={handleTxFieldChange}
                       className={inputCls} required />
                   </FieldGroup>
-                  <FieldGroup label="Settled API (TTD)" required>
-                    <input name="settledAPI" type="number" step="0.01" min="0.01"
+                  <FieldGroup label="Settled API (TTD)" required id="tx-settledAPI">
+                    <input id="tx-settledAPI" name="settledAPI" type="number" step="0.01" min="0.01"
                       value={txFields.settledAPI} onChange={handleTxFieldChange}
                       placeholder="0.00" className={inputCls} required />
                   </FieldGroup>
-                  <FieldGroup label="Issued Coverage (TTD)" required>
-                    <input name="issuedCoverage" type="number" step="0.01" min="0.01"
+                  <FieldGroup label="Issued Coverage (TTD)" required id="tx-issuedCoverage">
+                    <input id="tx-issuedCoverage" name="issuedCoverage" type="number" step="0.01" min="0.01"
                       value={txFields.issuedCoverage} onChange={handleTxFieldChange}
                       placeholder="0.00" className={inputCls} required />
                   </FieldGroup>
-                  <FieldGroup label="Initial Premium (TTD)" required>
-                    <input name="initialPremium" type="number" step="0.01" min="0.01"
+                  <FieldGroup label="Initial Premium (TTD)" required id="tx-initialPremium">
+                    <input id="tx-initialPremium" name="initialPremium" type="number" step="0.01" min="0.01"
                       value={txFields.initialPremium} onChange={handleTxFieldChange}
                       placeholder="0.00" className={inputCls} required />
                   </FieldGroup>
-                  <FieldGroup label="Earned Commission (TTD)" required>
-                    <input name="earnedCommission" type="number" step="0.01" min="0"
+                  <FieldGroup label="Earned Commission (TTD)" required id="tx-earnedCommission">
+                    <input id="tx-earnedCommission" name="earnedCommission" type="number" step="0.01" min="0"
                       value={txFields.earnedCommission} onChange={handleTxFieldChange}
                       placeholder="0.00" className={inputCls} required />
                   </FieldGroup>
@@ -481,7 +482,7 @@ export default function PolicyLedgerPanel() {
               )}
 
               {txError && (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm">
+                <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm">
                   <AlertCircle size={16} /> {txError}
                 </div>
               )}
@@ -523,21 +524,21 @@ export default function PolicyLedgerPanel() {
         {/* ── Policy Holder ── */}
         <div className="card flex flex-col gap-4">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Policy Holder</p>
-          <FieldGroup label="Owner Name" required>
-            <input name="ownerName" value={form.ownerName} onChange={handleChange}
+          <FieldGroup label="Owner Name" required id="ownerName">
+            <input id="ownerName" name="ownerName" value={form.ownerName} onChange={handleChange}
               placeholder="Full name" className={inputCls} required />
           </FieldGroup>
-          <FieldGroup label="Insured Name" required>
+          <FieldGroup label="Insured Name" required id="insuredName">
             <label className="flex items-center gap-2 text-sm text-ink-muted cursor-pointer">
               <input type="checkbox" checked={sameAsOwner} onChange={(e) => handleSameAsOwner(e.target.checked)}
                 className="w-4 h-4 rounded accent-primary" />
               Same as owner
             </label>
-            <input name="insuredName" value={form.insuredName} onChange={handleChange}
+            <input id="insuredName" name="insuredName" value={form.insuredName} onChange={handleChange}
               placeholder="Full name" className={inputCls} disabled={sameAsOwner} required />
           </FieldGroup>
-          <FieldGroup label="Policy Number">
-            <input name="policyNumber" value={form.policyNumber} onChange={handleChange}
+          <FieldGroup label="Policy Number" id="policyNumber">
+            <input id="policyNumber" name="policyNumber" value={form.policyNumber} onChange={handleChange}
               placeholder="Optional — leave blank if not yet issued" className={inputCls} />
           </FieldGroup>
         </div>
@@ -546,24 +547,24 @@ export default function PolicyLedgerPanel() {
         <div className="card flex flex-col gap-4">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Product</p>
           <div className="grid grid-cols-2 gap-4">
-            <FieldGroup label="Product Line" required>
-              <select name="productLine" value={form.productLine} onChange={handleChange} className={selectCls}>
+            <FieldGroup label="Product Line" required id="productLine">
+              <select id="productLine" name="productLine" value={form.productLine} onChange={handleChange} className={selectCls}>
                 {PRODUCT_LINES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </FieldGroup>
-            <FieldGroup label="Policy Class" required>
-              <select name="policyClass" value={form.policyClass} onChange={handleChange} className={selectCls}>
+            <FieldGroup label="Policy Class" required id="policyClass">
+              <select id="policyClass" name="policyClass" value={form.policyClass} onChange={handleChange} className={selectCls}>
                 {POLICY_CLASSES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </FieldGroup>
           </div>
-          <FieldGroup label="Business Type" required>
-            <select name="newBusinessType" value={form.newBusinessType} onChange={handleChange} className={selectCls}>
+          <FieldGroup label="Business Type" required id="newBusinessType">
+            <select id="newBusinessType" name="newBusinessType" value={form.newBusinessType} onChange={handleChange} className={selectCls}>
               {BIZ_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </FieldGroup>
-          <FieldGroup label="Plan Name">
-            <input name="planName" value={form.planName} onChange={handleChange}
+          <FieldGroup label="Plan Name" id="planName">
+            <input id="planName" name="planName" value={form.planName} onChange={handleChange}
               placeholder="Optional" className={inputCls} />
           </FieldGroup>
         </div>
@@ -572,30 +573,30 @@ export default function PolicyLedgerPanel() {
         <div className="card flex flex-col gap-4">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Production</p>
           <div className="grid grid-cols-2 gap-4">
-            <FieldGroup label="Premium (TTD)" required>
-              <input name="proposedPremium" type="number" step="0.01" min="0.01"
+            <FieldGroup label="Premium (TTD)" required id="proposedPremium">
+              <input id="proposedPremium" name="proposedPremium" type="number" step="0.01" min="0.01"
                 value={form.proposedPremium} onChange={handleChange}
                 placeholder="0.00" className={inputCls} required />
             </FieldGroup>
-            <FieldGroup label="Frequency" required>
-              <select name="proposedFrequency" value={form.proposedFrequency} onChange={handleChange} className={selectCls}>
+            <FieldGroup label="Frequency" required id="proposedFrequency">
+              <select id="proposedFrequency" name="proposedFrequency" value={form.proposedFrequency} onChange={handleChange} className={selectCls}>
                 {Object.entries(FREQ_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>
             </FieldGroup>
           </div>
-          <FieldGroup label="Proposed API (TTD)" required>
-            <input name="proposedAPI" type="number" step="0.01" min="0.01"
+          <FieldGroup label="Proposed API (TTD)" required id="proposedAPI">
+            <input id="proposedAPI" name="proposedAPI" type="number" step="0.01" min="0.01"
               value={form.proposedAPI} onChange={handleChange}
               placeholder="Auto-computed from premium × frequency" className={inputCls} required />
           </FieldGroup>
-          <FieldGroup label="Coverage Amount (TTD)">
-            <input name="proposedCoverage" type="number" step="0.01" min="0"
+          <FieldGroup label="Coverage Amount (TTD)" id="proposedCoverage">
+            <input id="proposedCoverage" name="proposedCoverage" type="number" step="0.01" min="0"
               value={form.proposedCoverage} onChange={handleChange}
               placeholder="Optional" className={inputCls} />
           </FieldGroup>
           {form.newBusinessType === 'replacement' && (
-            <FieldGroup label="Replaced Policy API (TTD)" required>
-              <input name="replacedPolicyAPI" type="number" step="0.01" min="0"
+            <FieldGroup label="Replaced Policy API (TTD)" required id="replacedPolicyAPI">
+              <input id="replacedPolicyAPI" name="replacedPolicyAPI" type="number" step="0.01" min="0"
                 value={form.replacedPolicyAPI} onChange={handleChange}
                 placeholder="0.00" className={inputCls} required />
             </FieldGroup>
@@ -606,13 +607,13 @@ export default function PolicyLedgerPanel() {
         <div className="card flex flex-col gap-4">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Dates</p>
           <div className="grid grid-cols-2 gap-4">
-            <FieldGroup label="Date Written" required>
-              <input name="dateWritten" type="date" max={today}
+            <FieldGroup label="Date Written" required id="dateWritten">
+              <input id="dateWritten" name="dateWritten" type="date" max={today}
                 value={form.dateWritten} onChange={handleChange}
                 className={inputCls} required />
             </FieldGroup>
-            <FieldGroup label="Date Submitted" required>
-              <input name="dateSubmitted" type="date" min={form.dateWritten} max={today}
+            <FieldGroup label="Date Submitted" required id="dateSubmitted">
+              <input id="dateSubmitted" name="dateSubmitted" type="date" min={form.dateWritten} max={today}
                 value={form.dateSubmitted} onChange={handleChange}
                 className={inputCls} required />
             </FieldGroup>
@@ -622,8 +623,8 @@ export default function PolicyLedgerPanel() {
         {/* ── Additional ── */}
         <div className="card flex flex-col gap-4">
           <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Additional</p>
-          <FieldGroup label="Source of Prospect" required>
-            <select name="sourceOfProspect" value={form.sourceOfProspect} onChange={handleChange}
+          <FieldGroup label="Source of Prospect" required id="sourceOfProspect">
+            <select id="sourceOfProspect" name="sourceOfProspect" value={form.sourceOfProspect} onChange={handleChange}
               className={selectCls} required>
               <option value="">Select source…</option>
               {PROSPECTING_SOURCES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -638,8 +639,8 @@ export default function PolicyLedgerPanel() {
               Cash with Application
             </label>
             {form.cashWithApp.collected && (
-              <FieldGroup label="Cash Amount (TTD)" required>
-                <input type="number" step="0.01" min="0"
+              <FieldGroup label="Cash Amount (TTD)" required id="cashAmount">
+                <input id="cashAmount" type="number" step="0.01" min="0"
                   value={form.cashWithApp.amount} onChange={handleCashAmount}
                   placeholder="0.00" className={inputCls} required />
               </FieldGroup>
@@ -652,15 +653,15 @@ export default function PolicyLedgerPanel() {
             Self / Family policy (excluded from awards)
           </label>
 
-          <FieldGroup label="Notes">
-            <textarea name="notes" value={form.notes} onChange={handleChange}
+          <FieldGroup label="Notes" id="notes">
+            <textarea id="notes" name="notes" value={form.notes} onChange={handleChange}
               placeholder="Optional notes…" rows={3}
               className="px-3 py-2 rounded-lg bg-surface border border-border text-sm text-ink w-full focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none" />
           </FieldGroup>
         </div>
 
         {saveError && (
-          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm">
+          <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm">
             <AlertCircle size={16} /> {saveError}
           </div>
         )}
