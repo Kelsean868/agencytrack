@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { CheckCircle, XCircle, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
 import { formatCurrency } from '../../utils/formatters';
+import { useAuth } from '../../context/AuthContext';
+import { getOwnPolicies, settlementShapeFromPolicies } from '../../services/policiesService';
 
 const CATEGORY_TABS = [
   { id: 'monthly',   label: 'Monthly'   },
@@ -217,12 +219,33 @@ function RatioCard({ label, value4w, value12w, trend, format }) {
 
 export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate, ruleset }) {
   const [activeCategory, setActiveCategory] = useState('monthly');
+  const { tenantId } = useAuth();
+  const [ledgerPolicies, setLedgerPolicies] = useState(null);
+  const usesPolicyLedger = Boolean(agentProfile?.usesPolicyLedger);
+
+  useEffect(() => {
+    if (!usesPolicyLedger || !tenantId || !agentProfile?.uid) return;
+    getOwnPolicies(tenantId, agentProfile.uid)
+      .then(setLedgerPolicies)
+      .catch(() => setLedgerPolicies([]));
+  }, [usesPolicyLedger, tenantId, agentProfile?.uid]);
+
+  const activeConfirmedData = useMemo(() => {
+    if (!usesPolicyLedger) return confirmedSettlements ?? [];
+    if (ledgerPolicies === null) return [];
+    const ledgerShape = settlementShapeFromPolicies(ledgerPolicies);
+    const persistByPeriod = {};
+    for (const s of (confirmedSettlements ?? [])) {
+      if (s.periodKey && s.persistency) persistByPeriod[s.periodKey] = s.persistency;
+    }
+    return ledgerShape.map((row) => ({ ...row, persistency: persistByPeriod[row.periodKey] ?? 0 }));
+  }, [usesPolicyLedger, ledgerPolicies, confirmedSettlements]);
 
   const now = useMemo(() => currentDate ?? new Date(), [currentDate]);
 
   const computation = useMemo(() => {
     try {
-      const rawAwards = computeAgentAwards(confirmedSettlements, submissions, agentProfile, now, ruleset);
+      const rawAwards = computeAgentAwards(activeConfirmedData, submissions, agentProfile, now, ruleset);
       const awards = {};
       for (const [id, award] of Object.entries(rawAwards)) {
         const paceStatus = computeAtRiskStatus(award, getPeriodCtx(award.category, now));
@@ -243,7 +266,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       console.error(e);
       return { awards: {}, ratioTrends: null, error: 'Failed to compute awards.' };
     }
-  }, [confirmedSettlements, submissions, agentProfile, now, ruleset]);
+  }, [activeConfirmedData, submissions, agentProfile, now, ruleset]);
 
   const { awards, ratioTrends, error } = computation;
 

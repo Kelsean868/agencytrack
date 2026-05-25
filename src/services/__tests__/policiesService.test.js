@@ -36,7 +36,7 @@ vi.mock('firebase/firestore', () => ({
   doc:             (...args) => hoisted.mockDoc(...args),
 }));
 
-import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy, lapsePolicy } from '../policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory, confirmPolicy, lapsePolicy, settlementShapeFromPolicies } from '../policiesService';
 
 const mockProfile = {
   uid: 'uid-1',
@@ -525,5 +525,103 @@ describe('lapsePolicy', () => {
     await expect(
       lapsePolicy('t1', taProfile, 'p1', mockSettledPolicy, mockFields)
     ).resolves.toBeUndefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// settlementShapeFromPolicies — H3 awards ledger path
+// ─────────────────────────────────────────────────────────────────────────────
+
+function makeTimestamp(isoDate) {
+  const ms = new Date(isoDate).getTime();
+  return { toDate: () => new Date(ms) };
+}
+
+function makePolicy(status, dateIssued, settledAPI) {
+  return { status, dateIssued: makeTimestamp(dateIssued), settledAPI };
+}
+
+describe('settlementShapeFromPolicies', () => {
+  it('returns empty array for no policies', () => {
+    expect(settlementShapeFromPolicies([])).toEqual([]);
+  });
+
+  it('excludes non-settled policies (submitted, rated, lapsed, etc.)', () => {
+    const policies = [
+      makePolicy('submitted',  '2026-03-10', 5000),
+      makePolicy('rated',      '2026-03-12', 5000),
+      makePolicy('lapsed',     '2026-03-20', 5000),
+      makePolicy('postponed',  '2026-03-15', 5000),
+    ];
+    expect(settlementShapeFromPolicies(policies)).toEqual([]);
+  });
+
+  it('groups a single settled policy into YYYY-MM periodKey', () => {
+    const policies = [makePolicy('settled', '2026-01-15', 12000)];
+    const result = settlementShapeFromPolicies(policies);
+    expect(result).toHaveLength(1);
+    expect(result[0].periodKey).toBe('2026-01');
+    expect(result[0].settledAPI).toBe(12000);
+    expect(result[0].settledApps).toBe(1);
+  });
+
+  it('accumulates multiple policies in the same month', () => {
+    const policies = [
+      makePolicy('settled', '2026-05-01', 10000),
+      makePolicy('settled', '2026-05-20', 8000),
+      makePolicy('settled', '2026-05-31', 5000),
+    ];
+    const result = settlementShapeFromPolicies(policies);
+    expect(result).toHaveLength(1);
+    expect(result[0].periodKey).toBe('2026-05');
+    expect(result[0].settledAPI).toBe(23000);
+    expect(result[0].settledApps).toBe(3);
+  });
+
+  it('splits policies across different months into separate rows', () => {
+    const policies = [
+      makePolicy('settled', '2026-01-10', 10000),
+      makePolicy('settled', '2026-02-15', 8000),
+      makePolicy('settled', '2026-03-20', 6000),
+    ];
+    const result = settlementShapeFromPolicies(policies);
+    expect(result).toHaveLength(3);
+    const byPeriod = Object.fromEntries(result.map((r) => [r.periodKey, r]));
+    expect(byPeriod['2026-01'].settledAPI).toBe(10000);
+    expect(byPeriod['2026-02'].settledAPI).toBe(8000);
+    expect(byPeriod['2026-03'].settledAPI).toBe(6000);
+    expect(byPeriod['2026-01'].settledApps).toBe(1);
+  });
+
+  it('skips policies with null or missing dateIssued', () => {
+    const policies = [
+      { status: 'settled', dateIssued: null, settledAPI: 5000 },
+      { status: 'settled', dateIssued: undefined, settledAPI: 5000 },
+      makePolicy('settled', '2026-04-10', 12000),
+    ];
+    const result = settlementShapeFromPolicies(policies);
+    expect(result).toHaveLength(1);
+    expect(result[0].periodKey).toBe('2026-04');
+    expect(result[0].settledApps).toBe(1);
+  });
+
+  it('defaults persistency to 0 (caller merges from settlement collection)', () => {
+    const policies = [makePolicy('settled', '2026-06-01', 15000)];
+    const result = settlementShapeFromPolicies(policies);
+    expect(result[0].persistency).toBe(0);
+  });
+
+  it('parity: produces equivalent confirmed-data shape to a matching settlement doc', () => {
+    // Build a policy matching a hand-crafted settlement doc for the same month
+    const policy = makePolicy('settled', '2026-03-14', 18500);
+    const settlementDoc = { periodKey: '2026-03', settledAPI: 18500, settledApps: 1, persistency: 80 };
+
+    const [ledgerRow] = settlementShapeFromPolicies([policy]);
+    // settledAPI and settledApps must match
+    expect(ledgerRow.settledAPI).toBe(settlementDoc.settledAPI);
+    expect(ledgerRow.settledApps).toBe(settlementDoc.settledApps);
+    expect(ledgerRow.periodKey).toBe(settlementDoc.periodKey);
+    // persistency starts at 0 — caller responsibility to merge
+    expect(ledgerRow.persistency).toBe(0);
   });
 });
