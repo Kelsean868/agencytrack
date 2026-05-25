@@ -15,6 +15,7 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 | Hygiene — clear stale provisional signals for tenure bands (tenureFloors.js comment + seed flag) | [#329](https://github.com/Kelsean868/agencytrack/pull/329) | `9e527fe` | ✅ MERGED — CI green, no smoke (comment + ops-only seed script) |
 | UX — surface submissions query error in AgentDashboard (role=alert banner + submissionsError state) | [#330](https://github.com/Kelsean868/agencytrack/pull/330) | `e3f66ae` | ✅ MERGED — CI green (rebase), smoke 4/4 pass, post-merge fill done |
 | Smoke harness — selectReactOption + domTextCount helpers; bank PR #248 lessons (LESSONS 6–8) | [#332](https://github.com/Kelsean868/agencytrack/pull/332) | `89fd201` | ✅ MERGED — CI green, no smoke (helpers-only), post-merge fill done |
+| Smoke harness — captureConsoleAndNetwork + formatCaptureReport; LESSON 9 | [#333](https://github.com/Kelsean868/agencytrack/pull/333) | — | ⏳ CI pending |
 
 ## Smoke artifacts needing manual Firebase Console cleanup
 
