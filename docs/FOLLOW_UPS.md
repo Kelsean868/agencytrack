@@ -9,11 +9,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 G1 (walking skeleton) is the current PR (FOUNDATION GATE). Remaining slices:
 
-**G2 — PAYE Engine** (pure math, no UI dependency)
-- `src/utils/payeEngine.js` — `computePAYE(netIncome, brackets)` + `grossFromNet(netIncome, brackets)` pure functions. Reads brackets passed as arg from tenant config.
-- `payeEngine.test.js` — bracket edge cases, above-$772,500 pivot, zero-income. Parity-tested against Kyron's Excel vectors (formula: `=IF(G55<=90000,0,IF(G55<=772500,(((G55-22500)/0.75)-G55)/12,(((G55-72500)/0.70)-G55)/12))`).
-- Embeds `payeBracketsSnapshot` pattern in doc.
-- **Note:** G2 can merge before G3 (no UI dependency).
+**G2 — PAYE Engine** — ✅ DONE PR #TBD (`{TBD}`). `src/utils/payeEngine.js` exports `DEFAULT_PAYE_CONFIG` (T&T 2026: allowance $90,000, chargeable brackets 25% ≤$1M / 30% above), `computePAYE(gross, config)`, `grossFromNet(net, config)`. Config-driven chargeable-bracket band walk; 43 unit tests covering all brief vectors, band formulas, pivot continuity, and round-trip property. Tenant `/config/payeFormula` doc + `payeBracketsSnapshot` versioning + refresh-banner deferred to G3 or a dedicated config slice.
 
 **G3 — Expense Group Entry** (core data-entry loop)
 - Line-item add/edit/delete per group.

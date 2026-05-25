@@ -464,27 +464,28 @@ Based on Kyron's existing T&T-localized Looking Ahead worksheet (canonical defau
 
 ### 6.2 PAYE Formula (piecewise, tenant-config-driven)
 
-Current T&T brackets (verified accurate by Kyron, May 2026):
-- $0 – $90,000 TTD: 0% (personal allowance)
-- $90,001 – $1,000,000 TTD: 25%
-- Above $1,000,000 TTD: 30%
+Current T&T model (verified accurate by Kyron, May 2026 — chargeable-income basis):
+- Personal allowance: first **$90,000 TTD** of gross is tax-free.
+- **25%** on chargeable income (gross − allowance) up to **$1,000,000** chargeable → gross $90,000–$1,090,000.
+- **30%** on chargeable income above **$1,000,000** → gross above $1,090,000.
+- Allowance-only simplification (v1): NIS/annuity deductions ignored — conservative planning estimate.
 
 Tenant config: `/tenants/{tid}/config/payeFormula`
 
 ```
 {
-  method: 'reverse-progressive-brackets',
+  method: 'reverse-progressive-chargeable',
   currency: 'TTD',
-  brackets: [
-    { upToGrossIncome: 90000,   rate: 0    },
-    { upToGrossIncome: 1000000, rate: 0.25 },
-    { upToGrossIncome: null,    rate: 0.30 }
+  personalAllowance: 90000,
+  chargeableBrackets: [
+    { upToChargeable: 1000000, rate: 0.25 },
+    { upToChargeable: null,    rate: 0.30 }
   ],
   effectiveFrom, versionId, updatedBy, updatedAt, notes
 }
 ```
 
-Engine walks brackets bottom-up to solve gross-from-net. Pivot in net terms at $772,500 TTD: below that, gross sits in 25% bracket; above, gross has crossed into 30% bracket.
+Engine walks brackets in **chargeable-income terms** (`chargeable = max(0, gross − allowance)`). Pivot in net terms at **$840,000 TTD**: at that net, gross is exactly $1,090,000 (top of 25% band); above that net, gross has crossed into the 30% bracket.
 
 **Historical accuracy:** Each `moneyNeeds/{year}` doc embeds `payeBracketsSnapshot` (full bracket set used at creation) plus `payeBracketsVersionId` (reference back to config history). Past worksheets stay mathematically faithful forever; new worksheets pull current brackets.
 
@@ -493,8 +494,8 @@ Engine walks brackets bottom-up to solve gross-from-net. Pivot in net terms at $
 **Excel formula reference (for Kyron's current sheet):**
 ```
 =IF(G55<=90000, 0,
-  IF(G55<=772500, (((G55-22500)/0.75)-G55)/12,
-    (((G55-72500)/0.70)-G55)/12))
+  IF(G55<=840000, (((G55-22500)/0.75)-G55)/12,
+    (((G55-77000)/0.70)-G55)/12))
 ```
 
 ### 6.3 Multi-Product Approach (Option C)
