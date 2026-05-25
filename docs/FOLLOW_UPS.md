@@ -686,7 +686,7 @@ Banked: PR #225 (`975b0fc`).
 
 Banked from PR #238 (`1b05eb7`) post-merge.
 
-**Closure (PR #333, `{TBD}`):** `captureConsoleAndNetwork(page)` + `formatCaptureReport(capture)` added to `walk-helpers.mjs`; LESSON 9 banked; CLAUDE.md updated.
+**Closure (PR #333, `3d76d9a`):** `captureConsoleAndNetwork(page)` + `formatCaptureReport(capture)` added to `walk-helpers.mjs`; LESSON 9 banked; CLAUDE.md updated.
 
 ---
 

@@ -12,9 +12,9 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (#TBD post-merge fill) |
-| Current main HEAD | `#TBD` (PR #TBD — feat(money-needs): G1 — Money Needs walking skeleton) |
-| Active track | Track G G1 — Money Needs walking skeleton (PR open, FOUNDATION GATE — do not merge without dispatcher review) |
+| Last updated | 2026-05-25 (#343 post-merge fill) |
+| Current main HEAD | `c78eaf8` (PR #343 — feat(money-needs): G1 — Money Needs walking skeleton) |
+| Active track | Track G G2 — PAYE engine (next up; needs brief) |
 | Next track | G2 PAYE engine; H4 plan config (needs brief); BEH-1 WelcomeScreen stub (blocked on copy from Kyron). |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
@@ -114,7 +114,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
-| Track G G1 | Money Needs walking skeleton — FOUNDATION GATE, PR open | No (do not merge yet) | Dispatcher + Kyron review rules arm + data model → merge → deploy `firestore.rules` → post-deploy smoke. |
+| Track G G2 | PAYE engine — pure math, TTD brackets, parity vs Kyron's Excel vectors | No | Needs brief before dispatch. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 
 ---
@@ -123,6 +123,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#343](https://github.com/Kelsean868/agencytrack/pull/343) | `c78eaf8` | feat(money-needs): Track G G1 — Money Needs walking skeleton. `moneyNeedsService.js`: `createMoneyNeeds` (idempotent, blank scaffold, `visibility:'private'`) + `getMoneyNeeds`. `MoneyNeedsPanel.jsx`: year selector, empty state + "Start worksheet" CTA, 5 AccordionGroup shells, error/loading states. `AgentDashboard.jsx`: Money Needs tab wired. `firestore.rules`: `/users/{uid}/moneyNeeds/{year}` arm — agent-only get/list/create/update; `create` enforces `visibility=='private'`; delete: false. 12 unit tests + 17 emulator rules tests (all ALLOW + DENY cases). 1420/1420 vitest; lint 0; build clean. FOUNDATION GATE cleared. |
 | [#321](https://github.com/Kelsean868/agencytrack/pull/321) | `900a473` | feat(policy-ledger): Track H H2c — BM-only lapsed status + agent notification + H11 lapse chip. `policyLifecycle.js`: `lapsed` added to all enums (POLICY_STATUSES, TRANSITION_REQUIRED_FIELDS, TRANSITION_OPTIONAL_FIELDS, POLICY_STATUS_LABELS). `policiesService.js`: `lapsePolicy()` (BM+ role guard, settled-only, `dateLapsed` required, atomic batch: policy update + history + notification). `PolicyLedgerPanel.jsx`: muted grey lapsed badge + lapse date chip (H11 lapse half). `PolicyReconciliationPanel.jsx`: `allPoliciesRaw` state + Lapse tab (settled+lapsed filter, per-policy expand form, date input, optional lapseReason). `NotificationDrawer.jsx`: `policy_lapsed` TYPE_META entry. `firestore.rules`: Arm D (BM-only settled→lapsed, `dateLapsed is timestamp`, strict `hasOnly` key set). 11 unit tests + 7 emulator rules tests. 1337/1337 vitest; lint 0; build clean. |
 | [#320](https://github.com/Kelsean868/agencytrack/pull/320) | `554c668` | docs(briefs): Track H H2c lapsed status kickoff — BM-only settled→lapsed + agent notification + H11 lapse chip brief committed per Rule 10. |
 | [#319](https://github.com/Kelsean868/agencytrack/pull/319) | `fc5ea10` | feat(wizard): Track E(c) — social/content KPIs wizard step. New `StepSocialMedia.jsx` + `socialMediaConstants.js` wired into WizardForm Screen 1 as 3rd sub-component; 5 new `INITIAL_DATA` fields (`socialPostsTotal`, `socialEngagementTotal`, `socialInboxEnquiries`, `namesFromSocial`, `socialPlatformBreakdown`); collapsible per-platform breakdown (Facebook/Instagram/WhatsApp/LinkedIn) via local-state toggle; `namesFromSocial` standalone (Step5NewNames frozen); `extractFields.js` updated both schema variants; `CardStack.jsx` `NumericField`/`CurrencyField`/`SuggestedField` gain `htmlFor`/`id` a11y wiring; 7 tests in `StepSocialMedia.test.jsx`; `WizardFormSaveStatus.test.jsx` mock added. 1326/1326 vitest; lint 0; build clean. |
