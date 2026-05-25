@@ -224,7 +224,7 @@ Banked: hotfix PR [#298](https://github.com/Kelsean868/agencytrack/pull/298), 20
 
 ---
 
-## Methodology — self-service list queries must be smoke-tested as the owning user (LOW, banked 2026-05-24)
+## ~~Methodology — self-service list queries must be smoke-tested as the owning user~~ (SHIPPED — banked in CLAUDE.md § Banked patterns, PR #331)
 
 **Context:** The submissions `allow list` regression (SHAKEDOWN-002B #144 → hotfix [#298](https://github.com/Kelsean868/agencytrack/pull/298)) is the second `list`-rule regression to slip past `get`-only coverage. Pattern: a `read` → `get`/`list` split drops the agent `canAccessOwn` arm from `list`; smoke verified by admin SDK (bypasses rules) or by manager login (has `canManage`); nobody signs in as the owning agent and queries the collection directly.
 
