@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { X, Bell, AlertTriangle, Unlock, Award, TrendingUp } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationContext';
 
@@ -7,6 +7,7 @@ const TYPE_META = {
   deadline_missed:     { Icon: AlertTriangle, color: 'text-danger',   bg: 'bg-danger/10'  },
   report_unlocked:     { Icon: Unlock,        color: 'text-warning',  bg: 'bg-warning/10' },
   manager_alert:       { Icon: AlertTriangle, color: 'text-warning',  bg: 'bg-warning/10' },
+  policy_discrepancy:  { Icon: AlertTriangle, color: 'text-warning',  bg: 'bg-warning/10' },
   badge_earned:        { Icon: Award,         color: 'text-success',  bg: 'bg-success/10' },
   level_up:            { Icon: TrendingUp,    color: 'text-primary',  bg: 'bg-primary/10' },
 };

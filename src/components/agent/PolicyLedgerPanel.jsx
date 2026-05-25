@@ -279,7 +279,34 @@ export default function PolicyLedgerPanel() {
                 </span>
                 <span>Written: {fmtDate(p.dateWritten)}</span>
               </div>
-              {nexts.length > 0 && (
+              {p.confirmedAt ? (
+                <div className="pt-1 border-t border-border flex flex-col gap-1.5">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
+                      Confirmed by {p.confirmedByManager}
+                    </span>
+                    {p.hasDiscrepancy && (
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                        Discrepancy
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-ink-muted">
+                    {p.hasDiscrepancy ? (
+                      <>Your value: <span className="text-ink font-semibold">{formatCurrency(p.settledAPI)}</span>{' · '}Manager: <span className="text-ink font-semibold">{formatCurrency(p.managerSettledAPI)}</span></>
+                    ) : (
+                      <>Settled: <span className="text-ink font-semibold">{formatCurrency(p.managerSettledAPI)}</span></>
+                    )}
+                  </p>
+                  {p.managerNote && (
+                    <p className="text-xs text-ink-muted">Note: {p.managerNote}</p>
+                  )}
+                </div>
+              ) : p.status === 'settled' ? (
+                <div className="pt-1 border-t border-border">
+                  <p className="text-xs text-ink-muted">Awaiting manager confirmation.</p>
+                </div>
+              ) : nexts.length > 0 ? (
                 <div className="pt-1 border-t border-border">
                   <button
                     onClick={() => openTxModal(p)}
@@ -288,7 +315,7 @@ export default function PolicyLedgerPanel() {
                     Update Status
                   </button>
                 </div>
-              )}
+              ) : null}
             </div>
           );
         })}
