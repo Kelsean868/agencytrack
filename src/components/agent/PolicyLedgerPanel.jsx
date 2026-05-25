@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, AlertCircle, ArrowLeft, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, ArrowLeft, X, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/formatters';
 import { PROSPECTING_SOURCES, PROSPECTING_SOURCE_LABELS } from '../../services/prospectInfoService';
@@ -305,6 +305,12 @@ export default function PolicyLedgerPanel() {
                 </span>
                 <span>Written: {fmtDate(p.dateWritten)}</span>
               </div>
+              {p.productLine && p.productLine !== 'life' && (
+                <p className="flex items-center gap-1 text-xs text-ink-muted">
+                  <Info size={11} className="shrink-0" />
+                  Does not count toward Tatil Life awards or persistency
+                </p>
+              )}
               {p.status === 'lapsed' ? (
                 <div className="pt-1 border-t border-border">
                   <span className="text-xs text-ink-muted">
@@ -558,6 +564,12 @@ export default function PolicyLedgerPanel() {
               <select id="productLine" name="productLine" value={form.productLine} onChange={handleChange} className={selectCls}>
                 {PRODUCT_LINES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
+              {form.productLine !== 'life' && (
+                <p className="flex items-center gap-1 text-xs text-ink-muted mt-1">
+                  <Info size={11} className="shrink-0" />
+                  Does not count toward Tatil Life awards or persistency
+                </p>
+              )}
             </FieldGroup>
             <FieldGroup label="Policy Class" required id="policyClass">
               <select id="policyClass" name="policyClass" value={form.policyClass} onChange={handleChange} className={selectCls}>
