@@ -51,6 +51,55 @@ export async function updateExpenseGroup(tenantId, uid, year, groupKey, updatedG
   return rollup;
 }
 
+export function mergeSubCalcRef(group, key, annualTotal) {
+  const existing = (group.subCalculatorRefs ?? []).filter((r) => r.key !== key);
+  const refs = annualTotal > 0 ? [...existing, { key, annualTotal }] : existing;
+  const lineTotal = (group.lineItems ?? []).reduce(
+    (sum, item) => sum + (parseFloat(item.annualizedAmount) || 0), 0,
+  );
+  const subCalcTotal = refs.reduce((sum, r) => sum + (parseFloat(r.annualTotal) || 0), 0);
+  return { ...group, subCalculatorRefs: refs, groupAnnualTotal: lineTotal + subCalcTotal };
+}
+
+export async function updateSubCalculator(tenantId, uid, year, calcKey, calcData, worksheetDoc) {
+  const parsedYear = parseInt(year, 10);
+  if (!parsedYear) throw new Error('Invalid year');
+
+  const docRef = doc(db, 'tenants', tenantId, 'users', uid, 'moneyNeeds', String(parsedYear));
+  const currentGroups = { ...(worksheetDoc.expenseGroups ?? {}) };
+  const updatedGroups = {};
+  const patch = { [`subCalculators.${calcKey}`]: calcData };
+
+  if (calcKey === 'insuranceIndustry') {
+    const updated = mergeSubCalcRef(currentGroups.businessExpenses ?? {}, 'insuranceIndustry', calcData.annualTotal ?? 0);
+    updatedGroups.businessExpenses = updated;
+    patch['expenseGroups.businessExpenses'] = updated;
+  } else if (calcKey === 'carExpenses') {
+    const personal = mergeSubCalcRef(currentGroups.livingExpenses ?? {}, 'carExpenses', calcData.annualTotalPersonal ?? 0);
+    const business = mergeSubCalcRef(currentGroups.businessExpenses ?? {}, 'carExpenses', calcData.annualTotalBusiness ?? 0);
+    updatedGroups.livingExpenses = personal;
+    updatedGroups.businessExpenses = business;
+    patch['expenseGroups.livingExpenses'] = personal;
+    patch['expenseGroups.businessExpenses'] = business;
+  }
+  // LoansDebt: no group roll-in
+
+  const mergedGroups = { ...currentGroups, ...updatedGroups };
+  const rollup = computeWorksheetRollup(mergedGroups);
+
+  Object.assign(patch, {
+    totalAnnualAfterTax: rollup.totalAnnualAfterTax,
+    totalAnnualPreTax: rollup.totalAnnualPreTax,
+    computedPAYE: rollup.computedPAYE,
+    payeBracketsVersionId: PAYE_BRACKETS_VERSION,
+    updatedAt: serverTimestamp(),
+    updatedBy: uid,
+  });
+
+  await updateDoc(docRef, patch);
+  return { rollup, updatedGroups };
+}
+
 const EXPENSE_GROUP_SCAFFOLD = () => ({ lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 });
 
 const BLANK_SCAFFOLD = (tenantId, uid, year) => ({

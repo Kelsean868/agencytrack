@@ -32,7 +32,8 @@ vi.mock('firebase/firestore', () => ({
 import {
   createMoneyNeeds, getMoneyNeeds,
   annualizeAmount, computeGroupTotal, computeWorksheetRollup,
-  updateExpenseGroup, FREQUENCY_MULTIPLIERS, PAYE_BRACKETS_VERSION,
+  updateExpenseGroup, mergeSubCalcRef, updateSubCalculator,
+  FREQUENCY_MULTIPLIERS, PAYE_BRACKETS_VERSION,
 } from '../moneyNeedsService';
 
 const TENANT_ID = 'tenant-1';
@@ -344,6 +345,150 @@ describe('updateExpenseGroup', () => {
   it('throws for invalid year', async () => {
     await expect(
       updateExpenseGroup(TENANT_ID, UID, 'bad', 'fixedExpenses', UPDATED_GROUP, FULL_GROUPS),
+    ).rejects.toThrow();
+  });
+});
+
+// ── mergeSubCalcRef ───────────────────────────────────────────────────────────
+
+describe('mergeSubCalcRef', () => {
+  it('inserts new ref when key absent', () => {
+    const group = { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 };
+    const result = mergeSubCalcRef(group, 'insuranceIndustry', 5000);
+    expect(result.subCalculatorRefs).toEqual([{ key: 'insuranceIndustry', annualTotal: 5000 }]);
+  });
+
+  it('updates existing ref by key', () => {
+    const group = {
+      lineItems: [],
+      subCalculatorRefs: [{ key: 'insuranceIndustry', annualTotal: 3000 }],
+      groupAnnualTotal: 3000,
+    };
+    const result = mergeSubCalcRef(group, 'insuranceIndustry', 7000);
+    expect(result.subCalculatorRefs).toHaveLength(1);
+    expect(result.subCalculatorRefs[0].annualTotal).toBe(7000);
+  });
+
+  it('recomputes groupAnnualTotal including subCalcTotal', () => {
+    const group = {
+      lineItems: [{ annualizedAmount: 12000 }],
+      subCalculatorRefs: [],
+      groupAnnualTotal: 12000,
+    };
+    const result = mergeSubCalcRef(group, 'carExpenses', 6000);
+    expect(result.groupAnnualTotal).toBe(18000);
+  });
+
+  it('removes ref when annualTotal is 0', () => {
+    const group = {
+      lineItems: [],
+      subCalculatorRefs: [{ key: 'insuranceIndustry', annualTotal: 5000 }],
+      groupAnnualTotal: 5000,
+    };
+    const result = mergeSubCalcRef(group, 'insuranceIndustry', 0);
+    expect(result.subCalculatorRefs).toHaveLength(0);
+    expect(result.groupAnnualTotal).toBe(0);
+  });
+});
+
+// ── updateSubCalculator ───────────────────────────────────────────────────────
+
+const WORKSHEET_DOC = {
+  year: YEAR,
+  expenseGroups: {
+    fixedExpenses:       { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
+    livingExpenses:      { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
+    businessExpenses:    { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
+    savingsAccumulation: { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
+    miscellaneous:       { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
+  },
+  subCalculators: {
+    insuranceIndustry: { lineItems: [], annualTotal: 0 },
+    carExpenses: { lineItems: [], withLoan: false, personalSharePct: 33, businessSharePct: 67, annualTotalPersonal: 0, annualTotalBusiness: 0 },
+    loansDebt: { lineItems: [], annualTotal: 0 },
+  },
+};
+
+describe('updateSubCalculator — insuranceIndustry', () => {
+  const CALC_DATA = { lineItems: [], annualTotal: 8000 };
+
+  it('calls updateDoc (not setDoc)', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, WORKSHEET_DOC);
+    expect(hoisted.mockUpdateDoc).toHaveBeenCalledOnce();
+    expect(hoisted.mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('patches subCalculators.insuranceIndustry', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, WORKSHEET_DOC);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch['subCalculators.insuranceIndustry']).toEqual(CALC_DATA);
+  });
+
+  it('patches expenseGroups.businessExpenses with merged subCalcRef', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, WORKSHEET_DOC);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect('expenseGroups.businessExpenses' in patch).toBe(true);
+    const biz = patch['expenseGroups.businessExpenses'];
+    expect(biz.subCalculatorRefs.some((r) => r.key === 'insuranceIndustry' && r.annualTotal === 8000)).toBe(true);
+  });
+
+  it('does NOT patch livingExpenses', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, WORKSHEET_DOC);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect('expenseGroups.livingExpenses' in patch).toBe(false);
+  });
+
+  it('returns rollup and updatedGroups', async () => {
+    const result = await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, WORKSHEET_DOC);
+    expect(result).toHaveProperty('rollup');
+    expect(result).toHaveProperty('updatedGroups');
+    expect(result.updatedGroups).toHaveProperty('businessExpenses');
+  });
+});
+
+describe('updateSubCalculator — carExpenses', () => {
+  const CALC_DATA = { lineItems: [], withLoan: false, personalSharePct: 33, businessSharePct: 67, annualTotalPersonal: 3300, annualTotalBusiness: 6700 };
+
+  it('patches expenseGroups.livingExpenses with personal share', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'carExpenses', CALC_DATA, WORKSHEET_DOC);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect('expenseGroups.livingExpenses' in patch).toBe(true);
+    const living = patch['expenseGroups.livingExpenses'];
+    expect(living.subCalculatorRefs.some((r) => r.key === 'carExpenses' && r.annualTotal === 3300)).toBe(true);
+  });
+
+  it('patches expenseGroups.businessExpenses with business share', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'carExpenses', CALC_DATA, WORKSHEET_DOC);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    const biz = patch['expenseGroups.businessExpenses'];
+    expect(biz.subCalculatorRefs.some((r) => r.key === 'carExpenses' && r.annualTotal === 6700)).toBe(true);
+  });
+});
+
+describe('updateSubCalculator — loansDebt', () => {
+  const CALC_DATA = { lineItems: [], annualTotal: 24000 };
+
+  it('patches subCalculators.loansDebt', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'loansDebt', CALC_DATA, WORKSHEET_DOC);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch['subCalculators.loansDebt']).toEqual(CALC_DATA);
+  });
+
+  it('does NOT patch any expenseGroups', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'loansDebt', CALC_DATA, WORKSHEET_DOC);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    const groupKeys = Object.keys(patch).filter((k) => k.startsWith('expenseGroups.'));
+    expect(groupKeys).toHaveLength(0);
+  });
+
+  it('returns empty updatedGroups', async () => {
+    const result = await updateSubCalculator(TENANT_ID, UID, YEAR, 'loansDebt', CALC_DATA, WORKSHEET_DOC);
+    expect(Object.keys(result.updatedGroups)).toHaveLength(0);
+  });
+
+  it('throws for invalid year', async () => {
+    await expect(
+      updateSubCalculator(TENANT_ID, UID, 'bad', 'loansDebt', CALC_DATA, WORKSHEET_DOC),
     ).rejects.toThrow();
   });
 });
