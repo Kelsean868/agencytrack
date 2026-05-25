@@ -1888,7 +1888,7 @@ Priority: LOW. A11y-positive but cosmetic; B3 introduced no regressions. Surface
 
 ---
 
-## Sidebar collapse toggle hit-target (32×32 → 40px+)
+## ~~Sidebar collapse toggle hit-target (32×32 → 40px+)~~
 
 **Scope:** `.sidebar-collapse-btn` in `src/index.css:873-876` is a
 32×32 click target. CLAUDE.md domain rules call for a 44×44 minimum,
@@ -1903,6 +1903,8 @@ Adjacent to Mobile FU#4 cosmetic items. Not blocking — the surface is
 reachable as of PR #56.
 
 Priority: **LOW**. Surfaced as a Q2 deferral during the PR #56 triage.
+
+**Closure (PR #334, `{TBD}`):** Bumped to 44×44 in `src/index.css`.
 
 ---
 
