@@ -457,7 +457,7 @@ Banked: PR #248 revert commit (`6b3c252`).
 
 ---
 
-## CI doc drift — CLAUDE.md says "lint + build" but CI runs lint + test + build (LOW, banked 2026-05-21)
+## ~~CI doc drift — CLAUDE.md says "lint + build" but CI runs lint + test + build~~ (SHIPPED — see `docs/ci-doc-drift-lint-test-build` branch, closing PR)
 
 **Scope:** CLAUDE.md § Lint Policy: "This is enforced by `.github/workflows/ci.yml` (lint + build on every PR to main)." and Session Protocol step 7: "Push branch, open PR — CI will run lint + build automatically on GitHub". Both are wrong as of PR #244 — `.github/workflows/ci.yml` runs three steps: **Lint** (`npm run lint`), **Run tests** (`npm test -- --run`), **Build** (`npm run build`). The doc drift caused a false-green local on PR #244: the local `npm test` ran with `.env.local` populated, hiding a transitive firebase-init throw in `CoachingNotesModal.test.jsx`; CI ran the same test with env unset and failed.
 

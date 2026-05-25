@@ -310,7 +310,7 @@ When in doubt, surface and ask.
 
 ## Lint Policy
 
-`npm run lint` must exit 0 before any push. This is enforced by `.github/workflows/ci.yml` (lint + build on every PR to main).
+`npm run lint`, `npm test`, and `npm run build` must all pass before any push. This is enforced by `.github/workflows/ci.yml` (lint + tests + build on every PR to main).
 
 **Baseline:** 0 errors, 0 `jsx-a11y` warnings (3 deferred `react-hooks/exhaustive-deps` warnings tracked separately, addressed in PR #33 → PR #38).
 
@@ -339,8 +339,8 @@ Banked from PR #264 (2026-05-22). Surfaced 3× before the fix: F2 (#244), F3 (#2
 2. Run `npm run repomix` to get fresh codebase snapshot before each session
 3. Confirm current phase before writing new files
 4. Work on a feature branch (Claude Code default), never main directly
-5. After all changes, run `npm run lint && npm run build` — both must pass before pushing
-6. Push branch, open PR — CI will run lint + build automatically on GitHub
+5. After all changes, run `npm run lint && npm test && npm run build` — all must pass before pushing
+6. Push branch, open PR — CI will run lint + tests + build automatically on GitHub
 7. Verify Vercel preview URL in incognito
 8. User merges PR manually — only then does production update
 9. After merge, do a 60-second production smoke test
