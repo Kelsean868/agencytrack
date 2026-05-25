@@ -284,17 +284,19 @@ export default function DailyEntryModal({ onClose }) {
                   <NumericField
                     label="Number of PPP increases"
                     name="apps"
+                    inputId="ppp-apps"
                     value={data.pppIncreases?.apps ?? 0}
                     onChange={pppChange}
                   />
                   <CurrencyField
                     label="Total API increase (TTD)"
                     name="apiIncrease"
+                    inputId="ppp-api-increase"
                     value={data.pppIncreases?.apiIncrease ?? 0}
                     onChange={pppChange}
                   />
                   {pppWarn && (
-                    <p className="text-xs text-warning font-medium">
+                    <p className="text-xs text-warning font-medium" role="status">
                       Average {formatCurrency(Math.round(pppAvgPerApp))} per application is below
                       the {formatCurrency(MIN_PPP_INCREASE)} minimum — check your figures.
                     </p>
@@ -388,6 +390,7 @@ export default function DailyEntryModal({ onClose }) {
                     <input
                       id="daily-hours"
                       type="number"
+                      inputMode="decimal"
                       min="0"
                       step="0.5"
                       value={data.hoursWorked ?? ''}
