@@ -2,7 +2,7 @@
  * walk-helpers.mjs — shared utilities for AgencyTrack Playwright walk scripts.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * FIVE BANKED LESSONS (learned from manual smoke runs — do not re-learn these)
+ * NINE BANKED LESSONS (learned from manual smoke runs — do not re-learn these)
  * ─────────────────────────────────────────────────────────────────────────────
  *
  * 1. BYPASS COOKIE VALUE: x-vercel-set-bypass-cookie must be "samesitenone",
@@ -56,6 +56,14 @@
  *    REST writes are diagnostic only and must not gate on SDK observation in
  *    the same context. Banked from PR #248 (wrong getDocsFromServer theory,
  *    reverted in 6b3c252).
+ *
+ * 9. CONSOLE/NETWORK CAPTURE: call captureConsoleAndNetwork(page) immediately
+ *    after opening a new page (before any goto) to wire up listeners. The helper
+ *    accumulates console errors/warnings and failed network requests for the
+ *    lifetime of the page. Call formatCaptureReport(capture) before exit to
+ *    print a summary block. Static-asset noise (.map, .ico) is filtered inside
+ *    the helper — per-feature smokes do not need their own filter. Banked from
+ *    PR #238 post-merge dispatch (ad-hoc supplemental script).
  *
  * ─────────────────────────────────────────────────────────────────────────────
  */
@@ -324,4 +332,80 @@ export async function domTextCount(page, selector, text) {
     },
     [selector, text],
   );
+}
+
+// Static-asset noise pattern — filtered inside captureConsoleAndNetwork so
+// per-feature smokes do not need their own filter (LESSON 9).
+const STATIC_ASSET_RE = /\.(map|ico)(\?|$)/;
+
+/**
+ * captureConsoleAndNetwork — wires console error/warn listeners and network
+ * failure listeners on a Playwright Page. Must be called immediately after
+ * `context.newPage()` and before the first `page.goto()`.
+ *
+ * LESSON 9: call this before navigation; the returned capture object
+ * accumulates throughout the page's lifetime. Pass it to
+ * formatCaptureReport() to print a summary block at smoke exit.
+ *
+ * @param {import('playwright').Page} page
+ * @returns {{ consoleMessages: Array<{type:string,text:string}>,
+ *             networkFailures: Array<{url:string,failure:string}> }}
+ */
+export function captureConsoleAndNetwork(page) {
+  const consoleMessages = [];
+  const networkFailures = [];
+
+  page.on('console', (msg) => {
+    const type = msg.type();
+    if (type === 'error' || type === 'warn') {
+      consoleMessages.push({ type, text: msg.text() });
+    }
+  });
+
+  page.on('requestfailed', (request) => {
+    const url = request.url();
+    if (STATIC_ASSET_RE.test(url)) return;
+    networkFailures.push({ url, failure: request.failure()?.errorText ?? 'unknown' });
+  });
+
+  return { consoleMessages, networkFailures };
+}
+
+/**
+ * formatCaptureReport — prints a console/network capture summary block.
+ *
+ * Canonical usage at smoke exit:
+ *
+ *   const capture = captureConsoleAndNetwork(page);
+ *   // ... smoke steps ...
+ *   formatCaptureReport(capture);
+ *
+ * @param {{ consoleMessages: Array<{type:string,text:string}>,
+ *           networkFailures: Array<{url:string,failure:string}> }} capture
+ */
+export function formatCaptureReport({ consoleMessages, networkFailures }) {
+  const SEP = '── Console/network capture ─────────────────────────────────';
+  const END = '────────────────────────────────────────────────────────────';
+  const lines = [SEP];
+
+  if (consoleMessages.length === 0) {
+    lines.push('  console: (clean)');
+  } else {
+    lines.push(`  console: ${consoleMessages.length} message(s)`);
+    for (const { type, text } of consoleMessages) {
+      lines.push(`    [${type}] ${text.slice(0, 200)}`);
+    }
+  }
+
+  if (networkFailures.length === 0) {
+    lines.push('  network failures: (none)');
+  } else {
+    lines.push(`  network failures: ${networkFailures.length}`);
+    for (const { url, failure } of networkFailures) {
+      lines.push(`    FAIL ${failure}: ${url.slice(0, 200)}`);
+    }
+  }
+
+  lines.push(END);
+  console.log(lines.join('\n'));
 }

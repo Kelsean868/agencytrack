@@ -634,7 +634,7 @@ Banked: PR #225 (`975b0fc`).
 
 ---
 
-## Fold console/network capture into the canonical exploration-template smoke (LOW, banked 2026-05-20)
+## ~~Fold console/network capture into the canonical exploration-template smoke~~ (LOW, banked 2026-05-20)
 
 **Scope:** The standard smoke script template (lib helpers in `scripts/verification/lib/walk-helpers.mjs` + the per-feature smokes that consume it) does not capture browser console errors/warnings or network failures. Each smoke today only asserts DOM/state expectations. For PR #238's pre- and post-merge smokes the dispatcher requested console + network capture; an ad-hoc supplemental script was written (`scripts/verification/weekly-activity-floors-console-capture.mjs`) to satisfy the request, but it was NOT banked into the canonical template — every future PR that wants this signal will either re-author the same capture pass or skip it.
 
@@ -643,6 +643,8 @@ Banked: PR #225 (`975b0fc`).
 **Priority:** **LOW**. Not blocking any active work; the supplemental script can be deleted or kept as-is in the meantime. Resolve when next touching `walk-helpers.mjs` for any reason, or as standalone XS refactor.
 
 Banked from PR #238 (`1b05eb7`) post-merge.
+
+**Closure (PR #333, `{TBD}`):** `captureConsoleAndNetwork(page)` + `formatCaptureReport(capture)` added to `walk-helpers.mjs`; LESSON 9 banked; CLAUDE.md updated.
 
 ---
 
