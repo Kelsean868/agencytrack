@@ -2712,25 +2712,11 @@ Also added: `request.resource.data.status == 'submitted'` guard (status unchange
 
 ---
 
-## Track H H1.2 — history timeline display UI (LOW, banked H1.2 PR #302)
+## ~~Track H H1.2 — history timeline display UI~~ ✅ RESOLVED PR #306
 
-**Scope:** The `history` subcollection (`/tenants/{tid}/policies/{policyId}/history/{historyId}`) is written atomically with every status transition and verified by emulator tests. No display surface exists — the audit trail is data-only.
+~~**Scope:** The `history` subcollection (`/tenants/{tid}/policies/{policyId}/history/{historyId}`) is written atomically with every status transition and verified by emulator tests. No display surface exists — the audit trail is data-only.~~
 
-**Action:** Build a per-policy history timeline component:
-- Reads `getPolicyHistory(tenantId, policyId)` from `policiesService.js` (already exported)
-- Displays each `history` doc in chronological order: `fromStatus → toStatus`, `changedFields`, `actorUid`, `at` timestamp
-- Likely placement: expandable section on each policy card in `PolicyLedgerPanel.jsx` or a dedicated modal
-- Manager-visible too (BM+ read access already in rules via `canManage`)
-
-**Priority:** LOW. Data is written and tested; UI can ship independently. No rule/service changes needed.
-
-Banked: H1.2 PR #302 (`6886ed1`).
-
-**Prerequisite fixes (H1.2 #302 smoke — production caught what 30/30 emulator missed):**
-
-(a) `getPolicyHistory` calls `orderBy('at', 'desc')` with no `agentId` filter. The history `list` rule enforces `canAccessOwn(tenantId, resource.data.agentId)`, which requires `resource.data.agentId == request.auth.uid` — a Firestore query without `where('agentId', '==', uid)` cannot be evaluated per-doc by the rule engine and is denied (403). Additionally, combining `where('agentId', '==', uid)` with `orderBy('at', 'desc')` requires a composite index `(agentId ASC, at DESC)` on the `history` collection that is not currently declared in `firestore.indexes.json`. Fix: either (i) add the `agentId` filter + declare the composite index, or (ii) drop the server-side `orderBy` and sort client-side after a `where('agentId','==',uid)`-scoped fetch.
-
-(b) Emulator test gap: `tests/rules/policies.rules.test.mjs` covers `BM list history on in-tenant policy → ALLOW` but has no `agent list own history → ALLOW` case. BM short-circuits the `canAccessOwn` branch entirely, so the agent-scoped rule path is not exercised by the existing 30/30 suite. Add an agent-list-own-history ALLOW case (with the `where agentId == uid` filter that the rule requires) and the corresponding DENY case (agent lists another agent's history). Both prerequisites must land together with the history-display UI PR.
+**RESOLVED in PR #306 (`b5c07d5`):** `PolicyLedgerPanel.jsx` gains an expandable per-policy history timeline (toggle button, loading spinner, `fromStatus → toStatus` status-badge rows, formatted `at` timestamp, "No history yet" empty state). `getPolicyHistory` updated with optional `agentId` param (when provided, adds `where('agentId','==',uid)` filter to satisfy the list rule). Composite index `(agentId ASC, at DESC)` on `history` deployed pre-merge. `tests/rules/policies.rules.test.mjs`: +2 emulator cases (agent list own history ALLOW; agent list other-agent DENY). H1.2 loosening #3 RESOLVED. Banked: H1.2 PR #302 (`6886ed1`).
 
 ---
 
