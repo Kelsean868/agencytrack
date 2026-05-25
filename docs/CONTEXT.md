@@ -12,9 +12,9 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (H2c post-merge fill — PR #321 — 900a473) |
-| Current main HEAD | `900a473` (PR #321 — Track H H2c BM-only lapsed status + agent notification + H11 lapse chip) |
-| Active track | Queue: H3 (awards usesPolicyLedger flag, PR-OPEN only); Track E remainder (Expected/Actual relabel + E(d) daily-form refinements); expanded filler. |
+| Last updated | 2026-05-25 (E(d) post-merge fill — PR #322 — 75c0e33) |
+| Current main HEAD | `75c0e33` (PR #322 — a11y: PPP id collision fix + role=status + inputMode=decimal) |
+| Active track | Queue: H3 (awards usesPolicyLedger flag, PR-OPEN only); expanded filler. E(d) shipped. |
 | Next track | H4 plan config; Track G skeleton; BEH-1 WelcomeScreen stub; E2E harness generalize. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
