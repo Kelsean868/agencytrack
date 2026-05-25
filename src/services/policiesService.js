@@ -311,6 +311,27 @@ export async function getPolicyHistory(tenantId, policyId, agentId) {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
+/**
+ * Derives a confirmedData-compatible array from settled policy docs for the awards engine.
+ * Groups settled policies by month via dateIssued (Firestore Timestamp or Date → YYYY-MM periodKey).
+ * Only 'settled' status counts — lapsed policies were deducted and are excluded.
+ * Persistency is not sourced here; caller merges from the persistency/settlement collection.
+ */
+export function settlementShapeFromPolicies(policies) {
+  const map = {};
+  for (const policy of policies) {
+    if (policy.status !== 'settled') continue;
+    const dateIssued = policy.dateIssued;
+    if (!dateIssued) continue;
+    const d = dateIssued.toDate ? dateIssued.toDate() : new Date(dateIssued);
+    const periodKey = d.toISOString().substring(0, 7);
+    if (!map[periodKey]) map[periodKey] = { periodKey, settledAPI: 0, settledApps: 0, persistency: 0 };
+    map[periodKey].settledAPI += parseFloat(policy.settledAPI) || 0;
+    map[periodKey].settledApps += 1;
+  }
+  return Object.values(map);
+}
+
 export async function getPoliciesForManager(tenantId, scope) {
   const ref = collection(db, 'tenants', tenantId, 'policies');
   let q;
