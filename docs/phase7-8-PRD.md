@@ -585,6 +585,11 @@ Nudge, not block. Encourages real-grounded commitment.
 
 ## 7. Track H — Policy Ledger MVP
 
+> **Build status (as of 2026-05-25):**
+> - **H1 (walking skeleton)** — SHIPPED PR #300 (`02415c2`). `policies` collection, agent create + own-list, `status='submitted'` only, 3 composite indexes, `PolicyLedgerPanel.jsx`.
+> - **H1.2 (agent transition vertical)** — SHIPPED PR #TBD (`#TBD`). `policyLifecycle.js` constants, `isLegalAgentTransition` rules helper, two-arm `allow update` (Arm A body-edit + FU Entry 2 value-guards; Arm B legal status transitions), `/history/{historyId}` append-only subcollection, `transitionPolicyStatus` + `getPolicyHistory` service exports, `PolicyLedgerPanel.jsx` status modal.
+> - **Remaining (H2):** Manager confirmation arm (`confirmedByManager` / `managerSettledAPI` / `hasDiscrepancy`); Lapsed status (BM-only, §7.1 `Settled → Lapsed`); §7.8 manager reconciliation UI; awards engine integration (`usesPolicyLedger` flag, §7.6).
+
 ### 7.1 Status State Machine
 
 States:

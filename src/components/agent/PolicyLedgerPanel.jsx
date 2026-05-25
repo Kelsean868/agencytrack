@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Plus, Loader2, AlertCircle, ArrowLeft, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/formatters';
 import { PROSPECTING_SOURCES, PROSPECTING_SOURCE_LABELS } from '../../services/prospectInfoService';
-import { createPolicy, getOwnPolicies } from '../../services/policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus } from '../../services/policiesService';
+import {
+  LEGAL_AGENT_TRANSITIONS,
+  POLICY_STATUS_LABELS,
+} from '../../constants/policyLifecycle';
 
 const FREQ_MULT = { A: 1, S: 2, Q: 4, M: 12 };
 const FREQ_LABELS = { A: 'Annual', S: 'Semi-Annual', Q: 'Quarterly', M: 'Monthly' };
@@ -33,6 +37,22 @@ const POLICY_CLASSES = [
 ];
 
 const today = new Date().toISOString().split('T')[0];
+
+const STATUS_BADGE_CLS = {
+  submitted: 'bg-blue-50   text-blue-700   dark:bg-blue-950/30   dark:text-blue-400',
+  rated:     'bg-green-50  text-green-700  dark:bg-green-950/30  dark:text-green-400',
+  postponed: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400',
+  ntu:       'bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400',
+  denied:    'bg-red-50    text-red-700    dark:bg-red-950/30    dark:text-red-400',
+  settled:   'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400',
+};
+
+const EMPTY_TX_FIELDS = {
+  ratedPremium: '', rateReason: '',
+  pendingReason: '',
+  reason: '',
+  dateIssued: today, settledAPI: '', issuedCoverage: '', initialPremium: '', earnedCommission: '',
+};
 
 const EMPTY_FORM = {
   ownerName: '',
@@ -87,6 +107,13 @@ export default function PolicyLedgerPanel() {
   const [sameAsOwner, setSameAsOwner] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
+
+  // ── Transition modal state ──
+  const [txPolicy, setTxPolicy] = useState(null);  // policy object being transitioned, or null
+  const [txTo, setTxTo] = useState('');
+  const [txFields, setTxFields] = useState(EMPTY_TX_FIELDS);
+  const [txing, setTxing] = useState(false);
+  const [txError, setTxError] = useState(null);
 
   useEffect(() => {
     if (!tenantId || !user?.uid) return;
@@ -144,6 +171,42 @@ export default function PolicyLedgerPanel() {
     }
   }
 
+  function openTxModal(policy) {
+    const nexts = LEGAL_AGENT_TRANSITIONS[policy.status] ?? [];
+    if (nexts.length === 0) return;
+    setTxPolicy(policy);
+    setTxTo(nexts[0]);
+    setTxFields(EMPTY_TX_FIELDS);
+    setTxError(null);
+  }
+
+  function closeTxModal() {
+    setTxPolicy(null);
+    setTxError(null);
+  }
+
+  function handleTxFieldChange(e) {
+    const { name, value } = e.target;
+    setTxFields((prev) => ({ ...prev, [name]: value }));
+  }
+
+  async function handleTxSubmit(e) {
+    e.preventDefault();
+    setTxing(true);
+    setTxError(null);
+    try {
+      const agentRef = { uid: user.uid, ...userProfile };
+      await transitionPolicyStatus(tenantId, agentRef, txPolicy.id, txPolicy.status, txTo, txFields);
+      const fresh = await getOwnPolicies(tenantId, user.uid);
+      setPolicies(fresh);
+      closeTxModal();
+    } catch (err) {
+      setTxError(err.message);
+    } finally {
+      setTxing(false);
+    }
+  }
+
   function openCreate() {
     setForm(EMPTY_FORM);
     setSameAsOwner(false);
@@ -190,32 +253,161 @@ export default function PolicyLedgerPanel() {
           </div>
         )}
 
-        {!loading && policies.map((p) => (
-          <div key={p.id} className="card flex flex-col gap-2">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="font-semibold text-sm text-ink">{p.ownerName}</p>
-                {p.insuredName !== p.ownerName && (
-                  <p className="text-xs text-ink-muted">Insured: {p.insuredName}</p>
-                )}
+        {!loading && policies.map((p) => {
+          const nexts = LEGAL_AGENT_TRANSITIONS[p.status] ?? [];
+          return (
+            <div key={p.id} className="card flex flex-col gap-2">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-sm text-ink">{p.ownerName}</p>
+                  {p.insuredName !== p.ownerName && (
+                    <p className="text-xs text-ink-muted">Insured: {p.insuredName}</p>
+                  )}
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold shrink-0 ${STATUS_BADGE_CLS[p.status] ?? 'bg-primary/10 text-primary'}`}>
+                  {POLICY_STATUS_LABELS[p.status] ?? p.status}
+                </span>
               </div>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold shrink-0 capitalize">
-                {p.status}
-              </span>
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
+                <span>API: <span className="text-ink font-semibold">{formatCurrency(p.proposedAPI)}</span></span>
+                <span>Source: {PROSPECTING_SOURCE_LABELS[p.sourceOfProspect] || p.sourceOfProspect}</span>
+                <span>
+                  Cash w/ App:{' '}
+                  {p.cashWithApp?.collected
+                    ? (p.cashWithApp.amount != null ? formatCurrency(p.cashWithApp.amount) : 'Yes')
+                    : 'No'}
+                </span>
+                <span>Written: {fmtDate(p.dateWritten)}</span>
+              </div>
+              {nexts.length > 0 && (
+                <div className="pt-1 border-t border-border">
+                  <button
+                    onClick={() => openTxModal(p)}
+                    className="h-9 px-3 rounded-lg text-xs font-semibold text-primary border border-primary/30 hover:bg-primary/5 transition-colors min-w-[44px]"
+                  >
+                    Update Status
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-              <span>API: <span className="text-ink font-semibold">{formatCurrency(p.proposedAPI)}</span></span>
-              <span>Source: {PROSPECTING_SOURCE_LABELS[p.sourceOfProspect] || p.sourceOfProspect}</span>
-              <span>
-                Cash w/ App:{' '}
-                {p.cashWithApp?.collected
-                  ? (p.cashWithApp.amount != null ? formatCurrency(p.cashWithApp.amount) : 'Yes')
-                  : 'No'}
-              </span>
-              <span>Written: {fmtDate(p.dateWritten)}</span>
+          );
+        })}
+      {/* ── Transition modal ── */}
+      {txPolicy && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
+          <div className="bg-card rounded-2xl w-full max-w-md flex flex-col gap-4 p-5 shadow-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-base text-ink">Update Status</h3>
+              <button
+                onClick={closeTxModal}
+                className="h-9 w-9 flex items-center justify-center rounded-lg text-ink-muted hover:bg-surface transition-colors min-w-[44px] min-h-[44px]"
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
             </div>
+
+            <p className="text-xs text-ink-muted">
+              <span className="font-semibold text-ink">{txPolicy.ownerName}</span>
+              {' '}— current status: <span className="font-semibold">{POLICY_STATUS_LABELS[txPolicy.status]}</span>
+            </p>
+
+            <form onSubmit={handleTxSubmit} className="flex flex-col gap-4">
+              {/* Target status */}
+              <FieldGroup label="New Status" required>
+                <select
+                  value={txTo}
+                  onChange={(e) => { setTxTo(e.target.value); setTxFields(EMPTY_TX_FIELDS); setTxError(null); }}
+                  className={selectCls}
+                >
+                  {(LEGAL_AGENT_TRANSITIONS[txPolicy.status] ?? []).map((s) => (
+                    <option key={s} value={s}>{POLICY_STATUS_LABELS[s] ?? s}</option>
+                  ))}
+                </select>
+              </FieldGroup>
+
+              {/* Per-transition fields */}
+              {txTo === 'rated' && (
+                <>
+                  <FieldGroup label="Rated Premium (TTD)" required>
+                    <input name="ratedPremium" type="number" step="0.01" min="0.01"
+                      value={txFields.ratedPremium} onChange={handleTxFieldChange}
+                      placeholder="0.00" className={inputCls} required />
+                  </FieldGroup>
+                  <FieldGroup label="Rate Reason">
+                    <input name="rateReason" type="text"
+                      value={txFields.rateReason} onChange={handleTxFieldChange}
+                      placeholder="Optional" className={inputCls} />
+                  </FieldGroup>
+                </>
+              )}
+
+              {txTo === 'postponed' && (
+                <FieldGroup label="Pending Reason">
+                  <input name="pendingReason" type="text"
+                    value={txFields.pendingReason} onChange={handleTxFieldChange}
+                    placeholder="Optional" className={inputCls} />
+                </FieldGroup>
+              )}
+
+              {(txTo === 'ntu' || txTo === 'denied') && (
+                <FieldGroup label="Reason">
+                  <input name="reason" type="text"
+                    value={txFields.reason} onChange={handleTxFieldChange}
+                    placeholder="Optional" className={inputCls} />
+                </FieldGroup>
+              )}
+
+              {txTo === 'settled' && (
+                <>
+                  <FieldGroup label="Date Issued" required>
+                    <input name="dateIssued" type="date" max={today}
+                      value={txFields.dateIssued} onChange={handleTxFieldChange}
+                      className={inputCls} required />
+                  </FieldGroup>
+                  <FieldGroup label="Settled API (TTD)" required>
+                    <input name="settledAPI" type="number" step="0.01" min="0.01"
+                      value={txFields.settledAPI} onChange={handleTxFieldChange}
+                      placeholder="0.00" className={inputCls} required />
+                  </FieldGroup>
+                  <FieldGroup label="Issued Coverage (TTD)" required>
+                    <input name="issuedCoverage" type="number" step="0.01" min="0.01"
+                      value={txFields.issuedCoverage} onChange={handleTxFieldChange}
+                      placeholder="0.00" className={inputCls} required />
+                  </FieldGroup>
+                  <FieldGroup label="Initial Premium (TTD)" required>
+                    <input name="initialPremium" type="number" step="0.01" min="0.01"
+                      value={txFields.initialPremium} onChange={handleTxFieldChange}
+                      placeholder="0.00" className={inputCls} required />
+                  </FieldGroup>
+                  <FieldGroup label="Earned Commission (TTD)" required>
+                    <input name="earnedCommission" type="number" step="0.01" min="0"
+                      value={txFields.earnedCommission} onChange={handleTxFieldChange}
+                      placeholder="0.00" className={inputCls} required />
+                  </FieldGroup>
+                </>
+              )}
+
+              {txError && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm">
+                  <AlertCircle size={16} /> {txError}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button type="button" onClick={closeTxModal}
+                  className="flex-1 h-11 rounded-lg border border-border text-sm font-semibold text-ink-muted hover:bg-surface/70 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={txing}
+                  className="flex-1 h-11 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+                  {txing ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : 'Confirm'}
+                </button>
+              </div>
+            </form>
           </div>
-        ))}
+        </div>
+      )}
       </div>
     );
   }
