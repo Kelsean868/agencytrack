@@ -2725,3 +2725,33 @@ Also added: `request.resource.data.status == 'submitted'` guard (status unchange
 **Priority:** LOW. Data is written and tested; UI can ship independently. No rule/service changes needed.
 
 Banked: H1.2 PR #302 (`6886ed1`).
+
+**Prerequisite fixes (H1.2 #302 smoke — production caught what 30/30 emulator missed):**
+
+(a) `getPolicyHistory` calls `orderBy('at', 'desc')` with no `agentId` filter. The history `list` rule enforces `canAccessOwn(tenantId, resource.data.agentId)`, which requires `resource.data.agentId == request.auth.uid` — a Firestore query without `where('agentId', '==', uid)` cannot be evaluated per-doc by the rule engine and is denied (403). Additionally, combining `where('agentId', '==', uid)` with `orderBy('at', 'desc')` requires a composite index `(agentId ASC, at DESC)` on the `history` collection that is not currently declared in `firestore.indexes.json`. Fix: either (i) add the `agentId` filter + declare the composite index, or (ii) drop the server-side `orderBy` and sort client-side after a `where('agentId','==',uid)`-scoped fetch.
+
+(b) Emulator test gap: `tests/rules/policies.rules.test.mjs` covers `BM list history on in-tenant policy → ALLOW` but has no `agent list own history → ALLOW` case. BM short-circuits the `canAccessOwn` branch entirely, so the agent-scoped rule path is not exercised by the existing 30/30 suite. Add an agent-list-own-history ALLOW case (with the `where agentId == uid` filter that the rule requires) and the corresponding DENY case (agent lists another agent's history). Both prerequisites must land together with the history-display UI PR.
+
+---
+
+## Track H H1.2 — policies Arm B per-target field tightening (LOW, banked H1.2 #302)
+
+**Issue:** Arm B's `allow update` uses `affectedKeys().hasOnly([union of all per-transition fields])` — the full union covers every field any transition could write (`status`, `statusUpdatedAt`, `ratedPremium`, `rateReason`, `pendingReason`, `reason`, `dateIssued`, `settledAPI`, `issuedCoverage`, `initialPremium`, `earnedCommission`). A transition to a status that uses none of the settled-specific fields (e.g. `ntu`, `postponed`) can still carry `settledAPI`, `dateIssued`, etc. alongside the status update — data pollution on non-counting statuses. Value-guards are conditional on target status only (e.g. `status != 'settled' || (dateIssued is timestamp && ...)`), so the conditional passes silently for non-settled targets.
+
+**Risk:** App-path-safe — `transitionPolicyStatus` writes only the target status's fields. No awards vector (H3 gates on manager confirmation). Audit-only pollution.
+
+**Fix:** Replace the union `hasOnly` in Arm B with per-target conditional field sets, or restructure as separate `allow update` arms per target status. Natural moment to tighten: H2 rewrites this rule region to add the manager confirmation arm — incorporate per-target `hasOnly` in that rewrite rather than shipping a standalone rules-only PR now.
+
+Banked: H1.2 PR #302 (`6886ed1`).
+
+---
+
+## Track H H1.2 — policies history `create` ownership/shape tightening (LOW, banked H1.2 #302)
+
+**Issue:** The history `create` rule uses `keys().hasAll([required fields])` (extras permitted) and validates `actorUid == request.auth.uid` and `agentId == request.auth.uid` — confirming the actor is the authenticated user — but does NOT verify that the agent owns the parent policy (intentional: avoided a cross-doc `get()` on the parent). A crafted client could `addDoc` an orphan history doc under another agent's policy path (`/tenants/{tid}/policies/{otherAgentPolicyId}/history/{newId}`) with its own `agentId` and pass the create rule, as long as the policy path is a valid Firestore document path.
+
+**Risk:** Audit-pollution only. The orphan doc is self-tagged with the attacker's `agentId` and cannot be read by the other agent (list rule requires `canAccessOwn`). Cannot alter the other agent's policy status, proposedAPI, or any field that feeds awards. No data exfiltration vector.
+
+**Fix:** If audit integrity is required, add a `get()` of the parent policy doc to confirm `resource.data.agentId == request.auth.uid` before allowing history create. Alternatively, switch to `keys().hasOnly([required fields])` to at least lock the shape. Consider in H2 alongside the manager-arm rewrite, which will already touch this rule region.
+
+Banked: H1.2 PR #302 (`6886ed1`).
