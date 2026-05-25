@@ -2697,7 +2697,7 @@ Surfaced during H1 #300 Phase 6a deploy.
 
 ---
 
-## Track H H1.2 — policies `update` rule value-guards (RESOLVED — PR #TBD)
+## Track H H1.2 — policies `update` rule value-guards (RESOLVED — PR #302)
 
 **Was:** The `policies` `allow update` rule in H1 enforced `hasOnly()` field-allowlist + own-agent + `status == 'submitted'` but did NOT mirror the create-time value-guards into the update path.
 
@@ -2708,11 +2708,11 @@ Surfaced during H1 #300 Phase 6a deploy.
 
 Also added: `request.resource.data.status == 'submitted'` guard (status unchanged) to Arm A, preventing Arm A from being used as a backdoor to set bogus statuses.
 
-**Shipped:** PR #TBD (`#TBD`). Emulator DENY case confirmed (body-edit with bogus `sourceOfProspect` → DENY).
+**Shipped:** PR #302 (`6886ed1`). Emulator DENY case confirmed (body-edit with bogus `sourceOfProspect` → DENY).
 
 ---
 
-## Track H H1.2 — history timeline display UI (LOW, banked H1.2 PR #TBD)
+## Track H H1.2 — history timeline display UI (LOW, banked H1.2 PR #302)
 
 **Scope:** The `history` subcollection (`/tenants/{tid}/policies/{policyId}/history/{historyId}`) is written atomically with every status transition and verified by emulator tests. No display surface exists — the audit trail is data-only.
 
@@ -2724,4 +2724,4 @@ Also added: `request.resource.data.status == 'submitted'` guard (status unchange
 
 **Priority:** LOW. Data is written and tested; UI can ship independently. No rule/service changes needed.
 
-Banked: H1.2 PR #TBD.
+Banked: H1.2 PR #302 (`6886ed1`).
