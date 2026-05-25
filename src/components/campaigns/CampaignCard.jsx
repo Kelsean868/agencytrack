@@ -39,9 +39,9 @@ function MetricBar({ label, metric, current, threshold, pct, achieved }) {
 }
 
 function RankBadge({ rank }) {
-  if (rank === 1) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#f59e0b] text-white text-[10px] font-bold">1</span>;
-  if (rank === 2) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#94a3b8] text-white text-[10px] font-bold">2</span>;
-  if (rank === 3) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#b45309] text-white text-[10px] font-bold">3</span>;
+  if (rank === 1) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-500 text-white text-[10px] font-bold">1</span>;
+  if (rank === 2) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-400 text-white text-[10px] font-bold">2</span>;
+  if (rank === 3) return <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-amber-700 text-white text-[10px] font-bold">3</span>;
   return null;
 }
 
