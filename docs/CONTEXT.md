@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (PR #313 — test backfill round 2 — merged 23e7ecf) |
-| Current main HEAD | `23e7ecf` (PR #313 — DailyEntryModal/Leaderboard/SyncIndicator/NotificationBell tests + React import fixes — merged) |
-| Active track | Track H — H2b (bulk/grouped policy polish), H2c (Lapsed status), H3 (`usesPolicyLedger` + awards engine switch); #305, #306 merged. Track E daily-entry FAB shipped (#307). |
-| Next track | H2b (§7.8 bulk/grouped policy polish); H2c (Lapsed status); H3 (usesPolicyLedger + awards engine switch). Track E: refined daily form field-mapping (dispatcher decisions needed). |
+| Last updated | 2026-05-25 (PR #315 — H2b reconciliation polish — merged d01d0bc) |
+| Current main HEAD | `d01d0bc` (PR #315 — H2b grouped-by-agent + bulk-confirm + agentId-pin — merged) |
+| Active track | Track H — H2c (Lapsed status), H3 (`usesPolicyLedger` + awards engine switch); H2b shipped (#315). Track E relabel + social KPIs in progress. |
+| Next track | H2c (Lapsed: BM-only settled→lapsed transition + agent lapse notification + H11 lapse-half); H3 (awards engine usesPolicyLedger flag); Track E (a) Expected/Actual relabel. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). Workshop §3.5 Tenant-Admin floors editor; Expected/Actual relabel sweep; true telephone-contacts wizard field. Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#315](https://github.com/Kelsean868/agencytrack/pull/315) | `d01d0bc` | feat(policy-ledger): H2b — `PolicyReconciliationPanel` grouped-by-agent (section headers with agent name from `getTenantUsers` map), side-by-side layout (agent values left / manager input right, `sm:grid-cols-2`), bulk-confirm (select-all + per-policy checkboxes, blank API defaults to agent's `settledAPI`). `firestore.rules`: agentId-pinning on manager history `allow create` arm (`request.resource.data.agentId == parent.agentId`). +1 DENY emulator case (50/50 passed). New `PolicyReconciliationPanel.test.jsx` (11 tests). Rules deployed pre-merge. 1313/1313 vitest; lint 0; build clean. |
 | [#313](https://github.com/Kelsean868/agencytrack/pull/313) | `23e7ecf` | test(backfill-round2): DailyEntryModal (14 tests: loading/a11y/PPP-expand-collapse/PPP-warning/save/error), Leaderboard (10 tests: loading/error/empty/agent-rank/manager-sections/streak/badges), SyncIndicator (4 tests: online/offline state + event listeners), NotificationBell (7 tests: aria-label/badge/toggle). React import fixes on 5 source files (Vitest JSX transform requirement). 93 files / 1302 tests; lint 0; build clean. |
 | [#312](https://github.com/Kelsean868/agencytrack/pull/312) | `d6a6ee9` | a11y(policy-ledger): FieldGroup label-input associations + role=alert error containers. `FieldGroup` gets `id`/`htmlFor` for label-input associations across both create form (18 fields) and transition modal (10 fields, `tx-` prefix). `role="alert"` on `saveError` and `txError` error display divs. 28/28 existing PolicyLedgerPanel tests pass; lint 0; build clean. No logic/behavior change. |
 | [#311](https://github.com/Kelsean868/agencytrack/pull/311) | `ef32bd6` | chore(verification): commit 17 reusable smoke scripts to repo (bm-notification, d3-awards, h1-2-history-display, h1-2-transition, h1-policy-ledger, h2-agent-conf-prod, h2-agent-conf-surfacing, h2a-confirmation, i1-3c-ii, i3b-escalation, pr296-roster-active, prospect-info, tenure-company-floor, tenure-prod-render, trackf-taxonomy, weekly-activity-floors, weekly-activity-floors-console-capture). `scripts/verification/.gitignore` ignores `*-screenshots/` dirs and `YYYY-MM-DDTHH-MM-SS-*` timestamped output files. `seed-weekly-floors-test-submission.mjs` committed. `_cleanup-temp.mjs` deleted. No source/UI change. |
