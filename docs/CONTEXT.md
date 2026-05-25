@@ -12,8 +12,8 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (PR #309 — agent test backfill — merged b4718fe) |
-| Current main HEAD | `b4718fe` (PR #309 — PolicyLedgerPanel + BadgeGrid + GapAnalysisPanel test backfill — merged) |
+| Last updated | 2026-05-25 (PR #310 — deflake kiosk toast test — merged 738e5e9) |
+| Current main HEAD | `738e5e9` (PR #310 — deflake KioskModeTab success-toast test — merged) |
 | Active track | Track H — H2b (bulk/grouped policy polish), H2c (Lapsed status), H3 (`usesPolicyLedger` + awards engine switch); #305, #306 merged. Track E daily-entry FAB shipped (#307). |
 | Next track | H2b (§7.8 bulk/grouped policy polish); H2c (Lapsed status); H3 (usesPolicyLedger + awards engine switch). Track E: refined daily form field-mapping (dispatcher decisions needed). |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). Workshop §3.5 Tenant-Admin floors editor; Expected/Actual relabel sweep; true telephone-contacts wizard field. Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#310](https://github.com/Kelsean868/agencytrack/pull/310) | `738e5e9` | test(kiosk): deflake `KioskModeTab.toast.test.jsx` — "Generate fires a success toast on auto-copy success" added `{ timeout: 3000 }` to `waitFor`. Root cause: `handleCreate` has 3 sequential async hops (`httpsCallable fn()` → `loadTokens()` → `getDocs()` → `writeText()`) before `showToast` is called; default 1000ms was insufficient in slow CI. No source change. 1267/1267 vitest; lint 0; build clean. Closes banked KioskModeTab flakiness (PRs #276, #308). |
 | [#309](https://github.com/Kelsean868/agencytrack/pull/309) | `b4718fe` | test(agent): test backfill — PolicyLedgerPanel (+10 tests = 15 total: list view states, create form, transition modal), BadgeGrid (new, 7 tests: computeEarnedBadges logic + rendering), GapAnalysisPanel (new, 6 tests: loading/error/empty/layer-labels/title/Met-badge). `BadgeGrid.jsx` + `GapAnalysisPanel.jsx`: add `import React` (Vitest JSX transform). `vi.resetAllMocks()` fixes cross-test `mockResolvedValueOnce` queue contamination. 1267/1267 vitest; lint 0; build clean. |
 | [#308](https://github.com/Kelsean868/agencytrack/pull/308) | `09b920f` | chore(agent-nav): standardise `data-testid` to `agent-tab-*` across all 10 `NAV_ITEMS`. Sidebar already emitted `nav-{id}` fallback; 7 items (dashboard, career, awards, production-report, leaderboard, history, profile) now carry explicit `testId: 'agent-tab-{id}'` matching the pattern on the 3 existing items. Pure attribute addition — no logic, UI, or test change. 1244/1244 vitest; lint 0; build clean. |
 | [#307](https://github.com/Kelsean868/agencytrack/pull/307) | `f128deb` | feat(daily): Track E — DailyFAB floating action button. New `DailyFAB.jsx` — fixed-position pencil FAB (bottom-20 right-4) with amber state-dot when `todayLogged=false`. Wired into `AgentDashboard.jsx` shell branch (`showDailyCTA` gate). Naturally hidden when `DailyEntryModal`/`WizardForm` take full-screen. `DailyFAB.test.jsx`: 5 tests (accessible label, click handler, state-dot present/absent, `data-testid`). 1244/1244 vitest; lint 0; build clean. |
@@ -218,11 +219,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**Agent test backfill merged** — PR #309 (`b4718fe`). +23 tests (1267 total): PolicyLedgerPanel create/transition modal flows, BadgeGrid + GapAnalysisPanel from zero. Queues 4 + 5 (audit-driven squashing + test backfill) complete.
+**Overnight autonomous block (2026-05-25):** Queue 1 — regression smoke sweep 48/0/0 across all 5 overnight PRs + core flows (policy create→transition→history, confirmation chips, DailyFAB, two-actor BM confirm, wizard, daily submit; all 10 agent-tab-* testIds verified). Queue 2 — KioskModeTab deflake PR #310 (`738e5e9`) merged. Full smoke commit `d1681f9`; wake-up report `be0dfc6`. Queue 3 (repo hygiene), Queue 4 (A11y), Queue 5 (test backfill round 2) in progress.
 
-**Previous:** PR #308 (`09b920f`) — nav testId. PR #307 (`f128deb`) — Track E DailyFAB. PR #306 (`b5c07d5`) — Track H H1.2 history timeline.
+**Previous:** PR #309 (`b4718fe`) — agent test backfill. PR #308 (`09b920f`) — nav testId. PR #307 (`f128deb`) — Track E DailyFAB. PR #306 (`b5c07d5`) — H1.2 history timeline.
 
-**Next:** Queue 6 — Track G money-needs evaluation. Then H2b/H2c/H3 per dispatcher priority. Track E refined daily form deferred (field-mapping decisions needed — PRD §4.5 diverges from existing form). Wake-up report to write.
+**Next:** Repo hygiene PR (gitignore screenshot dirs, commit reusable smoke scripts, fix CONTEXT.md PR #305 row — verified already correct). Then A11y hardening, test backfill round 2. H2b/H2c/H3 await dispatcher. Track G spec complete but priority #6 — dispatcher confirm needed before skeleton.
 
 ---
 
