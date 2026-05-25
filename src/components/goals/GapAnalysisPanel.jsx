@@ -5,7 +5,7 @@ import { formatCurrency } from '../../utils/formatters';
 
 const LAYER_CONFIG = [
   { key: 'personal',    pctKey: 'ofPersonal', gapKey: 'toPersonal', label: 'Personal Commitment', barClass: 'bg-primary'   },
-  { key: 'unitTarget',  pctKey: 'ofUnit',     gapKey: 'toUnit',     label: 'Unit Target',         barClass: 'bg-[#7c3aed]' },
+  { key: 'unitTarget',  pctKey: 'ofUnit',     gapKey: 'toUnit',     label: 'Unit Target',         barClass: 'bg-violet-600' },
   { key: 'branchTarget',pctKey: 'ofBranch',   gapKey: 'toBranch',   label: 'Branch Target',       barClass: 'bg-warning'   },
   { key: 'companyFloor',pctKey: 'ofFloor',    gapKey: 'toFloor',    label: 'Company Floor',       barClass: 'bg-danger'    },
 ];
