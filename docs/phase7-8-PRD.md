@@ -507,12 +507,14 @@ A&H respects `countsTowardCompanyMetrics: false` flag per Track H 7.7.
 
 | Worksheet owner | Sees by default | Owner can toggle |
 |---|---|---|
-| Agent | their UM + BM | yes — can turn OFF |
-| Unit Manager | their BM | yes — can turn OFF |
+| Agent | nobody (private by default) | yes — can turn ON to share with UM + BM |
+| Unit Manager | nobody (private by default) | yes — can turn ON to share with BM |
 | Branch Manager | nobody | yes — can turn ON to share with SM (default OFF) |
 | Sales Manager | nobody | no toggle (top of coaching chain) |
 | Tenant Admin | nobody — audit-logged access only by exception | n/a |
 | Platform Admin | n/a (cross-tenant, outside model) | n/a |
+
+> **Correction (G1, 2026-05-25):** Original PRD rows for Agent and UM had "default ON / opt-out to turn OFF." Locked decision in G1 brief: **visibility defaults to `'private'` (off). Sharing is opt-in, built in G5.** The table above reflects the corrected model.
 
 **Required UX components:**
 - Onboarding consent modal on first worksheet creation (blocking modal, names the UM and BM who will see it)

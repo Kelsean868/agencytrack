@@ -5,6 +5,49 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Track G — G2–G7 slice plan (banked from G1 brief, 2026-05-25)
+
+G1 (walking skeleton) is the current PR (FOUNDATION GATE). Remaining slices:
+
+**G2 — PAYE Engine** (pure math, no UI dependency)
+- `src/utils/payeEngine.js` — `computePAYE(netIncome, brackets)` + `grossFromNet(netIncome, brackets)` pure functions. Reads brackets passed as arg from tenant config.
+- `payeEngine.test.js` — bracket edge cases, above-$772,500 pivot, zero-income. Parity-tested against Kyron's Excel vectors (formula: `=IF(G55<=90000,0,IF(G55<=772500,(((G55-22500)/0.75)-G55)/12,(((G55-72500)/0.70)-G55)/12))`).
+- Embeds `payeBracketsSnapshot` pattern in doc.
+- **Note:** G2 can merge before G3 (no UI dependency).
+
+**G3 — Expense Group Entry** (core data-entry loop)
+- Line-item add/edit/delete per group.
+- Frequency selector (A/S/Q/M) with auto-annualized display.
+- Save patches `expenseGroups.{groupKey}` on each group save.
+- PAYE section wired to `payeEngine.grossFromNet` live.
+- Running `totalAnnualAfterTax` + `totalAnnualPreTax` shown.
+
+**G4 — Sub-Calculators**
+- Insurance Industry Expenses modal → rolls up into Business Expenses `subCalculatorRefs`.
+- Car Expenses modal → personal/business split logic → Living + Business rollup.
+- Loans/Debt panel → separate total shown.
+- All three patch `subCalculators.*` + recalculate affected group totals.
+
+**G5 — Privacy Model + Consent** (**G5 lands PR-open for review like G1**)
+- Blocking consent modal on first `createMoneyNeeds` call (names UM + BM from user doc).
+- `visibility` toggle in panel footer ("Shared with X and Y · Change").
+- `shareWithSm` toggle for BM user docs.
+- Rules arms: UM/BM `get` checks `resource.data.visibility != 'private'`; two separate `allow get` declarations (not OR-combined) to avoid collectionGroup static-analysis rejection (banked pattern from I1.2).
+- Manager-read audit subcollection write on every manager `get`.
+
+**G6 — Commission Targets + Send to Playground**
+- `firstYearCommissionsRequired` = `totalAnnualPreTax − estimatedRenewalIncome.total`.
+- `firstYearCommissionsTargets` split by product line.
+- "Send to Playground" button: copy `firstYearCommissionsTargets.life` → CommissionPlayground income goal (bridging mechanism TBD at brief time — prop or shared state).
+
+**G7 — Soft Validation + PAYE Refresh Banner**
+- On Personal Commitment save in `goalsService`: fetch `moneyNeeds/{year}` and compare to `firstYearCommissionsRequired`; show nudge dialog if commitment < need (nudge, not block).
+- Hard banner on existing worksheets when tenant `payeFormula` version changes; "Refresh PAYE Calculation" button re-runs `grossFromNet` + patches doc.
+
+**Sequencing note:** G5 must precede G6 (privacy model must be solid before sharing targets with managers). G7 is last (touches `goalsService` + tenant config change detection).
+
+---
+
 ## I1.2 methodology — Firestore collectionGroup rules require top-level recursive wildcard; emulator false-fails (CLOSED — learning banked in CLAUDE.md § Banked patterns, PR #256)
 
 **What happened:** The `allow list` rule for `jointCalls` was written inside `match /tenants/{tenantId}/users/{agentId}/jointCalls/{callId}`. Production Firestore returned `PERMISSION_DENIED` for the `getOwnJfwCount` collectionGroup query despite the rule logic being correct. Two root causes identified:
