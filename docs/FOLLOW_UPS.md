@@ -2750,11 +2750,11 @@ Banked: H1.2 PR #302 (`6886ed1`).
 
 ---
 
-## Track H — H11 agent-side discrepancy/lapse surfacing (PARTIALLY RESOLVED — discrepancy half DONE by PR #TBD, lapse half remains for H2c)
+## Track H — H11 agent-side discrepancy/lapse surfacing (PARTIALLY RESOLVED — discrepancy half DONE by PR #305, lapse half remains for H2c)
 
 **Issue:** After H2a ships manager confirmation, the agent's own Policy Ledger shows no indication of confirmation state, and the `policy_discrepancy` notification renders with the generic Bell icon (fallback in `TYPE_META`).
 
-**Discrepancy half: RESOLVED** in Track H agent confirmation-surfacing PR #TBD (`{TBD}`):
+**Discrepancy half: RESOLVED** in Track H agent confirmation-surfacing PR #305 (`97a8493`):
 - `PolicyLedgerPanel.jsx`: three-way footer (confirmed / settled-unconfirmed / non-terminal) with emerald "Confirmed by {manager}" chip, amber "Discrepancy" chip, value comparison line, and manager note.
 - `NotificationDrawer.jsx`: `policy_discrepancy` `TYPE_META` entry → `AlertTriangle`/warning palette.
 
@@ -2762,4 +2762,4 @@ Banked: H1.2 PR #302 (`6886ed1`).
 
 **Priority:** LOW (lapse half). No agent-visible gap until H2c ships the `lapsed` status.
 
-Banked from Track H agent confirmation-surfacing PR #TBD (`{TBD}`).
+Banked from Track H agent confirmation-surfacing PR #305 (`97a8493`).
