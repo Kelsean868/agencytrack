@@ -556,6 +556,15 @@ async function main() {
     )
   );
 
+  // H2b: agentId-pinning hardening — BM writes history on policy-a1-settled with wrong agentId
+  // policy-a1-settled.agentId == 'agent-a'; writing agentId: 'agent-b' should DENY.
+  await run('History manager arm DENY: BM writes history with wrong agentId (agentId != parent.agentId)', false, () =>
+    addDoc(
+      collection(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1-settled', 'history'),
+      { ...MANAGER_HISTORY, agentId: 'agent-b', unitId: 'um-b' }
+    )
+  );
+
   // ── Results ──
   await testEnv.cleanup();
 
