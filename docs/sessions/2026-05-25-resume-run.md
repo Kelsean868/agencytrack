@@ -26,6 +26,8 @@ Cold-session resume after crash. Continuing the H2c-first queue.
 
 | Rules test — submissions collection (21 cases: get/list agent-own+cross+BM+UM+kiosk, create/update/delete) | [#339](https://github.com/Kelsean868/agencytrack/pull/339) | `8bb99aa` | ✅ MERGED — CI green, no smoke (test-only), post-merge fill done |
 
+| Test backfill — SubmissionViewer (19) + GoalCarousel (20) + BranchesPanel (17); React import fix for Vitest parity | [#340](https://github.com/Kelsean868/agencytrack/pull/340) | — | ⏳ CI pending |
+
 ## Smoke artifacts needing manual Firebase Console cleanup
 
 Two smoke policies cannot be deleted via REST (`allow delete: if false` in rules):
