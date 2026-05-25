@@ -2747,3 +2747,19 @@ Banked: H1.2 PR #302 (`6886ed1`).
 ~~**Issue:** The history `create` rule did NOT verify that the agent owns the parent policy. A crafted client could write an orphan history doc under another agent's policy path.~~
 
 **RESOLVED in H2a PR #304 (`86541fe`):** Agent arm now includes `get(/databases/$(database)/documents/tenants/$(tenantId)/policies/$(policyId)).data.agentId == request.auth.uid`, confirming parent-policy ownership before allowing history create. One emulator DENY case added (`agent-b write history on agent-a policy → DENY`). Banked: H1.2 PR #302 (`6886ed1`).
+
+---
+
+## Track H — H11 agent-side discrepancy/lapse surfacing (PARTIALLY RESOLVED — discrepancy half DONE by PR #TBD, lapse half remains for H2c)
+
+**Issue:** After H2a ships manager confirmation, the agent's own Policy Ledger shows no indication of confirmation state, and the `policy_discrepancy` notification renders with the generic Bell icon (fallback in `TYPE_META`).
+
+**Discrepancy half: RESOLVED** in Track H agent confirmation-surfacing PR #TBD (`{TBD}`):
+- `PolicyLedgerPanel.jsx`: three-way footer (confirmed / settled-unconfirmed / non-terminal) with emerald "Confirmed by {manager}" chip, amber "Discrepancy" chip, value comparison line, and manager note.
+- `NotificationDrawer.jsx`: `policy_discrepancy` `TYPE_META` entry → `AlertTriangle`/warning palette.
+
+**Lapse half: REMAINS** — lands with H2c (Lapsed status). When `lapsed` becomes a terminal status, the agent should see a clear signal on their ledger (similar chip or muted line). Design: TBD at H2c authoring time.
+
+**Priority:** LOW (lapse half). No agent-visible gap until H2c ships the `lapsed` status.
+
+Banked from Track H agent confirmation-surfacing PR #TBD (`{TBD}`).
