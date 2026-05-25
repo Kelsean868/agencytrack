@@ -116,6 +116,14 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   const [savedAssumptions, setSavedAssumptions] = useState(false);
   const [error, setError]                       = useState('');
 
+  useEffect(() => {
+    const stored = localStorage.getItem('agencytrack-playground-income-goal');
+    if (stored) {
+      const val = parseFloat(JSON.parse(stored));
+      if (val > 0) setInputs((prev) => ({ ...prev, incomeGoal: val }));
+    }
+  }, []);
+
   const { autoCiToSale, autoDialsToCI, hasHistory } = useMemo(() => {
     const submitted = (submissions ?? [])
       .filter((s) => s.status === 'submitted')

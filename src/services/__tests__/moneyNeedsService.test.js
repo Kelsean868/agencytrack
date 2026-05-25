@@ -33,6 +33,7 @@ import {
   createMoneyNeeds, getMoneyNeeds,
   annualizeAmount, computeGroupTotal, computeWorksheetRollup,
   updateExpenseGroup, mergeSubCalcRef, updateSubCalculator,
+  updateCommissionTargets,
   FREQUENCY_MULTIPLIERS, PAYE_BRACKETS_VERSION,
 } from '../moneyNeedsService';
 
@@ -489,6 +490,64 @@ describe('updateSubCalculator — loansDebt', () => {
   it('throws for invalid year', async () => {
     await expect(
       updateSubCalculator(TENANT_ID, UID, 'bad', 'loansDebt', CALC_DATA, WORKSHEET_DOC),
+    ).rejects.toThrow();
+  });
+});
+
+// ── updateCommissionTargets ───────────────────────────────────────────────────
+
+const COMMISSION_WORKSHEET = {
+  year: YEAR,
+  totalAnnualPreTax: 200000,
+  estimatedRenewalIncome: { life: 10000, ah: 0, property: 0, motor: 0, total: 10000 },
+};
+const COMMISSION_TARGETS = { life: 80000, ah: 20000, property: 15000, motor: 5000 };
+
+describe('updateCommissionTargets', () => {
+  it('calls updateDoc (not setDoc)', async () => {
+    await updateCommissionTargets(TENANT_ID, UID, YEAR, COMMISSION_TARGETS, COMMISSION_WORKSHEET);
+    expect(hoisted.mockUpdateDoc).toHaveBeenCalledOnce();
+    expect(hoisted.mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('computes firstYearCommissionsRequired = totalAnnualPreTax - renewalTotal', async () => {
+    await updateCommissionTargets(TENANT_ID, UID, YEAR, COMMISSION_TARGETS, COMMISSION_WORKSHEET);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.firstYearCommissionsRequired).toBe(190000); // 200000 - 10000
+  });
+
+  it('patches firstYearCommissionsTargets with all four product lines + total', async () => {
+    await updateCommissionTargets(TENANT_ID, UID, YEAR, COMMISSION_TARGETS, COMMISSION_WORKSHEET);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.firstYearCommissionsTargets).toEqual({
+      life: 80000, ah: 20000, property: 15000, motor: 5000,
+      total: 120000,
+    });
+  });
+
+  it('total = sum of the four product lines', async () => {
+    const targets = { life: 50000, ah: 10000, property: 20000, motor: 10000 };
+    await updateCommissionTargets(TENANT_ID, UID, YEAR, targets, COMMISSION_WORKSHEET);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.firstYearCommissionsTargets.total).toBe(90000);
+  });
+
+  it('stamps updatedAt serverTimestamp and updatedBy uid', async () => {
+    await updateCommissionTargets(TENANT_ID, UID, YEAR, COMMISSION_TARGETS, COMMISSION_WORKSHEET);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.updatedAt).toEqual({ _type: 'serverTimestamp' });
+    expect(patch.updatedBy).toBe(UID);
+  });
+
+  it('returns firstYearCommissionsRequired and firstYearCommissionsTargets', async () => {
+    const result = await updateCommissionTargets(TENANT_ID, UID, YEAR, COMMISSION_TARGETS, COMMISSION_WORKSHEET);
+    expect(result).toHaveProperty('firstYearCommissionsRequired');
+    expect(result).toHaveProperty('firstYearCommissionsTargets');
+  });
+
+  it('throws for invalid year', async () => {
+    await expect(
+      updateCommissionTargets(TENANT_ID, UID, 'bad', COMMISSION_TARGETS, COMMISSION_WORKSHEET),
     ).rejects.toThrow();
   });
 });
