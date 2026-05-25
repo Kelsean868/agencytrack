@@ -2540,7 +2540,7 @@ Five items surfaced in the May 2026 design conversation; each is small enough to
 
 - **PH7-8-Q4 (Track G)** — Confirm "Other" custom line items cap of 5 per group (proposed, not locked). Decide line-item naming ownership (Tenant Admin curated vs free-text agent-defined). Resolve in Track G design pass.
 
-- **[RESOLVED — H1 PR #TBD] PH7-8-Q5 (Track H)** — `agentType` enum does NOT exist on user docs; pre-empted by `isBdoDso: boolean` (read at `awardsEngine.js:profile.isBdoDso`). No `agentType` field required in H1 schema. RESOLVED in Track H H1 PR #TBD.
+- **[RESOLVED — H1 PR #300] PH7-8-Q5 (Track H)** — `agentType` enum does NOT exist on user docs; pre-empted by `isBdoDso: boolean` (read at `awardsEngine.js:profile.isBdoDso`). No `agentType` field required in H1 schema. RESOLVED in Track H H1 PR #300.
 
 Banked from PR #235 (`0b8d04d`) (Phase 7-8 docs integration). Each FU closes individually when its corresponding track design pass resolves the verification: PH7-8-Q1 in Track D design pass (before D5), PH7-8-Q2 before Track E design pass starts, PH7-8-Q3 in Track F design pass, PH7-8-Q4 in Track G design pass, PH7-8-Q5 before H1 schema PR.
 
@@ -2554,7 +2554,7 @@ Banked from the Tatil Life manager workshop of 2026-05-19. Canonical analysis: `
 
 - **[SHIPPED — F1 #242 + F2 #244 + F3 #246 + F3.1 #248 + F2.1 #250 — Track F arc COMPLETE] Track F extension — structured Joint-Call Observation Log + appointment-bound Prospect-Info form.** Joint-Call Log shipped: `jointCalls` subcollection, rank-based privacy mirroring F1, structured field set (meetingType/needCovered enums, appointment kept + conditional next-meeting-date, comments, saleMade, coachingMinutes, trainingIdentified), tabbed integration with F1 modal. Prospect-Info shipped: `prospectInfo` subcollection, **SUBMISSIONS-style privacy** (agent owns/reads/edits OWN; managers in scope READ; manager writes DENIED — opposite direction from F1/F2), appointment-bound (intendedAppointmentDate REQUIRED), agent-facing "Joint-Call Prep" NAV tab + third read-only "Prospect Info" tab in `CoachingNotesModal`. F3.1 observation↔prep link shipped (#248). F2.1 BM in-app notification shipped ([#250](https://github.com/Kelsean868/agencytrack/pull/250)). **Remaining open items**: F2.2 (email-to-BM), Track H/G needCovered + prospectingSource + policyType taxonomy confirmation — see § Track F F2 / F3 deferred items below. Roadmap §3.2.
 
-- **[SHIPPED — H1 PR #TBD] Track H schema** — Source-of-Prospect / Cash-with-Application / Policy-Delivery-Date added to `policies` collection schema; demographics held out; Need-Covered → joint-call form. PRD §7.4 + §9 updated in H1 PR #TBD. Roadmap §3.3.
+- **[SHIPPED — H1 PR #300] Track H schema** — Source-of-Prospect / Cash-with-Application / Policy-Delivery-Date added to `policies` collection schema; demographics held out; Need-Covered → joint-call form. PRD §7.4 + §9 updated in H1 PR #300. Roadmap §3.3.
 
 - **[PARTIAL — floors portion SHIPPED PR #238 `1b05eb7`] Quick win — weekly activity floors.** `config/companyMinimums.weeklyActivityFloors` schema extension shipped; `tatillife_south` seeded with Appendix A (60/40/20/15/10/10/1/1/4800/100); `WeeklyStandardCard` on AgentDashboard surfaces Expected vs Actual with per-row Met/Close/Below status. **Remaining fast-follows** (own PRs):
   - **[PLANNED] Tenant-Admin in-app editor for weekly floors** — wire the 10 floors into the B5 `EditConfigModal` pattern so tenant_admins can adjust without re-running the seed script. Validation: each value a positive integer; `api` allows decimals; floors below current managers' agreed minimum surface a warning. Mirrors B5's `setCompanyMinimums` audit path (`updatedBy` + `updatedAt`); merge-write preserves the block. `setCompanyMinimums` already passes through unknown fields under `merge: true`, so the editor's write path is straightforward.
@@ -2670,7 +2670,7 @@ Priority: **LOW**. Hygiene; no security impact. Bundle into the next PR that tou
 
 ---
 
-## Track H — isBdoDso / monthsInIndustry / monthsAtTatil — no UI write path (LOW, banked H1 PR #TBD)
+## Track H — isBdoDso / monthsInIndustry / monthsAtTatil — no UI write path (LOW, banked H1 PR #300)
 
 `isBdoDso: boolean`, `monthsInIndustry`, and `monthsAtTatil` fields on user docs are read by the awards engine (`awardsEngine.js`) and tenure-floor logic (`tenureFloors.js`) but are not settable via any UI screen. The only current write path is direct Firestore via Admin SDK.
 
@@ -2681,4 +2681,4 @@ Priority: **LOW**. Hygiene; no security impact. Bundle into the next PR that tou
 
 **Priority:** LOW. Awards engine reads correctly for agents whose profile has these set. Surfaced when closing PH7-8-Q5 during Track H H1 Phase 1 verify.
 
-Banked from H1 PR #TBD (Track H H1, 2026-05-24).
+Banked from H1 PR #300 (Track H H1, 2026-05-24).
