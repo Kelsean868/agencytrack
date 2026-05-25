@@ -33,7 +33,7 @@ import {
   createMoneyNeeds, getMoneyNeeds,
   annualizeAmount, computeGroupTotal, computeWorksheetRollup,
   updateExpenseGroup, mergeSubCalcRef, updateSubCalculator,
-  updateCommissionTargets,
+  updateCommissionTargets, refreshPAYECalculation,
   FREQUENCY_MULTIPLIERS, PAYE_BRACKETS_VERSION,
 } from '../moneyNeedsService';
 
@@ -548,6 +548,51 @@ describe('updateCommissionTargets', () => {
   it('throws for invalid year', async () => {
     await expect(
       updateCommissionTargets(TENANT_ID, UID, 'bad', COMMISSION_TARGETS, COMMISSION_WORKSHEET),
+    ).rejects.toThrow();
+  });
+});
+
+// ── refreshPAYECalculation ────────────────────────────────────────────────────
+
+const REFRESH_GROUPS = {
+  fixedExpenses: { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 120000 },
+  livingExpenses: { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
+  businessExpenses: { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
+  savingsAccumulation: { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
+  miscellaneous: { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
+};
+
+describe('refreshPAYECalculation', () => {
+  it('calls updateDoc (not setDoc)', async () => {
+    await refreshPAYECalculation(TENANT_ID, UID, YEAR, REFRESH_GROUPS);
+    expect(hoisted.mockUpdateDoc).toHaveBeenCalledOnce();
+    expect(hoisted.mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('patches totalAnnualAfterTax, totalAnnualPreTax, computedPAYE from rollup', async () => {
+    await refreshPAYECalculation(TENANT_ID, UID, YEAR, REFRESH_GROUPS);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.totalAnnualAfterTax).toBe(120000);
+    expect(patch.totalAnnualPreTax).toBeGreaterThanOrEqual(120000);
+    expect(typeof patch.computedPAYE).toBe('number');
+  });
+
+  it('stamps payeBracketsVersionId = PAYE_BRACKETS_VERSION', async () => {
+    await refreshPAYECalculation(TENANT_ID, UID, YEAR, REFRESH_GROUPS);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.payeBracketsVersionId).toBe(PAYE_BRACKETS_VERSION);
+  });
+
+  it('stamps updatedAt serverTimestamp and updatedBy uid', async () => {
+    await refreshPAYECalculation(TENANT_ID, UID, YEAR, REFRESH_GROUPS);
+    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
+    expect(patch.updatedAt).toEqual({ _type: 'serverTimestamp' });
+    expect(patch.updatedBy).toBe(UID);
+  });
+
+  it('throws for invalid year', async () => {
+    await expect(
+      refreshPAYECalculation(TENANT_ID, UID, 'bad', REFRESH_GROUPS),
     ).rejects.toThrow();
   });
 });

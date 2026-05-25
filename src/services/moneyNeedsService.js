@@ -102,6 +102,25 @@ export async function updateSubCalculator(tenantId, uid, year, calcKey, calcData
   return { rollup, updatedGroups };
 }
 
+export async function refreshPAYECalculation(tenantId, uid, year, expenseGroups) {
+  const parsedYear = parseInt(year, 10);
+  if (!parsedYear) throw new Error('Invalid year');
+
+  const docRef = doc(db, 'tenants', tenantId, 'users', uid, 'moneyNeeds', String(parsedYear));
+  const rollup = computeWorksheetRollup(expenseGroups);
+
+  await updateDoc(docRef, {
+    totalAnnualAfterTax: rollup.totalAnnualAfterTax,
+    totalAnnualPreTax: rollup.totalAnnualPreTax,
+    computedPAYE: rollup.computedPAYE,
+    payeBracketsVersionId: PAYE_BRACKETS_VERSION,
+    updatedAt: serverTimestamp(),
+    updatedBy: uid,
+  });
+
+  return rollup;
+}
+
 export async function updateCommissionTargets(tenantId, uid, year, targets, worksheet) {
   const parsedYear = parseInt(year, 10);
   if (!parsedYear) throw new Error('Invalid year');
