@@ -406,6 +406,23 @@ describe('PolicyLedgerPanel — socialPlatform conditional select', () => {
     expect(screen.queryByLabelText(/^Platform/i)).not.toBeInTheDocument();
   });
 
+  it('save button is disabled when social-media selected but no platform chosen, enabled after picking platform', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    render(<PolicyLedgerPanel />);
+
+    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+
+    // Select social-media — platform not yet chosen → save disabled
+    fireEvent.change(screen.getByLabelText(/Source of Prospect/i), { target: { value: 'social-media' } });
+    expect(screen.getByRole('button', { name: /Save Policy/i })).toBeDisabled();
+
+    // Pick a platform → save enabled
+    fireEvent.change(screen.getByLabelText(/^Platform/i), { target: { value: 'whatsapp' } });
+    expect(screen.getByRole('button', { name: /Save Policy/i })).not.toBeDisabled();
+  });
+
   it('createPolicy is called with socialPlatform when social-media source is selected', async () => {
     hoisted.getOwnPolicies
       .mockResolvedValueOnce([])

@@ -705,7 +705,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
             className="flex-1 h-11 rounded-lg border border-border text-sm font-semibold text-ink-muted hover:bg-surface/70 transition-colors">
             Cancel
           </button>
-          <button type="submit" disabled={saving}
+          <button type="submit" disabled={saving || (form.sourceOfProspect === 'social-media' && !form.socialPlatform)}
             className="flex-1 h-11 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
             {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : 'Save Policy'}
           </button>
