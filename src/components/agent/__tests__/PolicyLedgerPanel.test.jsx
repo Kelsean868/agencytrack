@@ -341,9 +341,7 @@ describe('PolicyLedgerPanel — initialForm prefill', () => {
     const prefill = { ownerName: 'Prefilled Owner', sourceOfProspect: 'referral' };
     render(<PolicyLedgerPanel initialForm={prefill} onPrefillConsumed={vi.fn()} />);
 
-    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
-    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
-
+    // Form auto-opens on mount — no click needed
     await waitFor(() => screen.getByRole('button', { name: /back/i }));
     expect(screen.getByLabelText(/Owner Name/i).value).toBe('Prefilled Owner');
   });
@@ -359,15 +357,13 @@ describe('PolicyLedgerPanel — initialForm prefill', () => {
     expect(screen.getByLabelText(/Owner Name/i).value).toBe('');
   });
 
-  it('onPrefillConsumed is called when create form opens with initialForm', async () => {
+  it('onPrefillConsumed is called on mount when initialForm is provided', async () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([]);
     const onPrefillConsumed = vi.fn();
     const prefill = { ownerName: 'Consumed Owner', sourceOfProspect: 'cold-call' };
     render(<PolicyLedgerPanel initialForm={prefill} onPrefillConsumed={onPrefillConsumed} />);
 
-    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
-    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
-
+    // Form auto-opens on mount; callback fires via mount effect
     await waitFor(() => expect(onPrefillConsumed).toHaveBeenCalledOnce());
   });
 });
