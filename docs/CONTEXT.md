@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-27 (#362 merged — joint-call soft-archive F2.2; #360 still open; rules deploy + post-deploy smokes next) |
-| Current main HEAD | `517e16d` (PR #362 — feat(joint-calls): soft-archive joint-call observations F2.2) |
-| Active track | Track F F3.1 — PR #360 still open (prefill); rules deploy for #361+#362 arms next, then #360 rebase + merge |
-| Next track | After merges: post-merge sequences for all 4 PRs. Then: Phase 9 SM target (5th goals layer — gap documented in FOLLOW_UPS.md), H4+ Track H extensions, Track I follow-ups. |
+| Last updated | 2026-05-27 (#360 merged — F3.1 Log Policy prefill `5025901`; rules deploy for #361+#362 arms + post-deploy smokes pending) |
+| Current main HEAD | `5025901` (PR #360 — feat(prospect-info): F3.1 — Log Policy prefill from prospect prep) |
+| Active track | Track F wrap-up — rules deploy for #361+#362 arms + post-deploy smokes pending. All 4 PRs merged. |
+| Next track | After rules deploy + post-deploy smokes: Phase 9 SM target (5th goals layer — gap documented in FOLLOW_UPS.md), H4+ Track H extensions, Track I follow-ups. |
 | Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
@@ -114,10 +114,8 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
-| PR #360 | feat(prospect-info): Log Policy CTA + PolicyLedgerPanel prefill (F3.1) | No | Await Kyron merge → post-merge sequence → prod smoke (prefill flow) |
-| PR #361 | feat(coaching): isPinned pin/unpin toggle (F2.1a) | No | ✅ MERGED (`332626b`); post-deploy rules smoke pending |
+| PR #361 | feat(coaching): isPinned pin/unpin toggle (F2.1a) | No | ✅ MERGED (`332626b`); rules deploy (#361+#362 arms) + post-deploy smoke pending |
 | PR #362 | feat(joint-calls): soft-archive (F2.2) | No | ✅ MERGED (`517e16d`); rules deploy (#361+#362 arms) + post-deploy smoke pending |
-| PR #363 | test(hardening): Phase 3 suite hardening (+7 lifecycle tests; weak-waitFor fixes) | No | ✅ MERGED (`be69658`) |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 
 ---
@@ -126,6 +124,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#360](https://github.com/Kelsean868/agencytrack/pull/360) | `5025901` | feat(prospect-info): F3.1 — Log Policy prefill from prospect prep. `AgentDashboard` lifts `prefillPolicy` state; `handleCreatePolicyFromPrep` callback passed to `ProspectInfoPanel`; `initialForm` + `onPrefillConsumed` props on `PolicyLedgerPanel`. "Log Policy" CTA on each prep card (view mode; hidden in edit/no-callback) → switches to Policy Ledger tab with `ownerName` prefilled from `clientName` + `sourceOfProspect` prefilled from `prospectingSource`; EMPTY_FORM for all other fields; prefill one-shot (cleared after `openCreate()`). 6 new tests; 1527/1527 vitest; lint 0; build clean. |
 | [#362](https://github.com/Kelsean868/agencytrack/pull/362) | `517e16d` | feat(joint-calls): soft-archive joint-call observations (F2.2). Author-only Archive button in JointCallsTab; `archiveJointCall()` in jointCallsService; client-side filter hides archived entries; `archived` added to rules `hasOnly` allowlist (additive). 20/20 emulator rules tests (archive ALLOW author, archive DENY non-author, client-filter). Vitest green; lint 0; build clean. Rules deploy + post-deploy smoke pending. |
 | [#361](https://github.com/Kelsean868/agencytrack/pull/361) | `332626b` | feat(coaching): isPinned pin/unpin toggle on coaching notes (F2.1a). Author-only Bookmark icon in CoachingNotesModal NoteCard; `pinCoachingNote()` in coachingNotesService; useMemo sort pinned-first by `isPinned desc, createdAt desc`; `isPinned` added to rules `hasOnly` allowlist (additive). 16/16 emulator rules tests (pin ALLOW author, pin DENY non-author). Vitest green; lint 0; build clean. Rules deploy + post-deploy smoke pending. |
 | [#363](https://github.com/Kelsean868/agencytrack/pull/363) | `be69658` | test(hardening): Phase 3 suite hardening — weak-waitFor fixes (ProspectInfoPanel, PolicyReconciliationPanel), +7 policy lifecycle tests, DailyEntryModal flake fix (save-button disabled-state race). Suite 1528/1528 green. CI ×2 green. Auto-merged per dispatcher pre-authorization. |

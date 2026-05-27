@@ -77,6 +77,54 @@ Banked: 2026-05-27 autonomous run Phase 2b.
 
 ---
 
+## F3.1 UX — "Log Policy" lands on policy-ledger tab without auto-opening create form (LOW, banked 2026-05-27)
+
+Clicking "Log Policy" in Joint-Call Prep switches to the Policy Ledger tab with prefill loaded, but does NOT auto-open the create form — the agent must click "New Policy" a second time. Functional; prefill persists correctly through the tab switch.
+
+**Action:** In `AgentDashboard.jsx`, after `setPrefillPolicy(prepData)` + `setActiveTab('policy-ledger')`, also trigger `openCreate()` on `PolicyLedgerPanel` (via forwarded ref or a `shouldAutoOpen` boolean prop that `PolicyLedgerPanel` reacts to on mount/update). Collapses the flow to one click.
+
+**Priority:** LOW. Functional today; no data loss risk. UX improvement only.
+
+Banked: F3.1 PR #360 (`5025901`), 2026-05-27.
+
+---
+
+## F2.2 archive scope — confirm whether archived observations hide from agent's own view too (LOW, banked 2026-05-27)
+
+PR #362 client-side filter hides `archived: true` observations in `JointCallsTab`. Unconfirmed: does this filter apply in the agent's own joint-calls view, or only in the manager's working list? If the agent can still see their archived observations, the UX semantics are unclear (BM can't see it, agent still can).
+
+**Action:** Confirm which views the client-side filter covers. If agent-facing visibility should match manager-facing (both hide archived), extend the filter accordingly. If agent retention is intentional (personal audit trail), document as by-design in a comment.
+
+**Priority:** LOW. Single-branch pilot; no production observations archived yet. Confirm at first archive event.
+
+Banked: F2.2 PR #362 (`517e16d`), 2026-05-27.
+
+---
+
+## F2.2 unarchive — archive is one-way in UI; add field-flip path when needed (LOW, banked 2026-05-27)
+
+`archiveJointCall()` in `jointCallsService.js` sets `archived: true` with no inverse method. The Firestore rules `hasOnly` allowlist includes `archived` (accepts `false`), so the Firestore path is already open at the rules layer. No in-app recovery exists if a manager accidentally archives an observation.
+
+**Action:** Add `unarchiveJointCall(tenantId, authorUid, callId)` to `jointCallsService.js` (`archived: false` patch). Wire to a UI action — either a toggle within the archive confirmation dialog, or an "Archived" secondary list with an Unarchive button. Match the same author-only rule gate as archive.
+
+**Priority:** LOW. No observations archived in production yet. Implement at first reported accidental archive.
+
+Banked: F2.2 PR #362 (`517e16d`), 2026-05-27.
+
+---
+
+## Weak-waitFor audit — DailyEntryModal is a 3rd instance; project-wide sweep (LOW, banked 2026-05-27)
+
+PR #363 hardened `ProspectInfoPanel.test.jsx` and `PolicyReconciliationPanel.test.jsx` weak-waitFor patterns. `DailyEntryModal` surfaced as a 3rd instance (save-button disabled-state race) during the same PR's Phase 3a. A project-wide grep for bare `waitFor` calls without `{ timeout }` in test files would enumerate remaining candidates; strengthening them would improve CI flake resistance.
+
+**Action:** `grep -r "await waitFor" src --include="*.test.*" | grep -v "timeout"` to enumerate. For each hit, determine if the default 1000ms is sufficient; apply `{ timeout: 3000 }` or promote to `findBy*` queries where appropriate.
+
+**Priority:** LOW. Suite currently green. Pre-emptive CI stability hardening.
+
+Banked: Phase 3 suite hardening PR #363 (`be69658`), 2026-05-27.
+
+---
+
 ## moneyNeeds `shareWithSm` owner-update arm is UI-gated only — no rule enforcement (LOW, banked 2026-05-27)
 
 **Scope:** `updateVisibility` in `moneyNeedsService.js` accepts a `shareWithSm` boolean and patches it onto the worksheet doc. The Firestore update rule for the owner arm (`request.auth.uid == agentId`) does not restrict which fields may be set — an owner could set `shareWithSm: true` via a raw `updateDoc` call without going through the UI toggle. The UI gate is the only enforcement today.
