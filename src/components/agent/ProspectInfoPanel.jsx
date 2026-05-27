@@ -19,6 +19,7 @@ import {
   APPOINTMENT_TYPES,
   OBJECTIONS,
   POLICY_TYPES,
+  SOCIAL_PLATFORMS_ATTRIBUTION,
 } from '../../services/prospectInfoService';
 
 const SOURCE_LABEL      = PROSPECTING_SOURCE_LABELS;
@@ -31,6 +32,7 @@ const BLANK_FORM = {
   clientAge:               '',
   clientOccupation:        '',
   prospectingSource:       'referral',
+  socialPlatform:          null,
   appointmentType:         '2nd-interview',
   objections:              [],
   policyType:              '',
@@ -49,6 +51,7 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
     clientAge:               prep.clientAge               ?? '',
     clientOccupation:        prep.clientOccupation        ?? '',
     prospectingSource:       prep.prospectingSource       ?? 'referral',
+    socialPlatform:          prep.socialPlatform          ?? null,
     appointmentType:         prep.appointmentType         ?? '2nd-interview',
     objections:              Array.isArray(prep.objections) ? prep.objections : [],
     policyType:              prep.policyType              ?? '',
@@ -59,6 +62,11 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
 
   const set = (field) => (e) => {
     setForm((s) => ({ ...s, [field]: e.target.value }));
+  };
+
+  const setSource = (e) => {
+    const src = e.target.value;
+    setForm((s) => ({ ...s, prospectingSource: src, socialPlatform: src === 'social-media' ? s.socialPlatform : null }));
   };
 
   const toggleObj = (value) => {
@@ -95,6 +103,7 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
       clientAge:               prep.clientAge               ?? '',
       clientOccupation:        prep.clientOccupation        ?? '',
       prospectingSource:       prep.prospectingSource       ?? 'referral',
+      socialPlatform:          prep.socialPlatform          ?? null,
       appointmentType:         prep.appointmentType         ?? '2nd-interview',
       objections:              Array.isArray(prep.objections) ? prep.objections : [],
       policyType:              prep.policyType              ?? '',
@@ -201,7 +210,7 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
           <div className="grid grid-cols-2 gap-2">
             <select
               value={form.prospectingSource}
-              onChange={set('prospectingSource')}
+              onChange={setSource}
               className="h-11 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
               aria-label="Prospecting source"
             >
@@ -220,6 +229,20 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
               ))}
             </select>
           </div>
+          {form.prospectingSource === 'social-media' && (
+            <select
+              value={form.socialPlatform ?? ''}
+              onChange={set('socialPlatform')}
+              className="h-11 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
+              aria-label="Social platform (required)"
+              required
+            >
+              <option value="">Select platform…</option>
+              {SOCIAL_PLATFORMS_ATTRIBUTION.map((p) => (
+                <option key={p.value} value={p.value}>{p.label}</option>
+              ))}
+            </select>
+          )}
           <select
             value={form.policyType}
             onChange={set('policyType')}
@@ -295,6 +318,11 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
 
   const set = (field) => (e) => {
     setForm((s) => ({ ...s, [field]: e.target.value }));
+  };
+
+  const setSource = (e) => {
+    const src = e.target.value;
+    setForm((s) => ({ ...s, prospectingSource: src, socialPlatform: src === 'social-media' ? s.socialPlatform : null }));
   };
 
   const toggleObj = (value) => {
@@ -414,7 +442,7 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
             <div className="relative">
               <select
                 value={form.prospectingSource}
-                onChange={set('prospectingSource')}
+                onChange={setSource}
                 className="h-11 w-full pl-3 pr-8 rounded-lg border border-border bg-card text-ink text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
                 aria-label="Prospecting source"
               >
@@ -438,6 +466,23 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
               <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
             </div>
           </div>
+          {form.prospectingSource === 'social-media' && (
+            <div className="relative">
+              <select
+                value={form.socialPlatform ?? ''}
+                onChange={set('socialPlatform')}
+                className="h-11 w-full pl-3 pr-8 rounded-lg border border-border bg-card text-ink text-sm appearance-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+                aria-label="Social platform (required)"
+                required
+              >
+                <option value="">Select platform…</option>
+                {SOCIAL_PLATFORMS_ATTRIBUTION.map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
+              </select>
+              <ChevronDown size={14} className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+            </div>
+          )}
           <div className="relative">
             <select
               value={form.policyType}
@@ -492,7 +537,7 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
             </button>
             <button
               type="submit"
-              disabled={submitting || !form.clientName.trim() || !form.intendedAppointmentDate}
+              disabled={submitting || !form.clientName.trim() || !form.intendedAppointmentDate || (form.prospectingSource === 'social-media' && !form.socialPlatform)}
               className="min-h-[44px] px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
               data-testid="prospect-info-save-btn"
             >

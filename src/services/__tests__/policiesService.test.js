@@ -162,6 +162,32 @@ describe('createPolicy', () => {
     await expect(createPolicy('t1', mockProfile, { ...VALID_DATA, ownerName: '  ' }))
       .rejects.toThrow('ownerName is required');
   });
+
+  it('stores socialPlatform when sourceOfProspect is social-media', async () => {
+    await createPolicy('t1', mockProfile, {
+      ...VALID_DATA, sourceOfProspect: 'social-media', socialPlatform: 'instagram',
+    });
+    const [, payload] = hoisted.mockAddDoc.mock.calls[0];
+    expect(payload.socialPlatform).toBe('instagram');
+  });
+
+  it('stores null for socialPlatform when sourceOfProspect is not social-media', async () => {
+    await createPolicy('t1', mockProfile, VALID_DATA);
+    const [, payload] = hoisted.mockAddDoc.mock.calls[0];
+    expect(payload.socialPlatform).toBeNull();
+  });
+
+  it('rejects social-media source with null socialPlatform', async () => {
+    await expect(
+      createPolicy('t1', mockProfile, { ...VALID_DATA, sourceOfProspect: 'social-media', socialPlatform: null }),
+    ).rejects.toThrow('socialPlatform is required when source is social-media');
+  });
+
+  it('rejects invalid socialPlatform value', async () => {
+    await expect(
+      createPolicy('t1', mockProfile, { ...VALID_DATA, sourceOfProspect: 'social-media', socialPlatform: 'snapchat' }),
+    ).rejects.toThrow('invalid socialPlatform');
+  });
 });
 
 describe('getOwnPolicies', () => {

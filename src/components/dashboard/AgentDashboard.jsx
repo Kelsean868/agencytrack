@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   X, Eye, Download, Loader2, AlertTriangle,
   ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle, BarChart2, UserSearch, BookOpen, Calculator,
@@ -144,7 +144,11 @@ export default function AgentDashboard() {
   }, [activeTab]);
 
   function handleCreatePolicyFromPrep(prep) {
-    setPrefillPolicy({ ownerName: prep.clientName, sourceOfProspect: prep.prospectingSource });
+    setPrefillPolicy({
+      ownerName:        prep.clientName,
+      sourceOfProspect: prep.prospectingSource,
+      socialPlatform:   prep.prospectingSource === 'social-media' ? (prep.socialPlatform ?? null) : null,
+    });
     setActiveTab('policy-ledger');
   }
 

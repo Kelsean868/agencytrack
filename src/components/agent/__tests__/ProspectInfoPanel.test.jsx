@@ -31,13 +31,20 @@ vi.mock('../../../services/prospectInfoService', () => ({
     { value: 'referral',      label: 'Referral' },
     { value: 'cold-call',     label: 'Cold Call' },
     { value: 'bank-referral', label: 'Bank Referral (BOA)' },
+    { value: 'social-media',  label: 'Social Media' },
   ],
   PROSPECTING_SOURCE_LABELS: {
     referral:        'Referral',
     'cold-call':     'Cold Call',
     'bank-referral': 'Bank Referral (BOA)',
+    'social-media':  'Social Media',
     BOA:             'Bank Referral (BOA)',
   },
+  SOCIAL_PLATFORMS_ATTRIBUTION: [
+    { value: 'whatsapp',   label: 'WhatsApp' },
+    { value: 'instagram',  label: 'Instagram' },
+    { value: 'facebook',   label: 'Facebook' },
+  ],
   APPOINTMENT_TYPES: [
     { value: '2nd-interview',     label: '2nd Interview' },
     { value: 'closing-interview', label: 'Closing Interview' },
@@ -251,5 +258,49 @@ describe('ProspectInfoPanel — Log Policy CTA (F3.1)', () => {
     render(<ProspectInfoPanel />);
     await waitFor(() => screen.getByText('Alice Test'));
     expect(screen.queryByTestId(`log-policy-btn-${prep.id}`)).not.toBeInTheDocument();
+  });
+});
+
+describe('ProspectInfoPanel — socialPlatform conditional select (PR #319)', () => {
+  it('platform select appears when prospectingSource is changed to social-media', async () => {
+    mockGetProspectInfo.mockResolvedValue([]);
+    render(<ProspectInfoPanel />);
+    await waitFor(() => screen.getByTestId('prospect-info-add-btn'));
+    fireEvent.click(screen.getByTestId('prospect-info-add-btn'));
+
+    // Default source (referral) — no platform select
+    expect(screen.queryByLabelText('Social platform (required)')).not.toBeInTheDocument();
+
+    // Switch to social-media
+    fireEvent.change(screen.getByLabelText('Prospecting source'), { target: { value: 'social-media' } });
+    expect(screen.getByLabelText('Social platform (required)')).toBeInTheDocument();
+  });
+
+  it('platform select disappears when source changes away from social-media', async () => {
+    mockGetProspectInfo.mockResolvedValue([]);
+    render(<ProspectInfoPanel />);
+    await waitFor(() => screen.getByTestId('prospect-info-add-btn'));
+    fireEvent.click(screen.getByTestId('prospect-info-add-btn'));
+
+    fireEvent.change(screen.getByLabelText('Prospecting source'), { target: { value: 'social-media' } });
+    expect(screen.getByLabelText('Social platform (required)')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Prospecting source'), { target: { value: 'referral' } });
+    expect(screen.queryByLabelText('Social platform (required)')).not.toBeInTheDocument();
+  });
+
+  it('save button is disabled when social-media is selected but no platform chosen', async () => {
+    mockGetProspectInfo.mockResolvedValue([]);
+    render(<ProspectInfoPanel />);
+    await waitFor(() => screen.getByTestId('prospect-info-add-btn'));
+    fireEvent.click(screen.getByTestId('prospect-info-add-btn'));
+
+    // Fill required fields so only social-media-without-platform disables the button
+    fireEvent.change(screen.getByLabelText('Client name'), { target: { value: 'Test Client' } });
+    fireEvent.change(screen.getByLabelText('Intended appointment date (required)'), { target: { value: '2026-07-01' } });
+    fireEvent.change(screen.getByLabelText('Prospecting source'), { target: { value: 'social-media' } });
+
+    // Platform not chosen — save should be disabled
+    expect(screen.getByTestId('prospect-info-save-btn')).toBeDisabled();
   });
 });

@@ -25,8 +25,18 @@ vi.mock('../../../services/policiesService', () => ({
 }));
 
 vi.mock('../../../services/prospectInfoService', () => ({
-  PROSPECTING_SOURCES: [],
-  PROSPECTING_SOURCE_LABELS: {},
+  PROSPECTING_SOURCES: [
+    { value: 'referral',     label: 'Referral' },
+    { value: 'social-media', label: 'Social Media' },
+  ],
+  PROSPECTING_SOURCE_LABELS: {
+    referral:       'Referral',
+    'social-media': 'Social Media',
+  },
+  SOCIAL_PLATFORMS_ATTRIBUTION: [
+    { value: 'whatsapp',  label: 'WhatsApp' },
+    { value: 'instagram', label: 'Instagram' },
+  ],
 }));
 
 vi.mock('../../../constants/policyLifecycle', () => ({
@@ -359,5 +369,62 @@ describe('PolicyLedgerPanel — initialForm prefill', () => {
     fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
 
     await waitFor(() => expect(onPrefillConsumed).toHaveBeenCalledOnce());
+  });
+});
+
+// ── socialPlatform conditional select (PR #319) ────────────────────────────────
+
+describe('PolicyLedgerPanel — socialPlatform conditional select', () => {
+  it('platform select appears when sourceOfProspect is changed to social-media', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    render(<PolicyLedgerPanel />);
+
+    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+
+    // Default source is '' — no Platform select
+    expect(screen.queryByLabelText(/^Platform/i)).not.toBeInTheDocument();
+
+    // Change to social-media
+    fireEvent.change(screen.getByLabelText(/Source of Prospect/i), { target: { value: 'social-media' } });
+    expect(screen.getByLabelText(/^Platform/i)).toBeInTheDocument();
+  });
+
+  it('platform select disappears when source changes away from social-media', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    render(<PolicyLedgerPanel />);
+
+    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+
+    fireEvent.change(screen.getByLabelText(/Source of Prospect/i), { target: { value: 'social-media' } });
+    expect(screen.getByLabelText(/^Platform/i)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Source of Prospect/i), { target: { value: 'referral' } });
+    expect(screen.queryByLabelText(/^Platform/i)).not.toBeInTheDocument();
+  });
+
+  it('createPolicy is called with socialPlatform when social-media source is selected', async () => {
+    hoisted.getOwnPolicies
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const { container } = render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+
+    // Select social-media source and pick a platform
+    fireEvent.change(screen.getByLabelText(/Source of Prospect/i), { target: { value: 'social-media' } });
+    fireEvent.change(screen.getByLabelText(/^Platform/i), { target: { value: 'instagram' } });
+
+    fireEvent.submit(container.querySelector('form'));
+    await waitFor(() => expect(hoisted.createPolicy).toHaveBeenCalledOnce());
+
+    const [, , formData] = hoisted.createPolicy.mock.calls[0];
+    expect(formData.sourceOfProspect).toBe('social-media');
+    expect(formData.socialPlatform).toBe('instagram');
   });
 });

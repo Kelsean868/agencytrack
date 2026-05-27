@@ -193,6 +193,50 @@ describe('addProspectInfo', () => {
     const [, data] = hoisted.mockAddDoc.mock.calls[0];
     expect(data.agentUnitId).toBe('');
   });
+
+  it('stores socialPlatform when prospectingSource is social-media', async () => {
+    hoisted.mockAddDoc.mockResolvedValue({});
+    await addProspectInfo({
+      tenantId: 'tid', agentId: 'a', agentUnitId: 'u',
+      clientName: 'X', clientAge: '30', clientOccupation: '',
+      prospectingSource: 'social-media',
+      socialPlatform: 'whatsapp',
+      appointmentType: '2nd-interview',
+      objections: [], policyType: '',
+      intendedAppointmentDate: '2026-06-01',
+    });
+    const [, data] = hoisted.mockAddDoc.mock.calls[0];
+    expect(data.socialPlatform).toBe('whatsapp');
+  });
+
+  it('stores null for socialPlatform when prospectingSource is not social-media', async () => {
+    hoisted.mockAddDoc.mockResolvedValue({});
+    await addProspectInfo({
+      tenantId: 'tid', agentId: 'a', agentUnitId: 'u',
+      clientName: 'X', clientAge: '30', clientOccupation: '',
+      prospectingSource: 'referral',
+      socialPlatform: 'whatsapp',
+      appointmentType: '2nd-interview',
+      objections: [], policyType: '',
+      intendedAppointmentDate: '2026-06-01',
+    });
+    const [, data] = hoisted.mockAddDoc.mock.calls[0];
+    expect(data.socialPlatform).toBeNull();
+  });
+
+  it('throws when prospectingSource is social-media and socialPlatform is missing', async () => {
+    await expect(
+      addProspectInfo({
+        tenantId: 'tid', agentId: 'a', agentUnitId: 'u',
+        clientName: 'X', clientAge: '30', clientOccupation: '',
+        prospectingSource: 'social-media',
+        socialPlatform: null,
+        appointmentType: '2nd-interview',
+        objections: [], policyType: '',
+        intendedAppointmentDate: '2026-06-01',
+      }),
+    ).rejects.toThrow('socialPlatform is required when source is social-media');
+  });
 });
 
 describe('updateProspectInfo', () => {
@@ -225,6 +269,50 @@ describe('updateProspectInfo', () => {
     expect('tenantId' in data).toBe(false);
     expect('createdBy' in data).toBe(false);
     expect('createdAt' in data).toBe(false);
+  });
+
+  it('stores socialPlatform when prospectingSource is social-media', async () => {
+    hoisted.mockUpdateDoc.mockResolvedValue({});
+    await updateProspectInfo({
+      tenantId: 'tid', agentId: 'a', prospectId: 'p1',
+      clientName: 'X', clientAge: '30', clientOccupation: '',
+      prospectingSource: 'social-media',
+      socialPlatform: 'instagram',
+      appointmentType: '2nd-interview',
+      objections: [], policyType: '',
+      intendedAppointmentDate: '2026-06-01',
+    });
+    const [, data] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(data.socialPlatform).toBe('instagram');
+  });
+
+  it('stores null for socialPlatform when prospectingSource is not social-media', async () => {
+    hoisted.mockUpdateDoc.mockResolvedValue({});
+    await updateProspectInfo({
+      tenantId: 'tid', agentId: 'a', prospectId: 'p1',
+      clientName: 'X', clientAge: '30', clientOccupation: '',
+      prospectingSource: 'cold-call',
+      socialPlatform: 'instagram',
+      appointmentType: '2nd-interview',
+      objections: [], policyType: '',
+      intendedAppointmentDate: '2026-06-01',
+    });
+    const [, data] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(data.socialPlatform).toBeNull();
+  });
+
+  it('throws when prospectingSource is social-media and socialPlatform is missing', async () => {
+    await expect(
+      updateProspectInfo({
+        tenantId: 'tid', agentId: 'a', prospectId: 'p1',
+        clientName: 'X', clientAge: '30', clientOccupation: '',
+        prospectingSource: 'social-media',
+        socialPlatform: undefined,
+        appointmentType: '2nd-interview',
+        objections: [], policyType: '',
+        intendedAppointmentDate: '2026-06-01',
+      }),
+    ).rejects.toThrow('socialPlatform is required when source is social-media');
   });
 });
 
