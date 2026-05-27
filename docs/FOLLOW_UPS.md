@@ -89,15 +89,11 @@ Banked: F3.1 PR #360 (`5025901`), 2026-05-27.
 
 ---
 
-## F2.2 archive scope — confirm whether archived observations hide from agent's own view too (LOW, banked 2026-05-27)
+## F2.2 archive scope — confirm whether archived observations hide from agent's own view too (RESOLVED — confirmed by design, 2026-05-27)
 
-PR #362 client-side filter hides `archived: true` observations in `JointCallsTab`. Unconfirmed: does this filter apply in the agent's own joint-calls view, or only in the manager's working list? If the agent can still see their archived observations, the UX semantics are unclear (BM can't see it, agent still can).
+**Finding (Phase 3c audit, 2026-05-27):** Agents have no joint-calls view. `JointCallsTab` lives exclusively inside `CoachingNotesModal` (manager-only UI). The `calls.filter((c) => !c.archived)` at `JointCallsTab.jsx:400,408` covers the only view where observations are surfaced. No agent-facing visibility gap exists — agents cannot see F2 joint-call observations at all. Archive scope is manager-working-list-only by design and confirmed matching intent.
 
-**Action:** Confirm which views the client-side filter covers. If agent-facing visibility should match manager-facing (both hide archived), extend the filter accordingly. If agent retention is intentional (personal audit trail), document as by-design in a comment.
-
-**Priority:** LOW. Single-branch pilot; no production observations archived yet. Confirm at first archive event.
-
-Banked: F2.2 PR #362 (`517e16d`), 2026-05-27.
+Banked: F2.2 PR #362 (`517e16d`), 2026-05-27. Resolved: Phase 3c audit, 2026-05-27.
 
 ---
 
