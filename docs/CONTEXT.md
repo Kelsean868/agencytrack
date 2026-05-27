@@ -12,9 +12,9 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-27 (#319 dispatch — socialPlatform attribution capture-only slice; Track F fully complete, rules deployed, 9/9 prod smoke confirmed) |
-| Current main HEAD | `17cb74e` (chore(docs): #360 post-merge fill) |
-| Active track | PR #319 — socialPlatform attribution, capture-only slice (rules-touching → PR-OPEN) |
+| Last updated | 2026-05-27 (#365 post-merge fill — socialPlatform attribution merged `f2b4ef6`; rules deployed; post-deploy smoke complete) |
+| Current main HEAD | `f2b4ef6` (feat(prospect-info): F3.1+rules — socialPlatform attribution capture (#319) (#365)) |
+| Active track | None — #365 shipped and smoke-verified. Queue clear for next dispatch. |
 | Next track | Phase 9 SM target (5th goals layer — gap documented in FOLLOW_UPS.md), H4+ Track H extensions, Track I follow-ups. |
 | Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
@@ -122,6 +122,8 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#365](https://github.com/Kelsean868/agencytrack/pull/365) | `f2b4ef6` | feat(prospect-info): F3.1+rules — socialPlatform attribution capture (#319). Adds nullable `socialPlatform` field to `prospectInfo` + `policies`; conditional platform select (shows/required/clears when `sourceOfProspect === 'social-media'`) in `ProspectInfoPanel` + `PolicyLedgerPanel`; F3.1 prefill extended to carry `socialPlatform` through `handleCreatePolicyFromPrep`; `SOCIAL_PLATFORMS_ATTRIBUTION` (6 values: whatsapp/instagram/facebook/tiktok/linkedin/other) exported from `prospectInfoService.js`; service-layer `validate()` guards in both services (throw when social-media + missing platform; reject invalid enum); `firestore.rules` two `hasOnly` extensions: policies Arm A + `'socialPlatform'`, prospectInfo update + `'socialPlatform'`. Tests: 6 prospectInfoService unit + 4 policiesService unit + 3 ProspectInfoPanel UI + 4 PolicyLedgerPanel UI (incl. save-disabled guard) + 2 AgentDashboard integration (new file) + 3 prospect-info emulator (20/20) + 2 policies emulator (59/59). 1553/1553 vitest; lint 0; build clean. Rules deployed post-merge; 7/7 prod smoke green. Wizard `SOCIAL_PLATFORMS` (4 values, weekly tracking) unchanged — intentional divergence from attribution enum. TikTok FU banked LOW. |
+| [#364](https://github.com/Kelsean868/agencytrack/pull/364) | `9b951d3` | docs(briefs): PR #319 socialPlatform attribution kickoff + TikTok FU. Rule 10 brief for capture-only slice; conditional guard decision (Option B: keep 6-value attribution enum, wizard stays at 4); TikTok expansion FU banked LOW in FOLLOW_UPS.md. |
 | [#360](https://github.com/Kelsean868/agencytrack/pull/360) | `5025901` | feat(prospect-info): F3.1 — Log Policy prefill from prospect prep. `AgentDashboard` lifts `prefillPolicy` state; `handleCreatePolicyFromPrep` callback passed to `ProspectInfoPanel`; `initialForm` + `onPrefillConsumed` props on `PolicyLedgerPanel`. "Log Policy" CTA on each prep card (view mode; hidden in edit/no-callback) → switches to Policy Ledger tab with `ownerName` prefilled from `clientName` + `sourceOfProspect` prefilled from `prospectingSource`; EMPTY_FORM for all other fields; prefill one-shot (cleared after `openCreate()`). 6 new tests; 1527/1527 vitest; lint 0; build clean. |
 | [#362](https://github.com/Kelsean868/agencytrack/pull/362) | `517e16d` | feat(joint-calls): soft-archive joint-call observations (F2.2). Author-only Archive button in JointCallsTab; `archiveJointCall()` in jointCallsService; client-side filter hides archived entries; `archived` added to rules `hasOnly` allowlist (additive). 20/20 emulator rules tests (archive ALLOW author, archive DENY non-author, client-filter). Vitest green; lint 0; build clean. Rules deploy + post-deploy smoke pending. |
 | [#361](https://github.com/Kelsean868/agencytrack/pull/361) | `332626b` | feat(coaching): isPinned pin/unpin toggle on coaching notes (F2.1a). Author-only Bookmark icon in CoachingNotesModal NoteCard; `pinCoachingNote()` in coachingNotesService; useMemo sort pinned-first by `isPinned desc, createdAt desc`; `isPinned` added to rules `hasOnly` allowlist (additive). 16/16 emulator rules tests (pin ALLOW author, pin DENY non-author). Vitest green; lint 0; build clean. Rules deploy + post-deploy smoke pending. |
@@ -240,11 +242,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**Track F complete — F3.1 + isPinned + archive merged, rules deployed, prod-verified. Dispatching #319 socialPlatform attribution (capture-only slice).**
+**PR #365 (socialPlatform attribution, capture-only) merged, rules deployed, 7/7 prod smoke green. Queue clear.**
 
-All 4 Track F PRs merged: F3.1 Log Policy prefill (#360 `5025901`), isPinned toggle (#361 `332626b`), joint-call soft-archive (#362 `517e16d`), suite hardening (#363 `be69658`). Firestore rules deployed for #361+#362 arms; 9/9 post-deploy smoke confirmed live. Track F fully closed.
+`socialPlatform` field added to `prospectInfo` + `policies` docs. Conditional platform select renders in `ProspectInfoPanel` + `PolicyLedgerPanel` when `sourceOfProspect === 'social-media'` — required-when-shown, clears on source change, save disabled without platform. F3.1 prefill carries `socialPlatform` through `handleCreatePolicyFromPrep`. `SOCIAL_PLATFORMS_ATTRIBUTION` (6 values) exported from `prospectInfoService`; service-layer guards in both services. Rules `hasOnly` allowlists extended for both collections. 1553/1553 tests; rules deployed post-merge; 7/7 smoke green (create+reload, source-clear, F3.1 carry, UI guard, rules DENY).
 
-**Next: PR #319** — `socialPlatform` attribution, capture-only slice. Adds nullable `socialPlatform` field to prospect-info and policy records; conditional select renders only when `sourceOfProspect === 'social-media'`; F3.1 prefill path extended to carry `socialPlatform`; rules `hasOnly` allowlists updated on both collections. Rules-touching → PR-OPEN, do NOT merge or deploy until dispatcher review. No surfacing/aggregation (Phase 2, separate slice). See `docs/sessions/2026-05-27-319-h3-h4-run.md` for run ledger.
+**Next:** No active track. Queued items: Phase 9 SM target (5th goals layer), F2.2 (email-to-BM), `needCovered` taxonomy, BOA-teardown, LOW refactor FU from #365 (SOCIAL_PLATFORMS_ATTRIBUTION shared module). See FOLLOW_UPS.md for full queue.
 
 ---
 
