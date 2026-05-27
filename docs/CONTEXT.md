@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-27 (#360 merged — F3.1 Log Policy prefill `5025901`; rules deploy for #361+#362 arms + post-deploy smokes pending) |
-| Current main HEAD | `5025901` (PR #360 — feat(prospect-info): F3.1 — Log Policy prefill from prospect prep) |
-| Active track | Track F wrap-up — rules deploy for #361+#362 arms + post-deploy smokes pending. All 4 PRs merged. |
-| Next track | After rules deploy + post-deploy smokes: Phase 9 SM target (5th goals layer — gap documented in FOLLOW_UPS.md), H4+ Track H extensions, Track I follow-ups. |
+| Last updated | 2026-05-27 (#319 dispatch — socialPlatform attribution capture-only slice; Track F fully complete, rules deployed, 9/9 prod smoke confirmed) |
+| Current main HEAD | `17cb74e` (chore(docs): #360 post-merge fill) |
+| Active track | PR #319 — socialPlatform attribution, capture-only slice (rules-touching → PR-OPEN) |
+| Next track | Phase 9 SM target (5th goals layer — gap documented in FOLLOW_UPS.md), H4+ Track H extensions, Track I follow-ups. |
 | Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
@@ -114,8 +114,6 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
-| PR #361 | feat(coaching): isPinned pin/unpin toggle (F2.1a) | No | ✅ MERGED (`332626b`); rules deploy (#361+#362 arms) + post-deploy smoke pending |
-| PR #362 | feat(joint-calls): soft-archive (F2.2) | No | ✅ MERGED (`517e16d`); rules deploy (#361+#362 arms) + post-deploy smoke pending |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 
 ---
@@ -242,17 +240,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**2026-05-27 autonomous run — F3.1 + Track F polish + suite hardening + forward recon. 4 PRs opened, all await Kyron merge.**
+**Track F complete — F3.1 + isPinned + archive merged, rules deployed, prod-verified. Dispatching #319 socialPlatform attribution (capture-only slice).**
 
-**F3.1 (PR #360):** `Log Policy` CTA added to ProspectInfoPanel → opens PolicyLedgerPanel create form with `clientName→ownerName` + `prospectingSource→sourceOfProspect` prefilled. Safe mappings only (exact-same enum for source; name to owner). Deferred to product decision: `policyType→policyClass` (different taxonomies), `intendedAppointmentDate→dateWritten` (appointment date ≠ write date). Rule 10 brief committed as PR #359 (`c1362e3`) before dispatch. ALWAYS PR-OPEN — needs dispatcher merge + smoke (prefill flow).
+All 4 Track F PRs merged: F3.1 Log Policy prefill (#360 `5025901`), isPinned toggle (#361 `332626b`), joint-call soft-archive (#362 `517e16d`), suite hardening (#363 `be69658`). Firestore rules deployed for #361+#362 arms; 9/9 post-deploy smoke confirmed live. Track F fully closed.
 
-**Track F polish (PRs #361, #362):** isPinned coaching note toggle (author-only Bookmark icon; `pinCoachingNote` service; useMemo sort pinned-first; `isPinned` added to rules `hasOnly` allowlist). Joint-call soft-archive (Archive button, author-only; `archiveJointCall` service; client-side filter; `archived` added to rules `hasOnly` allowlist). Both PRs require pre-merge `firebase deploy --only firestore:rules` before Kyron merges — additive rules changes. Phase 2b peer-BM scope = no-op: MasterSheet Notes button has no role gate; BMs can already read coaching notes; branch-scoped exclusion is heavier work (needs `agentBranchId` denormalization — banked in FOLLOW_UPS.md).
-
-**Suite hardening (PR #363 — MERGED `be69658`):** Fixed 2 genuine weak-waitFor patterns (ProspectInfoPanel waiting on data text; PolicyReconciliationPanel waiting on agent names). Added 7 policy lifecycle tests covering rated→settled, rated→ntu, postponed→denied, terminal-state rejections (it.each). DailyEntryModal flake fixed (save-button `disabled={saving || loading}` — added `waitFor(() => expect(saveBtn).not.toBeDisabled())` before click). Suite: 1528/1528 green. a11y was already at error level. CI ×2 green before auto-merge. Also added emulator test cases for #361 (isPinned: 16/16) and #362 (archived: 20/20).
-
-**Forward recon (read-only):** Phase 9 SM target — NOT implemented; full 6-point change surface documented in FOLLOW_UPS.md. H4 = agent policy-entry form (writes policies/{id} only; plan-config editor is H2 Tenant Admin). H3 flip-gate = fully implemented in AgentAwardsPanel.jsx; no parity gap at engine level; persistency backfill from settlements is correct by design.
-
-**Post-merge order:** For #361 and #362 — deploy rules FIRST (`firebase deploy --only firestore:rules`), then merge. For #360 — merge directly after smoke passes, run post-merge sequence. Prod smoke for #360 must exercise the prefill flow (open a saved prospect-info prep → Log Policy → confirm ownerName + sourceOfProspect pre-filled in the create form). STOP for dispatcher review before merging #360, #361, #362.
+**Next: PR #319** — `socialPlatform` attribution, capture-only slice. Adds nullable `socialPlatform` field to prospect-info and policy records; conditional select renders only when `sourceOfProspect === 'social-media'`; F3.1 prefill path extended to carry `socialPlatform`; rules `hasOnly` allowlists updated on both collections. Rules-touching → PR-OPEN, do NOT merge or deploy until dispatcher review. No surfacing/aggregation (Phase 2, separate slice). See `docs/sessions/2026-05-27-319-h3-h4-run.md` for run ledger.
 
 ---
 
