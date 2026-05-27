@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-27 (#368 post-merge fill + Phase 3c audit — F2.2 archive scope confirmed by design) |
-| Current main HEAD | `265c7bb` (chore(docs): #368 post-merge fill) |
-| Active track | Phase 3c F2.2 archive scope ✅ confirmed by design (agents have no joint-calls view; no fix needed). Phase 4 H4 recon pending. |
-| Next track | Phase 4 H4 recon (read-only inventory, produce docs/h4-plan-config-recon.md). Then: Phase 9 SM target, H4+ Track H extensions, Track I follow-ups. |
+| Last updated | 2026-05-27 (autonomous session complete — H3 parity + Phase 3a/3b/3c + Phase 4 H4 recon) |
+| Current main HEAD | `e3df9d1` (chore(docs): Phase 3c audit) |
+| Active track | Phase 4 H4 recon ✅ complete — `docs/h4-plan-config-recon.md` produced. Autonomous session complete. |
+| Next track | H4 plan configuration build (brief needed; see h4-plan-config-recon.md for inventory). Then: Phase 9 SM target, Track H extensions, Track I follow-ups. |
 | Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
