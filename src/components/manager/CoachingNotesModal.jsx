@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, MessageSquare, Pencil, Check, ChevronDown, Phone, UserSearch } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { X, MessageSquare, Pencil, Check, ChevronDown, Phone, UserSearch, Bookmark } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   addCoachingNote,
   getCoachingNotes,
   updateCoachingNote,
+  pinCoachingNote,
   COACHING_CATEGORIES,
 } from '../../services/coachingNotesService';
 import JointCallsTab from './JointCallsTab';
@@ -38,9 +39,21 @@ function NoteCard({ note, isAuthor, onEditSaved }) {
   const [editing, setEditing]   = useState(false);
   const [editBody, setEditBody] = useState(note.body);
   const [editCat, setEditCat]   = useState(note.category);
+  const [pinned, setPinned]     = useState(note.isPinned ?? false);
   const [saving, setSaving]     = useState(false);
   const [err, setErr]           = useState('');
   const { tenantId } = useAuth();
+
+  const togglePin = async () => {
+    const next = !pinned;
+    setPinned(next);
+    try {
+      await pinCoachingNote({ tenantId, agentId: note.agentId, noteId: note.id, isPinned: next });
+      onEditSaved({ ...note, isPinned: next });
+    } catch {
+      setPinned(!next);
+    }
+  };
 
   const saveEdit = async () => {
     if (!editBody.trim()) return;
@@ -94,13 +107,22 @@ function NoteCard({ note, isAuthor, onEditSaved }) {
           </span>
         </div>
         {isAuthor && !editing && (
-          <button
-            onClick={() => setEditing(true)}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors"
-            aria-label="Edit note"
-          >
-            <Pencil size={14} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={togglePin}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors"
+              aria-label={pinned ? 'Unpin note' : 'Pin note'}
+            >
+              <Bookmark size={14} className={pinned ? 'fill-primary text-primary' : ''} />
+            </button>
+            <button
+              onClick={() => setEditing(true)}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors"
+              aria-label="Edit note"
+            >
+              <Pencil size={14} />
+            </button>
+          </div>
         )}
       </div>
 
@@ -214,6 +236,13 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
   const handleEditSaved = useCallback((updatedNote) => {
     setNotes((prev) => prev.map((n) => (n.id === updatedNote.id ? updatedNote : n)));
   }, []);
+
+  // Pinned notes bubble to the top; Firestore order (authorRoleRank asc, createdAt desc)
+  // is preserved within each group.
+  const sortedNotes = useMemo(
+    () => [...notes].sort((a, b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0)),
+    [notes],
+  );
 
   return (
     <>
@@ -346,7 +375,7 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
               </div>
             )}
 
-            {!loading && !error && notes.map((note) => (
+            {!loading && !error && sortedNotes.map((note) => (
               <NoteCard
                 key={note.id}
                 note={note}

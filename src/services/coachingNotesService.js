@@ -55,6 +55,7 @@ export async function addCoachingNote({
     authorRoleRank: getRoleRank(authorRole),
     category,
     body: trimmedBody,
+    isPinned: false,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -102,5 +103,16 @@ export async function updateCoachingNote({ tenantId, agentId, noteId, body, cate
   await updateDoc(
     doc(db, `tenants/${tenantId}/users/${agentId}/coachingNotes/${noteId}`),
     { body: trimmedBody, category, updatedAt: serverTimestamp() },
+  );
+}
+
+/**
+ * Toggle the isPinned flag on a note the caller authored.
+ * Rules allow only authorUid == caller to update, with isPinned in the hasOnly allowlist.
+ */
+export async function pinCoachingNote({ tenantId, agentId, noteId, isPinned }) {
+  await updateDoc(
+    doc(db, `tenants/${tenantId}/users/${agentId}/coachingNotes/${noteId}`),
+    { isPinned, updatedAt: serverTimestamp() },
   );
 }
