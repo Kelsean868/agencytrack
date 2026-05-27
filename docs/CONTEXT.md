@@ -12,8 +12,8 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-27 (#357 post-merge fill — waitFor flake fix; CI stabilization complete) |
-| Current main HEAD | `fb8c4b0` (PR #357 — fix(tests): harden waitFor guards against async select/chart race) |
+| Last updated | 2026-05-27 (#355 post-merge fill — KioskModeTab fake-timers deflake; CI stabilization complete) |
+| Current main HEAD | `264df79` (PR #355 — fix(test): deflake KioskModeTab Generate toast tests with fake timers) |
 | Active track | Track G complete — all slices shipped (G1–G7 + G5) |
 | Next track | Operator decision pending. Candidates: Track H H4+, Track I follow-ups, Track J tenure editor, BOA teardown. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#355](https://github.com/Kelsean868/agencytrack/pull/355) | `264df79` | fix(test): deflake KioskModeTab Generate toast tests with fake timers. Replaced `vi.useFakeTimers` + `vi.runAllTimers` with `vi.useFakeTimers({ shouldAdvanceTime: true })` and real async awaits; removed brittle act/timer interleaving. 10/10 locally; 1521/1521 vitest; CI green. Closes CI-stabilization cycle (alongside #356 + #357). |
 | [#357](https://github.com/Kelsean868/agencytrack/pull/357) | `fb8c4b0` | fix(tests): harden waitFor guards against async select/chart race. PersistencyTab: wait on `chart` (data-bearing Recharts stub) before asserting `persistency-trend-chart` container. EditUserDrawer: three `Unit *` select interaction sites upgraded to `within(el).getAllByRole('option').length > 1` guard — eliminates container-before-options race that caused intermittent CI failures. Test-only; 1521/1521 vitest; lint 0; build clean. CI green ×2. Closes CI-stabilization cycle. |
 | [#356](https://github.com/Kelsean868/agencytrack/pull/356) | `45f8260` | fix(smoke): harden leg3-reload-settled against timing races. Remove `.catch(() => {})` swallowing genuine timeouts on modal-detach `waitFor`; replace 5s `isVisible` with 15s `waitFor` for settled doc after hard reload under network variance. Script artifact only — no app code changed. Fixes 47/1/0 regression sweep flake from 2026-05-27 run. |
 | [#354](https://github.com/Kelsean868/agencytrack/pull/354) | `f200bc6` | feat(money-needs): G5 — Privacy + Opt-In Share. true-ownership rules (owner get/list/update via match-level `agentId` var); BM branch-scoping via `users/{agentId}` get for `branchId`; UM/BM `get` allowed when `visibility != 'private'`; `updateVisibility` in `moneyNeedsService.js`; visibility toggle footer in `MoneyNeedsPanel.jsx`; `shareWithSm` toggle; manager-read audit subcollection stub. 31/31 emulator rules tests (owner ALLOW matrix + manager-read-when-shared ALLOW + manager-read-when-private DENY + cross-tenant DENY). Vitest green; lint 0; build clean. |
@@ -243,9 +244,9 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **2026-05-27 recon run confirms:** Track H lifecycle fully built (H1/H1.2/H2a/H2b/H2c/H3 all shipped, `transitionPolicyStatus()` live). Track F joint-call forms fully shipped (F1–F2–F3–F3.1–F2.1). #319 social-capture shipped in WIZARD Screen 1. No new skeleton work needed in any of these tracks. Money Needs consolidated smoke written (`scripts/verification/money-needs-consolidated-smoke.mjs`). repomix.config.json broadened. `docs/d1b-brief` stale branch deleted.
 
-**2026-05-27 CI stabilization complete.** #356 (smoke leg3 timing fix, `45f8260`) + #357 (waitFor flake fix, `fb8c4b0`) both merged. PersistencyTab now waits on `chart` (data-bearing Recharts stub) before asserting container. EditUserDrawer all three `Unit *` select sites upgraded to options-count guard. 1521/1521 locally; CI green ×2 on #357. #355 (KioskModeTab fake-timers deflake) still open — needs rebase from main then CI re-run.
+**2026-05-27 CI stabilization complete — all three PRs merged.** #356 (`45f8260`) smoke leg3 timing fix, #357 (`fb8c4b0`) waitFor guards (PersistencyTab chart-before-container + EditUserDrawer options-count guard ×3 sites), #355 (`264df79`) KioskModeTab fake-timers deflake. Full suite 1521/1521; CI green on all three. Regression smoke sweep 3× pending (see next steps).
 
-**Next:** (1) Rebase/update #355 from main, re-run CI — if green, merge on its merits; if new flake surfaces, surface and audit. (2) After #355 resolves, run regression-smoke-sweep.mjs 3× (expect 48/48). (3) Operator decides next track: H4+ (Track H extensions — Source of Prospect, Cash with Application, Policy Delivery Date), Track I follow-ups (I2 definitional confirmation, I3 extensions), Track J J2 trailing-average career level, or BOA teardown.
+**Next:** Run `scripts/verification/regression-smoke-sweep.mjs` 3× to confirm 48/48 stable, then operator decides next track. Candidates: H4+ (Track H extensions — Source of Prospect, Cash with Application, Policy Delivery Date), Track I follow-ups (I2 definitional confirmation, I3 extensions), Track J J2 trailing-average career level, or BOA teardown.
 
 ---
 
