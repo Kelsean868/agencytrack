@@ -322,3 +322,42 @@ describe('PolicyLedgerPanel — transition modal', () => {
     await waitFor(() => expect(document.querySelector('h3')).toBeNull());
   });
 });
+
+// ── initialForm prefill tests (F3.1) ─────────────────────────────────────────
+
+describe('PolicyLedgerPanel — initialForm prefill', () => {
+  it('initialForm prop pre-populates ownerName and sourceOfProspect in create form', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    const prefill = { ownerName: 'Prefilled Owner', sourceOfProspect: 'referral' };
+    render(<PolicyLedgerPanel initialForm={prefill} onPrefillConsumed={vi.fn()} />);
+
+    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+
+    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+    expect(screen.getByLabelText(/Owner Name/i).value).toBe('Prefilled Owner');
+  });
+
+  it('missing initialForm prop → form starts as EMPTY_FORM (no regression)', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    render(<PolicyLedgerPanel />);
+
+    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+
+    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+    expect(screen.getByLabelText(/Owner Name/i).value).toBe('');
+  });
+
+  it('onPrefillConsumed is called when create form opens with initialForm', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    const onPrefillConsumed = vi.fn();
+    const prefill = { ownerName: 'Consumed Owner', sourceOfProspect: 'cold-call' };
+    render(<PolicyLedgerPanel initialForm={prefill} onPrefillConsumed={onPrefillConsumed} />);
+
+    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+
+    await waitFor(() => expect(onPrefillConsumed).toHaveBeenCalledOnce());
+  });
+});

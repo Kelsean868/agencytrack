@@ -97,7 +97,7 @@ function FieldGroup({ label, children, required, id }) {
 const inputCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm text-ink w-full focus:outline-none focus:ring-2 focus:ring-primary/40';
 const selectCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm text-ink w-full focus:outline-none focus:ring-2 focus:ring-primary/40';
 
-export default function PolicyLedgerPanel() {
+export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
   const { user, userProfile, tenantId } = useAuth();
 
   const [view, setView] = useState('list');
@@ -234,9 +234,10 @@ export default function PolicyLedgerPanel() {
   }
 
   function openCreate() {
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, ...(initialForm ?? {}) });
     setSameAsOwner(false);
     setSaveError(null);
+    onPrefillConsumed?.();
     setView('create');
   }
 

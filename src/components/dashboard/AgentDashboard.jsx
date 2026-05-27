@@ -88,6 +88,7 @@ export default function AgentDashboard() {
   const { user, userProfile, role, tenantId } = useAuth();
 
   const [activeTab, setActiveTab]             = useState('dashboard');
+  const [prefillPolicy, setPrefillPolicy]     = useState(null);
   const [showWizard, setShowWizard]           = useState(false);
   const [wizardWeek, setWizardWeek]           = useState(null);
   const [showDailyModal, setShowDailyModal]   = useState(false);
@@ -136,6 +137,16 @@ export default function AgentDashboard() {
       setShowWelcome(true);
     }
   }, [userProfile, role]);
+
+  // Clear prefill if agent navigates away from policy-ledger without saving.
+  useEffect(() => {
+    if (activeTab !== 'policy-ledger') setPrefillPolicy(null);
+  }, [activeTab]);
+
+  function handleCreatePolicyFromPrep(prep) {
+    setPrefillPolicy({ ownerName: prep.clientName, sourceOfProspect: prep.prospectingSource });
+    setActiveTab('policy-ledger');
+  }
 
   useEffect(() => {
     if (!user?.uid || !tenantId) return;
@@ -769,10 +780,17 @@ export default function AgentDashboard() {
       )}
 
       {/* ── PROSPECT INFO (Joint-Call Prep) TAB ── */}
-      {activeTab === 'prospect-info' && <ProspectInfoPanel />}
+      {activeTab === 'prospect-info' && (
+        <ProspectInfoPanel onCreatePolicyFromPrep={handleCreatePolicyFromPrep} />
+      )}
 
       {/* ── POLICY LEDGER TAB ── */}
-      {activeTab === 'policy-ledger' && <PolicyLedgerPanel />}
+      {activeTab === 'policy-ledger' && (
+        <PolicyLedgerPanel
+          initialForm={prefillPolicy}
+          onPrefillConsumed={() => setPrefillPolicy(null)}
+        />
+      )}
 
       {activeTab === 'money-needs' && <MoneyNeedsPanel />}
 
