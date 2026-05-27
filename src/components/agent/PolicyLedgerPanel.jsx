@@ -101,11 +101,11 @@ const selectCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm 
 export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
   const { user, userProfile, tenantId } = useAuth();
 
-  const [view, setView] = useState('list');
+  const [view, setView] = useState(initialForm ? 'create' : 'list');
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(initialForm ? { ...EMPTY_FORM, ...initialForm } : EMPTY_FORM);
   const [sameAsOwner, setSameAsOwner] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -150,6 +150,10 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
       .catch((err) => setLoadError(err.message))
       .finally(() => setLoading(false));
   }, [tenantId, user?.uid]);
+
+  useEffect(() => {
+    if (initialForm) onPrefillConsumed?.();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
