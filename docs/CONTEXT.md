@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-25 (Track G autonomous run — G7 post-merge fill) |
-| Current main HEAD | `a14e64a` (PR #352 — feat(money-needs): Track G G7 — Soft Validation + PAYE Refresh) |
-| Active track | Track G G5 — Privacy + Opt-In Share (PR-OPEN only, final slice) |
-| Next track | G5 — Privacy (PR-OPEN dispatcher review before merge). Track G complete after G5. |
+| Last updated | 2026-05-27 (G5 post-merge fill — Track G complete) |
+| Current main HEAD | `f200bc6` (PR #354 — feat(money-needs): G5 — Privacy + Opt-In Share) |
+| Active track | Track G complete — all slices shipped (G1–G7 + G5) |
+| Next track | Operator decision pending. Candidates: Track H H4+, Track I follow-ups, Track J tenure editor, BOA teardown. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
@@ -114,7 +114,6 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
-| Track G G3 | Expense Group Entry — line-item loop, frequency selector, PAYE section wired to grossFromNet | No | Needs brief before dispatch. |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 
 ---
@@ -123,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#354](https://github.com/Kelsean868/agencytrack/pull/354) | `f200bc6` | feat(money-needs): G5 — Privacy + Opt-In Share. true-ownership rules (owner get/list/update via match-level `agentId` var); BM branch-scoping via `users/{agentId}` get for `branchId`; UM/BM `get` allowed when `visibility != 'private'`; `updateVisibility` in `moneyNeedsService.js`; visibility toggle footer in `MoneyNeedsPanel.jsx`; `shareWithSm` toggle; manager-read audit subcollection stub. 31/31 emulator rules tests (owner ALLOW matrix + manager-read-when-shared ALLOW + manager-read-when-private DENY + cross-tenant DENY). Vitest green; lint 0; build clean. |
 | [#346](https://github.com/Kelsean868/agencytrack/pull/346) | `0e47812` | feat(money-needs): Track G G3 — Expense Group Entry. `moneyNeedsService.js`: new exports — `FREQUENCY_MULTIPLIERS`, `PAYE_BRACKETS_VERSION`, `annualizeAmount()`, `computeGroupTotal()`, `computeWorksheetRollup()`, `updateExpenseGroup()` (patches `expenseGroups.{groupKey}` via `updateDoc` field-path; recomputes rollup + PAYE on every save; stamps `payeBracketsVersionId:'default-2026'` for G7). `MoneyNeedsPanel.jsx`: `ExpenseGroupAccordion` with full line-item loop (add/delete/edit with blur-save + freq-change immediate save); `PAYESummary` section (after-tax → gross → PAYE). 38 service tests (12 existing + 26 new). 1490/1490 vitest; lint 0; build clean. Smoke 5/5. No rules/index/CF change. |
 | [#344](https://github.com/Kelsean868/agencytrack/pull/344) | `59d2291` | feat(paye-engine): Track G G2 — PAYE engine. `src/utils/payeEngine.js`: `DEFAULT_PAYE_CONFIG` (T&T 2026: allowance $90,000, 25% ≤$1M chargeable, 30% above), `computePAYE(gross, config)`, `grossFromNet(net, config)`. Config-driven chargeable-bracket band walk; full-precision output. 43 unit tests covering all brief vectors, edge cases, band formulas, pivot continuity, and round-trip property. PRD §6 corrected to chargeable-income model + updated Excel formula. Lint 0; build clean. Pure math — no UI/rules/Firestore. |
 | [#343](https://github.com/Kelsean868/agencytrack/pull/343) | `c78eaf8` | feat(money-needs): Track G G1 — Money Needs walking skeleton. `moneyNeedsService.js`: `createMoneyNeeds` (idempotent, blank scaffold, `visibility:'private'`) + `getMoneyNeeds`. `MoneyNeedsPanel.jsx`: year selector, empty state + "Start worksheet" CTA, 5 AccordionGroup shells, error/loading states. `AgentDashboard.jsx`: Money Needs tab wired. `firestore.rules`: `/users/{uid}/moneyNeeds/{year}` arm — agent-only get/list/create/update; `create` enforces `visibility=='private'`; delete: false. 12 unit tests + 17 emulator rules tests (all ALLOW + DENY cases). 1420/1420 vitest; lint 0; build clean. FOUNDATION GATE cleared. |
@@ -237,7 +237,7 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **Expected/Actual relabel (queue item 2a):** Source audit complete — no code change required. WeeklyStandardCard (PR #238) is the authoritative "Expected vs Actual" surface; other panels use semantically-correct award-domain labels.
 
-**Next:** Continue queue items 4–6 — expanded filler PRs, PR-OPEN drafts (Track G skeleton, H4 config, BEH-1 stub), E2E harness generalize.
+**G5 merged (`f200bc6`) — Track G fully complete.** All slices G1–G7 + G5 shipped. Manager-read live-smoke (aligned UM/BM credential against production) still pending — no aligned test credential in `.env.local`; FU banked in FOLLOW_UPS.md. New LOW FU banked: moneyNeeds `shareWithSm` is UI-gated only, no rule enforcement; harden when manager-owned worksheets ship. **Next:** operator to decide next track (H4+, Track I FUs, Track J tenure editor, or BOA teardown).
 
 ---
 

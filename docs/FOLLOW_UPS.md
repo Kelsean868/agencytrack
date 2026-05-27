@@ -24,23 +24,41 @@ G1 (walking skeleton) is the current PR (FOUNDATION GATE). Remaining slices:
 - Loans/Debt panel → separate total shown.
 - All three patch `subCalculators.*` + recalculate affected group totals.
 
-**G5 — Privacy Model + Consent** (**G5 lands PR-open for review like G1**)
-- Blocking consent modal on first `createMoneyNeeds` call (names UM + BM from user doc).
-- `visibility` toggle in panel footer ("Shared with X and Y · Change").
-- `shareWithSm` toggle for BM user docs.
-- Rules arms: UM/BM `get` checks `resource.data.visibility != 'private'`; two separate `allow get` declarations (not OR-combined) to avoid collectionGroup static-analysis rejection (banked pattern from I1.2).
-- Manager-read audit subcollection write on every manager `get`.
+**G5 — Privacy Model + Consent** — ✅ DONE PR #354 (`f200bc6`). true-ownership rules (owner get/list/update via match-level `agentId` var); BM branch-scoping via `users/{agentId}` branchId lookup; UM/BM `get` allowed when `visibility != 'private'` (two separate `allow get` declarations per I1.2 banked pattern); `updateVisibility` service method; visibility toggle footer; `shareWithSm` toggle; manager-read audit subcollection. 31/31 emulator rules tests; vitest green; lint 0; build clean.
 
-**G6 — Commission Targets + Send to Playground**
-- `firstYearCommissionsRequired` = `totalAnnualPreTax − estimatedRenewalIncome.total`.
-- `firstYearCommissionsTargets` split by product line.
-- "Send to Playground" button: copy `firstYearCommissionsTargets.life` → CommissionPlayground income goal (bridging mechanism TBD at brief time — prop or shared state).
+**G6 — Commission Targets + Send to Playground** — ✅ DONE PR #350 (`2eac4c2`).
 
-**G7 — Soft Validation + PAYE Refresh Banner**
-- On Personal Commitment save in `goalsService`: fetch `moneyNeeds/{year}` and compare to `firstYearCommissionsRequired`; show nudge dialog if commitment < need (nudge, not block).
-- Hard banner on existing worksheets when tenant `payeFormula` version changes; "Refresh PAYE Calculation" button re-runs `grossFromNet` + patches doc.
+**G7 — Soft Validation + PAYE Refresh Banner** — ✅ DONE PR #352 (`a14e64a`).
 
-**Sequencing note:** G5 must precede G6 (privacy model must be solid before sharing targets with managers). G7 is last (touches `goalsService` + tenant config change detection).
+**Track G build complete.** All slices G1 (#343) → G2 (#344) → G3 (#346) → G4 (#348) → G6 (#350) → G7 (#352) → G5 (#354) shipped. Manager-read live-smoke (aligned UM/BM credential in `tatillife_south`) pending — no aligned test credential found in `.env.local`; banked as LOW FU below.
+
+---
+
+## moneyNeeds `shareWithSm` owner-update arm is UI-gated only — no rule enforcement (LOW, banked 2026-05-27)
+
+**Scope:** `updateVisibility` in `moneyNeedsService.js` accepts a `shareWithSm` boolean and patches it onto the worksheet doc. The Firestore update rule for the owner arm (`request.auth.uid == agentId`) does not restrict which fields may be set — an owner could set `shareWithSm: true` via a raw `updateDoc` call without going through the UI toggle. The UI gate is the only enforcement today.
+
+**Action:** When manager-owned worksheets ship (Track G extension or beyond), harden the update arm to enforce that only a BM can set `shareWithSm` — e.g., add `(!affectedKeys().hasAny(['shareWithSm']) || isRole('branch_manager'))` to the owner update predicate. Until manager-owned worksheets exist, the UI gate is sufficient: no BM-authored worksheet path exists, so the only actor who could self-set `shareWithSm` is the owning agent, and sharing their own data upstream has negligible privacy impact.
+
+**Priority:** LOW. Owner-only update arm means no cross-user exploit. Harden when manager-owned worksheets ship.
+
+Banked: G5 PR #354 (`f200bc6`), 2026-05-27.
+
+---
+
+## G5 — manager-read live-smoke pending (LOW, banked 2026-05-27)
+
+**Scope:** G5 emulator proved 31/31 (ALLOW + DENY matrix including manager-read-when-shared ALLOW and manager-read-when-private DENY). A production live-smoke with a real aligned UM or BM credential reading a shared agent worksheet was not run — `.env.local` has no `A11Y_UNIT_MANAGER_*` or `A11Y_BRANCH_MANAGER_*` credential aligned to the `tatillife_south` tenant's test agent (`kelsean@gmail.com`, unitId/branchId resolvable from their user doc).
+
+**Action (when ready):**
+1. Seed an aligned UM and BM test account in `tatillife_south` (or confirm whether `kelsean@gmail.com`'s unitId has an existing UM already).
+2. Add `A11Y_UNIT_MANAGER_EMAIL` / `A11Y_UNIT_MANAGER_PASSWORD` and `A11Y_BRANCH_MANAGER_EMAIL` / `A11Y_BRANCH_MANAGER_PASSWORD` to `.env.local`.
+3. Run smoke: agent toggles visibility → SHARED; log in as UM → read agent's worksheet → assert ALLOW; log in as BM → assert ALLOW; toggle back to PRIVATE; assert UM/BM read → DENY. Also: log in as TA → assert TA read → DENY (TA is not in the manager-read grant — only UM + BM per branchId scope).
+4. Close this FU.
+
+**Priority:** LOW. Emulator 31/31 covers the rules logic end-to-end. Live-smoke is belt-and-suspenders confirmation under production Firestore evaluation.
+
+Banked: G5 post-merge fill, 2026-05-27.
 
 ---
 
