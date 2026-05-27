@@ -365,7 +365,7 @@ async function main() {
 
         await agentPage.getByRole('button', { name: /confirm/i }).click();
         await agentPage.locator('h3', { hasText: /Update Status/i })
-          .waitFor({ state: 'detached', timeout: 15000 }).catch(() => {});
+          .waitFor({ state: 'detached', timeout: 15000 });
         await agentPage.waitForTimeout(1000);
         await ss(agentPage, 'leg3-post-transition');
         pass('leg3-submitted', 'Confirm clicked, modal closed');
@@ -374,9 +374,12 @@ async function main() {
         await agentPage.waitForTimeout(800);
         await navigateAgentTab(agentPage, 'policy-ledger');
         await agentPage.locator(`text=${TAG_A}`).waitFor({ timeout: 12000 });
-        const smokeCard2    = agentPage.locator('div').filter({ hasText: TAG_A }).first();
-        const settledVisible = await smokeCard2.locator('text=Settled')
-          .isVisible({ timeout: 5000 }).catch(() => false);
+        const smokeCard2 = agentPage.locator('div').filter({ hasText: TAG_A }).first();
+        let settledVisible = false;
+        try {
+          await smokeCard2.locator('text=Settled').waitFor({ timeout: 15000 });
+          settledVisible = true;
+        } catch { /* badge didn't appear within 15s */ }
         await ss(agentPage, 'leg3-post-reload');
         if (settledVisible) {
           pass('leg3-reload-settled', '"Settled" badge visible after hard reload');
