@@ -54,6 +54,11 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.unitId;
     }
 
+    // Analogous to callerUnitId — reads caller's branchId for BM branch-scoped rules.
+    function callerBranchId(tenantId) {
+      return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.branchId;
+    }
+
     // H1.2: legal agent transition guard — mirrors src/constants/policyLifecycle.js.
     // Lapsed is explicitly denied (H2). Terminal states (ntu/denied/settled) have no
     // outbound entries, so the OR chain naturally returns false for them.
@@ -1061,16 +1066,37 @@ service cloud.firestore {
         allow list: if false;
       }
 
-      // G1: Money Needs Worksheet — agent-only (own create/get/update).
-      // No manager read arm in G1 — all manager visibility, consent, audit,
-      // and sharing are deferred to G5 (opt-in privacy model).
-      // visibility defaults to 'private' (off). Sharing is built in G5.
+      // G5: Money Needs Worksheet — agent-own + manager-read arms (opt-in consent model).
+      // True-ownership: uid match only. No canAccessOwn (avoids TA/PA blanket-read).
+      // TA and platform_admin have no read arm — moneyNeeds is agent-private by design.
       match /users/{uid}/moneyNeeds/{year} {
-        allow get: if canAccessOwn(tenantId, uid);
-        allow list: if canAccessOwn(tenantId, uid);
-        allow create: if canAccessOwn(tenantId, uid)
+        // Owner: strict uid match (no TA/PA elevation)
+        allow get, list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
+
+        // UM: read if shared AND same unit
+        allow get, list: if canManage(tenantId)
+          && getRole() == 'unit_manager'
+          && resource.data.visibility == 'shared'
+          && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(uid)).data.unitId == callerUnitId(tenantId);
+
+        // BM: read if shared AND same branch
+        allow get, list: if canManage(tenantId)
+          && getRole() == 'branch_manager'
+          && resource.data.visibility == 'shared'
+          && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(uid)).data.branchId == callerBranchId(tenantId);
+
+        // SM: read if shareWithSm (tenant-wide)
+        allow get, list: if canManage(tenantId)
+          && getRole() == 'sales_manager'
+          && resource.data.shareWithSm == true;
+
+        // Create: agent-only, must start private (isAgent guards against manager self-creation)
+        allow create: if isAgent() && getTenantId() == tenantId && request.auth.uid == uid
           && request.resource.data.visibility == 'private';
-        allow update: if canAccessOwn(tenantId, uid);
+
+        // Update: owner only (agent controls visibility and shareWithSm)
+        allow update: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
+
         allow delete: if false;
       }
 
