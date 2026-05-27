@@ -374,10 +374,15 @@ async function main() {
         await agentPage.waitForTimeout(800);
         await navigateAgentTab(agentPage, 'policy-ledger');
         await agentPage.locator(`text=${TAG_A}`).waitFor({ timeout: 12000 });
-        const smokeCard2 = agentPage.locator('div').filter({ hasText: TAG_A }).first();
         let settledVisible = false;
         try {
-          await smokeCard2.locator('text=Settled').waitFor({ timeout: 15000 });
+          // Scope to .card elements to avoid broad 'div' ancestor matching;
+          // filter({ hasText }) is more reliable than .locator('text=') on deep chains.
+          await agentPage
+            .locator('.card')
+            .filter({ hasText: TAG_A })
+            .filter({ hasText: 'Settled' })
+            .waitFor({ timeout: 15000 });
           settledVisible = true;
         } catch { /* badge didn't appear within 15s */ }
         await ss(agentPage, 'leg3-post-reload');
