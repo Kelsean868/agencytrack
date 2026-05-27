@@ -204,6 +204,26 @@ async function main() {
     });
   });
 
+  // ── isPinned (F2.1a) ──────────────────────────────────────────────────────
+
+  // 12. Author (um1) sets isPinned: true on own note — ALLOW (new field in hasOnly)
+  await run('12. Author sets isPinned: true on own note [ALLOW — F2.1a]', true, () => {
+    const db = testEnv.authenticatedContext('um1', authToken('unit_manager')).firestore();
+    return updateDoc(noteRef(db, 'note_um'), { isPinned: true, updatedAt: new Date() });
+  });
+
+  // 13. Non-author (um2) tries to set isPinned on another's note — DENY (author gate)
+  await run('13. Non-author sets isPinned on note [DENY — author gate]', false, () => {
+    const db = testEnv.authenticatedContext('um2', authToken('unit_manager')).firestore();
+    return updateDoc(noteRef(db, 'note_um'), { isPinned: true, updatedAt: new Date() });
+  });
+
+  // 14. Author (um1) bundles isPinned with a disallowed field — DENY (hasOnly violation)
+  await run('14. Author bundles isPinned + disallowed field [DENY — hasOnly violation]', false, () => {
+    const db = testEnv.authenticatedContext('um1', authToken('unit_manager')).firestore();
+    return updateDoc(noteRef(db, 'note_um'), { isPinned: false, agentId: 'tampered', updatedAt: new Date() });
+  });
+
   // ── Report ────────────────────────────────────────────────────────────────
 
   console.log('── Results ──────────────────────────────────────────────');
