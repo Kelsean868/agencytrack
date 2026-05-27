@@ -8,7 +8,7 @@
 // NOT a prospect pipeline or CRM.
 
 import React, { useCallback, useEffect, useState } from 'react';
-import { UserSearch, Pencil, Check, Plus, ChevronDown } from 'lucide-react';
+import { UserSearch, Pencil, Check, Plus, ChevronDown, FileText } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   addProspectInfo,
@@ -41,7 +41,7 @@ function toggleObjection(arr, value) {
   return arr.includes(value) ? arr.filter((v) => v !== value) : [...arr, value];
 }
 
-function PrepCard({ prep, isAuthor, onSaved }) {
+function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
   const { tenantId } = useAuth();
   const [editing, setEditing] = useState(false);
   const [form, setForm]       = useState({
@@ -152,6 +152,17 @@ function PrepCard({ prep, isAuthor, onSaved }) {
                   {OBJECTION_LABEL[o] ?? o}
                 </span>
               ))}
+            </div>
+          )}
+          {isAuthor && onCreatePolicyFromPrep && (
+            <div className="pt-2 mt-1 border-t border-border">
+              <button
+                onClick={() => onCreatePolicyFromPrep(prep)}
+                className="h-9 px-3 rounded-lg text-xs font-semibold text-primary border border-primary/30 hover:bg-primary/5 transition-colors flex items-center gap-1.5 min-w-[44px]"
+                data-testid={`log-policy-btn-${prep.id}`}
+              >
+                <FileText size={13} aria-hidden="true" /> Log Policy
+              </button>
             </div>
           )}
         </div>
@@ -268,7 +279,7 @@ function PrepCard({ prep, isAuthor, onSaved }) {
   );
 }
 
-export default function ProspectInfoPanel() {
+export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
   const { user, userProfile, tenantId } = useAuth();
   const agentId     = user?.uid;
   const agentUnitId = userProfile?.unitId ?? '';
@@ -522,6 +533,7 @@ export default function ProspectInfoPanel() {
               prep={prep}
               isAuthor={prep.createdBy === agentId}
               onSaved={handleEditSaved}
+              onCreatePolicyFromPrep={onCreatePolicyFromPrep}
             />
           ))}
         </div>

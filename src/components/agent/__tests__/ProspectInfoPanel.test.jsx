@@ -209,3 +209,47 @@ describe('ProspectInfoPanel — add prep flow', () => {
     expect(dateInput).toBeRequired();
   });
 });
+
+// ── onCreatePolicyFromPrep callback tests (F3.1) ──────────────────────────────
+
+describe('ProspectInfoPanel — Log Policy CTA (F3.1)', () => {
+  const prep = {
+    id: 'p-lp',
+    agentId: 'agent1',
+    clientName: 'Alice Test',
+    clientAge: 35,
+    clientOccupation: 'Nurse',
+    prospectingSource: 'referral',
+    appointmentType: '2nd-interview',
+    objections: [],
+    policyType: 'whole-life',
+    intendedAppointmentDate: '2026-07-01',
+    createdBy: 'agent1',
+  };
+
+  it('Log Policy button visible when onCreatePolicyFromPrep is provided', async () => {
+    mockGetProspectInfo.mockResolvedValue([prep]);
+    render(<ProspectInfoPanel onCreatePolicyFromPrep={vi.fn()} />);
+    await waitFor(() => screen.getByTestId(`log-policy-btn-${prep.id}`));
+    expect(screen.getByTestId(`log-policy-btn-${prep.id}`)).toBeInTheDocument();
+  });
+
+  it('Log Policy button fires onCreatePolicyFromPrep with ownerName + sourceOfProspect', async () => {
+    mockGetProspectInfo.mockResolvedValue([prep]);
+    const callback = vi.fn();
+    render(<ProspectInfoPanel onCreatePolicyFromPrep={callback} />);
+    await waitFor(() => screen.getByTestId(`log-policy-btn-${prep.id}`));
+    fireEvent.click(screen.getByTestId(`log-policy-btn-${prep.id}`));
+    expect(callback).toHaveBeenCalledWith(expect.objectContaining({
+      clientName: 'Alice Test',
+      prospectingSource: 'referral',
+    }));
+  });
+
+  it('Log Policy button hidden when onCreatePolicyFromPrep is not provided', async () => {
+    mockGetProspectInfo.mockResolvedValue([prep]);
+    render(<ProspectInfoPanel />);
+    await waitFor(() => screen.getByText('Alice Test'));
+    expect(screen.queryByTestId(`log-policy-btn-${prep.id}`)).not.toBeInTheDocument();
+  });
+});
