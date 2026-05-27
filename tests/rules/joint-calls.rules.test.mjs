@@ -233,6 +233,26 @@ async function main() {
     ));
   });
 
+  // ── archived (F2.2) ──────────────────────────────────────────────────────
+
+  // 15. Author (um1) sets archived: true on own call — ALLOW (new field in hasOnly)
+  await run('15. Author archives own call [ALLOW — F2.2]', true, () => {
+    const db = testEnv.authenticatedContext('um1', authToken('unit_manager')).firestore();
+    return updateDoc(callRef(db, 'call_um'), { archived: true, updatedAt: new Date() });
+  });
+
+  // 16. Non-author (um2) tries to archive another's call — DENY (author gate)
+  await run('16. Non-author archives call [DENY — author gate]', false, () => {
+    const db = testEnv.authenticatedContext('um2', authToken('unit_manager')).firestore();
+    return updateDoc(callRef(db, 'call_um'), { archived: true, updatedAt: new Date() });
+  });
+
+  // 17. Author (um1) bundles archived with a disallowed field — DENY (hasOnly violation)
+  await run('17. Author bundles archived + disallowed field [DENY — hasOnly violation]', false, () => {
+    const db = testEnv.authenticatedContext('um1', authToken('unit_manager')).firestore();
+    return updateDoc(callRef(db, 'call_um'), { archived: false, agentId: 'tampered', updatedAt: new Date() });
+  });
+
   // ── Report ────────────────────────────────────────────────────────────────
 
   console.log('── Results ──────────────────────────────────────────────');

@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Phone, Pencil, Check, ChevronDown, Link2 } from 'lucide-react';
+import { Phone, Pencil, Check, ChevronDown, Link2, Archive } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   addJointCall,
   getJointCalls,
   updateJointCall,
+  archiveJointCall,
   MEETING_TYPES,
   NEEDS_COVERED,
 } from '../../services/jointCallsService';
@@ -19,7 +20,7 @@ function formatCallDate(ts) {
 const MEETING_LABEL = Object.fromEntries(MEETING_TYPES.map((m) => [m.value, m.label]));
 const NEEDS_LABEL   = Object.fromEntries(NEEDS_COVERED.map((n) => [n.value, n.label]));
 
-function CallCard({ call, isAuthor, agentId, onEditSaved, preps }) {
+function CallCard({ call, isAuthor, agentId, onEditSaved, onArchived, preps }) {
   const [editing, setEditing] = useState(false);
   const [form, setForm]       = useState({
     appointmentDate:    call.appointmentDate    ?? '',
@@ -34,9 +35,21 @@ function CallCard({ call, isAuthor, agentId, onEditSaved, preps }) {
     trainingIdentified: call.trainingIdentified ?? '',
     prospectInfoId:     call.prospectInfoId     ?? '',
   });
-  const [saving, setSaving] = useState(false);
-  const [err, setErr]       = useState('');
-  const { tenantId }        = useAuth();
+  const [saving, setSaving]       = useState(false);
+  const [archiving, setArchiving] = useState(false);
+  const [err, setErr]             = useState('');
+  const { tenantId }              = useAuth();
+
+  const archive = async () => {
+    setArchiving(true);
+    try {
+      await archiveJointCall({ tenantId, agentId, callId: call.id });
+      onArchived(call.id);
+    } catch (e) {
+      console.error('Failed to archive joint call:', e);
+      setArchiving(false);
+    }
+  };
 
   const set = (field) => (e) => {
     const v = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
@@ -96,13 +109,23 @@ function CallCard({ call, isAuthor, agentId, onEditSaved, preps }) {
           </span>
         </div>
         {isAuthor && !editing && (
-          <button
-            onClick={() => setEditing(true)}
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors"
-            aria-label="Edit joint call"
-          >
-            <Pencil size={14} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={archive}
+              disabled={archiving}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-danger hover:bg-danger/10 transition-colors disabled:opacity-40"
+              aria-label="Archive joint call"
+            >
+              <Archive size={14} />
+            </button>
+            <button
+              onClick={() => setEditing(true)}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors"
+              aria-label="Edit joint call"
+            >
+              <Pencil size={14} />
+            </button>
+          </div>
         )}
       </div>
 
@@ -352,6 +375,10 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
     setCalls((prev) => prev.map((c) => (c.id === updatedCall.id ? updatedCall : c)));
   }, []);
 
+  const handleArchived = useCallback((callId) => {
+    setCalls((prev) => prev.filter((c) => c.id !== callId));
+  }, []);
+
   return (
     <>
       {/* Call list — scrollable */}
@@ -370,7 +397,7 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
           </div>
         )}
 
-        {!loading && !error && calls.length === 0 && (
+        {!loading && !error && calls.filter((c) => !c.archived).length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 gap-2 text-ink-muted">
             <Phone size={32} className="opacity-30" aria-hidden="true" />
             <p className="text-sm">No joint-call observations yet.</p>
@@ -378,13 +405,14 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
           </div>
         )}
 
-        {!loading && !error && calls.map((call) => (
+        {!loading && !error && calls.filter((c) => !c.archived).map((call) => (
           <CallCard
             key={call.id}
             call={call}
             agentId={agentId}
             isAuthor={call.authorUid === user?.uid}
             onEditSaved={handleEditSaved}
+            onArchived={handleArchived}
             preps={preps}
           />
         ))}

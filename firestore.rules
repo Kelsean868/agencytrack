@@ -825,7 +825,7 @@ service cloud.firestore {
                'createdAt', 'updatedAt'
              ]);
 
-        // update: author may edit body-shape fields only; never authorUid/rank/audit/agent identity.
+        // update: author may edit body-shape fields or soft-archive; never authorUid/rank/audit/agent identity.
         allow update: if isManager()
           && getTenantId() == tenantId
           && resource.data.authorUid == request.auth.uid
@@ -834,7 +834,7 @@ service cloud.firestore {
                  'appointmentDate', 'appointmentTime', 'appointmentKept',
                  'nextMeetingDate', 'meetingType', 'needCovered',
                  'comments', 'saleMade', 'coachingMinutes', 'trainingIdentified',
-                 'prospectInfoId',
+                 'prospectInfoId', 'archived',
                  'updatedAt'
                ])
           && request.resource.data.meetingType in
