@@ -12,9 +12,9 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-27 (autonomous run: F3.1 + Track F polish + suite hardening; 4 PRs open #360-363) |
-| Current main HEAD | `c1362e3` (PR #359 — docs(briefs): F3.1 prospect-info → New Policy prefill kickoff brief) |
-| Active track | F3.1 + Track F Polish + Suite Hardening — PRs #360 (F3.1 prefill), #361 (isPinned), #362 (joint-call archive), #363 (suite hardening) all open, awaiting merge |
+| Last updated | 2026-05-27 (#363 merged — suite hardening; #360/#361/#362 still open pending dispatcher review) |
+| Current main HEAD | `be69658` (PR #363 — test(hardening): Phase 3 suite hardening) |
+| Active track | Track F Polish + F3.1 — PRs #360 (F3.1 prefill), #361 (isPinned), #362 (joint-call archive) open, awaiting dispatcher merge decision |
 | Next track | After merges: post-merge sequences for all 4 PRs. Then: Phase 9 SM target (5th goals layer — gap documented in FOLLOW_UPS.md), H4+ Track H extensions, Track I follow-ups. |
 | Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
@@ -117,7 +117,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 | PR #360 | feat(prospect-info): Log Policy CTA + PolicyLedgerPanel prefill (F3.1) | No | Await Kyron merge → post-merge sequence → prod smoke (prefill flow) |
 | PR #361 | feat(coaching): isPinned pin/unpin toggle (F2.1a) — rules change additive | No | Await Kyron merge → pre-merge rules deploy → post-merge sequence |
 | PR #362 | feat(joint-calls): soft-archive (F2.2) — rules change additive | No | Await Kyron merge → pre-merge rules deploy → post-merge sequence |
-| PR #363 | test(hardening): Phase 3 suite hardening (+7 lifecycle tests; weak-waitFor fixes) | No | Await Kyron merge → post-merge sequence (smoke waiveable) |
+| PR #363 | test(hardening): Phase 3 suite hardening (+7 lifecycle tests; weak-waitFor fixes) | No | ✅ MERGED (`be69658`); emulator tests for #361/#362 also added to their branches (16/16 and 20/20 green) |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 
 ---
@@ -126,6 +126,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#363](https://github.com/Kelsean868/agencytrack/pull/363) | `be69658` | test(hardening): Phase 3 suite hardening — weak-waitFor fixes (ProspectInfoPanel, PolicyReconciliationPanel), +7 policy lifecycle tests, DailyEntryModal flake fix (save-button disabled-state race). Suite 1528/1528 green. CI ×2 green. Auto-merged per dispatcher pre-authorization. |
 | [#359](https://github.com/Kelsean868/agencytrack/pull/359) | `c1362e3` | docs(briefs): F3.1 prospect-info → New Policy prefill kickoff brief. Rule 10 fulfilled; brief committed ahead of CC dispatch. Safe mappings: `clientName→ownerName`, `prospectingSource→sourceOfProspect` (exact same enum). Deferred (product decision): `policyType→policyClass`, `clientName→insuredName`, `intendedAppointmentDate→dateWritten`. |
 | [#358](https://github.com/Kelsean868/agencytrack/pull/358) | `4167af9` | fix(smoke): scope leg3-reload-settled locator to .card + hasText filter. Root cause: `locator('div').first()` resolved to outermost ancestor div (`<div id="root">`); chained `text=Settled` selector timed out despite badge being present in DOM. Fix: `.locator('.card').filter({hasText:TAG_A}).filter({hasText:'Settled'})` scopes precisely to the policy card. Diagnosis: screenshot taken after 15s timeout showed badge clearly visible — locator breadth, not timing. 3×48/48 pre-merge; post-merge sweep pending. Closes CI-stabilization leg3 flake. |
 | [#355](https://github.com/Kelsean868/agencytrack/pull/355) | `264df79` | fix(test): deflake KioskModeTab Generate toast tests with fake timers. Replaced `vi.useFakeTimers` + `vi.runAllTimers` with `vi.useFakeTimers({ shouldAdvanceTime: true })` and real async awaits; removed brittle act/timer interleaving. 10/10 locally; 1521/1521 vitest; CI green. Closes CI-stabilization cycle (alongside #356 + #357). |
@@ -246,11 +247,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **Track F polish (PRs #361, #362):** isPinned coaching note toggle (author-only Bookmark icon; `pinCoachingNote` service; useMemo sort pinned-first; `isPinned` added to rules `hasOnly` allowlist). Joint-call soft-archive (Archive button, author-only; `archiveJointCall` service; client-side filter; `archived` added to rules `hasOnly` allowlist). Both PRs require pre-merge `firebase deploy --only firestore:rules` before Kyron merges — additive rules changes. Phase 2b peer-BM scope = no-op: MasterSheet Notes button has no role gate; BMs can already read coaching notes; branch-scoped exclusion is heavier work (needs `agentBranchId` denormalization — banked in FOLLOW_UPS.md).
 
-**Suite hardening (PR #363):** Fixed 2 genuine weak-waitFor patterns (ProspectInfoPanel waiting on data text; PolicyReconciliationPanel waiting on agent names). Added 7 policy lifecycle tests covering rated→settled, rated→ntu, postponed→denied, terminal-state rejections (it.each). Suite: 1528/1528 green. a11y was already at error level — no change needed.
+**Suite hardening (PR #363 — MERGED `be69658`):** Fixed 2 genuine weak-waitFor patterns (ProspectInfoPanel waiting on data text; PolicyReconciliationPanel waiting on agent names). Added 7 policy lifecycle tests covering rated→settled, rated→ntu, postponed→denied, terminal-state rejections (it.each). DailyEntryModal flake fixed (save-button `disabled={saving || loading}` — added `waitFor(() => expect(saveBtn).not.toBeDisabled())` before click). Suite: 1528/1528 green. a11y was already at error level. CI ×2 green before auto-merge. Also added emulator test cases for #361 (isPinned: 16/16) and #362 (archived: 20/20).
 
 **Forward recon (read-only):** Phase 9 SM target — NOT implemented; full 6-point change surface documented in FOLLOW_UPS.md. H4 = agent policy-entry form (writes policies/{id} only; plan-config editor is H2 Tenant Admin). H3 flip-gate = fully implemented in AgentAwardsPanel.jsx; no parity gap at engine level; persistency backfill from settlements is correct by design.
 
-**Post-merge order:** For #361 and #362 — deploy rules FIRST (`firebase deploy --only firestore:rules`), then merge. For #360 and #363 — merge directly, run post-merge sequence. Prod smoke for #360 must exercise the prefill flow (open a saved prospect-info prep → Log Policy → confirm ownerName + sourceOfProspect pre-filled in the create form).
+**Post-merge order:** For #361 and #362 — deploy rules FIRST (`firebase deploy --only firestore:rules`), then merge. For #360 — merge directly after smoke passes, run post-merge sequence. Prod smoke for #360 must exercise the prefill flow (open a saved prospect-info prep → Log Policy → confirm ownerName + sourceOfProspect pre-filled in the create form). STOP for dispatcher review before merging #360, #361, #362.
 
 ---
 
