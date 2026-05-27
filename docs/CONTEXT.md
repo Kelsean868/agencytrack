@@ -12,9 +12,9 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-27 (#363 merged — suite hardening; #360/#361/#362 still open pending dispatcher review) |
-| Current main HEAD | `be69658` (PR #363 — test(hardening): Phase 3 suite hardening) |
-| Active track | Track F Polish + F3.1 — PRs #360 (F3.1 prefill), #361 (isPinned), #362 (joint-call archive) open, awaiting dispatcher merge decision |
+| Last updated | 2026-05-27 (#361 merged — isPinned coaching note toggle; #360/#362 still open) |
+| Current main HEAD | `332626b` (PR #361 — feat(coaching): isPinned pin/unpin toggle on coaching notes F2.1a) |
+| Active track | Track F Polish + F3.1 — PR #362 (joint-call archive) and #360 (F3.1 prefill) still open; #362 rebase + merge next |
 | Next track | After merges: post-merge sequences for all 4 PRs. Then: Phase 9 SM target (5th goals layer — gap documented in FOLLOW_UPS.md), H4+ Track H extensions, Track I follow-ups. |
 | Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
@@ -115,7 +115,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
 | PR #360 | feat(prospect-info): Log Policy CTA + PolicyLedgerPanel prefill (F3.1) | No | Await Kyron merge → post-merge sequence → prod smoke (prefill flow) |
-| PR #361 | feat(coaching): isPinned pin/unpin toggle (F2.1a) — rules change additive | No | Await Kyron merge → pre-merge rules deploy → post-merge sequence |
+| PR #361 | feat(coaching): isPinned pin/unpin toggle (F2.1a) | No | ✅ MERGED (`332626b`); post-deploy rules smoke pending (combined with #362 deploy) |
 | PR #362 | feat(joint-calls): soft-archive (F2.2) — rules change additive | No | Await Kyron merge → pre-merge rules deploy → post-merge sequence |
 | PR #363 | test(hardening): Phase 3 suite hardening (+7 lifecycle tests; weak-waitFor fixes) | No | ✅ MERGED (`be69658`); emulator tests for #361/#362 also added to their branches (16/16 and 20/20 green) |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
@@ -126,6 +126,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#361](https://github.com/Kelsean868/agencytrack/pull/361) | `332626b` | feat(coaching): isPinned pin/unpin toggle on coaching notes (F2.1a). Author-only Bookmark icon in CoachingNotesModal NoteCard; `pinCoachingNote()` in coachingNotesService; useMemo sort pinned-first by `isPinned desc, createdAt desc`; `isPinned` added to rules `hasOnly` allowlist (additive). 16/16 emulator rules tests (pin ALLOW author, pin DENY non-author, sort order). Vitest green; lint 0; build clean. Rules deploy + post-deploy smoke pending (combined with #362). |
 | [#363](https://github.com/Kelsean868/agencytrack/pull/363) | `be69658` | test(hardening): Phase 3 suite hardening — weak-waitFor fixes (ProspectInfoPanel, PolicyReconciliationPanel), +7 policy lifecycle tests, DailyEntryModal flake fix (save-button disabled-state race). Suite 1528/1528 green. CI ×2 green. Auto-merged per dispatcher pre-authorization. |
 | [#359](https://github.com/Kelsean868/agencytrack/pull/359) | `c1362e3` | docs(briefs): F3.1 prospect-info → New Policy prefill kickoff brief. Rule 10 fulfilled; brief committed ahead of CC dispatch. Safe mappings: `clientName→ownerName`, `prospectingSource→sourceOfProspect` (exact same enum). Deferred (product decision): `policyType→policyClass`, `clientName→insuredName`, `intendedAppointmentDate→dateWritten`. |
 | [#358](https://github.com/Kelsean868/agencytrack/pull/358) | `4167af9` | fix(smoke): scope leg3-reload-settled locator to .card + hasText filter. Root cause: `locator('div').first()` resolved to outermost ancestor div (`<div id="root">`); chained `text=Settled` selector timed out despite badge being present in DOM. Fix: `.locator('.card').filter({hasText:TAG_A}).filter({hasText:'Settled'})` scopes precisely to the policy card. Diagnosis: screenshot taken after 15s timeout showed badge clearly visible — locator breadth, not timing. 3×48/48 pre-merge; post-merge sweep pending. Closes CI-stabilization leg3 flake. |
