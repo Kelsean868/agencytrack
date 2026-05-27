@@ -118,12 +118,12 @@ describe('PolicyReconciliationPanel', () => {
     setupBM();
     hoisted.getPoliciesForManager.mockResolvedValue([makePolicy(), makePolicyB()]);
     render(<PolicyReconciliationPanel />);
-    await waitFor(() => expect(screen.getByTestId('policy-groups')).toBeInTheDocument());
-    // Agent name from the user map
+    await waitFor(() => {
+      expect(screen.getByText('Alice Agent')).toBeInTheDocument();
+      expect(screen.getByText('Bob Agent')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('agent-group-agent-a')).toBeInTheDocument();
     expect(screen.getByTestId('agent-group-agent-b')).toBeInTheDocument();
-    expect(screen.getByText('Alice Agent')).toBeInTheDocument();
-    expect(screen.getByText('Bob Agent')).toBeInTheDocument();
   });
 
   it('side-by-side: agent settled API and manager input are visible in same card', async () => {
