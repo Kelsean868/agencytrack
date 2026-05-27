@@ -135,15 +135,26 @@ Banked: F2.2 PR #362 (`517e16d`), 2026-05-27.
 
 ---
 
-## Weak-waitFor audit — DailyEntryModal is a 3rd instance; project-wide sweep (LOW, banked 2026-05-27)
+## Weak-waitFor audit — project-wide sweep complete; 20+ HIGH + 14+ MEDIUM instances (LOW, banked 2026-05-27)
 
-PR #363 hardened `ProspectInfoPanel.test.jsx` and `PolicyReconciliationPanel.test.jsx` weak-waitFor patterns. `DailyEntryModal` surfaced as a 3rd instance (save-button disabled-state race) during the same PR's Phase 3a. A project-wide grep for bare `waitFor` calls without `{ timeout }` in test files would enumerate remaining candidates; strengthening them would improve CI flake resistance.
+PR #363 hardened `ProspectInfoPanel.test.jsx` and `PolicyReconciliationPanel.test.jsx`. Phase D2 sweep (2026-05-27) completed the project-wide enumeration:
 
-**Action:** `grep -r "await waitFor" src --include="*.test.*" | grep -v "timeout"` to enumerate. For each hit, determine if the default 1000ms is sufficient; apply `{ timeout: 3000 }` or promote to `findBy*` queries where appropriate.
+**HIGH severity (20+ instances) — `waitFor(() => screen.getBy...())` without `expect()` wrapper:**
+- `BranchesPanel.test.jsx:111, 129, 189, 205, 222`
+- `ProspectInfoPanel.test.jsx:68, 94, 101, 135, 158, 169, 202, 208, 235, 243, 254, 263, 277, 290`
+- `PolicyLedgerPanel.test.jsx:245, 258, 273, 289, 302, 317, 341, 349, 352, 374, 376, 390, 392, 405, 407, 424, 426`
+- `JointCallsTab.test.jsx:125, 134, 146, 193, 225, 298`
+- `CoachingNotesModal.test.jsx:164, 173, 185`
 
-**Priority:** LOW. Suite currently green. Pre-emptive CI stability hardening.
+**MEDIUM severity (14+ instances) — `await act(async () => { fireEvent.click(...); })` missing await in body; plus `{ timeout: 3000 }` patterns in `DailyEntryModal.test.jsx` and `GoalsPanel.test.jsx`.**
 
-Banked: Phase 3 suite hardening PR #363 (`be69658`), 2026-05-27.
+**Not found:** empty `waitFor(() => {})`, `waitFor({ timeout: 0 })`, `await new Promise(r => setTimeout(r, ...))` — these anti-patterns are absent. Suite is currently green.
+
+**Action:** Convert HIGH instances to `waitFor(() => expect(screen.getBy...()).toBeInTheDocument())`. Remove `act()` wrappers around `fireEvent.click()` (RTL handles this automatically). Remove hardcoded 3000ms timeouts.
+
+**Priority:** LOW. Pre-emptive CI stability hardening; no current failures.
+
+Banked: Phase 3 PR #363 (`be69658`), Phase D2 sweep 2026-05-27.
 
 ---
 

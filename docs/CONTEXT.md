@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-27 (autonomous continuation — Phase A–C complete; Phase D tail pending) |
-| Current main HEAD | `bb6ac4e` (chore(docs): Phase A complete) |
-| Active track | Phase A–D autonomous run in progress. A ✅ B ✅ C ✅. Phase D tail next: Phase 9 SM recon, weak-waitFor sweep, FOLLOW_UPS.md prune. |
-| Next track | Phase D: Phase 9 SM target recon → `docs/phase9-sm-target-recon.md`; weak-waitFor sweep; FOLLOW_UPS.md prune. After that: H4 plan config brief (10 design questions resolved by dispatcher in `docs/h4-design-questions.md`). |
+| Last updated | 2026-05-27 (autonomous run complete — Phases A–D all done) |
+| Current main HEAD | `adcd93e` (chore(docs): Phase B+C complete) |
+| Active track | Autonomous Phase A–D run ✅ complete. All artifacts committed. |
+| Next track | H4 plan config brief (10 Qs in `docs/h4-design-questions.md` — dispatcher resolves before CC dispatch). Phase 9 SM target (6-point surface in `docs/phase9-sm-target-recon.md` + FOLLOW_UPS.md). F2.2 email-to-BM (CF needed). BOA-teardown backfill. |
 | Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
