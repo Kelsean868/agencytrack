@@ -78,14 +78,15 @@ async function main() {
     await db.doc(mnDocPath('agent-b', '2026')).set({ ...VALID_PAYLOAD, uid: 'agent-b' });
     await db.doc(mnDocPath('agent-a', '2027')).set({ ...VALID_PAYLOAD, year: 2027, visibility: 'shared', shareWithSm: false }); // shared, no SM
     await db.doc(mnDocPath('agent-a', '2028')).set({ ...VALID_PAYLOAD, year: 2028, visibility: 'shared', shareWithSm: true });  // shared + SM
-    // user docs for callerUnitId + target agent unitId lookups
-    await db.doc(`tenants/${TENANT_ID}/users/agent-a`).set({ unitId: 'unit-1', role: 'agent',          tenantId: TENANT_ID });
-    await db.doc(`tenants/${TENANT_ID}/users/agent-b`).set({ unitId: 'unit-2', role: 'agent',          tenantId: TENANT_ID });
-    await db.doc(`tenants/${TENANT_ID}/users/um-same`).set({ unitId: 'unit-1', role: 'unit_manager',   tenantId: TENANT_ID });
-    await db.doc(`tenants/${TENANT_ID}/users/um-diff`).set({ unitId: 'unit-2', role: 'unit_manager',   tenantId: TENANT_ID });
-    await db.doc(`tenants/${TENANT_ID}/users/bm-1`).set({                      role: 'branch_manager', tenantId: TENANT_ID });
-    await db.doc(`tenants/${TENANT_ID}/users/sm-1`).set({                      role: 'sales_manager',  tenantId: TENANT_ID });
-    await db.doc(`tenants/${TENANT_ID}/users/ta-1`).set({                      role: 'tenant_admin',   tenantId: TENANT_ID });
+    // user docs for callerUnitId / callerBranchId + target agent field lookups
+    await db.doc(`tenants/${TENANT_ID}/users/agent-a`).set({ unitId: 'unit-1', branchId: 'branch-1', role: 'agent',          tenantId: TENANT_ID });
+    await db.doc(`tenants/${TENANT_ID}/users/agent-b`).set({ unitId: 'unit-2', branchId: 'branch-2', role: 'agent',          tenantId: TENANT_ID });
+    await db.doc(`tenants/${TENANT_ID}/users/um-same`).set({ unitId: 'unit-1',                        role: 'unit_manager',   tenantId: TENANT_ID });
+    await db.doc(`tenants/${TENANT_ID}/users/um-diff`).set({ unitId: 'unit-2',                        role: 'unit_manager',   tenantId: TENANT_ID });
+    await db.doc(`tenants/${TENANT_ID}/users/bm-1`).set(   { branchId: 'branch-1',                    role: 'branch_manager', tenantId: TENANT_ID });
+    await db.doc(`tenants/${TENANT_ID}/users/bm-diff`).set({ branchId: 'branch-2',                    role: 'branch_manager', tenantId: TENANT_ID });
+    await db.doc(`tenants/${TENANT_ID}/users/sm-1`).set({                                             role: 'sales_manager',  tenantId: TENANT_ID });
+    await db.doc(`tenants/${TENANT_ID}/users/ta-1`).set({                                             role: 'tenant_admin',   tenantId: TENANT_ID });
   });
 
   const agentADb  = testEnv.authenticatedContext('agent-a', authToken('agent')).firestore();
@@ -94,6 +95,7 @@ async function main() {
   const umSameDb  = testEnv.authenticatedContext('um-same', authToken('unit_manager')).firestore();
   const umDiffDb  = testEnv.authenticatedContext('um-diff', authToken('unit_manager')).firestore();
   const bmDb      = testEnv.authenticatedContext('bm-1',    authToken('branch_manager')).firestore();
+  const bmDiffDb  = testEnv.authenticatedContext('bm-diff', authToken('branch_manager')).firestore();
   const smDb      = testEnv.authenticatedContext('sm-1',    authToken('sales_manager')).firestore();
   const taDb      = testEnv.authenticatedContext('ta-1',    authToken('tenant_admin')).firestore();
   const anonDb    = testEnv.unauthenticatedContext().firestore();
@@ -181,24 +183,12 @@ async function main() {
     getDoc(doc(umSameDb, mnDocPath('agent-a', '2027')))
   );
 
-  await run('BM GET shared worksheet → ALLOW', true, () =>
+  await run('BM same-branch GET shared worksheet → ALLOW', true, () =>
     getDoc(doc(bmDb, mnDocPath('agent-a', '2027')))
   );
 
   await run('SM GET shareWithSm=true worksheet → ALLOW', true, () =>
     getDoc(doc(smDb, mnDocPath('agent-a', '2028')))
-  );
-
-  await run('TA GET shared worksheet → ALLOW', true, () =>
-    getDoc(doc(taDb, mnDocPath('agent-a', '2027')))
-  );
-
-  await run('TA GET shareWithSm=true worksheet → ALLOW', true, () =>
-    getDoc(doc(taDb, mnDocPath('agent-a', '2028')))
-  );
-
-  await run('BM UPDATE shareWithSm only → ALLOW', true, () =>
-    updateDoc(doc(bmDb, mnDocPath('agent-a', '2027')), { shareWithSm: true, updatedAt: 'bm-test-ts', updatedBy: 'bm-1' })
   );
 
   // ── G5 DENY — every denial case ──────────────────────────────────────────────
@@ -219,11 +209,23 @@ async function main() {
     getDoc(doc(bmDb, mnDocPath('agent-a', '2026')))
   );
 
+  await run('BM reads shared worksheet different branch → DENY', false, () =>
+    getDoc(doc(bmDiffDb, mnDocPath('agent-a', '2027')))
+  );
+
   await run('SM reads shared worksheet (shareWithSm=false) → DENY', false, () =>
     getDoc(doc(smDb, mnDocPath('agent-a', '2027')))
   );
 
-  await run('TA reads private worksheet (shareWithSm=false) → DENY', false, () =>
+  await run('TA reads shared worksheet → DENY', false, () =>
+    getDoc(doc(taDb, mnDocPath('agent-a', '2027')))
+  );
+
+  await run('TA reads shareWithSm=true worksheet → DENY', false, () =>
+    getDoc(doc(taDb, mnDocPath('agent-a', '2028')))
+  );
+
+  await run('TA reads private worksheet → DENY', false, () =>
     getDoc(doc(taDb, mnDocPath('agent-a', '2026')))
   );
 
@@ -231,7 +233,7 @@ async function main() {
     getDoc(doc(anonDb, mnDocPath('agent-a', '2027')))
   );
 
-  await run('BM UPDATE non-shareWithSm field → DENY', false, () =>
+  await run('non-owner (BM) update → DENY', false, () =>
     updateDoc(doc(bmDb, mnDocPath('agent-a', '2027')), { totalAnnualAfterTax: 99999 })
   );
 
