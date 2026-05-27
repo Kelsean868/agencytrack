@@ -188,7 +188,8 @@ describe('EditUserDrawer', () => {
       />
     );
     await waitFor(() => {
-      expect(screen.getByLabelText(/^Unit \*/i)).toBeInTheDocument();
+      const el = screen.getByLabelText(/^Unit \*/i);
+      expect(within(el).getAllByRole('option').length).toBeGreaterThan(1);
     });
     const select = screen.getByLabelText(/^Unit \*/i);
     const options = within(select).getAllByRole('option');
@@ -307,7 +308,10 @@ describe('EditUserDrawer', () => {
         onSaved={() => {}}
       />
     );
-    await waitFor(() => expect(screen.getByLabelText(/^Unit \*/i)).toBeInTheDocument());
+    await waitFor(() => {
+      const el = screen.getByLabelText(/^Unit \*/i);
+      expect(within(el).getAllByRole('option').length).toBeGreaterThan(1);
+    });
     fireEvent.change(screen.getByLabelText(/^Unit \*/i), { target: { value: 'unit-mgr-2' } });
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
 
@@ -331,7 +335,10 @@ describe('EditUserDrawer', () => {
         onSaved={onSaved}
       />
     );
-    await waitFor(() => expect(screen.getByLabelText(/^Unit \*/i)).toBeInTheDocument());
+    await waitFor(() => {
+      const el = screen.getByLabelText(/^Unit \*/i);
+      expect(within(el).getAllByRole('option').length).toBeGreaterThan(1);
+    });
     fireEvent.change(screen.getByLabelText(/^Unit \*/i), { target: { value: 'unit-mgr-2' } });
     fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
     expect(await screen.findByText(/Reassign unit\?/i)).toBeInTheDocument();

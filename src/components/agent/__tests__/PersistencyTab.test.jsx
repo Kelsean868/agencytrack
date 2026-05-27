@@ -99,8 +99,8 @@ describe('agent PersistencyTab', () => {
     ]);
     hoisted.getAvailableMonths.mockResolvedValueOnce(['2026-02', '2026-01', '2025-12']);
     render(<PersistencyTab />);
-    await waitFor(() => expect(screen.getByTestId('persistency-trend-chart')).toBeInTheDocument());
-    expect(screen.getByTestId('chart')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('chart')).toBeInTheDocument());
+    expect(screen.getByTestId('persistency-trend-chart')).toBeInTheDocument();
   });
 
   it('renders fallback message when no history', async () => {
