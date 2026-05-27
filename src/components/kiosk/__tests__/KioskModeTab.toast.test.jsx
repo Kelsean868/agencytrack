@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 
 // KioskModeTab depends on Firestore + Functions + AuthContext + useToast.
@@ -45,6 +45,10 @@ vi.mock('../../../firebase', () => ({
 import KioskModeTab from '../KioskModeTab';
 
 describe('KioskModeTab — copy toast wire-up', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     hoisted.useAuth.mockReturnValue({ tenantId: 't1' });
@@ -97,42 +101,41 @@ describe('KioskModeTab — copy toast wire-up', () => {
   });
 
   it('Generate fires a success toast on auto-copy success', async () => {
+    vi.useFakeTimers();
     const fakeFn = vi.fn().mockResolvedValue({
       data: { kioskUrl: 'https://example.com/kiosk/t1/tok2', tokenId: 'tok2' },
     });
     hoisted.httpsCallable.mockReturnValue(fakeFn);
     render(<KioskModeTab />);
-    // Wait for initial load
-    await screen.findByText(/Generate URL/);
+    // Drain initial load (getDocs + state updates)
+    await act(async () => { await vi.runAllTimersAsync(); });
+    // Click Generate and drain all 3 async hops (fn → loadTokens → writeText) + the 3000ms setCopiedId timer
     await act(async () => {
       fireEvent.click(screen.getByText('Generate URL'));
+      await vi.runAllTimersAsync();
     });
-    // Explicit timeout: handleCreate awaits fn() → loadTokens() → getDocs() → writeText()
-    // before calling showToast — three async hops that need > default 1000ms in slow CI.
-    await waitFor(() => {
-      expect(hoisted.showToast).toHaveBeenCalledWith({
-        message: 'Kiosk URL generated and copied',
-        variant: 'success',
-      });
-    }, { timeout: 3000 });
+    expect(hoisted.showToast).toHaveBeenCalledWith({
+      message: 'Kiosk URL generated and copied',
+      variant: 'success',
+    });
   });
 
   it('Generate fires a warning toast when auto-copy fails', async () => {
+    vi.useFakeTimers();
     hoisted.writeText.mockRejectedValueOnce(new Error('clipboard denied'));
     const fakeFn = vi.fn().mockResolvedValue({
       data: { kioskUrl: 'https://example.com/kiosk/t1/tok3', tokenId: 'tok3' },
     });
     hoisted.httpsCallable.mockReturnValue(fakeFn);
     render(<KioskModeTab />);
-    await screen.findByText(/Generate URL/);
+    await act(async () => { await vi.runAllTimersAsync(); });
     await act(async () => {
       fireEvent.click(screen.getByText('Generate URL'));
+      await vi.runAllTimersAsync();
     });
-    await waitFor(() => {
-      expect(hoisted.showToast).toHaveBeenCalledWith({
-        message: 'URL generated — copy failed, use the copy button',
-        variant: 'warning',
-      });
-    }, { timeout: 3000 });
+    expect(hoisted.showToast).toHaveBeenCalledWith({
+      message: 'URL generated — copy failed, use the copy button',
+      variant: 'warning',
+    });
   });
 });
