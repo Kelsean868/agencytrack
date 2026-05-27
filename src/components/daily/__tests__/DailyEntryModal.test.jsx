@@ -112,7 +112,9 @@ describe('DailyEntryModal', () => {
 
   it('save button calls saveDailyEntry with correct args', async () => {
     render(<DailyEntryModal onClose={vi.fn()} />);
+    // Button is disabled={saving || loading}; wait until loading completes before clicking.
     const saveBtn = await screen.findByRole('button', { name: /^save$/i });
+    await waitFor(() => expect(saveBtn).not.toBeDisabled());
     await act(async () => { fireEvent.click(saveBtn); });
     await waitFor(() =>
       expect(hoisted.saveDailyEntry).toHaveBeenCalledWith(
