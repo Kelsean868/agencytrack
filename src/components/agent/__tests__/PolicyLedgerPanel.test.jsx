@@ -33,10 +33,6 @@ vi.mock('../../../services/prospectInfoService', () => ({
     referral:       'Referral',
     'social-media': 'Social Media',
   },
-  SOCIAL_PLATFORMS_ATTRIBUTION: [
-    { value: 'whatsapp',  label: 'WhatsApp' },
-    { value: 'instagram', label: 'Instagram' },
-  ],
 }));
 
 vi.mock('../../../constants/policyLifecycle', () => ({

@@ -3,7 +3,8 @@ import {
   collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, Timestamp,
   writeBatch, doc,
 } from 'firebase/firestore';
-import { PROSPECTING_SOURCES, SOCIAL_PLATFORMS_ATTRIBUTION } from './prospectInfoService';
+import { PROSPECTING_SOURCES } from './prospectInfoService';
+import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../utils/prospectingConstants';
 import { isLegalAgentTransition } from '../constants/policyLifecycle';
 
 const VALID_SOURCES          = new Set(PROSPECTING_SOURCES.map((s) => s.value));
