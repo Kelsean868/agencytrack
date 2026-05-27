@@ -278,7 +278,7 @@ service cloud.firestore {
                'proposedPremium', 'proposedFrequency', 'proposedAPI',
                'proposedCoverage', 'dateWritten', 'dateSubmitted', 'notes',
                'isSelfOrFamily', 'replacedPolicyAPI',
-               'sourceOfProspect', 'cashWithApp'
+               'sourceOfProspect', 'socialPlatform', 'cashWithApp'
              ])
           && request.resource.data.sourceOfProspect in [
                'seminar', 'booth-event', 'referral', 'cold-call', 'social-media',
@@ -738,7 +738,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly([
                  'clientName', 'clientAge', 'clientOccupation',
-                 'prospectingSource', 'appointmentType', 'objections',
+                 'prospectingSource', 'socialPlatform', 'appointmentType', 'objections',
                  'policyType', 'intendedAppointmentDate', 'updatedAt'
                ])
           && request.resource.data.prospectingSource in

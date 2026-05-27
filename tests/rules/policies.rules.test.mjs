@@ -647,6 +647,40 @@ async function main() {
     )
   );
 
+  // ── socialPlatform field (PR #319) ──
+  // Arm A body-edit includes socialPlatform in the hasOnly list — must ALLOW.
+  // policy-a1 is in 'settled' status at this point (mutated by earlier transition tests),
+  // so we need a dedicated submitted-status seed doc.
+  // Use a fresh setDoc (rules disabled) then Arm A test.
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.firestore()
+      .doc(`tenants/${TENANT_ID}/policies/policy-arm-sp-submitted`)
+      .set(VALID_PAYLOAD);
+  });
+
+  await run('Arm A ALLOW: body-edit with socialPlatform field (PR #319)', true, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-arm-sp-submitted'),
+      {
+        sourceOfProspect: 'social-media',
+        socialPlatform:   'instagram',
+        ownerName:        'Social Prospect',
+        proposedAPI:      5000,
+        dateWritten:      yesterday,
+      }
+    )
+  );
+
+  await run('Arm A DENY: body-edit with socialPlatform + disallowed agentId field', false, () =>
+    updateDoc(
+      doc(agentADb, 'tenants', TENANT_ID, 'policies', 'policy-arm-sp-submitted'),
+      {
+        socialPlatform: 'facebook',
+        agentId:        'tampered-id',  // different value → diff sees it → hasOnly denies
+      }
+    )
+  );
+
   // ── Results ──
   await testEnv.cleanup();
 

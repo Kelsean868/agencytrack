@@ -3,14 +3,15 @@ import {
   collection, addDoc, getDocs, query, where, orderBy, serverTimestamp, Timestamp,
   writeBatch, doc,
 } from 'firebase/firestore';
-import { PROSPECTING_SOURCES } from './prospectInfoService';
+import { PROSPECTING_SOURCES, SOCIAL_PLATFORMS_ATTRIBUTION } from './prospectInfoService';
 import { isLegalAgentTransition } from '../constants/policyLifecycle';
 
-const VALID_SOURCES = new Set(PROSPECTING_SOURCES.map((s) => s.value));
-const VALID_PRODUCT_LINES = new Set(['life', 'ah', 'property', 'motor']);
-const VALID_NEW_BIZ_TYPES = new Set(['nb_ordinary', 'inc_ppp', 'replacement', 'spia', 'lumpsum', 'platinum_edge']);
-const VALID_POLICY_CLASSES = new Set(['whole_life', 'term', 'universal_life', 'endowment', 'annuity']);
-const VALID_FREQUENCIES = new Set(['A', 'S', 'Q', 'M']);
+const VALID_SOURCES          = new Set(PROSPECTING_SOURCES.map((s) => s.value));
+const VALID_PRODUCT_LINES    = new Set(['life', 'ah', 'property', 'motor']);
+const VALID_NEW_BIZ_TYPES    = new Set(['nb_ordinary', 'inc_ppp', 'replacement', 'spia', 'lumpsum', 'platinum_edge']);
+const VALID_POLICY_CLASSES   = new Set(['whole_life', 'term', 'universal_life', 'endowment', 'annuity']);
+const VALID_FREQUENCIES      = new Set(['A', 'S', 'Q', 'M']);
+const VALID_SOCIAL_PLATFORMS = new Set(SOCIAL_PLATFORMS_ATTRIBUTION.map((p) => p.value));
 
 function validate(data) {
   if (!data.ownerName?.trim()) throw new Error('ownerName is required');
@@ -20,6 +21,8 @@ function validate(data) {
   if (!VALID_POLICY_CLASSES.has(data.policyClass)) throw new Error('invalid policyClass');
   if (!VALID_FREQUENCIES.has(data.proposedFrequency)) throw new Error('invalid proposedFrequency');
   if (!VALID_SOURCES.has(data.sourceOfProspect)) throw new Error('invalid sourceOfProspect');
+  if (data.sourceOfProspect === 'social-media' && !data.socialPlatform) throw new Error('socialPlatform is required when source is social-media');
+  if (data.socialPlatform != null && !VALID_SOCIAL_PLATFORMS.has(data.socialPlatform)) throw new Error('invalid socialPlatform');
   if (!data.dateWritten) throw new Error('dateWritten is required');
   if (new Date(data.dateWritten) > new Date()) throw new Error('dateWritten cannot be in the future');
   if (!data.dateSubmitted) throw new Error('dateSubmitted is required');
@@ -63,6 +66,7 @@ export async function createPolicy(tenantId, agentProfile, data) {
     isSelfOrFamily: Boolean(data.isSelfOrFamily),
     replacedPolicyAPI: data.newBusinessType === 'replacement' ? (parseFloat(data.replacedPolicyAPI) || null) : null,
     sourceOfProspect: data.sourceOfProspect,
+    socialPlatform:   data.sourceOfProspect === 'social-media' ? (data.socialPlatform ?? null) : null,
     cashWithApp,
     dateIssued: null,
     policyDeliveryDate: null,

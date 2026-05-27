@@ -235,6 +235,40 @@ async function main() {
     return deleteDoc(prospectRef(db, AGENT_ID, 'prep_A1'));
   });
 
+  // ── socialPlatform field (PR #319) ────────────────────────────────────────
+
+  await run('16. AGENT creates OWN prep w/ socialPlatform (social-media source) [ALLOW]', true, () => {
+    const db = testEnv.authenticatedContext(AGENT_ID, authToken('agent')).firestore();
+    return setDoc(
+      prospectRef(db, AGENT_ID, 'prep_A_social'),
+      {
+        ...newDocFields(AGENT_ID, AGENT_UNIT),
+        prospectingSource: 'social-media',
+        socialPlatform:    'instagram',
+      },
+    );
+  });
+
+  await run('17. AGENT updates OWN prep w/ socialPlatform in affectedKeys [ALLOW]', true, () => {
+    const db = testEnv.authenticatedContext(AGENT_ID, authToken('agent')).firestore();
+    return updateDoc(prospectRef(db, AGENT_ID, 'prep_A1'), {
+      prospectingSource: 'social-media',
+      socialPlatform:    'whatsapp',
+      updatedAt:         new Date(),
+    });
+  });
+
+  await run('18. AGENT update w/ socialPlatform + disallowed agentId [DENY — hasOnly violation]', false, () => {
+    const db = testEnv.authenticatedContext(AGENT_ID, authToken('agent')).firestore();
+    // diff() only flags keys whose values actually change; use a different agentId
+    // value so it appears in affectedKeys and triggers the hasOnly denial.
+    return updateDoc(prospectRef(db, AGENT_ID, 'prep_A1'), {
+      socialPlatform: 'facebook',
+      agentId:        'tampered-id',  // different value → appears in diff → hasOnly denies
+      updatedAt:      new Date(),
+    });
+  });
+
   // ── Report ────────────────────────────────────────────────────────────────
 
   console.log('── Results ──────────────────────────────────────────────');

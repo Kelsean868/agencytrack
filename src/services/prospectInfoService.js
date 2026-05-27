@@ -52,6 +52,18 @@ export const OBJECTIONS = [
   { value: 'no-confidence', label: 'No Confidence' },
 ];
 
+// Attribution-only platforms — which social platform sourced this prospect.
+// Separate from the wizard's SOCIAL_PLATFORMS (weekly breakdown, 4 values).
+// Includes tiktok + other which the wizard does not track.
+export const SOCIAL_PLATFORMS_ATTRIBUTION = [
+  { value: 'whatsapp',   label: 'WhatsApp' },
+  { value: 'instagram',  label: 'Instagram' },
+  { value: 'facebook',   label: 'Facebook' },
+  { value: 'tiktok',     label: 'TikTok' },
+  { value: 'linkedin',   label: 'LinkedIn' },
+  { value: 'other',      label: 'Other' },
+];
+
 // Tatil product pick-list — replaces the free-text policyType field. Head-of-sales
 // confirmed 2026-05-21 (Track I spec §9). Editable as product names are verified.
 // Existing free-text policyType values in docs display verbatim via fallback in
@@ -67,10 +79,11 @@ export const POLICY_TYPES = [
   { value: 'mortgage-credit-life', label: 'Mortgage / Credit Life' },
 ];
 
-const PROSPECTING_SOURCE_VALUES = PROSPECTING_SOURCES.map((s) => s.value);
-const APPOINTMENT_TYPE_VALUES   = APPOINTMENT_TYPES.map((a) => a.value);
-const OBJECTION_VALUES          = OBJECTIONS.map((o) => o.value);
-const POLICY_TYPE_VALUES        = POLICY_TYPES.map((p) => p.value);
+const PROSPECTING_SOURCE_VALUES  = PROSPECTING_SOURCES.map((s) => s.value);
+const APPOINTMENT_TYPE_VALUES    = APPOINTMENT_TYPES.map((a) => a.value);
+const OBJECTION_VALUES           = OBJECTIONS.map((o) => o.value);
+const POLICY_TYPE_VALUES         = POLICY_TYPES.map((p) => p.value);
+const SOCIAL_PLATFORM_VALUES     = SOCIAL_PLATFORMS_ATTRIBUTION.map((p) => p.value);
 
 function prospectRef(tenantId, agentId) {
   return collection(db, `tenants/${tenantId}/users/${agentId}/prospectInfo`);
@@ -88,6 +101,7 @@ function sanitizeObjections(arr) {
 /**
  * Add a prospect-info prep record for an upcoming joint call.
  * Agent-authored: caller MUST be the agent (rule enforces; this is a client guard).
+ * socialPlatform is required when prospectingSource === 'social-media'.
  */
 export async function addProspectInfo({
   tenantId,
@@ -97,11 +111,15 @@ export async function addProspectInfo({
   clientAge,
   clientOccupation,
   prospectingSource,
+  socialPlatform,
   appointmentType,
   objections,
   policyType,
   intendedAppointmentDate,
 }) {
+  if (prospectingSource === 'social-media' && !socialPlatform) {
+    throw new Error('socialPlatform is required when source is social-media');
+  }
   await addDoc(prospectRef(tenantId, agentId), {
     agentId,
     tenantId,
@@ -111,6 +129,7 @@ export async function addProspectInfo({
     clientAge:        parseFloat(clientAge) || 0,
     clientOccupation: trim(clientOccupation, 120),
     prospectingSource,
+    socialPlatform:   prospectingSource === 'social-media' ? (socialPlatform ?? null) : null,
     appointmentType,
     objections: sanitizeObjections(objections),
     policyType: trim(policyType, 200),
@@ -123,6 +142,7 @@ export async function addProspectInfo({
 /**
  * Update an existing prospect-info record. Agent-only. Body-shape fields only.
  * The Firestore rule enforces createdBy == caller; this is an additional client guard.
+ * socialPlatform is required when prospectingSource === 'social-media'.
  */
 export async function updateProspectInfo({
   tenantId,
@@ -132,11 +152,15 @@ export async function updateProspectInfo({
   clientAge,
   clientOccupation,
   prospectingSource,
+  socialPlatform,
   appointmentType,
   objections,
   policyType,
   intendedAppointmentDate,
 }) {
+  if (prospectingSource === 'social-media' && !socialPlatform) {
+    throw new Error('socialPlatform is required when source is social-media');
+  }
   await updateDoc(
     doc(db, `tenants/${tenantId}/users/${agentId}/prospectInfo/${prospectId}`),
     {
@@ -144,6 +168,7 @@ export async function updateProspectInfo({
       clientAge:        parseFloat(clientAge) || 0,
       clientOccupation: trim(clientOccupation, 120),
       prospectingSource,
+      socialPlatform:   prospectingSource === 'social-media' ? (socialPlatform ?? null) : null,
       appointmentType,
       objections: sanitizeObjections(objections),
       policyType: trim(policyType, 200),
@@ -190,4 +215,5 @@ export {
   APPOINTMENT_TYPE_VALUES,
   OBJECTION_VALUES,
   POLICY_TYPE_VALUES,
+  SOCIAL_PLATFORM_VALUES,
 };

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2, AlertCircle, ArrowLeft, X, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/formatters';
-import { PROSPECTING_SOURCES, PROSPECTING_SOURCE_LABELS } from '../../services/prospectInfoService';
+import { PROSPECTING_SOURCES, PROSPECTING_SOURCE_LABELS, SOCIAL_PLATFORMS_ATTRIBUTION } from '../../services/prospectInfoService';
 import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory } from '../../services/policiesService';
 import {
   LEGAL_AGENT_TRANSITIONS,
@@ -74,6 +74,7 @@ const EMPTY_FORM = {
   isSelfOrFamily: false,
   replacedPolicyAPI: '',
   sourceOfProspect: '',
+  socialPlatform: null,
   cashWithApp: { collected: false, amount: '' },
 };
 
@@ -159,6 +160,9 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
         const prem = parseFloat(name === 'proposedPremium' ? value : prev.proposedPremium) || 0;
         const freq = name === 'proposedFrequency' ? value : prev.proposedFrequency;
         next.proposedAPI = prem > 0 ? String(Math.round(prem * (FREQ_MULT[freq] || 1) * 100) / 100) : '';
+      }
+      if (name === 'sourceOfProspect' && value !== 'social-media') {
+        next.socialPlatform = null;
       }
       if (sameAsOwner && name === 'ownerName') next.insuredName = value;
       return next;
@@ -651,6 +655,16 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
             </select>
           </FieldGroup>
 
+          {form.sourceOfProspect === 'social-media' && (
+            <FieldGroup label="Platform" required id="socialPlatform">
+              <select id="socialPlatform" name="socialPlatform" value={form.socialPlatform ?? ''} onChange={handleChange}
+                className={selectCls} required>
+                <option value="">Select platform…</option>
+                {SOCIAL_PLATFORMS_ATTRIBUTION.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+            </FieldGroup>
+          )}
+
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 text-sm text-ink cursor-pointer min-h-[44px]">
               <input type="checkbox" checked={form.cashWithApp.collected}
@@ -691,7 +705,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
             className="flex-1 h-11 rounded-lg border border-border text-sm font-semibold text-ink-muted hover:bg-surface/70 transition-colors">
             Cancel
           </button>
-          <button type="submit" disabled={saving}
+          <button type="submit" disabled={saving || (form.sourceOfProspect === 'social-media' && !form.socialPlatform)}
             className="flex-1 h-11 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
             {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : 'Save Policy'}
           </button>
