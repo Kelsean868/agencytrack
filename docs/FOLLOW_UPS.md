@@ -125,6 +125,22 @@ Banked: Phase 3 suite hardening PR #363 (`be69658`), 2026-05-27.
 
 ---
 
+## Wizard `SOCIAL_PLATFORMS` TikTok expansion — consider adding for symmetric posts-vs-leads cross-tab (LOW, banked 2026-05-27)
+
+`StepSocialMedia.jsx` / `socialMediaConstants.js` `SOCIAL_PLATFORMS` = `['facebook', 'instagram', 'whatsapp', 'linkedin']` (4 values). The `socialPlatform` attribution field on prospect-info and policies (PR #319) uses a 6-value enum that includes `tiktok` and `other` as attribution-only options. This divergence means agents can attribute a lead to TikTok but their weekly wizard breakdown has no TikTok post-count row. When a future "leads by platform" surfacing slice crosses wizard breakdown data with `socialPlatform` attribution, TikTok and Other will have attribution counts but no posts/engagement context.
+
+**Fix shape:**
+1. Add `'tiktok'` to `SOCIAL_PLATFORMS` in `socialMediaConstants.js`.
+2. Add `tiktok: 'TikTok'` to `PLATFORM_LABELS` in `StepSocialMedia.jsx`.
+3. No wizard step changes needed — the collapsible breakdown loop already renders all `SOCIAL_PLATFORMS` entries.
+4. No rules/service changes needed — `socialPlatformBreakdown` is stored as an object with optional keys.
+
+**Priority:** LOW. Attribution capture works correctly without this. TikTok row in the wizard is a UX improvement for agents who actively post on TikTok; non-urgent until the surfacing slice (separate future PR) lands and cross-tab analysis is requested.
+
+Banked: PR #319 dispatch Phase 1 alignment, 2026-05-27.
+
+---
+
 ## moneyNeeds `shareWithSm` owner-update arm is UI-gated only — no rule enforcement (LOW, banked 2026-05-27)
 
 **Scope:** `updateVisibility` in `moneyNeedsService.js` accepts a `shareWithSm` boolean and patches it onto the worksheet doc. The Firestore update rule for the owner arm (`request.auth.uid == agentId`) does not restrict which fields may be set — an owner could set `shareWithSm: true` via a raw `updateDoc` call without going through the UI toggle. The UI gate is the only enforcement today.
