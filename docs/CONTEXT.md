@@ -12,11 +12,11 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-27 (#358 post-merge fill — leg3-reload-settled locator fix; CI stabilization fully complete) |
-| Current main HEAD | `4167af9` (PR #358 — fix(smoke): scope leg3-reload-settled locator to .card + hasText filter) |
-| Active track | Track G complete — all slices shipped (G1–G7 + G5) |
-| Next track | Operator decision pending. Candidates: Track H H4+, Track I follow-ups, Track J tenure editor, BOA teardown. |
-| Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
+| Last updated | 2026-05-27 (autonomous run: F3.1 + Track F polish + suite hardening; 4 PRs open #360-363) |
+| Current main HEAD | `c1362e3` (PR #359 — docs(briefs): F3.1 prospect-info → New Policy prefill kickoff brief) |
+| Active track | F3.1 + Track F Polish + Suite Hardening — PRs #360 (F3.1 prefill), #361 (isPinned), #362 (joint-call archive), #363 (suite hardening) all open, awaiting merge |
+| Next track | After merges: post-merge sequences for all 4 PRs. Then: Phase 9 SM target (5th goals layer — gap documented in FOLLOW_UPS.md), H4+ Track H extensions, Track I follow-ups. |
+| Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
 
@@ -114,6 +114,10 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
+| PR #360 | feat(prospect-info): Log Policy CTA + PolicyLedgerPanel prefill (F3.1) | No | Await Kyron merge → post-merge sequence → prod smoke (prefill flow) |
+| PR #361 | feat(coaching): isPinned pin/unpin toggle (F2.1a) — rules change additive | No | Await Kyron merge → pre-merge rules deploy → post-merge sequence |
+| PR #362 | feat(joint-calls): soft-archive (F2.2) — rules change additive | No | Await Kyron merge → pre-merge rules deploy → post-merge sequence |
+| PR #363 | test(hardening): Phase 3 suite hardening (+7 lifecycle tests; weak-waitFor fixes) | No | Await Kyron merge → post-merge sequence (smoke waiveable) |
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). |
 
 ---
@@ -122,6 +126,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#359](https://github.com/Kelsean868/agencytrack/pull/359) | `c1362e3` | docs(briefs): F3.1 prospect-info → New Policy prefill kickoff brief. Rule 10 fulfilled; brief committed ahead of CC dispatch. Safe mappings: `clientName→ownerName`, `prospectingSource→sourceOfProspect` (exact same enum). Deferred (product decision): `policyType→policyClass`, `clientName→insuredName`, `intendedAppointmentDate→dateWritten`. |
 | [#358](https://github.com/Kelsean868/agencytrack/pull/358) | `4167af9` | fix(smoke): scope leg3-reload-settled locator to .card + hasText filter. Root cause: `locator('div').first()` resolved to outermost ancestor div (`<div id="root">`); chained `text=Settled` selector timed out despite badge being present in DOM. Fix: `.locator('.card').filter({hasText:TAG_A}).filter({hasText:'Settled'})` scopes precisely to the policy card. Diagnosis: screenshot taken after 15s timeout showed badge clearly visible — locator breadth, not timing. 3×48/48 pre-merge; post-merge sweep pending. Closes CI-stabilization leg3 flake. |
 | [#355](https://github.com/Kelsean868/agencytrack/pull/355) | `264df79` | fix(test): deflake KioskModeTab Generate toast tests with fake timers. Replaced `vi.useFakeTimers` + `vi.runAllTimers` with `vi.useFakeTimers({ shouldAdvanceTime: true })` and real async awaits; removed brittle act/timer interleaving. 10/10 locally; 1521/1521 vitest; CI green. Closes CI-stabilization cycle (alongside #356 + #357). |
 | [#357](https://github.com/Kelsean868/agencytrack/pull/357) | `fb8c4b0` | fix(tests): harden waitFor guards against async select/chart race. PersistencyTab: wait on `chart` (data-bearing Recharts stub) before asserting `persistency-trend-chart` container. EditUserDrawer: three `Unit *` select interaction sites upgraded to `within(el).getAllByRole('option').length > 1` guard — eliminates container-before-options race that caused intermittent CI failures. Test-only; 1521/1521 vitest; lint 0; build clean. CI green ×2. Closes CI-stabilization cycle. |
@@ -235,19 +240,17 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**2026-05-25 resume run — 18 PRs shipped, continuing:** #321 (H2c lapsed — emulator 57/57, smoke 13/13), #322 (E(d) a11y), #323 (H3 PR-OPEN), #324 (H12), #325 (J2), #326 (rules persistency), #327 (hygiene getPeriodCtx), #328 (CI doc), #329 (tenure floors cleanup), #330 (UX submissions error), #332–333 (smoke harness helpers), #334 (a11y sidebar), #335 (a11y headings), #336 (kiosk hex→tokens), #337 (campaign/gap hex→Tailwind), #338 (e5-1-walk selector fixes). Two smoke-artifact policies left in prod for manual Firebase Console cleanup: `HkCEEWHETEbXOPLN4Nay` (settled, SMOKE-H2C-1779718651986), `Cs3rA54SQkdByyZzoFQO` (lapsed, SMOKE-H2C-1779718879583).
+**2026-05-27 autonomous run — F3.1 + Track F polish + suite hardening + forward recon. 4 PRs opened, all await Kyron merge.**
 
-**#319 social-capture finding (operator record):** Placed in weekly WIZARD Screen 1 only. Fields: `socialPostsTotal`, `socialEngagementTotal`, `socialInboxEnquiries`, `namesFromSocial`, `socialPlatformBreakdown {facebook,instagram,whatsapp,linkedin}` (collapsible post-count-per-platform). Lead-source-by-platform NOT included — no `socialPlatform` on any source path; `namesFromSocial` is a single aggregate count.
+**F3.1 (PR #360):** `Log Policy` CTA added to ProspectInfoPanel → opens PolicyLedgerPanel create form with `clientName→ownerName` + `prospectingSource→sourceOfProspect` prefilled. Safe mappings only (exact-same enum for source; name to owner). Deferred to product decision: `policyType→policyClass` (different taxonomies), `intendedAppointmentDate→dateWritten` (appointment date ≠ write date). Rule 10 brief committed as PR #359 (`c1362e3`) before dispatch. ALWAYS PR-OPEN — needs dispatcher merge + smoke (prefill flow).
 
-**Expected/Actual relabel (queue item 2a):** Source audit complete — no code change required. WeeklyStandardCard (PR #238) is the authoritative "Expected vs Actual" surface; other panels use semantically-correct award-domain labels.
+**Track F polish (PRs #361, #362):** isPinned coaching note toggle (author-only Bookmark icon; `pinCoachingNote` service; useMemo sort pinned-first; `isPinned` added to rules `hasOnly` allowlist). Joint-call soft-archive (Archive button, author-only; `archiveJointCall` service; client-side filter; `archived` added to rules `hasOnly` allowlist). Both PRs require pre-merge `firebase deploy --only firestore:rules` before Kyron merges — additive rules changes. Phase 2b peer-BM scope = no-op: MasterSheet Notes button has no role gate; BMs can already read coaching notes; branch-scoped exclusion is heavier work (needs `agentBranchId` denormalization — banked in FOLLOW_UPS.md).
 
-**Track G fully complete. G5 prod smoke passed 5/5 (B1 owner write-read-verify + B2 UM+BM manager-read, 2026-05-27).** G5 manager-read FU closed in FOLLOW_UPS.md. LOW FU remains: moneyNeeds `shareWithSm` is UI-gated only — harden when manager-owned worksheets ship.
+**Suite hardening (PR #363):** Fixed 2 genuine weak-waitFor patterns (ProspectInfoPanel waiting on data text; PolicyReconciliationPanel waiting on agent names). Added 7 policy lifecycle tests covering rated→settled, rated→ntu, postponed→denied, terminal-state rejections (it.each). Suite: 1528/1528 green. a11y was already at error level — no change needed.
 
-**2026-05-27 recon run confirms:** Track H lifecycle fully built (H1/H1.2/H2a/H2b/H2c/H3 all shipped, `transitionPolicyStatus()` live). Track F joint-call forms fully shipped (F1–F2–F3–F3.1–F2.1). #319 social-capture shipped in WIZARD Screen 1. No new skeleton work needed in any of these tracks. Money Needs consolidated smoke written (`scripts/verification/money-needs-consolidated-smoke.mjs`). repomix.config.json broadened. `docs/d1b-brief` stale branch deleted.
+**Forward recon (read-only):** Phase 9 SM target — NOT implemented; full 6-point change surface documented in FOLLOW_UPS.md. H4 = agent policy-entry form (writes policies/{id} only; plan-config editor is H2 Tenant Admin). H3 flip-gate = fully implemented in AgentAwardsPanel.jsx; no parity gap at engine level; persistency backfill from settlements is correct by design.
 
-**2026-05-27 CI stabilization fully complete — all four PRs merged.** #355 (`264df79`) KioskModeTab fake-timers deflake, #356 (`45f8260`) smoke leg3 modal-detach waitFor hardening, #357 (`fb8c4b0`) waitFor guards (PersistencyTab chart-before-container + EditUserDrawer options-count guard ×3 sites), #358 (`4167af9`) leg3-reload-settled locator fix. Full suite 1521/1521; CI green. Root cause of persistent 47/48 flake was locator breadth (`locator('div').first()` → root div), not timing — screenshot after timeout showed badge already present. Discipline banked in CLAUDE.md § Banked patterns. #356 modal-detach hardening is NOT redundant — guards a separate stage (modal close confirmation), independent of the badge check.
-
-**Post-merge:** Run `scripts/verification/regression-smoke-sweep.mjs` once from main to confirm 48/48 holds, then operator decides next track. Candidates: H4+ (Track H extensions — Source of Prospect, Cash with Application, Policy Delivery Date), Track I follow-ups (I2 definitional confirmation, I3 extensions), Track J J2 trailing-average career level, or BOA teardown.
+**Post-merge order:** For #361 and #362 — deploy rules FIRST (`firebase deploy --only firestore:rules`), then merge. For #360 and #363 — merge directly, run post-merge sequence. Prod smoke for #360 must exercise the prefill flow (open a saved prospect-info prep → Log Policy → confirm ownerName + sourceOfProspect pre-filled in the create form).
 
 ---
 
