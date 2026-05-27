@@ -3,6 +3,7 @@ import {
   collection, doc, addDoc, updateDoc, getDocs,
   query, where, orderBy, serverTimestamp,
 } from 'firebase/firestore';
+import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../utils/prospectingConstants';
 
 // F3 (Track F): prospect-info — agent-authored, manager-readable.
 //
@@ -52,17 +53,6 @@ export const OBJECTIONS = [
   { value: 'no-confidence', label: 'No Confidence' },
 ];
 
-// Attribution-only platforms — which social platform sourced this prospect.
-// Separate from the wizard's SOCIAL_PLATFORMS (weekly breakdown, 4 values).
-// Includes tiktok + other which the wizard does not track.
-export const SOCIAL_PLATFORMS_ATTRIBUTION = [
-  { value: 'whatsapp',   label: 'WhatsApp' },
-  { value: 'instagram',  label: 'Instagram' },
-  { value: 'facebook',   label: 'Facebook' },
-  { value: 'tiktok',     label: 'TikTok' },
-  { value: 'linkedin',   label: 'LinkedIn' },
-  { value: 'other',      label: 'Other' },
-];
 
 // Tatil product pick-list — replaces the free-text policyType field. Head-of-sales
 // confirmed 2026-05-21 (Track I spec §9). Editable as product names are verified.

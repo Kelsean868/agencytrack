@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2, AlertCircle, ArrowLeft, X, ChevronDown, ChevronUp, Info } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency } from '../../utils/formatters';
-import { PROSPECTING_SOURCES, PROSPECTING_SOURCE_LABELS, SOCIAL_PLATFORMS_ATTRIBUTION } from '../../services/prospectInfoService';
+import { PROSPECTING_SOURCES, PROSPECTING_SOURCE_LABELS } from '../../services/prospectInfoService';
+import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
 import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory } from '../../services/policiesService';
 import {
   LEGAL_AGENT_TRANSITIONS,

@@ -40,11 +40,6 @@ vi.mock('../../../services/prospectInfoService', () => ({
     'social-media':  'Social Media',
     BOA:             'Bank Referral (BOA)',
   },
-  SOCIAL_PLATFORMS_ATTRIBUTION: [
-    { value: 'whatsapp',   label: 'WhatsApp' },
-    { value: 'instagram',  label: 'Instagram' },
-    { value: 'facebook',   label: 'Facebook' },
-  ],
   APPOINTMENT_TYPES: [
     { value: '2nd-interview',     label: '2nd Interview' },
     { value: 'closing-interview', label: 'Closing Interview' },

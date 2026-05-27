@@ -19,8 +19,8 @@ import {
   APPOINTMENT_TYPES,
   OBJECTIONS,
   POLICY_TYPES,
-  SOCIAL_PLATFORMS_ATTRIBUTION,
 } from '../../services/prospectInfoService';
+import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
 
 const SOURCE_LABEL      = PROSPECTING_SOURCE_LABELS;
 const APPT_TYPE_LABEL   = Object.fromEntries(APPOINTMENT_TYPES.map((a) => [a.value, a.label]));
