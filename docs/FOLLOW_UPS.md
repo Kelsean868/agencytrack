@@ -89,17 +89,17 @@ Banked: F3.1 PR #360 (`5025901`), 2026-05-27.
 
 ---
 
-## F2.1 agent-readable joint-call summary — Phase B verification needed (MEDIUM, banked 2026-05-27)
+## F2.1 agent-readable joint-call summary — RESOLVED by design (Phase B, 2026-05-27)
 
-Phase 3c audit found agents have NO joint-calls view at all — `JointCallsTab` lives exclusively inside `CoachingNotesModal` (manager-only UI). F2.1 in CLAUDE.md and FOLLOW_UPS.md is listed as "SHIPPED — PR #250 `4fb54a7`" (BM in-app notification on joint-call submit). This shipped the NOTIFICATION to the BM, not a joint-call view for agents.
+**Finding (Phase B deep verify, 2026-05-27):** Agent visibility into joint-call observations was NEVER in scope for F2.1. By-design exclusion confirmed at three levels:
 
-**Question:** Was an agent-readable joint-call summary ever in scope for F2.1, or was F2.1 always manager/BM-facing only? The workshop roadmap §3.2 and PRD may clarify intended scope.
+1. **Workshop roadmap §3.2(a) header** explicitly states: "manager-chain visibility, agent excluded — same rule as coachingNotes."
+2. **Firestore rules** have no `canAccessOwn` arm for `jointCalls` — agents structurally cannot list or get their own observations. Rules confirmed by reading `firestore.rules` path `/tenants/{tenantId}/users/{agentId}/jointCalls/{callId}`.
+3. **"Agent-mirror dashboard"** phrase in roadmap §3.2 refers to the manager-facing `/manager/agent/:agentId` per-agent drill-down route (Track F F3+), not an agent self-view. FOLLOW_UPS.md §Track F F3+ deferred item confirms this interpretation: "The PRD's intended entry point is a `/manager/agent/:agentId` route with an agent-mirror dashboard."
 
-**Action (Phase B):** Deep verify — search all agent-side components + routes + services for any joint-call read. Check workshop roadmap doc + PRD for F2.1 agent scope. If agents should see their own observations → BUILD (Dim 1: rules-allowed READ arm must already exist; Dim 2: build view). If agent view was never in scope → close as by-design.
+F2.1 shipped correctly as BM in-app notification (PR #250 `4fb54a7`). Track F arc is complete per original scope. No build needed.
 
-**Priority:** MEDIUM. Clarifies whether there's a missing feature in pilot UX.
-
-Banked: Phase A2 audit, 2026-05-27.
+**Closed:** Phase B audit, 2026-05-27. No action required.
 
 ---
 
