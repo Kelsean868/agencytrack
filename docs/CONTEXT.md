@@ -12,8 +12,8 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-27 (G5 post-merge fill — Track G complete) |
-| Current main HEAD | `f200bc6` (PR #354 — feat(money-needs): G5 — Privacy + Opt-In Share) |
+| Last updated | 2026-05-27 (#356 post-merge fill — smoke script fix; CI stabilization in progress) |
+| Current main HEAD | `45f8260` (PR #356 — fix(smoke): harden leg3-reload-settled against timing races) |
 | Active track | Track G complete — all slices shipped (G1–G7 + G5) |
 | Next track | Operator decision pending. Candidates: Track H H4+, Track I follow-ups, Track J tenure editor, BOA teardown. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Track F deferred items (delete/archive, isPinned, peer-BM scope, full drill-down route). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#356](https://github.com/Kelsean868/agencytrack/pull/356) | `45f8260` | fix(smoke): harden leg3-reload-settled against timing races. Remove `.catch(() => {})` swallowing genuine timeouts on modal-detach `waitFor`; replace 5s `isVisible` with 15s `waitFor` for settled doc after hard reload under network variance. Script artifact only — no app code changed. Fixes 47/1/0 regression sweep flake from 2026-05-27 run. |
 | [#354](https://github.com/Kelsean868/agencytrack/pull/354) | `f200bc6` | feat(money-needs): G5 — Privacy + Opt-In Share. true-ownership rules (owner get/list/update via match-level `agentId` var); BM branch-scoping via `users/{agentId}` get for `branchId`; UM/BM `get` allowed when `visibility != 'private'`; `updateVisibility` in `moneyNeedsService.js`; visibility toggle footer in `MoneyNeedsPanel.jsx`; `shareWithSm` toggle; manager-read audit subcollection stub. 31/31 emulator rules tests (owner ALLOW matrix + manager-read-when-shared ALLOW + manager-read-when-private DENY + cross-tenant DENY). Vitest green; lint 0; build clean. |
 | [#346](https://github.com/Kelsean868/agencytrack/pull/346) | `0e47812` | feat(money-needs): Track G G3 — Expense Group Entry. `moneyNeedsService.js`: new exports — `FREQUENCY_MULTIPLIERS`, `PAYE_BRACKETS_VERSION`, `annualizeAmount()`, `computeGroupTotal()`, `computeWorksheetRollup()`, `updateExpenseGroup()` (patches `expenseGroups.{groupKey}` via `updateDoc` field-path; recomputes rollup + PAYE on every save; stamps `payeBracketsVersionId:'default-2026'` for G7). `MoneyNeedsPanel.jsx`: `ExpenseGroupAccordion` with full line-item loop (add/delete/edit with blur-save + freq-change immediate save); `PAYESummary` section (after-tax → gross → PAYE). 38 service tests (12 existing + 26 new). 1490/1490 vitest; lint 0; build clean. Smoke 5/5. No rules/index/CF change. |
 | [#344](https://github.com/Kelsean868/agencytrack/pull/344) | `59d2291` | feat(paye-engine): Track G G2 — PAYE engine. `src/utils/payeEngine.js`: `DEFAULT_PAYE_CONFIG` (T&T 2026: allowance $90,000, 25% ≤$1M chargeable, 30% above), `computePAYE(gross, config)`, `grossFromNet(net, config)`. Config-driven chargeable-bracket band walk; full-precision output. 43 unit tests covering all brief vectors, edge cases, band formulas, pivot continuity, and round-trip property. PRD §6 corrected to chargeable-income model + updated Excel formula. Lint 0; build clean. Pure math — no UI/rules/Firestore. |
@@ -241,7 +242,9 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **2026-05-27 recon run confirms:** Track H lifecycle fully built (H1/H1.2/H2a/H2b/H2c/H3 all shipped, `transitionPolicyStatus()` live). Track F joint-call forms fully shipped (F1–F2–F3–F3.1–F2.1). #319 social-capture shipped in WIZARD Screen 1. No new skeleton work needed in any of these tracks. Money Needs consolidated smoke written (`scripts/verification/money-needs-consolidated-smoke.mjs`). repomix.config.json broadened. `docs/d1b-brief` stale branch deleted.
 
-**Next:** Operator to decide next track. Candidates: H4+ (Track H extensions per PRD §7.4 column decision — Source of Prospect, Cash with Application, Policy Delivery Date), Track I follow-ups (I2 definitional confirmation, I3 extensions), Track J J2 trailing-average career level, or BOA teardown.
+**2026-05-27 CI stabilization in progress.** #356 (smoke leg3 timing fix) merged `45f8260`. Open: #355 (KioskModeTab fake-timers deflake) flaked on `PersistencyTab.test.jsx > shows trend chart container with available data` — `[data-testid="chart"]` not yet rendered when container appeared. Fix path: (1) fix `PersistencyTab.test.jsx` to wait on `chart` directly, and harden `EditUserDrawer.test.jsx` waitFor predicates at lines 190-192/310/334 to wait until options loaded; (2) open test-only PR, CI green ≥2 runs; (3) update #355 from main, re-run CI; (4) final regression sweep 3× (expect 48/48).
+
+**Next:** After CI stabilization: operator to decide next track. Candidates: H4+ (Track H extensions per PRD §7.4 column decision — Source of Prospect, Cash with Application, Policy Delivery Date), Track I follow-ups (I2 definitional confirmation, I3 extensions), Track J J2 trailing-average career level, or BOA teardown.
 
 ---
 
