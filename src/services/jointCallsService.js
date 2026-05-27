@@ -200,4 +200,15 @@ export async function updateJointCall({
   );
 }
 
+/**
+ * Soft-archive a joint-call the caller authored. The record is retained in
+ * Firestore but hidden from the manager's list view.
+ */
+export async function archiveJointCall({ tenantId, agentId, callId }) {
+  await updateDoc(
+    doc(db, `tenants/${tenantId}/users/${agentId}/jointCalls/${callId}`),
+    { archived: true, updatedAt: serverTimestamp() },
+  );
+}
+
 export { MEETING_TYPE_VALUES, NEEDS_COVERED_VALUES };
