@@ -89,6 +89,32 @@ Banked: F3.1 PR #360 (`5025901`), 2026-05-27.
 
 ---
 
+## F2.1 agent-readable joint-call summary — Phase B verification needed (MEDIUM, banked 2026-05-27)
+
+Phase 3c audit found agents have NO joint-calls view at all — `JointCallsTab` lives exclusively inside `CoachingNotesModal` (manager-only UI). F2.1 in CLAUDE.md and FOLLOW_UPS.md is listed as "SHIPPED — PR #250 `4fb54a7`" (BM in-app notification on joint-call submit). This shipped the NOTIFICATION to the BM, not a joint-call view for agents.
+
+**Question:** Was an agent-readable joint-call summary ever in scope for F2.1, or was F2.1 always manager/BM-facing only? The workshop roadmap §3.2 and PRD may clarify intended scope.
+
+**Action (Phase B):** Deep verify — search all agent-side components + routes + services for any joint-call read. Check workshop roadmap doc + PRD for F2.1 agent scope. If agents should see their own observations → BUILD (Dim 1: rules-allowed READ arm must already exist; Dim 2: build view). If agent view was never in scope → close as by-design.
+
+**Priority:** MEDIUM. Clarifies whether there's a missing feature in pilot UX.
+
+Banked: Phase A2 audit, 2026-05-27.
+
+---
+
+## H3 Phase 2 real-data parity sweep — re-run when agent has ≥10 settled policies (LOW, banked 2026-05-27)
+
+Phase A3 real-data sweep skipped: test agent `J0j4uBqzTPcfm1IlGCPyDzo27RP2` has < 10 settled policies in production (1 confirmed in previous session). No other agent found with ≥10 settled policies at time of sweep.
+
+**Action:** Re-run Phase A3 sweep against production after (a) a richer test-agent dataset is seeded via the PR-F bulk-seed tooling, or (b) the pilot launches and real production activity accumulates. Sweep command: inline REST script in session — queries `tenants/tatillife_south/policies` grouped by agentId for status=settled count; if any agent ≥10, runs `settlementShapeFromPolicies` derivation vs `settlements` collection read-only diff.
+
+**Priority:** LOW. H3 emulator parity is the primary gate; real-data sweep is validation-of-validation.
+
+Banked: Phase A3 skip, 2026-05-27.
+
+---
+
 ## F2.2 archive scope — confirm whether archived observations hide from agent's own view too (RESOLVED — confirmed by design, 2026-05-27)
 
 **Finding (Phase 3c audit, 2026-05-27):** Agents have no joint-calls view. `JointCallsTab` lives exclusively inside `CoachingNotesModal` (manager-only UI). The `calls.filter((c) => !c.archived)` at `JointCallsTab.jsx:400,408` covers the only view where observations are surfaced. No agent-facing visibility gap exists — agents cannot see F2 joint-call observations at all. Archive scope is manager-working-list-only by design and confirmed matching intent.
