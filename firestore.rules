@@ -658,12 +658,12 @@ service cloud.firestore {
                'body', 'createdAt', 'updatedAt'
              ]);
 
-        // update: author may edit their own note body/category only (no rank change, no delete).
+        // update: author may edit their own note body/category/isPinned only (no rank change, no delete).
         allow update: if isManager()
           && getTenantId() == tenantId
           && resource.data.authorUid == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
-               .hasOnly(['body', 'category', 'updatedAt'])
+               .hasOnly(['body', 'category', 'isPinned', 'updatedAt'])
           && request.resource.data.category in
                ['observation', 'goal', 'concern', 'win', 'action_item'];
 
