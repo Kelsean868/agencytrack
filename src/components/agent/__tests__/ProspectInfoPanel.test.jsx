@@ -89,8 +89,7 @@ describe('ProspectInfoPanel — list of own preps (inclusion)', () => {
   it('agent SEES their OWN prep records (inclusion semantics)', async () => {
     mockGetProspectInfo.mockResolvedValue(preps);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByTestId('prospect-info-list'));
-    expect(screen.getByText('Jane Smith')).toBeInTheDocument();
+    await waitFor(() => screen.getByText('Jane Smith'));
     expect(screen.getByText('Whole Life', { exact: false })).toBeInTheDocument();
   });
 

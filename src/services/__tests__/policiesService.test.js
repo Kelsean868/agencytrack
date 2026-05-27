@@ -293,6 +293,52 @@ describe('transitionPolicyStatus', () => {
     const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
     expect(policyPayload.status).toBe('submitted');
   });
+
+  it('rated → settled — valid; records fromStatus=rated in history', async () => {
+    await transitionPolicyStatus('t1', mockProfile, 'p1', 'rated', 'settled', {
+      dateIssued: today, settledAPI: '4800', issuedCoverage: '200000',
+      initialPremium: '400', earnedCommission: '240',
+    });
+    expect(hoisted.mockBatchCommit).toHaveBeenCalledOnce();
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.status).toBe('settled');
+    expect(policyPayload.settledAPI).toBe(4800);
+    const histPayload = hoisted.mockBatchSet.mock.calls[0][1];
+    expect(histPayload.fromStatus).toBe('rated');
+    expect(histPayload.toStatus).toBe('settled');
+  });
+
+  it('rated → ntu — valid with no required fields', async () => {
+    await transitionPolicyStatus('t1', mockProfile, 'p1', 'rated', 'ntu', {});
+    expect(hoisted.mockBatchCommit).toHaveBeenCalledOnce();
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.status).toBe('ntu');
+    const histPayload = hoisted.mockBatchSet.mock.calls[0][1];
+    expect(histPayload.fromStatus).toBe('rated');
+    expect(histPayload.toStatus).toBe('ntu');
+  });
+
+  it('postponed → denied — valid with optional reason', async () => {
+    await transitionPolicyStatus('t1', mockProfile, 'p1', 'postponed', 'denied', { reason: 'Underwriting' });
+    expect(hoisted.mockBatchCommit).toHaveBeenCalledOnce();
+    const policyPayload = hoisted.mockBatchUpdate.mock.calls[0][1];
+    expect(policyPayload.status).toBe('denied');
+    expect(policyPayload.reason).toBe('Underwriting');
+    const histPayload = hoisted.mockBatchSet.mock.calls[0][1];
+    expect(histPayload.fromStatus).toBe('postponed');
+    expect(histPayload.toStatus).toBe('denied');
+  });
+
+  it.each([
+    ['settled', 'submitted'],
+    ['settled', 'rated'],
+    ['denied',  'submitted'],
+    ['ntu',     'submitted'],
+  ])('terminal state %s → %s throws (no outbound transitions)', async (from, to) => {
+    await expect(
+      transitionPolicyStatus('t1', mockProfile, 'p1', from, to, {})
+    ).rejects.toThrow('Illegal status transition');
+  });
 });
 
 describe('confirmPolicy', () => {
