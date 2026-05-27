@@ -46,19 +46,9 @@ Banked: G5 PR #354 (`f200bc6`), 2026-05-27.
 
 ---
 
-## G5 — manager-read live-smoke pending (LOW, banked 2026-05-27)
+## G5 — manager-read live-smoke — ✅ CLOSED (2026-05-27)
 
-**Scope:** G5 emulator proved 31/31 (ALLOW + DENY matrix including manager-read-when-shared ALLOW and manager-read-when-private DENY). A production live-smoke with a real aligned UM or BM credential reading a shared agent worksheet was not run — `.env.local` has no `A11Y_UNIT_MANAGER_*` or `A11Y_BRANCH_MANAGER_*` credential aligned to the `tatillife_south` tenant's test agent (`kelsean@gmail.com`, unitId/branchId resolvable from their user doc).
-
-**Action (when ready):**
-1. Seed an aligned UM and BM test account in `tatillife_south` (or confirm whether `kelsean@gmail.com`'s unitId has an existing UM already).
-2. Add `A11Y_UNIT_MANAGER_EMAIL` / `A11Y_UNIT_MANAGER_PASSWORD` and `A11Y_BRANCH_MANAGER_EMAIL` / `A11Y_BRANCH_MANAGER_PASSWORD` to `.env.local`.
-3. Run smoke: agent toggles visibility → SHARED; log in as UM → read agent's worksheet → assert ALLOW; log in as BM → assert ALLOW; toggle back to PRIVATE; assert UM/BM read → DENY. Also: log in as TA → assert TA read → DENY (TA is not in the manager-read grant — only UM + BM per branchId scope).
-4. Close this FU.
-
-**Priority:** LOW. Emulator 31/31 covers the rules logic end-to-end. Live-smoke is belt-and-suspenders confirmation under production Firestore evaluation.
-
-Banked: G5 post-merge fill, 2026-05-27.
+**Result:** B2 smoke passed 5/5. UM (uid=XQhG6awVgaYkCFX7gnd1OYTr9zt2, aligned: UM uid == agent's `unitId`) and BM (branchId=`tatil_south`, matching agent's `branchId`) both successfully read the shared worksheet via Firestore REST. Alignment check was correct; `A11Y_UNIT_MANAGER_*` and `A11Y_BRANCH_MANAGER_*` credentials were present in `.env.local` and aligned. Script: `scripts/verification/g5-privacy-smoke.mjs`. Run: 2026-05-27, prior session (Track G close-out).
 
 ---
 

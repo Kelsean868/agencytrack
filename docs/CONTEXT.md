@@ -237,7 +237,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 **Expected/Actual relabel (queue item 2a):** Source audit complete — no code change required. WeeklyStandardCard (PR #238) is the authoritative "Expected vs Actual" surface; other panels use semantically-correct award-domain labels.
 
-**G5 merged (`f200bc6`) — Track G fully complete.** All slices G1–G7 + G5 shipped. Manager-read live-smoke (aligned UM/BM credential against production) still pending — no aligned test credential in `.env.local`; FU banked in FOLLOW_UPS.md. New LOW FU banked: moneyNeeds `shareWithSm` is UI-gated only, no rule enforcement; harden when manager-owned worksheets ship. **Next:** operator to decide next track (H4+, Track I FUs, Track J tenure editor, or BOA teardown).
+**Track G fully complete. G5 prod smoke passed 5/5 (B1 owner write-read-verify + B2 UM+BM manager-read, 2026-05-27).** G5 manager-read FU closed in FOLLOW_UPS.md. LOW FU remains: moneyNeeds `shareWithSm` is UI-gated only — harden when manager-owned worksheets ship.
+
+**2026-05-27 recon run confirms:** Track H lifecycle fully built (H1/H1.2/H2a/H2b/H2c/H3 all shipped, `transitionPolicyStatus()` live). Track F joint-call forms fully shipped (F1–F2–F3–F3.1–F2.1). #319 social-capture shipped in WIZARD Screen 1. No new skeleton work needed in any of these tracks. Money Needs consolidated smoke written (`scripts/verification/money-needs-consolidated-smoke.mjs`). repomix.config.json broadened. `docs/d1b-brief` stale branch deleted.
+
+**Next:** Operator to decide next track. Candidates: H4+ (Track H extensions per PRD §7.4 column decision — Source of Prospect, Cash with Application, Policy Delivery Date), Track I follow-ups (I2 definitional confirmation, I3 extensions), Track J J2 trailing-average career level, or BOA teardown.
 
 ---
 

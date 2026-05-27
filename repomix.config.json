@@ -11,7 +11,15 @@
     "src/**/*.css",
     "CLAUDE.md",
     "package.json",
-    "firestore.rules"
+    "firestore.rules",
+    "firestore.indexes.json",
+    "functions/index.js",
+    "functions/scripts/*.cjs",
+    "tests/rules/**/*.mjs",
+    ".env.example",
+    "docs/phase7-8-PRD.md",
+    "docs/CONTEXT.md",
+    "docs/FOLLOW_UPS.md"
   ],
   "ignore": {
     "useGitignore": true,
