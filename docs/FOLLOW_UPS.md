@@ -195,6 +195,30 @@ Banked: 2026-05-28, H3 TZ fix PR #375.
 
 ---
 
+## H3 — `validate()` raw `new Date()` date guards (LOW, banked 2026-05-28)
+
+`policiesService.js:validate()` calls `new Date(dateWritten)` / `new Date(dateSubmitted)` / `new Date(dateIssued)` for the "not in future" guard check (e.g. `if (fields.dateIssued && new Date(fields.dateIssued) > new Date())`). These guards use the raw parser, not `parseDateOnlyTT`. The consequence: a policy saved with `dateIssued = '2026-06-01'` (June 1st, TT) would have its raw-parsed Date = UTC midnight = TT 20:00 May 31. The guard `> new Date()` passes correctly (the date is in the past by the time the policy is settled), but if a future-date validation check were to run at a TT midnight boundary, it could misclassify the date as "yesterday in TT" instead of "today".
+
+**Action:** Replace the raw `new Date(dateStr)` calls inside `validate()` with `parseDateOnlyTT(dateStr)` for date-only string comparisons. Low mechanical risk — one import, three replacements.
+
+**Priority:** LOW. No observable validation bug today (guards are only used for rough "not in future" checks, not for period-key derivation). Fix in the same PR as the next policiesService maintenance work.
+
+Banked: 2026-05-28, H3 TZ fix close-out audit.
+
+---
+
+## H3 — `getTodayTT()` en-CA locale dependency note (LOW, banked 2026-05-28)
+
+`getTodayTT()` in `src/utils/dateInputs.js` uses `Intl.DateTimeFormat('en-CA', { timeZone: 'America/Port_of_Spain' }).format(new Date())`. The `en-CA` locale is used specifically because it reliably produces `YYYY-MM-DD` format — ISO date string — across all major browsers. If `en-CA` support were absent (exotic or old user-agent), the output might not be `YYYY-MM-DD`, and downstream callers that do `.substring(0, 7)` for periodKey derivation would silently produce garbage.
+
+**Action:** Add a one-time runtime guard (or a unit test) that validates `getTodayTT()` returns a 10-char string matching `/^\d{4}-\d{2}-\d{2}$/`. This is a belt-and-suspenders check — `en-CA` is part of the ECMAScript Internationalization API (mandatory since ES2015) and should be universally supported. But the guard makes the contract explicit and catches any future polyfill or SSR environment gap.
+
+**Priority:** LOW. Universal browser support for `en-CA` locale is well-established. The unit tests already validate the output format for specific dates via fake-timer clock. An explicit format-guard test is additive hardening only.
+
+Banked: 2026-05-28, H3 TZ fix close-out audit.
+
+---
+
 ## Weak-waitFor audit — FULLY RESOLVED (LOW, banked 2026-05-27)
 
 PR #363 hardened `ProspectInfoPanel.test.jsx` and `PolicyReconciliationPanel.test.jsx`. Phase D2 sweep (2026-05-27) completed the project-wide enumeration. PR #371 (`7c91670`, 2026-05-28) resolved all HIGH instances (46 total).

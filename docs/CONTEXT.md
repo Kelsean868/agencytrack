@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-28 (H3 TZ investigation PR #374 merged; H3 fix + parity PRs in progress) |
-| Current main HEAD | `c583524` (docs(h3): TT timezone investigation findings + recommendation — PR #374) |
-| Active track | H3 timezone fix (fix/h3-tt-timezone-attribution) + H3 parity hardening (feat/h3-parity-hardening) — PRs open, awaiting human review and merge |
-| Next track | Phase 9 SM target. F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. |
+| Last updated | 2026-05-28 (H3 TZ fix #375 + parity hardening #377 merged; prod smoke 3/3 ✅) |
+| Current main HEAD | `32a22ce` (feat(h3): parity harness hardening — extract derivation, hand-curated bounds, TZ edges — PR #377) |
+| Active track | H3 parity track COMPLETE. `usesPolicyLedger` flip-wiring + runbook pending (Phase C/D). |
+| Next track | `usesPolicyLedger` flip-readiness runbook + live flip capstone on test agent. Then: Phase 9 SM target. F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. |
 | Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
@@ -122,6 +122,8 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#377](https://github.com/Kelsean868/agencytrack/pull/377) | `32a22ce` | feat(h3): parity harness hardening — extract derivation, hand-curated bounds, TZ edges. Extracts `settlementShapeFromPolicies` from `policiesService.js` to `src/lib/policiesDerivation.js` (pure module, zero SDK deps) so the parity harness imports without pulling in Firebase client SDK. Replaces tautological `buildOracle` with `BOUNDARY_EXPECTATIONS` (7 hand-curated static entries) — breaks algorithm-vs-algorithm circularity. Adds `TZ_EDGE_CASES` (4 entries) exercising `parseDateOnlyTT` production path at boundary dates where UTC-midnight vs TT-midnight disagree. Persistent log output (`scripts/verification/h3-parity-<RUN_ID>.log`). 3× harness runs 3/3 PASS (h3run_1779938028883, 037001, 043915). 1601/1601 vitest; lint 0; build clean. Prod smoke 3/3 ✅ (date defaults TT-local, policy create+visible, manager reconciliation panel). Note: opened as fresh PR #377 after GitHub auto-closed stacked PR #376 on base-branch deletion. |
+| [#375](https://github.com/Kelsean868/agencytrack/pull/375) | `3d31183` | fix(h3): interpret date-only inputs as TT-local midnight (UTC+4h offset). New `parseDateOnlyTT(s)` + `getTodayTT()` in `src/utils/dateInputs.js`. Applied at 3 `Timestamp.fromDate(new Date(...))` sites in `policiesService.js` (dateWritten, dateSubmitted, dateIssued) and 1 site in `PolicyReconciliationPanel.jsx` (dateLapsed). `PolicyLedgerPanel.jsx` uses `getTodayTT()` for `today` default. 12 unit tests in `dateInputs.test.js` (boundary dates, fake-timer clock). Closes the TT-UTC split-brain bug: UTC midnight on date-only strings = TT 20:00 prior day — fixed by anchoring to 04:00Z (TT midnight). 1601/1601 vitest; lint 0; build clean. Smoke 3/3 (date defaults 1a, policy visible 1b, reconciliation panel 2). |
 | [#368](https://github.com/Kelsean868/agencytrack/pull/368) | `1f66c27` | refactor(constants): Phase 3b — move `SOCIAL_PLATFORMS_ATTRIBUTION` to `src/utils/prospectingConstants.js`. Removes cross-service import (policiesService ← prospectInfoService). All consumers updated; test mocks cleaned. 1553/1553; lint 0; build clean. Pure module-boundary cleanup. |
 | [#367](https://github.com/Kelsean868/agencytrack/pull/367) | `3d9d51b` | feat(policy-ledger): F3.1 — auto-open create form on prefill mount. `PolicyLedgerPanel` now initialises `view='create'` and `form=prefill` directly when `initialForm` is non-null; mount effect calls `onPrefillConsumed?.()` to clear parent state. Removes the extra "New Policy" click required after "Log Policy" CTA. 2 test updates; 1553/1553 vitest; lint 0; build clean. Smoke 13/13. Auto-merged per dispatcher rubric (frontend + prod smoke). |
 | [#366](https://github.com/Kelsean868/agencytrack/pull/366) | `a157eeb` | test(harness): H3 parity — settlementShapeFromPolicies vs settlements oracle. Emulator-only parity harness; 3 dimensions (Completeness, Period Attribution, Persistency periodKey); 93-doc seed (74 settled, 14 lapsed, 5 reinstated) across 24 months; all 7 boundary day types (Sun/Sat/1st/last/quarter-end/year-end/year-start); self-validation guards; cleanup in finally{}. 3×PASS (h3run_1779908859047/67456/73379). Methodology: docs/h3-parity-methodology.md. Auto-merged per dispatcher rubric. |
@@ -245,11 +247,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**PR #365 (socialPlatform attribution, capture-only) merged, rules deployed, 7/7 prod smoke green. Queue clear.**
+**H3 TZ fix + parity hardening track COMPLETE. PRs #375 and #377 merged to main `32a22ce`. Prod smoke 3/3 ✅.**
 
-`socialPlatform` field added to `prospectInfo` + `policies` docs. Conditional platform select renders in `ProspectInfoPanel` + `PolicyLedgerPanel` when `sourceOfProspect === 'social-media'` — required-when-shown, clears on source change, save disabled without platform. F3.1 prefill carries `socialPlatform` through `handleCreatePolicyFromPrep`. `SOCIAL_PLATFORMS_ATTRIBUTION` (6 values) exported from `prospectInfoService`; service-layer guards in both services. Rules `hasOnly` allowlists extended for both collections. 1553/1553 tests; rules deployed post-merge; 7/7 smoke green (create+reload, source-clear, F3.1 carry, UI guard, rules DENY).
+PR #375 (`3d31183`) fixed the TT-UTC split-brain bug: `new Date('YYYY-MM-DD')` parses as UTC midnight = TT 20:00 prior day. Fix anchors to `T04:00:00Z` (TT midnight = UTC+4h). Applied at all 4 date-input Timestamp construction sites. PR #377 (`32a22ce`) hardened the parity harness: extracted `settlementShapeFromPolicies` to a pure `src/lib/policiesDerivation.js` module (no SDK deps), replaced tautological oracle with 7 hand-curated `BOUNDARY_EXPECTATIONS`, added 4 TZ edge-case assertions via `parseDateOnlyTT`. 3× harness runs all 3/3 PASS. Note: stacked PR #376 was auto-closed by GitHub on base-branch deletion; reopened as fresh PR #377 with correct base.
 
-**Next:** No active track. Queued items: Phase 9 SM target (5th goals layer), F2.2 (email-to-BM), `needCovered` taxonomy, BOA-teardown, LOW refactor FU from #365 (SOCIAL_PLATFORMS_ATTRIBUTION shared module). See FOLLOW_UPS.md for full queue.
+**Next:** Phase C/D of H3 close-out — `usesPolicyLedger` flip-wiring source-verify + component test + live flip capstone on test agent (`J0j4uBqzTPcfm1IlGCPyDzo27RP2`), then flip-readiness runbook at `docs/runbooks/usesPolicyLedger-flip.md`. After that: Phase 9 SM target, F2.2, `needCovered` taxonomy, BOA-teardown. See FOLLOW_UPS.md for full queue.
 
 ---
 
