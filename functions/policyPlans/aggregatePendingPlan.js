@@ -64,7 +64,9 @@ exports.aggregatePendingPlan = functions.firestore
         newPending.push({
           name: data.planName.trim(),
           loggedByAgents: 1,
-          firstLoggedAt: admin.firestore.FieldValue.serverTimestamp(),
+          // Timestamp.now() — a real value, not a sentinel.
+          // FieldValue.serverTimestamp() is rejected by Firestore inside array elements during update().
+          firstLoggedAt: admin.firestore.Timestamp.now(),
           contributedPolicyIds: [policyId],
         });
       }

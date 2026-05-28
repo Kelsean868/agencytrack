@@ -53,6 +53,7 @@ describe('aggregatePendingPlan', () => {
   beforeEach(() => {
     jest.resetAllMocks();
     admin.firestore.FieldValue = { serverTimestamp: jest.fn().mockReturnValue('SERVER_TIMESTAMP') };
+    admin.firestore.Timestamp  = { now: jest.fn().mockReturnValue({ toMillis: jest.fn().mockReturnValue(1234567890) }) };
   });
 
   it('returns null when planId is set (catalog plan used)', async () => {
@@ -137,6 +138,33 @@ describe('aggregatePendingPlan', () => {
     expect(capturedUpdate.pendingReview[0].name).toBe('Eagle Rider Plan');
     expect(capturedUpdate.pendingReview[0].loggedByAgents).toBe(1);
     expect(capturedUpdate.pendingReview[0].contributedPolicyIds).toEqual(['p42']);
+  });
+
+  it('firstLoggedAt is a Timestamp value, not a server-sentinel', async () => {
+    let capturedUpdate;
+    const txGet = jest.fn().mockResolvedValue({
+      exists: true,
+      data: () => ({ plans: [], pendingReview: [] }),
+    });
+    const txUpdate = jest.fn().mockImplementation((_ref, data) => { capturedUpdate = data; });
+    const runTransaction = jest.fn().mockImplementation(async (fn) => {
+      await fn({ get: txGet, update: txUpdate });
+    });
+    const cfgDocRef = { get: jest.fn().mockResolvedValue({
+      exists: true,
+      data: () => ({ plans: [], pendingReview: [] }),
+    })};
+    admin.firestore.mockReturnValue({ doc: jest.fn().mockReturnValue(cfgDocRef), runTransaction });
+
+    await aggregatePendingPlan.run(
+      makeSnap({ planId: null, planName: 'New Pending Plan' }),
+      makeContext('t1', 'p99')
+    );
+
+    const entry = capturedUpdate.pendingReview[0];
+    // Real Timestamps expose .toMillis(); FieldValue sentinels do not.
+    expect(typeof entry.firstLoggedAt.toMillis).toBe('function');
+    expect(admin.firestore.FieldValue.serverTimestamp).not.toHaveBeenCalled();
   });
 
   it('increments loggedByAgents for existing pendingReview entry', async () => {
