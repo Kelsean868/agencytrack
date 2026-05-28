@@ -8,7 +8,7 @@ import { signOut } from '../../services/authService';
 import { getRoleLabel, formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
-import { getGoals, getCompanyMinimums, getGoalHierarchy } from '../../services/goalsService';
+import { getGoals, getCompanyMinimums, getGoalHierarchy, getSalesManagerUid } from '../../services/goalsService';
 import { getAwardsRuleset } from '../../services/awardsRulesetService';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 import { resolveWeeklyAPIFloor, FLAT_WEEKLY_API_FALLBACK } from '../../utils/tenureFloors';
@@ -310,12 +310,16 @@ export default function AgentDashboard() {
     getDailyEntry(tenantId, user.uid, today).then(setTodayDailyEntry).catch(() => {});
   };
 
-  // Fetch goal hierarchy for gap analysis
+  // Fetch goal hierarchy for gap analysis (includes SM tier when SM exists)
   useEffect(() => {
     if (!user?.uid || !tenantId) return;
     setHierarchyLoading(true);
     setHierarchyError(null);
-    getGoalHierarchy(tenantId, userProfile?.unitId ?? null, new Date().getFullYear(), user.uid)
+    getSalesManagerUid(tenantId)
+      .catch(() => null)
+      .then((smUid) =>
+        getGoalHierarchy(tenantId, userProfile?.unitId ?? null, new Date().getFullYear(), user.uid, smUid)
+      )
       .then(setHierarchy)
       .catch((e) => {
         console.error(e);

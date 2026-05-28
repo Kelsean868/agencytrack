@@ -29,9 +29,10 @@ vi.mock('../../../services/submissionService', () => ({
 }));
 
 vi.mock('../../../services/goalsService', () => ({
-  getGoals:            vi.fn().mockResolvedValue(null),
-  getCompanyMinimums:  vi.fn().mockResolvedValue(null),
-  getGoalHierarchy:    vi.fn().mockResolvedValue(null),
+  getGoals:             vi.fn().mockResolvedValue(null),
+  getCompanyMinimums:   vi.fn().mockResolvedValue(null),
+  getGoalHierarchy:     vi.fn().mockResolvedValue(null),
+  getSalesManagerUid:   vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('../../../services/awardsRulesetService', () => ({

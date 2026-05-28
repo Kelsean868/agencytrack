@@ -21,12 +21,12 @@ function pct(actual, target) {
 /**
  * computeGapAnalysis(hierarchy, ytdTotals)
  *
- * hierarchy: { companyFloor, branchTarget, unitTarget, personal }
+ * hierarchy: { companyFloor, branchTarget, salesManagerTarget, unitTarget, personal }
  * ytdTotals: { api, apps, ffiConducted, ciConducted, dials }
  */
 export function computeGapAnalysis(hierarchy, ytdTotals) {
   if (!hierarchy) return [];
-  const { companyFloor, branchTarget, unitTarget, personal } = hierarchy;
+  const { companyFloor, branchTarget, salesManagerTarget, unitTarget, personal } = hierarchy;
   const totals = ytdTotals ?? {};
 
   return METRIC_DEFS
@@ -34,10 +34,11 @@ export function computeGapAnalysis(hierarchy, ytdTotals) {
       if (required) return true;
       // Only include optional metrics if at least one level has a non-null target
       return (
-        safe(personal?.[metric])      !== null ||
-        safe(unitTarget?.[metric])    !== null ||
-        safe(branchTarget?.[metric])  !== null ||
-        safe(companyFloor?.[metric])  !== null
+        safe(personal?.[metric])             !== null ||
+        safe(unitTarget?.[metric])           !== null ||
+        safe(branchTarget?.[metric])         !== null ||
+        safe(salesManagerTarget?.[metric])   !== null ||
+        safe(companyFloor?.[metric])         !== null
       );
     })
     .map(({ metric, label, isCurrency }) => {
@@ -45,6 +46,7 @@ export function computeGapAnalysis(hierarchy, ytdTotals) {
       const personalVal = safe(personal?.[metric]);
       const unitVal     = safe(unitTarget?.[metric]);
       const branchVal   = safe(branchTarget?.[metric]);
+      const smVal       = safe(salesManagerTarget?.[metric]);
       const floorVal    = safe(companyFloor?.[metric]);
 
       return {
@@ -52,21 +54,24 @@ export function computeGapAnalysis(hierarchy, ytdTotals) {
         label,
         isCurrency,
         actual,
-        personal:     personalVal,
-        unitTarget:   unitVal,
-        branchTarget: branchVal,
-        companyFloor: floorVal,
+        personal:            personalVal,
+        unitTarget:          unitVal,
+        branchTarget:        branchVal,
+        salesManagerTarget:  smVal,
+        companyFloor:        floorVal,
         gaps: {
-          toPersonal: gap(actual, personalVal),
-          toUnit:     gap(actual, unitVal),
-          toBranch:   gap(actual, branchVal),
-          toFloor:    gap(actual, floorVal),
+          toPersonal:     gap(actual, personalVal),
+          toUnit:         gap(actual, unitVal),
+          toBranch:       gap(actual, branchVal),
+          toSalesManager: gap(actual, smVal),
+          toFloor:        gap(actual, floorVal),
         },
         pcts: {
-          ofPersonal: pct(actual, personalVal),
-          ofUnit:     pct(actual, unitVal),
-          ofBranch:   pct(actual, branchVal),
-          ofFloor:    pct(actual, floorVal),
+          ofPersonal:     pct(actual, personalVal),
+          ofUnit:         pct(actual, unitVal),
+          ofBranch:       pct(actual, branchVal),
+          ofSalesManager: pct(actual, smVal),
+          ofFloor:        pct(actual, floorVal),
         },
       };
     });

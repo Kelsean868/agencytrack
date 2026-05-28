@@ -4,10 +4,11 @@ import { computeGapAnalysis } from '../../utils/gapAnalysis';
 import { formatCurrency } from '../../utils/formatters';
 
 const LAYER_CONFIG = [
-  { key: 'personal',    pctKey: 'ofPersonal', gapKey: 'toPersonal', label: 'Personal Commitment', barClass: 'bg-primary'   },
-  { key: 'unitTarget',  pctKey: 'ofUnit',     gapKey: 'toUnit',     label: 'Unit Target',         barClass: 'bg-violet-600' },
-  { key: 'branchTarget',pctKey: 'ofBranch',   gapKey: 'toBranch',   label: 'Branch Target',       barClass: 'bg-warning'   },
-  { key: 'companyFloor',pctKey: 'ofFloor',    gapKey: 'toFloor',    label: 'Company Floor',       barClass: 'bg-danger'    },
+  { key: 'personal',           pctKey: 'ofPersonal',     gapKey: 'toPersonal',     label: 'Personal Commitment', barClass: 'bg-primary'   },
+  { key: 'unitTarget',         pctKey: 'ofUnit',         gapKey: 'toUnit',         label: 'Unit Target',         barClass: 'bg-violet-600' },
+  { key: 'branchTarget',       pctKey: 'ofBranch',       gapKey: 'toBranch',       label: 'Branch Target',       barClass: 'bg-warning'   },
+  { key: 'salesManagerTarget', pctKey: 'ofSalesManager', gapKey: 'toSalesManager', label: 'SM Target',           barClass: 'bg-amber-400', alwaysRender: true },
+  { key: 'companyFloor',       pctKey: 'ofFloor',        gapKey: 'toFloor',        label: 'Company Floor',       barClass: 'bg-danger'    },
 ];
 
 function formatValue(val, isCurrency) {
@@ -36,11 +37,11 @@ function GapBadge({ gap, target, isCurrency }) {
   );
 }
 
-function MetricSection({ row }) {
+function MetricSection({ row, smTierMissing = false }) {
   const { label, isCurrency, actual, gaps, pcts } = row;
   const actualFmt = isCurrency ? formatCurrency(Math.round(actual)) : String(Math.round(actual));
 
-  const layers = LAYER_CONFIG.filter(({ key }) => row[key] !== null);
+  const layers = LAYER_CONFIG.filter(({ key, alwaysRender }) => alwaysRender || row[key] !== null);
 
   return (
     <div className="flex flex-col gap-3">
@@ -52,11 +53,12 @@ function MetricSection({ row }) {
 
       {/* Layer bars */}
       <div className="flex flex-col gap-2">
-        {layers.map(({ key, pctKey, gapKey, label: layerLabel, barClass }) => {
+        {layers.map(({ key, pctKey, gapKey, label: layerLabel, barClass, alwaysRender }) => {
           const target    = row[key];
           const fillPct   = pcts[pctKey] ?? 0;
           const gapValue  = gaps[gapKey];
           const targetFmt = formatValue(target, isCurrency);
+          const notSet    = alwaysRender && smTierMissing;
 
           return (
             <div
@@ -73,9 +75,11 @@ function MetricSection({ row }) {
                   style={{ width: `${fillPct}%` }}
                 />
               </div>
-              <p className="text-[10px] text-ink-muted shrink-0 text-right sm:w-24">{targetFmt}</p>
+              <p className="text-[10px] text-ink-muted shrink-0 text-right sm:w-24">
+                {notSet ? 'Not set' : targetFmt}
+              </p>
               <div className="flex justify-end shrink-0 sm:w-24">
-                <GapBadge gap={gapValue} target={target} isCurrency={isCurrency} />
+                {!notSet && <GapBadge gap={gapValue} target={target} isCurrency={isCurrency} />}
               </div>
             </div>
           );
@@ -138,7 +142,7 @@ export default function GapAnalysisPanel({ hierarchy, ytdTotals, loading, error 
       {rows.map((row, i) => (
         <div key={row.metric}>
           {i > 0 && <div className="border-t border-border/50" />}
-          <MetricSection row={row} />
+          <MetricSection row={row} smTierMissing={!hierarchy?.salesManagerTarget} />
         </div>
       ))}
     </div>

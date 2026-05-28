@@ -555,6 +555,19 @@ service cloud.firestore {
           );
       }
 
+      match /salesManagerGoals/{docId} {
+        allow read: if request.auth != null
+          && request.auth.token.tenantId == tenantId;
+
+        allow write: if request.auth != null
+          && request.auth.token.tenantId == tenantId
+          && (
+            request.auth.token.role in ['platform_admin', 'tenant_admin']
+            || (request.auth.token.role == 'sales_manager'
+                && docId.matches(request.auth.uid + '_.*'))
+          );
+      }
+
       match /campaigns/{campaignId} {
         allow read: if request.auth != null
           && request.auth.token.tenantId == tenantId;
