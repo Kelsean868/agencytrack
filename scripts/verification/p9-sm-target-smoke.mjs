@@ -7,7 +7,7 @@
  *   C: SM GoalsPanel Goal Cascade → "SM Target" shows actual value (not "Not set")
  *   D: REST rule negatives — agent write → 403; SM writes other uid → 403; SM writes own → 200
  *   E: Zero console errors across all legs
- *   Cleanup: Reset SM Target to 0/0 via UI
+ *   Cleanup: REST snapshot-before + restore in finally{} (smoke-discipline Pattern B)
  *
  * Run: node scripts/verification/p9-sm-target-smoke.mjs
  */
@@ -45,6 +45,8 @@ const SM_UID      = 'da0XaHhB4wTYlXDnQmAJ6TRIPTn1';
 const YEAR        = new Date().getFullYear();
 const SM_DOC_ID   = `${SM_UID}_${YEAR}`;
 const OTHER_DOC_ID = `other-fake-uid-smoke_${YEAR}`;
+const smDocPath    = `tenants/${TENANT_ID}/salesManagerGoals/${SM_DOC_ID}`;
+const otherDocPath = `tenants/${TENANT_ID}/salesManagerGoals/${OTHER_DOC_ID}`;
 
 // Sentinel test values for Leg A (smoke does NOT collide with real production data)
 const TEST_API  = 600000;
@@ -63,6 +65,21 @@ function fail(leg, note = '') {
   results.push({ leg, status: 'FAIL', note });
   safeLog(`  ✗ [${leg}] ${note}`);
   failed++;
+}
+
+// ── Firestore REST helpers ───────────────────────────────────────────────────
+async function firestoreGetDoc(idToken, docPath) {
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`GET ${docPath} failed: HTTP ${res.status}`);
+  return res.json();
+}
+
+async function firestoreDeleteDoc(idToken, docPath) {
+  const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${docPath}`;
+  const res = await fetch(url, { method: 'DELETE', headers: { Authorization: `Bearer ${idToken}` } });
+  return res.status;
 }
 
 // ── Firebase Auth REST — get an ID token for a user ─────────────────────────
@@ -155,20 +172,77 @@ async function fillSmTargetForm(page, api, apps) {
   await appsInput.fill(String(apps));
 }
 
+// ── Smoke cleanup (always runs in finally) ───────────────────────────────────
+async function cleanupSmoke(smToken, origDocSnapshot, smokeRunId) {
+  safeLog('\n── Cleanup (finally) ──');
+  let ok = true;
+
+  try {
+    if (origDocSnapshot === null) {
+      // Doc didn't exist before — delete it entirely
+      const st = await firestoreDeleteDoc(smToken, smDocPath);
+      safeLog(`  SM target DELETE: HTTP ${st}`);
+    } else {
+      // Restore original fields; also remove smokeTestPassed field added by Leg D3
+      const origFields = origDocSnapshot.fields ?? {};
+      const fieldsToRemove = ['smokeTestPassed', 'smokeTest'];
+      const maskParams = [
+        ...Object.keys(origFields),
+        ...fieldsToRemove,
+      ].map(f => `updateMask.fieldPaths=${encodeURIComponent(f)}`).join('&');
+      const restoreUrl = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/${smDocPath}?${maskParams}`;
+      const restoreRes = await fetch(restoreUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${smToken}` },
+        body: JSON.stringify({ fields: origFields }),
+      });
+      safeLog(`  SM target RESTORE: HTTP ${restoreRes.status}`);
+      if (restoreRes.status !== 200) throw new Error(`Restore PATCH failed: HTTP ${restoreRes.status}`);
+
+      // Verify restored values
+      const afterSnap = await firestoreGetDoc(smToken, smDocPath);
+      for (const field of fieldsToRemove) {
+        if (afterSnap?.fields?.[field]) {
+          throw new Error(`Field "${field}" still present after restore`);
+        }
+      }
+      safeLog(`  SM target verify: ✓`);
+    }
+
+    // Delete OTHER_DOC_ID in case Leg D2 unexpectedly allowed the write
+    const otherSt = await firestoreDeleteDoc(smToken, otherDocPath);
+    safeLog(`  other-uid doc DELETE: HTTP ${otherSt} (404 = correctly denied in D2)`);
+
+  } catch (e) {
+    ok = false;
+    safeLog(`  Cleanup FAILED: ${e.message}  SMOKE_RUN_ID=${smokeRunId} — restore SM target manually`);
+  }
+
+  return ok;
+}
+
 // ── MAIN ─────────────────────────────────────────────────────────────────────
 async function main() {
+  const SMOKE_RUN_ID = `p9smtarget_${Date.now()}`;
+
   safeLog(`\n══════════════════════════════════════════════════════════`);
   safeLog(`Phase 9 SM Target — Production Smoke  (PR #381)`);
   safeLog(`Target: ${PROD_URL}`);
-  safeLog(`SM UID: [REDACTED — da0X…]  Year: ${YEAR}`);
+  safeLog(`SM UID: [REDACTED — da0X…]  Year: ${YEAR}  SMOKE_RUN_ID: ${SMOKE_RUN_ID}`);
   safeLog(`══════════════════════════════════════════════════════════\n`);
+
+  // Pre-fetch SM token + original doc snapshot before any writes
+  const smTokenForCleanup = await getIdToken(E.A11Y_SALES_MANAGER_EMAIL, E.A11Y_SALES_MANAGER_PASSWORD);
+  const origDocSnapshot = await firestoreGetDoc(smTokenForCleanup, smDocPath).catch(() => null);
+  safeLog(`Pre-test snapshot: ${origDocSnapshot ? 'doc exists' : 'doc does not exist'}`);
 
   const browser = await _chromium.launch({ headless: true });
   const consoleErrors = [];
+  let ctxSm, ctxAgent;
 
   try {
     // ── SM context ──────────────────────────────────────────────────────────
-    const ctxSm = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    ctxSm = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     await setupBypassSession(ctxSm, PROD_URL, E.VERCEL_BYPASS_TOKEN);
     const smPage = await ctxSm.newPage();
     const smCapture = captureConsoleAndNetwork(smPage);
@@ -189,13 +263,6 @@ async function main() {
       if (!smTabVisible) throw new Error('SM Target tab not visible for sales_manager');
 
       await clickGoalsSubTab(smPage, 'SM Target');
-
-      // Save original values for cleanup
-      const inputs = smPage.locator('.card input[type="number"]');
-      await inputs.first().waitFor({ timeout: 8000 });
-      const origApi  = await inputs.first().inputValue().catch(() => '0');
-      const origApps = await inputs.nth(1).inputValue().catch(() => '0');
-      safeLog(`  Original values: api="${origApi}", apps="${origApps}"`);
 
       // Fill test sentinel values
       await fillSmTargetForm(smPage, TEST_API, TEST_APPS);
@@ -231,10 +298,6 @@ async function main() {
       if (parseFloat(readApps) !== TEST_APPS) throw new Error(`Apps read-back mismatch: expected ${TEST_APPS}, got ${readApps}`);
 
       pass('A', `SM Target save + reload persists (api=${TEST_API}, apps=${TEST_APPS})`);
-
-      // Stash cleanup values
-      smPage._origApi  = origApi;
-      smPage._origApps = origApps;
     } catch (e) {
       fail('A', `SM Target write-read-verify: ${e.message}`);
     }
@@ -288,7 +351,7 @@ async function main() {
 
     // ── Agent context ─────────────────────────────────────────────────────────
     safeLog('\n── Leg B: Agent dashboard Goals → SM Target tier visible ──');
-    const ctxAgent = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    ctxAgent = await browser.newContext({ viewport: { width: 1440, height: 900 } });
     await setupBypassSession(ctxAgent, PROD_URL, E.VERCEL_BYPASS_TOKEN);
     const agentPage = await ctxAgent.newPage();
     agentPage.on('console', msg => {
@@ -353,9 +416,7 @@ async function main() {
 
     // ── Leg D: REST rule negatives ───────────────────────────────────────────
     safeLog('\n── Leg D: Firestore rule negatives (REST) ──');
-    const smDocPath   = `tenants/${TENANT_ID}/salesManagerGoals/${SM_DOC_ID}`;
-    const otherDocPath = `tenants/${TENANT_ID}/salesManagerGoals/${OTHER_DOC_ID}`;
-    const testField   = { smokeTest: { booleanValue: true } };
+    const testField = { smokeTest: { booleanValue: true } };
 
     try {
       // D1: Agent tries to write to SM doc → expect 403
@@ -402,32 +463,11 @@ async function main() {
       fail('E', `${realErrors.length} console error(s):\n    ${realErrors.slice(0, 5).join('\n    ')}`);
     }
 
-    // ── Cleanup: reset SM Target to original values ───────────────────────────
-    safeLog('\n── Cleanup: reset SM Target ──');
-    try {
-      await clickManagerNavItem(smPage, 'Goals');
-      await smPage.waitForSelector('[role="tablist"] [role="tab"]', { timeout: 15000 });
-      await clickGoalsSubTab(smPage, 'SM Target');
-
-      const resetApi  = smPage._origApi  || '0';
-      const resetApps = smPage._origApps || '0';
-      await fillSmTargetForm(smPage, resetApi, resetApps);
-
-      const saveBtn = smPage.locator('button:has-text("Save SM Target")').first();
-      await saveBtn.click();
-      await smPage.waitForFunction(
-        () => !Array.from(document.querySelectorAll('button')).some(b => b.textContent?.includes('Saving')),
-        { timeout: 10000 }
-      );
-      safeLog(`  SM Target reset to api="${resetApi}", apps="${resetApps}"`);
-    } catch (e) {
-      safeLog(`  Cleanup WARN: ${e.message} — SM target left at test values. Reset manually if needed.`);
-    }
-
-    await ctxSm.close();
-    await ctxAgent.close();
-
   } finally {
+    const cleanOk = await cleanupSmoke(smTokenForCleanup, origDocSnapshot, SMOKE_RUN_ID);
+    if (!cleanOk) process.exitCode = 1;
+    await ctxSm?.close().catch(() => {});
+    await ctxAgent?.close().catch(() => {});
     await browser.close();
   }
 
@@ -442,7 +482,7 @@ async function main() {
   }
   safeLog(`${'═'.repeat(60)}\n`);
 
-  process.exit(failed > 0 ? 1 : 0);
+  if (failed > 0 || process.exitCode === 1) process.exit(1);
 }
 
 main().catch(e => {
