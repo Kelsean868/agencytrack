@@ -12,11 +12,11 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-28 (H3 close-out complete — TZ fix #375, parity hardening #377, test coverage #378, flip capstone PASS, runbook shipped) |
-| Current main HEAD | `629628d` (docs(h3): flip-readiness runbook + track close-out — Phase D) |
-| Active track | H3 parity track COMPLETE (all phases A–D). |
-| Next track | Phase 9 SM target. F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip when pilot-ready (see `docs/runbooks/usesPolicyLedger-flip.md`). |
-| Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
+| Last updated | 2026-05-28 (PR #379 — Phase 9 SM target brief + design questions merged; awaiting Kyron ACK on 9 design questions before build starts) |
+| Current main HEAD | `24c9cc6` (docs(briefs): Phase 9 SM target goals layer kickoff (#379)) |
+| Active track | Phase 9 SM target — design ACK phase. Brief at `docs/briefs/phase9-sm-target-kickoff.md`. Design questions at `docs/phase9-sm-target-design-questions.md`. All 9 questions LOCKED PENDING KYRON ACK. |
+| Next track | Build starts once Kyron ACKs design questions. After Phase 9: F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip when pilot-ready. |
+| Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
 
