@@ -142,15 +142,13 @@ PR #363 hardened `ProspectInfoPanel.test.jsx` and `PolicyReconciliationPanel.tes
 **HIGH severity — RESOLVED in PR #371 (`7c91670`):**
 - `BranchesPanel.test.jsx` (5), `ProspectInfoPanel.test.jsx` (14), `PolicyLedgerPanel.test.jsx` (17), `JointCallsTab.test.jsx` (6), `CoachingNotesModal.test.jsx` (4)
 
-**MEDIUM severity (14+ instances, still open) — `await act(async () => { fireEvent.click(...); })` missing await in body; plus `{ timeout: 3000 }` patterns in `DailyEntryModal.test.jsx` and `GoalsPanel.test.jsx`.**
+**MEDIUM severity — RESOLVED in PR #372 (`70e58e6`):** `act()` wrappers removed from `DailyEntryModal.test.jsx` (3 instances) and `GoalsPanel.test.jsx` (1 instance); `{ timeout: 3000 }` removed from `DailyEntryModal.test.jsx` (3 instances).
 
-**Not found:** empty `waitFor(() => {})`, `waitFor({ timeout: 0 })`, `await new Promise(r => setTimeout(r, ...))` — these anti-patterns are absent. Suite is currently green.
+**Not found:** empty `waitFor(() => {})`, `waitFor({ timeout: 0 })`, `await new Promise(r => setTimeout(r, ...))` — these anti-patterns are absent.
 
-**Action:** Remove `act()` wrappers around `fireEvent.click()` (RTL handles this automatically). Remove hardcoded 3000ms timeouts.
+**Status: FULLY RESOLVED.** HIGH closed PR #371 (`7c91670`). MEDIUM closed PR #372 (`70e58e6`). Suite is green.
 
-**Priority:** LOW. Pre-emptive CI stability hardening; no current failures.
-
-Banked: Phase 3 PR #363 (`be69658`), Phase D2 sweep 2026-05-27. HIGH closed: PR #371 (`7c91670`) 2026-05-28.
+Banked: Phase 3 PR #363 (`be69658`), Phase D2 sweep 2026-05-27. Fully closed: 2026-05-28.
 
 ---
 
