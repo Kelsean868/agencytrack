@@ -152,6 +152,26 @@ Banked: 2026-05-28 (autonomous H4 run observation).
 
 ---
 
+## Smoke script cleanup discipline — stray policies/notifications accumulate on test agent (MEDIUM, banked 2026-05-28)
+
+**Context:** 8 stray policy docs accumulated on test agent `J0j4uBqzTPcfm1IlGCPyDzo27RP2` across the H3 arc. Origins: H2c lapse smoke (`SMOKE-H2C-*`, 2 docs with history subcollections), H3 parity smoke (`H3Smoke-Today-*`), prod smoke Leg 1b (`H3ProdSmoke-*`), and 4 earlier smoke runs (`Smoke-B/C/CY-*`, `F365-carry-*`). None cleaned up after themselves. A `policy_lapsed` notification (`sfJD3y3kiPzNOcYnJPBo`, type `policy_lapsed`, unread) was also left in `tatillife_south/notifications` from the H2c lapse smoke — dispatcher confirmed to leave in place for now.
+
+**Two problems this causes:**
+1. **Assertion pollution.** Smokes that query "all policies for the agent" (e.g. `AgentAwardsPanel` derivation, `settlementShapeFromPolicies`) pick up prior-run docs and return inflated numbers. The H3 browser capstone saw TTD 27,000 instead of the seeded 22,000 because the prod smoke's Leg 1b policy was still present.
+2. **Accumulation.** Without cleanup, each arc adds to the collection. At scale this degrades query performance and makes manual inspection harder.
+
+**Fix — two-part:**
+1. **Per-run cleanup (primary):** Any smoke script that creates policy (or notification, or settlement) docs must delete them in a `finally{}` block keyed on a per-run sentinel tag (e.g. `ownerName.startsWith(SENTINEL)`). Pattern established in `h3-flip-capstone.mjs` — extend it to all policy-creating smokes. Smokes that transition policy status must also delete history subcollection docs for each policy.
+2. **Scoped assertions:** Smoke assertions on "agent's policies" must filter to the per-run sentinel, not rely on the collection being clean. E.g. `query.where('ownerName', '>=', SENTINEL).where('ownerName', '<=', SENTINEL + '')` or read-by-ID after seeding.
+
+**Scripts to audit and retrofit:** `h3-prod-smoke.mjs` (Leg 1b creates a policy, no cleanup), any future smoke that calls `createPolicy` or `lapsePolicy`. Grep: `git grep -l "createPolicy\|lapsePolicy\|addPolicy" scripts/verification/`.
+
+**Priority:** MEDIUM. Not blocking — accumulation is slow and manual cleanup is possible (as done 2026-05-28). But the assertion-pollution vector is real: the browser capstone almost failed a valid assertion because of a $5,000 stray policy.
+
+Banked: 2026-05-28 (H3 close-out cleanup, 8 docs deleted).
+
+---
+
 ## H4 — contributedPolicyIds array growth on long-lived pending entries (LOW, banked 2026-05-28)
 
 `aggregatePendingPlan` (CF) stores `contributedPolicyIds[]` per `pendingReview` entry for idempotent deduplication — each source `policyId` that fires the CF is appended to the array, and duplicate fires for the same `policyId` are no-ops. If a single pending entry stays unprocessed for a long time and accumulates many contributing policies (rare — the intended flow is: admin reviews weekly, promotes or dismisses), the array grows unboundedly.
