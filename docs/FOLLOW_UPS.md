@@ -42,7 +42,7 @@ Phase 9 resolves the agent→SM link via a query-by-role shortcut: `getSalesMana
 
 **Priority:** MEDIUM. Harmless under single-SM/single-territory. Implement before multi-territory pilot.
 
-Banked: Phase 9 build dispatch, 2026-05-28.
+Banked: Phase 9 build PR #381 (`6829f9d`), 2026-05-28.
 
 ---
 
@@ -52,7 +52,7 @@ Banked: Phase 9 build dispatch, 2026-05-28.
 
 **Priority:** MEDIUM. Harmless today; creates a write-surface inconsistency that matters when territory scoping is added.
 
-Banked: Phase 9 build dispatch, 2026-05-28.
+Banked: Phase 9 build PR #381 (`6829f9d`), 2026-05-28.
 
 ---
 
@@ -62,7 +62,7 @@ Banked: Phase 9 build dispatch, 2026-05-28.
 
 **Priority:** LOW. Surfaced during Phase 9 rules review. Investigate before the pilot.
 
-Banked: Phase 9 build dispatch, 2026-05-28.
+Banked: Phase 9 build PR #381 (`6829f9d`), 2026-05-28.
 
 ---
 

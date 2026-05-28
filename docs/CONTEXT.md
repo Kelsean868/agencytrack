@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-28 (PR #380 — Phase 9 SM target decisions locked + deferred FUs banked; build IN FLIGHT) |
-| Current main HEAD | `f73e59f` (docs: Phase 9 SM target — lock all 9 decisions + bank deferred FUs (#380)) |
-| Active track | Phase 9 SM target — build IN FLIGHT. All 9 design questions CONFIRMED. Brief at `docs/briefs/phase9-sm-target-kickoff.md`. 6-point change surface: goalsService, gapAnalysis, GapAnalysisPanel, firestore.rules, GoalsPanel, AgentDashboard. |
-| Next track | After Phase 9 build PR merges: F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip when pilot-ready. |
+| Last updated | 2026-05-28 (PR #381 — Phase 9 SM target SHIPPED; rules deployed; smoke 7/7) |
+| Current main HEAD | `6829f9d` (feat(goals): Phase 9 SM target goals layer (5th tier) (#381)) |
+| Active track | Phase 9 SM target — COMPLETE. Smoke 7/7. Rules deployed. GoalsPanel hierarchy caller fixed (smUid resolution added). |
+| Next track | F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip when pilot-ready. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#381](https://github.com/Kelsean868/agencytrack/pull/381) | `6829f9d` | feat(goals): Phase 9 SM target goals layer (5th tier). New `salesManagerGoals/{smUid}_{year}` Firestore subcollection. `getSalesManagerGoals`, `setSalesManagerGoals`, `getSalesManagerUid` in `goalsService.js`; `getGoalHierarchy` extended with optional 5th `smUid` param. `computeGapAnalysis` extended with `salesManagerTarget` tier + `toSalesManager`/`ofSalesManager` gaps/pcts. `GapAnalysisPanel.jsx` 5th `LAYER_CONFIG` entry (`alwaysRender: true`, `smTierMissing` tier-level prop, "Not set" when SM tier absent). `GoalsPanel.jsx` `SalesManagerGoalsTab` + `canSetSmTarget` gate (SM/TA/PA); hierarchy caller fixed to chain `getSalesManagerUid` before `getGoalHierarchy`. `AgentDashboard.jsx` same smUid chain. Firestore rules `salesManagerGoals/{docId}` block (tenant-scoped read; write: TA/PA or SM self-doc via `docId.matches(uid+'_.*')`). 14/14 emulator rules tests; vitest green; lint 0; build clean. Rules deployed post-merge. Smoke 7/7 pass (SM Target save/persist, agent gap cascade SM tier, GoalsPanel cascade SM tier, REST negatives × 3, zero console errors). |
 | [#380](https://github.com/Kelsean868/agencytrack/pull/380) | `f73e59f` | docs: Phase 9 SM target — lock all 9 decisions + bank 3 deferred FUs. Updated `phase9-sm-target-design-questions.md` (all 9 ACK boxes checked + answers filled), `docs/briefs/phase9-sm-target-kickoff.md` (LOCKED PENDING ACK → CONFIRMED; exact rule text + no-index-needed note added), `docs/FOLLOW_UPS.md` (Phase 9 build-in-flight FU removed; 3 new FUs banked: MEDIUM multi-territory SM uid resolution, MEDIUM SM write-model inconsistency (BUG-N2 unitGoals vs branchGoals), LOW goals/{goalId} personal-commitment write rule verification). CI ✅. |
 | [#379](https://github.com/Kelsean868/agencytrack/pull/379) | `9cff883` | docs: Phase 9 SM target brief + design questions committed (Rule 10). |
 | [#378](https://github.com/Kelsean868/agencytrack/pull/378) | `f8cea55` | test(awards): AgentAwardsPanel — usesPolicyLedger path coverage. New `src/components/awards/__tests__/AgentAwardsPanel.test.jsx`: 7 tests covering both `usesPolicyLedger` paths. `false` path: `getOwnPolicies` not called, `confirmedSettlements` passed through to `computeAgentAwards`, empty-array fallback when undefined. `true` path: `getOwnPolicies` called with correct tenantId+uid, `settlementShapeFromPolicies` called with fetched policies, persistency merged from `confirmedSettlements`. Also added `import React` to `AgentAwardsPanel.jsx` (Vitest JSX transform requirement). 1601/1601 vitest; lint 0; build clean; CI ✅. H3 Phase C2. |
@@ -250,15 +251,13 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**Phase 9 SM Target — build IN FLIGHT.** PR #380 (`f73e59f`) locked all 9 design questions and banked 3 deferred FUs. Phase 0 complete. Build branch dispatched.
+**Phase 9 SM Target — SHIPPED.** PR #381 (`6829f9d`) merged 2026-05-28. Firestore rules deployed post-merge. Production smoke 7/7 pass.
 
-6-point change surface under build: (1) `goalsService.js` — `getSalesManagerGoals`, `setSalesManagerGoals`, `getSalesManagerUid`, extend `getGoalHierarchy` with optional `smUid=null` 5th param. (2) `gapAnalysis.js` — `salesManagerTarget` tier + `toSalesManager`/`ofSalesManager` gaps. (3) `GapAnalysisPanel.jsx` — 5th `LAYER_CONFIG` entry (`alwaysRender: true`, "Not set" on null). (4) `firestore.rules` — new `salesManagerGoals/{docId}` block after `branchGoals`. (5) `GoalsPanel.jsx` — `SalesManagerGoalsTab` + `canSetSmTarget` gate. (6) `AgentDashboard.jsx` — resolve smUid via `getSalesManagerUid` and pass as 5th param.
-
-Build PR open → STOP for dispatcher review of rules write arm before merge per dispatch instructions.
+What shipped: new `salesManagerGoals` collection, `getSalesManagerGoals`/`setSalesManagerGoals`/`getSalesManagerUid` service functions, 5th tier in `computeGapAnalysis`/`GapAnalysisPanel`, `SalesManagerGoalsTab` + `canSetSmTarget` gate in `GoalsPanel`, smUid chain in both `AgentDashboard` and `GoalsPanel` hierarchy callers. GoalsPanel caller question resolved by fix (same pattern as AgentDashboard). SM account verified using existing `A11Y_SALES_MANAGER_EMAIL` credential (uid `da0XaHhB4wTYlXDnQmAJ6TRIPTn1`). Three deferred FUs remain banked in FOLLOW_UPS.md (multi-territory resolution, SM write-model inconsistency, `goals/{goalId}` write rule verification).
 
 **H3 parity track — all phases (A–D) COMPLETE.** PRs #375, #377, #378 merged. Flip capstone PASS. Runbook shipped. Live flip capstone confirmed `settlementShapeFromPolicies` attributes May 1 to `2026-05` correctly. Runbook at `docs/runbooks/usesPolicyLedger-flip.md`.
 
-**After Phase 9:** F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip is a human operational step when pilot-ready — see runbook. `needCovered` taxonomy confirmation (Track H/G design-time). See FOLLOW_UPS.md for full queue.
+**Next:** F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip is a human operational step when pilot-ready — see runbook. `needCovered` taxonomy confirmation (Track H/G design-time). See FOLLOW_UPS.md for full queue.
 
 ---
 
