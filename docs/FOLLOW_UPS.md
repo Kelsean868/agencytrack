@@ -164,6 +164,20 @@ At expected volumes (tens to low hundreds of agents, each submitting a few polic
 
 ---
 
+## CF emulator integration tests for FieldValue writes (LOW, banked 2026-05-28)
+
+CF unit tests mock `admin.firestore.FieldValue` so they pass write payloads that Firestore rejects at runtime. Caught in H4 post-deploy: `aggregatePendingPlan` used `FieldValue.serverTimestamp()` inside an array element; Jest mock returned a plain string (valid value), but real Firestore threw at `tx.update()` time. The bug was invisible until the post-deploy smoke ran.
+
+**Action:** Consider lightweight emulator-based CF integration tests using `firebase emulators:start --only firestore,functions` for any CF that uses `FieldValue` methods or writes complex nested structures. These tests bypass the mock layer and exercise the real Firestore SDK validation. Acceptable safety net at current CF count (small); worth formalizing if CFs proliferate.
+
+**In the interim:** For any CF that writes `FieldValue` sentinels inside array or map fields, add a smoke assertion that exercises a real write-read round-trip (as the H4 smoke does for legs c/d). The regression test pattern (assert `firstLoggedAt.toMillis` is a function) is a useful unit-test guard but not a substitute for real-write verification.
+
+**Priority:** LOW. Current post-deploy smoke provides coverage. Emulator integration tests would shift the detection surface left (pre-deploy).
+
+Banked: 2026-05-28, H4 CF hotfix PR #373 (`df161fe`).
+
+---
+
 ## Weak-waitFor audit — FULLY RESOLVED (LOW, banked 2026-05-27)
 
 PR #363 hardened `ProspectInfoPanel.test.jsx` and `PolicyReconciliationPanel.test.jsx`. Phase D2 sweep (2026-05-27) completed the project-wide enumeration. PR #371 (`7c91670`, 2026-05-28) resolved all HIGH instances (46 total).

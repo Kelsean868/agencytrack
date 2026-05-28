@@ -12,9 +12,9 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-28 (H4 merged + CF deployed; prod smoke complete) |
-| Current main HEAD | `f074a63` (feat(h4): policy plan catalog — PR #370) |
-| Active track | H4 ✅ merged. CF `aggregatePendingPlan` deployed. |
+| Last updated | 2026-05-28 (H4 CF hotfix #373 merged + redeployed; legs d/e/f 4/4 pass) |
+| Current main HEAD | `df161fe` (fix(h4): Timestamp.now() inside pendingReview array — PR #373) |
+| Active track | H4 ✅ fully complete. CF hotfix shipped and smoke-verified. |
 | Next track | Phase 9 SM target. F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. |
 | Queued | Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — NOT BUILT; full 6-point change surface in FOLLOW_UPS.md). F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
