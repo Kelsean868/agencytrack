@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-28 (PR #381 — Phase 9 SM target SHIPPED; rules deployed; smoke 7/7) |
-| Current main HEAD | `6829f9d` (feat(goals): Phase 9 SM target goals layer (5th tier) (#381)) |
-| Active track | Phase 9 SM target — COMPLETE. Smoke 7/7. Rules deployed. GoalsPanel hierarchy caller fixed (smUid resolution added). |
-| Next track | F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip when pilot-ready. |
+| Last updated | 2026-05-28 (PRs #383–#386 merged — session runoff docs; PR #382 open for review) |
+| Current main HEAD | `dfeeca5` (docs(session): 2026-05-28 autonomous runoff ledger (#386)) |
+| Active track | Session runoff complete. PR #382 (goals/{goalId} agent write arm) STOPPED awaiting dispatcher review + rules deploy approval. |
+| Next track | Dispatcher review of PR #382 (rules fix + emulator tests). After merge + deploy: F2.2 email-to-BM CF implementation (design questions in docs/f2.2-email-to-bm-design-questions.md). Track E daily-log work (design questions in docs/track-e-design-questions.md, Q1 is blocking). |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
