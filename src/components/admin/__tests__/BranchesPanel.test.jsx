@@ -108,7 +108,7 @@ describe('BranchesPanel — error state', () => {
 
   it('disables the Add branch button on error', async () => {
     render(<BranchesPanel />);
-    await waitFor(() => screen.getByRole('alert'));
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /add branch/i })).toBeDisabled();
   });
 });
@@ -126,7 +126,7 @@ describe('BranchesPanel — empty state', () => {
 
   it('renders Add branch button when empty', async () => {
     render(<BranchesPanel />);
-    await waitFor(() => screen.getByText(/No branches yet/i));
+    await waitFor(() => expect(screen.getByText(/No branches yet/i)).toBeInTheDocument());
     expect(screen.getByRole('button', { name: /add branch/i })).toBeInTheDocument();
   });
 });
@@ -186,7 +186,7 @@ describe('BranchesPanel — sort order', () => {
   it('places active branches before inactive ones', async () => {
     setup({ branches: [BRANCH_INACTIVE, BRANCH_ACTIVE] });
     render(<BranchesPanel />);
-    await waitFor(() => screen.getByText('South Branch'));
+    await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
     const names = screen.getAllByText(/Branch/).map(el => el.textContent);
     const southIdx = names.indexOf('South Branch');
     const northIdx = names.indexOf('North Branch');
@@ -202,7 +202,7 @@ describe('BranchesPanel — table column headers', () => {
 
   it('renders Name, Manager, Agents, Status, Actions column headers', async () => {
     render(<BranchesPanel />);
-    await waitFor(() => screen.getByText('South Branch'));
+    await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
     expect(screen.getByText('Name')).toBeInTheDocument();
     expect(screen.getByText('Manager')).toBeInTheDocument();
     expect(screen.getByText('Agents')).toBeInTheDocument();
@@ -219,7 +219,7 @@ describe('BranchesPanel — zero agent count', () => {
 
   it('renders 0 agents when no users are assigned to branch', async () => {
     render(<BranchesPanel />);
-    await waitFor(() => screen.getByText('South Branch'));
+    await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
     expect(screen.getByText('0 agents')).toBeInTheDocument();
   });
 });
