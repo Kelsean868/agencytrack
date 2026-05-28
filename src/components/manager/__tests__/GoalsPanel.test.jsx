@@ -4,16 +4,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ── Mock state ───────────────────────────────────────────────────────────────
 const hoisted = vi.hoisted(() => ({
-  getTenantUsers:    vi.fn(),
-  getGoals:          vi.fn(),
-  setGoals:          vi.fn(),
-  getCompanyMinimums: vi.fn(),
-  getUnitGoals:      vi.fn(),
-  setUnitGoals:      vi.fn(),
-  getBranchGoals:    vi.fn(),
-  setBranchGoals:    vi.fn(),
-  getGoalHierarchy:  vi.fn(),
-  authRef:           { current: { user: { uid: 'mgr-1' }, userProfile: { unitId: 'unit-1', name: 'Mgr Name' }, role: 'branch_manager', tenantId: 'tenant-1' } },
+  getTenantUsers:        vi.fn(),
+  getGoals:              vi.fn(),
+  setGoals:              vi.fn(),
+  getCompanyMinimums:    vi.fn(),
+  getUnitGoals:          vi.fn(),
+  setUnitGoals:          vi.fn(),
+  getBranchGoals:        vi.fn(),
+  setBranchGoals:        vi.fn(),
+  getSalesManagerGoals:  vi.fn(),
+  setSalesManagerGoals:  vi.fn(),
+  getSalesManagerUid:    vi.fn(),
+  getGoalHierarchy:      vi.fn(),
+  authRef:               { current: { user: { uid: 'mgr-1' }, userProfile: { unitId: 'unit-1', name: 'Mgr Name' }, role: 'branch_manager', tenantId: 'tenant-1' } },
 }));
 
 vi.mock('../../../services/managerService', () => ({
@@ -21,14 +24,17 @@ vi.mock('../../../services/managerService', () => ({
 }));
 
 vi.mock('../../../services/goalsService', () => ({
-  getGoals:           (...args) => hoisted.getGoals(...args),
-  setGoals:           (...args) => hoisted.setGoals(...args),
-  getCompanyMinimums: (...args) => hoisted.getCompanyMinimums(...args),
-  getUnitGoals:       (...args) => hoisted.getUnitGoals(...args),
-  setUnitGoals:       (...args) => hoisted.setUnitGoals(...args),
-  getBranchGoals:     (...args) => hoisted.getBranchGoals(...args),
-  setBranchGoals:     (...args) => hoisted.setBranchGoals(...args),
-  getGoalHierarchy:   (...args) => hoisted.getGoalHierarchy(...args),
+  getGoals:              (...args) => hoisted.getGoals(...args),
+  setGoals:              (...args) => hoisted.setGoals(...args),
+  getCompanyMinimums:    (...args) => hoisted.getCompanyMinimums(...args),
+  getUnitGoals:          (...args) => hoisted.getUnitGoals(...args),
+  setUnitGoals:          (...args) => hoisted.setUnitGoals(...args),
+  getBranchGoals:        (...args) => hoisted.getBranchGoals(...args),
+  setBranchGoals:        (...args) => hoisted.setBranchGoals(...args),
+  getSalesManagerGoals:  (...args) => hoisted.getSalesManagerGoals(...args),
+  setSalesManagerGoals:  (...args) => hoisted.setSalesManagerGoals(...args),
+  getSalesManagerUid:    (...args) => hoisted.getSalesManagerUid(...args),
+  getGoalHierarchy:      (...args) => hoisted.getGoalHierarchy(...args),
 }));
 
 vi.mock('../../../context/AuthContext', () => ({
@@ -89,11 +95,15 @@ describe('GoalsPanel', () => {
     hoisted.setUnitGoals.mockResolvedValue(undefined);
     hoisted.getBranchGoals.mockResolvedValue(null);
     hoisted.setBranchGoals.mockResolvedValue(undefined);
+    hoisted.getSalesManagerGoals.mockResolvedValue(null);
+    hoisted.setSalesManagerGoals.mockResolvedValue(undefined);
+    hoisted.getSalesManagerUid.mockResolvedValue(null);
     hoisted.getGoalHierarchy.mockResolvedValue({
-      companyFloor: { api: 200000, apps: 42 },
-      branchTarget: { api: 1200000, apps: 240, ffiConducted: null, ciConducted: null, dials: null },
-      unitTarget:   { api: 600000,  apps: 120, ffiConducted: null, ciConducted: null, dials: null },
-      personal:     { api: 250000,  apps: 48,  ffiConducted: null, ciConducted: null, dials: null },
+      companyFloor:       { api: 200000, apps: 42 },
+      branchTarget:       { api: 1200000, apps: 240, ffiConducted: null, ciConducted: null, dials: null },
+      salesManagerTarget: null,
+      unitTarget:         { api: 600000,  apps: 120, ffiConducted: null, ciConducted: null, dials: null },
+      personal:           { api: 250000,  apps: 48,  ffiConducted: null, ciConducted: null, dials: null },
     });
     setRole('branch_manager');
   });
@@ -125,6 +135,43 @@ describe('GoalsPanel', () => {
       render(<GoalsPanel />);
       await waitFor(() => {
         expect(screen.getByRole('tab', { name: 'Branch' })).toBeInTheDocument();
+      });
+    });
+
+    it('shows SM Target sub-tab for sales_manager', async () => {
+      setRole('sales_manager');
+      render(<GoalsPanel />);
+      await waitFor(() => {
+        expect(screen.getByRole('tab', { name: 'SM Target' })).toBeInTheDocument();
+      });
+    });
+
+    it('shows SM Target sub-tab for tenant_admin', async () => {
+      setRole('tenant_admin');
+      render(<GoalsPanel />);
+      await waitFor(() => {
+        expect(screen.getByRole('tab', { name: 'SM Target' })).toBeInTheDocument();
+      });
+    });
+
+    it('does NOT show SM Target sub-tab for branch_manager', async () => {
+      setRole('branch_manager');
+      render(<GoalsPanel />);
+      await waitFor(() => {
+        expect(screen.getByRole('tab', { name: 'Branch' })).toBeInTheDocument();
+      });
+      expect(screen.queryByRole('tab', { name: 'SM Target' })).not.toBeInTheDocument();
+    });
+
+    it('calls getSalesManagerGoals when SM Target tab is clicked by sales_manager', async () => {
+      setRole('sales_manager');
+      hoisted.getSalesManagerGoals.mockResolvedValue(null);
+      render(<GoalsPanel />);
+      const smTab = await screen.findByRole('tab', { name: 'SM Target' });
+      fireEvent.click(smTab);
+      await waitFor(() => {
+        // sales_manager uses own uid (mgr-1) — no getSalesManagerUid call needed
+        expect(hoisted.getSalesManagerGoals).toHaveBeenCalledWith('tenant-1', 'mgr-1', expect.any(Number));
       });
     });
 

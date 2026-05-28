@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../utils/weeklyActivityFloors';
 import {
@@ -214,10 +214,50 @@ export async function setBranchGoals(tenantId, year, targets, meta) {
   await setDoc(doc(db, `tenants/${tenantId}/branchGoals/${year}`), payload);
 }
 
+// ── Sales Manager Goals ───────────────────────────────────────────────────────
+
+export async function getSalesManagerGoals(tenantId, smUid, year) {
+  const ref = doc(db, `tenants/${tenantId}/salesManagerGoals/${smUid}_${year}`);
+  const snap = await getDoc(ref);
+  return snap.exists() ? snap.data() : null;
+}
+
+export async function setSalesManagerGoals(tenantId, smUid, year, targets, meta) {
+  const p = (v) => parseFloat(v) || 0;
+  const payload = {
+    smUid, year, tenantId,
+    api:  p(targets.api),
+    apps: p(targets.apps),
+    setBy:     meta.setBy,
+    setByName: meta.setByName,
+    setAt:     serverTimestamp(),
+  };
+  if (p(targets.ffiConducted) > 0) payload.ffiConducted = p(targets.ffiConducted);
+  if (p(targets.ciConducted)  > 0) payload.ciConducted  = p(targets.ciConducted);
+  if (p(targets.dials)        > 0) payload.dials         = p(targets.dials);
+
+  await setDoc(doc(db, `tenants/${tenantId}/salesManagerGoals/${smUid}_${year}`), payload);
+}
+
+// Resolves SM uid for single-SM tenants by querying users where role == 'sales_manager'.
+// Returns null when no SM exists; returns first uid + console.warn when >1 SM found.
+export async function getSalesManagerUid(tenantId) {
+  const q = query(
+    collection(db, `tenants/${tenantId}/users`),
+    where('role', '==', 'sales_manager'),
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  if (snap.size > 1) {
+    console.warn(`getSalesManagerUid: ${snap.size} sales_manager docs found for tenant ${tenantId}; using first`);
+  }
+  return snap.docs[0].id;
+}
+
 // ── Goal Hierarchy ────────────────────────────────────────────────────────────
 
-export async function getGoalHierarchy(tenantId, unitId, year, agentId) {
-  const [mins, branchDoc, unitDoc, personalDoc, agentSnap] = await Promise.all([
+export async function getGoalHierarchy(tenantId, unitId, year, agentId, smUid = null) {
+  const [mins, branchDoc, unitDoc, personalDoc, agentSnap, smDoc] = await Promise.all([
     getCompanyMinimums(tenantId).catch(() => null),
     getBranchGoals(tenantId, year).catch(() => null),
     unitId ? getUnitGoals(tenantId, unitId, year).catch(() => null) : Promise.resolve(null),
@@ -225,6 +265,7 @@ export async function getGoalHierarchy(tenantId, unitId, year, agentId) {
     agentId
       ? getDoc(doc(db, `tenants/${tenantId}/users/${agentId}`)).catch(() => null)
       : Promise.resolve(null),
+    smUid ? getSalesManagerGoals(tenantId, smUid, year).catch(() => null) : Promise.resolve(null),
   ]);
 
   const p = (v) => (parseFloat(v) > 0 ? parseFloat(v) : null);
@@ -267,5 +308,13 @@ export async function getGoalHierarchy(tenantId, unitId, year, agentId) {
     dials:        null,
   } : null;
 
-  return { companyFloor, branchTarget, unitTarget, personal };
+  const salesManagerTarget = smDoc ? {
+    api:          p(smDoc.api),
+    apps:         p(smDoc.apps),
+    ffiConducted: p(smDoc.ffiConducted),
+    ciConducted:  p(smDoc.ciConducted),
+    dials:        p(smDoc.dials),
+  } : null;
+
+  return { companyFloor, branchTarget, salesManagerTarget, unitTarget, personal };
 }

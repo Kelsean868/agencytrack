@@ -3,23 +3,32 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const hoisted = vi.hoisted(() => ({
   mockGetDoc: vi.fn(),
   mockSetDoc: vi.fn(),
+  mockGetDocs: vi.fn(),
 }));
-const { mockGetDoc, mockSetDoc } = hoisted;
+const { mockGetDoc, mockSetDoc, mockGetDocs } = hoisted;
 
 vi.mock('firebase/firestore', () => ({
-  doc: (db, path) => ({ __ref: path }),
+  doc: (_db, path) => ({ __ref: path }),
   getDoc: (...args) => hoisted.mockGetDoc(...args),
   setDoc: (...args) => hoisted.mockSetDoc(...args),
   serverTimestamp: () => '__SERVER_TIMESTAMP__',
+  collection: (_db, path) => ({ __collection: path }),
+  query: (ref, ...constraints) => ({ __collection: ref.__collection, __constraints: constraints }),
+  where: (field, op, val) => ({ __where: { field, op, val } }),
+  getDocs: (...args) => hoisted.mockGetDocs(...args),
 }));
 
-import { getCompanyMinimums, setCompanyMinimums, getGoalHierarchy } from '../goalsService';
+import {
+  getCompanyMinimums, setCompanyMinimums, getGoalHierarchy,
+  getSalesManagerGoals, setSalesManagerGoals, getSalesManagerUid,
+} from '../goalsService';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
 import { DEFAULT_TENURE_API_FLOORS } from '../../utils/tenureFloors';
 
 beforeEach(() => {
   mockGetDoc.mockReset();
   mockSetDoc.mockReset();
+  mockGetDocs.mockReset();
 });
 
 describe('getCompanyMinimums — weeklyActivityFloors defaults', () => {
@@ -259,5 +268,119 @@ describe('setCompanyMinimums — weeklyActivityFloors validation and write (Trac
     }, 'uid');
     const [, payload] = mockSetDoc.mock.calls[0];
     expect(payload.weeklyActivityFloors.referralsNewLeads).toBe(0);
+  });
+});
+
+describe('getSalesManagerGoals', () => {
+  it('returns doc data when the doc exists', async () => {
+    const docData = { api: 500000, apps: 60, smUid: 'sm1', year: 2026, tenantId: 't1' };
+    mockGetDoc.mockResolvedValue({ exists: () => true, data: () => docData });
+    const result = await getSalesManagerGoals('t1', 'sm1', 2026);
+    expect(result).toEqual(docData);
+    expect(mockGetDoc.mock.calls[0][0].__ref).toBe('tenants/t1/salesManagerGoals/sm1_2026');
+  });
+
+  it('returns null when the doc does not exist', async () => {
+    mockGetDoc.mockResolvedValue({ exists: () => false, data: () => undefined });
+    const result = await getSalesManagerGoals('t1', 'sm1', 2026);
+    expect(result).toBeNull();
+  });
+});
+
+describe('setSalesManagerGoals', () => {
+  it('writes to the correct doc path with parsed payload', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setSalesManagerGoals('t1', 'sm1', 2026,
+      { api: '500000', apps: '60', ffiConducted: '10', ciConducted: '8', dials: '0' },
+      { setBy: 'uid-sm', setByName: 'Sam Manager' },
+    );
+    expect(mockSetDoc).toHaveBeenCalledTimes(1);
+    const [ref, payload] = mockSetDoc.mock.calls[0];
+    expect(ref.__ref).toBe('tenants/t1/salesManagerGoals/sm1_2026');
+    expect(payload.api).toBe(500000);
+    expect(payload.apps).toBe(60);
+    expect(payload.ffiConducted).toBe(10);
+    expect(payload.ciConducted).toBe(8);
+    expect(payload.smUid).toBe('sm1');
+    expect(payload.year).toBe(2026);
+    expect(payload.tenantId).toBe('t1');
+    expect(payload.setBy).toBe('uid-sm');
+    expect(payload.setByName).toBe('Sam Manager');
+    expect(payload.setAt).toBe('__SERVER_TIMESTAMP__');
+    // dials is 0 so it should NOT be included (conditional write)
+    expect(payload).not.toHaveProperty('dials');
+  });
+
+  it('omits optional activity fields when zero', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setSalesManagerGoals('t1', 'sm1', 2026,
+      { api: '400000', apps: '50' },
+      { setBy: 'uid', setByName: 'SM' },
+    );
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload).not.toHaveProperty('ffiConducted');
+    expect(payload).not.toHaveProperty('ciConducted');
+    expect(payload).not.toHaveProperty('dials');
+  });
+});
+
+describe('getSalesManagerUid', () => {
+  it('returns null when no sales_manager user exists', async () => {
+    mockGetDocs.mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const result = await getSalesManagerUid('t1');
+    expect(result).toBeNull();
+  });
+
+  it('returns the uid of the single sales_manager', async () => {
+    mockGetDocs.mockResolvedValue({
+      empty: false, size: 1,
+      docs: [{ id: 'sm-uid-abc' }],
+    });
+    const result = await getSalesManagerUid('t1');
+    expect(result).toBe('sm-uid-abc');
+  });
+
+  it('returns first uid and emits console.warn when multiple SMs found', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    mockGetDocs.mockResolvedValue({
+      empty: false, size: 2,
+      docs: [{ id: 'sm-first' }, { id: 'sm-second' }],
+    });
+    const result = await getSalesManagerUid('t1');
+    expect(result).toBe('sm-first');
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('2 sales_manager'));
+    warnSpy.mockRestore();
+  });
+});
+
+describe('getGoalHierarchy — salesManagerTarget tier', () => {
+  const wireDocs = (docsByPath) => {
+    mockGetDoc.mockImplementation((ref) => {
+      const path = ref?.__ref ?? '';
+      const data = docsByPath[path];
+      return Promise.resolve({ exists: () => data !== undefined, data: () => data });
+    });
+  };
+
+  it('returns salesManagerTarget: null when smUid is not passed', async () => {
+    wireDocs({ 'tenants/t1/config/companyMinimums': { annualAPI: 200000, annualApps: 42 } });
+    mockGetDocs.mockResolvedValue({ empty: true, size: 0, docs: [] });
+    const result = await getGoalHierarchy('t1', null, 2026, null);
+    expect(result.salesManagerTarget).toBeNull();
+  });
+
+  it('returns populated salesManagerTarget when smUid is passed and doc exists', async () => {
+    wireDocs({
+      'tenants/t1/config/companyMinimums': { annualAPI: 200000, annualApps: 42 },
+      'tenants/t1/salesManagerGoals/sm1_2026': { api: 600000, apps: 70, ffiConducted: 12, ciConducted: 10, dials: 500 },
+    });
+    const result = await getGoalHierarchy('t1', null, 2026, null, 'sm1');
+    expect(result.salesManagerTarget).toEqual({ api: 600000, apps: 70, ffiConducted: 12, ciConducted: 10, dials: 500 });
+  });
+
+  it('returns salesManagerTarget: null when smUid is passed but SM doc does not exist', async () => {
+    wireDocs({ 'tenants/t1/config/companyMinimums': { annualAPI: 200000, annualApps: 42 } });
+    const result = await getGoalHierarchy('t1', null, 2026, null, 'sm1');
+    expect(result.salesManagerTarget).toBeNull();
   });
 });

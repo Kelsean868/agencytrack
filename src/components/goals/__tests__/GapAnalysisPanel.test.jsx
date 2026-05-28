@@ -5,10 +5,11 @@ import { render, screen } from '@testing-library/react';
 import GapAnalysisPanel from '../GapAnalysisPanel';
 
 const baseHierarchy = {
-  personal:     { api: 100000 },
-  unitTarget:   { api: 120000 },
-  branchTarget: { api: 150000 },
-  companyFloor: { api: 50000 },
+  personal:            { api: 100000 },
+  unitTarget:          { api: 120000 },
+  branchTarget:        { api: 150000 },
+  salesManagerTarget:  { api: 200000 },
+  companyFloor:        { api: 50000 },
 };
 
 const baseYtd = { api: 25000, apps: 5 };
@@ -44,6 +45,29 @@ describe('GapAnalysisPanel', () => {
     expect(screen.getAllByText('Unit Target').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Branch Target').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Company Floor').length).toBeGreaterThan(0);
+  });
+
+  it('renders SM Target layer label when salesManagerTarget is populated', () => {
+    render(
+      <GapAnalysisPanel hierarchy={baseHierarchy} ytdTotals={baseYtd} loading={false} />
+    );
+    expect(screen.getAllByText('SM Target').length).toBeGreaterThan(0);
+  });
+
+  it('renders SM Target row with "Not set" when salesManagerTarget is null', () => {
+    const hierarchyNoSm = { ...baseHierarchy, salesManagerTarget: null };
+    render(
+      <GapAnalysisPanel hierarchy={hierarchyNoSm} ytdTotals={baseYtd} loading={false} />
+    );
+    expect(screen.getAllByText('SM Target').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Not set').length).toBeGreaterThan(0);
+  });
+
+  it('does not show "Not set" when salesManagerTarget is populated', () => {
+    render(
+      <GapAnalysisPanel hierarchy={baseHierarchy} ytdTotals={baseYtd} loading={false} />
+    );
+    expect(screen.queryByText('Not set')).not.toBeInTheDocument();
   });
 
   it('uses custom title prop', () => {

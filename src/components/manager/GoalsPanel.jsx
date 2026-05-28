@@ -10,6 +10,7 @@ import {
   getGoals, setGoals, getCompanyMinimums,
   getUnitGoals, setUnitGoals,
   getBranchGoals, setBranchGoals,
+  getSalesManagerGoals, setSalesManagerGoals, getSalesManagerUid,
   getGoalHierarchy,
 } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
@@ -341,6 +342,101 @@ function BranchGoalsTab({ userProfile }) {
             </div>
           )}
           <SaveButton onClick={handleSave} saving={saving} savedAt={savedAt} label="Save Branch Goals" className="self-start" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SalesManagerGoalsTab({ userProfile }) {
+  const { user, tenantId, role } = useAuth();
+  const currentYear = new Date().getFullYear();
+
+  const [form, setForm]         = useState({ api: '', apps: '', ffiConducted: '', ciConducted: '', dials: '' });
+  const [existing, setExisting] = useState(null);
+  const [smUid, setSmUid]       = useState(null);
+  const [saving, setSaving]     = useState(false);
+  const [savedAt, setSavedAt]   = useState(null);
+  const [loading, setLoading]   = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [saveError, setSaveError] = useState('');
+
+  useEffect(() => {
+    if (!tenantId || !user?.uid) return;
+    setLoading(true);
+    setLoadError('');
+
+    const resolveSmUid = role === 'sales_manager'
+      ? Promise.resolve(user.uid)
+      : getSalesManagerUid(tenantId);
+
+    resolveSmUid
+      .then((uid) => {
+        setSmUid(uid);
+        if (!uid) return null;
+        return getSalesManagerGoals(tenantId, uid, currentYear);
+      })
+      .then((g) => {
+        setExisting(g);
+        setForm({
+          api:          g?.api          ?? '',
+          apps:         g?.apps         ?? '',
+          ffiConducted: g?.ffiConducted ?? '',
+          ciConducted:  g?.ciConducted  ?? '',
+          dials:        g?.dials        ?? '',
+        });
+      })
+      .catch((e) => {
+        console.error(e);
+        setLoadError('Failed to load SM goals.');
+      })
+      .finally(() => setLoading(false));
+  }, [currentYear, tenantId, user?.uid, role]);
+
+  const handleSave = async () => {
+    if (!tenantId || !smUid) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      await setSalesManagerGoals(tenantId, smUid, currentYear, form, {
+        setBy:     user.uid,
+        setByName: userProfile?.name ?? userProfile?.email ?? 'Manager',
+      });
+      const updated = await getSalesManagerGoals(tenantId, smUid, currentYear);
+      setExisting(updated);
+      setSavedAt(new Date());
+    } catch (e) {
+      console.error(e);
+      setSaveError('Failed to save SM goals. Please try again.');
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        SM Target — {currentYear}
+      </p>
+      {loading ? (
+        <div className="h-24 rounded-xl bg-border/30 animate-pulse" />
+      ) : loadError ? (
+        <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{loadError}</div>
+      ) : !smUid ? (
+        <div className="p-4 rounded-xl bg-border/20 text-sm text-ink-muted">No sales manager found for this tenant.</div>
+      ) : (
+        <div className="card flex flex-col gap-4">
+          {existing?.setByName && (
+            <p className="text-xs text-ink-muted">
+              Last set by {existing.setByName}
+              {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
+            </p>
+          )}
+          <GoalLevelForm value={form} onChange={setForm} />
+          {saveError && (
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">
+              {saveError}
+            </div>
+          )}
+          <SaveButton onClick={handleSave} saving={saving} savedAt={savedAt} label="Save SM Target" className="self-start" />
         </div>
       )}
     </div>
@@ -749,6 +845,10 @@ export default function GoalsPanel() {
     role === 'tenant_admin' ||
     role === 'platform_admin';
   const canSeeUnit = role === 'unit_manager' || canSeeBranch;
+  const canSetSmTarget =
+    role === 'sales_manager' ||
+    role === 'tenant_admin' ||
+    role === 'platform_admin';
 
   useEffect(() => {
     getTenantUsers(tenantId).then(setAllUsers).catch(console.error);
@@ -770,9 +870,10 @@ export default function GoalsPanel() {
   const tabs = useMemo(() => [
     { id: 'self',   label: 'Self'   },
     { id: 'agents', label: 'Agent'  },
-    ...(canSeeUnit   ? [{ id: 'unit',   label: 'Unit'   }] : []),
-    ...(canSeeBranch ? [{ id: 'branch', label: 'Branch' }] : []),
-  ], [canSeeUnit, canSeeBranch]);
+    ...(canSeeUnit     ? [{ id: 'unit',   label: 'Unit'   }] : []),
+    ...(canSeeBranch   ? [{ id: 'branch', label: 'Branch' }] : []),
+    ...(canSetSmTarget ? [{ id: 'sm',     label: 'SM Target' }] : []),
+  ], [canSeeUnit, canSeeBranch, canSetSmTarget]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -788,8 +889,9 @@ export default function GoalsPanel() {
 
       {subTab === 'self'   && <SelfTab />}
       {subTab === 'agents' && <AgentGoalsTab />}
-      {subTab === 'unit'   && canSeeUnit   && <UnitGoalsTab   role={role} userProfile={userProfile} allUsers={allUsers} />}
-      {subTab === 'branch' && canSeeBranch && <BranchGoalsTab userProfile={userProfile} />}
+      {subTab === 'unit'   && canSeeUnit     && <UnitGoalsTab          role={role} userProfile={userProfile} allUsers={allUsers} />}
+      {subTab === 'branch' && canSeeBranch   && <BranchGoalsTab        userProfile={userProfile} />}
+      {subTab === 'sm'     && canSetSmTarget && <SalesManagerGoalsTab  userProfile={userProfile} />}
     </div>
   );
 }
