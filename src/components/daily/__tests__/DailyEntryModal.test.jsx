@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const hoisted = vi.hoisted(() => ({
   useAuth: vi.fn(),
@@ -105,8 +105,7 @@ describe('DailyEntryModal', () => {
     render(<DailyEntryModal onClose={vi.fn()} />);
     // PPP section auto-expands because pppIncreases.apps > 0
     await waitFor(
-      () => expect(screen.getByText(/below/i)).toBeInTheDocument(),
-      { timeout: 3000 }
+      () => expect(screen.getByText(/below/i)).toBeInTheDocument()
     );
   });
 
@@ -115,7 +114,7 @@ describe('DailyEntryModal', () => {
     // Button is disabled={saving || loading}; wait until loading completes before clicking.
     const saveBtn = await screen.findByRole('button', { name: /^save$/i });
     await waitFor(() => expect(saveBtn).not.toBeDisabled());
-    await act(async () => { fireEvent.click(saveBtn); });
+    fireEvent.click(saveBtn);
     await waitFor(() =>
       expect(hoisted.saveDailyEntry).toHaveBeenCalledWith(
         'tenant1', 'agent1', 'Test Agent', expect.any(String), expect.any(Object)
@@ -127,7 +126,7 @@ describe('DailyEntryModal', () => {
     const onClose = vi.fn();
     render(<DailyEntryModal onClose={onClose} />);
     const saveBtn = await screen.findByRole('button', { name: /^save$/i });
-    await act(async () => { fireEvent.click(saveBtn); });
+    fireEvent.click(saveBtn);
     await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
   });
 
@@ -135,7 +134,7 @@ describe('DailyEntryModal', () => {
     hoisted.saveDailyEntry.mockRejectedValue(new Error('network error'));
     render(<DailyEntryModal onClose={vi.fn()} />);
     const saveBtn = await screen.findByRole('button', { name: /^save$/i });
-    await act(async () => { fireEvent.click(saveBtn); });
+    fireEvent.click(saveBtn);
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(/save failed/i)
     );
@@ -149,8 +148,7 @@ describe('DailyEntryModal', () => {
     render(<DailyEntryModal onClose={vi.fn()} />);
     // PPP auto-expands — "Add PPP details" should be gone; "Number of PPP increases" should appear
     await waitFor(
-      () => expect(screen.getByText('Number of PPP increases')).toBeInTheDocument(),
-      { timeout: 3000 }
+      () => expect(screen.getByText('Number of PPP increases')).toBeInTheDocument()
     );
     expect(screen.queryByText('Add PPP details')).not.toBeInTheDocument();
   });
@@ -159,8 +157,7 @@ describe('DailyEntryModal', () => {
     hoisted.getDailyEntry.mockRejectedValue(new Error('fetch failed'));
     render(<DailyEntryModal onClose={vi.fn()} />);
     await waitFor(
-      () => expect(screen.getByRole('alert')).toHaveTextContent(/could not load/i),
-      { timeout: 3000 }
+      () => expect(screen.getByRole('alert')).toHaveTextContent(/could not load/i)
     );
   });
 });
