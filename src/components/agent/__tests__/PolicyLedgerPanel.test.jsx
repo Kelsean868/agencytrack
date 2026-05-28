@@ -10,6 +10,7 @@ const hoisted = vi.hoisted(() => ({
   createPolicy:           vi.fn(),
   transitionPolicyStatus: vi.fn(),
   getPolicyHistory:       vi.fn(),
+  getPolicyPlans:         vi.fn(),
   useAuth:                vi.fn(),
 }));
 
@@ -33,6 +34,10 @@ vi.mock('../../../services/prospectInfoService', () => ({
     referral:       'Referral',
     'social-media': 'Social Media',
   },
+}));
+
+vi.mock('../../../services/planCatalogService', () => ({
+  getPolicyPlans: hoisted.getPolicyPlans,
 }));
 
 vi.mock('../../../constants/policyLifecycle', () => ({
@@ -92,6 +97,7 @@ beforeEach(() => {
   hoisted.createPolicy.mockResolvedValue({ id: 'new-p1' });
   hoisted.transitionPolicyStatus.mockResolvedValue();
   hoisted.getPolicyHistory.mockResolvedValue([]);
+  hoisted.getPolicyPlans.mockResolvedValue({ plans: [], pendingReview: [] });
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -435,5 +441,90 @@ describe('PolicyLedgerPanel — socialPlatform conditional select', () => {
     const [, , formData] = hoisted.createPolicy.mock.calls[0];
     expect(formData.sourceOfProspect).toBe('social-media');
     expect(formData.socialPlatform).toBe('instagram');
+  });
+});
+
+// ── Plan catalog combobox tests (H4) ─────────────────────────────────────────
+
+const CATALOG_PLAN = {
+  id: 'plan-001',
+  name: 'Whole Life Plus',
+  class: 'whole_life',
+  productLine: 'life',
+  isActive: true,
+};
+
+describe('PolicyLedgerPanel — plan catalog combobox', () => {
+  function openCreateForm() {
+    return waitFor(() => screen.getByRole('button', { name: /New Policy/i })).then(() => {
+      fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
+      return waitFor(() => screen.getByRole('button', { name: /back/i }));
+    });
+  }
+
+  it('renders plan picker select with catalog options', async () => {
+    hoisted.getPolicyPlans.mockResolvedValue({
+      plans: [CATALOG_PLAN],
+      pendingReview: [],
+    });
+    render(<PolicyLedgerPanel />);
+    await openCreateForm();
+
+    const picker = screen.getByTestId('plan-picker-select');
+    expect(picker).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Whole Life Plus' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Other/i })).toBeInTheDocument();
+  });
+
+  it('selecting a catalog plan auto-fills policyClass and keeps field editable', async () => {
+    hoisted.getPolicyPlans.mockResolvedValue({ plans: [CATALOG_PLAN], pendingReview: [] });
+    render(<PolicyLedgerPanel />);
+    await openCreateForm();
+
+    const picker = screen.getByTestId('plan-picker-select');
+    fireEvent.change(picker, { target: { value: CATALOG_PLAN.id } });
+
+    // policyClass select should now be 'whole_life'
+    const policyClassSelect = screen.getByLabelText(/Policy Class/i);
+    expect(policyClassSelect.value).toBe('whole_life');
+
+    // User can still change it (not locked)
+    fireEvent.change(policyClassSelect, { target: { value: 'term' } });
+    expect(policyClassSelect.value).toBe('term');
+  });
+
+  it('selecting "Other" shows free-text planName input; planId null on submit', async () => {
+    hoisted.getPolicyPlans.mockResolvedValue({ plans: [CATALOG_PLAN], pendingReview: [] });
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+    const { container } = render(<PolicyLedgerPanel />);
+    await openCreateForm();
+
+    const picker = screen.getByTestId('plan-picker-select');
+    fireEvent.change(picker, { target: { value: '__other__' } });
+
+    const freeText = screen.getByTestId('plan-name-freetext');
+    expect(freeText).toBeInTheDocument();
+
+    fireEvent.change(freeText, { target: { value: 'Custom New Plan' } });
+
+    fireEvent.submit(container.querySelector('form'));
+    await waitFor(() => expect(hoisted.createPolicy).toHaveBeenCalledOnce());
+
+    const [, , formData] = hoisted.createPolicy.mock.calls[0];
+    expect(formData.planId).toBeNull();
+    expect(formData.planName).toBe('Custom New Plan');
+  });
+
+  it('F3.1 prefill with planId pre-selects the catalog picker mode', async () => {
+    hoisted.getPolicyPlans.mockResolvedValue({ plans: [CATALOG_PLAN], pendingReview: [] });
+    hoisted.getOwnPolicies.mockResolvedValueOnce([]);
+    const prefill = { planId: CATALOG_PLAN.id, planName: CATALOG_PLAN.name, ownerName: 'Test' };
+    render(<PolicyLedgerPanel initialForm={prefill} onPrefillConsumed={vi.fn()} />);
+
+    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+
+    const picker = screen.getByTestId('plan-picker-select');
+    expect(picker.value).toBe(CATALOG_PLAN.id);
+    expect(screen.queryByTestId('plan-name-freetext')).not.toBeInTheDocument();
   });
 });

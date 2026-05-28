@@ -5,6 +5,7 @@ import { formatCurrency } from '../../utils/formatters';
 import { PROSPECTING_SOURCES, PROSPECTING_SOURCE_LABELS } from '../../services/prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
 import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory } from '../../services/policiesService';
+import { getPolicyPlans } from '../../services/planCatalogService';
 import {
   LEGAL_AGENT_TRANSITIONS,
   POLICY_STATUS_LABELS,
@@ -111,6 +112,12 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
 
+  // Plan catalog
+  const [catalogPlans, setCatalogPlans] = useState([]);
+  const [planPickerMode, setPlanPickerMode] = useState(
+    initialForm?.planId ? 'catalog' : (initialForm?.planName ? 'other' : 'catalog')
+  );
+
   // ── History timeline state ──
   const [histExpanded, setHistExpanded] = useState(new Set());
   const [histData,     setHistData]     = useState({});  // policyId → history[]
@@ -146,8 +153,15 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
   useEffect(() => {
     if (!tenantId || !user?.uid) return;
     setLoading(true);
-    getOwnPolicies(tenantId, user.uid)
-      .then((data) => { setPolicies(data); setLoadError(null); })
+    Promise.all([
+      getOwnPolicies(tenantId, user.uid),
+      getPolicyPlans(tenantId),
+    ])
+      .then(([pols, catalog]) => {
+        setPolicies(pols);
+        setCatalogPlans((catalog.plans ?? []).filter((p) => p.isActive));
+        setLoadError(null);
+      })
       .catch((err) => setLoadError(err.message))
       .finally(() => setLoading(false));
   }, [tenantId, user?.uid]);
@@ -172,6 +186,22 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
       if (sameAsOwner && name === 'ownerName') next.insuredName = value;
       return next;
     });
+  }
+
+  function handlePlanSelect(e) {
+    const val = e.target.value;
+    if (val === '__other__') {
+      setPlanPickerMode('other');
+      setForm((f) => ({ ...f, planId: null, planName: '' }));
+    } else if (val === '') {
+      setPlanPickerMode('catalog');
+      setForm((f) => ({ ...f, planId: null, planName: '' }));
+    } else {
+      const plan = catalogPlans.find((p) => p.id === val);
+      if (!plan) return;
+      setPlanPickerMode('catalog');
+      setForm((f) => ({ ...f, planId: plan.id, planName: plan.name, policyClass: plan.class }));
+    }
   }
 
   function handleSameAsOwner(checked) {
@@ -243,10 +273,15 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
   }
 
   function openCreate() {
-    setForm({ ...EMPTY_FORM, ...(initialForm ?? {}) });
+    const merged = { ...EMPTY_FORM, ...(initialForm ?? {}) };
+    setForm(merged);
     setSameAsOwner(false);
     setSaveError(null);
     onPrefillConsumed?.();
+    // Determine initial picker mode from prefill
+    setPlanPickerMode(
+      merged.planId ? 'catalog' : (merged.planName ? 'other' : 'catalog')
+    );
     setView('create');
   }
 
@@ -592,9 +627,31 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
               {BIZ_TYPES.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </FieldGroup>
-          <FieldGroup label="Plan Name" id="planName">
-            <input id="planName" name="planName" value={form.planName} onChange={handleChange}
-              placeholder="Optional" className={inputCls} />
+          <FieldGroup label="Plan Name" id="planPicker">
+            <select
+              id="planPicker"
+              value={form.planId ?? (planPickerMode === 'other' ? '__other__' : '')}
+              onChange={handlePlanSelect}
+              className={selectCls}
+              data-testid="plan-picker-select"
+            >
+              <option value="">Select plan…</option>
+              {catalogPlans.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+              <option value="__other__">Other (enter manually)</option>
+            </select>
+            {planPickerMode === 'other' && (
+              <input
+                id="planName"
+                name="planName"
+                value={form.planName}
+                onChange={handleChange}
+                placeholder="Enter plan name"
+                className={`${inputCls} mt-2`}
+                data-testid="plan-name-freetext"
+              />
+            )}
           </FieldGroup>
         </div>
 

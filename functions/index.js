@@ -14,6 +14,9 @@ exports.aggregateDailyToWeekly = aggregateDailyToWeeklyCron;
 // Track I I1.3a: denormalize jfwCount onto WAR docs for upline visibility
 exports.onWarWrite = require('./war/recomputeJfwCount').onWarWrite;
 
+// H4: aggregate free-text plan names into config/policyPlans pendingReview
+exports.aggregatePendingPlan = require('./policyPlans/aggregatePendingPlan').aggregatePendingPlan;
+
 // Track I I3b: escalate missed standards to upline on first WAR submit-transition
 exports.onWarSubmitNotifyUpline = require('./war/onWarSubmitNotifyUpline').onWarSubmitNotifyUpline;
 
