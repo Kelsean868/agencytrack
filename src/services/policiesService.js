@@ -6,6 +6,7 @@ import {
 import { PROSPECTING_SOURCES } from './prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../utils/prospectingConstants';
 import { isLegalAgentTransition } from '../constants/policyLifecycle';
+import { parseDateOnlyTT } from '../utils/dateInputs';
 
 const VALID_SOURCES          = new Set(PROSPECTING_SOURCES.map((s) => s.value));
 const VALID_PRODUCT_LINES    = new Set(['life', 'ah', 'property', 'motor']);
@@ -61,8 +62,8 @@ export async function createPolicy(tenantId, agentProfile, data) {
     proposedFrequency: data.proposedFrequency,
     proposedAPI,
     proposedCoverage: data.proposedCoverage ? parseFloat(data.proposedCoverage) : null,
-    dateWritten: Timestamp.fromDate(new Date(data.dateWritten)),
-    dateSubmitted: Timestamp.fromDate(new Date(data.dateSubmitted)),
+    dateWritten: Timestamp.fromDate(parseDateOnlyTT(data.dateWritten)),
+    dateSubmitted: Timestamp.fromDate(parseDateOnlyTT(data.dateSubmitted)),
     notes: data.notes?.trim() || null,
     isSelfOrFamily: Boolean(data.isSelfOrFamily),
     replacedPolicyAPI: data.newBusinessType === 'replacement' ? (parseFloat(data.replacedPolicyAPI) || null) : null,
@@ -132,7 +133,7 @@ export async function transitionPolicyStatus(tenantId, agentProfile, policyId, c
     if (!(issuedCoverage   > 0))  throw new Error('issuedCoverage must be positive');
     if (!(initialPremium   > 0))  throw new Error('initialPremium must be positive');
     if (!(earnedCommission >= 0)) throw new Error('earnedCommission must be non-negative');
-    const dateIssued = Timestamp.fromDate(new Date(fields.dateIssued));
+    const dateIssued = Timestamp.fromDate(parseDateOnlyTT(fields.dateIssued));
     policyUpdate.dateIssued       = dateIssued;
     policyUpdate.settledAPI       = settledAPI;
     policyUpdate.issuedCoverage   = issuedCoverage;

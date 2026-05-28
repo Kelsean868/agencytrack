@@ -3,6 +3,7 @@ import { Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import { getPoliciesForManager, confirmPolicy, lapsePolicy } from '../../services/policiesService';
 import { getTenantUsers } from '../../services/managerService';
+import { parseDateOnlyTT } from '../../utils/dateInputs';
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -222,7 +223,7 @@ export default function PolicyReconciliationPanel() {
         name: userProfile.name ?? userProfile.email ?? 'Manager',
         role,
       };
-      const dateLapsedTs = Timestamp.fromDate(new Date(ls.dateLapsed));
+      const dateLapsedTs = Timestamp.fromDate(parseDateOnlyTT(ls.dateLapsed));
       const fields = { dateLapsed: dateLapsedTs, lapseReason: ls.lapseReason?.trim() || '' };
       await lapsePolicy(tenantId, managerProfile, policy.id, policy, fields);
       setLapseState((prev) => ({
