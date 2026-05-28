@@ -152,6 +152,18 @@ Banked: 2026-05-28 (autonomous H4 run observation).
 
 ---
 
+## H4 — contributedPolicyIds array growth on long-lived pending entries (LOW, banked 2026-05-28)
+
+`aggregatePendingPlan` (CF) stores `contributedPolicyIds[]` per `pendingReview` entry for idempotent deduplication — each source `policyId` that fires the CF is appended to the array, and duplicate fires for the same `policyId` are no-ops. If a single pending entry stays unprocessed for a long time and accumulates many contributing policies (rare — the intended flow is: admin reviews weekly, promotes or dismisses), the array grows unboundedly.
+
+At expected volumes (tens to low hundreds of agents, each submitting a few policies per month), this is well under the 1 MB Firestore document limit. No action needed now.
+
+**If observed in practice:** cap `contributedPolicyIds` at N (e.g. 500) by slicing before append, or migrate the sub-array to a subcollection. Either change is non-breaking — the idempotency check (`ids.includes(policyId)`) still works on a capped array, just stops deduplicating policyIds beyond the cap, which is fine at that volume.
+
+**Priority:** LOW. Admin should review `pendingReview` periodically as part of normal plan-catalog hygiene. Banked 2026-05-28 (H4 PR #370 review prep).
+
+---
+
 ## Weak-waitFor audit — FULLY RESOLVED (LOW, banked 2026-05-27)
 
 PR #363 hardened `ProspectInfoPanel.test.jsx` and `PolicyReconciliationPanel.test.jsx`. Phase D2 sweep (2026-05-27) completed the project-wide enumeration. PR #371 (`7c91670`, 2026-05-28) resolved all HIGH instances (46 total).
