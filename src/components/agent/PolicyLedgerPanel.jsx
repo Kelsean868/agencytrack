@@ -6,6 +6,7 @@ import { PROSPECTING_SOURCES, PROSPECTING_SOURCE_LABELS } from '../../services/p
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
 import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory } from '../../services/policiesService';
 import { getPolicyPlans } from '../../services/planCatalogService';
+import { getTodayTT } from '../../utils/dateInputs';
 import {
   LEGAL_AGENT_TRANSITIONS,
   POLICY_STATUS_LABELS,
@@ -38,7 +39,7 @@ const POLICY_CLASSES = [
   { value: 'annuity',        label: 'Annuity' },
 ];
 
-const today = new Date().toISOString().split('T')[0];
+const today = getTodayTT();
 
 const STATUS_BADGE_CLS = {
   submitted: 'bg-blue-50   text-blue-700   dark:bg-blue-950/30   dark:text-blue-400',
