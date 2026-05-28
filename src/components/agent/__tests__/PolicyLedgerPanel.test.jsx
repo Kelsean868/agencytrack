@@ -242,7 +242,7 @@ describe('PolicyLedgerPanel — create form', () => {
   it('clicking New Policy switches to create view with back button', async () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([]);
     render(<PolicyLedgerPanel />);
-    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument()
@@ -255,7 +255,7 @@ describe('PolicyLedgerPanel — create form', () => {
       .mockResolvedValueOnce([makePolicy()]); // reload after create
 
     const { container } = render(<PolicyLedgerPanel />);
-    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
 
     // Submit via the form element to bypass JSDOM's per-browser submit-button semantics
@@ -270,7 +270,7 @@ describe('PolicyLedgerPanel — create form', () => {
     hoisted.createPolicy.mockRejectedValueOnce(new Error('Permission denied'));
 
     const { container } = render(<PolicyLedgerPanel />);
-    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
 
     await waitFor(() => container.querySelector('form'));
@@ -286,7 +286,7 @@ describe('PolicyLedgerPanel — transition modal', () => {
   it('Update Status button opens transition modal for a submitted policy', async () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({ status: 'submitted' })]);
     render(<PolicyLedgerPanel />);
-    await waitFor(() => screen.getByRole('button', { name: /Update Status/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Update Status/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Update Status/i }));
     // Modal title is "Update Status" — it now appears twice (card button + modal heading)
     await waitFor(() => {
@@ -299,7 +299,7 @@ describe('PolicyLedgerPanel — transition modal', () => {
   it('transition modal lists legal next statuses for submitted policy', async () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({ status: 'submitted' })]);
     render(<PolicyLedgerPanel />);
-    await waitFor(() => screen.getByRole('button', { name: /Update Status/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Update Status/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Update Status/i }));
     await waitFor(() => {
       // Modal should list rated/postponed/ntu/denied/settled as options
@@ -314,7 +314,7 @@ describe('PolicyLedgerPanel — transition modal', () => {
       .mockResolvedValueOnce([makePolicy({ status: 'rated' })]);
 
     const { container } = render(<PolicyLedgerPanel />);
-    await waitFor(() => screen.getByRole('button', { name: /Update Status/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /Update Status/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Update Status/i }));
 
     // Wait for transition modal form to appear
@@ -338,7 +338,7 @@ describe('PolicyLedgerPanel — initialForm prefill', () => {
     render(<PolicyLedgerPanel initialForm={prefill} onPrefillConsumed={vi.fn()} />);
 
     // Form auto-opens on mount — no click needed
-    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument());
     expect(screen.getByLabelText(/Owner Name/i).value).toBe('Prefilled Owner');
   });
 
@@ -346,10 +346,10 @@ describe('PolicyLedgerPanel — initialForm prefill', () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([]);
     render(<PolicyLedgerPanel />);
 
-    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
 
-    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument());
     expect(screen.getByLabelText(/Owner Name/i).value).toBe('');
   });
 
@@ -371,9 +371,9 @@ describe('PolicyLedgerPanel — socialPlatform conditional select', () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([]);
     render(<PolicyLedgerPanel />);
 
-    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
-    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument());
 
     // Default source is '' — no Platform select
     expect(screen.queryByLabelText(/^Platform/i)).not.toBeInTheDocument();
@@ -387,9 +387,9 @@ describe('PolicyLedgerPanel — socialPlatform conditional select', () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([]);
     render(<PolicyLedgerPanel />);
 
-    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
-    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText(/Source of Prospect/i), { target: { value: 'social-media' } });
     expect(screen.getByLabelText(/^Platform/i)).toBeInTheDocument();
@@ -402,9 +402,9 @@ describe('PolicyLedgerPanel — socialPlatform conditional select', () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([]);
     render(<PolicyLedgerPanel />);
 
-    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
-    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument());
 
     // Select social-media — platform not yet chosen → save disabled
     fireEvent.change(screen.getByLabelText(/Source of Prospect/i), { target: { value: 'social-media' } });
@@ -421,9 +421,9 @@ describe('PolicyLedgerPanel — socialPlatform conditional select', () => {
       .mockResolvedValueOnce([]);
 
     const { container } = render(<PolicyLedgerPanel />);
-    await waitFor(() => screen.getByRole('button', { name: /New Policy/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /New Policy/i }));
-    await waitFor(() => screen.getByRole('button', { name: /back/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument());
 
     // Select social-media source and pick a platform
     fireEvent.change(screen.getByLabelText(/Source of Prospect/i), { target: { value: 'social-media' } });

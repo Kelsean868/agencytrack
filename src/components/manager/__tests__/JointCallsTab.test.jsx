@@ -122,7 +122,7 @@ describe('JointCallsTab — call list', () => {
   it('renders comments and author names', async () => {
     mockGetJointCalls.mockResolvedValue(calls);
     render(<JointCallsTab {...defaultProps} />);
-    await waitFor(() => screen.getByText('Clean presentation, strong close.'));
+    await waitFor(() => expect(screen.getByText('Clean presentation, strong close.')).toBeInTheDocument());
     expect(screen.getByText('Client rescheduled.')).toBeInTheDocument();
     expect(screen.getByText(/Branch Manager 1/)).toBeInTheDocument();
     expect(screen.getByText(/Unit Manager 1/)).toBeInTheDocument();
@@ -131,7 +131,7 @@ describe('JointCallsTab — call list', () => {
   it('shows edit button only on calls the current user authored', async () => {
     mockGetJointCalls.mockResolvedValue(calls);
     render(<JointCallsTab {...defaultProps} />);
-    await waitFor(() => screen.getByText('Clean presentation, strong close.'));
+    await waitFor(() => expect(screen.getByText('Clean presentation, strong close.')).toBeInTheDocument());
     const editBtns = screen.getAllByLabelText('Edit joint call');
     expect(editBtns).toHaveLength(1);
   });
@@ -143,7 +143,7 @@ describe('JointCallsTab — add call', () => {
     mockAddJointCall.mockResolvedValue({});
 
     render(<JointCallsTab {...defaultProps} />);
-    await waitFor(() => screen.getByText('No joint-call observations yet.'));
+    await waitFor(() => expect(screen.getByText('No joint-call observations yet.')).toBeInTheDocument());
 
     // Fill required appointmentDate
     fireEvent.change(screen.getByLabelText('Appointment date'), {
@@ -190,7 +190,7 @@ describe('JointCallsTab — add call', () => {
   it('reveals nextMeetingDate input when appointment NOT kept', async () => {
     mockGetJointCalls.mockResolvedValue([]);
     render(<JointCallsTab {...defaultProps} />);
-    await waitFor(() => screen.getByText('No joint-call observations yet.'));
+    await waitFor(() => expect(screen.getByText('No joint-call observations yet.')).toBeInTheDocument());
 
     // Initially appointmentKept is true → no next-meeting input
     expect(screen.queryByLabelText('Next meeting date')).toBeNull();
@@ -242,7 +242,7 @@ describe('JointCallsTab — prospect-info link (F3.1)', () => {
     mockGetProspectInfo.mockResolvedValue([]);
 
     render(<JointCallsTab {...defaultProps} />);
-    await waitFor(() => screen.getByText('No joint-call observations yet.'));
+    await waitFor(() => expect(screen.getByText('No joint-call observations yet.')).toBeInTheDocument());
     expect(screen.queryByLabelText('Link to prospect prep')).toBeNull();
   });
 
@@ -295,7 +295,7 @@ describe('JointCallsTab — prospect-info link (F3.1)', () => {
     mockGetProspectInfo.mockResolvedValue(preps);
 
     render(<JointCallsTab {...defaultProps} />);
-    await waitFor(() => screen.getByText('Good call.'));
+    await waitFor(() => expect(screen.getByText('Good call.')).toBeInTheDocument());
     // 'Prep:' label is unique to the observation card linked-prep summary
     expect(screen.getByText('Prep:')).toBeInTheDocument();
     // The prep name appears in both the card summary and the selector option

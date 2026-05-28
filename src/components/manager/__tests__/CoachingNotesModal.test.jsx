@@ -161,7 +161,7 @@ describe('CoachingNotesModal — note list', () => {
   it('renders note bodies and author names', async () => {
     mockGetCoachingNotes.mockResolvedValue(notes);
     render(<CoachingNotesModal {...defaultProps} />);
-    await waitFor(() => screen.getByText('Close 20 apps this quarter.'));
+    await waitFor(() => expect(screen.getByText('Close 20 apps this quarter.')).toBeInTheDocument());
     expect(screen.getByText('Good prospect pipeline.')).toBeInTheDocument();
     expect(screen.getByText(/Branch Manager 1/)).toBeInTheDocument();
     expect(screen.getByText(/Unit Manager 1/)).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe('CoachingNotesModal — note list', () => {
   it('shows edit button only on notes the current user authored', async () => {
     mockGetCoachingNotes.mockResolvedValue(notes);
     render(<CoachingNotesModal {...defaultProps} />);
-    await waitFor(() => screen.getByText('Close 20 apps this quarter.'));
+    await waitFor(() => expect(screen.getByText('Close 20 apps this quarter.')).toBeInTheDocument());
     const editBtns = screen.getAllByLabelText('Edit note');
     expect(editBtns).toHaveLength(1); // only n1 belongs to bm1
   });
@@ -182,7 +182,7 @@ describe('CoachingNotesModal — add note', () => {
     mockAddCoachingNote.mockResolvedValue({});
 
     render(<CoachingNotesModal {...defaultProps} />);
-    await waitFor(() => screen.getByText('No coaching notes yet.'));
+    await waitFor(() => expect(screen.getByText('No coaching notes yet.')).toBeInTheDocument());
 
     fireEvent.change(screen.getByLabelText('Coaching note body'), {
       target: { value: 'New coaching note.' },
@@ -213,7 +213,7 @@ describe('CoachingNotesModal — add note', () => {
       )
     );
 
-    await waitFor(() => screen.getByText('New coaching note.'));
+    await waitFor(() => expect(screen.getByText('New coaching note.')).toBeInTheDocument());
   });
 });
 

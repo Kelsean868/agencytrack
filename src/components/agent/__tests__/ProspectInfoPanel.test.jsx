@@ -65,7 +65,7 @@ describe('ProspectInfoPanel — empty state', () => {
   it('shows empty prompt + New Prep button when no preps exist', async () => {
     mockGetProspectInfo.mockResolvedValue([]);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByTestId('prospect-info-empty'));
+    await waitFor(() => expect(screen.getByTestId('prospect-info-empty')).toBeInTheDocument());
     expect(screen.getByText(/No joint-call prep yet/i)).toBeInTheDocument();
     expect(screen.getByTestId('prospect-info-add-btn')).toBeInTheDocument();
   });
@@ -91,14 +91,14 @@ describe('ProspectInfoPanel — list of own preps (inclusion)', () => {
   it('agent SEES their OWN prep records (inclusion semantics)', async () => {
     mockGetProspectInfo.mockResolvedValue(preps);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByText('Jane Smith'));
+    await waitFor(() => expect(screen.getByText('Jane Smith')).toBeInTheDocument());
     expect(screen.getByText('Whole Life', { exact: false })).toBeInTheDocument();
   });
 
   it('shows an Edit affordance for the agent on their own prep (createdBy match)', async () => {
     mockGetProspectInfo.mockResolvedValue(preps);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByText('Jane Smith'));
+    await waitFor(() => expect(screen.getByText('Jane Smith')).toBeInTheDocument());
     expect(screen.getByLabelText('Edit prep')).toBeInTheDocument();
   });
 
@@ -132,7 +132,7 @@ describe('ProspectInfoPanel — taxonomy labels', () => {
       createdBy: 'agent1',
     }]);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByText('Legacy Prospect'));
+    await waitFor(() => expect(screen.getByText('Legacy Prospect')).toBeInTheDocument());
     expect(screen.getByText('Bank Referral (BOA)')).toBeInTheDocument();
     expect(screen.getByText('Mortgage / Credit Life', { exact: false })).toBeInTheDocument();
   });
@@ -155,7 +155,7 @@ describe('ProspectInfoPanel — taxonomy labels', () => {
       },
     ]);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByText('Enum Client'));
+    await waitFor(() => expect(screen.getByText('Enum Client')).toBeInTheDocument());
     expect(screen.getByText('Whole Life / Permanent', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('Whole Life', { exact: true })).toBeInTheDocument();
   });
@@ -166,7 +166,7 @@ describe('ProspectInfoPanel — add prep flow', () => {
     mockGetProspectInfo.mockResolvedValue([]);
     mockAddProspectInfo.mockResolvedValue({});
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByTestId('prospect-info-add-btn'));
+    await waitFor(() => expect(screen.getByTestId('prospect-info-add-btn')).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId('prospect-info-add-btn'));
     expect(screen.getByTestId('prospect-info-add-form')).toBeInTheDocument();
@@ -199,13 +199,13 @@ describe('ProspectInfoPanel — add prep flow', () => {
       ),
     );
 
-    await waitFor(() => screen.getByText('New Prospect'));
+    await waitFor(() => expect(screen.getByText('New Prospect')).toBeInTheDocument());
   });
 
   it('appointment date input is marked required (appointment-bound guardrail)', async () => {
     mockGetProspectInfo.mockResolvedValue([]);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByTestId('prospect-info-add-btn'));
+    await waitFor(() => expect(screen.getByTestId('prospect-info-add-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('prospect-info-add-btn'));
     const dateInput = screen.getByLabelText(/Intended appointment date/i);
     expect(dateInput).toBeRequired();
@@ -232,7 +232,7 @@ describe('ProspectInfoPanel — Log Policy CTA (F3.1)', () => {
   it('Log Policy button visible when onCreatePolicyFromPrep is provided', async () => {
     mockGetProspectInfo.mockResolvedValue([prep]);
     render(<ProspectInfoPanel onCreatePolicyFromPrep={vi.fn()} />);
-    await waitFor(() => screen.getByTestId(`log-policy-btn-${prep.id}`));
+    await waitFor(() => expect(screen.getByTestId(`log-policy-btn-${prep.id}`)).toBeInTheDocument());
     expect(screen.getByTestId(`log-policy-btn-${prep.id}`)).toBeInTheDocument();
   });
 
@@ -240,7 +240,7 @@ describe('ProspectInfoPanel — Log Policy CTA (F3.1)', () => {
     mockGetProspectInfo.mockResolvedValue([prep]);
     const callback = vi.fn();
     render(<ProspectInfoPanel onCreatePolicyFromPrep={callback} />);
-    await waitFor(() => screen.getByTestId(`log-policy-btn-${prep.id}`));
+    await waitFor(() => expect(screen.getByTestId(`log-policy-btn-${prep.id}`)).toBeInTheDocument());
     fireEvent.click(screen.getByTestId(`log-policy-btn-${prep.id}`));
     expect(callback).toHaveBeenCalledWith(expect.objectContaining({
       clientName: 'Alice Test',
@@ -251,7 +251,7 @@ describe('ProspectInfoPanel — Log Policy CTA (F3.1)', () => {
   it('Log Policy button hidden when onCreatePolicyFromPrep is not provided', async () => {
     mockGetProspectInfo.mockResolvedValue([prep]);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByText('Alice Test'));
+    await waitFor(() => expect(screen.getByText('Alice Test')).toBeInTheDocument());
     expect(screen.queryByTestId(`log-policy-btn-${prep.id}`)).not.toBeInTheDocument();
   });
 });
@@ -260,7 +260,7 @@ describe('ProspectInfoPanel — socialPlatform conditional select (PR #319)', ()
   it('platform select appears when prospectingSource is changed to social-media', async () => {
     mockGetProspectInfo.mockResolvedValue([]);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByTestId('prospect-info-add-btn'));
+    await waitFor(() => expect(screen.getByTestId('prospect-info-add-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('prospect-info-add-btn'));
 
     // Default source (referral) — no platform select
@@ -274,7 +274,7 @@ describe('ProspectInfoPanel — socialPlatform conditional select (PR #319)', ()
   it('platform select disappears when source changes away from social-media', async () => {
     mockGetProspectInfo.mockResolvedValue([]);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByTestId('prospect-info-add-btn'));
+    await waitFor(() => expect(screen.getByTestId('prospect-info-add-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('prospect-info-add-btn'));
 
     fireEvent.change(screen.getByLabelText('Prospecting source'), { target: { value: 'social-media' } });
@@ -287,7 +287,7 @@ describe('ProspectInfoPanel — socialPlatform conditional select (PR #319)', ()
   it('save button is disabled when social-media is selected but no platform chosen', async () => {
     mockGetProspectInfo.mockResolvedValue([]);
     render(<ProspectInfoPanel />);
-    await waitFor(() => screen.getByTestId('prospect-info-add-btn'));
+    await waitFor(() => expect(screen.getByTestId('prospect-info-add-btn')).toBeInTheDocument());
     fireEvent.click(screen.getByTestId('prospect-info-add-btn'));
 
     // Fill required fields so only social-media-without-platform disables the button
