@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Pencil, AlertCircle } from 'lucide-react';
+import { Pencil, AlertCircle, BookOpen } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getCompanyMinimums } from '../../services/goalsService';
+import { getPolicyPlans } from '../../services/planCatalogService';
 import { formatCurrency } from '../../utils/formatters';
 import EditConfigModal from './EditConfigModal';
+import PlanCatalogModal from './PlanCatalogModal';
 
 /**
  * Company Configuration card for the Tenant Admin (Design System v2 — B5).
@@ -36,14 +38,20 @@ export default function CompanyConfigPanel() {
   const [loading, setLoading] = useState(true);
   const [readError, setReadError] = useState(null);
   const [editing, setEditing] = useState(false);
+  const [planCatalogOpen, setPlanCatalogOpen] = useState(false);
+  const [planCatalog, setPlanCatalog] = useState(null);
 
   const loadConfig = useCallback(async () => {
     if (!tenantId) return;
     setLoading(true);
     setReadError(null);
     try {
-      const data = await getCompanyMinimums(tenantId);
+      const [data, catalog] = await Promise.all([
+        getCompanyMinimums(tenantId),
+        getPolicyPlans(tenantId),
+      ]);
       setConfig(data);
+      setPlanCatalog(catalog);
     } catch (err) {
       setReadError(err?.message ?? 'Failed to load company configuration.');
     } finally {
@@ -99,6 +107,18 @@ export default function CompanyConfigPanel() {
       sub: 'Managers create all accounts',
       editable: false,
     },
+    {
+      key: 'policyPlans',
+      label: 'Policy Plans',
+      value: planCatalog
+        ? `${planCatalog.plans.filter((p) => p.isActive).length} active`
+        : '—',
+      sub: planCatalog?.pendingReview?.length > 0
+        ? `${planCatalog.pendingReview.length} pending review`
+        : 'No pending items',
+      editable: true,
+      onCatalog: true,
+    },
   ];
 
   return (
@@ -136,14 +156,33 @@ export default function CompanyConfigPanel() {
 
       <div className="config-tile-grid">
         {tiles.map((tile) => (
-          <div
-            key={tile.key}
-            className={`config-tile${tile.editable ? ' config-tile-editable' : ''}`}
-          >
-            <div className="config-tile-label">{tile.label}</div>
-            <div className="config-tile-value">{loading ? '—' : tile.value}</div>
-            <div className="config-tile-sub">{tile.sub}</div>
-          </div>
+          tile.onCatalog ? (
+            <button
+              key={tile.key}
+              type="button"
+              onClick={() => setPlanCatalogOpen(true)}
+              disabled={loading}
+              className="config-tile config-tile-editable text-left w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Manage policy plan catalog"
+              data-testid="plan-catalog-tile"
+            >
+              <div className="flex items-center gap-1.5">
+                <BookOpen size={12} className="text-primary shrink-0" aria-hidden="true" />
+                <span className="config-tile-label">{tile.label}</span>
+              </div>
+              <div className="config-tile-value">{loading ? '—' : tile.value}</div>
+              <div className="config-tile-sub">{tile.sub}</div>
+            </button>
+          ) : (
+            <div
+              key={tile.key}
+              className={`config-tile${tile.editable ? ' config-tile-editable' : ''}`}
+            >
+              <div className="config-tile-label">{tile.label}</div>
+              <div className="config-tile-value">{loading ? '—' : tile.value}</div>
+              <div className="config-tile-sub">{tile.sub}</div>
+            </div>
+          )
         ))}
       </div>
 
@@ -155,6 +194,13 @@ export default function CompanyConfigPanel() {
           currentUid={user?.uid ?? null}
           onClose={() => setEditing(false)}
           onSaved={() => { loadConfig(); }}
+        />
+      )}
+
+      {planCatalogOpen && (
+        <PlanCatalogModal
+          tenantId={tenantId}
+          onClose={() => { setPlanCatalogOpen(false); loadConfig(); }}
         />
       )}
     </section>
