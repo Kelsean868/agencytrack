@@ -858,7 +858,11 @@ export default function GoalsPanel() {
     if (!user?.uid || !tenantId) return;
     setHierarchyLoading(true);
     setHierarchyError(null);
-    getGoalHierarchy(tenantId, userProfile?.unitId ?? null, new Date().getFullYear(), user.uid)
+    getSalesManagerUid(tenantId)
+      .catch(() => null)
+      .then((smUid) =>
+        getGoalHierarchy(tenantId, userProfile?.unitId ?? null, new Date().getFullYear(), user.uid, smUid)
+      )
       .then(setHierarchy)
       .catch((e) => {
         console.error(e);
