@@ -135,7 +135,24 @@ Banked: F2.2 PR #362 (`517e16d`), 2026-05-27.
 
 ---
 
-## Weak-waitFor audit — HIGH instances RESOLVED; MEDIUM instances remain (LOW, banked 2026-05-27)
+## Branch protection: require CI status checks before merge (MEDIUM, banked 2026-05-28)
+
+`ci.yml` is `pull_request`-only (no `push` trigger). GitHub branch protection on `main` has no required status checks configured, so `gh pr merge --auto --squash` merges immediately without waiting for CI. PRs #371 and #372 merged before lint-and-build + functions-tests ran against the PR branches.
+
+**Fix:** In GitHub → Settings → Branches → Branch protection rules → `main`, add:
+- `CI / lint-and-build` as a required status check
+- `CI / functions-tests` as a required status check
+- Enable "Require status checks to pass before merging"
+
+This makes `--auto` merge truly gate on CI green, aligning the rubric ("Test/script + ≥2 CI green → auto-merge") with what GitHub enforces.
+
+**Priority:** MEDIUM. Current session rubric is safe because both suites were verified locally before push. The gap is that GitHub doesn't enforce the rubric independently.
+
+Banked: 2026-05-28 (autonomous H4 run observation).
+
+---
+
+## Weak-waitFor audit — FULLY RESOLVED (LOW, banked 2026-05-27)
 
 PR #363 hardened `ProspectInfoPanel.test.jsx` and `PolicyReconciliationPanel.test.jsx`. Phase D2 sweep (2026-05-27) completed the project-wide enumeration. PR #371 (`7c91670`, 2026-05-28) resolved all HIGH instances (46 total).
 
