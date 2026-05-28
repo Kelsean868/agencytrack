@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-28 (PR #379 — Phase 9 SM target brief + design questions merged; awaiting Kyron ACK on 9 design questions before build starts) |
-| Current main HEAD | `24c9cc6` (docs(briefs): Phase 9 SM target goals layer kickoff (#379)) |
-| Active track | Phase 9 SM target — design ACK phase. Brief at `docs/briefs/phase9-sm-target-kickoff.md`. Design questions at `docs/phase9-sm-target-design-questions.md`. All 9 questions LOCKED PENDING KYRON ACK. |
-| Next track | Build starts once Kyron ACKs design questions. After Phase 9: F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip when pilot-ready. |
+| Last updated | 2026-05-28 (PR #380 — Phase 9 SM target decisions locked + deferred FUs banked; build IN FLIGHT) |
+| Current main HEAD | `f73e59f` (docs: Phase 9 SM target — lock all 9 decisions + bank deferred FUs (#380)) |
+| Active track | Phase 9 SM target — build IN FLIGHT. All 9 design questions CONFIRMED. Brief at `docs/briefs/phase9-sm-target-kickoff.md`. 6-point change surface: goalsService, gapAnalysis, GapAnalysisPanel, firestore.rules, GoalsPanel, AgentDashboard. |
+| Next track | After Phase 9 build PR merges: F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip when pilot-ready. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
@@ -122,6 +122,8 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#380](https://github.com/Kelsean868/agencytrack/pull/380) | `f73e59f` | docs: Phase 9 SM target — lock all 9 decisions + bank 3 deferred FUs. Updated `phase9-sm-target-design-questions.md` (all 9 ACK boxes checked + answers filled), `docs/briefs/phase9-sm-target-kickoff.md` (LOCKED PENDING ACK → CONFIRMED; exact rule text + no-index-needed note added), `docs/FOLLOW_UPS.md` (Phase 9 build-in-flight FU removed; 3 new FUs banked: MEDIUM multi-territory SM uid resolution, MEDIUM SM write-model inconsistency (BUG-N2 unitGoals vs branchGoals), LOW goals/{goalId} personal-commitment write rule verification). CI ✅. |
+| [#379](https://github.com/Kelsean868/agencytrack/pull/379) | `9cff883` | docs: Phase 9 SM target brief + design questions committed (Rule 10). |
 | [#378](https://github.com/Kelsean868/agencytrack/pull/378) | `f8cea55` | test(awards): AgentAwardsPanel — usesPolicyLedger path coverage. New `src/components/awards/__tests__/AgentAwardsPanel.test.jsx`: 7 tests covering both `usesPolicyLedger` paths. `false` path: `getOwnPolicies` not called, `confirmedSettlements` passed through to `computeAgentAwards`, empty-array fallback when undefined. `true` path: `getOwnPolicies` called with correct tenantId+uid, `settlementShapeFromPolicies` called with fetched policies, persistency merged from `confirmedSettlements`. Also added `import React` to `AgentAwardsPanel.jsx` (Vitest JSX transform requirement). 1601/1601 vitest; lint 0; build clean; CI ✅. H3 Phase C2. |
 | [#377](https://github.com/Kelsean868/agencytrack/pull/377) | `32a22ce` | feat(h3): parity harness hardening — extract derivation, hand-curated bounds, TZ edges. Extracts `settlementShapeFromPolicies` from `policiesService.js` to `src/lib/policiesDerivation.js` (pure module, zero SDK deps) so the parity harness imports without pulling in Firebase client SDK. Replaces tautological `buildOracle` with `BOUNDARY_EXPECTATIONS` (7 hand-curated static entries) — breaks algorithm-vs-algorithm circularity. Adds `TZ_EDGE_CASES` (4 entries) exercising `parseDateOnlyTT` production path at boundary dates where UTC-midnight vs TT-midnight disagree. Persistent log output (`scripts/verification/h3-parity-<RUN_ID>.log`). 3× harness runs 3/3 PASS (h3run_1779938028883, 037001, 043915). 1601/1601 vitest; lint 0; build clean. Prod smoke 3/3 ✅ (date defaults TT-local, policy create+visible, manager reconciliation panel). Note: opened as fresh PR #377 after GitHub auto-closed stacked PR #376 on base-branch deletion. |
 | [#375](https://github.com/Kelsean868/agencytrack/pull/375) | `3d31183` | fix(h3): interpret date-only inputs as TT-local midnight (UTC+4h offset). New `parseDateOnlyTT(s)` + `getTodayTT()` in `src/utils/dateInputs.js`. Applied at 3 `Timestamp.fromDate(new Date(...))` sites in `policiesService.js` (dateWritten, dateSubmitted, dateIssued) and 1 site in `PolicyReconciliationPanel.jsx` (dateLapsed). `PolicyLedgerPanel.jsx` uses `getTodayTT()` for `today` default. 12 unit tests in `dateInputs.test.js` (boundary dates, fake-timer clock). Closes the TT-UTC split-brain bug: UTC midnight on date-only strings = TT 20:00 prior day — fixed by anchoring to 04:00Z (TT midnight). 1601/1601 vitest; lint 0; build clean. Smoke 3/3 (date defaults 1a, policy visible 1b, reconciliation panel 2). |
@@ -248,13 +250,15 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**H3 parity track — all phases (A–D) COMPLETE.** PRs #375, #377, #378 merged. Flip capstone PASS. Runbook shipped.
+**Phase 9 SM Target — build IN FLIGHT.** PR #380 (`f73e59f`) locked all 9 design questions and banked 3 deferred FUs. Phase 0 complete. Build branch dispatched.
 
-PR #375 (`3d31183`) fixed the TT-UTC split-brain bug: `new Date('YYYY-MM-DD')` parses as UTC midnight = TT 20:00 prior day. Fix anchors to `T04:00:00Z` (TT midnight = UTC+4h). Applied at all 4 date-input Timestamp construction sites. PR #377 (`32a22ce`) hardened the parity harness: extracted `settlementShapeFromPolicies` to a pure `src/lib/policiesDerivation.js` module (no SDK deps), replaced tautological oracle with 7 hand-curated `BOUNDARY_EXPECTATIONS`, added 4 TZ edge-case assertions. 3× harness runs all 3/3 PASS. PR #378 (`f8cea55`) added 7 component tests for `AgentAwardsPanel` covering both `usesPolicyLedger` paths.
+6-point change surface under build: (1) `goalsService.js` — `getSalesManagerGoals`, `setSalesManagerGoals`, `getSalesManagerUid`, extend `getGoalHierarchy` with optional `smUid=null` 5th param. (2) `gapAnalysis.js` — `salesManagerTarget` tier + `toSalesManager`/`ofSalesManager` gaps. (3) `GapAnalysisPanel.jsx` — 5th `LAYER_CONFIG` entry (`alwaysRender: true`, "Not set" on null). (4) `firestore.rules` — new `salesManagerGoals/{docId}` block after `branchGoals`. (5) `GoalsPanel.jsx` — `SalesManagerGoalsTab` + `canSetSmTarget` gate. (6) `AgentDashboard.jsx` — resolve smUid via `getSalesManagerUid` and pass as 5th param.
 
-Live flip capstone (Phase C3): seeded 5 settled policies on test agent `J0j4uBqzTPcfm1IlGCPyDzo27RP2` including `2026-05-01` 1st-of-month. `settlementShapeFromPolicies` correctly attributed May 1 to `2026-05` (not `2026-04`). Revert + cleanup complete. Flip-readiness runbook at `docs/runbooks/usesPolicyLedger-flip.md` covers pre-flip checklist, Admin SDK path, Console path, post-flip verification, and revert procedure.
+Build PR open → STOP for dispatcher review of rules write arm before merge per dispatch instructions.
 
-**Next:** Phase 9 SM target (getSalesManagerGoals / setSalesManagerGoals — full 6-point change surface in FOLLOW_UPS.md). F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip is a human operational step when pilot-ready — see runbook. `needCovered` taxonomy confirmation (Track H/G design-time). See FOLLOW_UPS.md for full queue.
+**H3 parity track — all phases (A–D) COMPLETE.** PRs #375, #377, #378 merged. Flip capstone PASS. Runbook shipped. Live flip capstone confirmed `settlementShapeFromPolicies` attributes May 1 to `2026-05` correctly. Runbook at `docs/runbooks/usesPolicyLedger-flip.md`.
+
+**After Phase 9:** F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip is a human operational step when pilot-ready — see runbook. `needCovered` taxonomy confirmation (Track H/G design-time). See FOLLOW_UPS.md for full queue.
 
 ---
 
