@@ -486,7 +486,10 @@ service cloud.firestore {
       match /goals/{goalId} {
         allow read:  if canManage(tenantId) ||
           (isSignedIn() && isAgent() && getTenantId() == tenantId && goalId == request.auth.uid);
-        allow write: if canManage(tenantId);
+        // Agents can write their own goal doc (personal commitment + playground fields).
+        // CareerPortal calls setGoals() directly client-side; no CF path exists.
+        allow write: if canManage(tenantId) ||
+          (isSignedIn() && isAgent() && getTenantId() == tenantId && goalId == request.auth.uid);
       }
 
       match /notifications/{notificationId} {
