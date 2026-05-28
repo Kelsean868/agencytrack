@@ -10,6 +10,10 @@
     "firestore-send-email": "firebase/firestore-send-email@0.2.9"
   },
   "emulators": {
-    "singleProjectMode": false
+    "singleProjectMode": false,
+    "firestore": {
+      "host": "127.0.0.1",
+      "port": 9090
+    }
   }
 }
