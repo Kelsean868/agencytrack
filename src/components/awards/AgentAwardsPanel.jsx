@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { CheckCircle, XCircle, TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
 import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
 import { formatCurrency } from '../../utils/formatters';
