@@ -159,9 +159,7 @@ describe('GoalsPanel', () => {
     async function gotoAgentTab() {
       render(<GoalsPanel />);
       await screen.findByRole('tab', { name: 'Agent' });
-      await act(async () => {
-        fireEvent.click(screen.getByRole('tab', { name: 'Agent' }));
-      });
+      fireEvent.click(screen.getByRole('tab', { name: 'Agent' }));
       // Wait for agents to load.
       await screen.findByText('Alice Above');
     }
