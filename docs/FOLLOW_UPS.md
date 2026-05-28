@@ -178,6 +178,23 @@ Banked: 2026-05-28, H4 CF hotfix PR #373 (`df161fe`).
 
 ---
 
+## H3 existing-policy date migration (LOW, banked 2026-05-28)
+
+Policies stored **before PR #375** have `dateIssued`, `dateWritten`, `dateSubmitted`, and `dateLapsed` at UTC midnight (the old `new Date('YYYY-MM-DD')` behavior). After PR #375 merges, new policies store at UTC 04:00 (TT-local midnight). The 4-hour drift has two effects on pre-fix docs:
+
+1. **Cosmetic off-by-one on display:** `fmtDate()` renders the date as the prior calendar day in a TT browser (e.g., "Jan 1" stored shows as "Dec 31").
+2. **Period-key attribution split for 1st-of-month docs:** `toISOString().substring(0,7)` and `getMonth()` disagree on period for dates stored at UTC midnight on the 1st of a month.
+
+**Scope:** Pilot is postponed, no real production data exists yet. This is a pure dev-time artifact.
+
+**Action when real data exists:** Write a one-shot migration script (Node + Admin SDK) to find all policy docs with date fields at `T00:00:00.000Z` and shift them to `T04:00:00.000Z`. Safe to run idempotently; a `T04:00:00.000Z` value is left unchanged. Scope to the tenant's policy collection only.
+
+**Priority:** LOW — no real data exists at pilot start; revisit before first production tenant is onboarded.
+
+Banked: 2026-05-28, H3 TZ fix PR #375.
+
+---
+
 ## Weak-waitFor audit — FULLY RESOLVED (LOW, banked 2026-05-27)
 
 PR #363 hardened `ProspectInfoPanel.test.jsx` and `PolicyReconciliationPanel.test.jsx`. Phase D2 sweep (2026-05-27) completed the project-wide enumeration. PR #371 (`7c91670`, 2026-05-28) resolved all HIGH instances (46 total).

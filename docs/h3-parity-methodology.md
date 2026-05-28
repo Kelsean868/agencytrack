@@ -140,7 +140,40 @@ This harness **never touches production**. It connects exclusively via
 
 ## Source references
 
-- Ledger path: `src/services/policiesService.js:324` — `settlementShapeFromPolicies()`
+- Ledger path: `src/lib/policiesDerivation.js` — `settlementShapeFromPolicies()` (canonical source)
+- Re-exported from: `src/services/policiesService.js` — for consumers that import via the service
 - Oracle path: `src/services/settlementService.js:11` — `getSettlements()`
 - Oracle write: `src/services/settlementService.js:45` — `confirmSettlement()`
 - Awards consumer: `src/components/awards/AgentAwardsPanel.jsx:233-242`
+- TT-local date helper: `src/utils/dateInputs.js` — `parseDateOnlyTT()` (used by harness TZ edge cases)
+
+---
+
+## Parity harness hardening (feat/h3-parity-hardening, PR #376)
+
+Changes shipped in this branch:
+
+1. **`settlementShapeFromPolicies` extracted to `src/lib/policiesDerivation.js`** — single source of truth. The harness now imports from there directly; `policiesService.js` re-exports. Inline copy eliminated; drift between harness and production code is impossible.
+
+2. **`buildOracle` tautology replaced by `BOUNDARY_EXPECTATIONS`** — the oracle is still built by summing seed settled policies, but a separate static `BOUNDARY_EXPECTATIONS` table (7 hand-curated entries) validates the period-key derivation against known-good values before the Firestore seed runs. This is the anti-tautology guard: both paths could be wrong in the same way; `BOUNDARY_EXPECTATIONS` is a third, independent data source.
+
+3. **TZ-timezone edge cases** — 4 new edge-case expectations using `parseDateOnlyTT()` (the production conversion path). Specifically, "2025-01-01" must produce periodKey "2025-01" (not "2024-12" as it did before the fix) and "2024-12-31" stays in "2024-12". These seed into `settlementShapeFromPolicies` as Timestamp values built via `parseDateOnlyTT`, not raw `Date.UTC`, so they exercise the real fix end-to-end.
+
+4. **Persistent log files** — each run writes its full console output to `scripts/verification/h3-parity-<RUN_ID>.log`.
+
+5. **`firebase.json` emulator config** — added `firestore { host, port: 9090 }` to support `firebase emulators:start --only firestore` (was missing, causing port-binding errors on port 8080 which is occupied by another service).
+
+### Run results (PR #376)
+
+All 3 runs PASS:
+
+| Run | RUN ID | Verdict |
+|-----|--------|---------|
+| 1 | `h3run_1779938028883` | ✅ PASS (3/3) |
+| 2 | `h3run_1779938037001` | ✅ PASS (3/3) |
+| 3 | `h3run_1779938043915` | ✅ PASS (3/3) |
+
+Boundary expectations: 7/7 ✓ per run.
+TZ edge cases: 4/4 ✓ per run.
+Seed: 93 policies (74 settled, 14 lapsed, 5 reinstated) per run.
+Oracle: 24 settlement periods per run.
