@@ -166,9 +166,15 @@ Banked: 2026-05-28 (autonomous H4 run observation).
 
 **Scripts to audit and retrofit:** `h3-prod-smoke.mjs` (Leg 1b creates a policy, no cleanup), any future smoke that calls `createPolicy` or `lapsePolicy`. Grep: `git grep -l "createPolicy\|lapsePolicy\|addPolicy" scripts/verification/`.
 
+**Additional findings from 2026-05-28 notification sweep:**
+
+3. **Stray smoke campaigns likely remain in `tenants/tatillife_south/campaigns`.** The 3 deleted `campaign_launched` notifications (titles: `__SMOKE TEST CAMPAIGN 1778603*`) referenced campaigns created during the 2026-05-12 campaign-module smoke arc. Those campaigns almost certainly still exist in the `campaigns` collection. Sweep `tatillife_south/campaigns` for docs whose `name` starts with `__SMOKE TEST` or `SMOKE` as part of the next test-tenant cruft cleanup.
+
+4. **Inconsistent sentinel prefixes across smoke scripts.** The cleanup sweep caught `SMOKE-*`, `SMOKE-SWEEP-B-*`, `SMOKE-H2A/H2C-*`, `H3Smoke-*`, `H3ProdSmoke-*`, `Smoke-B/C/CY-*`, and `__SMOKE TEST CAMPAIGN` — seven distinct naming conventions. A single automated sweep can't reliably match all of them. Fix: standardize on one prefix (e.g. `SMOKE-`) across all smoke scripts, and/or tag every smoke-created doc with a common metadata field (e.g. `smokeRunId: SENTINEL`) so sweeps are exhaustive regardless of `ownerName`/`name` field values.
+
 **Priority:** MEDIUM. Not blocking — accumulation is slow and manual cleanup is possible (as done 2026-05-28). But the assertion-pollution vector is real: the browser capstone almost failed a valid assertion because of a $5,000 stray policy.
 
-Banked: 2026-05-28 (H3 close-out cleanup, 8 docs deleted).
+Banked: 2026-05-28 (H3 close-out cleanup, 8 docs + 16 notifications deleted; findings 3–4 added from notification sweep).
 
 ---
 
