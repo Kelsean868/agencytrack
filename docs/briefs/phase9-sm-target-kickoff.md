@@ -1,8 +1,8 @@
 # Phase 9 — Sales Manager Target Goals Layer (Build Brief)
 
-> ⛔ **LOCKED PENDING KYRON ACK — DO NOT DISPATCH**  
-> Every design decision below is marked LOCKED. The build does not start until Kyron has ACK'd all questions in `docs/phase9-sm-target-design-questions.md`.  
-> Dispatcher will unlock decisions and remove the block before dispatching CC.
+> ✅ **ACK COMPLETE — 2026-05-28. All 9 decisions locked and confirmed.**  
+> See `docs/phase9-sm-target-design-questions.md` for the full ACK checklist.  
+> Build dispatched under this brief.
 
 ---
 
@@ -27,15 +27,15 @@ The existing 4-tier goals hierarchy (`companyFloor → branchTarget → unitTarg
 
 | Decision | Source question | Status |
 |---|---|---|
-| Doc path: `salesManagerGoals/{smUid}_{year}` | Q1 | LOCKED — see design-questions Q1 |
-| Write rule: SM self-sets + TA/PA override | Q2 | LOCKED — see design-questions Q2 |
-| Read rule: any authenticated tenant member | Q3 | LOCKED — see design-questions Q3 |
-| SM uid resolution: optional 5th param on `getGoalHierarchy` | Q4 | LOCKED — see design-questions Q4 |
-| BUG-N2 unitGoals arm: leave unchanged in this PR | Q5 | LOCKED — see design-questions Q5 |
-| SM does NOT write branchGoals | Q6 | LOCKED — see design-questions Q6 |
-| Null SM tier: always-render + "Not set" | Q7 | LOCKED — see design-questions Q7 |
-| Single-aggregate SM doc model for Phase 9 | Q8 | LOCKED — see design-questions Q8 |
-| `getGoalHierarchy`: optional 5th param | Q9 | LOCKED — see design-questions Q9 |
+| Doc path: `salesManagerGoals/{smUid}_{year}` | Q1 | ✅ CONFIRMED |
+| Write rule: SM self-sets + TA/PA override | Q2 | ✅ CONFIRMED |
+| Read rule: any authenticated tenant member | Q3 | ✅ CONFIRMED |
+| SM uid resolution: `getSalesManagerUid(tenantId)` query-by-role; optional 5th param | Q4 | ✅ CONFIRMED |
+| BUG-N2 unitGoals arm: leave unchanged in this PR | Q5 | ✅ CONFIRMED |
+| SM does NOT write branchGoals | Q6 | ✅ CONFIRMED |
+| Null SM tier: always-render + "Not set" | Q7 | ✅ CONFIRMED |
+| Single-aggregate SM doc model for Phase 9 | Q8 | ✅ CONFIRMED |
+| `getGoalHierarchy`: optional 5th param (`smUid = null`) | Q9 | ✅ CONFIRMED |
 
 ---
 
@@ -137,7 +137,7 @@ Expected: 0 matches.
 Add after existing `setBranchGoals` / `getBranchGoals`:
 
 ```js
-// LOCKED PENDING KYRON ACK Q1, Q2, Q3, Q9
+// ✅ DECISIONS LOCKED — Q1: salesManagerGoals/{smUid}_{year}; Q2: SM self + TA/PA; Q3: any tenant member; Q9: optional 5th param
 export async function getSalesManagerGoals(tenantId, smUid, year) { ... }
 export async function setSalesManagerGoals(tenantId, smUid, year, data) { ... }
 ```
@@ -145,7 +145,7 @@ export async function setSalesManagerGoals(tenantId, smUid, year, data) { ... }
 Extend `getGoalHierarchy`:
 
 ```js
-// LOCKED PENDING KYRON ACK Q9
+// ✅ Q9 LOCKED — optional 5th param smUid = null; callers pass getSalesManagerUid(tenantId) result
 export async function getGoalHierarchy(tenantId, unitId, year, agentId, smUid = null) {
   // existing 4 fetches ...
   // + smUid ? getSalesManagerGoals(tenantId, smUid, year).catch(() => null) : Promise.resolve(null)
@@ -157,7 +157,7 @@ export async function getGoalHierarchy(tenantId, unitId, year, agentId, smUid = 
 ### Change 2 — `src/utils/gapAnalysis.js`
 
 ```js
-// LOCKED PENDING KYRON ACK Q1
+// ✅ Q1 LOCKED — salesManagerTarget field in hierarchy
 const { companyFloor, branchTarget, unitTarget, personal, salesManagerTarget } = hierarchy;
 // Add salesManagerTarget to per-metric object
 // Add toSalesManager gap and ofSalesManager pct
@@ -166,39 +166,42 @@ const { companyFloor, branchTarget, unitTarget, personal, salesManagerTarget } =
 ### Change 3 — `src/components/goals/GapAnalysisPanel.jsx`
 
 ```js
-// LOCKED PENDING KYRON ACK Q7
-// Insert 5th LAYER_CONFIG entry — position TBD (above branchTarget, below or above companyFloor depending on display hierarchy direction)
-// null-guard: if salesManagerTarget is null, show "Not set" text in SM row
+// ✅ Q7 LOCKED — always render; show "Not set" when null (match existing tier null behavior).
+// Position: SECOND in array (between personal and unitTarget), mirroring cascade order
+// Company Floor → SM Target → Branch → Unit → Personal (highest → lowest accountability).
+// LAYER_CONFIG entry: { key: 'salesManagerTarget', pctKey: 'ofSalesManager', gapKey: 'toSalesManager', label: 'SM Target', barClass: 'bg-amber-400' }
 ```
-
-**Position note:** The 5-layer hierarchy from lowest to highest accountability is: Personal → Unit → Branch → SM → Company Floor. LAYER_CONFIG currently lists personal first. The SM entry slots between branchTarget and companyFloor. Confirm ordering with Kyron if the current LAYER_CONFIG ordering is lowest-to-highest or highest-to-lowest. LOCKED — do not assume.
 
 ### Change 4 — `src/components/manager/GoalsPanel.jsx`
 
 ```js
-// LOCKED PENDING KYRON ACK Q2
-// Add 'smTarget' tab to tabs array, gated to role === 'sales_manager'
-// New SalesManagerGoalsTab component (or inline form) — same shape as BranchGoalsTab
-// Form fields: api, apps, ffiConducted, ciConducted, dials (mirror branchGoals shape)
+// ✅ Q2 LOCKED — SM tab visible to sales_manager (sets own doc) + tenant_admin/platform_admin (resolves SM via getSalesManagerUid).
+// Mirror BranchGoalsTab shape: same 5 fields (api, apps, ffiConducted, ciConducted, dials).
+// On save → setSalesManagerGoals(tenantId, smUid, year, data).
 ```
 
 ### Change 5 — `firestore.rules`
 
 ```
-// LOCKED PENDING KYRON ACK Q1, Q2, Q3
+// ✅ Q1/Q2/Q3 LOCKED — exact rule text:
 match /tenants/{tenantId}/salesManagerGoals/{docId} {
-  allow read: ... // Q3 answer fills this
-  allow write: ... // Q2 answer fills this
+  allow read: if request.auth != null
+    && request.auth.token.tenantId == tenantId;
+  allow write: if request.auth != null
+    && request.auth.token.tenantId == tenantId
+    && (
+      request.auth.token.role in ['platform_admin', 'tenant_admin']
+      || (request.auth.token.role == 'sales_manager'
+          && docId.matches(request.auth.uid + '_.*'))
+    );
 }
 ```
 
-Position: after the `branchGoals` block (lines 546–556). Do not modify any existing goals block.
+Position: after the `branchGoals` block. Do not modify any existing goals block.
 
 ### Change 6 — `firestore.indexes.json`
 
-LOCKED PENDING KYRON ACK Q1. Index shape depends on whether queries filter by `year`, `tenantId`, or order by a field. A composite index is required if the SM goals query uses 2+ `where()` clauses.
-
-Per Rule 17 sub-bullet (brief-completeness for new Firestore collections): smoke queries may have a different shape than app queries. Both must be indexed here.
+`getSalesManagerGoals(tenantId, smUid, year)` fetches a single doc by ID (`{smUid}_{year}`) — no composite query, no index required. `getSalesManagerUid(tenantId)` queries `users` where `role == 'sales_manager'` — single `where()` clause, no composite index required. No `firestore.indexes.json` change needed for Phase 9.
 
 ---
 

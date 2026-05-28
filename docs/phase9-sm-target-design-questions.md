@@ -166,14 +166,14 @@ The comment reads it as intentional (SM outranks BM, so SM can write unit goals 
 
 ---
 
-## ACK checklist for Kyron
+## ACK checklist — LOCKED (2026-05-28)
 
-- [ ] **Q1** — One aggregate SM doc per year (confirmed / alternate preference: ___)
-- [ ] **Q2** — Who writes: SM self-sets + TA/PA override (confirmed / alternate: ___)
-- [ ] **Q3** — Who reads: any tenant member (confirmed / alternate: ___)
-- [ ] **Q4** — SM uid resolution: optional 5th param + how callers resolve smUid (confirm + answer: does `salesManagerId` exist on branch docs today?)
-- [ ] **Q5** — BUG-N2: intentional, leave unchanged (confirmed / resolve tag in this PR: ___)
-- [ ] **Q6** — SM does NOT write branchGoals (confirmed / alternate: ___)
-- [ ] **Q7** — Null SM tier: always-render + "Not set" (confirmed / want distinct message: ___)
-- [ ] **Q8** — Single-aggregate model for Phase 9 (confirmed)
-- [ ] **Q9** — Optional 5th param on existing function (confirmed / alternate: ___)
+- [x] **Q1** — One aggregate SM doc per year. Path: `salesManagerGoals/{smUid}_{year}`.
+- [x] **Q2** — Who writes: SM self-sets (scoped to own uid in doc ID) + TA/PA override.
+- [x] **Q3** — Who reads: any authenticated tenant member (broad, matching branchGoals/unitGoals pattern).
+- [x] **Q4** — SM uid resolution: optional 5th param on `getGoalHierarchy` (Q9). Callers resolve smUid via `getSalesManagerUid(tenantId)` — queries users where `role == 'sales_manager'`, returns single uid (0 → null; >1 → first + console.warn). `salesManagerId` does NOT exist on branch docs; query-by-role is the Phase 9 shortcut. Multi-territory branch-doc resolution deferred to follow-up.
+- [x] **Q5** — BUG-N2: intentional, leave unitGoals rule unchanged in this PR. SM can write all unit goals tenant-wide (consistent with SM rank 3 > BM rank 2).
+- [x] **Q6** — SM does NOT write branchGoals. BM owns the branch target; SM owns the SMG layer.
+- [x] **Q7** — Null SM tier: always-render + "Not set" (match existing tier null behavior). No distinct message needed.
+- [x] **Q8** — Single-aggregate model for Phase 9. One doc per SM per year covers the whole tenant.
+- [x] **Q9** — Optional 5th param (`smUid = null`) on existing `getGoalHierarchy`. Backward-compatible.

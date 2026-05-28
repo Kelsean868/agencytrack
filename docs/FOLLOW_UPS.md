@@ -34,29 +34,35 @@ G1 (walking skeleton) is the current PR (FOUNDATION GATE). Remaining slices:
 
 ---
 
-## Phase 9 — Sales Manager Target (5th goals layer) — NOT IMPLEMENTED (banked 2026-05-27)
+## Phase 9 — SM target: multi-territory branch-based resolution (MEDIUM, banked 2026-05-28)
 
-**Context:** The goals hierarchy has 4 implemented layers: Personal Commitment, Unit Target, Branch Target, Company Floor. Phase 9 adds a 5th cross-branch layer: Sales Manager Target. Forward recon from the 2026-05-27 autonomous run confirms this layer is entirely absent.
+Phase 9 resolves the agent→SM link via a query-by-role shortcut: `getSalesManagerUid` queries `users` where `role == 'sales_manager'`, valid only while exactly one SM exists. For multi-territory support, add `salesManagerId` to branch docs + an SM-assignment UI in GoalsPanel/UserManagementPanel, and replace the query-by-role shortcut with branch-based resolution (read `branches/{agentBranchId}.salesManagerId`).
 
-**What does NOT exist:**
-- No `getSalesManagerGoals` / `setSalesManagerGoals` in `goalsService.js`
-- `getGoalHierarchy()` returns only 4 keys: `{ companyFloor, branchTarget, unitTarget, personal }` — no `salesManagerTarget`
-- `gapAnalysis.js` destructures only 4 layers; no `salesManagerTarget` computation
-- `GapAnalysisPanel.jsx` has a hardcoded 4-item `LAYER_CONFIG` array
-- No Firestore path like `tenants/{tid}/salesManagerGoals/{managerId}_{year}`
-- No Sales Manager UI to set the target (mirrors GoalsPanel for BM/UM)
+**Action:** (1) Add `salesManagerId` to branch schema (`branchService.js` createBranch/updateBranch). (2) Update `getBranch` callers that expose branch-edit UI to include an SM-assignment field. (3) Replace `getSalesManagerUid` with a branch-lookup inside `getGoalHierarchy`. (4) Update rules if needed for the new field.
 
-**Full change surface (6 points):**
-1. `goalsService.js` — add `getSalesManagerGoals` / `setSalesManagerGoals` (mirror unit/branch pattern)
-2. `goalsService.js:getGoalHierarchy()` — add SM goals fetch; include `salesManagerTarget` in return object
-3. `gapAnalysis.js` — destructure `salesManagerTarget`; compute gap/pct in the per-metric object (5th layer)
-4. `GapAnalysisPanel.jsx` — add 5th `LAYER_CONFIG` entry (key + pctKey + gapKey + label + barClass)
-5. `firestore.rules` — new `match` block for `salesManagerGoals/{managerId}_{year}` (mirror branchGoals arm)
-6. Sales Manager UI — form to set SM target (mirrors GoalsPanel for BM/UM; gated to SM+ role)
+**Priority:** MEDIUM. Harmless under single-SM/single-territory. Implement before multi-territory pilot.
 
-**Priority:** MEDIUM. No functionality is broken today (4-layer hierarchy works). SM target is a P9 feature; pilot is postponed. Implement when the Tatil pilot is ready and a Sales Manager role needs to set cross-branch targets.
+Banked: Phase 9 build dispatch, 2026-05-28.
 
-Banked: 2026-05-27 autonomous run Phase 4 forward recon.
+---
+
+## Phase 9 — SM write-model inconsistency: SM can write unitGoals but not branchGoals (MEDIUM, banked 2026-05-28)
+
+`firestore.rules` `unitGoals` write arm includes `sales_manager` (unscoped, tenant-wide — BUG-N2 line). `branchGoals` write arm excludes `sales_manager`. Harmless under single-SM (one SM = whole tenant = effectively their territory). When multi-SM territory scoping is built, resolve holistically: either scope SM's `unitGoals` write to their territory's units (mirror the UM `callerUnitId` pattern for their branch set) or remove the SM arm if SM-target-setting is the intended write surface.
+
+**Priority:** MEDIUM. Harmless today; creates a write-surface inconsistency that matters when territory scoping is added.
+
+Banked: Phase 9 build dispatch, 2026-05-28.
+
+---
+
+## `goals/{goalId}` write rule — verify agent personal-commitment write path (LOW, banked 2026-05-28)
+
+`firestore.rules` `goals/{goalId}` write rule is `canManage(tenantId)` only. `canManage` includes managers but NOT agents (`isAgent()` not in the check). CareerPortal calls `setGoals(tenantId, agentId, data, ...)` client-side for personal commitment updates. If this write is hitting Firestore rules directly (not via a Cloud Function), agents cannot save personal commitments. Verify in production: either (a) a Cloud Function path exists that bypasses rules via Admin SDK, or (b) agents' personal-goal writes are silently blocked and this is a live bug.
+
+**Priority:** LOW. Surfaced during Phase 9 rules review. Investigate before the pilot.
+
+Banked: Phase 9 build dispatch, 2026-05-28.
 
 ---
 
