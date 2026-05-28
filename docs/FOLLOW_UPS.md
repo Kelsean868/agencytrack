@@ -83,15 +83,9 @@ Banked: 2026-05-27 autonomous run Phase 2b.
 
 ---
 
-## F3.1 UX — "Log Policy" lands on policy-ledger tab without auto-opening create form (LOW, banked 2026-05-27)
+## ~~F3.1 UX — "Log Policy" lands on policy-ledger tab without auto-opening create form~~ (RESOLVED — PR #367, `3d9d51b`, 2026-05-28)
 
-Clicking "Log Policy" in Joint-Call Prep switches to the Policy Ledger tab with prefill loaded, but does NOT auto-open the create form — the agent must click "New Policy" a second time. Functional; prefill persists correctly through the tab switch.
-
-**Action:** In `AgentDashboard.jsx`, after `setPrefillPolicy(prepData)` + `setActiveTab('policy-ledger')`, also trigger `openCreate()` on `PolicyLedgerPanel` (via forwarded ref or a `shouldAutoOpen` boolean prop that `PolicyLedgerPanel` reacts to on mount/update). Collapses the flow to one click.
-
-**Priority:** LOW. Functional today; no data loss risk. UX improvement only.
-
-Banked: F3.1 PR #360 (`5025901`), 2026-05-27.
+`PolicyLedgerPanel` now initialises `view='create'` and `form=prefill` directly when `initialForm` is non-null; mount effect calls `onPrefillConsumed?.()` to clear parent state. Flow collapses to one click. 2 test updates; 1553/1553 vitest. Auto-merged per dispatcher rubric.
 
 ---
 
