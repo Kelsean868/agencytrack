@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-28 (PRs #383–#386 merged — session runoff docs; PR #382 open for review) |
-| Current main HEAD | `dfeeca5` (docs(session): 2026-05-28 autonomous runoff ledger (#386)) |
-| Active track | Session runoff complete. PR #382 (goals/{goalId} agent write arm) STOPPED awaiting dispatcher review + rules deploy approval. |
-| Next track | Dispatcher review of PR #382 (rules fix + emulator tests). After merge + deploy: F2.2 email-to-BM CF implementation (design questions in docs/f2.2-email-to-bm-design-questions.md). Track E daily-log work (design questions in docs/track-e-design-questions.md, Q1 is blocking). |
+| Last updated | 2026-05-28 (PR #382 merged — goals/{goalId} agent write arm fix) |
+| Current main HEAD | `0ae0afb` (fix(rules): add agent write arm to goals/{goalId} — personal commitment save bug (#382)) |
+| Active track | PR #382 SHIPPED. goals/{goalId} write rule fix live. Production smoke 4/4. |
+| Next track | F2.2 email-to-BM CF implementation (design questions in docs/f2.2-email-to-bm-design-questions.md). Track E daily-log work (design questions in docs/track-e-design-questions.md, Q1 blocking). |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#382](https://github.com/Kelsean868/agencytrack/pull/382) | `0ae0afb` | fix(rules): add agent write arm to goals/{goalId} — personal commitment save bug. `goals/{goalId}` write rule was `canManage(tenantId)` only — agents excluded. CareerPortal calls `setGoals()` via client-side `setDoc`; all personal commitment saves were silently DENIED. Fix: added agent self-write arm mirroring the existing read arm (`isAgent() && getTenantId() == tenantId && goalId == request.auth.uid`). Rules deployed pre-merge from feature branch (strictly additive). 10/10 emulator rules tests. Preview smoke 4/4 (UI write-read-verify, REST own=200, REST other=403, zero console errors). Production smoke 4/4. `goals/{goalId}` write rule FU CLOSED. Note: `agentId` body-field hygiene (agentId present in payload body AND as doc ID) deliberately deferred — low risk for pilot. |
 | [#381](https://github.com/Kelsean868/agencytrack/pull/381) | `6829f9d` | feat(goals): Phase 9 SM target goals layer (5th tier). New `salesManagerGoals/{smUid}_{year}` Firestore subcollection. `getSalesManagerGoals`, `setSalesManagerGoals`, `getSalesManagerUid` in `goalsService.js`; `getGoalHierarchy` extended with optional 5th `smUid` param. `computeGapAnalysis` extended with `salesManagerTarget` tier + `toSalesManager`/`ofSalesManager` gaps/pcts. `GapAnalysisPanel.jsx` 5th `LAYER_CONFIG` entry (`alwaysRender: true`, `smTierMissing` tier-level prop, "Not set" when SM tier absent). `GoalsPanel.jsx` `SalesManagerGoalsTab` + `canSetSmTarget` gate (SM/TA/PA); hierarchy caller fixed to chain `getSalesManagerUid` before `getGoalHierarchy`. `AgentDashboard.jsx` same smUid chain. Firestore rules `salesManagerGoals/{docId}` block (tenant-scoped read; write: TA/PA or SM self-doc via `docId.matches(uid+'_.*')`). 14/14 emulator rules tests; vitest green; lint 0; build clean. Rules deployed post-merge. Smoke 7/7 pass (SM Target save/persist, agent gap cascade SM tier, GoalsPanel cascade SM tier, REST negatives × 3, zero console errors). |
 | [#380](https://github.com/Kelsean868/agencytrack/pull/380) | `f73e59f` | docs: Phase 9 SM target — lock all 9 decisions + bank 3 deferred FUs. Updated `phase9-sm-target-design-questions.md` (all 9 ACK boxes checked + answers filled), `docs/briefs/phase9-sm-target-kickoff.md` (LOCKED PENDING ACK → CONFIRMED; exact rule text + no-index-needed note added), `docs/FOLLOW_UPS.md` (Phase 9 build-in-flight FU removed; 3 new FUs banked: MEDIUM multi-territory SM uid resolution, MEDIUM SM write-model inconsistency (BUG-N2 unitGoals vs branchGoals), LOW goals/{goalId} personal-commitment write rule verification). CI ✅. |
 | [#379](https://github.com/Kelsean868/agencytrack/pull/379) | `9cff883` | docs: Phase 9 SM target brief + design questions committed (Rule 10). |
@@ -251,13 +252,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**Phase 9 SM Target — SHIPPED.** PR #381 (`6829f9d`) merged 2026-05-28. Firestore rules deployed post-merge. Production smoke 7/7 pass.
+**goals/{goalId} write rule fix — SHIPPED.** PR #382 (`0ae0afb`) merged 2026-05-28. Rules deployed pre-merge (strictly additive). Preview smoke 4/4 + production smoke 4/4. Agent personal-commitment saves via CareerPortal are now live.
 
-What shipped: new `salesManagerGoals` collection, `getSalesManagerGoals`/`setSalesManagerGoals`/`getSalesManagerUid` service functions, 5th tier in `computeGapAnalysis`/`GapAnalysisPanel`, `SalesManagerGoalsTab` + `canSetSmTarget` gate in `GoalsPanel`, smUid chain in both `AgentDashboard` and `GoalsPanel` hierarchy callers. GoalsPanel caller question resolved by fix (same pattern as AgentDashboard). SM account verified using existing `A11Y_SALES_MANAGER_EMAIL` credential (uid `da0XaHhB4wTYlXDnQmAJ6TRIPTn1`). Three deferred FUs remain banked in FOLLOW_UPS.md (multi-territory resolution, SM write-model inconsistency, `goals/{goalId}` write rule verification).
+Root cause confirmed: `allow write: if canManage(tenantId)` excluded agents entirely. `setGoals()` is pure client-side `setDoc` — no CF bypass. The rule validated the write shape correctly but blocked the write. Fix adds an agent self-write arm identical in scope to the existing read arm. `agentId` body-field hygiene (same value in doc ID and payload field) deliberately deferred — low risk, pilot-safe. `goals/{goalId}` write rule FU CLOSED in FOLLOW_UPS.md.
 
-**H3 parity track — all phases (A–D) COMPLETE.** PRs #375, #377, #378 merged. Flip capstone PASS. Runbook shipped. Live flip capstone confirmed `settlementShapeFromPolicies` attributes May 1 to `2026-05` correctly. Runbook at `docs/runbooks/usesPolicyLedger-flip.md`.
-
-**Next:** F2.2 email-to-BM on joint-call submit. BOA-teardown backfill. `usesPolicyLedger` real-agent flip is a human operational step when pilot-ready — see runbook. `needCovered` taxonomy confirmation (Track H/G design-time). See FOLLOW_UPS.md for full queue.
+**Next:** F2.2 email-to-BM Cloud Function (design questions in `docs/f2.2-email-to-bm-design-questions.md` — 8 questions, CC recommendations inline). Track E daily-log schema work (design questions in `docs/track-e-design-questions.md` — Q1 field-mapping rename vs schema change is implementation-blocking). BOA-teardown backfill + `usesPolicyLedger` real-agent flip are human operational steps when pilot-ready. See FOLLOW_UPS.md for full queue.
 
 ---
 

@@ -56,13 +56,9 @@ Banked: Phase 9 build PR #381 (`6829f9d`), 2026-05-28.
 
 ---
 
-## `goals/{goalId}` write rule — verify agent personal-commitment write path (LOW, banked 2026-05-28)
+## ~~`goals/{goalId}` write rule — verify agent personal-commitment write path~~ (RESOLVED — PR #382, `0ae0afb`, 2026-05-28)
 
-`firestore.rules` `goals/{goalId}` write rule is `canManage(tenantId)` only. `canManage` includes managers but NOT agents (`isAgent()` not in the check). CareerPortal calls `setGoals(tenantId, agentId, data, ...)` client-side for personal commitment updates. If this write is hitting Firestore rules directly (not via a Cloud Function), agents cannot save personal commitments. Verify in production: either (a) a Cloud Function path exists that bypasses rules via Admin SDK, or (b) agents' personal-goal writes are silently blocked and this is a live bug.
-
-**Priority:** LOW. Surfaced during Phase 9 rules review. Investigate before the pilot.
-
-Banked: Phase 9 build PR #381 (`6829f9d`), 2026-05-28.
+Confirmed live bug: `allow write: if canManage(tenantId)` excluded agents. `setGoals()` is pure client-side `setDoc` — no CF bypass exists. Fix: added agent self-write arm (`isAgent() && getTenantId() == tenantId && goalId == request.auth.uid`) mirroring the existing read arm. 10/10 emulator tests; preview smoke 4/4; production smoke 4/4. Rules deployed pre-merge (strictly additive). `agentId` body-field hygiene (same value as doc ID) deliberately deferred — low risk for pilot.
 
 ---
 
