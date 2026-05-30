@@ -135,8 +135,8 @@ function LadderCoin({ state, levelNum, size = 56 }) {
   }
 
   const gradient = isAchieved
-    ? 'radial-gradient(circle at 32% 28%, #b9e9eb 0%, #4ab5b8 50%, #016970 100%)'
-    : 'radial-gradient(circle at 32% 28%, #fde68a 0%, #f59e0b 50%, #b45309 100%)';
+    ? 'radial-gradient(circle at 32% 28%, var(--color-primary-light) 0%, var(--color-primary) 50%, var(--color-primary-dark) 100%)'
+    : 'radial-gradient(circle at 32% 28%, var(--color-medal-1-light) 0%, var(--color-medal-1-mid) 50%, var(--color-medal-1-deep) 100%)';
 
   const boxShadow = isCurrent
     ? '0 0 0 4px var(--color-gold-tint), 0 0 20px rgba(245,158,11,0.35), inset 0 -2px 4px rgba(0,0,0,0.2), inset 0 2px 4px rgba(255,255,255,0.42)'
@@ -582,7 +582,7 @@ function LevelDrillDrawer({ level, currentLevel, ytdAPI, ytdApps, avgPersistency
                   <div key={i} className="flex items-center gap-2.5 p-2.5 rounded-xl" style={{ background: 'var(--color-gold-tint)', border: '1px solid rgba(176,125,26,0.2)' }}>
                     <div style={{
                       width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
-                      background: 'radial-gradient(circle at 32% 28%, #fde68a 0%, #f59e0b 50%, #b45309 100%)',
+                      background: 'radial-gradient(circle at 32% 28%, var(--color-medal-1-light) 0%, var(--color-medal-1-mid) 50%, var(--color-medal-1-deep) 100%)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       boxShadow: 'inset 0 -1px 2px rgba(0,0,0,0.2), inset 0 1px 2px rgba(255,255,255,0.4)',
                     }}>
