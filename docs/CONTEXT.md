@@ -12,10 +12,10 @@
 
 | Field | Value |
 |---|---|
-| Last updated | 2026-05-30 (Track J V2 Redesign · History + Awards — PRs #390 + #391 merged, smoke 14/14) |
-| Current main HEAD | `84abe6e` (feat(awards): Track J v2 redesign — hero donut, grouped award cards, criteria drawer (#391)) |
-| Active track | PRs #390 + #391 SHIPPED. History v2 + Awards v2 live. Career Portal v2 (#389) open for review. |
-| Next track | Merge #389 (Career Portal v2) + post-merge; then Agent Dashboard v2 (J2). F2.2 email-to-BM CF also queued. |
+| Last updated | 2026-05-30 (Track J V2 Redesign · Career Portal — PR #389 merged, smoke 16/16) |
+| Current main HEAD | `8371818` (feat(career-portal): Track J v2 redesign — career ladder + commitment scorecards (#389)) |
+| Active track | PR #389 SHIPPED. Career Portal v2 live. Smoke 16/16 (light + dark). |
+| Next track | Agent Dashboard v2 (J2). F2.2 email-to-BM CF also queued. |
 | Queued | F2.2 (email-to-BM on joint-call submit); `needCovered` taxonomy confirmation (Track H/G); BOA-teardown FU (backfill + rule cleanup). True telephone-contacts wizard field; manager-side floor adherence roll-up (Track F adjacency). Peer-BM branch-scoped exclusion (agentBranchId denormalization — heavier FU). LOW housekeeping FU from #244: CLAUDE.md "lint + build" → "lint + test + build" doc drift (global-stub FU now RESOLVED by #264). One I1.1 FU remains: isProducingManager setter (rank-fn-hoist FU resolved by #268). Track D parity expansion + BM at-risk view deferred (D2+). |
 | Two-strike counter | 0/3 — clean. |
 | Stash pending | No |
@@ -122,6 +122,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 
 | PR | SHA | Description |
 |---|---|---|
+| [#389](https://github.com/Kelsean868/agencytrack/pull/389) | `8371818` | Track J v2 — Career Portal redesign. 7-node vertical career ladder (achieved=teal `primary-light/primary/primary-dark` coin, current=gold `medal-1-light/mid/deep` coin + "YOU ARE HERE" pill, locked=flat grey + lock badge); `LevelDrillDrawer` slide-in criteria + unlocks for locked levels (ESC closes); 3× `CommitmentScorecard` (API/Applications/Persistency) with step-bar showing floor/manager-target/my-commitment; `TimeToNextCard` (estimate from weekly pace); `TrajectoryCard` (8-quarter API bars); `CommissionPlayground` + `GapAnalysisPanel` removed (moved to separate Tools surface per v2 design). Goals edit/save/nudge logic and 1625 tests preserved. Coin gradients use CSS vars only — no hardcoded hex. Prod smoke 16/16 (light + dark), console clean. |
 | [#391](https://github.com/Kelsean868/agencytrack/pull/391) | `84abe6e` | Track J v2 batch — Agent Awards v2 redesign. `HeroAwardCard` with 140px SVG progress donut for the closest in-contention award; awards grouped in 4-col responsive grid by progress level (✓ Qualified gold / ★ Almost there teal / ↗ Making progress / ◯ Just starting); `AwardCard` compact with % + bar + gap caption; `AwardDrillDrawer` slide-in criteria checklist (ESC to close); `RatioTrendCard` with inline SVG sparkline. All existing computation (`computeAgentAwards`, `computeRatioTrends`, policy-ledger path) unchanged. `gold` token wired into `tailwind.config.js` (existing `--gold-channels` CSS var). 1625/1625 tests; lint 0; build clean. Prod smoke 14/14 pass, console clean (light + dark: donut SVG in drawer, Monthly pill filter 16→2, AwardDrillDrawer Criteria). |
 | [#390](https://github.com/Kelsean868/agencytrack/pull/390) | `f151183` | Track J v2 batch — History v2 redesign. New `HistoryTab.jsx` replaces inline AgentDashboard history content: `HistoryAnchorStrip` (YTD hero with total API, pace projection, streak chip + personal-best state, best week, award-eligible/drafts/unlocked counts); `YearHeatmap` (52 coloured squares, intensity by API vs weekly target; draft=dashed, unlocked=warning; month labels; hover tooltip); segmented filter row (All / Submitted / Draft / Unlocked with live counts); `WeekCard` (4-up KPI grid, WoW delta arrows, 5-bar sparkline, 10-segment rating bars, status badge, contextual action label). Existing `SubmissionViewer` drill drawer unchanged. Download report preserved. `gold` token wired. 1625/1625; lint 0; build clean. Prod smoke 14/14. |
 | [#388](https://github.com/Kelsean868/agencytrack/pull/388) | `63cb0cf` | Track J — V2 Redesign · App Shell (redesign/shell). Shell chrome restyle per `design_handoff_v2_app/` mockups: SVG shield brand mark; sidebar 240px→232px, padding 22/14→20/12; brand name 15px/800→13.5px/700; section headers 10px→9.5px + JetBrains Mono + 0.14em; nav links 14px→13px + 3px left-bar active indicator via `::before`; child-item `.sidebar-link-child` + connector class capability; footer avatar 36px→34px + tealTint bg; sign-out button 36px→44px (a11y fix); topbar min-height 60px + Cabinet Grotesk title font; search max-width 360px→280px; mobile Submit becomes FAB (56px circle, gradient, 12px lift); `motion-safe:transition-colors` guard added to MobileNavDrawer. No nav content, service, rule, index, or CF changes. Lint 0; 1625/1625 vitest; build clean. Smoke 24/24 pass (production). |
@@ -257,11 +258,11 @@ These don't block anything, but they need to be resolved or carried forward each
 
 ## Where we left off
 
-**Track J V2 batch — History + Awards SHIPPED.** PR #390 (`f151183`) + PR #391 (`84abe6e`) merged 2026-05-30. Prod smoke 14/14 (light + dark), console clean. History tab is now a full `HistoryTab.jsx` component with YTD anchor strip, 52-square year heatmap, segmented filter row, and rich `WeekCard` feed; existing `SubmissionViewer` drawer unchanged. Awards tab has a hero donut card, grouped award cards (Qualified / Almost there / Making progress / Just starting) in a 4-col grid, `AwardDrillDrawer` criteria panel, and SVG sparkline ratio cards. `gold` token wired in `tailwind.config.js` on both branches. 1 LOW FU banked (Track J v2 component test coverage — see FOLLOW_UPS.md).
+**Track J V2 — Career Portal SHIPPED.** PR #389 (`8371818`) merged 2026-05-30. Prod smoke 16/16 (light + dark), console clean. Career tab now shows a 7-node vertical ladder (achieved=teal CSS-var coin, current=gold CSS-var coin + "YOU ARE HERE" pill, locked=grey + lock + drawer trigger); `LevelDrillDrawer` opens on clicking any locked coin with criteria progress bars + unlocks list; 3 `CommitmentScorecard` sections (API/Apps/Persistency); `TimeToNextCard` and `TrajectoryCard`. `CommissionPlayground` and `GapAnalysisPanel` removed from this surface per v2 design (CommissionPlayground FU banked — see FOLLOW_UPS.md). Coin gradients use `--color-primary-*` and `--color-medal-1-*` tokens only — no hardcoded hex.
 
-**Also open:** Career Portal v2 (PR #389, `redesign/career-portal`) — ready for review. Settings v2 skipped (gate failed: new Settings hub architecture with Team Defaults/recommend-lock requires new Firestore collections; tracked in `batch-report.md`).
+**Before this:** History v2 (#390 `f151183`) + Awards v2 (#391 `84abe6e`) shipped. Settings v2 skipped (gate: new Settings hub needs Firestore collections; tracked in `batch-report.md`).
 
-**Next:** Merge #389 (Career Portal v2) + post-merge fill, then Agent Dashboard v2 (J2). F2.2 email-to-BM CF also queued in parallel.
+**Next:** Agent Dashboard v2 (J2). F2.2 email-to-BM CF also queued in parallel.
 
 ---
 

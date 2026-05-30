@@ -3081,4 +3081,20 @@ The Track J v2 batch (Career Portal, History, Agent Awards) replaced substantial
 
 Banked: Track J v2 batch (PRs #389 `redesign/career-portal`, #390 `f151183`, #391 `84abe6e`), 2026-05-30.
 
+---
+
+## Track J (V2 Redesign) — Agent CommissionPlayground removed from CareerPortal (LOW, banked 2026-05-30, PR #389)
+
+The v2 Career Portal redesign (`app-career-v2.jsx` annotation: "Commission Playground has been pulled out into its own Tools surface") removed `CommissionPlayground` from `CareerPortal.jsx`. It was the only agent-facing surface for the Commission Playground; managers retain access via `GoalsPanel.jsx`.
+
+**Current state:** `CommissionPlayground` component and service logic are fully intact (`src/components/goals/CommissionPlayground/`). Only the render site in `CareerPortal.jsx` was removed.
+
+**No live impact:** Pilot is postponed. No agents have yet used the production app under a live pilot. The Commission Playground was always a secondary feature behind the primary goal-setting workflow.
+
+**Restore path:** Add a new "Commission" route or sub-tab in the agent-facing navigation (per the v2 design's "Commission v2" standalone screen, mapped in `design_handoff_v2_app/README.md §6` to `goals/CommissionPlayground/`). Wire it as its own nav item in `AgentDashboard` NAV_ITEMS — not embedded in CareerPortal. Manager access via `GoalsPanel` is unaffected.
+
+**Priority:** LOW. No production impact (pilot postponed); `CommissionPlayground` component and all its logic remain in the codebase. Address when building the Commission v2 standalone screen (Track J agent suite, post-Agent-Dashboard).
+
+Banked: Track J v2 Career Portal (PR #389 `8371818`), 2026-05-30.
+
 Banked from Track H agent confirmation-surfacing PR #305 (`97a8493`).
