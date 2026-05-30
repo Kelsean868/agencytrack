@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Goals v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 600px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Goals v2 — the cascade, the floor, and recommend-vs-lock</h1>
+    <p>
+      The goals surface, rebuilt to the v2 grammar. The <b>Goal Cascade</b> leads (Personal → Unit → Branch → SM → tenure-based company floor), with the manager's own tier highlighted and YTD tracking on each node. Sub-tabs cover <b>Agents</b> (exception-first: below-floor &amp; unset surface first, each row banded against its <b>tenure API floor</b>, expandable), <b>Unit / Branch / SM</b> tier goals (with provenance + <b>recommend-vs-lock</b>), and <b>Self</b> (the producing manager's own commitment, kept out of team totals). Setting a target reuses the recommend-vs-lock drawer. Desktop light/dark + mobile.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="manager-v2-drill.jsx"></script>
+  <script type="text/babel" src="manager-v2-scenes.jsx"></script>
+  <script type="text/babel" src="mastersheet-v2-shared.jsx"></script>
+  <script type="text/babel" src="goals-v2-shared.jsx"></script>
+  <script type="text/babel" src="goals-v2-scenes.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="agents"
+            title="Goals — branch_manager (desktop)"
+            subtitle="The Goal Cascade anchors the surface; the Agents sub-tab leads exception-first — below-floor and unset agents float to the top, each banded against its tenure-based API floor. The top row is expanded to show the annual / period / weekly targets. Light + dark."
+          >
+            <DCArtboard id="d-light" label="01 · Desktop · Light · Agent goals" width={APP_W} height={APP_H}>
+              <GoalsDesktopScene t={APP_LIGHT} subTab="agents" />
+            </DCArtboard>
+            <DCArtboard id="d-dark" label="02 · Desktop · Dark · Agent goals" width={APP_W} height={APP_H}>
+              <GoalsDesktopScene t={APP_DARK} subTab="agents" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="tier"
+            title="Tier goal — recommend vs lock"
+            subtitle="Setting a Unit / Branch / SM goal carries provenance (last set by) and the recommend-vs-lock control: a locked tier goal becomes the floor every level beneath must meet; recommend lets the level below propose their own."
+          >
+            <DCArtboard id="d-branch" label="03 · Desktop · Light · Branch goal (locked)" width={APP_W} height={APP_H}>
+              <GoalsDesktopScene t={APP_LIGHT} subTab="branch" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="recommend"
+            title="Recommend a target (reused drawer)"
+            subtitle="Setting an agent's target opens the same recommend-vs-lock drawer built for the coaching flow — slider + direct numeric entry, cascade context, and the gold 'a suggestion, not their commitment' banner."
+          >
+            <DCArtboard id="d-rec" label="04 · Desktop · Light · Recommend a target" width={APP_W} height={APP_H}>
+              <GoalsDesktopScene t={APP_LIGHT} subTab="agents" drawer="recommend" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="self"
+            title="Self — the producing manager's own commitment"
+            subtitle="A player-coach carries a personal annual target, tracked separately and never rolled into unit or branch totals."
+          >
+            <DCArtboard id="d-self" label="05 · Desktop · Light · Self target" width={APP_W} height={APP_H}>
+              <GoalsDesktopScene t={APP_LIGHT} subTab="self" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Goals (mobile) + recommend sheet"
+            subtitle="The cascade as a vertical stack, then agent goal cards sorted exception-first. Tapping an agent raises the recommend-vs-lock sheet."
+          >
+            <DCArtboard id="m-light" label="06 · Mobile · Light · Goal cascade" width={M_W} height={M_H}>
+              <GoalsMobileScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="m-rec" label="07 · Mobile · Light · Recommend sheet" width={M_W} height={M_H}>
+              <GoalsMobileScene t={APP_LIGHT} sheet="recommend" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

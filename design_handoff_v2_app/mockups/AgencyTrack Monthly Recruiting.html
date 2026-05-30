@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Monthly Recruiting v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 640px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Monthly Recruiting v2 — build the bench through an 8-stage pipeline</h1>
+    <p>
+      Recruiting new advisors. <b>Anyone can refer</b> a prospect; the <b>manager owns the pipeline</b> and moves candidates through eight stages — Sourced → Contacted → Career seminar → Interview → Assessment → Offer/contracted → In licensing → <b>Licensed &amp; active</b>. Only the last stage counts as a hire, and it <b>feeds the Recruiting KPI on the Weekly WAR</b>. The target is <b>configurable</b> and runs monthly or quarterly — today's guidance is "at least 1 licensed advisor per quarter", so the surface reads gracefully with a soft minimum (and could show "no target set"). Surfaces: quarterly target + funnel stats, a kanban pipeline board, and a candidate drawer (stage timeline, referrer/owner, advance stage). Desktop light + dark, plus mobile. <b>Teal = pipeline · gold = offer→hire.</b>
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="recruiting-v2-shared.jsx"></script>
+  <script type="text/babel" src="recruiting-v2-desktop.jsx"></script>
+  <script type="text/babel" src="recruiting-v2-mobile.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="desktop"
+            title="Monthly Recruiting — manage (desktop, branch_manager)"
+            subtitle="The quarterly target (configurable, soft minimum) + funnel stats on top, then the 8-stage kanban pipeline. Stalled candidates flag amber; the hire stage is the only one that counts. Light + dark."
+          >
+            <DCArtboard id="d-light" label="01 · Light · Recruiting pipeline" width={APP_W} height={APP_H}>
+              <MonthlyRecruitingScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="d-dark" label="02 · Dark · Recruiting pipeline" width={APP_W} height={APP_H}>
+              <MonthlyRecruitingScene t={APP_DARK} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="drill"
+            title="Candidate detail — drill drawer"
+            subtitle="Tapping a candidate opens their full record: the 8-stage timeline with the current stage marked, who referred them vs who owns them, the source, the latest note, and Advance stage / Log touch."
+          >
+            <DCArtboard id="d-drill" label="03 · Light · Candidate · Divya Ramkissoon" width={APP_W} height={APP_H}>
+              <MonthlyRecruitingScene t={APP_LIGHT} drawer="Divya Ramkissoon" />
+            </DCArtboard>
+            <DCArtboard id="d-hired" label="04 · Light · Candidate · Shivani Maraj (hired)" width={APP_W} height={APP_H}>
+              <MonthlyRecruitingScene t={APP_LIGHT} drawer="Shivani Maraj" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Monthly Recruiting (mobile)"
+            subtitle="The same on 390×844, tabbed: Funnel (target + stage-by-stage counts) and People (candidate list). Recruiting lives under the manager's More tab."
+          >
+            <DCArtboard id="m-funnel" label="05 · Light · Funnel" width={M_W} height={M_H}>
+              <RecMobileScene t={APP_LIGHT} view="funnel" />
+            </DCArtboard>
+            <DCArtboard id="m-people" label="06 · Light · People" width={M_W} height={M_H}>
+              <RecMobileScene t={APP_LIGHT} view="people" />
+            </DCArtboard>
+            <DCArtboard id="m-dark" label="07 · Dark · Funnel" width={M_W} height={M_H}>
+              <RecMobileScene t={APP_DARK} view="funnel" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
