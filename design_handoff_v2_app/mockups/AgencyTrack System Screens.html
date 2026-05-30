@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — System Screens v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 660px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>System Screens v2 — Login · Onboarding · Profile · User Management</h1>
+    <p>
+      The shared/system surfaces that close out the redesign: the <b>Login</b> screen (email + password, forgot-password, faint insurance-iconography backdrop), the first-login <b>Welcome tour</b> (4-slide onboarding modal), the role-scoped <b>Profile</b> (avatar, identity fields, agent logging-mode, account + sign-out), and <b>User Management</b> (the manager Team tab + tenant-admin All Users — roster table with role/branch/status filters, invite, and a full edit drawer). Faithful to the live app's fields and flows, rebuilt in the v2 system. <b>(Tenant-admin config suite intentionally excluded.)</b> Light + dark, desktop + mobile.
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="auth-v2.jsx"></script>
+  <script type="text/babel" src="profile-v2.jsx"></script>
+  <script type="text/babel" src="usermgmt-v2.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="login"
+            title="Login — the front door"
+            subtitle="Email + password with inline forgot-password and a faint insurance-iconography backdrop. Default, error, and reset-sent states; desktop + mobile; light + dark."
+          >
+            <DCArtboard id="login-light" label="01 · Light · Login" width={APP_W} height={APP_H}>
+              <LoginV2 t={APP_LIGHT} state="default" />
+            </DCArtboard>
+            <DCArtboard id="login-dark" label="02 · Dark · Login" width={APP_W} height={APP_H}>
+              <LoginV2 t={APP_DARK} state="default" />
+            </DCArtboard>
+            <DCArtboard id="login-error" label="03 · Light · Login · error + caps lock" width={APP_W} height={APP_H}>
+              <LoginV2 t={APP_LIGHT} state="error" />
+            </DCArtboard>
+            <DCArtboard id="login-reveal" label="04 · Light · Login · password shown (eye toggle)" width={APP_W} height={APP_H}>
+              <LoginV2 t={APP_LIGHT} state="revealed" />
+            </DCArtboard>
+            <DCArtboard id="login-mobile" label="05 · Light · Login · mobile · reset sent" width={M_W} height={M_H}>
+              <LoginV2 t={APP_LIGHT} state="reset" device="mobile" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="onboarding"
+            title="Onboarding — first-login Welcome tour"
+            subtitle="A 4-slide modal shown on an agent's first login. Welcome → Weekly Report → Track Progress → All Set. Dot indicators, Skip, Next / Get Started."
+          >
+            <DCArtboard id="welcome-1" label="05 · Welcome · slide 1" width={M_W} height={M_H}>
+              <WelcomeV2 t={APP_LIGHT} index={0} />
+            </DCArtboard>
+            <DCArtboard id="welcome-2" label="06 · Welcome · slide 2" width={M_W} height={M_H}>
+              <WelcomeV2 t={APP_LIGHT} index={1} />
+            </DCArtboard>
+            <DCArtboard id="welcome-4" label="07 · Welcome · slide 4 (last)" width={M_W} height={M_H}>
+              <WelcomeV2 t={APP_LIGHT} index={3} />
+            </DCArtboard>
+            <DCArtboard id="welcome-desktop" label="08 · Welcome · desktop overlay" width={APP_W} height={APP_H}>
+              <WelcomeV2 t={APP_LIGHT} index={0} device="desktop" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="profile"
+            title="Profile — role-scoped, every user"
+            subtitle="Avatar upload, editable identity (name, phone, bio), the agent-only logging-mode panel, account info, and sign-out. Shown in the agent shell and the manager shell. Light + dark + mobile."
+          >
+            <DCArtboard id="profile-agent" label="09 · Light · Profile · Agent" width={APP_W} height={APP_H}>
+              <AppShell t={APP_LIGHT} active="profile" title="Profile" subtitle="Your account">
+                <ProfileBody t={APP_LIGHT} who="agent" />
+              </AppShell>
+            </DCArtboard>
+            <DCArtboard id="profile-mgr" label="10 · Dark · Profile · Branch Manager" width={APP_W} height={APP_H}>
+              <ManagerShell t={APP_DARK} active="profile" title="Profile" subtitle="Your account">
+                <ProfileBody t={APP_DARK} who="manager" />
+              </ManagerShell>
+            </DCArtboard>
+            <DCArtboard id="profile-mobile" label="11 · Light · Profile · mobile" width={M_W} height={M_H}>
+              <ProfileMobile t={APP_LIGHT} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="users"
+            title="User Management — Team (manager) & All Users (admin)"
+            subtitle="Roster table with role/branch/status filters, search, and invite. Tapping a user opens the edit drawer: identity, role & scope, tenure & comp, activity-standard override, with reset-password / deactivate. Light + dark."
+          >
+            <DCArtboard id="um-light" label="12 · Light · Team (Branch Manager)" width={APP_W} height={APP_H}>
+              <UserManagementScene t={APP_LIGHT} scope="manager" />
+            </DCArtboard>
+            <DCArtboard id="um-dark" label="13 · Dark · All Users (admin scope)" width={APP_W} height={APP_H}>
+              <UserManagementScene t={APP_DARK} scope="admin" />
+            </DCArtboard>
+            <DCArtboard id="um-drawer" label="14 · Light · Edit user drawer" width={APP_W} height={APP_H}>
+              <UserManagementScene t={APP_LIGHT} scope="manager" drawer="Marsha Singh" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

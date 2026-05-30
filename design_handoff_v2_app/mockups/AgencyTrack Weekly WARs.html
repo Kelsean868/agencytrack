@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Weekly WARs v2</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: 'Satoshi', -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed; top: 18px; left: 18px; z-index: 50;
+      background: #ffffff; border: 1px solid #e5e2db; border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px; max-width: 640px; color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; font-family: 'Cabinet Grotesk', -apple-system, sans-serif; }
+    .intro p { font-size: 12px; line-height: 1.55; color: #6b6560; margin: 0; }
+    .intro .dot { display: inline-block; width: 8px; height: 8px; background: #01696F; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+    .intro b { color: #28251d; }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>Weekly WARs v2 — file your Weekly Activity Report, review your leaders'</h1>
+    <p>
+      <b>WAR = Weekly Activity Report</b> — the manager's edition of the agent weekly report: the regular production/activity numbers <b>plus</b> managerial KPIs (1-on-1s, joint field work, recruiting touches, training, unit meeting, dashboard review). Trevor (Branch Manager) <b>files his own</b> WAR up to the Sales Manager and <b>reviews the 5 leaders</b> who report to him (3 Unit Managers + 2 Supervisors) — that's the "5" on the nav. Targets are <b>configurable by upper management</b> (none mandatory yet), so every KPI reads gracefully with or without a minimum. Surfaces: My WAR · team matrix (filed / draft / not filed + 8-week consistency) · review drawer (approve / request changes). Desktop light + dark, plus mobile. <b>Teal = ops · gold = filing streaks.</b>
+    </p>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="app-tokens.jsx"></script>
+  <script type="text/babel" src="app-motion.jsx"></script>
+  <script type="text/babel" src="app-shell.jsx"></script>
+  <script type="text/babel" src="app-mobile.jsx"></script>
+  <script type="text/babel" src="manager-v2-shared.jsx"></script>
+  <script type="text/babel" src="war-v2-shared.jsx"></script>
+  <script type="text/babel" src="war-v2-desktop.jsx"></script>
+  <script type="text/babel" src="war-v2-mobile.jsx"></script>
+
+  <script type="text/babel">
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="desktop"
+            title="Weekly WARs — manage (desktop, branch_manager)"
+            subtitle="My WAR on the left (file my own leadership report + my production + filing streak), the team matrix on the right (each leader's KPI dots, 8-week consistency, and review/filed state). Light + dark."
+          >
+            <DCArtboard id="d-light" label="01 · Light · Weekly WARs" width={APP_W} height={APP_H}>
+              <WeeklyWarsScene t={APP_LIGHT} />
+            </DCArtboard>
+            <DCArtboard id="d-dark" label="02 · Dark · Weekly WARs" width={APP_W} height={APP_H}>
+              <WeeklyWarsScene t={APP_DARK} />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="review"
+            title="Review a leader's WAR — drill drawer"
+            subtitle="Tapping a leader opens their full WAR in a right-side drawer: their own production, every managerial KPI vs its (optional) target, their note, and 8-week filing consistency — with Approve / Request changes."
+          >
+            <DCArtboard id="d-review" label="03 · Light · Review drawer · Riaz Khan" width={APP_W} height={APP_H}>
+              <WeeklyWarsScene t={APP_LIGHT} drawer="Riaz Khan" />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="mobile"
+            title="Weekly WARs (mobile)"
+            subtitle="The same on 390×844, tabbed: My WAR (file the leadership form) and Team (review status + consistency). WARs live under the manager's More tab."
+          >
+            <DCArtboard id="m-mine" label="04 · Light · My WAR" width={M_W} height={M_H}>
+              <WarMobileScene t={APP_LIGHT} view="mine" />
+            </DCArtboard>
+            <DCArtboard id="m-team" label="05 · Light · Team WARs" width={M_W} height={M_H}>
+              <WarMobileScene t={APP_LIGHT} view="team" />
+            </DCArtboard>
+            <DCArtboard id="m-dark" label="06 · Dark · My WAR" width={M_W} height={M_H}>
+              <WarMobileScene t={APP_DARK} view="mine" />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

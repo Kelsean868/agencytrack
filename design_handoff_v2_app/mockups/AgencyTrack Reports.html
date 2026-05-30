@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgencyTrack — Agent Performance Report</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+    #root { height: 100vh; }
+    .intro {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 50;
+      background: #ffffff;
+      border: 1px solid #e5e2db;
+      border-radius: 14px;
+      box-shadow: 0 1px 2px rgba(40,37,29,0.04), 0 12px 32px rgba(40,37,29,0.08);
+      padding: 14px 18px;
+      max-width: 420px;
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      color: #28251d;
+    }
+    .intro h1 { font-size: 14px; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 4px; }
+    .intro p { font-size: 12px; line-height: 1.5; color: #6b6560; margin: 0; }
+    .intro .dot {
+      display: inline-block; width: 8px; height: 8px;
+      background: #01696F; border-radius: 50%;
+      margin-right: 6px; vertical-align: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div class="intro">
+    <h1><span class="dot"></span>AgencyTrack — Agent Performance Report</h1>
+    <p>The downloadable PDF agents and managers can pull from the dashboard. Refined cover + 3 content pages vs the current 2-page layout. Native A4 size — pan / scroll the canvas, double-click a label to focus any artboard.</p>
+  </div>
+
+  <div id="root"></div>
+
+  <!-- React + Babel -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- Design canvas + PDF modules -->
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="pdf-shared.jsx"></script>
+  <script type="text/babel" src="pdf-current.jsx"></script>
+  <script type="text/babel" src="pdf-refined-cover.jsx"></script>
+  <script type="text/babel" src="pdf-refined-pages.jsx"></script>
+
+  <script type="text/babel">
+    const W = 595;   // A4 width (px @ 1pt=1px)
+    const H = 842;   // A4 height
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection
+            id="refined-pdf"
+            title="Refined — Agent Performance Report"
+            subtitle="Cover + 3 pages. Editorial section numbers, hero KPIs, refined chart, medal-style career mark, callout footer with a single focus message."
+          >
+            <DCArtboard id="ref-cover" label="01 · Cover"        width={W} height={H}><RefinedCover /></DCArtboard>
+            <DCArtboard id="ref-p2"    label="02 · Snapshot"     width={W} height={H}><RefinedPage2 /></DCArtboard>
+            <DCArtboard id="ref-p3"    label="03 · Activity vs floor" width={W} height={H}><RefinedPage3 /></DCArtboard>
+            <DCArtboard id="ref-p4"    label="04 · Awards"       width={W} height={H}><RefinedPage4 /></DCArtboard>
+          </DCSection>
+
+          <DCSection
+            id="current-pdf"
+            title="Current — Agent Performance Report"
+            subtitle="The existing PDF from src/components/profile/AgentReportDocument.jsx, recreated faithfully for comparison."
+          >
+            <DCArtboard id="cur-p1" label="Page 1 · Header + summary" width={W} height={H}><CurrentPage1 /></DCArtboard>
+            <DCArtboard id="cur-p2" label="Page 2 · Charts + ratios"  width={W} height={H}><CurrentPage2 /></DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
