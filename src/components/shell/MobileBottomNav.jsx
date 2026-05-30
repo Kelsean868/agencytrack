@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Plus } from 'lucide-react';
 import MobileNavDrawer from './MobileNavDrawer';
 
 /**
@@ -31,6 +31,28 @@ export default function MobileBottomNav({ items, drawerNavItems, activeTab, setA
         {items.map((item) => {
           const Icon = item.Icon;
           const isActive = item.tabId != null && activeTab === item.tabId;
+          const isFab = item.fab === true;
+
+          if (isFab) {
+            return (
+              <div key={item.id} className="bottom-nav-fab-wrap">
+                <button
+                  type="button"
+                  className="bottom-nav-fab"
+                  onClick={() => {
+                    if (item.tabId != null) setActiveTab(item.tabId);
+                    else if (item.action != null) onAction?.(item.action);
+                  }}
+                  aria-label={item.label}
+                  data-testid={item.testId ?? `bottomnav-${item.id}`}
+                >
+                  <Plus size={24} strokeWidth={2.5} />
+                </button>
+                <span className="bottom-nav-fab-label">{item.label}</span>
+              </div>
+            );
+          }
+
           return (
             <button
               key={item.id}
