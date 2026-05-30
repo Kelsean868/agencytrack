@@ -3063,4 +3063,22 @@ The mockup `app-tokens.jsx` defines `surfaceSoft: '#F4F2EC'` (light) / `'#1F1B17
 
 Banked: Track J App Shell (redesign/shell PR #388 (`63cb0cf`)), 2026-05-30.
 
+---
+
+## Track J (V2 Redesign) — Component test coverage for CareerPortal / HistoryTab / AgentAwardsPanel rewrites (LOW, banked 2026-05-30, PRs #389 + #390 + #391)
+
+The Track J v2 batch (Career Portal, History, Agent Awards) replaced substantial visual and structural code without adding new unit tests for the rewritten components. Existing tests that existed before the rewrites still pass (1625/1625), but the new sub-components introduced in the rewrites have no dedicated coverage:
+
+- **`CareerPortal.jsx`** — `LadderCoin`, `LadderNode`, `CareerLadder`, `TimeToNextCard`, `TrajectoryCard`, `CommitmentScorecard`, `LevelDrillDrawer`. The pre-existing `CareerPortal.tapTargets.test.jsx` (3 tests) still covers the edit-mode button tap targets.
+- **`HistoryTab.jsx`** (new file) — `HistoryAnchorStrip`, `YearHeatmap`, `HistoryFilterRow`, `WeekCard`. Zero unit tests.
+- **`AgentAwardsPanel.jsx`** — `AwardDonut`, `HeroAwardCard`, `GroupHeader`, `AwardCard`, `RatioMiniSpark`, `RatioTrendCard`, `AwardDrillDrawer`. The pre-existing `AgentAwardsPanel.test.jsx` (7 tests, `usesPolicyLedger` path coverage) still passes but does not exercise any of the new v2 visual components.
+
+**Why not added in the batch PRs:** The green-channel batch contract was "build each passing screen to PR-open and move on" — adding test suites per screen would have expanded scope. Production smoke (14/14) validated real-browser behavior; the existing tap-target and policy-ledger tests cover the critical functional paths.
+
+**Fix shape:** Add `CareerPortal.v2.test.jsx`, `HistoryTab.test.jsx`, and `AgentAwardsPanel.v2.test.jsx` covering at minimum: empty-state render, loading skeleton render, and one key interaction per component (e.g. clicking a locked LadderNode opens the drawer; clicking a WeekCard calls `onView`; clicking an AwardCard opens the drill drawer with ESC close). Mock `useAuth`, service calls, and `BadgeGrid` as in the existing tapTargets test.
+
+**Priority:** LOW. Production is healthy; smoke verified real-DOM behavior in both themes. No data integrity or security impact. Bundle into the next PR that touches one of these three files for any reason.
+
+Banked: Track J v2 batch (PRs #389 `redesign/career-portal`, #390 `f151183`, #391 `84abe6e`), 2026-05-30.
+
 Banked from Track H agent confirmation-surfacing PR #305 (`97a8493`).
