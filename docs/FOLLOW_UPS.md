@@ -3035,7 +3035,7 @@ Also added: `request.resource.data.status == 'submitted'` guard (status unchange
 
 ---
 
-## Track J (V2 Redesign) — Shell brand subline requires new data-fetch (LOW, banked 2026-05-30, PR #TBD)
+## Track J (V2 Redesign) — Shell brand subline requires new data-fetch (LOW, banked 2026-05-30, PR #388)
 
 The `design_handoff_v2_app/mockups/app-shell.jsx` `Sidebar` shows a tenant/branch subline below the "AgencyTrack" brand name (e.g. "Tatil Life · South"). The brief allowed this only if sourced from existing `useAuth()` context without a new data-fetch path.
 
@@ -3047,11 +3047,11 @@ The `design_handoff_v2_app/mockups/app-shell.jsx` `Sidebar` shows a tenant/branc
 
 **Priority:** LOW. The subline is a polish detail; the Shell is fully functional without it. Revisit before the Track J smoke or when `AuthContext` is next touched.
 
-Banked: Track J App Shell (redesign/shell PR #TBD), 2026-05-30.
+Banked: Track J App Shell (redesign/shell PR #388 (`63cb0cf`)), 2026-05-30.
 
 ---
 
-## Track J (V2 Redesign) — `surfaceSoft` token revisit across V2 screens (LOW, banked 2026-05-30, PR #TBD)
+## Track J (V2 Redesign) — `surfaceSoft` token revisit across V2 screens (LOW, banked 2026-05-30, PR #388)
 
 The mockup `app-tokens.jsx` defines `surfaceSoft: '#F4F2EC'` (light) / `'#1F1B17'` (dark) as a mid-level surface between `surface-raised` (#FAFAF8) and `surface-muted` (#F0EFE9). Used in the App Shell for the topbar search box background and the RoleSwitcher prototype scaffolding.
 
@@ -3061,6 +3061,6 @@ The mockup `app-tokens.jsx` defines `surfaceSoft: '#F4F2EC'` (light) / `'#1F1B17
 
 **Priority:** LOW. One token gap in one element (search box). Verify whether later V2 screens also use `surfaceSoft` widely before promoting.
 
-Banked: Track J App Shell (redesign/shell PR #TBD), 2026-05-30.
+Banked: Track J App Shell (redesign/shell PR #388 (`63cb0cf`)), 2026-05-30.
 
 Banked from Track H agent confirmation-surfacing PR #305 (`97a8493`).
