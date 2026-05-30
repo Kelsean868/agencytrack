@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
-  X, Eye, Download, Loader2, AlertTriangle,
+  X, Download, Loader2, AlertTriangle,
   ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle, BarChart2, UserSearch, BookOpen, Calculator,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +29,7 @@ import ReportRangeModal from '../ui/ReportRangeModal';
 import Leaderboard from '../gamification/Leaderboard';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
 import SubmissionViewer from '../submissions/SubmissionViewer';
+import HistoryTab from '../submissions/HistoryTab';
 import GoalCarousel from './GoalCarousel';
 import KPICard from './KPICard';
 import ActivityFeed from './ActivityFeed';
@@ -816,60 +817,14 @@ export default function AgentDashboard() {
 
       {/* ── HISTORY TAB ── */}
       {activeTab === 'history' && (
-        <div className="flex flex-col gap-3">
-          {!loading && allSubmissions.length > 0 && (
-            <button
-              onClick={handleOpenReportModal}
-              disabled={generating}
-              className="flex items-center justify-center gap-2 h-10 px-4 rounded-lg border border-primary text-primary text-sm font-semibold hover:bg-primary/5 transition-colors disabled:opacity-60"
-            >
-              {generating ? (
-                <><Loader2 size={15} className="animate-spin" /> Generating…</>
-              ) : (
-                <><Download size={15} /> Download Report</>
-              )}
-            </button>
-          )}
-          {loading && (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 rounded-xl bg-border/40 animate-pulse" />
-              ))}
-            </div>
-          )}
-          {!loading && allSubmissions.length === 0 && (
-            <div className="card text-center py-10">
-              <p className="text-sm text-ink-muted">No submissions yet.</p>
-            </div>
-          )}
-          {!loading &&
-            allSubmissions.map((s) => (
-              <button
-                aria-label={`Preview submission from week of ${formatDateDisplay(s.weekStarting)}`}
-                key={s.id ?? s.weekStarting}
-                onClick={() => setViewingSubmission(s)}
-                className="card flex items-center justify-between gap-4 text-left w-full hover:bg-surface/70 transition-colors"
-              >
-                <div>
-                  <p className="text-sm font-semibold text-ink">Week of {formatDateDisplay(s.weekStarting)}</p>
-                  <p className="text-xs text-ink-muted mt-0.5">
-                    {formatCurrency(extractTotalProductionCredit(s))} API &nbsp;·&nbsp;
-                    {extractFields(s).applicationsSold} apps
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
-                    s.status === 'submitted'
-                      ? 'bg-success/15 text-success'
-                      : 'bg-warning/15 text-warning'
-                  }`}>
-                    {s.status === 'submitted' ? 'Submitted' : 'Draft'}
-                  </span>
-                  <Eye size={15} className="text-ink-muted" />
-                </div>
-              </button>
-            ))}
-        </div>
+        <HistoryTab
+          submissions={allSubmissions}
+          onView={setViewingSubmission}
+          loading={loading}
+          onDownload={handleOpenReportModal}
+          generating={generating}
+          weeklyTarget={resolvedMinimums?.weeklyActivityFloors?.api ?? 4800}
+        />
       )}
     </Shell>
   );
