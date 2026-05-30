@@ -41,6 +41,10 @@ export default {
           faint:   'rgb(var(--text-faint-channels) / <alpha-value>)',
         },
         border: 'rgb(var(--border-channels) / <alpha-value>)',
+        gold: {
+          DEFAULT: 'rgb(var(--gold-channels) / <alpha-value>)',
+          tint:    'var(--color-gold-tint)',
+        },
         success: {
           DEFAULT: 'rgb(var(--success-channels) / <alpha-value>)',
           tint:    'var(--color-success-tint)',
