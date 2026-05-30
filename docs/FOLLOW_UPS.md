@@ -3033,4 +3033,34 @@ Also added: `request.resource.data.status == 'submitted'` guard (status unchange
 - `PolicyLedgerPanel.jsx`: `lapsed` muted grey badge + lapse date chip in policy footer.
 - `NotificationDrawer.jsx`: `policy_lapsed` `TYPE_META` entry → `AlertTriangle`/danger palette.
 
+---
+
+## Track J (V2 Redesign) — Shell brand subline requires new data-fetch (LOW, banked 2026-05-30, PR #TBD)
+
+The `design_handoff_v2_app/mockups/app-shell.jsx` `Sidebar` shows a tenant/branch subline below the "AgencyTrack" brand name (e.g. "Tatil Life · South"). The brief allowed this only if sourced from existing `useAuth()` context without a new data-fetch path.
+
+**What's available now:** `useAuth()` exposes `tenantId` (e.g. `"tatillife_south"`) and `userProfile` (name, role, unitId, photoURL). Neither exposes a human-readable `tenantName` or `branchName`.
+
+**Blocked path:** `tenantName` lives in a potential `/tenants/{tenantId}/config/settings` doc or a separate tenant registry — there is no pre-loaded context for it in `AuthContext`. Adding it would require either: (a) extending `AuthContext` to load a tenant doc on login, or (b) a new one-shot Firestore read in Sidebar.
+
+**Fix shape:** Add `tenantName` (and optionally `branchName`) to `AuthContext`'s resolved value, loaded from `config/settings` or a top-level `tenants/{tenantId}` doc immediately after the user profile resolves. Pass `tenantName` through Shell → Sidebar props. The brand subline renders as `{tenantName}` (or `{tenantName} · {branchName}` if branch available).
+
+**Priority:** LOW. The subline is a polish detail; the Shell is fully functional without it. Revisit before the Track J smoke or when `AuthContext` is next touched.
+
+Banked: Track J App Shell (redesign/shell PR #TBD), 2026-05-30.
+
+---
+
+## Track J (V2 Redesign) — `surfaceSoft` token revisit across V2 screens (LOW, banked 2026-05-30, PR #TBD)
+
+The mockup `app-tokens.jsx` defines `surfaceSoft: '#F4F2EC'` (light) / `'#1F1B17'` (dark) as a mid-level surface between `surface-raised` (#FAFAF8) and `surface-muted` (#F0EFE9). Used in the App Shell for the topbar search box background and the RoleSwitcher prototype scaffolding.
+
+**Decision for this PR:** reuse `--color-surface-muted` as the closest existing token (brief §2 explicit decision — "no new token").
+
+**When to revisit:** If `surfaceSoft` appears as a background in ≥3 distinct V2 screens (outside the prototype RoleSwitcher) and `surface-muted` reads visually wrong in context, introduce `--color-surface-soft` in both `:root` and `.dark` in `src/index.css` + a matching Tailwind utility in `tailwind.config.js`. Cap at one new token; do not mint per-screen values.
+
+**Priority:** LOW. One token gap in one element (search box). Verify whether later V2 screens also use `surfaceSoft` widely before promoting.
+
+Banked: Track J App Shell (redesign/shell PR #TBD), 2026-05-30.
+
 Banked from Track H agent confirmation-surfacing PR #305 (`97a8493`).

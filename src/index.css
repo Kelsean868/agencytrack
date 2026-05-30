@@ -761,7 +761,7 @@ h1, h2, h3, h4 {
 /* ── Shell layout grid ───────────────────────────────────────────────── */
 .shell {
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 232px 1fr;
   min-height: 100vh;
   background: var(--color-bg);
 }
@@ -770,7 +770,7 @@ h1, h2, h3, h4 {
 .sidebar {
   background: var(--color-surface);
   border-right: 1px solid var(--color-border);
-  padding: 22px 14px;
+  padding: 20px 12px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -783,44 +783,41 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 10px 22px;
+  padding: 4px 10px 18px;
   border-bottom: 1px solid var(--color-border);
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 .sidebar-brand-mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  background: var(--color-primary);
-  color: white;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  font-size: 16px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 .sidebar-brand-name {
-  font-weight: 800;
-  font-size: 15px;
+  font-weight: 700;
+  font-size: 13.5px;
   letter-spacing: -0.01em;
   color: var(--color-text);
 }
 .sidebar-section {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   color: var(--color-text-faint);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 14px 10px 6px;
+  padding: 10px 12px 6px;
+  font-family: 'JetBrains Mono', 'Menlo', 'SF Mono', monospace;
 }
 .sidebar-link {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
+  padding: 9px 12px;
   border-radius: 10px;
   color: var(--color-text-muted);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   background: transparent;
   border: 0;
@@ -828,13 +825,14 @@ h1, h2, h3, h4 {
   width: 100%;
   cursor: pointer;
   font-family: inherit;
+  position: relative;
 }
 @media (prefers-reduced-motion: no-preference) {
   .sidebar-link { transition: background-color 0.15s ease, color 0.15s ease; }
 }
 .sidebar-link svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
   flex-shrink: 0;
 }
 .sidebar-link:hover {
@@ -848,6 +846,37 @@ h1, h2, h3, h4 {
 .sidebar-link.active {
   background: var(--color-primary-tint);
   color: var(--color-primary);
+}
+.sidebar-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--color-primary);
+  border-radius: 999px;
+}
+/* Child/indented nav items (e.g. Money Needs under Game Plan) */
+.sidebar-link-child {
+  padding: 7px 12px 7px 32px;
+  font-size: 12px;
+}
+.sidebar-link-child svg {
+  width: 15px;
+  height: 15px;
+}
+/* Tree connector arc from parent to child */
+.sidebar-link-child-connector {
+  position: absolute;
+  left: 19px;
+  top: -2px;
+  width: 10px;
+  height: 16px;
+  border-left: 1.5px solid var(--color-border);
+  border-bottom: 1.5px solid var(--color-border);
+  border-bottom-left-radius: 5px;
+  pointer-events: none;
 }
 .sidebar-link .badge {
   margin-left: auto;
@@ -868,11 +897,11 @@ h1, h2, h3, h4 {
   gap: 10px;
 }
 .sidebar-foot-avatar {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  background: var(--color-primary);
-  color: white;
+  background: var(--color-primary-tint);
+  color: var(--color-primary);
   display: grid;
   place-items: center;
   font-weight: 700;
@@ -890,7 +919,7 @@ h1, h2, h3, h4 {
   min-width: 0;
 }
 .sidebar-foot-name {
-  font-size: 13px;
+  font-size: 12.5px;
   font-weight: 700;
   white-space: nowrap;
   overflow: hidden;
@@ -898,15 +927,15 @@ h1, h2, h3, h4 {
   color: var(--color-text);
 }
 .sidebar-foot-role {
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--color-text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .sidebar-foot-action {
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 10px;
   display: grid;
   place-items: center;
@@ -965,7 +994,8 @@ h1, h2, h3, h4 {
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px 28px;
+  min-height: 60px;
+  padding: 0 28px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface);
   position: sticky;
@@ -976,6 +1006,7 @@ h1, h2, h3, h4 {
 .topbar-title {
   font-size: 16px;
   font-weight: 700;
+  font-family: 'Cabinet Grotesk', 'Helvetica Neue', sans-serif;
   color: var(--color-text);
   white-space: nowrap;
   overflow: hidden;
@@ -989,15 +1020,15 @@ h1, h2, h3, h4 {
   text-overflow: ellipsis;
 }
 .topbar-search {
-  margin-left: 24px;
+  margin-left: 16px;
   flex: 1;
-  max-width: 360px;
+  max-width: 280px;
   position: relative;
 }
 .topbar-search input {
   width: 100%;
   padding: 9px 12px 9px 36px;
-  border-radius: 10px;
+  border-radius: 9px;
   border: 1px solid var(--color-border);
   background: var(--color-surface-muted);
   font-size: 13px;
@@ -1072,15 +1103,17 @@ h1, h2, h3, h4 {
   inset: auto 0 0 0;
   background: var(--color-surface);
   border-top: 1px solid var(--color-border);
-  padding: 8px 4px max(8px, env(safe-area-inset-bottom, 8px));
+  padding: 4px 4px max(12px, env(safe-area-inset-bottom, 12px));
   z-index: 20;
+  align-items: flex-end;
+  overflow: visible;
 }
 .bottom-nav-item {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 3px;
   padding: 6px 0;
   min-height: 44px;
@@ -1109,6 +1142,52 @@ h1, h2, h3, h4 {
   outline-offset: 2px;
 }
 .bottom-nav-item.active { color: var(--color-primary); }
+/* Active tint bubble behind icon */
+.bottom-nav-item.active svg {
+  filter: drop-shadow(0 0 0 transparent); /* reset — color drives the active state */
+}
+/* Submit FAB wrapper — centers the lifted FAB within the nav row */
+.bottom-nav-fab-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-bottom: 2px;
+}
+/* The floating action button itself */
+.bottom-nav-fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--color-primary-light) 0%, var(--color-primary) 100%);
+  border: 3px solid var(--color-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  cursor: pointer;
+  transform: translateY(-12px);
+  box-shadow: 0 6px 16px rgb(var(--primary-channels) / 0.4), 0 2px 4px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .bottom-nav-fab { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+}
+.bottom-nav-fab:hover {
+  transform: translateY(-14px);
+  box-shadow: 0 8px 20px rgb(var(--primary-channels) / 0.45), 0 2px 6px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+.bottom-nav-fab:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+.bottom-nav-fab-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-primary);
+  margin-top: -8px;
+  letter-spacing: 0.01em;
+}
 
 /* ── Responsive: collapsed (≥1024px with html.sidebar-collapsed) ─────── */
 @media (min-width: 1024px) {
@@ -1196,7 +1275,7 @@ h1, h2, h3, h4 {
   .topbar-search,
   .topbar-crumb { display: none; }
   .shell-content {
-    padding: 16px 16px 96px; /* room for fixed bottom-nav */
+    padding: 16px 16px 108px; /* room for fixed bottom-nav + FAB lift */
   }
   .bottom-nav { display: flex; }
   /* Prevent iOS viewport zoom on input focus (< 16px triggers auto-zoom) */

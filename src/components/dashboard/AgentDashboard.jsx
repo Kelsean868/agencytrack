@@ -78,7 +78,7 @@ const NAV_ITEMS = [
 // action, not a tab — it triggers the wizard via the onAction callback.
 const BOTTOM_NAV = [
   { id: 'home',        label: 'Home',     tabId: 'dashboard',   Icon: ClipboardList },
-  { id: 'submit',      label: 'Submit',   action: 'submit',     Icon: FileText      },
+  { id: 'submit',      label: 'Submit',   action: 'submit',     Icon: FileText, fab: true },
   { id: 'history',     label: 'History',  tabId: 'history',     Icon: History       },
   { id: 'leaderboard', label: 'Ranks',    tabId: 'leaderboard', Icon: Star          },
   { id: 'profile',     label: 'Profile',  tabId: 'profile',     Icon: UserCircle    },

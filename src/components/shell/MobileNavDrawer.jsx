@@ -58,7 +58,7 @@ export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClos
                   if (item.tabId != null) setActiveTab(item.tabId);
                   onClose();
                 }}
-                className={`w-full flex items-center gap-4 px-5 min-h-[44px] text-sm font-medium transition-colors hover:bg-card-raised focus-visible:outline-none focus-visible:bg-card-raised ${
+                className={`w-full flex items-center gap-4 px-5 min-h-[44px] text-sm font-medium motion-safe:transition-colors hover:bg-card-raised focus-visible:outline-none focus-visible:bg-card-raised ${
                   isActive ? 'text-primary bg-primary/5' : 'text-ink'
                 }`}
                 aria-current={isActive ? 'page' : undefined}
