@@ -3175,36 +3175,44 @@ Banked: Track J v2 Agent Dashboard home rework (PR #393), 2026-05-30.
 
 ---
 
-## Track J (V2 Redesign) — AgentProductionView ranking uses self-only submissions → always rank 1, peers at 0 (BUG, banked 2026-05-31, PR #397)
+## Track J (V2 Redesign) — AgentProductionView ranking uses self-only submissions → always rank 1, peers at 0 (BUG, banked 2026-05-31, PR #397 — **RESOLVED by PR {TBD}**)
 
-`AgentProductionView.jsx` fetches only the current agent's own submissions via `getAgentSubmissions(tenantId, agentId)`. The ranking loop iterates all users but filters `allSubmissions` by each agent's ID — for all peers this yields an empty array → `computeAgentTotals([])` = zero API. Result: the agent always appears at rank 1; all peers are tied at rank N with 0 API. The existing "My Ranking" section (now the hero's branch rank badge) is affected by this pre-existing bug. No regression introduced by the v2 port.
+`AgentProductionView.jsx` fetched only the current agent's own submissions via `getAgentSubmissions(tenantId, agentId)`. The ranking loop iterated all users but filtered `allSubmissions` by each agent's ID — for all peers this yielded an empty array → `computeAgentTotals([])` = zero API. Result: the agent always appeared at rank 1; all peers tied at rank N with 0 API.
 
-**Fix shape:** Replace `getAgentSubmissions(tenantId, agentId)` with a branch-scope submission fetch that includes all submitted submissions for the period. The natural home is the shared production-ranking query described in the follow-up below.
+**RESOLVED in Track J P7 (PR {TBD}):** the self-only ranking path is removed entirely. AgentProductionView now reads the P1 `leaderboards/{branchId}` aggregate via `useLeaderboard` — same source-of-truth as the standalone Leaderboard surface. Component test forces viewer at mock-rank-14 → pill renders "14" (proves the always-#1 bug is gone). Live smoke confirms `data-rank=1 data-total=6` on the test branch (vs old broken `1/1`).
 
-**Priority:** MEDIUM. The hero now shows branch rank more prominently (hero top-right) so the always-rank-1 artifact is more visible. Fix when the shared production-ranking query (FU below) lands.
-
-Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31.
+Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. **Resolved 2026-05-31 by Track J P7 (PR {TBD}).**
 
 ---
 
-## Track J (V2 Redesign) — Around-me panel + branch rank pill + shared production-ranking query (MEDIUM, banked 2026-05-31, PR #397; updated on pre-review)
+## Track J (V2 Redesign) — Around-me panel + branch rank pill + shared production-ranking query (MEDIUM, banked 2026-05-31, PR #397; updated on pre-review — **RESOLVED for AgentProductionView by PR {TBD}**)
 
-Two surfaces omitted from PR #397 because both require accurate peer production data:
+Two surfaces omitted from PR #397 because both required accurate peer production data:
 
 1. **"WHERE YOU RANK" around-me panel** — the v2 `prodreport-v2-scenes.jsx` right panel showing the 3 agents around the current agent in the branch ranking (one above, current, one below) with their API, initials, and unit.
 
-2. **Branch rank pill in the hero** — "BRANCH RANK #N / M" badge top-right of the hero card. Removed on dispatcher pre-review: uses the same self-submissions-only ranking (always rank 1) as the around-me panel, so displaying it as-is is misleading. Both surfaces land together when the shared query exists.
+2. **Branch rank pill in the hero** — "BRANCH RANK #N / M" badge top-right of the hero card. Removed on dispatcher pre-review: used the same self-submissions-only ranking (always rank 1) as the around-me panel, so displaying it as-is was misleading.
 
-The same query also unblocks the `BranchManagerProductionView` ranked-leaderboard and the standalone Leaderboard podium surface (PR #396 RankedLeaderboard pre-claimed the file for this).
+**RESOLVED for AgentProductionView in Track J P7 (PR {TBD}):** rather than introduce a new shared `useBranchProduction` hook, both surfaces now consume the existing P1 `leaderboards/{branchId}` aggregate via `useLeaderboard` — the same source-of-truth the standalone Leaderboard surface uses. AgentProductionView's hero rank pill + new `WhereYouRankPanel` both render from the aggregate. Component test forces viewer at mock rank 14 → pill renders "14" (proves the always-#1 bug is gone). Live smoke confirms `data-rank=1 data-total=6` on the test branch (vs old broken `1/1`).
 
-**Shape:** A shared `useBranchProduction(tenantId, period)` hook (or a `getBranchProductionRanked(tenantId, period)` service fn) that returns all agents' period-scoped totals in rank order — likely using `getAllYTDSubmissions` scoped to the period, already in `managerService`. Feeds: (a) branch rank pill + around-me panel in `AgentProductionView`, (b) ranked table in `BranchManagerProductionView`, (c) future leaderboard podium.
+**Remaining out-of-scope (separate FU below):** `BranchManagerProductionView` ranked-leaderboard view-wiring + the standalone Leaderboard podium surface (PR #396 RankedLeaderboard pre-claimed the file). The aggregate doesn't yet carry the exact shape those surfaces want (e.g., apps column + %-of-leader bar in the leaderboard podium); a separate follow-up tracks wiring those views to the aggregate or extending it.
 
-**Fix sequence:** Land shared query hook → restore rank pill + around-me in `AgentProductionView` → wire `BranchManagerProductionView` → wire leaderboard podium.
+Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. Updated on dispatcher pre-review. **Resolved 2026-05-31 for AgentProductionView by Track J P7 (PR {TBD}); remaining manager/podium views deferred to a separate FU.**
 
-**Priority:** MEDIUM. Rank visibility is a core agent motivation feature. Unblocks at least 3 surfaces. Schedule after Production Report port PRs land.
+---
 
-Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. Updated on dispatcher pre-review.
+## Track J (V2 Redesign) — Wire BranchManagerProductionView ranked table + standalone Leaderboard podium to the leaderboards aggregate (MEDIUM, banked 2026-05-31, carved out of PR #397 FU on P7 close)
 
+P7 (PR {TBD}) wired AgentProductionView's rank pill + around-me panel to the existing P1 `leaderboards/{branchId}` aggregate via `useLeaderboard`. Two adjacent surfaces still consume legacy data paths and should converge on the same source-of-truth:
+
+1. **`BranchManagerProductionView` ranked table** — currently aggregates client-side via `getAllYTDSubmissions`-style logic. The aggregate already has the full per-branch ranking in rank order.
+2. **Standalone Leaderboard podium / RankedLeaderboard surface** — PR #396 pre-claimed the file for an aggregate-driven rewrite, but the podium needs apps + %-of-leader bar shape that the aggregate doesn't yet carry.
+
+**Shape:** Two sub-tasks. (a) Wire `BranchManagerProductionView` to `useLeaderboard` — pure consumer change, no aggregate field additions needed (the existing `name + unitName + periodApi + apps + rank + rankWithinUnit` shape covers the table). (b) For the Leaderboard podium / RankedLeaderboard, decide whether to extend the aggregate's entry shape (add `apps` if not already present, add `leaderApi` per period for the %-bar) or compute %-of-leader client-side from the entries' `periodApi`. The client-side option avoids touching the CF; only the aggregate read-shape contract changes.
+
+**Priority:** MEDIUM. Resolves dual-source-of-truth between AgentProductionView (aggregate) and these two views (still legacy). Schedule when the V2 manager production view + leaderboard podium next come up.
+
+Banked: 2026-05-31 (Track J P7 close, PR {TBD}). Carved out from the resolved PR #397 around-me FU above.
 
 ---
 
