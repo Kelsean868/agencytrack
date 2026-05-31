@@ -61,7 +61,7 @@ function PeriodChips({ value, onChange }) {
             data-testid={`leaderboard-period-${p.k.toLowerCase()}`}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-bold font-mono uppercase tracking-widest transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
               active
-                ? 'bg-primary-dark text-white shadow-sm'
+                ? 'bg-primary dark:bg-primary-dark text-white shadow-sm'
                 : 'text-ink-muted hover:text-ink'
             }`}
           >
