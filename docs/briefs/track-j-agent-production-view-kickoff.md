@@ -1,17 +1,28 @@
-# Track J redesign — AgentProductionView v2 port (shared component)
+# Track J redesign — AgentProductionView v2 port (Production Report v2 only)
 
 **Sized:** S–M
 **Branch:** `redesign/agent-production-view` (off main)
-**Type:** Track J v2 visual port of a **shared** presentational component.
+**Type:** Track J v2 visual port.
 **Channel:** **Human-merge + dispatcher pre-review.** NOT green-channel auto-merge.
 
-**Channel rationale (both disqualify green-channel):**
-1. The v2 hero adds structural JSX (avatar circle, 4-KPI block, "around me" mini-leaderboard) beyond className/token swaps — a layout change, not a pure restyle.
-2. `AgentProductionView.jsx` is consumed by both **Production Report v2** and **Agent Report View v2** (double-mapped per the routing audit). Port it once here; the container screens assemble the ported component afterward.
+**Channel rationale:**
+The v2 hero adds structural JSX (avatar circle, 3-KPI block, 4-window grid, floor bar) beyond className/token swaps — a layout change, not a pure restyle.
+
+> **G1 RE-SCOPE (Phase 1 dispatcher decision, 2026-05-31):** Original brief claimed `AgentProductionView` was shared between Production Report v2 and Agent Report View v2. Phase 1 G1 check found the two mockups depict divergent surfaces (`prodreport-v2-scenes.jsx` = period-ranked production summary; `agentreport-v2.jsx` = coaching-record document with activity tiles, ratios, sparkline, coach notes). NOT shared in v2. README §6 double-mapping is a stale v1-reuse artifact. Port targets `prodreport-v2-scenes.jsx` ONLY. Agent Report View v2 is a future new component (separate brief).
+
+> **AROUND-ME PANEL OMITTED (Phase 1 dispatcher decision, 2026-05-31):** The v2 "WHERE YOU RANK" around-me panel requires all-branch production data. The component currently fetches only the agent's own submissions (`getAgentSubmissions`), making ranking computation invalid (agent always rank 1, peers at 0). Around-me panel is cleanly omitted; the right-panel column is dropped entirely. Two FUs banked: (a) existing ranking bug, (b) around-me via shared production-ranking query. See `docs/FOLLOW_UPS.md`.
 
 ## Outcome
 
-Port `src/components/productionReport/AgentProductionView.jsx` to its v2 design using existing Nexus tokens only, as a standalone unit, so both consumers import one ported component (no double-touch). No new data fetches, no write paths, no role/route/nav change, no consumer-file edits.
+Port `src/components/productionReport/AgentProductionView.jsx` to the `prodreport-v2-scenes.jsx` hero treatment: avatar circle + name subtitle + branch rank | 3-KPI block (NEW API · APPLICATIONS · PERSISTENCY) | 4-window period grid | YTD-vs-floor bar. Nexus tokens only, eyebrow convention, props contract unchanged, no consumer-file edits. Around-me panel cleanly omitted.
+
+## Authorized data-scope addition — PERSISTENCY KPI
+
+**What:** One new async call to `persistencyService.getAgentHistory(tenantId, agentUid, 1)` fetching the most recent E3-shaped persistency record.
+
+**Why:** The v2 hero shows PERSISTENCY as the 3rd KPI. `computeAgentTotals` does not include persistency (`{ totalApi, totalCommission, totalApps, nb, ppp, lmps }`). `userProfile` carries no persistency field. The only source is `persistencyService`. This read was reviewed and authorized by the dispatcher during Phase 1 G3 evaluation.
+
+**Implementation:** Separate `useState([]) + useEffect` — independent of the submission fetch; does NOT block the loading state. Renders `"—"` when: not yet resolved, no E3 record found (`persHistory[0]?.persistency` is null/undefined), or the call throws (error silently swallowed). Never crashes.
 
 ## Authoring basis + verification posture
 
