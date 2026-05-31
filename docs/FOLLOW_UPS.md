@@ -3175,17 +3175,17 @@ Banked: Track J v2 Agent Dashboard home rework (PR #393), 2026-05-30.
 
 ---
 
-## Track J (V2 Redesign) — AgentProductionView ranking uses self-only submissions → always rank 1, peers at 0 (BUG, banked 2026-05-31, PR #397 — **RESOLVED by PR {TBD}**)
+## Track J (V2 Redesign) — AgentProductionView ranking uses self-only submissions → always rank 1, peers at 0 (BUG, banked 2026-05-31, PR #397 — **RESOLVED by PR #403**)
 
 `AgentProductionView.jsx` fetched only the current agent's own submissions via `getAgentSubmissions(tenantId, agentId)`. The ranking loop iterated all users but filtered `allSubmissions` by each agent's ID — for all peers this yielded an empty array → `computeAgentTotals([])` = zero API. Result: the agent always appeared at rank 1; all peers tied at rank N with 0 API.
 
-**RESOLVED in Track J P7 (PR {TBD}):** the self-only ranking path is removed entirely. AgentProductionView now reads the P1 `leaderboards/{branchId}` aggregate via `useLeaderboard` — same source-of-truth as the standalone Leaderboard surface. Component test forces viewer at mock-rank-14 → pill renders "14" (proves the always-#1 bug is gone). Live smoke confirms `data-rank=1 data-total=6` on the test branch (vs old broken `1/1`).
+**RESOLVED in Track J P7 (PR #403):** the self-only ranking path is removed entirely. AgentProductionView now reads the P1 `leaderboards/{branchId}` aggregate via `useLeaderboard` — same source-of-truth as the standalone Leaderboard surface. Component test forces viewer at mock-rank-14 → pill renders "14" (proves the always-#1 bug is gone). Live smoke confirms `data-rank=1 data-total=6` on the test branch (vs old broken `1/1`).
 
-Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. **Resolved 2026-05-31 by Track J P7 (PR {TBD}).**
+Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. **Resolved 2026-05-31 by Track J P7 (PR #403).**
 
 ---
 
-## Track J (V2 Redesign) — Around-me panel + branch rank pill + shared production-ranking query (MEDIUM, banked 2026-05-31, PR #397; updated on pre-review — **RESOLVED for AgentProductionView by PR {TBD}**)
+## Track J (V2 Redesign) — Around-me panel + branch rank pill + shared production-ranking query (MEDIUM, banked 2026-05-31, PR #397; updated on pre-review — **RESOLVED for AgentProductionView by PR #403**)
 
 Two surfaces omitted from PR #397 because both required accurate peer production data:
 
@@ -3193,17 +3193,17 @@ Two surfaces omitted from PR #397 because both required accurate peer production
 
 2. **Branch rank pill in the hero** — "BRANCH RANK #N / M" badge top-right of the hero card. Removed on dispatcher pre-review: used the same self-submissions-only ranking (always rank 1) as the around-me panel, so displaying it as-is was misleading.
 
-**RESOLVED for AgentProductionView in Track J P7 (PR {TBD}):** rather than introduce a new shared `useBranchProduction` hook, both surfaces now consume the existing P1 `leaderboards/{branchId}` aggregate via `useLeaderboard` — the same source-of-truth the standalone Leaderboard surface uses. AgentProductionView's hero rank pill + new `WhereYouRankPanel` both render from the aggregate. Component test forces viewer at mock rank 14 → pill renders "14" (proves the always-#1 bug is gone). Live smoke confirms `data-rank=1 data-total=6` on the test branch (vs old broken `1/1`).
+**RESOLVED for AgentProductionView in Track J P7 (PR #403):** rather than introduce a new shared `useBranchProduction` hook, both surfaces now consume the existing P1 `leaderboards/{branchId}` aggregate via `useLeaderboard` — the same source-of-truth the standalone Leaderboard surface uses. AgentProductionView's hero rank pill + new `WhereYouRankPanel` both render from the aggregate. Component test forces viewer at mock rank 14 → pill renders "14" (proves the always-#1 bug is gone). Live smoke confirms `data-rank=1 data-total=6` on the test branch (vs old broken `1/1`).
 
 **Remaining out-of-scope (separate FU below):** `BranchManagerProductionView` ranked-leaderboard view-wiring + the standalone Leaderboard podium surface (PR #396 RankedLeaderboard pre-claimed the file). The aggregate doesn't yet carry the exact shape those surfaces want (e.g., apps column + %-of-leader bar in the leaderboard podium); a separate follow-up tracks wiring those views to the aggregate or extending it.
 
-Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. Updated on dispatcher pre-review. **Resolved 2026-05-31 for AgentProductionView by Track J P7 (PR {TBD}); remaining manager/podium views deferred to a separate FU.**
+Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. Updated on dispatcher pre-review. **Resolved 2026-05-31 for AgentProductionView by Track J P7 (PR #403); remaining manager/podium views deferred to a separate FU.**
 
 ---
 
 ## Track J (V2 Redesign) — Wire BranchManagerProductionView ranked table + standalone Leaderboard podium to the leaderboards aggregate (MEDIUM, banked 2026-05-31, carved out of PR #397 FU on P7 close)
 
-P7 (PR {TBD}) wired AgentProductionView's rank pill + around-me panel to the existing P1 `leaderboards/{branchId}` aggregate via `useLeaderboard`. Two adjacent surfaces still consume legacy data paths and should converge on the same source-of-truth:
+P7 (PR #403) wired AgentProductionView's rank pill + around-me panel to the existing P1 `leaderboards/{branchId}` aggregate via `useLeaderboard`. Two adjacent surfaces still consume legacy data paths and should converge on the same source-of-truth:
 
 1. **`BranchManagerProductionView` ranked table** — currently aggregates client-side via `getAllYTDSubmissions`-style logic. The aggregate already has the full per-branch ranking in rank order.
 2. **Standalone Leaderboard podium / RankedLeaderboard surface** — PR #396 pre-claimed the file for an aggregate-driven rewrite, but the podium needs apps + %-of-leader bar shape that the aggregate doesn't yet carry.
@@ -3212,7 +3212,7 @@ P7 (PR {TBD}) wired AgentProductionView's rank pill + around-me panel to the exi
 
 **Priority:** MEDIUM. Resolves dual-source-of-truth between AgentProductionView (aggregate) and these two views (still legacy). Schedule when the V2 manager production view + leaderboard podium next come up.
 
-Banked: 2026-05-31 (Track J P7 close, PR {TBD}). Carved out from the resolved PR #397 around-me FU above.
+Banked: 2026-05-31 (Track J P7 close, PR #403). Carved out from the resolved PR #397 around-me FU above.
 
 ---
 
@@ -3338,6 +3338,22 @@ This isn't a token-level fix (the token is correct — lifted teal IS the right 
 **Priority:** MEDIUM. Pre-pilot, all three patterns work visually; this is an AA-cleanup pass that should ride with the pre-pilot a11y audit if there is one, OR ship as its own contrast PR before the pilot lands. The three items (gold token bump, warning-tint legibility, dark-mode primary pair-up) form a coherent contrast-pass PR.
 
 Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31. Expanded with DataSourceBadge "Estimated" + AgentProductionView hero avatar on PR #403 pre-review, 2026-05-31.
+
+---
+
+## Track J (V2 Redesign) — `aroundMeLogic` state-label taxonomy: `CLUSTER_3` is mis-named for the 2-row first-place case (LOW, banked 2026-05-31, PR #403)
+
+When called with `visibleMax: 0` (the `WhereYouRankPanel` always-on cluster pattern), a rank-1 viewer falls through `aroundMeLogic.computeAroundMe` with `prev = null` + `next = safe[1]` → `rows = [viewer, next]` (2 rows), but the ternary `state = next ? 'CLUSTER_3' : 'CLUSTER_2_LAST'` returns `'CLUSTER_3'`. The label implies 3 rows; only 2 are actually present.
+
+**Why it's not a bug today:** `WhereYouRankPanel.jsx` renders `rows.map(...)`, not branching on `state`. The PR #403 strengthened rank-1 test pins the rendered structure (exactly 2 rows, viewer on rank 1, no phantom rank-0, no "behind" footer suffix). The mis-label is invisible to current consumers.
+
+**Why it's a future-bug magnet:** any future consumer that branches on `state === 'CLUSTER_3'` expecting 3 rows would mis-render the first-place case (e.g. allocating a 3-column grid, expecting `rows[2]` to exist). Same shape on the symmetric side: there is no `CLUSTER_2_FIRST` to mirror `CLUSTER_2_LAST`, so any consumer looking to distinguish "no predecessor" from "no successor" must derive it from `prevRank === null` / `rows.length` rather than from `state`.
+
+**Fix shape (when scheduled):** EITHER add a `CLUSTER_2_FIRST` state (and document `CLUSTER_3` as strictly 3 rows), OR drop the state label entirely and derive everything consumers need from `rows.length` + `prevRank` + nextRank. The second is simpler — `rows.length` is the ground truth and the label is redundant. Either approach touches `src/lib/leaderboard/aroundMeLogic.js` + its 32 unit tests + an additional unit-test assertion that the rank-1 case under `visibleMax: 0` returns the new state (or no state). The PR #403 component test already covers the rendered structure; the unit-test layer is where the taxonomy fix needs new coverage.
+
+**Priority:** LOW. Cosmetic taxonomy debt; no live consumer is currently mis-led. Schedule alongside any future `aroundMeLogic` touch (e.g. the `previousRank` + movement chip FU below).
+
+Banked: Track J P7 close (PR #403), 2026-05-31.
 
 ---
 
