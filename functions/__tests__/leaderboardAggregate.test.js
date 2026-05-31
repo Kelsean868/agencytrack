@@ -259,6 +259,39 @@ describe('buildLeaderboardDoc', () => {
     const doc = buildLeaderboardDoc(subs, users, REF);
     expect(doc.week[0].unitName).toBeNull();
   });
+
+  test('UM is NOT ranked, but agent unitName still resolves from the UM doc', () => {
+    // branchUsers contains both agents and the UM. The UM is in the array
+    // for unit-name resolution only — rankForLeaderboard filters to agents.
+    const users = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      mkAgent('a2', 'Beta',  'south', 'u1'),
+      mkUM('u1', 'UM South', 'south'),
+    ];
+    // Even if a "submission" attributed to the UM existed, it must not be ranked.
+    const subs = [
+      mkSub('s1', 'a1', WK_SUN, 100),
+      mkSub('s2', 'a2', WK_SUN, 200),
+      mkSub('sUM', 'u1', WK_SUN, 9999), // bait: huge value attributed to UM uid
+    ];
+    const doc = buildLeaderboardDoc(subs, users, REF);
+
+    // Assertion 1: UM is absent from every period's ranking
+    for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
+      const ids = doc[periodKey].map((e) => e.agentId);
+      expect(ids).not.toContain('u1');                       // UM NOT ranked
+      expect(ids.sort()).toEqual(['a1', 'a2']);              // ONLY agents
+    }
+
+    // Assertion 2: Agent unitName still resolves to the UM's display name
+    expect(doc.week.find((e) => e.agentId === 'a1').unitName).toBe('Unit u1');
+    expect(doc.week.find((e) => e.agentId === 'a2').unitName).toBe('Unit u1');
+
+    // Assertion 3: The UM-baited submission's API value did NOT contaminate
+    // any agent's ranking (a1 has 100, a2 has 200 — the 9999 is dropped)
+    expect(doc.week.find((e) => e.agentId === 'a2').periodApi).toBe(200);
+    expect(doc.week.find((e) => e.agentId === 'a1').periodApi).toBe(100);
+  });
 });
 
 // ── computeAndWriteLeaderboards (end-to-end with mocked Firestore) ───────────
