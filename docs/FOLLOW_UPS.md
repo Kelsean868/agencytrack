@@ -3083,23 +3083,23 @@ Banked: Track J v2 batch (PRs #389 `redesign/career-portal`, #390 `f151183`, #39
 
 ---
 
-## ✅ Track J (V2 Redesign) — Agent CommissionPlayground removed from CareerPortal (LOW, banked 2026-05-30, PR #389) — RESOLVED 2026-05-30 (PR #TBD)
+## ✅ Track J (V2 Redesign) — Agent CommissionPlayground removed from CareerPortal (LOW, banked 2026-05-30, PR #389) — RESOLVED 2026-05-30 (PR #392)
 
-**RESOLVED:** The v2 Agent Dashboard nav IA PR (J-AD-nav, `redesign/agentdash-nav`, PR #TBD) adds a dedicated `commission` tab to `AgentDashboard` NAV_ITEMS, wired to the existing `CommissionPlayground` component. Agent access restored as a standalone Tools-group nav item. Manager access via `GoalsPanel` unaffected.
+**RESOLVED:** The v2 Agent Dashboard nav IA PR (J-AD-nav, `redesign/agentdash-nav`, PR #392) adds a dedicated `commission` tab to `AgentDashboard` NAV_ITEMS, wired to the existing `CommissionPlayground` component. Agent access restored as a standalone Tools-group nav item. Manager access via `GoalsPanel` unaffected.
 
 ~~The v2 Career Portal redesign removed `CommissionPlayground` from `CareerPortal.jsx`. It was the only agent-facing surface for the Commission Playground; managers retain access via `GoalsPanel.jsx`.~~
 
-Banked: Track J v2 Career Portal (PR #389 `8371818`), 2026-05-30. **RESOLVED: PR #TBD.**
+Banked: Track J v2 Career Portal (PR #389 `8371818`), 2026-05-30. **RESOLVED: PR #392.**
 
 Banked from Track H agent confirmation-surfacing PR #305 (`97a8493`).
 
 ---
 
-## Track J (V2 Redesign) — Game Plan v2 screen deferred; Money Needs re-nesting pending (LOW, banked 2026-05-30, PR #TBD)
+## Track J (V2 Redesign) — Game Plan v2 screen deferred; Money Needs re-nesting pending (LOW, banked 2026-05-30, PR #392)
 
-The v2 sidebar (`app-shell.jsx`) shows **Game Plan** as the parent PLANNING item with **Money Needs** nested as a child indent beneath it. The J-AD-nav PR (PR #TBD) deferred Game Plan and made Money Needs a top-level PLANNING item instead.
+The v2 sidebar (`app-shell.jsx`) shows **Game Plan** as the parent PLANNING item with **Money Needs** nested as a child indent beneath it. The J-AD-nav PR (PR #392) deferred Game Plan and made Money Needs a top-level PLANNING item instead.
 
-**Current state post-PR #TBD:**
+**Current state post-PR #392:**
 - `money-needs` is a top-level PLANNING nav item in `AgentDashboard` NAV_ITEMS.
 - No `game-plan` / `lookahead` tab exists.
 - `GapAnalysisPanel` surfaces via the `goals` tab (not a Game Plan parent).
@@ -3108,11 +3108,11 @@ The v2 sidebar (`app-shell.jsx`) shows **Game Plan** as the parent PLANNING item
 
 **Priority:** LOW. Money Needs is fully accessible as a top-level item. No production impact. Address when the Game Plan v2 screen is designed and briefed.
 
-Banked: Track J v2 Agent Dashboard nav IA (PR #TBD), 2026-05-30.
+Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30.
 
 ---
 
-## Pre-existing color-contrast failures outside the sidebar (LOW, banked 2026-05-30, PR #TBD)
+## Pre-existing color-contrast failures outside the sidebar (LOW, banked 2026-05-30, PR #392)
 
 `axe` against the agent dashboard (local preview, post-`.sidebar-section` fix) still surfaces color-contrast violations that pre-date Track J and exist on main:
 
@@ -3133,4 +3133,4 @@ Banked: Track J v2 Agent Dashboard nav IA (PR #TBD), 2026-05-30.
 
 **Priority:** LOW. All pre-existing; none introduced by Track J PRs. Fix in a dedicated a11y-contrast cleanup PR scoped to these clusters — not piecemeal across feature PRs.
 
-Banked: Track J v2 Agent Dashboard nav IA (PR #TBD), 2026-05-30.
+Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30.
