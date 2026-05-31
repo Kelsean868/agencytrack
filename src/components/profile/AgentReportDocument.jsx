@@ -15,6 +15,7 @@ import {
 import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 import { computeAgentAwards } from '../../utils/awardsEngine';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
+import { MDRT_THRESHOLD } from '../../constants/mdrt';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const COLORS = {
@@ -52,7 +53,6 @@ const CAREER_LEVELS = [
   { level: 7, name: 'Executive',          minAPI: 1000000, minApps: 100 },
 ];
 
-const MDRT_THRESHOLD    = 500000;
 const COMPANY_FLOOR     = 250000;
 const FUNNEL_BENCHMARKS = [20, 40, 50, 60, 70];
 

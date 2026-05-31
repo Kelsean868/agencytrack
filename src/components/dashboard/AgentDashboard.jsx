@@ -1,12 +1,12 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
-  X, Download, Loader2, AlertTriangle,
+  X, Download, Loader2,
   ClipboardList, FileText, Home, NotebookPen, Wallet, Target, Zap, Repeat, Search, Medal, Shield,
   Star, History, UserCircle, BarChart2, BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
-import { getRoleLabel, formatCurrency, formatDateDisplay } from '../../utils/formatters';
+import { getRoleLabel, formatDateDisplay } from '../../utils/formatters';
 import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
 import { getGoals, getCompanyMinimums, getGoalHierarchy, getSalesManagerUid } from '../../services/goalsService';
@@ -18,12 +18,10 @@ import { getSettlements } from '../../services/settlementService';
 import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 import { generateAgentPDF } from '../../services/exportService';
 import { getActiveCampaignsForAgent, getCampaignSubmissions } from '../../services/campaignService';
-import { aggregateAPI } from '../../utils/aggregateAPI';
 import WizardForm from '../wizard/WizardForm';
 import DailyEntryModal from '../daily/DailyEntryModal';
 import { getDailyEntry } from '../../services/dailyActivityService';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
-import CampaignCard from '../campaigns/CampaignCard';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
 import ReportRangeModal from '../ui/ReportRangeModal';
@@ -31,11 +29,7 @@ import Leaderboard from '../gamification/Leaderboard';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import HistoryTab from '../submissions/HistoryTab';
-import GoalCarousel from './GoalCarousel';
-import KPICard from './KPICard';
-import ActivityFeed from './ActivityFeed';
-import WeeklyStandardCard from './WeeklyStandardCard';
-import BadgeGrid, { computeEarnedBadges } from '../gamification/BadgeGrid';
+import { computeEarnedBadges } from '../gamification/BadgeGrid';
 import { buildActivityEvents } from '../../utils/buildActivityEvents';
 import WelcomeScreen from '../onboarding/WelcomeScreen';
 import Shell from '../shell/Shell';
@@ -46,16 +40,7 @@ import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import CommissionPlayground from '../goals/CommissionPlayground';
 import DailyFAB from '../daily/DailyFAB';
-
-const KPIS = [
-  { key: 'dials',    label: 'Dials',         field: 'totalTelAttempts', isCurrency: false },
-  { key: 'contacts', label: 'Tel Contacts',   field: 'telContacts',      isCurrency: false },
-  { key: 'f2f',      label: 'F2F Approaches', field: 'f2fAttempts',      isCurrency: false },
-  { key: 'ffi',      label: 'FFI',            field: 'ffiConducted',     isCurrency: false },
-  { key: 'ci',       label: 'CI',             field: 'ciConducted',      isCurrency: false },
-  { key: 'apps',     label: 'Applications',   field: 'applicationsSold',    isCurrency: false },
-  { key: 'api',      label: 'API',            field: 'totalProductionCredit', isCurrency: true  },
-];
+import AgentDashboardHomeV2 from './HomeV2';
 
 // Sidebar nav items for the agent role. Mirrors the live dashboard tabs
 // 1:1 — no fabricated items (per kickoff Decisions: "mirrors the existing
@@ -188,10 +173,6 @@ export default function AgentDashboard() {
     }).catch(console.error).finally(() => setLoading(false));
   }, [user?.uid, tenantId, currentWeek, thisYear]);
 
-  // Most recent submission — surfaced in the Goals "My Commitment" card
-  // so the agent's most recently submitted personal targets stay visible.
-  const latestSub = useMemo(() => allSubmissions[0] ?? null, [allSubmissions]);
-
   // Resolved personal annual API: agent's own commitment if set, else the
   // tenant company-floor minimum, else 200000 (matches getCompanyMinimums
   // default in goalsService.js). The chain mirrors the kickoff brief's S1
@@ -221,13 +202,6 @@ export default function AgentDashboard() {
       },
     };
   }, [companyMinimums, userProfile?.contractStartDate]);
-
-  // Period totals for the goal carousel hero. Pure derivation from
-  // already-loaded submissions — no Firestore reads inside the util.
-  const goalData = useMemo(
-    () => aggregateAPI(allSubmissions, new Date(), personalAnnualAPI),
-    [allSubmissions, personalAnnualAPI]
-  );
 
   // Activity feed events (B3). Submission events + 3 weekly-criteria
   // badge events, derived client-side from already-loaded data. Capped
@@ -290,7 +264,6 @@ export default function AgentDashboard() {
   // no field; default to hybrid per planning decision.
   const loggingMode = userProfile?.loggingMode ?? 'hybrid';
   const showDailyCTA = loggingMode === 'daily' || loggingMode === 'hybrid';
-  const showWeeklyCTA = loggingMode === 'weekly' || loggingMode === 'hybrid';
 
   // Today's date in agent's local time — same convention as the modal.
   const today = useMemo(() => {
@@ -424,8 +397,15 @@ export default function AgentDashboard() {
       onAction={handleAction}
       userProfile={userProfile}
       roleLabel={roleLabel}
-      topbarTitle={`Welcome back, ${displayName}`}
-      topbarCrumb={`Week of ${formatDateDisplay(currentWeek)}`}
+      topbarTitle="Dashboard"
+      topbarCrumb={(() => {
+        const d = new Date();
+        const weekday = d.toLocaleDateString('en-TT', { weekday: 'long' });
+        const date    = d.toLocaleDateString('en-TT', { day: 'numeric', month: 'long' });
+        const start   = new Date(d.getFullYear(), 0, 1);
+        const weekNum = Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7);
+        return `${displayName} · ${weekday} ${date} · Week ${weekNum}`;
+      })()}
       onSignOut={handleSignOut}
     >
       {/* Daily entry FAB — visible on all agent tabs when daily/hybrid mode.
@@ -482,266 +462,51 @@ export default function AgentDashboard() {
         </button>
       )}
 
-      {/* ── DASHBOARD TAB ── */}
+      {/* ── DASHBOARD TAB (v2 home — Hero + PulseStrip + Recent) ── */}
       {activeTab === 'dashboard' && (
-        <div>
-          <div className="mb-4">
-            <p className="text-ink-muted text-sm">Welcome back,</p>
-            <h2 className="text-xl font-bold text-ink">{displayName}</h2>
-          </div>
-
-          {/* Submissions load-error banner — surfaces permission-denied and
-              other query failures that would otherwise render silently as an
-              empty dashboard. */}
-          {submissionsError && (
-            <div
-              role="alert"
-              className="mb-4 flex items-start gap-3 p-3 rounded-xl bg-danger-tint border border-danger/20 text-danger"
+        allSubmissions.length === 0 ? (
+          <div className="role-hero">
+            <div className="goal-period">Get Started</div>
+            <div className="goal-value" style={{ fontSize: 24, lineHeight: 1.2 }}>
+              Welcome to AgencyTrack
+            </div>
+            <div className="goal-target" style={{ marginTop: 10 }}>
+              Submit your first weekly report to start tracking your goal progress.
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowWizard(true)}
+              className="mt-4 inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-primary dark:text-primary-dark font-semibold text-sm hover:bg-white/95 transition-colors min-h-[44px]"
             >
-              <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-              <p className="text-sm font-medium">
-                {submissionsError === 'permission-denied'
-                  ? 'Could not load your activity data — permission denied. Contact your manager if this persists.'
-                  : 'Could not load your activity data. Check your connection and refresh.'}
-              </p>
-            </div>
-          )}
-
-          {/* Goal carousel hero (Design System v2 — B2). Replaces the
-              YTD API Progress card at the top-of-dashboard slot. */}
-          <div className="mb-6">
-            {allSubmissions.length === 0 ? (
-              <div className="role-hero">
-                <div className="goal-period">Get Started</div>
-                <div className="goal-value" style={{ fontSize: 24, lineHeight: 1.2 }}>
-                  Welcome to AgencyTrack
-                </div>
-                <div className="goal-target" style={{ marginTop: 10 }}>
-                  Submit your first weekly report to start tracking your goal progress.
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setShowWizard(true)}
-                  className="mt-4 inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-primary dark:text-primary-dark font-semibold text-sm hover:bg-white/95 transition-colors min-h-[44px]"
-                >
-                  Submit your first report
-                </button>
-              </div>
-            ) : (
-              <GoalCarousel data={goalData} />
-            )}
+              Submit your first report
+            </button>
           </div>
-
-          {/* Active Campaigns */}
-          {campaignsLoading ? (
-            <div className="mb-4 h-28 rounded-xl bg-border/30 animate-pulse" />
-          ) : activeCampaigns.length > 0 && (
-            <div className="flex flex-col gap-3 mb-4">
-              {activeCampaigns.map((c) => (
-                <CampaignCard
-                  key={c.id}
-                  campaign={c}
-                  submissions={campaignSubs[c.id] ?? []}
-                  agentId={user?.uid}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* KPI Activity Grid */}
-          {kpiData.length > 0 && (
-            <section aria-labelledby="agent-dashboard-kpi-heading" className="mb-6">
-              <h3
-                id="agent-dashboard-kpi-heading"
-                className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3"
-              >
-                Activity Trend — Last {kpiData.length} Week{kpiData.length !== 1 ? 's' : ''}
-              </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-3">
-                {KPIS.map((kpi) => (
-                  <KPICard
-                    key={kpi.key}
-                    label={kpi.label}
-                    values={kpiData.map((f) => f[kpi.field] ?? 0)}
-                    isCurrency={kpi.isCurrency}
-                  />
-                ))}
-              </div>
-
-              {/* Week-over-week comparison strip */}
-              {kpiData.length >= 2 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {KPIS.map((kpi) => {
-                    const cur   = kpiData[kpiData.length - 1][kpi.field] ?? 0;
-                    const prev  = kpiData[kpiData.length - 2][kpi.field] ?? 0;
-                    const delta = cur - prev;
-                    const colorClass =
-                      delta > 0 ? 'bg-success/10 text-success border-success/20' :
-                      delta < 0 ? 'bg-danger/10 text-danger border-danger/20' :
-                      'bg-surface text-ink-muted border-border';
-                    const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '—';
-                    return (
-                      <span
-                        key={kpi.key}
-                        className={`inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-semibold ${colorClass}`}
-                      >
-                        {kpi.label} {arrow}
-                      </span>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
-          )}
-
-          {/* Weekly Standard — Expected vs Actual (Tatil workshop 2026-05-19,
-              Appendix A). 10-row floor comparison against the current week's
-              submission. Per-row status: green ≥ floor / amber ≥ 70% / red.
-              The API row (#9) is resolved per-agent from contractStartDate
-              via the tenure band table (head-of-sales slide 2026-05-19,
-              provisional); the other nine floors stay flat. */}
-          <WeeklyStandardCard
-            minimums={resolvedMinimums}
+        ) : (
+          <AgentDashboardHomeV2
+            ytdTotals={ytdTotals}
+            personalAnnualAPI={personalAnnualAPI}
+            kpiData={kpiData}
+            allSubmissions={allSubmissions}
+            resolvedMinimums={resolvedMinimums}
             currentWeekSub={currentWeekSub}
-            loading={loading}
-            error={null}
+            persistency={persistency}
+            settlements={settlements}
+            awardsRuleset={awardsRuleset}
+            agentProfile={userProfile}
+            activityEvents={activityEvents}
+            activeCampaigns={activeCampaigns}
+            campaignsLoading={campaignsLoading}
+            campaignSubs={campaignSubs}
+            agentUid={user?.uid}
+            showDailyCTA={showDailyCTA}
+            todayDailyChecked={todayDailyChecked}
+            todayDailyEntry={todayDailyEntry}
+            submissionsError={submissionsError}
+            onSubmit={() => setShowWizard(true)}
+            onLogToday={() => setShowDailyModal(true)}
+            onOpenTab={setActiveTab}
           />
-
-          {/* Goals section */}
-          <section aria-labelledby="agent-dashboard-goals-heading" className="card mb-6">
-            <h3
-              id="agent-dashboard-goals-heading"
-              className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3"
-            >
-              Goals
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-xs font-medium text-ink-muted mb-2">My Commitment</p>
-                {latestSub?.targetAPI ? (
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm text-ink">
-                      <span className="font-semibold">API:</span> {formatCurrency(parseFloat(latestSub.targetAPI))}
-                    </p>
-                    {latestSub.targetAppsSold > 0 && (
-                      <p className="text-sm text-ink">
-                        <span className="font-semibold">Apps:</span> {latestSub.targetAppsSold}
-                      </p>
-                    )}
-                    {latestSub.targetDials > 0 && (
-                      <p className="text-sm text-ink">
-                        <span className="font-semibold">Dials:</span> {latestSub.targetDials}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-xs text-ink-muted italic">Set targets in Step 9 of your next report.</p>
-                )}
-              </div>
-
-              <div>
-                <p className="text-xs font-medium text-ink-muted mb-2">Manager Target</p>
-                {goals?.targetWeeklyAPI ? (
-                  <div className="flex flex-col gap-1">
-                    <p className="text-sm text-ink">
-                      <span className="font-semibold">Weekly API:</span> {formatCurrency(goals.targetWeeklyAPI)}
-                    </p>
-                    {goals.targetWeeklyApps > 0 && (
-                      <p className="text-sm text-ink">
-                        <span className="font-semibold">Apps:</span> {goals.targetWeeklyApps}
-                      </p>
-                    )}
-                    {goals.targetWeeklyDials > 0 && (
-                      <p className="text-sm text-ink">
-                        <span className="font-semibold">Dials:</span> {goals.targetWeeklyDials}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-xs text-ink-muted italic">Your manager hasn't set targets yet.</p>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* Activity feed + Achievement badges (B4 — g4-mix 2-col layout
-              absorbed from the deferred B3 deliverable). At ≥1024px these
-              render side-by-side (1.6fr 1fr); below 1024px they stack
-              vertically. ActivityFeed self-wraps as a .card; the badge
-              section keeps its labelled <section> for a11y parity with
-              the CareerPortal call site. */}
-          <div className="g4-mix mb-6">
-            <ActivityFeed
-              events={activityEvents}
-              onViewAll={() => setActiveTab('history')}
-            />
-            <section
-              aria-labelledby="agent-dashboard-achievements-heading"
-              className="card"
-            >
-              <h3
-                id="agent-dashboard-achievements-heading"
-                className="text-sm font-semibold text-ink mb-3"
-              >
-                Achievement Badges
-              </h3>
-              <BadgeGrid submissions={allSubmissions} />
-            </section>
-          </div>
-
-          {/* Goal hierarchy / gap analysis */}
-          <div className="mb-6">
-            <GapAnalysisPanel
-              hierarchy={hierarchy}
-              ytdTotals={ytdTotals}
-              loading={hierarchyLoading}
-              error={hierarchyError}
-              title="Goal Hierarchy"
-            />
-          </div>
-
-          {/* E6 daily nudge banner — only when daily/hybrid mode and the
-              agent hasn't logged today yet. v1 fallback until push
-              notifications ship. */}
-          {showDailyCTA && todayDailyChecked && !todayDailyEntry && (
-            <div className="mb-4 flex items-start gap-3 p-4 rounded-xl bg-primary/5 border border-primary/20">
-              <div className="flex-1">
-                <p className="text-sm font-semibold text-ink">You haven't logged today yet</p>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  Capture your activity in 30 seconds. We'll roll it up into your weekly report on Sunday.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowDailyModal(true)}
-                className="shrink-0 px-3 h-9 rounded-lg bg-primary dark:bg-primary-dark text-white text-xs font-semibold hover:bg-primary/90 dark:hover:bg-primary transition-colors"
-              >
-                Log today
-              </button>
-            </div>
-          )}
-
-          {/* CTA — adapts to logging mode. weekly: weekly only. daily:
-              daily only. hybrid: both, stacked. */}
-          <div className="flex flex-col gap-2">
-            {showDailyCTA && (
-              <button
-                className={showWeeklyCTA ? 'btn-secondary w-full' : 'btn-primary w-full'}
-                onClick={() => setShowDailyModal(true)}
-              >
-                {todayDailyEntry ? 'Update today’s log' : 'Log today'}
-              </button>
-            )}
-            {showWeeklyCTA && (
-              <button
-                className="btn-primary w-full"
-                onClick={() => setShowWizard(true)}
-              >
-                Submit Weekly Report
-              </button>
-            )}
-          </div>
-        </div>
+        )
       )}
 
       {/* ── CAREER TAB ── */}
