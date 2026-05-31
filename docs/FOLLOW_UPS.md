@@ -3065,21 +3065,27 @@ Banked: Track J App Shell (redesign/shell PR #388 (`63cb0cf`)), 2026-05-30.
 
 ---
 
-## Track J (V2 Redesign) — Component test coverage for CareerPortal / HistoryTab / AgentAwardsPanel rewrites (LOW, banked 2026-05-30, PRs #389 + #390 + #391)
+## Track J (V2 Redesign) — Component test coverage for CareerPortal / HistoryTab / AgentAwardsPanel / HomeV2 rewrites (LOW, banked 2026-05-30, PRs #389 + #390 + #391 + #393)
 
-The Track J v2 batch (Career Portal, History, Agent Awards) replaced substantial visual and structural code without adding new unit tests for the rewritten components. Existing tests that existed before the rewrites still pass (1625/1625), but the new sub-components introduced in the rewrites have no dedicated coverage:
+The Track J v2 batch (Career Portal, History, Agent Awards) and the J-AD-home PR replaced substantial visual and structural code without adding new unit tests for the rewritten components. Existing tests that existed before the rewrites still pass (1625/1625), but the new sub-components introduced in the rewrites have no dedicated coverage:
 
 - **`CareerPortal.jsx`** — `LadderCoin`, `LadderNode`, `CareerLadder`, `TimeToNextCard`, `TrajectoryCard`, `CommitmentScorecard`, `LevelDrillDrawer`. The pre-existing `CareerPortal.tapTargets.test.jsx` (3 tests) still covers the edit-mode button tap targets.
-- **`HistoryTab.jsx`** (new file) — `HistoryAnchorStrip`, `YearHeatmap`, `HistoryFilterRow`, `WeekCard`. Zero unit tests.
+- **`HistoryTab.jsx`** (new file) — `HistoryAnchorStrip`, `YearHeatmap`, `HistoryFilterRow`, `WeekCard`. Zero unit tests. (`computeSubmissionStreak` extracted to `src/utils/submissionStreak.js` by PR #393 — pure module, ideal first test target.)
 - **`AgentAwardsPanel.jsx`** — `AwardDonut`, `HeroAwardCard`, `GroupHeader`, `AwardCard`, `RatioMiniSpark`, `RatioTrendCard`, `AwardDrillDrawer`. The pre-existing `AgentAwardsPanel.test.jsx` (7 tests, `usesPolicyLedger` path coverage) still passes but does not exercise any of the new v2 visual components.
+- **`src/components/dashboard/HomeV2/` (added PR #393)** — `HeroCard`, `PulseStrip` (+ chip + viz primitives), `MiniViz` (`MiniSparkline`/`MiniDonut`/`MiniBars`/`MiniBadge`), `NeedsActionBanner`, `RecentCompact`, `StandardDetail`, `StandardRow`, `DeliveryStripCard` (stub), `index` (orchestrator). Zero unit tests. The orchestrator's Pulse-chip useMemo carries non-trivial derivation (streak / awards-engine top-contention / persistency aggregate / floor met-count) and is the most valuable single test target in this set.
 
-**Why not added in the batch PRs:** The green-channel batch contract was "build each passing screen to PR-open and move on" — adding test suites per screen would have expanded scope. Production smoke (14/14) validated real-browser behavior; the existing tap-target and policy-ledger tests cover the critical functional paths.
+**Why not added in the batch PRs:** The green-channel batch contract was "build each passing screen to PR-open and move on" — adding test suites per screen would have expanded scope. Production smoke (#393 → 22/22; nav IA → 34/34; awards/history → 14/14; career → 16/16) validated real-browser behavior; the existing tap-target and policy-ledger tests cover the critical functional paths.
 
-**Fix shape:** Add `CareerPortal.v2.test.jsx`, `HistoryTab.test.jsx`, and `AgentAwardsPanel.v2.test.jsx` covering at minimum: empty-state render, loading skeleton render, and one key interaction per component (e.g. clicking a locked LadderNode opens the drawer; clicking a WeekCard calls `onView`; clicking an AwardCard opens the drill drawer with ESC close). Mock `useAuth`, service calls, and `BadgeGrid` as in the existing tapTargets test.
+**Fix shape:** Add `CareerPortal.v2.test.jsx`, `HistoryTab.test.jsx`, `AgentAwardsPanel.v2.test.jsx`, `HomeV2.test.jsx`, and `submissionStreak.test.js` covering at minimum:
+- empty-state render, loading skeleton render, and one key interaction per visual component (e.g. clicking a locked LadderNode opens the drawer; clicking a WeekCard calls `onView`; clicking an AwardCard opens the drill drawer with ESC close; clicking the Standard PulseChip opens StandardDetail; ESC closes it).
+- For `submissionStreak.js`: pure-function tests over crafted submission arrays (current = 1/0/N; gaps reset; year boundary; weekStarting 7-day diff).
+- For `HomeV2/index.jsx`: mock services + `useAuth` and assert each Pulse chip's status text/tone given representative input shapes.
 
-**Priority:** LOW. Production is healthy; smoke verified real-DOM behavior in both themes. No data integrity or security impact. Bundle into the next PR that touches one of these three files for any reason.
+Mock `useAuth`, service calls, and `BadgeGrid` as in the existing tapTargets test.
 
-Banked: Track J v2 batch (PRs #389 `redesign/career-portal`, #390 `f151183`, #391 `84abe6e`), 2026-05-30.
+**Priority:** LOW. Production is healthy; smoke verified real-DOM behavior in both themes. No data integrity or security impact. Bundle into the next PR that touches one of these files for any reason.
+
+Banked: Track J v2 batch (PRs #389 `8371818`, #390 `f151183`, #391 `84abe6e`), 2026-05-30; extended to include HomeV2 (PR #393 `10b7e46`), 2026-05-31.
 
 ---
 
@@ -3137,23 +3143,23 @@ Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30.
 
 ---
 
-## Track J (V2 Redesign) — HeroCard YoY-delta chip deferred (LOW, banked 2026-05-30, PR #TBD)
+## Track J (V2 Redesign) — HeroCard YoY-delta chip deferred (LOW, banked 2026-05-30, PR #393)
 
-The v2 HeroCard mockup (`design_handoff_v2_app/mockups/app-dashboard-v2.jsx`) shows a "+18% vs LY" success chip next to the YTD API headline. The J-AD-home PR (PR #TBD) ships the HeroCard **without** this chip — current AgentDashboard state does not aggregate last-year submissions, and `getAgentSubmissions(tenantId, uid)` returns all submissions without a year filter, so any YoY computation today would walk the full result set in JS each render.
+The v2 HeroCard mockup (`design_handoff_v2_app/mockups/app-dashboard-v2.jsx`) shows a "+18% vs LY" success chip next to the YTD API headline. The J-AD-home PR (PR #393) ships the HeroCard **without** this chip — current AgentDashboard state does not aggregate last-year submissions, and `getAgentSubmissions(tenantId, uid)` returns all submissions without a year filter, so any YoY computation today would walk the full result set in JS each render.
 
 **Restore path:** Either (a) compute `lastYearTotals` in the same `useMemo` as `ytdTotals`, walking `allSubmissions` once and partitioning by year (cheapest — no new query); (b) add a dedicated `getLastYearSummary(tenantId, uid, year-1)` Cloud Function aggregator if performance becomes a concern. Render the chip with `text-success` and `↗` icon when YoY delta is positive, `text-danger` and `↘` when negative; hide when last-year data is empty.
 
 **Priority:** LOW. The hero already shows YTD + progress + goal — the YoY chip is decorative motivation, not load-bearing. Address when polish bandwidth opens or alongside Phase 9 SM-target work.
 
-Banked: Track J v2 Agent Dashboard home rework (PR #TBD), 2026-05-30.
+Banked: Track J v2 Agent Dashboard home rework (PR #393), 2026-05-30.
 
 ---
 
-## Track J (V2 Redesign) — DeliveryStripCard stubbed to null; wire to Track H policies (LOW, banked 2026-05-30, PR #TBD)
+## Track J (V2 Redesign) — DeliveryStripCard stubbed to null; wire to Track H policies (LOW, banked 2026-05-30, PR #393)
 
 The v2 home mockup includes a `DeliveryStripCard` showing outstanding policies to deliver + a 30-day clawback clock. Its source data is `POLICIES` / `DELIVERY_STATES` from the mockup-only `cro-v2-shared.jsx` module — that exact data shape does not exist in Firestore. Track H's `policies` collection ships related lifecycle fields (`status`, `dateIssued`, eventually `policyDeliveryDate`) but with a different shape than the mockup's delivery state machine.
 
-**Current state post-PR #TBD:** `src/components/dashboard/HomeV2/DeliveryStripCard.jsx` is a single-line component that returns `null`. The 2-col Recent panel right column wraps it cleanly — no console error, no layout gap visible.
+**Current state post-PR #393:** `src/components/dashboard/HomeV2/DeliveryStripCard.jsx` is a single-line component that returns `null`. The 2-col Recent panel right column wraps it cleanly — no console error, no layout gap visible.
 
 **Restore path:**
 1. Add a `policyDeliveryDate` field to the Track H `policies` schema (rules `hasOnly` allowlist + write surface) — or repurpose the existing `dateIssued` + a derived clawback window.
@@ -3163,4 +3169,4 @@ The v2 home mockup includes a `DeliveryStripCard` showing outstanding policies t
 
 **Priority:** LOW. The home is fully functional without the delivery surface; CRO/back-office is a separate planned surface (Track J §"CRO / back-office" in `design_handoff_v2_app/README.md §6`). Address when the CRO surface lands or Track H ships `policyDeliveryDate`.
 
-Banked: Track J v2 Agent Dashboard home rework (PR #TBD), 2026-05-30.
+Banked: Track J v2 Agent Dashboard home rework (PR #393), 2026-05-30.
