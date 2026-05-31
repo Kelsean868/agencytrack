@@ -263,7 +263,7 @@ describe('computeAroundMe — missingCount divider', () => {
     expect(out.missingCount).toBe(0);
   });
 
-  it('viewer at rank 14 (visibleMax 8) → missingCount=5 (ranks 9..13 are skipped between prev=13 and visibleMax=8)', () => {
+  it('viewer at rank 14 (visibleMax 8) → missingCount=4 (ranks 9..12 are skipped between prev=13 and visibleMax=8)', () => {
     const out = computeAroundMe({ ranking: RANKING_28, viewerUid: 'a14', visibleMax: 8 });
     // prev=13, visibleMax=8: skipped ranks are 9, 10, 11, 12 → count = 13 - 8 - 1 = 4
     // Wait, +N agents means "N agents are between the visible set and the cluster". Between rank 8 (last visible)

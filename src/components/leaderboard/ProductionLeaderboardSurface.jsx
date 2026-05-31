@@ -182,7 +182,9 @@ function PodiumCard({ entry, label, isChampion = false, isCenter = false, isView
 // ─────────────────────────────────────────────────────────────────────────────
 // Tail row — ranks 4-N with %-of-leader bar
 // ─────────────────────────────────────────────────────────────────────────────
-function TailRow({ entry, leaderApi, isLast, isViewer = false }) {
+// Exported for component tests in __tests__/ProductionLeaderboardSurface.test.jsx.
+// Render shape is identical when invoked internally vs externally.
+export function TailRow({ entry, leaderApi, isLast, isViewer = false }) {
   const pctOfLeader = leaderApi > 0
     ? Math.min(100, Math.max(0, (entry.periodApi / leaderApi) * 100))
     : 0;
