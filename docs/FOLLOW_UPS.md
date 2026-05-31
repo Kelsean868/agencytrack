@@ -3237,7 +3237,7 @@ Banked: Track J P1a CJS ranking mirror (PR #399), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — P1b leaderboard CF: multi-tenant iteration (LOW, banked 2026-05-31, PR #{TBD})
+## Track J (V2 Redesign) — P1b leaderboard CF: multi-tenant iteration (LOW, banked 2026-05-31, PR #400)
 
 `functions/leaderboard/leaderboardAggregate.js` has `const TENANT_ID = 'tatillife_south'` hardcoded, mirroring the existing SEC-9c pattern (`sendSundayNudge`, `sendMondayNudge`, `flagMissedDeadlines`). The scheduled trigger recomputes leaderboards for that one tenant only.
 
@@ -3245,11 +3245,11 @@ Banked: Track J P1a CJS ranking mirror (PR #399), 2026-05-31.
 
 **Priority:** LOW. Single-tenant Tatil pilot is the only deployment.
 
-Banked: Track J P1b leaderboard-aggregate CF (PR #{TBD}), 2026-05-31.
+Banked: Track J P1b leaderboard-aggregate CF (PR #400), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — P1b leaderboard CF: on-write trigger optimization (LOW, banked 2026-05-31, PR #{TBD})
+## Track J (V2 Redesign) — P1b leaderboard CF: on-write trigger optimization (LOW, banked 2026-05-31, PR #400)
 
 P1b uses a scheduled hourly recompute + admin-only on-demand callable. The doc is stale up to ~1 hour after a new submission. An onWrite trigger on `tenants/{tid}/submissions/{subId}` could recompute only the affected branch's leaderboard immediately (model `recomputeJfwCount`).
 
@@ -3259,11 +3259,11 @@ P1b uses a scheduled hourly recompute + admin-only on-demand callable. The doc i
 
 **Priority:** LOW. The hourly scheduled trigger meets the "feels fresh" bar for an agent dashboard surface. Add when product needs sub-minute freshness (e.g. real-time leaderboard during a sales contest).
 
-Banked: Track J P1b leaderboard-aggregate CF (PR #{TBD}), 2026-05-31.
+Banked: Track J P1b leaderboard-aggregate CF (PR #400), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — P1b leaderboard CF: reconciled-production swap point (FU-2 reference, banked 2026-05-31, PR #{TBD})
+## Track J (V2 Redesign) — P1b leaderboard CF: reconciled-production swap point (FU-2 reference, banked 2026-05-31, PR #400)
 
 The FU-2 reference (originally banked in PR #398 description): when `usesPolicyLedger` H3 flip-gate clears branch-wide and reconciled-production data is available for all agents, the leaderboard CF is the **single swap point** for the entire Leaderboard / Production Report family. Replace `loadInputs` in `functions/leaderboard/leaderboardAggregate.js` with a reconciled-source fetch; the rest of the pipeline (groupByBranch, rankForLeaderboard, agent-readable doc shape) is unchanged. All consumers (P3 podium, P4 around-me, P7 AgentProductionView, BM/UM ProductionViews, kiosk) inherit the switch via the aggregate doc.
 
@@ -3271,4 +3271,4 @@ The FU-2 reference (originally banked in PR #398 description): when `usesPolicyL
 
 **Priority:** MEDIUM (inherits from FU-2). Schedule when H3 flip-gate scope is confirmed.
 
-Banked: Track J P1b leaderboard-aggregate CF (PR #{TBD}), 2026-05-31. Cross-reference: FU-2 (PR #398 description; re-anchored on P1a + P1b).
+Banked: Track J P1b leaderboard-aggregate CF (PR #400), 2026-05-31. Cross-reference: FU-2 (PR #398 description; re-anchored on P1a + P1b).
