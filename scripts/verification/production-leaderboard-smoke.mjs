@@ -92,9 +92,10 @@ async function smokeTheme(theme) {
   });
 
   try {
-    // Land on temp route directly via query param
-    const targetUrl = `${URL}/?tab=production-leaderboard`;
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+    // Track J P6 — production-leaderboard is now a real primary-nav item;
+    // the `?tab=production-leaderboard` temp route was retired. Land at the
+    // dashboard root and click the "Leaderboard" nav item to reach the surface.
+    await page.goto(URL, { waitUntil: 'domcontentloaded' });
     await loginAndWait(page);
 
     if (theme === 'dark') {
@@ -105,13 +106,8 @@ async function smokeTheme(theme) {
       await page.waitForTimeout(400);
     }
 
-    // The login flow returns the user to the saved state; we may need to push
-    // the query param again (some apps strip it post-login).
-    const currentUrl = page.url();
-    if (!currentUrl.includes('tab=production-leaderboard')) {
-      await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(1500);
-    }
+    // Click the real Leaderboard nav item (sidebar testId from AgentDashboard).
+    await page.click('[data-testid="agent-tab-leaderboard"]');
 
     // Wait for the surface to mount
     await page.waitForSelector('[data-testid="production-leaderboard-surface"]', { timeout: 15_000 });

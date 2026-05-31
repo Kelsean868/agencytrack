@@ -3357,20 +3357,54 @@ Banked: Track J P7 close (PR #403), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — P4 around-me: `previousRank` + movement chip (MEDIUM, banked 2026-05-31, PR #402)
+## Track J (V2 Redesign) — P5-prep aggregate-enrichment CF: `previousRank` + `unitId` + last-week champions (MEDIUM, banked 2026-05-31 from PR #402; expanded 2026-05-31 on PR #403/audit + PR {TBD-P6})
 
-P4 ships the around-me cluster + highlight-in-place WITHOUT the movement chip (▲ +2 / ▼ −1) that the original design includes. The chip needs `previousRank` on every entry — which the P1b leaderboards aggregate does not carry. Adding it is a **keystone Cloud Function change**: the CF would need to read the prior-period rankings (e.g. last week's `week` array) and stamp `previousRank` onto each current-period entry, before writing the doc.
+The leaderboard-aggregate Cloud Function (`functions/leaderboard/leaderboardAggregate.js`) needs to land three additions before P5 ships:
+
+1. **`previousRank` per entry** — movement chip (▲ +2 / ▼ −1) on `AroundMeCluster.jsx` + `TailRow` + `PodiumCard` (P4 ships without this).
+2. **`unitId` per entry** — "My Unit" scope toggle on UM scope toggle (P5 read-only audit found the aggregate carries `unitName` but NOT `unitId`; relying on display strings is brittle, see P5 read-only audit Q3).
+3. **Last-week champions doc** — agent-readable champions snapshot (top API / Apps / Activity for the most-recently-completed week) so WeeklyChampionsBanner can re-home onto `ProductionLeaderboardSurface` for both agents AND managers. Surfaced on PR #403/P6 audit: today the banner's tenant-wide submissions query is agent-rules-denied; the .catch-swallowed result is silently empty for agents.
+
+Why fold all three into one CF change: computing prior-period rankings (which `previousRank` needs anyway) also yields the top-3 by API/Apps/Activity for that period — same in-memory traversal serves both. `unitId` is a single line in `buildLeaderboardDoc` to add to the mapped entry shape — costs nothing alongside the other writes.
 
 **Fix shape (when scheduled):**
-1. **In `functions/leaderboard/leaderboardAggregate.js`** — before writing the new doc, read the EXISTING `leaderboards/{branchId}` doc; for each period (`week`, `mtd`, `qtd`, `ytd`), build an `agentId → rank` map from the OLD period array; stamp `previousRank` onto each new-period entry.
-2. **Doc shape** — adds `previousRank: number | null` to every entry (null when the agent wasn't in the prior period — e.g. just joined, or had no production then). Forward-compat: existing consumers ignore the field.
-3. **Period semantics** — `week.previousRank` compares against last week's `week`; `mtd` against last month's `mtd`; etc. This means the "prior" basis differs per period — call out in the doc so consumers don't conflate them.
-4. **Client (`AroundMeCluster.jsx` + `TailRow` + `PodiumCard`)** — render `▲ {delta}` (success-tint) / `▼ {delta}` (danger-tint) / `· same` chip when `previousRank` is non-null. Movement-chip-only — no other entry shape change. Per the design, the chip sits under the unit name on the You row (cluster + tail + podium variants).
-5. **Edge cases** — first-time-in-the-board (no previousRank): show "new" pill. Rank unchanged: dot or "·". Test agent at rank 1 stably: "—" (no movement).
 
-**Priority:** MEDIUM. Movement is a meaningful agent-motivation cue ("you climbed 2 this week") but the cluster is already useful without it. Schedule when a brief is dispatched for the previousRank CF phase.
+1. **`functions/leaderboard/leaderboardAggregate.js`:**
+   - Before writing the new doc, read the EXISTING `leaderboards/{branchId}` doc; for each period (`week`, `mtd`, `qtd`, `ytd`), build an `agentId → rank` map from the OLD period array; stamp `previousRank` onto each new-period entry. (Source: PR #402.)
+   - In `buildLeaderboardDoc`'s entry map (lines 152–160 — the `unitName` resolution step), ALSO pass `entry.unitId` through. (Source: PR #403 P5 audit.)
+   - Compute last-week champions during the WK period traversal: pick top-by-`periodApi`, top-by-`apps`, and top-by-activity (`ffiConducted + ciConducted + applicationsSold`) from the PRIOR week's submissions (`weekStarting == prevSunday`). Write to a NEW agent-readable doc — see step 2.
 
-Banked: Track J P4 around-me cluster (PR #402), 2026-05-31.
+2. **New collection: `tenants/{tid}/weeklyChampions/{weekStarting}`** (or `weeklyChampions/{branchId}_{weekStarting}` if per-branch is preferred — branch-per-doc matches the leaderboards layout):
+   ```
+   {
+     weekStarting: 'YYYY-MM-DD',
+     branchId: 'xxx' (if per-branch),
+     topAPI:      { agentId, agentName, value } | null,
+     topApps:     { agentId, agentName, value } | null,
+     topActivity: { agentId, agentName, value } | null,
+     computedAt:  serverTimestamp,
+   }
+   ```
+   - Agent-readable rules: `allow get, list: if isSignedIn() && getTenantId() == tenantId && (kioskCanRead || isAgent || canManage)`. (Mirrors leaderboards aggregate.)
+   - Write: CF-only (`allow write: if false`).
+   - **Semantic = last-week-completed** (NOT current-week-in-progress). Matches the existing `WeeklyChampionsBanner.jsx` UX (header "Last Week's Champions"). Does NOT duplicate the aggregate's WK podium (which IS current-week-in-progress).
+
+3. **Doc shape additions** to `leaderboards/{branchId}`:
+   - Each entry gains `previousRank: number | null` (null when agent wasn't in prior period — joined or zero production then). Forward-compat: existing consumers ignore the field.
+   - Each entry gains `unitId: string | null`. Forward-compat: existing consumers ignore the field.
+
+4. **Period semantics for `previousRank`** — `week.previousRank` compares against last week's `week`; `mtd` against last month's `mtd`; etc. The "prior" basis differs per period — call out in the doc so consumers don't conflate them.
+
+5. **Client updates (all post-CF):**
+   - **`ProductionLeaderboardSurface.jsx`** — at the top of the surface (above the period chips), mount `<WeeklyChampionsBanner champions={champions} loading={championsLoading} />` fed by a NEW `useWeeklyChampions(tenantId, branchId)` hook that reads the new doc. Period-independent (the banner is always last-week's champions; the period chips below switch the ranking only).
+   - **`AroundMeCluster.jsx` / `TailRow` / `PodiumCard`** — render `▲ {delta}` (success-tint) / `▼ {delta}` (danger-tint) / `· same` (or "—") chip when `previousRank` is non-null. Per the design, the chip sits under the unit name on the You row. Edge cases: first-time-in-the-board (no previousRank) → "new" pill. Rank unchanged → dot or "·". Test agent at rank 1 stably → "—" (no movement).
+   - **UM "My Unit" filter** (P5) — `entries.filter(e => e.unitId === callerUid)`.
+
+6. **Sequencing constraint (banked from PR #403/P6 disposition):** the P5-prep CF MUST land BEFORE P5's `ManagerDashboard` nav swap retires the points board for managers. Reason: managers DO see real champions today (`canManage` permits the tenant-wide submissions list); retiring the points-board nav before the re-homed banner exists would regress manager-visible data. Agents have nothing to lose (banner already empty for them; PR #403/P6 retired the empty agent banner with the agent nav swap).
+
+**Priority:** MEDIUM. Unblocks three things at once — movement chip on the around-me, UM unit-scope toggle in P5, and the agent-visible champions re-home that PR #403/P6 had to defer.
+
+Banked: Track J P4 around-me cluster (PR #402), 2026-05-31. Expanded on PR #403 P5 read-only audit (unitId addition). Expanded on PR {TBD-P6} dispatcher disposition (champions write + sequencing constraint), 2026-05-31.
 
 ---
 

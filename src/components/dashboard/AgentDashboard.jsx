@@ -25,7 +25,6 @@ import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
 import ReportRangeModal from '../ui/ReportRangeModal';
-import Leaderboard from '../gamification/Leaderboard';
 import ProductionLeaderboardSurface from '../leaderboard/ProductionLeaderboardSurface';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
 import SubmissionViewer from '../submissions/SubmissionViewer';
@@ -67,7 +66,12 @@ const NAV_ITEMS = [
   // Recognition
   { id: 'awards',            label: 'Awards',            tabId: 'awards',            Icon: Medal,     sectionLabel: 'Recognition',  testId: 'agent-tab-awards' },
   { id: 'career',            label: 'Career Portal',     tabId: 'career',            Icon: Shield,    testId: 'agent-tab-career' },
-  { id: 'leaderboard',       label: 'Leaderboard',       tabId: 'leaderboard',       Icon: Star,      testId: 'agent-tab-leaderboard' },
+  // Track J P6 — production-leaderboard takes the old "Leaderboard" slot. The
+  // P3/P4 surface (`ProductionLeaderboardSurface`) is now a real primary-nav
+  // item; the points-board (`gamification/Leaderboard`) retires from the agent
+  // nav atomically with this change. ManagerDashboard retains the points-board
+  // nav entry (deferred to P5 alongside role-scope + branch picker).
+  { id: 'leaderboard',       label: 'Leaderboard',       tabId: 'production-leaderboard', Icon: Star, testId: 'agent-tab-leaderboard' },
 ];
 
 // Mobile bottom-nav per mock (lines 2227-2232). The "Submit" item is an
@@ -76,7 +80,8 @@ const BOTTOM_NAV = [
   { id: 'home',        label: 'Home',     tabId: 'dashboard',   Icon: ClipboardList },
   { id: 'submit',      label: 'Submit',   action: 'submit',     Icon: FileText, fab: true },
   { id: 'history',     label: 'History',  tabId: 'history',     Icon: History       },
-  { id: 'leaderboard', label: 'Ranks',    tabId: 'leaderboard', Icon: Star          },
+  // Track J P6 — bottom-nav "Ranks" routes to the production-leaderboard tab.
+  { id: 'leaderboard', label: 'Ranks',    tabId: 'production-leaderboard', Icon: Star          },
   { id: 'profile',     label: 'Profile',  tabId: 'profile',     Icon: UserCircle    },
 ];
 
@@ -133,18 +138,6 @@ export default function AgentDashboard() {
       setShowWelcome(true);
     }
   }, [userProfile, role]);
-
-  // Track J P3 — TEMP ROUTE for Production Leaderboard surface.
-  // Hit `?tab=production-leaderboard` to land on the new podium/tail/chips
-  // surface. Mounted once; NOT in NAV_ITEMS (no primary-nav swap — P6's job).
-  // The existing 'leaderboard' tab (gamification points board) is unchanged.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('tab') === 'production-leaderboard') {
-      setActiveTab('production-leaderboard');
-    }
-  }, []);
 
   // Clear prefill if agent navigates away from policy-ledger without saving.
   useEffect(() => {
@@ -616,11 +609,7 @@ export default function AgentDashboard() {
       {/* ── PRODUCTION REPORT TAB ── */}
       {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}
 
-      {/* ── LEADERBOARD TAB ── */}
-      {activeTab === 'leaderboard' && <Leaderboard />}
-
-      {/* Track J P3 — TEMP ROUTE only (?tab=production-leaderboard). NOT in
-          NAV_ITEMS — primary-nav swap + points-board retirement is P6. */}
+      {/* ── LEADERBOARD TAB (Track J P6 — production-based, nav-driven) ── */}
       {activeTab === 'production-leaderboard' && <ProductionLeaderboardSurface />}
 
       {/* ── PROFILE TAB ── */}
