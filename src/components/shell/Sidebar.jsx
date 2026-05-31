@@ -110,9 +110,14 @@ export default function Sidebar({
       ))}
 
       <div className="sidebar-foot">
-        <div className="sidebar-foot-avatar" aria-hidden="true">
+        <button
+          type="button"
+          className="sidebar-foot-avatar"
+          onClick={() => setActiveTab('profile')}
+          aria-label="Open profile"
+        >
           {photoURL ? <img src={photoURL} alt="" /> : initials}
-        </div>
+        </button>
         <div className="sidebar-foot-info">
           <div className="sidebar-foot-name">{displayName}</div>
           {roleLabel && <div className="sidebar-foot-role">{roleLabel}</div>}

@@ -3083,18 +3083,54 @@ Banked: Track J v2 batch (PRs #389 `redesign/career-portal`, #390 `f151183`, #39
 
 ---
 
-## Track J (V2 Redesign) — Agent CommissionPlayground removed from CareerPortal (LOW, banked 2026-05-30, PR #389)
+## ✅ Track J (V2 Redesign) — Agent CommissionPlayground removed from CareerPortal (LOW, banked 2026-05-30, PR #389) — RESOLVED 2026-05-30 (PR #TBD)
 
-The v2 Career Portal redesign (`app-career-v2.jsx` annotation: "Commission Playground has been pulled out into its own Tools surface") removed `CommissionPlayground` from `CareerPortal.jsx`. It was the only agent-facing surface for the Commission Playground; managers retain access via `GoalsPanel.jsx`.
+**RESOLVED:** The v2 Agent Dashboard nav IA PR (J-AD-nav, `redesign/agentdash-nav`, PR #TBD) adds a dedicated `commission` tab to `AgentDashboard` NAV_ITEMS, wired to the existing `CommissionPlayground` component. Agent access restored as a standalone Tools-group nav item. Manager access via `GoalsPanel` unaffected.
 
-**Current state:** `CommissionPlayground` component and service logic are fully intact (`src/components/goals/CommissionPlayground/`). Only the render site in `CareerPortal.jsx` was removed.
+~~The v2 Career Portal redesign removed `CommissionPlayground` from `CareerPortal.jsx`. It was the only agent-facing surface for the Commission Playground; managers retain access via `GoalsPanel.jsx`.~~
 
-**No live impact:** Pilot is postponed. No agents have yet used the production app under a live pilot. The Commission Playground was always a secondary feature behind the primary goal-setting workflow.
-
-**Restore path:** Add a new "Commission" route or sub-tab in the agent-facing navigation (per the v2 design's "Commission v2" standalone screen, mapped in `design_handoff_v2_app/README.md §6` to `goals/CommissionPlayground/`). Wire it as its own nav item in `AgentDashboard` NAV_ITEMS — not embedded in CareerPortal. Manager access via `GoalsPanel` is unaffected.
-
-**Priority:** LOW. No production impact (pilot postponed); `CommissionPlayground` component and all its logic remain in the codebase. Address when building the Commission v2 standalone screen (Track J agent suite, post-Agent-Dashboard).
-
-Banked: Track J v2 Career Portal (PR #389 `8371818`), 2026-05-30.
+Banked: Track J v2 Career Portal (PR #389 `8371818`), 2026-05-30. **RESOLVED: PR #TBD.**
 
 Banked from Track H agent confirmation-surfacing PR #305 (`97a8493`).
+
+---
+
+## Track J (V2 Redesign) — Game Plan v2 screen deferred; Money Needs re-nesting pending (LOW, banked 2026-05-30, PR #TBD)
+
+The v2 sidebar (`app-shell.jsx`) shows **Game Plan** as the parent PLANNING item with **Money Needs** nested as a child indent beneath it. The J-AD-nav PR (PR #TBD) deferred Game Plan and made Money Needs a top-level PLANNING item instead.
+
+**Current state post-PR #TBD:**
+- `money-needs` is a top-level PLANNING nav item in `AgentDashboard` NAV_ITEMS.
+- No `game-plan` / `lookahead` tab exists.
+- `GapAnalysisPanel` surfaces via the `goals` tab (not a Game Plan parent).
+
+**Restore path:** When the Game Plan screen ships (its own brief + PR), add `{ id: 'game-plan', label: 'Game Plan', tabId: 'game-plan', Icon: BarChart2, sectionLabel: 'Planning' }` before `money-needs` and convert `money-needs` to `{ child: true }` (drop `sectionLabel`). The `goals` tab (GapAnalysisPanel) also moves under Game Plan at that point per the v2 design.
+
+**Priority:** LOW. Money Needs is fully accessible as a top-level item. No production impact. Address when the Game Plan v2 screen is designed and briefed.
+
+Banked: Track J v2 Agent Dashboard nav IA (PR #TBD), 2026-05-30.
+
+---
+
+## Pre-existing color-contrast failures outside the sidebar (LOW, banked 2026-05-30, PR #TBD)
+
+`axe` against the agent dashboard (local preview, post-`.sidebar-section` fix) still surfaces color-contrast violations that pre-date Track J and exist on main:
+
+**Light mode (18 nodes remaining):**
+- `.bg-success/10.border-success/20.gap-1` × 7 — WoW delta chips on the KPI Activity Trend strip (`AgentDashboard.jsx`). fg `#2d7a4f` on bg `#e3eae2` = **4.27:1** (needs 4.5:1).
+- `.badge-sub` × 11 inside `.locked.badge-item[aria-label=" — locked"]` — locked-state badge subtitles in `BadgeGrid`. fg `#aeaaa8` on bg `#ffffff` = **2.3:1**.
+
+**Dark mode (22 nodes remaining):**
+- `.top-1\.5` × 1 — error-tint pill on a danger-bg surface. fg `#ffffff` on bg `#d96b5d` = **3.38:1**.
+- `span[aria-label="<KPI>: Below"]` × 10 — below-floor status labels in `WeeklyStandardCard`. fg `#d96b5d` on bg `#372820` = **4.17:1**.
+- `.badge-sub` × 11 — locked-badge subtitles (dark variant). fg `#766e63` on bg `#252019` = **3.21:1**.
+
+**Root cause / fix shape:** Each cluster has a distinct cause and a different remediation:
+- Success delta chips: bump `--color-success` darker in light mode (currently `rgb(45 122 79)`), OR remove the tint background, OR raise font-weight + size.
+- Locked `.badge-sub`: bump the token (currently uses `--color-text-faint` muted further by 0.55 `opacity` on the `.locked` parent — root cause is the opacity stack, not the token).
+- "Below" KPI spans: dark-mode `--color-danger` (`#d96b5d`) on `--color-danger-tint` background loses contrast; bump the dark `--color-danger` or darken the tint.
+- `.top-1\.5` white-on-danger: that selector is the persistent-error pill — needs a darker red surface.
+
+**Priority:** LOW. All pre-existing; none introduced by Track J PRs. Fix in a dedicated a11y-contrast cleanup PR scoped to these clusters — not piecemeal across feature PRs.
+
+Banked: Track J v2 Agent Dashboard nav IA (PR #TBD), 2026-05-30.
