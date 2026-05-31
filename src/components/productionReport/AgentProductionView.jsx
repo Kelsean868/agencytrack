@@ -11,6 +11,8 @@ import {
 } from '../../lib/productionReport/computations';
 import TimePeriodToggle from './TimePeriodToggle';
 import DataSourceBadge from './DataSourceBadge';
+import WhereYouRankPanel from './WhereYouRankPanel';
+import useLeaderboard from '../../hooks/useLeaderboard';
 
 const PERIOD_LABEL = {
   week: 'this week', mtd: 'month to date', quarter: 'quarter to date', ytd: 'year to date',
@@ -22,8 +24,35 @@ const PERIOD_DISPLAY = [
   { id: 'ytd', label: 'Year' },
 ];
 
+// Map AgentProductionView's period IDs → the leaderboards aggregate's period
+// fields. The two diverge only at quarter→qtd; everything else is identical.
+const PERIOD_TO_AGG_FIELD = {
+  week:    'week',
+  mtd:     'mtd',
+  quarter: 'qtd',
+  ytd:     'ytd',
+};
+
+// Short caption used in the "Where you rank" footer ("...this year/week/...").
+const PERIOD_CAPTION = {
+  week:    'week',
+  mtd:     'month',
+  quarter: 'quarter',
+  ytd:     'year',
+};
+
 export default function AgentProductionView() {
   const { user, userProfile, tenantId } = useAuth();
+  // P7 — read the P1 leaderboards aggregate (branch-scoped, agent-readable).
+  // Replaces the self-only ranking that PR 397 dropped: Firestore rules deny
+  // agent reads of peer submissions, so the old `getAgentSubmissions`-only
+  // path always resolved to "rank 1 of 1." The aggregate is what fixes that.
+  // leaderboardLoading is not directly consumed — the pill renders "—" and
+  // the panel renders the unranked empty state while the aggregate resolves.
+  const {
+    error: leaderboardError,
+    byPeriod: leaderboardByPeriod,
+  } = useLeaderboard();
   const [period, setPeriod] = useState('week');
   const [allSubmissions, setAllSubmissions] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -80,6 +109,23 @@ export default function AgentProductionView() {
     return getUnitDisplayName(mgr ?? null);
   }, [allUsers, userProfile?.unitId]);
 
+  // Period-scoped ranking from the aggregate (memoized so its identity is
+  // stable across re-renders that don't change byPeriod / period).
+  const rankingForPeriod = useMemo(() => {
+    const field = PERIOD_TO_AGG_FIELD[period] ?? 'ytd';
+    return leaderboardByPeriod[field] ?? [];
+  }, [leaderboardByPeriod, period]);
+
+  // Viewer's own entry from the aggregate. If absent (unranked / not in
+  // ranking yet / aggregate not yet loaded), the pill renders "—" + the
+  // panel renders the unranked empty state.
+  const viewerEntry = useMemo(
+    () => rankingForPeriod.find((e) => e.agentId === user?.uid) ?? null,
+    [rankingForPeriod, user?.uid]
+  );
+  const viewerRank   = viewerEntry?.rank ?? null;
+  const branchTotal  = rankingForPeriod.length;
+
   const persDecimal = persHistory[0]?.persistency ?? null;
   const persDisplay = Number.isFinite(persDecimal) ? `${(persDecimal * 100).toFixed(1)}%` : '—';
 
@@ -111,12 +157,32 @@ export default function AgentProductionView() {
           >
             {initials}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-lg font-bold font-display text-ink leading-tight truncate">
               {userProfile?.name ?? 'You'}
             </p>
             <p className="text-xs text-ink-muted mt-0.5">
               {unitLabel ?? 'Agent'} · {PERIOD_LABEL[period]}
+            </p>
+          </div>
+
+          {/* P7 — Branch-rank pill (restored from PR 397's deferral).
+              Reads from the aggregate, NOT a self-only ranking. Renders "—"
+              while the aggregate loads or when the viewer is unranked. */}
+          <div
+            data-testid="agent-production-rank-pill"
+            data-rank={viewerRank ?? 'unranked'}
+            data-total={branchTotal}
+            className="shrink-0 text-right"
+          >
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
+              Branch rank
+            </p>
+            <p className="text-2xl font-bold font-display text-primary tabular-nums leading-none mt-0.5">
+              {viewerRank ?? '—'}
+              <span className="text-sm text-ink-muted font-normal">
+                {' / '}{branchTotal || '—'}
+              </span>
             </p>
           </div>
         </div>
@@ -186,6 +252,19 @@ export default function AgentProductionView() {
             : `${floorPct}% — keep pushing to clear floor`}
         </p>
       </div>
+
+      {/* P7 — "Where you rank" around-me panel (restored from PR 397's
+          deferral). Reads the same branch-scoped aggregate as the rank
+          pill — single source of truth, fixes the always-#1 bug. */}
+      {!leaderboardError && (
+        <WhereYouRankPanel
+          ranking={rankingForPeriod}
+          viewerUid={user?.uid ?? null}
+          viewerName={userProfile?.name ?? null}
+          branchLabel={null}
+          periodLabel={PERIOD_CAPTION[period] ?? 'period'}
+        />
+      )}
     </div>
   );
 }

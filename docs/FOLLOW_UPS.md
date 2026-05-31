@@ -3175,36 +3175,44 @@ Banked: Track J v2 Agent Dashboard home rework (PR #393), 2026-05-30.
 
 ---
 
-## Track J (V2 Redesign) — AgentProductionView ranking uses self-only submissions → always rank 1, peers at 0 (BUG, banked 2026-05-31, PR #397)
+## Track J (V2 Redesign) — AgentProductionView ranking uses self-only submissions → always rank 1, peers at 0 (BUG, banked 2026-05-31, PR #397 — **RESOLVED by PR {TBD}**)
 
-`AgentProductionView.jsx` fetches only the current agent's own submissions via `getAgentSubmissions(tenantId, agentId)`. The ranking loop iterates all users but filters `allSubmissions` by each agent's ID — for all peers this yields an empty array → `computeAgentTotals([])` = zero API. Result: the agent always appears at rank 1; all peers are tied at rank N with 0 API. The existing "My Ranking" section (now the hero's branch rank badge) is affected by this pre-existing bug. No regression introduced by the v2 port.
+`AgentProductionView.jsx` fetched only the current agent's own submissions via `getAgentSubmissions(tenantId, agentId)`. The ranking loop iterated all users but filtered `allSubmissions` by each agent's ID — for all peers this yielded an empty array → `computeAgentTotals([])` = zero API. Result: the agent always appeared at rank 1; all peers tied at rank N with 0 API.
 
-**Fix shape:** Replace `getAgentSubmissions(tenantId, agentId)` with a branch-scope submission fetch that includes all submitted submissions for the period. The natural home is the shared production-ranking query described in the follow-up below.
+**RESOLVED in Track J P7 (PR {TBD}):** the self-only ranking path is removed entirely. AgentProductionView now reads the P1 `leaderboards/{branchId}` aggregate via `useLeaderboard` — same source-of-truth as the standalone Leaderboard surface. Component test forces viewer at mock-rank-14 → pill renders "14" (proves the always-#1 bug is gone). Live smoke confirms `data-rank=1 data-total=6` on the test branch (vs old broken `1/1`).
 
-**Priority:** MEDIUM. The hero now shows branch rank more prominently (hero top-right) so the always-rank-1 artifact is more visible. Fix when the shared production-ranking query (FU below) lands.
-
-Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31.
+Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. **Resolved 2026-05-31 by Track J P7 (PR {TBD}).**
 
 ---
 
-## Track J (V2 Redesign) — Around-me panel + branch rank pill + shared production-ranking query (MEDIUM, banked 2026-05-31, PR #397; updated on pre-review)
+## Track J (V2 Redesign) — Around-me panel + branch rank pill + shared production-ranking query (MEDIUM, banked 2026-05-31, PR #397; updated on pre-review — **RESOLVED for AgentProductionView by PR {TBD}**)
 
-Two surfaces omitted from PR #397 because both require accurate peer production data:
+Two surfaces omitted from PR #397 because both required accurate peer production data:
 
 1. **"WHERE YOU RANK" around-me panel** — the v2 `prodreport-v2-scenes.jsx` right panel showing the 3 agents around the current agent in the branch ranking (one above, current, one below) with their API, initials, and unit.
 
-2. **Branch rank pill in the hero** — "BRANCH RANK #N / M" badge top-right of the hero card. Removed on dispatcher pre-review: uses the same self-submissions-only ranking (always rank 1) as the around-me panel, so displaying it as-is is misleading. Both surfaces land together when the shared query exists.
+2. **Branch rank pill in the hero** — "BRANCH RANK #N / M" badge top-right of the hero card. Removed on dispatcher pre-review: used the same self-submissions-only ranking (always rank 1) as the around-me panel, so displaying it as-is was misleading.
 
-The same query also unblocks the `BranchManagerProductionView` ranked-leaderboard and the standalone Leaderboard podium surface (PR #396 RankedLeaderboard pre-claimed the file for this).
+**RESOLVED for AgentProductionView in Track J P7 (PR {TBD}):** rather than introduce a new shared `useBranchProduction` hook, both surfaces now consume the existing P1 `leaderboards/{branchId}` aggregate via `useLeaderboard` — the same source-of-truth the standalone Leaderboard surface uses. AgentProductionView's hero rank pill + new `WhereYouRankPanel` both render from the aggregate. Component test forces viewer at mock rank 14 → pill renders "14" (proves the always-#1 bug is gone). Live smoke confirms `data-rank=1 data-total=6` on the test branch (vs old broken `1/1`).
 
-**Shape:** A shared `useBranchProduction(tenantId, period)` hook (or a `getBranchProductionRanked(tenantId, period)` service fn) that returns all agents' period-scoped totals in rank order — likely using `getAllYTDSubmissions` scoped to the period, already in `managerService`. Feeds: (a) branch rank pill + around-me panel in `AgentProductionView`, (b) ranked table in `BranchManagerProductionView`, (c) future leaderboard podium.
+**Remaining out-of-scope (separate FU below):** `BranchManagerProductionView` ranked-leaderboard view-wiring + the standalone Leaderboard podium surface (PR #396 RankedLeaderboard pre-claimed the file). The aggregate doesn't yet carry the exact shape those surfaces want (e.g., apps column + %-of-leader bar in the leaderboard podium); a separate follow-up tracks wiring those views to the aggregate or extending it.
 
-**Fix sequence:** Land shared query hook → restore rank pill + around-me in `AgentProductionView` → wire `BranchManagerProductionView` → wire leaderboard podium.
+Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. Updated on dispatcher pre-review. **Resolved 2026-05-31 for AgentProductionView by Track J P7 (PR {TBD}); remaining manager/podium views deferred to a separate FU.**
 
-**Priority:** MEDIUM. Rank visibility is a core agent motivation feature. Unblocks at least 3 surfaces. Schedule after Production Report port PRs land.
+---
 
-Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. Updated on dispatcher pre-review.
+## Track J (V2 Redesign) — Wire BranchManagerProductionView ranked table + standalone Leaderboard podium to the leaderboards aggregate (MEDIUM, banked 2026-05-31, carved out of PR #397 FU on P7 close)
 
+P7 (PR {TBD}) wired AgentProductionView's rank pill + around-me panel to the existing P1 `leaderboards/{branchId}` aggregate via `useLeaderboard`. Two adjacent surfaces still consume legacy data paths and should converge on the same source-of-truth:
+
+1. **`BranchManagerProductionView` ranked table** — currently aggregates client-side via `getAllYTDSubmissions`-style logic. The aggregate already has the full per-branch ranking in rank order.
+2. **Standalone Leaderboard podium / RankedLeaderboard surface** — PR #396 pre-claimed the file for an aggregate-driven rewrite, but the podium needs apps + %-of-leader bar shape that the aggregate doesn't yet carry.
+
+**Shape:** Two sub-tasks. (a) Wire `BranchManagerProductionView` to `useLeaderboard` — pure consumer change, no aggregate field additions needed (the existing `name + unitName + periodApi + apps + rank + rankWithinUnit` shape covers the table). (b) For the Leaderboard podium / RankedLeaderboard, decide whether to extend the aggregate's entry shape (add `apps` if not already present, add `leaderApi` per period for the %-bar) or compute %-of-leader client-side from the entries' `periodApi`. The client-side option avoids touching the CF; only the aggregate read-shape contract changes.
+
+**Priority:** MEDIUM. Resolves dual-source-of-truth between AgentProductionView (aggregate) and these two views (still legacy). Schedule when the V2 manager production view + leaderboard podium next come up.
+
+Banked: 2026-05-31 (Track J P7 close, PR {TBD}). Carved out from the resolved PR #397 around-me FU above.
 
 ---
 
@@ -3287,9 +3295,11 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — App-wide `text-gold` light-mode contrast pass (MEDIUM/DESIGN, banked 2026-05-31, PR #401)
+## Track J (V2 Redesign) — App-wide `text-gold` + adjacent contrast pass (MEDIUM/DESIGN, banked 2026-05-31, PR #401; expanded 2026-05-31 on PR #403)
 
-**Status:** Scoped as a dedicated future PR — dispatcher disposition 2026-05-31 on PR #401 pre-review was *"ACCEPTED as design-intent — do NOT darken gold in P3 (a one-off darkening would create a divergent second gold vs AgentAwardsPanel). The fix is an app-wide gold-contrast pass in its own PR."*
+**Status:** Scoped as a dedicated future PR — dispatcher disposition 2026-05-31 on PR #401 pre-review was *"ACCEPTED as design-intent — do NOT darken gold in P3 (a one-off darkening would create a divergent second gold vs AgentAwardsPanel). The fix is an app-wide gold-contrast pass in its own PR."* Two adjacent pre-existing AA-fail nodes folded in on PR #403 pre-review (DataSourceBadge "Estimated" + AgentProductionView hero avatar) — same FU because they share the same "scheduled gold-contrast pass" cadence and benefit from the same token-level fix discipline.
+
+### text-gold (PR #401 origin)
 
 **Surfaces affected (initial inventory — expand on pickup):**
 - `src/components/leaderboard/ProductionLeaderboardSurface.jsx` (PR #401) — header eyebrow `"★ Top of the board · {period}"` + champion-card label `"Champion"` + champion API value, all `text-gold` on `bg-surface` / `bg-card`.
@@ -3303,9 +3313,31 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
 
 **Recommended fix (when scheduled):** Bump `--color-gold` darker on light theme only (e.g. `rgb(141, 99, 18)` or thereabouts — needs Claude Design eye for the exact shade). Token change — applies consistently to every existing `text-gold` consumer in one PR. Verify against AgentAwardsPanel + ProductionLeaderboardSurface (and any new consumers) with the axe baseline-delta. Do NOT one-off in any individual surface.
 
-**Priority:** MEDIUM. Pre-pilot, the gold accent works visually; this is an AA-cleanup pass that should ride with the pre-pilot a11y audit if there is one, OR ship as its own gold-contrast PR before the pilot lands.
+### DataSourceBadge "Estimated" — `bg-warning/15 text-warning` light-mode contrast (added PR #403)
 
-Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
+**Surface:** `src/components/productionReport/DataSourceBadge.jsx` — the small badge shown at the top of AgentProductionView ("Estimated" pill). Same pattern likely exists on any future "Estimated" / "Pending" tinted-badge usage; sweep `bg-warning/15` + `text-warning` callsites on pickup.
+
+**Issue:** `text-warning` on `bg-warning/15` (15% warning tint over surface) in light theme fails AA. Pre-existing baseline before PR #403 (verified `git show main:src/components/productionReport/DataSourceBadge.jsx` matches the form that triggered the axe node on PR #403). Surfaced in PR #403 smoke; filtered as pre-existing with an explicit comment in `scripts/verification/agent-production-rank-smoke.mjs`.
+
+**Recommended fix (when scheduled):** EITHER bump `--color-warning` darker on light, OR raise the tint opacity from `/15` to a value that yields ≥ 4.5:1, OR swap to a darker text-on-tint utility (`text-warning-dark` if added). Token-level preferred to keep all warning-tint badges consistent.
+
+### AgentProductionView hero avatar — `bg-primary text-white` dark-mode contrast (added PR #403)
+
+**Surface:** `src/components/productionReport/AgentProductionView.jsx:155` — the 44×44 round initials avatar in the hero card (`className="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center font-bold text-base font-display shrink-0"`). Pre-existing baseline since PR #397; verified unchanged on main before PR #403.
+
+**Issue:** In dark mode, `bg-primary` resolves to the lifted teal `--color-primary: #4ab5b8` (light enough for legibility against the warm-dark surface). White text on lifted teal fails AA contrast in dark mode.
+
+**Pattern to use — same as the P3 chip fix:** PR #401 resolved the same shape on the production-leaderboard chip-active state by adopting `bg-primary dark:bg-primary-dark text-white`, where `bg-primary-dark` resolves to a darker teal (`#01696f` in the dark theme — the SAME hex as light-mode primary, which gives the dark variant its expected darker-on-dark contrast). The contrast pass should apply this convention to:
+- `src/components/productionReport/AgentProductionView.jsx:155` (hero avatar)
+- Any other dark-mode `bg-primary text-white` consumer (`grep -rn "bg-primary text-white" src/` sweep, exclude already-paired `dark:bg-primary-dark`).
+
+This isn't a token-level fix (the token is correct — lifted teal IS the right surface accent in dark mode); it's a per-callsite Tailwind pair-up. Folded into this FU because it ships alongside the gold-contrast pass naturally and is part of the same dispatcher-accepted-as-pre-existing inventory.
+
+### Priority + cadence
+
+**Priority:** MEDIUM. Pre-pilot, all three patterns work visually; this is an AA-cleanup pass that should ride with the pre-pilot a11y audit if there is one, OR ship as its own contrast PR before the pilot lands. The three items (gold token bump, warning-tint legibility, dark-mode primary pair-up) form a coherent contrast-pass PR.
+
+Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31. Expanded with DataSourceBadge "Estimated" + AgentProductionView hero avatar on PR #403 pre-review, 2026-05-31.
 
 ---
 
