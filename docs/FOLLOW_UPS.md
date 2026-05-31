@@ -3170,3 +3170,48 @@ The v2 home mockup includes a `DeliveryStripCard` showing outstanding policies t
 **Priority:** LOW. The home is fully functional without the delivery surface; CRO/back-office is a separate planned surface (Track J §"CRO / back-office" in `design_handoff_v2_app/README.md §6`). Address when the CRO surface lands or Track H ships `policyDeliveryDate`.
 
 Banked: Track J v2 Agent Dashboard home rework (PR #393), 2026-05-30.
+
+---
+
+## Track J (V2 Redesign) — AgentProductionView ranking uses self-only submissions → always rank 1, peers at 0 (BUG, banked 2026-05-31, PR #397)
+
+`AgentProductionView.jsx` fetches only the current agent's own submissions via `getAgentSubmissions(tenantId, agentId)`. The ranking loop iterates all users but filters `allSubmissions` by each agent's ID — for all peers this yields an empty array → `computeAgentTotals([])` = zero API. Result: the agent always appears at rank 1; all peers are tied at rank N with 0 API. The existing "My Ranking" section (now the hero's branch rank badge) is affected by this pre-existing bug. No regression introduced by the v2 port.
+
+**Fix shape:** Replace `getAgentSubmissions(tenantId, agentId)` with a branch-scope submission fetch that includes all submitted submissions for the period. The natural home is the shared production-ranking query described in the follow-up below.
+
+**Priority:** MEDIUM. The hero now shows branch rank more prominently (hero top-right) so the always-rank-1 artifact is more visible. Fix when the shared production-ranking query (FU below) lands.
+
+Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31.
+
+---
+
+## Track J (V2 Redesign) — Around-me panel + branch rank pill + shared production-ranking query (MEDIUM, banked 2026-05-31, PR #397; updated on pre-review)
+
+Two surfaces omitted from PR #397 because both require accurate peer production data:
+
+1. **"WHERE YOU RANK" around-me panel** — the v2 `prodreport-v2-scenes.jsx` right panel showing the 3 agents around the current agent in the branch ranking (one above, current, one below) with their API, initials, and unit.
+
+2. **Branch rank pill in the hero** — "BRANCH RANK #N / M" badge top-right of the hero card. Removed on dispatcher pre-review: uses the same self-submissions-only ranking (always rank 1) as the around-me panel, so displaying it as-is is misleading. Both surfaces land together when the shared query exists.
+
+The same query also unblocks the `BranchManagerProductionView` ranked-leaderboard and the standalone Leaderboard podium surface (PR #396 RankedLeaderboard pre-claimed the file for this).
+
+**Shape:** A shared `useBranchProduction(tenantId, period)` hook (or a `getBranchProductionRanked(tenantId, period)` service fn) that returns all agents' period-scoped totals in rank order — likely using `getAllYTDSubmissions` scoped to the period, already in `managerService`. Feeds: (a) branch rank pill + around-me panel in `AgentProductionView`, (b) ranked table in `BranchManagerProductionView`, (c) future leaderboard podium.
+
+**Fix sequence:** Land shared query hook → restore rank pill + around-me in `AgentProductionView` → wire `BranchManagerProductionView` → wire leaderboard podium.
+
+**Priority:** MEDIUM. Rank visibility is a core agent motivation feature. Unblocks at least 3 surfaces. Schedule after Production Report port PRs land.
+
+Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. Updated on dispatcher pre-review.
+
+
+---
+
+## Track J (V2 Redesign) — AgentProductionView floor bar uses hardcoded default tenure bands; does not read tenant tenureApiFloors config (LOW, banked 2026-05-31, PR #397)
+
+The YTD-vs-tenure-floor bar in `AgentProductionView` calls `resolveAnnualAPIFloor({ contractStartDate: userProfile?.contractStartDate })` with no `tenureApiFloors` argument. This uses `DEFAULT_TENURE_API_FLOORS` (150K/200K/250K/300K/400K/500K — board-confirmed, Tatil head-of-sales 2026-05-21). The tenant-admin can edit these bands via the `config/companyMinimums.tenureApiFloors` document (seeded via `seed-tenure-api-floors.mjs`), but `AgentProductionView` never reads that document, so any future tenant-admin edits are silently ignored.
+
+**Fix shape:** Add a `getCompanyMinimums(tenantId)` call (already in `src/services/goalsService.js`) to fetch `tenureApiFloors` from Firestore; pass the result as the second argument to `resolveAnnualAPIFloor`. The call can be a one-shot `useEffect` independent of the submission fetch; the bar renders the default until resolved (no loading state needed — same pattern as the persistency effect).
+
+**Priority:** LOW. The default bands are currently correct for Tatil; the risk materialises only if a tenant-admin updates the config. Address when the tenant-admin config editor or a band-change is actioned.
+
+Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31.
