@@ -3306,3 +3306,30 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
 **Priority:** MEDIUM. Pre-pilot, the gold accent works visually; this is an AA-cleanup pass that should ride with the pre-pilot a11y audit if there is one, OR ship as its own gold-contrast PR before the pilot lands.
 
 Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
+
+---
+
+## Track J (V2 Redesign) — P4 around-me: `previousRank` + movement chip (MEDIUM, banked 2026-05-31, PR #{TBD})
+
+P4 ships the around-me cluster + highlight-in-place WITHOUT the movement chip (▲ +2 / ▼ −1) that the original design includes. The chip needs `previousRank` on every entry — which the P1b leaderboards aggregate does not carry. Adding it is a **keystone Cloud Function change**: the CF would need to read the prior-period rankings (e.g. last week's `week` array) and stamp `previousRank` onto each current-period entry, before writing the doc.
+
+**Fix shape (when scheduled):**
+1. **In `functions/leaderboard/leaderboardAggregate.js`** — before writing the new doc, read the EXISTING `leaderboards/{branchId}` doc; for each period (`week`, `mtd`, `qtd`, `ytd`), build an `agentId → rank` map from the OLD period array; stamp `previousRank` onto each new-period entry.
+2. **Doc shape** — adds `previousRank: number | null` to every entry (null when the agent wasn't in the prior period — e.g. just joined, or had no production then). Forward-compat: existing consumers ignore the field.
+3. **Period semantics** — `week.previousRank` compares against last week's `week`; `mtd` against last month's `mtd`; etc. This means the "prior" basis differs per period — call out in the doc so consumers don't conflate them.
+4. **Client (`AroundMeCluster.jsx` + `TailRow` + `PodiumCard`)** — render `▲ {delta}` (success-tint) / `▼ {delta}` (danger-tint) / `· same` chip when `previousRank` is non-null. Movement-chip-only — no other entry shape change. Per the design, the chip sits under the unit name on the You row (cluster + tail + podium variants).
+5. **Edge cases** — first-time-in-the-board (no previousRank): show "new" pill. Rank unchanged: dot or "·". Test agent at rank 1 stably: "—" (no movement).
+
+**Priority:** MEDIUM. Movement is a meaningful agent-motivation cue ("you climbed 2 this week") but the cluster is already useful without it. Schedule when a brief is dispatched for the previousRank CF phase.
+
+Banked: Track J P4 around-me cluster (PR #{TBD}), 2026-05-31.
+
+---
+
+## Track J (V2 Redesign) — P4: optional design reference HTML added to fold-in (banked 2026-05-31, PR #{TBD})
+
+`design_handoff_v2_app/mockups/app-leaderboard-around-me.html` was sitting locally untracked during P4 build (Claude Design produced it but it had not been committed). P4's Phase 0 step 3 (optional additive fold-in) included it in the PR scope so the design reference is durable in the repo — additive only, no existing mockup overwritten, no parallel folder. No README change since `app-leaderboard.jsx` is already the primary leaderboard mockup reference and the around-me HTML lives alongside it.
+
+**Action:** none — already shipped with PR #{TBD}. Note retained for the audit trail.
+
+Banked: Track J P4 around-me cluster (PR #{TBD}), 2026-05-31.

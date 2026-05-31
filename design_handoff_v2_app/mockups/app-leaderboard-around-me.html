@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack — Leaderboard Spec · Page 2 (Visual)</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:48px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  /* header */
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:28px;border-bottom:1px solid var(--rule);margin-bottom:8px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:32px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .sub{color:var(--inkMute);font-size:15px;margin-top:10px;max-width:720px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  section{margin-top:52px}
+  .sechead{display:flex;align-items:baseline;gap:14px;margin-bottom:4px}
+  .snum{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--gold);letter-spacing:.12em}
+  h2{font-family:var(--display);font-weight:800;font-size:23px;letter-spacing:-.02em;line-height:1.2}
+  .lede{color:var(--inkMute);font-size:14px;max-width:780px;margin:4px 0 0;text-wrap:pretty}
+  .lede b{color:var(--ink);font-weight:700}
+
+  /* specimen scaffold */
+  .specgrid{display:grid;gap:24px;margin-top:26px}
+  .cols2{grid-template-columns:1fr 1fr}
+  .spec{display:flex;flex-direction:column;gap:12px}
+  .spec .cap{display:flex;align-items:baseline;gap:9px}
+  .spec .cap .k{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#fff;background:var(--teal);padding:3px 8px;border-radius:6px;flex-shrink:0}
+  .spec .cap .t{font-size:13.5px;font-weight:700;color:var(--ink)}
+  .spec .desc{font-size:12.5px;color:var(--inkMute);text-wrap:pretty}
+  .spec .desc code{font-family:var(--mono);font-size:11.5px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .stage{background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:18px;padding:22px;display:flex;justify-content:center}
+  .stage.dark2{background:#ECEAE3}
+
+  /* ── medal coins ── */
+  .mc{width:26px;height:26px;border-radius:50%;color:#fff;font-family:var(--display);font-weight:800;font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:inset 0 -2px 4px rgba(0,0,0,.18),inset 0 2px 4px rgba(255,255,255,.4);text-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .mc1{background:radial-gradient(circle at 32% 28%,#fde68a 0%,#f59e0b 50%,#b45309 100%)}
+  .mc2{background:radial-gradient(circle at 32% 28%,#f1f5f9 0%,#94a3b8 50%,#475569 100%)}
+  .mc3{background:radial-gradient(circle at 32% 28%,#fed7aa 0%,#c08d6b 50%,#92400e 100%)}
+
+  /* ── desktop leaderboard card ── */
+  .lbcard{width:540px;max-width:100%;background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:0 6px 20px rgba(38,35,28,.06)}
+  .lbhd{padding:11px 18px;border-bottom:1px solid var(--rule);background:var(--surfaceSoft);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--inkMute)}
+  .lbrow{display:grid;grid-template-columns:36px 2fr 0.55fr 1.05fr 0.7fr;align-items:center;padding:10px 18px;gap:8px;border-bottom:1px solid var(--rule)}
+  .lbrow:last-child{border-bottom:none}
+  .lbrow .rk{font-family:var(--display);font-weight:800;font-size:13px;color:var(--inkFaint);text-align:center}
+  .lbrow .who{display:flex;align-items:center;gap:11px;min-width:0}
+  .av{width:32px;height:32px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px;flex-shrink:0}
+  .nm{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .un{font-family:var(--mono);font-size:10px;color:var(--inkFaint);margin-top:1px;display:flex;align-items:center;gap:6px}
+  .apps{font-family:var(--mono);font-size:11.5px;color:var(--inkMute);text-align:right}
+  .bar{height:4px;background:var(--surfaceMute);border-radius:999px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--tealDark),var(--teal))}
+  .api{font-family:var(--display);font-weight:700;font-size:14px;color:var(--teal);text-align:right}
+
+  /* movement chip */
+  .mv{font-family:var(--mono);font-size:9.5px;font-weight:700;display:inline-flex;align-items:center;gap:2px}
+  .mv.up{color:var(--success)} .mv.dn{color:var(--danger)} .mv.ev{color:var(--inkFaint)}
+
+  /* the .me highlight */
+  .lbrow.me{background:var(--tealTint);box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--teal) 45%,transparent);border-bottom-color:transparent}
+  .lbrow.me .rk{color:var(--teal)}
+  .lbrow.me .av{background:var(--teal);color:#fff;font-size:9px;letter-spacing:.04em}
+  .lbrow.me .nm{color:var(--tealDark);font-weight:700}
+
+  /* sticky footer cluster */
+  .stickwrap{position:relative}
+  .gapdiv{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 0;font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;color:var(--inkDim);background:var(--surfaceRaised)}
+  .gapdiv::before,.gapdiv::after{content:'';height:1px;width:46px;background:var(--rule)}
+  .footer-pin{border-top:2px solid var(--tealTint);box-shadow:0 -8px 18px rgba(38,35,28,.07);background:var(--surface)}
+  .pinlabel{display:flex;align-items:center;justify-content:space-between;padding:7px 18px 0;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--teal)}
+
+  /* ── phone frame ── */
+  .phone{width:300px;background:#fff;border:1px solid var(--ruleStrong);border-radius:30px;padding:10px;box-shadow:0 14px 40px rgba(38,35,28,.16)}
+  .phone .scr{background:var(--bg);border-radius:22px;overflow:hidden;height:480px;display:flex;flex-direction:column;position:relative}
+  .mtop{padding:14px 16px 10px;background:var(--surface);border-bottom:1px solid var(--rule)}
+  .mtitle{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:-.01em}
+  .msub{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.1em;margin-top:2px}
+  .mbody{flex:1;overflow:hidden;padding:12px;display:flex;flex-direction:column;gap:9px}
+  .mrow{display:flex;align-items:center;gap:10px;padding:9px 11px;background:var(--surface);border:1px solid var(--rule);border-radius:11px}
+  .mrow .rk{width:16px;text-align:center;font-family:var(--display);font-weight:800;font-size:12px;color:var(--inkFaint)}
+  .mrow .av{width:28px;height:28px;font-size:10px}
+  .mrow .nm{font-size:12px}
+  .mrow .api{font-size:12.5px}
+  .mnav{height:50px;background:var(--surface);border-top:1px solid var(--rule);display:flex;align-items:center;justify-content:space-around;padding:0 8px}
+  .mnav .ni{width:34px;height:6px;border-radius:99px;background:var(--surfaceMute)}
+  .mnav .ni.on{background:var(--teal)}
+
+  /* mobile collapsed sticky bar */
+  .mbar{position:absolute;left:8px;right:8px;bottom:58px;display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface);border:1.5px solid color-mix(in srgb,var(--teal) 45%,transparent);border-radius:13px;box-shadow:0 6px 18px rgba(1,105,111,.16)}
+  .mbar .av{background:var(--teal);color:#fff;font-size:9px;width:30px;height:30px}
+  .mbar .meta2{flex:1;min-width:0}
+  .mbar .l1{font-size:12px;font-weight:700;color:var(--tealDark)}
+  .mbar .l2{font-family:var(--mono);font-size:9.5px;color:var(--inkMute);margin-top:1px}
+  .mbar .r{text-align:right}
+  .mbar .r .api{font-size:13px}
+  .chev{color:var(--teal);font-size:11px}
+
+  /* mobile expanded sheet */
+  .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--rule);border-radius:18px 18px 0 0;box-shadow:0 -10px 30px rgba(38,35,28,.18);padding:8px 12px 14px}
+  .handle{width:36px;height:4px;border-radius:99px;background:var(--inkDim);margin:2px auto 10px}
+  .sheetlab{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);margin:0 4px 8px}
+  .scrim{position:absolute;inset:0;background:rgba(38,35,28,.28)}
+
+  /* ── podium card specimen ── */
+  .podrow{display:flex;gap:14px;align-items:flex-end}
+  .podcard{width:170px;background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:16px 16px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;position:relative}
+  .pnm{font-family:var(--display);font-weight:800;font-size:15px;margin-top:10px;white-space:nowrap}
+  .podcard.center{padding-top:20px;transform:translateY(-8px);border-color:color-mix(in srgb,var(--gold) 40%,transparent);box-shadow:0 12px 28px rgba(232,183,62,.18)}
+  .podcard.mepod{box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--teal) 45%,transparent)}
+  .youpill{position:absolute;top:10px;left:10px;font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;background:var(--teal);color:#fff;padding:2px 7px;border-radius:99px}
+  .plabel{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--inkMute);margin-top:8px}
+  .pav{width:48px;height:48px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:14px;margin-top:12px;border:2px solid #94a3b8}
+  .podcard.center .pav{width:56px;height:56px;border-color:var(--gold);font-size:16px}
+  .papi{font-family:var(--display);font-weight:800;font-size:19px;color:var(--teal);margin-top:8px;white-space:nowrap}
+  .podcard.center .papi{color:var(--gold);font-size:22px}
+
+  /* ── empty state ── */
+  .lbrow.empty .av{background:var(--surfaceMute);color:var(--inkFaint)}
+  .lbrow.empty .rk{color:var(--inkDim)}
+  .lbrow.empty .nm{color:var(--inkMute)}
+  .helper{font-family:var(--sans);font-size:11px;color:var(--inkFaint);font-style:italic;margin-top:1px}
+
+  /* ── header scope controls ── */
+  .hdr{width:760px;max-width:100%;background:var(--surface);border:1px solid var(--rule);border-radius:14px;padding:18px 22px;display:flex;align-items:flex-end;justify-content:space-between;gap:18px;box-shadow:0 6px 20px rgba(38,35,28,.06)}
+  .hdr .htitle .he{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  .hdr .htitle .ht{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.02em;margin-top:5px}
+  .ctrlcluster{display:flex;align-items:center;gap:14px}
+  .vrule{width:1px;align-self:stretch;background:var(--rule);margin:2px 0}
+  .seg{display:flex;gap:4px;padding:4px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px}
+  .seg .sg{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:7px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.05em;color:var(--inkMute);white-space:nowrap}
+  .seg .sg.on{background:var(--teal);color:#fff;box-shadow:0 2px 6px color-mix(in srgb,var(--teal) 27%,transparent)}
+  .seg .sg svg{width:13px;height:13px;flex-shrink:0}
+  .seg.period .sg{padding:7px 13px}
+  .scaption{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.14em;color:var(--inkFaint);text-transform:uppercase;text-align:center;margin-bottom:5px}
+  .ctrlcol{display:flex;flex-direction:column}
+
+  .rolegrid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:8px}
+  .rolecard{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:14px 15px}
+  .rolecard .rname{font-family:var(--display);font-weight:800;font-size:14px}
+  .rolecard .rscope{font-family:var(--mono);font-size:9.5px;color:var(--teal);margin:3px 0 11px;letter-spacing:.04em}
+  .chev2{font-size:9px;opacity:.85}
+
+  .legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:18px;font-family:var(--mono);font-size:11px;color:var(--inkMute);padding:14px 0 0;border-top:1px solid var(--rule)}
+  .legend span{display:inline-flex;align-items:center;gap:7px}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+  .conflict{display:flex;gap:13px;background:var(--successTint);border:1px solid color-mix(in srgb,var(--success) 30%,transparent);border-radius:13px;padding:15px 18px;margin-top:30px}
+  .conflict .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--success);flex-shrink:0;padding-top:2px}
+  .conflict p{font-size:13px;color:var(--ink);text-wrap:pretty}
+  .conflict b{font-weight:700}
+
+  @media(max-width:1080px){.cols2{grid-template-columns:1fr}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}.rolegrid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Leaderboard Spec · Page 2 — Visual reference</div>
+      <h1>Around-me states &amp; scope-control placement.</h1>
+      <p class="sub">Companion to <b>Leaderboard Spec Addendum.html</b> §1 and the prose specs. Every state below is a build target in the v2 app tokens — desktop reuses the tail row grid <code style="font-family:var(--mono);font-size:12px">38px · who · apps · %bar · API</code>; mobile reuses the mobile tail row. Sample field: South Branch · 28 agents · YTD · viewer = Priya Gopaul (S·02), rank 14.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />LEADERBOARD · TRACK J<br />REV 2026-05-31<br />PAGE 2 OF 2</div>
+  </header>
+
+  <!-- ════════ A · AROUND-ME ════════ -->
+  <section>
+    <div class="sechead"><span class="snum">A</span><h2>Around-me pinned row — all states</h2></div>
+    <p class="lede">Appears only when the viewer's rank is below the visible set (<b>&gt; 8 desktop · &gt; 7 mobile</b>). Cluster = <b>N-1 · You · N+1</b>. Same fields as a tail row.</p>
+
+    <div class="specgrid cols2">
+
+      <!-- A1 desktop sticky footer -->
+      <div class="spec">
+        <div class="cap"><span class="k">A1 · Desktop</span><span class="t">Sticky footer + “+N agents” divider</span></div>
+        <div class="desc">Pinned to the bottom of the tail card; ranks 4–8 scroll above it. The <code>+4 agents</code> divider makes the 8→13 jump honest. Cluster rows use the full tail grid incl. the %-of-leader bar.</div>
+        <div class="stage">
+          <div class="lbcard">
+            <div class="lbhd">Ranks 4 – 8</div>
+            <div class="lbrow"><div class="rk">6</div><div class="who"><div class="av">TR</div><div><div class="nm">Trevor Ramnauth</div><div class="un">S·03</div></div></div><div class="apps">24</div><div class="bar"><i style="width:59%"></i></div><div class="api">287K</div></div>
+            <div class="lbrow"><div class="rk">7</div><div class="who"><div class="av">AM</div><div><div class="nm">Avinash Maharaj</div><div class="un">S·02</div></div></div><div class="apps">22</div><div class="bar"><i style="width:52%"></i></div><div class="api">254K</div></div>
+            <div class="lbrow"><div class="rk">8</div><div class="who"><div class="av">HL</div><div><div class="nm">Hema Lakhan</div><div class="un">S·01</div></div></div><div class="apps">21</div><div class="bar"><i style="width:47%"></i></div><div class="api">231K</div></div>
+            <div class="footer-pin">
+              <div class="pinlabel"><span>★ Your standing</span><span style="color:var(--inkFaint)">Pinned</span></div>
+              <div class="gapdiv">+4 AGENTS</div>
+              <div class="lbrow"><div class="rk">13</div><div class="who"><div class="av">RB</div><div><div class="nm">Rohan Boodoo</div><div class="un">S·02</div></div></div><div class="apps">15</div><div class="bar"><i style="width:35%"></i></div><div class="api">168K</div></div>
+              <div class="lbrow me"><div class="rk">14</div><div class="who"><div class="av">YOU</div><div><div class="nm">You · Priya Gopaul</div><div class="un">S·02 <span class="mv up">▲2</span></div></div></div><div class="apps">14</div><div class="bar"><i style="width:32%"></i></div><div class="api">156K</div></div>
+              <div class="lbrow"><div class="rk">15</div><div class="who"><div class="av">DN</div><div><div class="nm">Devon Noel</div><div class="un">S·01</div></div></div><div class="apps">13</div><div class="bar"><i style="width:31%"></i></div><div class="api">149K</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- A2 in-tail .me highlight -->
+      <div class="spec">
+        <div class="cap"><span class="k">A2 · Desktop</span><span class="t">Viewer already in tail → highlight in place</span></div>
+        <div class="desc">When the viewer is rank 4–8, <b>no footer</b>. Their real tail row gets the <code>.me</code> state: tint + 1.5px inset ring, teal rank, solid-teal “YOU” coin, movement chip.</div>
+        <div class="stage">
+          <div class="lbcard">
+            <div class="lbhd">Ranks 4 – 8</div>
+            <div class="lbrow"><div class="rk">6</div><div class="who"><div class="av">TR</div><div><div class="nm">Trevor Ramnauth</div><div class="un">S·03</div></div></div><div class="apps">24</div><div class="bar"><i style="width:59%"></i></div><div class="api">287K</div></div>
+            <div class="lbrow me"><div class="rk">7</div><div class="who"><div class="av">YOU</div><div><div class="nm">You · Priya Gopaul</div><div class="un">S·02 <span class="mv up">▲1</span></div></div></div><div class="apps">22</div><div class="bar"><i style="width:52%"></i></div><div class="api">254K</div></div>
+            <div class="lbrow"><div class="rk">8</div><div class="who"><div class="av">HL</div><div><div class="nm">Hema Lakhan</div><div class="un">S·01</div></div></div><div class="apps">21</div><div class="bar"><i style="width:47%"></i></div><div class="api">231K</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- A3 in-podium YOU pill -->
+      <div class="spec">
+        <div class="cap"><span class="k">A3 · Desktop</span><span class="t">Viewer in podium → YOU pill + ring</span></div>
+        <div class="desc">If the viewer is #1–3, <b>don’t recolor the medal</b>. Add a teal <b>YOU</b> pill (top-left) and a teal inset ring on that card only. Movement chip sits under the unit.</div>
+        <div class="stage">
+          <div class="podrow">
+            <div class="podcard mepod">
+              <span class="youpill">YOU</span>
+              <span class="mc mc2">2</span><div class="plabel">Runner-up</div>
+              <div class="pav">PG</div>
+              <div class="pnm">Priya Gopaul</div>
+              <div class="un" style="justify-content:center">S·02 <span class="mv up">▲1</span></div>
+              <div class="papi">TTD 442K</div>
+            </div>
+            <div class="podcard center">
+              <span class="mc mc1" style="width:32px;height:32px;font-size:13px">1</span><div class="plabel">Champion</div>
+              <div class="pav">MS</div>
+              <div class="pnm">Marsha Singh</div>
+              <div class="un" style="justify-content:center">S·02</div>
+              <div class="papi">TTD 487K</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- A4 unranked empty -->
+      <div class="spec">
+        <div class="cap"><span class="k">A4 · Both</span><span class="t">Unranked viewer — empty state</span></div>
+        <div class="desc">Zero reconciled production this period → not in the field. Pin a single row: rank <code>—</code>, <code>TTD 0</code>, no bar/movement, helper copy. No neighbors.</div>
+        <div class="stage">
+          <div class="lbcard">
+            <div class="footer-pin" style="border-radius:14px">
+              <div class="pinlabel"><span>★ Your standing</span><span style="color:var(--inkFaint)">Pinned</span></div>
+              <div class="gapdiv">NOT YET ON THE BOARD</div>
+              <div class="lbrow empty"><div class="rk">—</div><div class="who"><div class="av">YOU</div><div><div class="nm">You · Priya Gopaul</div><div class="helper">Log production to join the board.</div></div></div><div class="apps">0</div><div class="bar"></div><div class="api" style="color:var(--inkFaint)">TTD 0</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- A5 mobile collapsed -->
+      <div class="spec">
+        <div class="cap"><span class="k">A5 · Mobile</span><span class="t">Collapsed sticky bar (above bottom nav)</span></div>
+        <div class="desc">Default mobile state: one compact bar fixed above the nav — rank-of-total, period API, gap-to-next, movement. <b>Tap to expand → A6.</b></div>
+        <div class="stage">
+          <div class="phone"><div class="scr">
+            <div class="mtop"><div class="mtitle">Leaderboard</div><div class="msub">YTD · SOUTH BRANCH</div></div>
+            <div class="mbody">
+              <div class="mrow"><div class="rk">6</div><div class="av">TR</div><div style="flex:1"><div class="nm">Trevor Ramnauth</div><div class="un">S·03</div></div><div class="api">287K</div></div>
+              <div class="mrow"><div class="rk">7</div><div class="av">AM</div><div style="flex:1"><div class="nm">Avinash M.</div><div class="un">S·02</div></div><div class="api">254K</div></div>
+              <div class="mrow" style="opacity:.5"><div class="rk">8</div><div class="av">HL</div><div style="flex:1"><div class="nm">Hema Lakhan</div><div class="un">S·01</div></div><div class="api">231K</div></div>
+            </div>
+            <div class="mbar">
+              <div class="av">YOU</div>
+              <div class="meta2"><div class="l1">You · Rank 14 of 28</div><div class="l2">TTD 12K to #13</div></div>
+              <div class="r"><div class="api">156K</div><div class="mv up" style="justify-content:flex-end">▲2</div></div>
+              <span class="chev">▲</span>
+            </div>
+            <div class="mnav"><div class="ni"></div><div class="ni"></div><div class="ni on"></div><div class="ni"></div></div>
+          </div></div>
+        </div>
+      </div>
+
+      <!-- A6 mobile expanded -->
+      <div class="spec">
+        <div class="cap"><span class="k">A6 · Mobile</span><span class="t">Expanded sheet — 3-row cluster</span></div>
+        <div class="desc">Tapping the bar raises a sheet (drag handle) with the <b>N-1 · You · N+1</b> cluster in mobile row shape. Tap again / scroll collapses back to A5.</div>
+        <div class="stage">
+          <div class="phone"><div class="scr">
+            <div class="mtop"><div class="mtitle">Leaderboard</div><div class="msub">YTD · SOUTH BRANCH</div></div>
+            <div class="mbody" style="opacity:.55">
+              <div class="mrow"><div class="rk">7</div><div class="av">AM</div><div style="flex:1"><div class="nm">Avinash M.</div><div class="un">S·02</div></div><div class="api">254K</div></div>
+              <div class="mrow"><div class="rk">8</div><div class="av">HL</div><div style="flex:1"><div class="nm">Hema Lakhan</div><div class="un">S·01</div></div><div class="api">231K</div></div>
+            </div>
+            <div class="scrim"></div>
+            <div class="sheet">
+              <div class="handle"></div>
+              <div class="sheetlab">★ Around you</div>
+              <div class="mrow"><div class="rk">13</div><div class="av">RB</div><div style="flex:1"><div class="nm">Rohan Boodoo</div><div class="un">S·02</div></div><div class="api">168K</div></div>
+              <div class="mrow" style="background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 45%,transparent);margin:6px 0"><div class="rk" style="color:var(--teal)">14</div><div class="av" style="background:var(--teal);color:#fff;font-size:8px">YOU</div><div style="flex:1"><div class="nm" style="color:var(--tealDark);font-weight:700">You · Priya G.</div><div class="un">S·02 <span class="mv up">▲2</span></div></div><div class="api">156K</div></div>
+              <div class="mrow"><div class="rk">15</div><div class="av">DN</div><div style="flex:1"><div class="nm">Devon Noel</div><div class="un">S·01</div></div><div class="api">149K</div></div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="legend">
+      <span><i style="background:var(--teal)"></i>You / current viewer</span>
+      <span><i style="background:var(--surfaceMute);border:1px solid var(--rule)"></i>Other agents</span>
+      <span><i style="background:linear-gradient(90deg,var(--tealDark),var(--teal))"></i>%-of-leader bar (vs scope leader)</span>
+      <span style="color:var(--success)">▲ up &nbsp; <span style="color:var(--danger)">▼ down</span> &nbsp; movement vs last cadence (needs <code style="font-family:var(--mono)">previousRank</code>)</span>
+    </div>
+  </section>
+
+  <!-- ════════ B · SCOPE CONTROLS ════════ -->
+  <section>
+    <div class="sechead"><span class="snum">B</span><h2>Role-based scope control — placement</h2></div>
+    <p class="lede">Same segmented vocabulary as the period chips, with a leading icon (Users / Building) to read as a <b>kind</b>-filter, not a time-filter. <b>Every role loads on My Branch.</b> Agents have no control.</p>
+
+    <div class="specgrid" style="margin-top:22px">
+
+      <!-- B1 desktop -->
+      <div class="spec">
+        <div class="cap"><span class="k">B1 · Desktop</span><span class="t">Scope left of period chips, 1px divider between</span></div>
+        <div class="desc">Header right-cluster order: <code>[ Scope ] | [ WK MTD QTD YTD ]</code>, <code>gap:14px</code>, hairline <code>rule</code> divider. Title block stays left. (Shown: Unit Manager.)</div>
+        <div class="stage" style="justify-content:center">
+          <div class="hdr">
+            <div class="htitle"><div class="he">★ Top of the board · YTD</div><div class="ht">Who’s leading the year.</div></div>
+            <div class="ctrlcluster">
+              <div class="ctrlcol"><div class="scaption">Scope</div>
+                <div class="seg">
+                  <span class="sg"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6"/><path d="M19 20a6 6 0 0 0-3-5"/></svg>My Unit</span>
+                  <span class="sg on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 21v-4h6v4"/><path d="M8 7h.01M12 7h.01M16 7h.01M8 11h.01M12 11h.01M16 11h.01"/></svg>Branch</span>
+                </div>
+              </div>
+              <div class="vrule"></div>
+              <div class="ctrlcol"><div class="scaption">Period</div>
+                <div class="seg period"><span class="sg">WK</span><span class="sg">MTD</span><span class="sg">QTD</span><span class="sg on">YTD</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- B2 mobile stacked -->
+      <div class="spec">
+        <div class="cap"><span class="k">B2 · Mobile</span><span class="t">Stacked — scope row above period row</span></div>
+        <div class="desc">Top of content: row 1 = scope (full-width), row 2 = period chips (full-width), <code>gap:10px</code>, above the hero card.</div>
+        <div class="stage" style="justify-content:center">
+          <div class="phone" style="width:300px"><div class="scr" style="height:300px">
+            <div class="mtop"><div class="mtitle">Leaderboard</div><div class="msub">SOUTH · UNIT 02 · YTD</div></div>
+            <div class="mbody" style="gap:10px">
+              <div class="seg" style="width:100%"><span class="sg on" style="flex:1;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M16 6a3 3 0 0 1 0 6"/><path d="M19 20a6 6 0 0 0-3-5"/></svg>My Unit</span><span class="sg" style="flex:1;justify-content:center"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px"><rect x="4" y="3" width="16" height="18" rx="1.5"/><path d="M9 21v-4h6v4"/></svg>Branch</span></div>
+              <div class="seg period" style="width:100%"><span class="sg" style="flex:1;justify-content:center">WK</span><span class="sg" style="flex:1;justify-content:center">MTD</span><span class="sg" style="flex:1;justify-content:center">QTD</span><span class="sg on" style="flex:1;justify-content:center">YTD</span></div>
+              <div style="font-family:var(--mono);font-size:9px;color:var(--inkFaint);text-align:center;letter-spacing:.1em;margin-top:2px">HERO CARD ↓</div>
+            </div>
+          </div></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- B3 role matrix -->
+    <div style="margin-top:24px">
+      <div class="cap" style="display:flex;align-items:baseline;gap:9px;margin-bottom:12px"><span class="k" style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#fff;background:var(--teal);padding:3px 8px;border-radius:6px">B3</span><span class="t" style="font-size:13.5px;font-weight:700">Control per role — default scope bolded</span></div>
+      <div class="rolegrid">
+        <div class="rolecard"><div class="rname">Agent</div><div class="rscope">No control · branch-wide</div>
+          <div class="seg"><span class="sg on" style="flex:1;justify-content:center">My Branch</span></div>
+          <div class="desc" style="margin-top:9px;font-size:11.5px;color:var(--inkMute)">Confirmed as built. Unit codes shown as a column for context.</div>
+        </div>
+        <div class="rolecard"><div class="rname">Unit Manager</div><div class="rscope">Segmented · 2 scopes</div>
+          <div class="seg"><span class="sg" style="flex:1;justify-content:center">My Unit</span><span class="sg on" style="flex:1;justify-content:center">Branch</span></div>
+          <div class="desc" style="margin-top:9px;font-size:11.5px;color:var(--inkMute)">Loads on Branch; narrows to their unit via <code>rankWithinUnit</code> (no round-trip).</div>
+        </div>
+        <div class="rolecard"><div class="rname">Branch Manager</div><div class="rscope">Segment + unit picker</div>
+          <div class="seg"><span class="sg on" style="flex:1;justify-content:center">Branch</span><span class="sg" style="flex:1;justify-content:center">Unit <span class="chev2">▾</span></span></div>
+          <div class="desc" style="margin-top:9px;font-size:11.5px;color:var(--inkMute)">“Unit ▾” opens a menu of units in their branch.</div>
+        </div>
+        <div class="rolecard"><div class="rname">Sales Manager</div><div class="rscope">Branch picker</div>
+          <div class="seg"><span class="sg on" style="flex:1;justify-content:center">Branch <span class="chev2">▾</span></span></div>
+          <div class="desc" style="margin-top:9px;font-size:11.5px;color:var(--inkMute)">Defaults to home branch; picks any branch they own. <b>Cross-branch ranking stays in Production Report</b> — never an “All branches” podium.</div>
+        </div>
+        <div class="rolecard" style="grid-column:span 2;background:var(--surfaceSoft);border-style:dashed"><div class="rname" style="font-size:13px">On scope change</div>
+          <div class="desc" style="margin-top:7px;font-size:11.5px;color:var(--inkMute)">Re-rank within scope · <b>%-bar rescales to the scoped leader’s API</b> (same agent reads longer under My Unit) · subtitle updates with field + count · around-me recomputes · persist last scope like the period chip.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- conflicts -->
+  <div class="conflict"><span class="tag">No conflicts</span><p><b>Nothing here changes the live podium.</b> Podium <code style="font-family:var(--mono);font-size:11.5px">[#2, #1, #3]</code> order, tail counts (4–8 desktop / 4–7 mobile), YTD default, the <code style="font-family:var(--mono);font-size:11.5px">api/maxApi</code> %-of-leader bar, and branch-default scope are all preserved. Around-me is <b>additive</b> (footer / sticky bar). Scope only changes <i>which</i> entry is <code style="font-family:var(--mono);font-size:11.5px">maxApi</code> when narrowed. One net-new field: <code style="font-family:var(--mono);font-size:11.5px">previousRank</code> for the movement chip — ship without it rather than fake it.</p></div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

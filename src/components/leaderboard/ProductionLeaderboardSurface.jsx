@@ -24,6 +24,18 @@ import React, { useMemo, useState } from 'react';
 import { formatCurrency } from '../../utils/formatters';
 import MedalCoin from '../ui/MedalCoin';
 import useLeaderboard from '../../hooks/useLeaderboard';
+import { useAuth } from '../../context/AuthContext';
+import {
+  computeAroundMe,
+  VISIBLE_MAX_DESKTOP,
+  VISIBLE_MAX_MOBILE,
+} from '../../lib/leaderboard/aroundMeLogic';
+import { AroundMeClusterDesktop, AroundMeClusterMobile } from './AroundMeCluster';
+
+// Inline 1.5px primary ring — used to highlight the viewer's row/card in place.
+const ME_RING_STYLE = {
+  boxShadow: 'inset 0 0 0 1.5px var(--color-primary)',
+};
 
 const PERIODS = [
   { k: 'WK',  field: 'week',    label: 'Week'    },
@@ -76,7 +88,7 @@ function PeriodChips({ value, onChange }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Podium card — top-3 hero treatment
 // ─────────────────────────────────────────────────────────────────────────────
-function PodiumCard({ entry, label, isChampion = false, isCenter = false }) {
+function PodiumCard({ entry, label, isChampion = false, isCenter = false, isViewer = false }) {
   const apiDisplay = formatCurrency(entry.periodApi ?? 0);
   return (
     <div
@@ -84,7 +96,20 @@ function PodiumCard({ entry, label, isChampion = false, isCenter = false }) {
         isCenter ? 'p-5 -translate-y-2' : 'p-4'
       } ${isChampion ? 'border-gold/50 shadow-lg' : ''}`}
       data-testid={`podium-card-rank-${entry.rank}`}
+      data-viewer={isViewer ? 'true' : undefined}
+      // Per brief: when the viewer is in the podium, ADD a teal inset ring on
+      // this card — do NOT recolor the gold/silver/bronze treatment.
+      style={isViewer ? ME_RING_STYLE : undefined}
     >
+      {/* YOU pill (top-left) when viewer is in podium */}
+      {isViewer && (
+        <div
+          data-testid="podium-you-pill"
+          className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-primary dark:bg-primary-dark text-white text-[9px] font-bold font-mono uppercase tracking-widest shadow-sm"
+        >
+          You
+        </div>
+      )}
       {/* Corner glow — wider on the center card */}
       <div
         aria-hidden="true"
@@ -157,29 +182,55 @@ function PodiumCard({ entry, label, isChampion = false, isCenter = false }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tail row — ranks 4-N with %-of-leader bar
 // ─────────────────────────────────────────────────────────────────────────────
-function TailRow({ entry, leaderApi, isLast }) {
+function TailRow({ entry, leaderApi, isLast, isViewer = false }) {
   const pctOfLeader = leaderApi > 0
     ? Math.min(100, Math.max(0, (entry.periodApi / leaderApi) * 100))
     : 0;
   return (
     <div
       data-testid={`tail-row-rank-${entry.rank}`}
-      className={`grid items-center px-4 py-2.5 ${isLast ? '' : 'border-b border-border'}`}
-      style={{ gridTemplateColumns: '40px 1.5fr 0.7fr 1.4fr 0.6fr' }}
+      data-viewer={isViewer ? 'true' : undefined}
+      className={`grid items-center px-4 py-2.5 ${isLast ? '' : 'border-b border-border'} ${
+        isViewer ? 'bg-primary-tint' : ''
+      }`}
+      style={{
+        gridTemplateColumns: '40px 1.5fr 0.7fr 1.4fr 0.6fr',
+        ...(isViewer ? ME_RING_STYLE : {}),
+      }}
     >
-      <div className="text-sm font-bold text-ink-muted font-display text-center">
+      <div
+        className={`text-sm font-bold font-display text-center ${
+          isViewer ? 'text-primary' : 'text-ink-muted'
+        }`}
+      >
         {entry.rank}
       </div>
       <div className="flex items-center gap-3 min-w-0">
-        <div
-          aria-hidden="true"
-          className="shrink-0 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold font-display"
-          style={{ width: 32, height: 32, fontSize: 11.5 }}
-        >
-          {initialsOf(entry.name)}
-        </div>
+        {isViewer ? (
+          <div
+            aria-hidden="true"
+            className="shrink-0 rounded-full bg-primary dark:bg-primary-dark text-white flex items-center justify-center font-bold font-display text-[10px] uppercase tracking-widest"
+            style={{ width: 32, height: 32 }}
+          >
+            YOU
+          </div>
+        ) : (
+          <div
+            aria-hidden="true"
+            className="shrink-0 rounded-full bg-primary/15 text-primary flex items-center justify-center font-bold font-display"
+            style={{ width: 32, height: 32, fontSize: 11.5 }}
+          >
+            {initialsOf(entry.name)}
+          </div>
+        )}
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-ink truncate">{entry.name}</div>
+          <div
+            className={`text-sm truncate ${
+              isViewer ? 'font-bold text-primary' : 'font-semibold text-ink'
+            }`}
+          >
+            {isViewer ? `You · ${entry.name.split(' ')[0]}` : entry.name}
+          </div>
           {entry.unitName && (
             <div className="text-[10.5px] text-ink-muted mt-0.5 font-mono tracking-wide">
               {entry.unitName}
@@ -232,6 +283,9 @@ const PODIUM_LABELS = ['Champion', 'Runner-up', 'Third place'];
 export default function ProductionLeaderboardSurface() {
   const [period, setPeriod] = useState('YTD');
   const { loading, error, byPeriod, doc } = useLeaderboard();
+  const { user, userProfile } = useAuth();
+  const viewerUid = user?.uid ?? null;
+  const viewerName = userProfile?.name ?? null;
 
   const activeField = useMemo(
     () => PERIODS.find((p) => p.k === period)?.field ?? 'ytd',
@@ -242,10 +296,27 @@ export default function ProductionLeaderboardSurface() {
     [period]
   );
 
-  const ranking = byPeriod[activeField] ?? [];
+  // Memoize ranking so its identity is stable across re-renders that don't
+  // change byPeriod / activeField — keeps the around-me useMemo deps stable.
+  const ranking = useMemo(
+    () => byPeriod[activeField] ?? [],
+    [byPeriod, activeField]
+  );
   const podium  = ranking.slice(0, 3);
   const tail    = ranking.slice(3, 8);
   const leaderApi = ranking[0]?.periodApi ?? 0;
+
+  // P4 — compute around-me state for BOTH breakpoints (one is rendered via
+  // sm:hidden, the other via hidden sm:block). Recomputes on period change
+  // because `ranking` is a useMemo-derivative of `period`.
+  const aroundMeDesktop = useMemo(
+    () => computeAroundMe({ ranking, viewerUid, visibleMax: VISIBLE_MAX_DESKTOP }),
+    [ranking, viewerUid]
+  );
+  const aroundMeMobile = useMemo(
+    () => computeAroundMe({ ranking, viewerUid, visibleMax: VISIBLE_MAX_MOBILE }),
+    [ranking, viewerUid]
+  );
 
   // A "slow period" is one where the period array exists but every entry is
   // at 0 API (e.g. a fresh WK where no submissions have landed yet). We treat
@@ -333,12 +404,25 @@ export default function ProductionLeaderboardSurface() {
                   label={PODIUM_LABELS[0]}
                   isChampion
                   isCenter
+                  isViewer={podium[0].agentId === viewerUid}
                 />
               )}
               {(podium[1] || podium[2]) && (
                 <div className="grid grid-cols-2 gap-3">
-                  {podium[1] && <PodiumCard entry={podium[1]} label={PODIUM_LABELS[1]} />}
-                  {podium[2] && <PodiumCard entry={podium[2]} label={PODIUM_LABELS[2]} />}
+                  {podium[1] && (
+                    <PodiumCard
+                      entry={podium[1]}
+                      label={PODIUM_LABELS[1]}
+                      isViewer={podium[1].agentId === viewerUid}
+                    />
+                  )}
+                  {podium[2] && (
+                    <PodiumCard
+                      entry={podium[2]}
+                      label={PODIUM_LABELS[2]}
+                      isViewer={podium[2].agentId === viewerUid}
+                    />
+                  )}
                 </div>
               )}
             </div>
@@ -349,7 +433,11 @@ export default function ProductionLeaderboardSurface() {
               style={{ gridTemplateColumns: '1fr 1.15fr 1fr' }}
             >
               {podium[1] && (
-                <PodiumCard entry={podium[1]} label={PODIUM_LABELS[1]} />
+                <PodiumCard
+                  entry={podium[1]}
+                  label={PODIUM_LABELS[1]}
+                  isViewer={podium[1].agentId === viewerUid}
+                />
               )}
               {podium[0] && (
                 <PodiumCard
@@ -357,26 +445,39 @@ export default function ProductionLeaderboardSurface() {
                   label={PODIUM_LABELS[0]}
                   isChampion
                   isCenter
+                  isViewer={podium[0].agentId === viewerUid}
                 />
               )}
               {podium[2] && (
-                <PodiumCard entry={podium[2]} label={PODIUM_LABELS[2]} />
+                <PodiumCard
+                  entry={podium[2]}
+                  label={PODIUM_LABELS[2]}
+                  isViewer={podium[2].agentId === viewerUid}
+                />
               )}
             </div>
           </div>
 
           {/* Tail — ranks 4-8 desktop, 4-7 mobile (one fewer row to fit
-              the narrower viewport per the mockup) */}
-          {tail.length > 0 && (
+              the narrower viewport per the mockup). The desktop sticky
+              around-me footer is pinned inside this same tail card so
+              the gap divider ("+N agents") reads as a continuation of
+              the same scrolling field. */}
+          {(tail.length > 0 ||
+            aroundMeDesktop.state === 'CLUSTER_3' ||
+            aroundMeDesktop.state === 'CLUSTER_2_LAST' ||
+            aroundMeDesktop.state === 'CLUSTER_UNRANKED') && (
             <div
               data-testid="tail"
               className="rounded-xl border border-border bg-card overflow-hidden"
             >
-              <div className="px-4 py-2.5 border-b border-border bg-surface-muted">
-                <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
-                  Ranks 4 – {3 + Math.min(tail.length, 5)}
-                </p>
-              </div>
+              {tail.length > 0 && (
+                <div className="px-4 py-2.5 border-b border-border bg-surface-muted">
+                  <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
+                    Ranks 4 – {3 + Math.min(tail.length, 5)}
+                  </p>
+                </div>
+              )}
               <div>
                 {/* Mobile: 4 rows / Desktop: 5 rows */}
                 <div className="sm:hidden">
@@ -386,6 +487,7 @@ export default function ProductionLeaderboardSurface() {
                       entry={entry}
                       leaderApi={leaderApi}
                       isLast={i === arr.length - 1}
+                      isViewer={entry.agentId === viewerUid}
                     />
                   ))}
                 </div>
@@ -396,12 +498,42 @@ export default function ProductionLeaderboardSurface() {
                       entry={entry}
                       leaderApi={leaderApi}
                       isLast={i === arr.length - 1}
+                      isViewer={entry.agentId === viewerUid}
                     />
                   ))}
                 </div>
               </div>
+
+              {/* Desktop sticky around-me footer — rendered ONLY in the
+                  desktop tail block (the cluster takes the visibleMax=8
+                  desktop boundary). Mobile renders its own variant below
+                  as a sticky bar above the bottom-nav. */}
+              <div className="hidden sm:block">
+                <AroundMeClusterDesktop
+                  state={aroundMeDesktop.state}
+                  rows={aroundMeDesktop.rows}
+                  viewerEntry={aroundMeDesktop.viewerEntry}
+                  missingCount={aroundMeDesktop.missingCount}
+                  totalCount={aroundMeDesktop.totalCount}
+                  leaderApi={leaderApi}
+                  viewerName={viewerName}
+                />
+              </div>
             </div>
           )}
+
+          {/* Mobile sticky around-me bar (fixed above the bottom-nav).
+              Lives outside the tail card so it stays pinned to the
+              viewport, not the scrolling content. */}
+          <AroundMeClusterMobile
+            state={aroundMeMobile.state}
+            rows={aroundMeMobile.rows}
+            viewerEntry={aroundMeMobile.viewerEntry}
+            totalCount={aroundMeMobile.totalCount}
+            gapToNext={aroundMeMobile.gapToNext}
+            prevRank={aroundMeMobile.prevRank}
+            viewerName={viewerName}
+          />
         </>
       )}
 
