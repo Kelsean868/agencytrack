@@ -23,10 +23,10 @@ function formatPct(decimal) {
 }
 
 function badgeClass(decimal) {
-  if (!Number.isFinite(decimal)) return 'bg-border/40 text-ink-muted';
-  if (decimal >= 0.90) return 'bg-success/15 text-success';
-  if (decimal >= 0.80) return 'bg-warning/15 text-warning';
-  return 'bg-danger/15 text-danger';
+  if (!Number.isFinite(decimal)) return 'bg-surface-muted text-ink-muted';
+  if (decimal >= 0.90) return 'bg-success-tint text-success';
+  if (decimal >= 0.80) return 'bg-warning-tint text-warning';
+  return 'bg-danger-tint text-danger';
 }
 
 export default function PersistencyTab() {
@@ -112,7 +112,7 @@ export default function PersistencyTab() {
       <div className="card flex flex-col gap-2" data-testid="agent-persistency-summary">
         <div className="flex items-center gap-2">
           <TrendingUp size={16} className="text-primary" />
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+          <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
             Your persistency · {activeMonthKey ?? '—'}
           </p>
         </div>
@@ -124,7 +124,9 @@ export default function PersistencyTab() {
             {currentRecord ? formatPct(currentDecimal) : '—'}
           </span>
           {currentRecord && meetsGate && (
-            <span className="text-xs text-success font-semibold">Award-eligible</span>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-success-tint text-success text-[9px] font-bold font-mono uppercase tracking-widest">
+              Award-eligible
+            </span>
           )}
         </div>
         {!currentRecord && !loading && (
@@ -135,7 +137,7 @@ export default function PersistencyTab() {
       {/* Award gate banner — only when a record exists and persistency < 90% */}
       {currentRecord && !meetsGate && (
         <div
-          className="card flex items-start gap-2 bg-warning/10 border-warning/30"
+          className="card flex items-start gap-2 bg-warning-tint border-warning/30"
           data-testid="award-gate-banner"
         >
           <AlertCircle size={16} className="text-warning shrink-0 mt-0.5" />
@@ -152,7 +154,7 @@ export default function PersistencyTab() {
 
       {/* Trend chart */}
       <div className="card flex flex-col gap-2" data-testid="persistency-trend-chart">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
           12-month trend
         </p>
         {chartData.length === 0 ? (
@@ -174,7 +176,7 @@ export default function PersistencyTab() {
                     fontSize: 12,
                   }}
                 />
-                <ReferenceLine y={90} stroke="var(--color-success)" strokeDasharray="3 3" />
+                <ReferenceLine y={90} stroke="var(--color-gold)" strokeDasharray="3 3" />
                 <Line
                   type="monotone"
                   dataKey="pct"
@@ -193,7 +195,7 @@ export default function PersistencyTab() {
       <div className="card flex flex-col gap-2">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
               Self-entry
             </p>
             <p className="text-sm text-ink mt-1">
@@ -217,7 +219,7 @@ export default function PersistencyTab() {
 
       {/* Playground CTA */}
       <div className="card flex flex-col gap-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+        <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
           What-if calculator
         </p>
         <p className="text-sm text-ink-muted">
