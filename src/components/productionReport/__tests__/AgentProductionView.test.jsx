@@ -256,7 +256,13 @@ describe('AgentProductionView — where-you-rank panel', () => {
     expect(panel.textContent).toMatch(/this week/);
   });
 
-  it('renders the panel with the viewer at rank 1 (no prev) + next neighbor only', async () => {
+  it('FIRST-PLACE BOUNDARY: viewer at rank 1 → exactly [You(1), next(2)], no phantom prev, no "behind" footer', async () => {
+    // This is the LIVE path on prod (test agent IS rank 1 in the 6-agent
+    // branch). aroundMeLogic has no dedicated FIRST_PLACE state — it falls
+    // through to the cluster branch with prev=null. We verify the resolver
+    // produces exactly 2 rows in the correct order (viewer first, next
+    // second), the viewer marker is on rank 1, and the "behind the next
+    // spot" footer suffix is absent (because gapToNext/prevRank are null).
     hoisted.useLeaderboard.mockReturnValue({
       loading: false, error: null, doc: null,
       byPeriod: mockByPeriodWithViewerAt('me-viewer-uid', 1, 6),
@@ -266,13 +272,29 @@ describe('AgentProductionView — where-you-rank panel', () => {
     render(<AgentProductionView />);
 
     const panel = await screen.findByTestId('where-you-rank-panel');
-    // No rank-0 prev row; viewer at rank 1; rank-2 next
-    expect(within(panel).queryByTestId('where-you-rank-row-rank-0')).not.toBeInTheDocument();
-    expect(within(panel).getByTestId('where-you-rank-row-rank-1')).toBeInTheDocument();
-    expect(within(panel).getByTestId('where-you-rank-row-rank-2')).toBeInTheDocument();
 
-    // Footer ordinal — "1st"
+    // (a) No phantom predecessor (rank 0 or any other) — rank-1 has none.
+    expect(within(panel).queryByTestId('where-you-rank-row-rank-0')).not.toBeInTheDocument();
+
+    // (b) Exactly TWO rendered rank rows — viewer (1) + successor (2).
+    //     No off-by-one slipping in a third row, no missing successor.
+    const rankRows = within(panel).getAllByTestId(/^where-you-rank-row-rank-\d+$/);
+    expect(rankRows).toHaveLength(2);
+
+    // (c) Order: viewer row is FIRST (rank 1), successor row is SECOND (rank 2).
+    expect(rankRows[0].getAttribute('data-testid')).toBe('where-you-rank-row-rank-1');
+    expect(rankRows[1].getAttribute('data-testid')).toBe('where-you-rank-row-rank-2');
+
+    // (d) Viewer marker is on rank 1, NOT rank 2.
+    expect(rankRows[0].getAttribute('data-viewer')).toBe('true');
+    expect(rankRows[1].getAttribute('data-viewer')).not.toBe('true');
+    expect(rankRows[0].textContent).toContain('YOU');
+    expect(rankRows[1].textContent).not.toContain('YOU');
+
+    // (e) Footer has the bare "1st of 6" ordinal; NO "behind the next spot"
+    //     suffix (rank-1 has no predecessor → gapToNext + prevRank are null).
     expect(panel.textContent).toMatch(/1st of 6/);
+    expect(panel.textContent).not.toMatch(/behind the next spot/i);
   });
 
   it('renders the panel with the viewer at LAST rank (no next neighbor)', async () => {
