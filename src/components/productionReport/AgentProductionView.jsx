@@ -8,7 +8,6 @@ import { resolveAnnualAPIFloor } from '../../utils/tenureFloors';
 import {
   filterSubmissionsByPeriod,
   computeAgentTotals,
-  rankAgentsByApi,
 } from '../../lib/productionReport/computations';
 import TimePeriodToggle from './TimePeriodToggle';
 import DataSourceBadge from './DataSourceBadge';
@@ -81,24 +80,6 @@ export default function AgentProductionView() {
     return getUnitDisplayName(mgr ?? null);
   }, [allUsers, userProfile?.unitId]);
 
-  // Branch rank built from self-submissions only — peers always at 0 API (pre-existing bug).
-  // See FOLLOW_UPS.md "AgentProductionView ranking uses self-only submissions".
-  const { branchRank, branchSize } = useMemo(() => {
-    if (allUsers.length === 0) return { branchRank: null, branchSize: 0 };
-    const agents = allUsers.filter(u => u.role === 'agent' && u.provisioning !== true);
-    const agentTotals = agents.map(u => ({
-      agentId: u.id,
-      agentName: u.name ?? u.email ?? u.id,
-      unitId: u.unitId,
-      totals: computeAgentTotals(
-        filterSubmissionsByPeriod(allSubmissions.filter(s => (s.agentId ?? s.userId) === u.id), period)
-      ),
-    }));
-    const ranked = rankAgentsByApi(agentTotals);
-    const me = ranked.find(r => r.agentId === user?.uid);
-    return { branchRank: me?.rank ?? null, branchSize: agents.length };
-  }, [allUsers, allSubmissions, period, user?.uid]);
-
   const persDecimal = persHistory[0]?.persistency ?? null;
   const persDisplay = Number.isFinite(persDecimal) ? `${(persDecimal * 100).toFixed(1)}%` : '—';
 
@@ -138,16 +119,6 @@ export default function AgentProductionView() {
               {unitLabel ?? 'Agent'} · {PERIOD_LABEL[period]}
             </p>
           </div>
-          <div className="flex-1" />
-          {branchRank && (
-            <div className="text-right shrink-0">
-              <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">Branch rank</p>
-              <p className="text-2xl font-bold font-display text-primary leading-none mt-0.5">
-                #{branchRank}
-                <span className="text-sm text-ink-muted font-normal"> / {branchSize}</span>
-              </p>
-            </div>
-          )}
         </div>
 
         <div className="flex gap-8 mt-5 flex-wrap">

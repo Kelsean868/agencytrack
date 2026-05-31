@@ -3185,16 +3185,33 @@ Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — Around-me panel + shared production-ranking query (MEDIUM, banked 2026-05-31, PR #397)
+## Track J (V2 Redesign) — Around-me panel + branch rank pill + shared production-ranking query (MEDIUM, banked 2026-05-31, PR #397; updated on pre-review)
 
-The v2 `prodreport-v2-scenes.jsx` `AgentProductionView` includes a "WHERE YOU RANK" right panel showing the 3 agents around the current agent in the branch ranking (one above, current highlighted, one below), each with their API, initials, and unit. This panel was cleanly omitted from PR #397 because it requires accurate peer production data, which in turn requires a branch-scope submission query.
+Two surfaces omitted from PR #397 because both require accurate peer production data:
+
+1. **"WHERE YOU RANK" around-me panel** — the v2 `prodreport-v2-scenes.jsx` right panel showing the 3 agents around the current agent in the branch ranking (one above, current, one below) with their API, initials, and unit.
+
+2. **Branch rank pill in the hero** — "BRANCH RANK #N / M" badge top-right of the hero card. Removed on dispatcher pre-review: uses the same self-submissions-only ranking (always rank 1) as the around-me panel, so displaying it as-is is misleading. Both surfaces land together when the shared query exists.
 
 The same query also unblocks the `BranchManagerProductionView` ranked-leaderboard and the standalone Leaderboard podium surface (PR #396 RankedLeaderboard pre-claimed the file for this).
 
-**Shape:** A shared `useBranchProduction(tenantId, period)` hook (or a `getBranchProductionRanked(tenantId, period)` service fn) that returns all agents' period-scoped totals in rank order — likely using `getAllYTDSubmissions` scoped to the period, already in `managerService`. Feeds: (a) around-me panel in `AgentProductionView`, (b) ranked table in `BranchManagerProductionView`, (c) future leaderboard podium.
+**Shape:** A shared `useBranchProduction(tenantId, period)` hook (or a `getBranchProductionRanked(tenantId, period)` service fn) that returns all agents' period-scoped totals in rank order — likely using `getAllYTDSubmissions` scoped to the period, already in `managerService`. Feeds: (a) branch rank pill + around-me panel in `AgentProductionView`, (b) ranked table in `BranchManagerProductionView`, (c) future leaderboard podium.
 
-**Fix sequence:** Land shared query hook → restore around-me in `AgentProductionView` → wire `BranchManagerProductionView` → wire leaderboard podium.
+**Fix sequence:** Land shared query hook → restore rank pill + around-me in `AgentProductionView` → wire `BranchManagerProductionView` → wire leaderboard podium.
 
-**Priority:** MEDIUM. Around-me is a meaningful agent motivation feature. Unblocks at least 3 surfaces. Schedule after Production Report port PRs land.
+**Priority:** MEDIUM. Rank visibility is a core agent motivation feature. Unblocks at least 3 surfaces. Schedule after Production Report port PRs land.
+
+Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31. Updated on dispatcher pre-review.
+
+
+---
+
+## Track J (V2 Redesign) — AgentProductionView floor bar uses hardcoded default tenure bands; does not read tenant tenureApiFloors config (LOW, banked 2026-05-31, PR #397)
+
+The YTD-vs-tenure-floor bar in `AgentProductionView` calls `resolveAnnualAPIFloor({ contractStartDate: userProfile?.contractStartDate })` with no `tenureApiFloors` argument. This uses `DEFAULT_TENURE_API_FLOORS` (150K/200K/250K/300K/400K/500K — board-confirmed, Tatil head-of-sales 2026-05-21). The tenant-admin can edit these bands via the `config/companyMinimums.tenureApiFloors` document (seeded via `seed-tenure-api-floors.mjs`), but `AgentProductionView` never reads that document, so any future tenant-admin edits are silently ignored.
+
+**Fix shape:** Add a `getCompanyMinimums(tenantId)` call (already in `src/services/goalsService.js`) to fetch `tenureApiFloors` from Firestore; pass the result as the second argument to `resolveAnnualAPIFloor`. The call can be a one-shot `useEffect` independent of the submission fetch; the bar renders the default until resolved (no loading state needed — same pattern as the persistency effect).
+
+**Priority:** LOW. The default bands are currently correct for Tatil; the risk materialises only if a tenant-admin updates the config. Address when the tenant-admin config editor or a band-change is actioned.
 
 Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31.
