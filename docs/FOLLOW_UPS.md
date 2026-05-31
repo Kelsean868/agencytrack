@@ -3275,7 +3275,7 @@ Banked: Track J P1b leaderboard-aggregate CF (PR #400), 2026-05-31. Cross-refere
 
 ---
 
-## Track J (V2 Redesign) — P3 Production Leaderboard: converge the kiosk medal onto ui/MedalCoin (LOW, banked 2026-05-31, PR #{TBD})
+## Track J (V2 Redesign) — P3 Production Leaderboard: converge the kiosk medal onto ui/MedalCoin (LOW, banked 2026-05-31, PR #401)
 
 P3 introduces `src/components/ui/MedalCoin.jsx` as a parameterized primitive (rank + size + glow) backed by the existing `--color-medal-{1,2,3}-*` CSS vars. The kiosk's existing medal renders use the `.medal-N` CSS classes (also from `--color-medal-*` vars), so the gradients are already in lockstep at the token level — but the **kiosk renders its own DOM** (in `kiosk/panels/TVRankedLeaderboard.jsx` and adjacent), not the shared primitive.
 
@@ -3283,23 +3283,26 @@ P3 introduces `src/components/ui/MedalCoin.jsx` as a parameterized primitive (ra
 
 **Priority:** LOW. Both surfaces already use the same tokens so they cannot drift; convergence is a maintenance simplification, not a correctness fix. Schedule when next visiting the kiosk surfaces.
 
-Banked: Track J P3 production leaderboard surface (PR #{TBD}), 2026-05-31.
+Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — P3 Production Leaderboard: text-gold light-mode contrast (LOW/DESIGN, banked 2026-05-31, PR #{TBD})
+## Track J (V2 Redesign) — App-wide `text-gold` light-mode contrast pass (MEDIUM/DESIGN, banked 2026-05-31, PR #401)
 
-The P3 surface has two `text-gold` text instances on light surfaces that fail WCAG AA at small sizes:
-- Header eyebrow `"★ Top of the board · {period}"` — `text-gold` (`#b07d1a`) on `bg-surface` (`#f7f6f2`), ratio 3.35 (need 4.5:1 at 9px).
-- Champion-card label `"Champion"` — `text-gold` (`#b07d1a`) on `bg-card` (`#ffffff`), ratio 3.62.
+**Status:** Scoped as a dedicated future PR — dispatcher disposition 2026-05-31 on PR #401 pre-review was *"ACCEPTED as design-intent — do NOT darken gold in P3 (a one-off darkening would create a divergent second gold vs AgentAwardsPanel). The fix is an app-wide gold-contrast pass in its own PR."*
 
-Both match the existing `AgentAwardsPanel` `text-gold` eyebrow pattern (e.g. "✓ Qualified" / "★ Almost there" group headers), which has the same baseline-axe shape on main. The design intent — gold accent for the "gold-medal / winner" content — is established across the app's recognition surfaces.
+**Surfaces affected (initial inventory — expand on pickup):**
+- `src/components/leaderboard/ProductionLeaderboardSurface.jsx` (PR #401) — header eyebrow `"★ Top of the board · {period}"` + champion-card label `"Champion"` + champion API value, all `text-gold` on `bg-surface` / `bg-card`.
+- `src/components/awards/AgentAwardsPanel.jsx` — group-header eyebrows (`"✓ Qualified"`, `"★ Almost there"`), the `var(--color-gold)` accent across qualified-state awards. Multiple `text-gold` callsites.
+- Any other `text-gold` consumer (`grep -rn "text-gold\|var(--color-gold)" src/`) — sweep on pickup.
 
-**Fix options** (dispatcher-level decision required, since this is a design-vs-AA tension, not a Rule 9 carve-out):
-1. Accept as design-intent + bank the pattern as a known limitation across all `text-gold` eyebrow surfaces.
-2. Bump `--color-gold` darker on light theme only (token change — affects every existing `text-gold` consumer; cleanest cross-app fix).
-3. Swap these 2 specific instances to `text-ink` or `text-ink-muted` (loses the gold accent here only).
+**Token parity confirmed (PR #401 pre-review):**
+- `text-gold` (Tailwind) resolves to `rgb(var(--gold-channels))`.
+- Light: `--gold-channels: 176 125 26` → `#b07d1a`; ratio against `bg-surface #f7f6f2` = 3.35, against `bg-card #ffffff` = 3.62. Both fail WCAG AA at 4.5:1 small-text.
+- Dark: `--gold-channels: 224 170 62` → `#e0aa3e`; passes AA against `bg-surface #1a1612`.
 
-**Priority:** Decision deferred to dispatcher pre-review of PR #{TBD}. If option 1, this FU closes on banking. If 2 or 3, scope it as a separate PR (gold-eyebrow-contrast pass) so the token / per-instance change applies consistently to the existing AgentAwardsPanel surfaces too.
+**Recommended fix (when scheduled):** Bump `--color-gold` darker on light theme only (e.g. `rgb(141, 99, 18)` or thereabouts — needs Claude Design eye for the exact shade). Token change — applies consistently to every existing `text-gold` consumer in one PR. Verify against AgentAwardsPanel + ProductionLeaderboardSurface (and any new consumers) with the axe baseline-delta. Do NOT one-off in any individual surface.
 
-Banked: Track J P3 production leaderboard surface (PR #{TBD}), 2026-05-31.
+**Priority:** MEDIUM. Pre-pilot, the gold accent works visually; this is an AA-cleanup pass that should ride with the pre-pilot a11y audit if there is one, OR ship as its own gold-contrast PR before the pilot lands.
+
+Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
