@@ -101,6 +101,70 @@ describe('ESM ≡ CJS — getPeriodBoundaries', () => {
   });
 });
 
+// ── ESM ≡ CJS — boundary REFs (defense-in-depth against subtler TZ drifts) ───
+//
+// Adds edge REFs that exercise the mirrored internals where the default
+// `REF` (mid-week, mid-month, mid-quarter, mid-year, UTC=TT-day-agreement)
+// can't. Each REF is annotated with the edge it targets.
+
+const EDGE_REFS = [
+  // Sunday at TT-midnight — exercises triniSundayBefore at the week roll
+  { label: 'Sun 00:00 TT (= Sun 04:00 UTC)',     ref: new Date('2026-05-10T04:00:00Z') },
+  // 1 second before Sunday TT-midnight — Saturday late evening TT
+  { label: 'Sat 23:59:59.999 TT (= Sun 03:59:59.999 UTC)', ref: new Date('2026-05-10T03:59:59.999Z') },
+  // Month rollover: 1st of month at TT-midnight
+  { label: 'May 1 00:00 TT (= May 1 04:00 UTC)', ref: new Date('2026-05-01T04:00:00Z') },
+  // Quarter rollover: Q1→Q2 at TT-midnight
+  { label: 'Apr 1 00:00 TT (Q2 start)',          ref: new Date('2026-04-01T04:00:00Z') },
+  // Year rollover: Jan 1 at TT-midnight + Dec 31 at TT-late-evening
+  { label: 'Jan 1 00:00 TT (YTD start)',         ref: new Date('2026-01-01T04:00:00Z') },
+  { label: 'Dec 31 23:59 TT 2025',               ref: new Date('2026-01-01T03:59:00Z') },
+  // AST-offset edge — UTC says one calendar day, TT says the prior day
+  // `2026-05-15T02:00:00Z` = `2026-05-14T22:00:00 TT` (UTC=Fri, TT=Thu)
+  { label: 'UTC Fri vs TT Thu (UTC 02:00 = TT 22:00 prior day)', ref: new Date('2026-05-15T02:00:00Z') },
+  // Reverse direction: TT says one day, UTC says the next
+  // `2026-05-14T23:00:00Z` = `2026-05-14T19:00 TT` (both Thu) — control case
+  // `2026-05-15T05:00:00Z` = `2026-05-15T01:00 TT` (both Fri) — control case
+  // The AST edge above is the one that actually disagrees.
+];
+
+describe('ESM ≡ CJS — getPeriodBoundaries (edge REFs)', () => {
+  EDGE_REFS.forEach(({ label, ref }) => {
+    ['week', 'mtd', 'quarter', 'ytd'].forEach((period) => {
+      it(`identical { start, end } for ${period} @ ${label}`, () => {
+        const esm = srcGetPeriodBoundaries(period, ref);
+        const c   = cjs.getPeriodBoundaries(period, ref);
+        expect(c.start.toISOString()).toBe(esm.start.toISOString());
+        expect(c.end.toISOString()).toBe(esm.end.toISOString());
+      });
+    });
+  });
+});
+
+describe('ESM ≡ CJS — filterSubmissionsByPeriod (edge REFs)', () => {
+  // Spread weekStarting dates across the year and across boundaries so
+  // the filter exercises each edge REF non-trivially.
+  const BOUNDARY_SUBS = [
+    mkSubV2('e1', '2025-12-28', 100),  // last Sun of 2025
+    mkSubV2('e1', '2026-01-04', 100),  // first Sun of 2026
+    mkSubV2('e2', '2026-03-29', 100),  // last Sun of Q1
+    mkSubV2('e2', '2026-04-05', 100),  // first Sun of Q2
+    mkSubV2('e3', '2026-04-26', 100),  // last Sun of April
+    mkSubV2('e3', '2026-05-03', 100),  // first Sun of May
+    mkSubV2('e4', '2026-05-10', 100),  // mid-May Sun
+  ];
+  EDGE_REFS.forEach(({ label, ref }) => {
+    ['week', 'mtd', 'quarter', 'ytd'].forEach((period) => {
+      it(`identical filtered set for ${period} @ ${label}`, () => {
+        const esm = srcFilterSubmissionsByPeriod(BOUNDARY_SUBS, period, ref);
+        const c   = cjs.filterSubmissionsByPeriod(BOUNDARY_SUBS, period, ref);
+        expect(c.map((s) => `${s.agentId}|${s.weekStarting}`))
+          .toEqual(esm.map((s) => `${s.agentId}|${s.weekStarting}`));
+      });
+    });
+  });
+});
+
 // ── ESM ≡ CJS — filterSubmissionsByPeriod ────────────────────────────────────
 
 describe('ESM ≡ CJS — filterSubmissionsByPeriod', () => {
