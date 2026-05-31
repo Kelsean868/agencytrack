@@ -26,6 +26,7 @@ import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
 import ReportRangeModal from '../ui/ReportRangeModal';
 import Leaderboard from '../gamification/Leaderboard';
+import ProductionLeaderboardSurface from '../leaderboard/ProductionLeaderboardSurface';
 import AgentAwardsPanel from '../awards/AgentAwardsPanel';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 import HistoryTab from '../submissions/HistoryTab';
@@ -132,6 +133,18 @@ export default function AgentDashboard() {
       setShowWelcome(true);
     }
   }, [userProfile, role]);
+
+  // Track J P3 — TEMP ROUTE for Production Leaderboard surface.
+  // Hit `?tab=production-leaderboard` to land on the new podium/tail/chips
+  // surface. Mounted once; NOT in NAV_ITEMS (no primary-nav swap — P6's job).
+  // The existing 'leaderboard' tab (gamification points board) is unchanged.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('tab') === 'production-leaderboard') {
+      setActiveTab('production-leaderboard');
+    }
+  }, []);
 
   // Clear prefill if agent navigates away from policy-ledger without saving.
   useEffect(() => {
@@ -605,6 +618,10 @@ export default function AgentDashboard() {
 
       {/* ── LEADERBOARD TAB ── */}
       {activeTab === 'leaderboard' && <Leaderboard />}
+
+      {/* Track J P3 — TEMP ROUTE only (?tab=production-leaderboard). NOT in
+          NAV_ITEMS — primary-nav swap + points-board retirement is P6. */}
+      {activeTab === 'production-leaderboard' && <ProductionLeaderboardSurface />}
 
       {/* ── PROFILE TAB ── */}
       {activeTab === 'profile' && <ProfileScreen />}
