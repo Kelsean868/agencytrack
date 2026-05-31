@@ -60,8 +60,23 @@ async function loadInputs(tenantId, year) {
 // mapping unitId → branchId. The CF reads ALL user docs and uses each agent's
 // own `branchId` field to group their submissions.
 
+// ATTRIBUTION SEMANTICS — current-branch attribution:
+//   A submission is bucketed to the agent's CURRENT branchId (read from the
+//   live user doc at compute time). Mid-year movers' historical production
+//   follows them to their current branch. This matches BranchManagerProductionView
+//   and is the natural default; an FU would be needed to support
+//   historical-branch attribution (submission carries denormalized branchId at
+//   write time).
+//
+// SKIP SEMANTICS — silent drop + observable counters:
+//   Submissions whose agent has no branchId (migration gap or non-agent
+//   author) cannot be bucketed without inventing a branch. They are dropped,
+//   but the counts + agentIds are surfaced via console.warn AND written to
+//   the leaderboard doc as `skippedNoBranch` metadata so any drift is visible
+//   in both logs and Firestore.
 function groupByBranch(submissions, users) {
-  // agentId → branchId map (from user docs)
+  // agentId → branchId map (built from the SINGLE already-loaded users array;
+  // no per-agent get() — see loadInputs).
   const branchByAgent = new Map();
   for (const u of users) {
     if (u.role === 'agent' && u.provisioning !== true && u.branchId) {
@@ -86,16 +101,34 @@ function groupByBranch(submissions, users) {
     }
   }
 
-  // Bucket each submission into its agent's branch
+  // Bucket each submission into its agent's branch. Track skipped (no branchId)
+  // by agent so the count can be surfaced via console.warn + leaderboard doc
+  // metadata.
+  const skippedAgentIds = new Set();
+  let skippedCount = 0;
   for (const s of submissions) {
     const agentId = s.agentId || s.userId;
-    if (!agentId) continue;
+    if (!agentId) {
+      // Submission with neither agentId nor userId — counted as skipped.
+      skippedCount += 1;
+      continue;
+    }
     const branchId = branchByAgent.get(agentId);
-    if (!branchId) continue; // submissions from agents without branchId are dropped
+    if (!branchId) {
+      skippedCount += 1;
+      skippedAgentIds.add(agentId);
+      continue;
+    }
     ensure(branchId).subs.push(s);
   }
 
-  return byBranch;
+  return {
+    byBranch,
+    skippedNoBranch: {
+      count: skippedCount,
+      agentIds: [...skippedAgentIds].sort(),
+    },
+  };
 }
 
 // ── Per-branch×period composition + map to leaderboard entry shape ───────────
@@ -136,20 +169,39 @@ async function computeAndWriteLeaderboards(tenantId, referenceDate = new Date())
   const year = referenceDate.getFullYear();
   const { submissions, users } = await loadInputs(tenantId, year);
 
-  const byBranch = groupByBranch(submissions, users);
+  const { byBranch, skippedNoBranch } = groupByBranch(submissions, users);
+
+  // Surface the skip count in CF logs. Migration gaps in agent branchId are
+  // not safety-critical (a buggy CF writes a doc nothing reads until P3),
+  // but they're worth flagging so they don't accumulate silently.
+  if (skippedNoBranch.count > 0) {
+    console.warn(
+      `[recomputeLeaderboard] tenant=${tenantId} skippedNoBranch=${skippedNoBranch.count} agentIds=${JSON.stringify(skippedNoBranch.agentIds)}`
+    );
+  }
+
   const db = admin.firestore();
   const batch = db.batch();
 
   let branchCount = 0;
   for (const [branchId, { subs, users: branchUsers }] of byBranch.entries()) {
     const doc = buildLeaderboardDoc(subs, branchUsers, referenceDate);
+    // Doc-level metadata: skippedNoBranch is tenant-wide (not per-branch);
+    // we write it onto every per-branch doc so any reader can spot it without
+    // a separate tenant-level metadata fetch.
+    doc.skippedNoBranch = skippedNoBranch;
     const ref = db.doc(`tenants/${tenantId}/leaderboards/${branchId}`);
     batch.set(ref, doc); // full replace — idempotent
     branchCount++;
   }
 
   await batch.commit();
-  return { branchCount, totalSubmissions: submissions.length, totalUsers: users.length };
+  return {
+    branchCount,
+    totalSubmissions: submissions.length,
+    totalUsers: users.length,
+    skippedNoBranch,
+  };
 }
 
 // ── Triggers ─────────────────────────────────────────────────────────────────

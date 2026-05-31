@@ -119,12 +119,13 @@ describe('groupByBranch', () => {
       mkSub('s2', 'a2', WK_SUN, 200),
       mkSub('s3', 'a3', WK_SUN, 300),
     ];
-    const byBranch = groupByBranch(subs, users);
+    const { byBranch, skippedNoBranch } = groupByBranch(subs, users);
     expect([...byBranch.keys()].sort()).toEqual(['north', 'south']);
     expect(byBranch.get('south').subs).toHaveLength(2);
     expect(byBranch.get('north').subs).toHaveLength(1);
     expect(byBranch.get('south').users.map((u) => u.id).sort()).toEqual(['a1', 'a2', 'u1']);
     expect(byBranch.get('north').users.map((u) => u.id).sort()).toEqual(['a3', 'u2']);
+    expect(skippedNoBranch).toEqual({ count: 0, agentIds: [] });
   });
 
   test('excludes provisioning agents from grouping', () => {
@@ -133,25 +134,69 @@ describe('groupByBranch', () => {
       mkAgent('a2', 'Stub', 'south', null, true),
     ];
     const subs = [mkSub('s1', 'a1', WK_SUN, 100), mkSub('s2', 'a2', WK_SUN, 999)];
-    const byBranch = groupByBranch(subs, users);
+    const { byBranch, skippedNoBranch } = groupByBranch(subs, users);
     expect(byBranch.get('south').users.map((u) => u.id)).toEqual(['a1']);
-    // Submission from provisioning agent dropped (no branchId join)
+    // Submission from provisioning agent dropped (no branchId join) — and
+    // counted as skipped because the provisioning stub isn't in branchByAgent
     expect(byBranch.get('south').subs.map((s) => s.agentId)).toEqual(['a1']);
+    expect(skippedNoBranch.count).toBe(1);
+    expect(skippedNoBranch.agentIds).toEqual(['a2']);
   });
 
-  test('drops submissions from agents without branchId (migration gap)', () => {
+  test('drops submissions from agents without branchId (migration gap) and counts them', () => {
     const users = [
       mkAgent('a1', 'WithBranch', 'south'),
       { id: 'a2', role: 'agent', name: 'NoBranch', provisioning: false }, // no branchId
     ];
     const subs = [mkSub('s1', 'a1', WK_SUN, 100), mkSub('s2', 'a2', WK_SUN, 200)];
-    const byBranch = groupByBranch(subs, users);
+    const { byBranch, skippedNoBranch } = groupByBranch(subs, users);
     expect(byBranch.size).toBe(1);
     expect(byBranch.get('south').subs.map((s) => s.agentId)).toEqual(['a1']);
+    // The migration-gap agent's submission is dropped + observably counted
+    expect(skippedNoBranch.count).toBe(1);
+    expect(skippedNoBranch.agentIds).toEqual(['a2']);
   });
 
-  test('empty inputs produce empty map', () => {
-    expect(groupByBranch([], []).size).toBe(0);
+  test('skippedNoBranch dedupes agentIds across multiple submissions from the same agent', () => {
+    const users = [
+      mkAgent('a1', 'WithBranch', 'south'),
+      { id: 'a2', role: 'agent', name: 'NoBranch', provisioning: false },
+    ];
+    // a2 has THREE submissions — all dropped, but agentIds collapses to one entry
+    const subs = [
+      mkSub('s1', 'a1', WK_SUN, 100),
+      mkSub('s2', 'a2', WK_SUN, 200),
+      mkSub('s3', 'a2', '2026-05-03', 150),
+      mkSub('s4', 'a2', '2026-04-26', 75),
+    ];
+    const { skippedNoBranch } = groupByBranch(subs, users);
+    expect(skippedNoBranch.count).toBe(3);            // 3 dropped subs
+    expect(skippedNoBranch.agentIds).toEqual(['a2']); // 1 distinct agent
+  });
+
+  test('submission with neither agentId nor userId counts as skipped (count=1, no agentId)', () => {
+    const users = [mkAgent('a1', 'Alpha', 'south')];
+    const subs = [
+      mkSub('s1', 'a1', WK_SUN, 100),
+      // Orphan submission — no owning agent reference at all
+      {
+        id: 's2', weekStarting: WK_SUN, status: 'submitted', version: 2,
+        newBusiness: { api: 999, apps: 1 },
+        pppIncreases: { apiIncrease: 0, apps: 0 },
+        lumpsums: { apiCredit: 0, commission: 0 },
+        totalProductionCredit: 999,
+      },
+    ];
+    const { byBranch, skippedNoBranch } = groupByBranch(subs, users);
+    expect(byBranch.get('south').subs).toHaveLength(1);
+    expect(skippedNoBranch.count).toBe(1);
+    expect(skippedNoBranch.agentIds).toEqual([]); // no agentId to record
+  });
+
+  test('empty inputs produce empty map + zero skip', () => {
+    const { byBranch, skippedNoBranch } = groupByBranch([], []);
+    expect(byBranch.size).toBe(0);
+    expect(skippedNoBranch).toEqual({ count: 0, agentIds: [] });
   });
 
   test('s.userId is honoured as a fallback when s.agentId is absent', () => {
@@ -164,8 +209,9 @@ describe('groupByBranch', () => {
       lumpsums: { apiCredit: 0, commission: 0 },
       totalProductionCredit: 100,
     }];
-    const byBranch = groupByBranch(subs, users);
+    const { byBranch, skippedNoBranch } = groupByBranch(subs, users);
     expect(byBranch.get('south').subs).toHaveLength(1);
+    expect(skippedNoBranch.count).toBe(0);
   });
 });
 
@@ -218,10 +264,17 @@ describe('buildLeaderboardDoc', () => {
 // ── computeAndWriteLeaderboards (end-to-end with mocked Firestore) ───────────
 
 describe('computeAndWriteLeaderboards', () => {
+  let warnSpy;
+
   beforeEach(() => {
     for (const k of Object.keys(firestoreData)) delete firestoreData[k];
     for (const k of Object.keys(firestoreDocs)) delete firestoreDocs[k];
     mockBatch.ops = [];
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    warnSpy.mockRestore();
   });
 
   test('writes one leaderboards/{branchId} doc per branch', async () => {
@@ -289,6 +342,63 @@ describe('computeAndWriteLeaderboards', () => {
     await computeAndWriteLeaderboards('T', REF);
     const op = mockBatch.ops[0];
     expect(op.data.week[0].periodApi).toBe(100); // draft excluded
+  });
+
+  test('writes skippedNoBranch={count:0, agentIds:[]} onto each branch doc when no skips', async () => {
+    firestoreData['tenants/T/submissions'] = [mkSub('s1', 'a1', WK_SUN, 100)];
+    firestoreData['tenants/T/users']       = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
+
+    const result = await computeAndWriteLeaderboards('T', REF);
+    expect(result.skippedNoBranch).toEqual({ count: 0, agentIds: [] });
+    const op = mockBatch.ops[0];
+    expect(op.data.skippedNoBranch).toEqual({ count: 0, agentIds: [] });
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  test('logs warn + writes skippedNoBranch metadata when an agent has no branchId', async () => {
+    firestoreData['tenants/T/submissions'] = [
+      mkSub('s1', 'a1', WK_SUN, 100),
+      mkSub('s2', 'a2', WK_SUN, 200), // a2 has no branchId — must be dropped + counted
+    ];
+    firestoreData['tenants/T/users'] = [
+      mkAgent('a1', 'WithBranch', 'south', 'u1'),
+      { id: 'a2', role: 'agent', name: 'NoBranch', provisioning: false }, // no branchId
+      mkUM('u1', 'UM', 'south'),
+    ];
+
+    const result = await computeAndWriteLeaderboards('T', REF);
+    expect(result.branchCount).toBe(1); // only south
+    expect(result.skippedNoBranch).toEqual({ count: 1, agentIds: ['a2'] });
+
+    // CF logs the count + agentIds via console.warn so the drift surfaces in logs
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0][0]).toMatch(/skippedNoBranch=1/);
+    expect(warnSpy.mock.calls[0][0]).toMatch(/"a2"/);
+
+    // Every per-branch doc carries the tenant-wide skippedNoBranch metadata
+    const southOp = mockBatch.ops.find((op) => op.data.week.some((e) => e.agentId === 'a1'));
+    expect(southOp.data.skippedNoBranch).toEqual({ count: 1, agentIds: ['a2'] });
+  });
+
+  test('skip metadata written to ALL per-branch docs (tenant-wide visibility)', async () => {
+    firestoreData['tenants/T/submissions'] = [
+      mkSub('s1', 'a1', WK_SUN, 100),  // south
+      mkSub('s2', 'a3', WK_SUN, 300),  // north
+      mkSub('s9', 'a9', WK_SUN, 999),  // no branchId — dropped
+    ];
+    firestoreData['tenants/T/users'] = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      mkAgent('a3', 'Gamma', 'north', 'u2'),
+      { id: 'a9', role: 'agent', name: 'NoBranch', provisioning: false },
+      mkUM('u1', 'UM South', 'south'),
+      mkUM('u2', 'UM North', 'north'),
+    ];
+
+    await computeAndWriteLeaderboards('T', REF);
+    expect(mockBatch.ops).toHaveLength(2); // south + north
+    for (const op of mockBatch.ops) {
+      expect(op.data.skippedNoBranch).toEqual({ count: 1, agentIds: ['a9'] });
+    }
   });
 });
 
