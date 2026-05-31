@@ -451,7 +451,9 @@ The audit extends to CONTEXT.md prose claims, not just the table. Component-cons
 
 Phase 5 stops exist for dispatcher review and authorization, not just go/no-go on merge. When CC surfaces findings adjacent to the brief's locked scope — same category, same risk profile, same verification basis — the dispatcher MAY authorize an in-PR extension rather than requiring a follow-up. CC MUST NOT unilaterally expand; the scope-lock protects against silent drift. The dispatcher's authority to extend exists precisely because Phase 5 is review-authorization.
 
-Protocol: surface as out-of-scope per brief → dispatcher evaluates → if authorized, CC applies via NEW commit (not amend — preserves "extended at Phase 5 review" audit trail), updates PR description, re-stops at Phase 5. Validated in PR #158 (placeholder-sweep), where 2 additional sites mapping to PRs already verified HIGH-confidence landed via commit 0f6a4b5 on the same branch.
+Protocol: surface as out-of-scope per brief → dispatcher evaluates → if authorized, CC applies via NEW commit (not amend — preserves "extended at Phase 5 review" audit trail), updates PR description, re-stops at Phase 5. Validated in PR #158 (placeholder-sweep), where 2 additional sites mapping to PRs already verified HIGH-confidence landed via commit 0f6a4b5 on the same branch. 
+
+**Carve-out (banked 2026-05-30):** the `text-*-faint → text-*-muted` contrast fix established in PR #392 is standing pre-authorized — CC MAY apply it in-PR and report it without a per-instance Phase-5 stop. This is the ONLY pre-authorized self-extension; ANY OTHER new serious/critical axe node vs the main baseline still requires surface → STOP → dispatcher authorization per this rule. (Origin: PR #393 review — CC applied the fix unilaterally citing this rule, which actually forbids unilateral expansion; the carve-out makes that one specific fix compliant going forward.)
 
 ### 10. Kickoff briefs commit before CC dispatch
 
