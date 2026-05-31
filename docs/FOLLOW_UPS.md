@@ -638,9 +638,9 @@ Banked: PR #274 (`751c65c`).
 
 **Priority:** LOW. Both files are currently in sync. The comment guard is sufficient while the domain is stable.
 
-**Update 2026-05-31 (P1a PR #{TBD}):** Track J P1a now ships a second mirror pair (`functions/leaderboard/rankingLogic.js` ↔ `src/lib/productionReport/computations.js`) — but with a **CI-failing cross-check test** (`src/lib/productionReport/__tests__/cross-check-cjs.test.js`) that runs shared fixtures through both modules and asserts identical output for all four periods + ranking. This is the cross-check pattern that the original 2026-05-22 wish-list note hoped for. **Optional cleanup:** apply the same cross-check pattern to the `escalationLogic` ↔ `accountabilityFlag` pair — a 20-line vitest test importing both modules via `createRequire` and running a shared standards-fixture set. Upgrades the comment-guard to a CI guard for the older pair too. Still LOW priority; the pairs are currently in sync.
+**Update 2026-05-31 (P1a PR #399):** Track J P1a now ships a second mirror pair (`functions/leaderboard/rankingLogic.js` ↔ `src/lib/productionReport/computations.js`) — but with a **CI-failing cross-check test** (`src/lib/productionReport/__tests__/cross-check-cjs.test.js`) that runs shared fixtures through both modules and asserts identical output for all four periods + ranking. This is the cross-check pattern that the original 2026-05-22 wish-list note hoped for. **Optional cleanup:** apply the same cross-check pattern to the `escalationLogic` ↔ `accountabilityFlag` pair — a 20-line vitest test importing both modules via `createRequire` and running a shared standards-fixture set. Upgrades the comment-guard to a CI guard for the older pair too. Still LOW priority; the pairs are currently in sync.
 
-Banked: I3b PR #275. Cross-check pattern shipped: Track J P1a PR #{TBD}.
+Banked: I3b PR #275. Cross-check pattern shipped: Track J P1a PR #399.
 
 ---
 
@@ -3220,9 +3220,9 @@ Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — Dual-consumable computations.js — eliminate the CJS twin entirely (LOW, banked 2026-05-31, P1a PR #{TBD})
+## Track J (V2 Redesign) — Dual-consumable computations.js — eliminate the CJS twin entirely (LOW, banked 2026-05-31, P1a PR #399)
 
-**Scope:** `src/lib/productionReport/computations.js` is ESM; gen-1 Cloud Functions are CJS. P1a (PR #{TBD}) ships a CJS twin (`functions/leaderboard/rankingLogic.js`) so the leaderboard CF can use the same period / totals / ranking logic. The twin is guarded by a CI-failing cross-check test, but two copies still exist and drift remains a maintenance cost.
+**Scope:** `src/lib/productionReport/computations.js` is ESM; gen-1 Cloud Functions are CJS. P1a (PR #399) ships a CJS twin (`functions/leaderboard/rankingLogic.js`) so the leaderboard CF can use the same period / totals / ranking logic. The twin is guarded by a CI-failing cross-check test, but two copies still exist and drift remains a maintenance cost.
 
 **Fix shape (options, from cheapest to most invasive):**
 1. **Move CFs to gen-2** (`firebase-functions/v2`) which supports `"type": "module"` in `functions/package.json` and native ESM `import`. Then `functions/leaderboard/rankingLogic.js` becomes `import { ... } from '../../src/lib/productionReport/computations.js'` — single source of truth. The blocker is auditing whether **all** existing gen-1 CFs (16 in `functions/index.js` plus the `war/` + `agentOfMonth/` sub-folders) migrate cleanly to gen-2; some use gen-1-only APIs (`functions.pubsub.schedule(...).timeZone()` is gen-1; gen-2 uses `onSchedule` from `firebase-functions/v2/scheduler` with a different shape).
@@ -3233,4 +3233,4 @@ Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31.
 
 **Priority:** LOW. The cross-check test makes the twin safe; the maintenance cost of one mirror is small. Revisit when **either** (a) a third mirror pair is needed (would justify a real fix), or (b) gen-1 → gen-2 CF migration becomes work the team wants to do anyway.
 
-Banked: Track J P1a CJS ranking mirror (PR #{TBD}), 2026-05-31.
+Banked: Track J P1a CJS ranking mirror (PR #399), 2026-05-31.
