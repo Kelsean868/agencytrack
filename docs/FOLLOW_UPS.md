@@ -3215,3 +3215,31 @@ The YTD-vs-tenure-floor bar in `AgentProductionView` calls `resolveAnnualAPIFloo
 **Priority:** LOW. The default bands are currently correct for Tatil; the risk materialises only if a tenant-admin updates the config. Address when the tenant-admin config editor or a band-change is actioned.
 
 Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31.
+
+---
+
+## Track J (V2 Redesign) — FU-1: Awards vs production-report period logic — two code paths, same calendar quarters (LOW, banked 2026-05-31, P1 PR #{TBD})
+
+The Awards engine computes quarters inline via `getQuarter(date)` + `getQuarterMonths(quarter, year)` → month-key strings. The production-report pipeline uses `getPeriodBoundaries('quarter', ref)` + `filterSubmissionsByPeriod`. Both resolve to the same calendar quarters (Q1=Jan-Mar, Q2=Apr-Jun, Q3=Jul-Sep, Q4=Oct-Dec) and agree today, but via entirely separate code paths. There is no shared source of truth.
+
+**Risk:** If either path shifts its quarter definition (e.g. award scheme switches to a fiscal year that starts in a different month), the two systems will silently diverge. Leaderboard will agree with production-report but not with awards.
+
+**Fix shape:** Extract `getPeriodBoundaries` (or a subset) as the canonical period utility for both. Awards would consume it to filter confirmed settlement records by period instead of using the inline month-key approach.
+
+**Priority:** LOW. The two paths agree now; risk is future-facing only. Reconcile if awards ever need to match the leaderboard's windows exactly (e.g. when the production-leaderboard and awards surface sit side-by-side and must show identical period definitions).
+
+Banked: Track J P1 shared production-ranking hook (PR #{TBD}), 2026-05-31.
+
+---
+
+## Track J (V2 Redesign) — FU-2 (Track H): Family-wide reconciled-production migration (MEDIUM, banked 2026-05-31, P1 PR #{TBD})
+
+When the policy-ledger flip-gate clears and reconciled production data is available for all agents, the leaderboard, production report views, kiosk panels, and `useProductionRanking` hook all need to switch from the submissions pipeline (`getAllYTDSubmissions` → `computeAgentTotals`) to a reconciled source (settlements / policy-ledger derivation). Currently these 10+ surfaces call the submissions pipeline independently; they should migrate together in one coordinated PR to avoid a split-brain period where some surfaces show estimated and others show reconciled production.
+
+**Migration path:** Swap `getAllYTDSubmissions` for a reconciled-production fetch at the `useProductionRanking` hook call site (P1 keystone) — all Leaderboard consumers inherit the switch. Separately migrate the kiosk panels and production-report view fetches. The awards engine uses its own `confirmedData` path (settlement docs) — unaffected by this migration.
+
+**Prerequisite:** The `usesPolicyLedger` / H3 flip-gate must be available for all agents branch-wide, not just per-agent opt-in. Until then, the submissions pipeline remains the only branch-wide source.
+
+**Priority:** MEDIUM. The reconciled path is anti-gameable and more accurate; the submissions path is susceptible to unsubmitted-week gaps. Schedule when H3 flip-gate scope is confirmed.
+
+Banked: Track J P1 shared production-ranking hook (PR #{TBD}), 2026-05-31.
