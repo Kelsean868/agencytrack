@@ -3309,7 +3309,7 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — P4 around-me: `previousRank` + movement chip (MEDIUM, banked 2026-05-31, PR #{TBD})
+## Track J (V2 Redesign) — P4 around-me: `previousRank` + movement chip (MEDIUM, banked 2026-05-31, PR #402)
 
 P4 ships the around-me cluster + highlight-in-place WITHOUT the movement chip (▲ +2 / ▼ −1) that the original design includes. The chip needs `previousRank` on every entry — which the P1b leaderboards aggregate does not carry. Adding it is a **keystone Cloud Function change**: the CF would need to read the prior-period rankings (e.g. last week's `week` array) and stamp `previousRank` onto each current-period entry, before writing the doc.
 
@@ -3322,14 +3322,14 @@ P4 ships the around-me cluster + highlight-in-place WITHOUT the movement chip (�
 
 **Priority:** MEDIUM. Movement is a meaningful agent-motivation cue ("you climbed 2 this week") but the cluster is already useful without it. Schedule when a brief is dispatched for the previousRank CF phase.
 
-Banked: Track J P4 around-me cluster (PR #{TBD}), 2026-05-31.
+Banked: Track J P4 around-me cluster (PR #402), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — P4: optional design reference HTML added to fold-in (banked 2026-05-31, PR #{TBD})
+## Track J (V2 Redesign) — P4: optional design reference HTML added to fold-in (banked 2026-05-31, PR #402)
 
 `design_handoff_v2_app/mockups/app-leaderboard-around-me.html` was sitting locally untracked during P4 build (Claude Design produced it but it had not been committed). P4's Phase 0 step 3 (optional additive fold-in) included it in the PR scope so the design reference is durable in the repo — additive only, no existing mockup overwritten, no parallel folder. No README change since `app-leaderboard.jsx` is already the primary leaderboard mockup reference and the around-me HTML lives alongside it.
 
-**Action:** none — already shipped with PR #{TBD}. Note retained for the audit trail.
+**Action:** none — already shipped with PR #402. Note retained for the audit trail.
 
-Banked: Track J P4 around-me cluster (PR #{TBD}), 2026-05-31.
+Banked: Track J P4 around-me cluster (PR #402), 2026-05-31.
