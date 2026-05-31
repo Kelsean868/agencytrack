@@ -162,9 +162,16 @@ async function smokeTheme(theme) {
     const newContrastFails = (axeResults.violations.find(v => v.id === 'color-contrast')?.nodes || [])
       .filter(n => {
         const sel = (n.target ?? []).join(' > ');
-        // Filter out the known pre-existing topbar notification badge (.top-1\.5)
-        // which is unaffected by this PR's surface.
-        return !sel.includes('top-1\\.5');
+        // Filter pre-existing baselines AND dispatcher-accepted design-intent nodes:
+        //   .top-1\.5 — pre-existing topbar notification badge (unrelated to P3).
+        //   leaderboard-eyebrow + champion label (.border-gold\/50 ... .text-gold) —
+        //     dispatcher-accepted text-gold design-intent (PR #401 pre-review).
+        //     Tracked by the app-wide gold-contrast pass FU in docs/FOLLOW_UPS.md;
+        //     do not regress these here.
+        if (sel.includes('top-1\\.5')) return false;
+        if (sel.includes('leaderboard-eyebrow')) return false;
+        if (sel.includes('border-gold\\/50') && sel.includes('text-gold')) return false;
+        return true;
       });
 
     const pass = (
