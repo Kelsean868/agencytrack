@@ -3109,3 +3109,28 @@ The v2 sidebar (`app-shell.jsx`) shows **Game Plan** as the parent PLANNING item
 **Priority:** LOW. Money Needs is fully accessible as a top-level item. No production impact. Address when the Game Plan v2 screen is designed and briefed.
 
 Banked: Track J v2 Agent Dashboard nav IA (PR #TBD), 2026-05-30.
+
+---
+
+## Pre-existing color-contrast failures outside the sidebar (LOW, banked 2026-05-30, PR #TBD)
+
+`axe` against the agent dashboard (local preview, post-`.sidebar-section` fix) still surfaces color-contrast violations that pre-date Track J and exist on main:
+
+**Light mode (18 nodes remaining):**
+- `.bg-success/10.border-success/20.gap-1` × 7 — WoW delta chips on the KPI Activity Trend strip (`AgentDashboard.jsx`). fg `#2d7a4f` on bg `#e3eae2` = **4.27:1** (needs 4.5:1).
+- `.badge-sub` × 11 inside `.locked.badge-item[aria-label=" — locked"]` — locked-state badge subtitles in `BadgeGrid`. fg `#aeaaa8` on bg `#ffffff` = **2.3:1**.
+
+**Dark mode (22 nodes remaining):**
+- `.top-1\.5` × 1 — error-tint pill on a danger-bg surface. fg `#ffffff` on bg `#d96b5d` = **3.38:1**.
+- `span[aria-label="<KPI>: Below"]` × 10 — below-floor status labels in `WeeklyStandardCard`. fg `#d96b5d` on bg `#372820` = **4.17:1**.
+- `.badge-sub` × 11 — locked-badge subtitles (dark variant). fg `#766e63` on bg `#252019` = **3.21:1**.
+
+**Root cause / fix shape:** Each cluster has a distinct cause and a different remediation:
+- Success delta chips: bump `--color-success` darker in light mode (currently `rgb(45 122 79)`), OR remove the tint background, OR raise font-weight + size.
+- Locked `.badge-sub`: bump the token (currently uses `--color-text-faint` muted further by 0.55 `opacity` on the `.locked` parent — root cause is the opacity stack, not the token).
+- "Below" KPI spans: dark-mode `--color-danger` (`#d96b5d`) on `--color-danger-tint` background loses contrast; bump the dark `--color-danger` or darken the tint.
+- `.top-1\.5` white-on-danger: that selector is the persistent-error pill — needs a darker red surface.
+
+**Priority:** LOW. All pre-existing; none introduced by Track J PRs. Fix in a dedicated a11y-contrast cleanup PR scoped to these clusters — not piecemeal across feature PRs.
+
+Banked: Track J v2 Agent Dashboard nav IA (PR #TBD), 2026-05-30.

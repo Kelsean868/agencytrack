@@ -804,7 +804,7 @@ h1, h2, h3, h4 {
 .sidebar-section {
   font-size: 9.5px;
   font-weight: 700;
-  color: var(--color-text-faint);
+  color: var(--color-text-muted);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   padding: 10px 12px 6px;
