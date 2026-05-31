@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Download, Loader2, ChevronRight, Flame } from 'lucide-react';
 import { extractFields } from '../../utils/extractFields';
+import { computeSubmissionStreak } from '../../utils/submissionStreak';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -64,30 +65,9 @@ function computeAnchor(submissions, year, weeklyTarget) {
   // Best week
   const bestWeek = submitted.reduce((a, b) => getSubmissionAPI(b) > getSubmissionAPI(a) ? b : a, submitted[0] ?? null);
 
-  // Streak computation — sort by weekStarting asc
-  const sortedSubs = [...thisYearSubs].sort((a, b) => (a.weekStarting ?? '').localeCompare(b.weekStarting ?? ''));
-  const weekSet    = new Set(submitted.map(s => s.weekStarting));
-
-  // Longest streak in year
-  let longest = 0, curLen = 0;
-  for (const s of sortedSubs) {
-    if (weekSet.has(s.weekStarting)) { curLen++; longest = Math.max(longest, curLen); }
-    else curLen = 0;
-  }
-
-  // Current streak — consecutive submitted going backward from most recent submitted
-  const sortedDesc = [...submitted].sort((a, b) => (b.weekStarting ?? '').localeCompare(a.weekStarting ?? ''));
-  let current = 0;
-  if (sortedDesc.length > 0) {
-    current = 1;
-    for (let i = 1; i < sortedDesc.length; i++) {
-      const prev = new Date(sortedDesc[i - 1].weekStarting + 'T12:00:00Z');
-      const curr = new Date(sortedDesc[i].weekStarting + 'T12:00:00Z');
-      const diffDays = Math.round((prev - curr) / (1000 * 60 * 60 * 24));
-      if (diffDays === 7) current++;
-      else break;
-    }
-  }
+  // Streak — extracted to src/utils/submissionStreak.js (shared with v2 dashboard Pulse chip)
+  const { currentStreak: current, longestStreak: longest } =
+    computeSubmissionStreak(submissions, year);
 
   return {
     ytdAPI, avgApi, weeksSubmitted: submitted.length,

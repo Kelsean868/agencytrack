@@ -3134,3 +3134,33 @@ Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30.
 **Priority:** LOW. All pre-existing; none introduced by Track J PRs. Fix in a dedicated a11y-contrast cleanup PR scoped to these clusters — not piecemeal across feature PRs.
 
 Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30.
+
+---
+
+## Track J (V2 Redesign) — HeroCard YoY-delta chip deferred (LOW, banked 2026-05-30, PR #TBD)
+
+The v2 HeroCard mockup (`design_handoff_v2_app/mockups/app-dashboard-v2.jsx`) shows a "+18% vs LY" success chip next to the YTD API headline. The J-AD-home PR (PR #TBD) ships the HeroCard **without** this chip — current AgentDashboard state does not aggregate last-year submissions, and `getAgentSubmissions(tenantId, uid)` returns all submissions without a year filter, so any YoY computation today would walk the full result set in JS each render.
+
+**Restore path:** Either (a) compute `lastYearTotals` in the same `useMemo` as `ytdTotals`, walking `allSubmissions` once and partitioning by year (cheapest — no new query); (b) add a dedicated `getLastYearSummary(tenantId, uid, year-1)` Cloud Function aggregator if performance becomes a concern. Render the chip with `text-success` and `↗` icon when YoY delta is positive, `text-danger` and `↘` when negative; hide when last-year data is empty.
+
+**Priority:** LOW. The hero already shows YTD + progress + goal — the YoY chip is decorative motivation, not load-bearing. Address when polish bandwidth opens or alongside Phase 9 SM-target work.
+
+Banked: Track J v2 Agent Dashboard home rework (PR #TBD), 2026-05-30.
+
+---
+
+## Track J (V2 Redesign) — DeliveryStripCard stubbed to null; wire to Track H policies (LOW, banked 2026-05-30, PR #TBD)
+
+The v2 home mockup includes a `DeliveryStripCard` showing outstanding policies to deliver + a 30-day clawback clock. Its source data is `POLICIES` / `DELIVERY_STATES` from the mockup-only `cro-v2-shared.jsx` module — that exact data shape does not exist in Firestore. Track H's `policies` collection ships related lifecycle fields (`status`, `dateIssued`, eventually `policyDeliveryDate`) but with a different shape than the mockup's delivery state machine.
+
+**Current state post-PR #TBD:** `src/components/dashboard/HomeV2/DeliveryStripCard.jsx` is a single-line component that returns `null`. The 2-col Recent panel right column wraps it cleanly — no console error, no layout gap visible.
+
+**Restore path:**
+1. Add a `policyDeliveryDate` field to the Track H `policies` schema (rules `hasOnly` allowlist + write surface) — or repurpose the existing `dateIssued` + a derived clawback window.
+2. Wire `DeliveryStripCard` to read the agent's own outstanding-delivery policies via `getOwnPolicies(tenantId, agentId)` (already used by AgentAwardsPanel's `usesPolicyLedger` path).
+3. Compute "days left in 30-day clawback" from `dateIssued + 30 days - today`; classify each policy as `delivered` / `at-risk` / `overdue`.
+4. Apply red/amber/teal tone per state per the mockup. Match the column-header eyebrow + count pill pattern from the mockup.
+
+**Priority:** LOW. The home is fully functional without the delivery surface; CRO/back-office is a separate planned surface (Track J §"CRO / back-office" in `design_handoff_v2_app/README.md §6`). Address when the CRO surface lands or Track H ships `policyDeliveryDate`.
+
+Banked: Track J v2 Agent Dashboard home rework (PR #TBD), 2026-05-30.
