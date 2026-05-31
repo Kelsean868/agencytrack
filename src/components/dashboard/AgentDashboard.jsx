@@ -1,7 +1,8 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import {
   X, Download, Loader2, AlertTriangle,
-  ClipboardList, FileText, TrendingUp, Trophy, Star, History, UserCircle, BarChart2, UserSearch, BookOpen, Calculator,
+  ClipboardList, FileText, Home, NotebookPen, Wallet, Target, Zap, Repeat, Search, Medal, Shield,
+  Star, History, UserCircle, BarChart2, BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -43,6 +44,7 @@ import AgentPersistencyTab from '../agent/PersistencyTab';
 import ProspectInfoPanel from '../agent/ProspectInfoPanel';
 import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
+import CommissionPlayground from '../goals/CommissionPlayground';
 import DailyFAB from '../daily/DailyFAB';
 
 const KPIS = [
@@ -59,20 +61,27 @@ const KPIS = [
 // 1:1 — no fabricated items (per kickoff Decisions: "mirrors the existing
 // TabBar TABS array — no fabricated items"). The mock's "Submit Report",
 // "Commission Calc", and standalone "Goals" sidebar items don't map to
-// existing surfaces and are intentionally omitted from the rendered
-// sidebar (Submit Report stays as the bottom-nav action item below).
+// v2 nav IA — 4 groups fed into Sidebar's groupBySection() helper.
+// Profile is removed from the sidebar list; the footer avatar navigates to
+// the profile tab instead (see Sidebar.jsx footer-avatar button).
 const NAV_ITEMS = [
-  { id: 'dashboard',         label: 'Dashboard',        tabId: 'dashboard',         Icon: ClipboardList, sectionLabel: 'Workspace', testId: 'agent-tab-dashboard' },
-  { id: 'career',            label: 'Career',           tabId: 'career',            Icon: TrendingUp,    testId: 'agent-tab-career' },
-  { id: 'prospect-info',     label: 'Joint-Call Prep',  tabId: 'prospect-info',     Icon: UserSearch,    testId: 'agent-tab-prospect-info' },
-  { id: 'policy-ledger',     label: 'Policy Ledger',    tabId: 'policy-ledger',     Icon: BookOpen,      testId: 'agent-tab-policy-ledger' },
-  { id: 'money-needs',       label: 'Money Needs',      tabId: 'money-needs',       Icon: Calculator,    testId: 'agent-tab-money-needs' },
-  { id: 'awards',            label: 'Awards',           tabId: 'awards',            Icon: Trophy,        testId: 'agent-tab-awards' },
-  { id: 'persistency',       label: 'Persistency',      tabId: 'persistency',       Icon: TrendingUp,    testId: 'agent-tab-persistency' },
-  { id: 'production-report', label: 'Production Report',tabId: 'production-report', Icon: BarChart2,     testId: 'agent-tab-production-report' },
-  { id: 'leaderboard',       label: 'Leaderboard',      tabId: 'leaderboard',       Icon: Star,          testId: 'agent-tab-leaderboard' },
-  { id: 'history',           label: 'History',          tabId: 'history',           Icon: History,       testId: 'agent-tab-history' },
-  { id: 'profile',           label: 'Profile',          tabId: 'profile',           Icon: UserCircle,    testId: 'agent-tab-profile' },
+  // Ungrouped (no section header)
+  { id: 'dashboard',         label: 'Dashboard',         tabId: 'dashboard',         Icon: Home,      testId: 'agent-tab-dashboard' },
+  { id: 'wizard',            label: 'Weekly Report',     action: 'submit',            Icon: NotebookPen, testId: 'agent-tab-wizard' },
+  { id: 'history',           label: 'History',           tabId: 'history',           Icon: History,   testId: 'agent-tab-history' },
+  // Planning
+  { id: 'money-needs',       label: 'Money Needs',       tabId: 'money-needs',       Icon: Wallet,    sectionLabel: 'Planning',     testId: 'agent-tab-money-needs' },
+  { id: 'goals',             label: 'Goals',             tabId: 'goals',             Icon: Target,    testId: 'agent-tab-goals' },
+  // Tools
+  { id: 'commission',        label: 'Commission',        tabId: 'commission',        Icon: Zap,       sectionLabel: 'Tools',        testId: 'agent-tab-commission' },
+  { id: 'persistency',       label: 'Persistency',       tabId: 'persistency',       Icon: Repeat,    testId: 'agent-tab-persistency' },
+  { id: 'policy-ledger',     label: 'Policy Ledger',     tabId: 'policy-ledger',     Icon: BookOpen,  testId: 'agent-tab-policy-ledger' },
+  { id: 'prospect-info',     label: 'Prospect Prep',     tabId: 'prospect-info',     Icon: Search,    testId: 'agent-tab-prospect-info' },
+  { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: BarChart2, testId: 'agent-tab-production-report' },
+  // Recognition
+  { id: 'awards',            label: 'Awards',            tabId: 'awards',            Icon: Medal,     sectionLabel: 'Recognition',  testId: 'agent-tab-awards' },
+  { id: 'career',            label: 'Career Portal',     tabId: 'career',            Icon: Shield,    testId: 'agent-tab-career' },
+  { id: 'leaderboard',       label: 'Leaderboard',       tabId: 'leaderboard',       Icon: Star,      testId: 'agent-tab-leaderboard' },
 ];
 
 // Mobile bottom-nav per mock (lines 2227-2232). The "Submit" item is an
@@ -802,6 +811,26 @@ export default function AgentDashboard() {
       )}
 
       {activeTab === 'money-needs' && <MoneyNeedsPanel />}
+
+      {/* ── GOALS TAB ── */}
+      {activeTab === 'goals' && (
+        <GapAnalysisPanel
+          hierarchy={hierarchy}
+          ytdTotals={ytdTotals}
+          loading={hierarchyLoading}
+          error={hierarchyError}
+          title="Goals"
+        />
+      )}
+
+      {/* ── COMMISSION TAB ── */}
+      {activeTab === 'commission' && (
+        <CommissionPlayground
+          submissions={allSubmissions}
+          agentId={user?.uid}
+          tenantId={tenantId}
+        />
+      )}
 
       {/* ── PERSISTENCY TAB ── */}
       {activeTab === 'persistency' && <AgentPersistencyTab />}
