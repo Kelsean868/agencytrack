@@ -2,7 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { getAgentSubmissions } from '../../services/submissionService';
 import { getTenantUsers } from '../../services/managerService';
-import { formatCurrency } from '../../utils/formatters';
+import { getAgentHistory } from '../../services/persistencyService';
+import { formatCurrency, getUnitDisplayName } from '../../utils/formatters';
+import { resolveAnnualAPIFloor } from '../../utils/tenureFloors';
 import {
   filterSubmissionsByPeriod,
   computeAgentTotals,
@@ -10,7 +12,16 @@ import {
 } from '../../lib/productionReport/computations';
 import TimePeriodToggle from './TimePeriodToggle';
 import DataSourceBadge from './DataSourceBadge';
-import ProductionTable from './ProductionTable';
+
+const PERIOD_LABEL = {
+  week: 'this week', mtd: 'month to date', quarter: 'quarter to date', ytd: 'year to date',
+};
+const PERIOD_DISPLAY = [
+  { id: 'week', label: 'Week' },
+  { id: 'mtd', label: 'Month' },
+  { id: 'quarter', label: 'Quarter' },
+  { id: 'ytd', label: 'Year' },
+];
 
 export default function AgentProductionView() {
   const { user, userProfile, tenantId } = useAuth();
@@ -19,65 +30,77 @@ export default function AgentProductionView() {
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  const unitId = userProfile?.unitId;
-  const agentId = user?.uid;
+  // Authorized addition: most-recent E3 persistency record (dispatcher-approved, Phase 1 G3).
+  // Independent effect; renders "—" until resolved or on error.
+  const [persHistory, setPersHistory] = useState([]);
 
   useEffect(() => {
-    if (!agentId || !tenantId) return;
+    if (!user?.uid || !tenantId) return;
     setLoading(true);
     Promise.all([
-      getAgentSubmissions(tenantId, agentId).catch(() => []),
+      getAgentSubmissions(tenantId, user.uid).catch(() => []),
       getTenantUsers(tenantId).catch(() => []),
     ]).then(([subs, users]) => {
       setAllSubmissions(subs);
       setAllUsers(users);
     }).catch(setError).finally(() => setLoading(false));
-  }, [agentId, tenantId]);
+  }, [user?.uid, tenantId]);
 
-  const periodSubs = useMemo(
-    () => filterSubmissionsByPeriod(allSubmissions, period),
-    [allSubmissions, period]
+  useEffect(() => {
+    if (!user?.uid || !tenantId) return;
+    getAgentHistory(tenantId, user.uid, 1)
+      .then(setPersHistory)
+      .catch(() => {});
+  }, [user?.uid, tenantId]);
+
+  // All four period windows computed from already-fetched submissions (no new read)
+  const periodTotals = useMemo(() => ({
+    week:    computeAgentTotals(filterSubmissionsByPeriod(allSubmissions, 'week')),
+    mtd:     computeAgentTotals(filterSubmissionsByPeriod(allSubmissions, 'mtd')),
+    quarter: computeAgentTotals(filterSubmissionsByPeriod(allSubmissions, 'quarter')),
+    ytd:     computeAgentTotals(filterSubmissionsByPeriod(allSubmissions, 'ytd')),
+  }), [allSubmissions]);
+
+  const myTotals = periodTotals[period];
+
+  // YTD vs tenure-floor bar. Uses contractStartDate from userProfile (already loaded).
+  // Falls back to 200,000 when contractStartDate is absent.
+  const ytdFloor = useMemo(
+    () => resolveAnnualAPIFloor({ contractStartDate: userProfile?.contractStartDate }),
+    [userProfile?.contractStartDate]
   );
 
-  const myTotals = useMemo(() => computeAgentTotals(periodSubs), [periodSubs]);
+  const initials = useMemo(() => {
+    const name = userProfile?.name ?? '';
+    return name.split(' ').filter(Boolean).map(s => s[0]).join('').toUpperCase().slice(0, 2) || '?';
+  }, [userProfile?.name]);
 
-  const { unitRank, unitSize, branchRank, branchSize } = useMemo(() => {
-    if (allUsers.length === 0) return { unitRank: null, unitSize: 0, branchRank: null, branchSize: 0 };
+  const unitLabel = useMemo(() => {
+    if (!userProfile?.unitId) return null;
+    const mgr = allUsers.find(u => u.id === userProfile.unitId);
+    return getUnitDisplayName(mgr ?? null);
+  }, [allUsers, userProfile?.unitId]);
 
-    const agents = allUsers.filter((u) => u.role === 'agent' && u.provisioning !== true);
-    const branchSize = agents.length;
-
-    const agentTotals = agents.map((u) => {
-      const subs = filterSubmissionsByPeriod(
-        allSubmissions.filter((s) => (s.agentId ?? s.userId) === u.id),
-        period
-      );
-      return { agentId: u.id, agentName: u.name ?? u.email ?? u.id, unitId: u.unitId, totals: computeAgentTotals(subs) };
-    });
-
+  // Branch rank built from self-submissions only — peers always at 0 API (pre-existing bug).
+  // See FOLLOW_UPS.md "AgentProductionView ranking uses self-only submissions".
+  const { branchRank, branchSize } = useMemo(() => {
+    if (allUsers.length === 0) return { branchRank: null, branchSize: 0 };
+    const agents = allUsers.filter(u => u.role === 'agent' && u.provisioning !== true);
+    const agentTotals = agents.map(u => ({
+      agentId: u.id,
+      agentName: u.name ?? u.email ?? u.id,
+      unitId: u.unitId,
+      totals: computeAgentTotals(
+        filterSubmissionsByPeriod(allSubmissions.filter(s => (s.agentId ?? s.userId) === u.id), period)
+      ),
+    }));
     const ranked = rankAgentsByApi(agentTotals);
-    const me = ranked.find((r) => r.agentId === agentId);
+    const me = ranked.find(r => r.agentId === user?.uid);
+    return { branchRank: me?.rank ?? null, branchSize: agents.length };
+  }, [allUsers, allSubmissions, period, user?.uid]);
 
-    const unitAgents = agents.filter((u) => u.unitId === unitId);
-    const unitSize = unitAgents.length;
-
-    return {
-      unitRank: me?.rankWithinUnit ?? null,
-      unitSize,
-      branchRank: me?.rank ?? null,
-      branchSize,
-    };
-  }, [allUsers, allSubmissions, period, agentId, unitId]);
-
-  const myRow = [{
-    label: userProfile?.name ?? userProfile?.email ?? 'You',
-    nb: myTotals.nb,
-    ppp: { apiIncrease: myTotals.ppp.api, apps: myTotals.ppp.apps },
-    lmps: myTotals.lmps,
-    total: myTotals.totalApi,
-    highlight: true,
-  }];
+  const persDecimal = persHistory[0]?.persistency ?? null;
+  const persDisplay = Number.isFinite(persDecimal) ? `${(persDecimal * 100).toFixed(1)}%` : '—';
 
   if (loading) {
     return <div className="flex items-center justify-center py-12 text-ink-muted text-sm">Loading production data…</div>;
@@ -86,75 +109,111 @@ export default function AgentProductionView() {
     return <div className="py-8 text-center text-danger text-sm">Failed to load production data.</div>;
   }
 
+  const ytdApi = periodTotals.ytd.totalApi;
+  const floorPct = ytdFloor > 0 ? Math.min(100, Math.round((ytdApi / ytdFloor) * 100)) : 0;
+  const aboveFloor = ytdApi >= ytdFloor;
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-4">
+      {/* Controls row */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-base font-semibold text-ink">Production Report</h2>
-        <div className="flex items-center gap-2">
-          <DataSourceBadge source="estimated" />
-          <TimePeriodToggle selected={period} onChange={setPeriod} />
-        </div>
+        <DataSourceBadge source="estimated" />
+        <TimePeriodToggle selected={period} onChange={setPeriod} />
       </div>
 
+      {/* Hero card */}
       <div className="card">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">My Production</p>
-        <ProductionTable rows={myRow} period={period} />
-      </div>
-
-      <div className="card">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-4">My Ranking</p>
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-ink-muted">In your unit</span>
-            <span className="text-sm font-semibold text-ink">
-              {unitRank !== null ? `#${unitRank} of ${unitSize}` : '—'}
-            </span>
+        <div className="flex items-center gap-3">
+          <div
+            className="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center font-bold text-base font-display shrink-0"
+            aria-hidden="true"
+          >
+            {initials}
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-ink-muted">In the branch</span>
-            <span className="text-sm font-semibold text-ink">
-              {branchRank !== null ? `#${branchRank} of ${branchSize}` : '—'}
-            </span>
+          <div className="min-w-0">
+            <p className="text-lg font-bold font-display text-ink leading-tight truncate">
+              {userProfile?.name ?? 'You'}
+            </p>
+            <p className="text-xs text-ink-muted mt-0.5">
+              {unitLabel ?? 'Agent'} · {PERIOD_LABEL[period]}
+            </p>
           </div>
-          {branchRank && branchSize > 0 && (
-            <div className="mt-1">
-              <div className="w-full bg-surface rounded-full h-1.5">
-                <div
-                  className="bg-primary h-1.5 rounded-full transition-all duration-700"
-                  style={{ width: `${Math.max(4, Math.round(((branchSize - branchRank + 1) / branchSize) * 100))}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-ink-muted mt-1">
-                Top {Math.round(((branchRank) / branchSize) * 100)}% of branch
+          <div className="flex-1" />
+          {branchRank && (
+            <div className="text-right shrink-0">
+              <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">Branch rank</p>
+              <p className="text-2xl font-bold font-display text-primary leading-none mt-0.5">
+                #{branchRank}
+                <span className="text-sm text-ink-muted font-normal"> / {branchSize}</span>
               </p>
             </div>
           )}
         </div>
+
+        <div className="flex gap-8 mt-5 flex-wrap">
+          {[
+            { k: 'New API',      v: formatCurrency(myTotals.totalApi) },
+            { k: 'Applications', v: String(myTotals.totalApps) },
+            { k: 'Persistency',  v: persDisplay },
+          ].map(({ k, v }) => (
+            <div key={k}>
+              <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">{k}</p>
+              <p className="text-3xl font-bold font-display text-ink tracking-tight mt-1 leading-none">{v}</p>
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="card">
-        <div className="flex flex-wrap gap-3">
-          <div className="flex-1 min-w-[120px]">
-            <p className="text-xs text-ink-muted">Total API</p>
-            <p className="text-xl font-bold text-primary tabular-nums">{formatCurrency(myTotals.totalApi)}</p>
-          </div>
-          <div className="flex-1 min-w-[100px]">
-            <p className="text-xs text-ink-muted">Apps</p>
-            <p className="text-xl font-bold text-ink tabular-nums">{myTotals.totalApps}</p>
-          </div>
-          {myTotals.ppp.api > 0 && (
-            <div className="flex-1 min-w-[120px]">
-              <p className="text-xs text-ink-muted">PPP</p>
-              <p className="text-xl font-bold text-ink tabular-nums">{formatCurrency(myTotals.ppp.api)}</p>
-            </div>
-          )}
-          {myTotals.lmps.api > 0 && (
-            <div className="flex-1 min-w-[120px]">
-              <p className="text-xs text-ink-muted">LMPS</p>
-              <p className="text-xl font-bold text-ink tabular-nums">{formatCurrency(myTotals.lmps.api)}</p>
-            </div>
-          )}
+      {/* 4-window period grid */}
+      <div>
+        <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted mb-2.5">
+          What I did · week → year
+        </p>
+        <div className="grid grid-cols-4 gap-2.5">
+          {PERIOD_DISPLAY.map(p => {
+            const t = periodTotals[p.id];
+            const active = p.id === period;
+            return (
+              <div
+                key={p.id}
+                className={`rounded-xl p-3 border ${
+                  active ? 'bg-primary-tint border-primary/30' : 'bg-card border-border'
+                }`}
+              >
+                <p className={`text-[9px] font-bold font-mono uppercase tracking-widest ${active ? 'text-primary' : 'text-ink-muted'}`}>
+                  {p.label}
+                </p>
+                <p className="text-lg font-bold font-display text-ink tracking-tight mt-1">
+                  {formatCurrency(t.totalApi)}
+                </p>
+                <p className="text-[10px] text-ink-muted mt-0.5 font-mono">{t.totalApps} apps</p>
+              </div>
+            );
+          })}
         </div>
+      </div>
+
+      {/* YTD vs tenure-floor bar */}
+      <div className="card">
+        <div className="flex items-baseline justify-between mb-2">
+          <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
+            Year to date vs tenure floor
+          </p>
+          <span className="text-xs text-ink-muted tabular-nums">
+            {formatCurrency(ytdApi)} / {formatCurrency(ytdFloor)}
+          </span>
+        </div>
+        <div className="w-full bg-surface-muted rounded-full h-2 overflow-hidden">
+          <div
+            className={`h-2 rounded-full transition-all duration-700 ${aboveFloor ? 'bg-primary' : 'bg-warning'}`}
+            style={{ width: `${floorPct}%` }}
+          />
+        </div>
+        <p className={`text-xs font-semibold mt-2 ${aboveFloor ? 'text-success' : 'text-warning'}`}>
+          {aboveFloor
+            ? `✓ ${floorPct}% — above floor`
+            : `${floorPct}% — keep pushing to clear floor`}
+        </p>
       </div>
     </div>
   );
