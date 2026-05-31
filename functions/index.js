@@ -29,6 +29,10 @@ exports.revokeKioskToken   = require('./kiosk/revokeToken').revokeKioskToken;
 exports.setAgentOfMonth          = require('./agentOfMonth/setAgentOfMonth').setAgentOfMonth;
 exports.getAgentOfMonthCandidates = require('./agentOfMonth/getCandidates').getAgentOfMonthCandidates;
 
+// Track J P1b: Leaderboard-aggregate CF (scheduled + admin-only on-demand callable)
+exports.recomputeLeaderboardScheduled = require('./leaderboard/leaderboardAggregate').recomputeLeaderboardScheduled;
+exports.recomputeLeaderboardOnDemand  = require('./leaderboard/leaderboardAggregate').recomputeLeaderboardOnDemand;
+
 const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
 
 // CSV bulk-import allow-list. tenant_admin and platform_admin are explicitly

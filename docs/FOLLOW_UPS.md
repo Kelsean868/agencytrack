@@ -3234,3 +3234,41 @@ Banked: Track J AgentProductionView v2 port (PR #397), 2026-05-31.
 **Priority:** LOW. The cross-check test makes the twin safe; the maintenance cost of one mirror is small. Revisit when **either** (a) a third mirror pair is needed (would justify a real fix), or (b) gen-1 → gen-2 CF migration becomes work the team wants to do anyway.
 
 Banked: Track J P1a CJS ranking mirror (PR #399), 2026-05-31.
+
+---
+
+## Track J (V2 Redesign) — P1b leaderboard CF: multi-tenant iteration (LOW, banked 2026-05-31, PR #{TBD})
+
+`functions/leaderboard/leaderboardAggregate.js` has `const TENANT_ID = 'tatillife_south'` hardcoded, mirroring the existing SEC-9c pattern (`sendSundayNudge`, `sendMondayNudge`, `flagMissedDeadlines`). The scheduled trigger recomputes leaderboards for that one tenant only.
+
+**Fix shape:** When SEC-9c is addressed at the scheduled-CF layer (multi-tenant scheduled-function isolation), iterate all tenants in `tenants/` and call `computeAndWriteLeaderboards(tid)` per tenant. The on-demand callable already supports `data.tenantId` for `platform_admin`.
+
+**Priority:** LOW. Single-tenant Tatil pilot is the only deployment.
+
+Banked: Track J P1b leaderboard-aggregate CF (PR #{TBD}), 2026-05-31.
+
+---
+
+## Track J (V2 Redesign) — P1b leaderboard CF: on-write trigger optimization (LOW, banked 2026-05-31, PR #{TBD})
+
+P1b uses a scheduled hourly recompute + admin-only on-demand callable. The doc is stale up to ~1 hour after a new submission. An onWrite trigger on `tenants/{tid}/submissions/{subId}` could recompute only the affected branch's leaderboard immediately (model `recomputeJfwCount`).
+
+**Fix shape:** Add `onSubmissionWrite` trigger reading `change.after.data().agentId`, look up the agent's `branchId`, recompute that single branch's leaderboard. Loop-guard via comparing rank arrays or via a "skip if last write was self" sentinel.
+
+**Trade-offs:** (a) freshness improves from 1h to seconds; (b) onWrite fires on every status update + draft save — needs gating on `before.status !== 'submitted' && after.status === 'submitted'` to avoid duplicate work (mirror the `onWarSubmitNotifyUpline` pattern); (c) cost increases linearly with submission volume (50 agents × 1 weekly submission ≈ 50 extra CF invocations/week — negligible).
+
+**Priority:** LOW. The hourly scheduled trigger meets the "feels fresh" bar for an agent dashboard surface. Add when product needs sub-minute freshness (e.g. real-time leaderboard during a sales contest).
+
+Banked: Track J P1b leaderboard-aggregate CF (PR #{TBD}), 2026-05-31.
+
+---
+
+## Track J (V2 Redesign) — P1b leaderboard CF: reconciled-production swap point (FU-2 reference, banked 2026-05-31, PR #{TBD})
+
+The FU-2 reference (originally banked in PR #398 description): when `usesPolicyLedger` H3 flip-gate clears branch-wide and reconciled-production data is available for all agents, the leaderboard CF is the **single swap point** for the entire Leaderboard / Production Report family. Replace `loadInputs` in `functions/leaderboard/leaderboardAggregate.js` with a reconciled-source fetch; the rest of the pipeline (groupByBranch, rankForLeaderboard, agent-readable doc shape) is unchanged. All consumers (P3 podium, P4 around-me, P7 AgentProductionView, BM/UM ProductionViews, kiosk) inherit the switch via the aggregate doc.
+
+**Prerequisite:** Branch-wide `usesPolicyLedger` (not per-agent opt-in).
+
+**Priority:** MEDIUM (inherits from FU-2). Schedule when H3 flip-gate scope is confirmed.
+
+Banked: Track J P1b leaderboard-aggregate CF (PR #{TBD}), 2026-05-31. Cross-reference: FU-2 (PR #398 description; re-anchored on P1a + P1b).

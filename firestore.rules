@@ -621,6 +621,27 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Track J P1b: leaderboard-aggregate doc per branch (precomputed by
+      // recomputeLeaderboardScheduled / recomputeLeaderboardOnDemand CFs via
+      // Admin SDK). Agents read their OWN branch only (SEC-4 doc-read pattern,
+      // since branchId is not reliably on every existing token claim).
+      // Managers-in-scope and kiosk also read; writes are CF-only.
+      match /leaderboards/{branchId} {
+        allow get: if kioskCanRead(tenantId)
+          || (isSignedIn() && getTenantId() == tenantId && (
+               isAgent()
+                 ? callerBranchId(tenantId) == branchId
+                 : canManage(tenantId)
+             ));
+        allow list: if kioskCanRead(tenantId)
+          || (isSignedIn() && getTenantId() == tenantId && (
+               isAgent()
+                 ? callerBranchId(tenantId) == branchId
+                 : canManage(tenantId)
+             ));
+        allow write: if false;
+      }
+
       // F1 (Track F): coaching notes — manager-chain private, agent EXCLUDED.
       //
       // Privacy model: rank-based visibility chain.
