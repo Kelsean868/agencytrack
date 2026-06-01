@@ -118,8 +118,16 @@ if (!kioskHref) {
   await mgrBrowser.close();
   process.exit(1);
 }
-const kioskUrl = kioskHref.startsWith('http') ? kioskHref : `${URL}${kioskHref}`;
-console.log(`[kiosk URL acquired] (length=${kioskUrl.length})`);
+// The manager UI generates a PROD-domain kiosk URL (agencytrack.vercel.app/kiosk/...).
+// For preview verification we rewrite the host to the preview alias so we
+// load the preview build, not the prod build. The kiosk path
+// (/kiosk/{tenantId}/{tokenId}) is identical across deploys.
+let kioskUrl = kioskHref.startsWith('http') ? kioskHref : `${URL}${kioskHref}`;
+if (IS_PROD) {
+  const kioskPath = kioskUrl.replace(/^https?:\/\/[^/]+/, '');
+  kioskUrl = `${URL}${kioskPath}`;
+}
+console.log(`[kiosk URL acquired] (length=${kioskUrl.length}; rewritten=${IS_PROD})`);
 
 // ── Step 2: open the kiosk URL in a fresh context ────────────────────────────
 const { browser: kBrowser, context: kCtx } = await newCtx();
@@ -167,31 +175,37 @@ const accentCounts = await kPage.evaluate(() => ({
 const accentTotal = accentCounts.goldText + accentCounts.haloGold + accentCounts.breathe;
 
 // ── Step 4: wait for panel rotation (welcome 15s → agentOfMonth 45s) ─────────
-console.log(`[panel-1] headline="${initialHeadline}"  accents=${JSON.stringify(accentCounts)}`);
+// Welcome panel has NO h1 — it's <p>Good Morning</p>. AoM-Pending has no
+// greeting either. To detect rotation robustly, fingerprint the visible text:
+// the WelcomePanel always contains "Good Morning|Afternoon|Evening", AoM does
+// not. Rotation = the greeting text disappears, OR a new heading appears.
+const initialBodyFingerprint = await kPage.evaluate(() => {
+  const text = (document.body.textContent || '').replace(/\s+/g, ' ').trim();
+  return text.slice(0, 80);
+});
+console.log(`[panel-1] headline="${initialHeadline}"  accents=${JSON.stringify(accentCounts)}  fp1="${initialBodyFingerprint.slice(0, 50)}"`);
 const rotatedAt = Date.now();
 const rotated = await kPage.waitForFunction(
-  (initial) => {
-    const h1 = document.querySelector('h1');
-    const greet = (document.body.textContent || '').match(/Good (Morning|Afternoon|Evening)/);
-    const cur = h1?.textContent?.trim() || (greet ? greet[0] : null);
-    return cur && cur !== initial;
+  (initialFp) => {
+    const text = (document.body.textContent || '').replace(/\s+/g, ' ').trim();
+    return text.slice(0, 80) !== initialFp;
   },
-  initialHeadline,
-  { timeout: 30_000 }
+  initialBodyFingerprint,
+  { timeout: 25_000, polling: 1000 }
 ).then(() => true).catch(() => false);
 const rotationMs = Date.now() - rotatedAt;
 const newHeadline = await kPage.evaluate(() => {
   const h1 = document.querySelector('h1');
   const greet = (document.body.textContent || '').match(/Good (Morning|Afternoon|Evening)/);
-  return h1?.textContent?.trim() || (greet ? greet[0] : null);
+  const fp = (document.body.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+  return { h1: h1?.textContent?.trim() ?? null, greet: greet ? greet[0] : null, fp };
 });
-console.log(`[panel-2] rotation=${rotated} after ${rotationMs}ms  headline="${newHeadline}"`);
+console.log(`[panel-2] rotation=${rotated} after ${rotationMs}ms  fp2="${newHeadline.fp.slice(0, 50)}"  h1="${newHeadline.h1}"`);
 
 const pass = (
   initialHeadline !== null &&
   accentTotal > 0 &&
   rotated &&
-  newHeadline !== initialHeadline &&
   kErrors.length === 0 &&
   mgrErrors.length === 0
 );
@@ -202,6 +216,7 @@ console.log(JSON.stringify({
   initialHeadline,
   newHeadline,
   accentCounts,
+  accentTotal,
   rotated,
   rotationMs,
   kErrors:   kErrors.length,
