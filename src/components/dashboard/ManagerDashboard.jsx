@@ -1,4 +1,8 @@
-import { useMemo, useState, useEffect } from 'react';
+// Explicit React import — required for vitest compatibility per banked rule
+// (Vite supports automatic JSX transform but vitest does not always apply it).
+// Touched here in Track J P5 because the new ManagerDashboardLeaderboardTab
+// test mounts <ManagerDashboard /> directly.
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
@@ -19,6 +23,7 @@ import GoalsPanel from '../manager/GoalsPanel';
 import SettlementPanel from '../manager/SettlementPanel';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
+import ProductionLeaderboardSurface from '../leaderboard/ProductionLeaderboardSurface';
 import CampaignPanel from '../campaigns/CampaignPanel';
 import UserManagementPanel from '../manager/UserManagementPanel';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
@@ -270,7 +275,19 @@ export default function ManagerDashboard() {
 
         {activeTab === 'policy-reconciliation' && <PolicyReconciliationPanel />}
 
-        {activeTab === 'leaderboard' && <Leaderboard />}
+        {/* Track J P5 — role-conditional Leaderboard tab.
+            UM/BM → ProductionLeaderboardSurface (scoped to their branch via
+            useLeaderboard, with P5a's scope control active). SM (and any
+            other non-UM/BM role that lands here) → unchanged points board;
+            SM has ownedBranchIds:['*'] and no single default branch, so
+            their leaderboard experience is the all-branches picker = P5b.
+            The points-board component stays referenced via this SM/TA/PA
+            arm — not orphaned. Regression-guarded by tests. */}
+        {activeTab === 'leaderboard' && (
+          (role === 'unit_manager' || role === 'branch_manager')
+            ? <ProductionLeaderboardSurface />
+            : <Leaderboard />
+        )}
 
         {activeTab === 'agent-of-month' && <AgentOfMonthTab />}
 
