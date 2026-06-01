@@ -3360,11 +3360,11 @@ Banked: Track J P7 close (PR #403), 2026-05-31.
 ## Track J (V2 Redesign) — P5-prep aggregate-enrichment CF: `previousRank` + `unitId` + last-week champions (MEDIUM, banked 2026-05-31 from PR #402; expanded 2026-05-31 on PR #403/audit + PR #404 — **RESOLVED by PR #405**)
 
 > **RESOLVED 2026-05-31 by Track J P5-prep (PR #405).** All three additions landed in one CF change derived from ONE prior-week computation. Downstream UI consumer status:
-> - (a) **banner re-home** — **SHIPPED in Track J banner-rehome PR #{TBD}** (`WeeklyChampionsBanner` reused unchanged; mounted at the top of `ProductionLeaderboardSurface` via new `useWeeklyChampions` hook + new `src/lib/leaderboard/prevWeekStarting.js` helper that mirrors the CF's `priorWeekStartingString` by construction; 11 parity tests cross-check the doc key against the CJS twin's `getPeriodBoundaries`).
+> - (a) **banner re-home** — **SHIPPED in Track J banner-rehome PR #407** (`WeeklyChampionsBanner` reused unchanged; mounted at the top of `ProductionLeaderboardSurface` via new `useWeeklyChampions` hook + new `src/lib/leaderboard/prevWeekStarting.js` helper that mirrors the CF's `priorWeekStartingString` by construction; 11 parity tests cross-check the doc key against the CJS twin's `getPeriodBoundaries`).
 > - (b) **movement chip** — **SHIPPED in Track J movement-chip PR #406** (`ui/MovementChip` consumed by AroundMeCluster YOU row + isViewer TailRow + isViewer PodiumCard + WhereYouRankPanel YOU row; viewer-only + WEEK-only; direction = `previousRank − rank`; ▲ climbed / ▼ dropped / – even / null no-chip).
-> - (c) **P5a UM unit-scope UI** — UNBLOCKED; ships as its own downstream PR.
+> - (c) **P5a UM/BM unit-scope UI** — **SHIPPED in Track J P5a unit-scope PR #{TBD}** (role-aware scope control on `ProductionLeaderboardSurface`: agent → no control; UM → My Unit / My Branch; BM → My Branch + unit-picker. Scope filter `entries.filter(e.unitId === targetUnitId)` re-ranks via `rankWithinUnit` + rescales `%-of-leader` to unit max API. Persists per-user via `localStorage`. 22 logic tests + 14 surface tests). All three downstream consumers now SHIPPED.
 >
-> The sequencing constraint (must land BEFORE P5's ManagerDashboard nav swap) is satisfied — managers' working champions banner survives until then because P6 only retired the agent nav slot. Original body preserved below for the design-decision trail.
+> The sequencing constraint (must land BEFORE P5's ManagerDashboard nav swap) is satisfied — managers' working champions banner survives until then because P6 only retired the agent nav slot. **P5b (SM scope picker) remains parked** per the brief's locked decision: head-of-sales confirmed (2026-05-31) that an SM oversees ALL branches, so the existing `ownedBranchIds: ['*']` model is correct; P5b would be a single-branch picker over all tenant branches, blocked only on seeding an SM account + a second branch. Original body preserved below for the design-decision trail.
 
 ---
 
