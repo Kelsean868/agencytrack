@@ -21,6 +21,7 @@ export function sanitize(data, commissionRate = 0) {
   const nb   = data.newBusiness  ?? {};
   const ppp  = data.pppIncreases ?? {};
   const lmps = data.lumpsums     ?? {};
+  const spb  = data.socialPlatformBreakdown ?? {};
 
   const lmpsGross      = float(lmps.grossAmount);
   const lmpsApiCredit  = computeLumpsumCredit(lmpsGross);
@@ -109,6 +110,19 @@ export function sanitize(data, commissionRate = 0) {
     targetAppsSold:                int(data.targetAppsSold),
     targetAPI:                     float(data.targetAPI),
     goalNotes:                     String(data.goalNotes ?? ''),
+    // Social & Content (StepSocialMedia — v2 step 4)
+    // Mirrors INITIAL_DATA in WizardForm.jsx ordering (flat keys then nested).
+    // All five fields are whole-number counts → int() like other activity counters.
+    socialPostsTotal:              int(data.socialPostsTotal),
+    socialEngagementTotal:         int(data.socialEngagementTotal),
+    socialInboxEnquiries:          int(data.socialInboxEnquiries),
+    namesFromSocial:               int(data.namesFromSocial),
+    socialPlatformBreakdown: {
+      facebook:  int(spb.facebook),
+      instagram: int(spb.instagram),
+      whatsapp:  int(spb.whatsapp),
+      linkedin:  int(spb.linkedin),
+    },
   };
 }
 

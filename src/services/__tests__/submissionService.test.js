@@ -31,7 +31,7 @@ vi.mock('../../utils/dateHelpers', () => ({
   getMostRecentSunday: vi.fn().mockReturnValue('2026-01-05'),
 }));
 
-import { saveDraft, submitReport } from '../submissionService';
+import { saveDraft, submitReport, sanitize } from '../submissionService';
 import { aggregateCurrentWeekDaily } from '../loggingModeService';
 import { getDailyEntriesForWeek } from '../dailyActivityService';
 
@@ -110,6 +110,128 @@ describe('submissionService.submitReport — unitId in write payload', () => {
       unitId: 'um-uid-001',
       weekStarting: '2026-01-05',
       status: 'submitted',
+    });
+  });
+});
+
+describe('submissionService.sanitize — social & content fields (FU HIGH fix)', () => {
+  // Regression fixture: every social-field key must survive sanitize() with the
+  // correct numeric type. The original bug silently dropped all 5 fields from
+  // every weekly submit (HIGH severity — banked from PR #416 path-A smoke).
+
+  it('retains all 4 flat social fields with int coercion', () => {
+    const out = sanitize({
+      socialPostsTotal:      '11',
+      socialEngagementTotal: '22.7',
+      socialInboxEnquiries:  '33',
+      namesFromSocial:       '44',
+    });
+    expect(out.socialPostsTotal).toBe(11);
+    expect(out.socialEngagementTotal).toBe(22);   // parseInt drops the fraction
+    expect(out.socialInboxEnquiries).toBe(33);
+    expect(out.namesFromSocial).toBe(44);
+    // Types must be number, not string — domain rule (CLAUDE.md): never store
+    // numeric values as strings in Firestore.
+    expect(typeof out.socialPostsTotal).toBe('number');
+    expect(typeof out.socialEngagementTotal).toBe('number');
+    expect(typeof out.socialInboxEnquiries).toBe('number');
+    expect(typeof out.namesFromSocial).toBe('number');
+  });
+
+  it('retains socialPlatformBreakdown with all 4 platform keys int-coerced', () => {
+    const out = sanitize({
+      socialPlatformBreakdown: {
+        facebook:  '5',
+        instagram: '6',
+        whatsapp:  '7',
+        linkedin:  '8',
+      },
+    });
+    expect(out.socialPlatformBreakdown).toEqual({
+      facebook:  5,
+      instagram: 6,
+      whatsapp:  7,
+      linkedin:  8,
+    });
+    Object.values(out.socialPlatformBreakdown).forEach((v) => {
+      expect(typeof v).toBe('number');
+    });
+  });
+
+  it('defaults missing social fields to 0 (numeric, not undefined/null)', () => {
+    const out = sanitize({});
+    expect(out.socialPostsTotal).toBe(0);
+    expect(out.socialEngagementTotal).toBe(0);
+    expect(out.socialInboxEnquiries).toBe(0);
+    expect(out.namesFromSocial).toBe(0);
+    expect(out.socialPlatformBreakdown).toEqual({
+      facebook: 0, instagram: 0, whatsapp: 0, linkedin: 0,
+    });
+  });
+
+  it('defaults missing socialPlatformBreakdown to all-zero shape (not undefined)', () => {
+    const out = sanitize({ socialPostsTotal: 5 });
+    // The nested object must exist with all 4 keys even when input omits it
+    // entirely — never undefined, never partial. Defends against downstream
+    // ?? defaults / chart code that would NaN on undefined.
+    expect(out.socialPlatformBreakdown).toBeDefined();
+    expect(Object.keys(out.socialPlatformBreakdown).sort())
+      .toEqual(['facebook', 'instagram', 'linkedin', 'whatsapp']);
+  });
+
+  it('does not regress existing fields — Step1 + Step4 sample survives intact', () => {
+    const out = sanitize({
+      prospectingLettersSent: '7',
+      f2fAttempts: '3',
+      newBusiness:  { apps: '2', api: '4500.50' },
+      pppIncreases: { apps: '1', apiIncrease: '120' },
+      lumpsums:     { grossAmount: '600' },
+      // Social fields included to prove the additions sit alongside, not replace
+      socialPostsTotal: '11',
+    }, 0);
+    expect(out.prospectingLettersSent).toBe(7);
+    expect(out.f2fAttempts).toBe(3);
+    expect(out.newBusiness).toEqual({ apps: 2, api: 4500.5 });
+    expect(out.pppIncreases).toEqual({ apps: 1, apiIncrease: 120 });
+    expect(out.lumpsums.grossAmount).toBe(600);
+    expect(out.socialPostsTotal).toBe(11);
+    expect(out.version).toBe(2);
+  });
+
+  it('saveDraft payload now includes the 5 social fields end-to-end', async () => {
+    await saveDraft('t1', 'uid-a', 'Agent A', '2026-01-05', {
+      socialPostsTotal:      9,
+      socialEngagementTotal: 99,
+      socialInboxEnquiries:  3,
+      namesFromSocial:       4,
+      socialPlatformBreakdown: { facebook: 5, instagram: 4, whatsapp: 0, linkedin: 0 },
+    }, 0, null);
+    const [, payload] = hoisted.mockSetDoc.mock.calls[0];
+    expect(payload).toMatchObject({
+      socialPostsTotal:      9,
+      socialEngagementTotal: 99,
+      socialInboxEnquiries:  3,
+      namesFromSocial:       4,
+      socialPlatformBreakdown: { facebook: 5, instagram: 4, whatsapp: 0, linkedin: 0 },
+    });
+  });
+
+  it('submitReport payload now includes the 5 social fields end-to-end', async () => {
+    await submitReport('t1', 'uid-a', 'Agent A', '2026-01-05', {
+      socialPostsTotal:      1,
+      socialEngagementTotal: 2,
+      socialInboxEnquiries:  3,
+      namesFromSocial:       4,
+      socialPlatformBreakdown: { facebook: 1, instagram: 2, whatsapp: 3, linkedin: 4 },
+    }, 0, null);
+    const [, payload] = hoisted.mockSetDoc.mock.calls[0];
+    expect(payload).toMatchObject({
+      status: 'submitted',
+      socialPostsTotal:      1,
+      socialEngagementTotal: 2,
+      socialInboxEnquiries:  3,
+      namesFromSocial:       4,
+      socialPlatformBreakdown: { facebook: 1, instagram: 2, whatsapp: 3, linkedin: 4 },
     });
   });
 });
