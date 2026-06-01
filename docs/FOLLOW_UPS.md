@@ -72,9 +72,13 @@ No user impact, no data integrity issue. The error logs to console but doesn't s
 
 ---
 
-## Wizard v2 PR2 — live-compute layer (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416)
+## ~~Wizard v2 PR2 — live-compute layer~~ (RESOLVED — PR #{TBD}, `{TBD}`, 2026-06-01)
 
-**Status:** ready to dispatch AFTER PR1 (#416, `ebefb89`) merges. **Dispatcher recommendation per Phase 6 close-out:** ship the HIGH social-sanitize fix (this file) FIRST.
+**Status:** RESOLVED in PR #{TBD} (`{TBD}`). Additive overlay on the PR1 shell: `WeekSoFarPanel` (desktop right rail + mobile collapsed strip) + `MiniSparkline` + `computeWizardLive` pure-function lib + per-field last-week hints. Decisions A/C/D/E locked: NAMES = canonical `totalNewNames` (7-field, namesFromSocial-exclusion proven); ciConv = `NB.apps / ciConducted × 100` matching `closingRatio`; totalProductionAPI delegates to canonical `computeTotalProductionCredit` (10-case parity fuzz test); lumpsum rates from `wizardLive.config.js`. ONE Firestore read via new `getRecentSubmissions(tenantId, uid, 6)` serves both lastWeek + sparkline. Persisted shape + submit path UNCHANGED. 25 compute-lib + 15 panel component tests; 1987/1987 vitest. Mobile expand-to-sheet deferred — see "Wizard v2 PR2 — mobile expand-to-sheet" LOW FU below. Original banking content retained for closure trail.
+
+---
+
+**Original banking content:**
 
 PR1 ports the structural shell only. PR2 adds the v2 mockup's live-compute layer:
 
@@ -88,6 +92,54 @@ PR1 ports the structural shell only. PR2 adds the v2 mockup's live-compute layer
 **Why MEDIUM (not LOW):** the panel is the v2 mockup's most visible win for agents — instant feedback on weekly production. Worth doing soon after PR1 lands.
 
 **Cross-reference:** `design_handoff_v2_app/mockups/wizard-v2-shared.jsx` (`WeekSoFarPanel`, `MiniSparkline`, `computeWizardLive` reference impl).
+
+---
+
+## Social-channel inclusion in canonical aggregations — should `namesFromSocial` count toward app-wide NAMES / activity totals? (MEDIUM, banked 2026-06-01 from Wizard v2 PR2)
+
+**Status:** decision needed; touches awards-floor calibration.
+
+**Background.** PR #417 closed the silent-data-loss gap on the 5 social/content fields — `namesFromSocial` now persists per submission. But it is INTENTIONALLY EXCLUDED from the canonical 7-field `computeTotalNewNames` formula (`src/utils/extractFields.js` — `totalNewNames` = `namesFromColdCanvass + referralsObtained + namesFromSeminarsConducted + namesFromSeminarsAttended + namesFromTradeshowsConducted + namesFromTradeshowsAttended + namesFromOther`). The exclusion isn't a bug — the canonical formula predates the social-fields schema addition, and the head-of-sales activity floors were confirmed against the 7-field basis on 2026-05-21. Wizard v2 PR2 (dispatcher option A) locked the wizard NAMES scorecard to the 7-field canonical so the wizard + kiosk + Master Sheet + awards floors + CF stay in lockstep.
+
+**The question.** Should `namesFromSocial` start counting toward the app-wide aggregates? If yes:
+
+- `extractFields.js` `computeTotalNewNames` → 8-field (adds `namesFromSocial`).
+- `functions/utils/fieldHelpers.js` `activityTotal` → ticks up by the same delta (currently `totalNewNames + totalTelAttempts + ffiConducted + ciConducted`).
+- `src/utils/weeklyActivityFloors.js` `referralsNewLeads` floor → consumes the higher number; thresholds may need re-tuning.
+- `src/components/kiosk/panels/WeeklyActivityPanel.jsx` "names" row → ticks up.
+- `src/components/manager/MasterSheet.jsx` "New Names" column → ticks up.
+- AgentReportDocument funnel + ratios → unchanged (uses `applicationsSold` for the App row, not totalNewNames).
+- Cross-surface ripple → awards re-calibration is the load-bearing piece.
+
+**Why MEDIUM.** Touches awards calibration and head-of-sales-confirmed thresholds. Not a silent-data-loss bug like #417 (the data flows through `sanitize()` and persists correctly now). But it IS the second incomplete-social-integration found after #417 — a sweep audit of ALL canonical aggregations that touch `social*` fields is warranted, not just `totalNewNames`.
+
+**Scope when dispatched:**
+
+1. **Audit ALL social-field consumers** across `src/` + `functions/` — every aggregation, ratio, and floor that reads from extracted fields. Enumerate which ones currently include each `social*` field and which don't. List divergences.
+2. **Head-of-sales decision** on whether to include `namesFromSocial` (and any other social fields) in `totalNewNames` / `activityTotal` / `referralsNewLeads` floor / kiosk display / Master Sheet.
+3. If yes: update the canonical functions, re-tune the awards floor thresholds, and verify across the audit list.
+4. Banked decision lives in the brief and propagates via `computeTotalNewNames` (single source of truth).
+
+**Cross-reference:** `src/utils/extractFields.js:124` `f.totalNewNames = computeTotalNewNames(f)`; `src/utils/extractFields.js:140-160` exported `computeTotalNewNames`; `functions/utils/fieldHelpers.js:43-60` CF `activityTotal`; `src/utils/weeklyActivityFloors.js:55,76` `referralsNewLeads`. PR2 dispatcher decision A (option A) locks the wizard panel to the canonical 7-field formula until this FU resolves.
+
+---
+
+## Wizard v2 PR2 — mobile expand-to-sheet variant (LOW, banked 2026-06-01 from Wizard v2 PR2)
+
+**Status:** deferred; PR2 brief explicitly carved this out.
+
+**Background.** PR2 ships the mobile collapsed strip — a compact 1-row hero with the live Production API + delta chip + 4-tile mini scorecard. The mockup ALSO shows an expand-to-sheet variant: tapping the strip slides up a full-height sheet (`role=dialog`, `aria-modal`) showing the same content as the desktop right rail panel (hero + 2×2 scorecards + sparkline + still-to-enter hint), full-bleed on mobile.
+
+**Why LOW.** Collapsed strip already delivers the persistent-live-feedback value prop; expand-to-sheet is a "nice to have" depth gesture. PR2 brief deferred to keep scope focused on the canonical-formula reuse + decisions A/C/D/E. Not blocking.
+
+**Scope when dispatched:**
+
+1. New `WeekSoFarSheet.jsx` component that renders the same content as the desktop `WeekSoFarPanel` (factor shared `Hero` + `Scorecard` + sparkline render functions into a small `WeekSoFarContent.jsx` to share between panel variants).
+2. Tap handler on the mobile strip opens the sheet; ESC + scrim + handle-drag-down close it. `focus-trap` while open. `motion-reduce:transition-none` guards.
+3. Mobile strip stays present underneath; sheet just overlays.
+4. Tests: open/close gesture + focus-trap + a11y attributes.
+
+**Cross-reference:** `src/components/wizard/v2chrome/WeekSoFarPanel.jsx` `variant="mobile"` block; `design_handoff_v2_app/mockups/wizard-v2-shared.jsx` (sheet variant not drawn — match the desktop variant content).
 
 ---
 

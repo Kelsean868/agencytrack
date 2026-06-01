@@ -42,7 +42,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { X, Check, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { saveDraft, submitReport, getDraft, getLastSubmission } from '../../services/submissionService';
+import WeekSoFarPanel from './v2chrome/WeekSoFarPanel';
+import { saveDraft, submitReport, getDraft, getRecentSubmissions } from '../../services/submissionService';
 import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
@@ -201,6 +202,7 @@ export default function WizardForm({ onClose, initialWeek }) {
   const [step, setStep]                 = useState(1);   // 1..PR1_FINAL_STEP
   const [formData, setFormData]         = useState(INITIAL_DATA);
   const [lastWeekData, setLastWeekData] = useState(null);
+  const [recentSubmissions, setRecentSubmissions] = useState([]);
   const [draftStatus, setDraftStatus]   = useState(null);
   const [submissionData, setSubmissionData] = useState(null);
   const [viewingSubmission, setViewingSubmission] = useState(false);
@@ -226,8 +228,18 @@ export default function WizardForm({ onClose, initialWeek }) {
 
   useEffect(() => {
     if (!user) return;
-    getLastSubmission(tenantId, user.uid).then(setLastWeekData).catch(console.error);
-  }, [user, tenantId]);
+    // ONE read serves both lastWeekData (index 0) AND the 6-week sparkline
+    // (slice 0..5) for the WeekSoFarPanel. Depend on `user?.uid` (primitive)
+    // rather than `user` (new object ref every render via useAuth) so this
+    // effect doesn't refire on every render and loop through setState.
+    getRecentSubmissions(tenantId, user.uid, 6)
+      .then((recent) => {
+        setRecentSubmissions(recent);
+        setLastWeekData(recent[0] ?? null);
+      })
+      .catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.uid, tenantId]);
 
   useEffect(() => {
     if (!weekStarting || !user) return;
@@ -464,7 +476,8 @@ export default function WizardForm({ onClose, initialWeek }) {
         </div>
       )}
 
-      {/* Body */}
+      {/* Body — flex row on lg+ so the WeekSoFarPanel can sit in the right rail. */}
+      <div className="flex-1 flex flex-row overflow-hidden" data-testid="wizard-v2-body-row">
       <main className="flex-1 overflow-y-auto">
         {/* Date picker */}
         {screen === 'date' && (
@@ -557,6 +570,40 @@ export default function WizardForm({ onClose, initialWeek }) {
           <p className="px-4 pb-4 text-sm text-danger text-center" role="alert">{error}</p>
         )}
       </main>
+
+      {/* Desktop WeekSoFarPanel — right rail, lg+ only, only during the step flow */}
+      {screen === 'step' && (
+        <aside
+          className="hidden lg:flex border-l border-border bg-bg overflow-y-auto px-4 py-4"
+          aria-label="Live week-so-far panel"
+        >
+          <WeekSoFarPanel
+            formData={formData}
+            commissionRate={userProfile?.commissionRate ?? 0}
+            lastWeekData={lastWeekData}
+            recentSubmissions={recentSubmissions}
+            currentStep={step}
+            totalSteps={TOTAL_STEPS_DISPLAY}
+            variant="desktop"
+          />
+        </aside>
+      )}
+      </div>
+
+      {/* Mobile WeekSoFarPanel — collapsed strip above the footer, lg-only-hidden. */}
+      {screen === 'step' && (
+        <div className="lg:hidden px-4 pb-2 shrink-0">
+          <WeekSoFarPanel
+            formData={formData}
+            commissionRate={userProfile?.commissionRate ?? 0}
+            lastWeekData={lastWeekData}
+            recentSubmissions={recentSubmissions}
+            currentStep={step}
+            totalSteps={TOTAL_STEPS_DISPLAY}
+            variant="mobile"
+          />
+        </div>
+      )}
 
       {/* Submission viewer overlay (reused unchanged from the History tab) */}
       {viewingSubmission && submissionData && (

@@ -42,7 +42,10 @@ vi.mock('../../../context/AuthContext', () => ({
 vi.mock('../../../services/submissionService', () => ({
   saveDraft: mockSaveDraft,
   getDraft: mockGetDraft,
+  // Legacy mock retained for any direct callers + transitive back-compat;
+  // the wizard now reads via `getRecentSubmissions` instead.
   getLastSubmission: mockGetLastSubmission,
+  getRecentSubmissions: vi.fn(() => Promise.resolve([])),
   submitReport: vi.fn(() => Promise.resolve()),
   sanitize: (d) => d,
 }));

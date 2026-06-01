@@ -156,15 +156,39 @@ export async function getDraft(tenantId, uid, weekStarting) {
   return snap.exists() ? snap.data() : null;
 }
 
-export async function getLastSubmission(tenantId, uid) {
+/**
+ * Read up to N most-recent submissions for an agent, ordered newest first.
+ *
+ * Used by the Wizard v2 PR2 panel to power both the lastWeek delta chips
+ * (index 0) and the 6-week Production-API sparkline (slice 0..n-1) from
+ * ONE Firestore read.
+ *
+ * @param {string} tenantId
+ * @param {string} uid
+ * @param {number} n - max submissions to return (default 6)
+ * @returns {Promise<Array<object>>} raw submission docs, newest first
+ */
+export async function getRecentSubmissions(tenantId, uid, n = 6) {
   const q = query(
     collection(db, `tenants/${tenantId}/submissions`),
     where('agentId', '==', uid),
     orderBy('weekStarting', 'desc'),
-    limit(1)
+    limit(Math.max(1, n)),
   );
   const snap = await getDocs(q);
-  return snap.empty ? null : snap.docs[0].data();
+  return snap.docs.map((d) => d.data());
+}
+
+/**
+ * Read the agent's single most-recent submission.
+ *
+ * Thin wrapper over `getRecentSubmissions(tenantId, uid, 1)` — preserved for
+ * backward compatibility with existing callers (Wizard v2 shell + tests).
+ * Returns null when the agent has no submissions yet.
+ */
+export async function getLastSubmission(tenantId, uid) {
+  const recent = await getRecentSubmissions(tenantId, uid, 1);
+  return recent[0] ?? null;
 }
 
 export async function getAgentSubmissions(tenantId, uid) {
