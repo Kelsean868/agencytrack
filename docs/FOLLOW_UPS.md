@@ -66,9 +66,9 @@ No user impact, no data integrity issue. The error logs to console but doesn't s
 
 ---
 
-## Wizard v2 PR2 — live-compute layer (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #{TBD})
+## Wizard v2 PR2 — live-compute layer (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416)
 
-**Status:** ready to dispatch AFTER PR1 (#{TBD}) merges.
+**Status:** ready to dispatch AFTER PR1 (#416, `ebefb89`) merges. **Dispatcher recommendation per Phase 6 close-out:** ship the HIGH social-sanitize fix (this file) FIRST.
 
 PR1 ports the structural shell only. PR2 adds the v2 mockup's live-compute layer:
 
@@ -85,7 +85,7 @@ PR1 ports the structural shell only. PR2 adds the v2 mockup's live-compute layer
 
 ---
 
-## Wizard v2 PR3 — discrete Review step + Edit·Step-N jump-back + submit celebration (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #{TBD})
+## Wizard v2 PR3 — discrete Review step + Edit·Step-N jump-back + submit celebration (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416)
 
 **Status:** ready to dispatch AFTER PR2 lands (PR1 → PR2 → PR3 sequence).
 
@@ -102,7 +102,7 @@ PR1 ends step 11 with a direct submit. PR3 reintroduces the v2 mockup's discrete
 
 ---
 
-## Wizard v2 — Decision-A SUGGESTED-atom + goal-seeding (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #{TBD})
+## Wizard v2 — Decision-A SUGGESTED-atom + goal-seeding (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416)
 
 **Status:** product decision needed BEFORE the SUGGESTED atom is wired.
 
@@ -126,6 +126,34 @@ These existing reads use the existing `SuggestedField` atom + the `WizardForm`'s
 **Why MEDIUM:** core UX hint that closes the v2 mockup's most-explicit deferred decision. Doesn't block PR2 or PR3.
 
 **Cross-reference:** PR1 brief's Decision A (originally deferred); `design_handoff_v2_app/mockups/wizard-v2-shared.jsx` `NumField` SUGGESTED hint pattern.
+
+---
+
+## Post-PR3 — legacy `wizard/steps/Step1–9.jsx` retirement + `v2steps/` markup dedupe (LOW, banked 2026-06-01 from Wizard v2 PR1 shell #416)
+
+**Status:** dispatched ONLY after Wizard v2 PR3 lands AND the v2 wizard is the only live path. Until then, the legacy `wizard/steps/Step1–9.jsx` files remain on disk as the easy-revert escape hatch (canonical Wizard rule from CLAUDE.md: "Step1–Step9 files are NEVER modified. WizardForm.jsx groups them into 5 screens. Revert to 9 steps = one git revert on WizardForm.jsx only.")
+
+PR1's structural shell drove a deliberate duplication that needs to be unwound once the v2 wizard is fully live:
+
+- **`wizard/v2steps/StepLettersOutreach.jsx`** re-fans the "Letters & Outreach" Card markup that lives in `wizard/steps/Step1Prospecting.jsx`.
+- **`wizard/v2steps/StepSeminarsTradeshows.jsx`** re-fans the Seminars + Tradeshows Cards from `Step1Prospecting.jsx`.
+- **`wizard/v2steps/StepCallsF2F.jsx`** combines markup from `Step2Telephone.jsx` + Step1's F2F Card.
+- Steps 5–11 use the legacy `Step5NewNames.jsx` / `Step6DeliveriesService.jsx` / etc. files 1:1; no v2 re-fan needed (they slot in unchanged).
+
+After PR3 ships (v2 = live default + no live consumer for the legacy steps):
+
+1. Verify nothing imports `wizard/steps/Step1Prospecting.jsx` or `Step2Telephone.jsx` (or any other legacy step file).
+2. Delete the orphaned legacy step files (Step1–9 once confirmed all consumers migrated).
+3. Audit `v2steps/` for any markup that could fold back into shared atoms in `CardStack.jsx` (the re-fans were screen-by-screen literal ports; some atoms may merge).
+4. Update `tailwind.config.js` content globs if any path changes affect class extraction.
+5. Update CLAUDE.md's wizard-rules section to retire the "Step1–9 NEVER modified" rule (the easy-revert property is then traded for the v2 dead-code elimination).
+6. Bank a NEW easy-revert mechanism for the v2 wizard (likely: keep the v2 wizard's compose layer pure so the rewire IS the revert surface).
+
+**Why LOW:** no user impact, no data integrity concern, no perf regression. Dead-code accumulation is the only cost. Worth doing for clarity but not urgent.
+
+**Why deferred (not done as part of any sooner PR):** the easy-revert property is the dispatcher's primary safety net for the entire Wizard v2 series. Retiring it before PR3 ships removes the most surgical rollback path. Keep until PR3 + a stabilization window has passed.
+
+**Cross-reference:** `src/components/wizard/v2steps/*.jsx` (new in PR1) · `src/components/wizard/steps/Step1Prospecting.jsx`, `Step2Telephone.jsx` (the duplicated source markup) · CLAUDE.md "Key Technical Decisions" Wizard rule.
 
 ---
 
