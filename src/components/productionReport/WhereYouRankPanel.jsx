@@ -27,6 +27,7 @@ import React, { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { computeAroundMe } from '../../lib/leaderboard/aroundMeLogic';
+import MovementChip from '../ui/MovementChip';
 
 const ME_RING_STYLE = {
   boxShadow: 'inset 0 0 0 1.5px var(--color-primary)',
@@ -113,11 +114,19 @@ function RankRow({ entry, isViewer, viewerName }) {
       {/* Name + unit */}
       <div className="flex-1 min-w-0">
         <div
-          className={`text-sm truncate ${
+          className={`text-sm flex items-center gap-1.5 ${
             isViewer || isUnrankedRow ? 'font-bold text-primary' : 'font-semibold text-ink'
           }`}
         >
-          {displayName}
+          <span className="truncate">{displayName}</span>
+          {/* Track J movement chip — viewer-only, ranked-only (skipped on
+              unranked YOU row — no current rank). WEEK-only via data: the
+              aggregate's WEEK field carries previousRank; MTD/QTD/YTD have
+              null → chip renders nothing. The panel's period is set by the
+              parent (`AgentProductionView`) and naturally flows through. */}
+          {isViewer && !isUnrankedRow && (
+            <MovementChip previousRank={entry.previousRank} rank={entry.rank} />
+          )}
         </div>
         {isUnrankedRow ? (
           <div className="text-[10px] text-ink-muted mt-0.5 font-mono">

@@ -23,6 +23,7 @@
 import React, { useMemo, useState } from 'react';
 import { formatCurrency } from '../../utils/formatters';
 import MedalCoin from '../ui/MedalCoin';
+import MovementChip from '../ui/MovementChip';
 import useLeaderboard from '../../hooks/useLeaderboard';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -88,7 +89,9 @@ function PeriodChips({ value, onChange }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Podium card — top-3 hero treatment
 // ─────────────────────────────────────────────────────────────────────────────
-function PodiumCard({ entry, label, isChampion = false, isCenter = false, isViewer = false }) {
+// Exported for component tests in __tests__/MovementChipIntegration.test.jsx.
+// Render shape is identical when invoked internally vs externally.
+export function PodiumCard({ entry, label, isChampion = false, isCenter = false, isViewer = false }) {
   const apiDisplay = formatCurrency(entry.periodApi ?? 0);
   return (
     <div
@@ -108,6 +111,13 @@ function PodiumCard({ entry, label, isChampion = false, isCenter = false, isView
           className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-full bg-primary dark:bg-primary-dark text-white text-[9px] font-bold font-mono uppercase tracking-widest shadow-sm"
         >
           You
+        </div>
+      )}
+      {/* Track J movement chip — viewer-only, WEEK-only (null on non-week
+          periods via the data path). Top-right counterweights the YOU pill. */}
+      {isViewer && (
+        <div className="absolute top-2 right-2 z-10">
+          <MovementChip previousRank={entry.previousRank} rank={entry.rank} />
         </div>
       )}
       {/* Corner glow — wider on the center card */}
@@ -227,11 +237,17 @@ export function TailRow({ entry, leaderApi, isLast, isViewer = false }) {
         )}
         <div className="min-w-0">
           <div
-            className={`text-sm truncate ${
+            className={`text-sm truncate flex items-center gap-1.5 ${
               isViewer ? 'font-bold text-primary' : 'font-semibold text-ink'
             }`}
           >
-            {isViewer ? `You · ${entry.name.split(' ')[0]}` : entry.name}
+            <span className="truncate">
+              {isViewer ? `You · ${entry.name.split(' ')[0]}` : entry.name}
+            </span>
+            {/* Track J movement chip — viewer-only, WEEK-only (null elsewhere). */}
+            {isViewer && (
+              <MovementChip previousRank={entry.previousRank} rank={entry.rank} />
+            )}
           </div>
           {entry.unitName && (
             <div className="text-[10.5px] text-ink-muted mt-0.5 font-mono tracking-wide">
