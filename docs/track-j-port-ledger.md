@@ -1,6 +1,6 @@
 # Track J — V2 Redesign port-completeness ledger
 
-**Snapshot date:** 2026-06-01 (main HEAD `91f9054`, post-PR-#414 — Track J System Screens v2; awaiting PR #415 Emails v2 to land the final stacked-sequence piece)
+**Snapshot date:** 2026-06-01 (main HEAD `aae5c35`, post-PR-#415 — Track J Emails v2 — completes the stacked Kiosk→SystemScreens→Emails sequence; functions deploy still pending)
 
 **Source of truth:** `design_handoff_v2_app/mockups/` — 35 `.html` files, of which **34 are canonical screens** per the v2 handoff README §6 (`app-leaderboard-around-me.html` is an auxiliary artboard inside the Leaderboard screen, not a separate canonical screen).
 
@@ -10,9 +10,9 @@
 
 ## Headline (snapshot)
 
-**13 of 34 v2 screens ported.** Post #412 (Agent Awards manager-side carve-out fully ported row 13) + #413 (Kiosk Mode row 31) + #414 (System Screens row 33). Persistency v2 row 10 remains agent-side-only (manager-entry side pending). Leaderboard row 28 fully ported through #411 (agent + UM/BM/SM).
+**14 of 34 v2 screens ported.** Track J stacked-sequence finale: #413 Kiosk + #414 System Screens + #415 Emails. Persistency v2 row 10 remains agent-side-only (manager-entry side pending). Leaderboard row 28 fully ported through #411 (agent + UM/BM/SM).
 
-**21 pending v2 mockups remain to port** (after PR #415 Emails v2 lands, drops to **20 pending**). Surprise-stop on the first restyle attempt (Wizard v2, this session) surfaced a class of brief-vs-mockup contradictions that means several "pending restyle" rows are actually **REDESIGN**s, not chrome-only restyles. See `docs/FOLLOW_UPS.md` for the Wizard v2 REDESIGN reclassification; STEP 2 of the same session re-classifies the remaining 23.
+**20 pending v2 mockups remain to port.** Surprise-stop on the first restyle attempt (Wizard v2, this session) surfaced a class of brief-vs-mockup contradictions that means several "pending restyle" rows are actually **REDESIGN**s, not chrome-only restyles. See `docs/FOLLOW_UPS.md` for the Wizard v2 REDESIGN reclassification; STEP 2 of the same session re-classifies the remaining 23.
 
 ## Ledger — 34 canonical v2 screens
 
@@ -51,7 +51,7 @@
 | 31 | Kiosk Mode | **PORTED** | [#413](https://github.com/Kelsean868/agencytrack/pull/413) (`e685610`) | `kiosk/KioskShell.jsx`, `KioskModeTab.jsx`, `KioskRoute.jsx`, `kiosk/panels/*` | Animation/visual restyle on `--color-presentation-*` (+ new `gold`/`hot` accents). Infra/routes/validation/rotation UNTOUCHED |
 | 32 | Meeting Mode v2 | PENDING | — | `manager/MeetingMode.jsx` | |
 | 33 | System Screens | **PORTED** | [#414](https://github.com/Kelsean868/agencytrack/pull/414) (`91f9054`) | `auth/LoginScreen.jsx` ✓ · `App.jsx` (LoadingScreen / PlatformAdminStubScreen / ProvisioningScreen) ✓ · `onboarding/*`, `ui/Toast`, `ConfirmDialog`, `NotificationDrawer` already token-driven (no v2 deltas needed) | Animated drifting glyph backdrop + liquid-glass card + password eye-toggle. Auth flow + AppRoot routing UNCHANGED (the brief's danger zone) |
-| 34 | Emails | PENDING | — | `functions/email-templates/*.html` (monday-nudge, sunday-nudge, password-reset) | Server-rendered HTML, separate path per README §8 |
+| 34 | Emails | **PORTED** | [#415](https://github.com/Kelsean868/agencytrack/pull/415) (`aae5c35`) | `functions/email-templates/{monday-nudge,sunday-nudge,password-reset}.{html,txt}` | Email-hex exception applies (inline raw hex required); verified by static render not preview smoke. **Functions deploy gated** — takes effect ONLY after `firebase deploy --only functions` |
 
 ## Pending — 24 screens
 
@@ -76,7 +76,6 @@
 29. CRO (also needs role routing decision per README §7)
 30. Policy Reconciliation
 32. Meeting Mode v2
-34. Emails
 
 ## Partial-port carve-outs (already counted as PORTED above)
 
