@@ -26,7 +26,10 @@ import MedalCoin from '../ui/MedalCoin';
 import MovementChip from '../ui/MovementChip';
 import useLeaderboard from '../../hooks/useLeaderboard';
 import useWeeklyChampions from '../../hooks/useWeeklyChampions';
+import useLeaderboardScope from '../../hooks/useLeaderboardScope';
 import WeeklyChampionsBanner from '../gamification/WeeklyChampionsBanner';
+import LeaderboardScopeControl from './LeaderboardScopeControl';
+import { applyScope, unitOptionsFromRanking } from '../../lib/leaderboard/scopeFilter';
 import { useAuth } from '../../context/AuthContext';
 import {
   computeAroundMe,
@@ -304,9 +307,10 @@ export default function ProductionLeaderboardSurface() {
   const [period, setPeriod] = useState('YTD');
   const { loading, error, byPeriod, doc } = useLeaderboard();
   const { champions, loading: championsLoading } = useWeeklyChampions();
-  const { user, userProfile } = useAuth();
-  const viewerUid = user?.uid ?? null;
-  const viewerName = userProfile?.name ?? null;
+  const { user, userProfile, role } = useAuth();
+  const viewerUid    = user?.uid ?? null;
+  const viewerName   = userProfile?.name ?? null;
+  const viewerBranch = userProfile?.branchName ?? null;
 
   const activeField = useMemo(
     () => PERIODS.find((p) => p.k === period)?.field ?? 'ytd',
@@ -317,19 +321,52 @@ export default function ProductionLeaderboardSurface() {
     [period]
   );
 
-  // Memoize ranking so its identity is stable across re-renders that don't
-  // change byPeriod / activeField — keeps the around-me useMemo deps stable.
-  const ranking = useMemo(
+  // Branch-wide ranking from the loaded period. The scope filter (P5a) takes
+  // this as input and returns the displayed ranking + scoped leaderApi.
+  const branchRanking = useMemo(
     () => byPeriod[activeField] ?? [],
     [byPeriod, activeField]
   );
-  const podium  = ranking.slice(0, 3);
-  const tail    = ranking.slice(3, 8);
-  const leaderApi = ranking[0]?.periodApi ?? 0;
+
+  // ── P5a scope: derive unit-picker options + manage the scope state ───────
+  const unitOptions = useMemo(
+    () => unitOptionsFromRanking(branchRanking),
+    [branchRanking]
+  );
+  const availableUnitIds = useMemo(
+    () => unitOptions.map((u) => u.unitId),
+    [unitOptions]
+  );
+  const {
+    scope, targetUnitId, selectBranch, selectUnit,
+  } = useLeaderboardScope({ uid: viewerUid, role, availableUnitIds });
+
+  // Apply the scope filter — `ranking` from here on is the DISPLAYED set
+  // (podium / tail / around-me / leaderApi all derive from it). My Branch
+  // → branchRanking passthrough; My Unit → filtered + rank-remapped to
+  // rankWithinUnit + leaderApi rescaled to the unit's max.
+  const {
+    displayedRanking: ranking,
+    scopedLeaderApi: leaderApi,
+    count: scopeCount,
+  } = useMemo(
+    () => applyScope({ ranking: branchRanking, scope, targetUnitId }),
+    [branchRanking, scope, targetUnitId]
+  );
+
+  const podium = ranking.slice(0, 3);
+  const tail   = ranking.slice(3, 8);
+
+  // Scope label for the subtitle (e.g. "South · Lee's Unit").
+  const scopeLabel = useMemo(() => {
+    if (scope === 'branch') return viewerBranch || 'Branch';
+    const picked = unitOptions.find((u) => u.unitId === targetUnitId);
+    return `${viewerBranch || 'Branch'} · ${picked?.unitName || 'Unit'}`;
+  }, [scope, targetUnitId, unitOptions, viewerBranch]);
 
   // P4 — compute around-me state for BOTH breakpoints (one is rendered via
   // sm:hidden, the other via hidden sm:block). Recomputes on period change
-  // because `ranking` is a useMemo-derivative of `period`.
+  // OR on scope change because `ranking` is a useMemo-derivative of both.
   const aroundMeDesktop = useMemo(
     () => computeAroundMe({ ranking, viewerUid, visibleMax: VISIBLE_MAX_DESKTOP }),
     [ranking, viewerUid]
@@ -339,10 +376,11 @@ export default function ProductionLeaderboardSurface() {
     [ranking, viewerUid]
   );
 
-  // A "slow period" is one where the period array exists but every entry is
-  // at 0 API (e.g. a fresh WK where no submissions have landed yet). We treat
-  // that the same as empty — an honest "no production logged" state — rather
-  // than showing a podium of all-zero champions.
+  // A "slow period" is one where the (scoped) period array exists but every
+  // entry is at 0 API (e.g. a fresh WK where no submissions have landed yet,
+  // or a scoped unit with no production). We treat that the same as empty —
+  // an honest "no production logged" state — rather than showing a podium of
+  // all-zero champions.
   const isSlowOrEmpty =
     ranking.length === 0 ||
     (leaderApi === 0 && ranking.every((e) => (e.periodApi ?? 0) === 0));
@@ -400,7 +438,9 @@ export default function ProductionLeaderboardSurface() {
           honestly (no rules denial; the CF always writes the doc). */}
       <WeeklyChampionsBanner champions={champions} loading={championsLoading} />
 
-      {/* Header — title block + period chips */}
+      {/* Header — title block + scope control + period chips. Scope sits
+          LEFT of the period chips on desktop, stacked above on mobile.
+          Agents get no scope control (role-gated inside the component). */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <p
@@ -415,8 +455,39 @@ export default function ProductionLeaderboardSurface() {
               : period === 'QTD' ? "Who's leading the quarter."
               : "Who's leading the year."}
           </h2>
+          {/* Scope+count subtitle — always rendered (agents see scope=branch,
+              managers see their selection reflected). Reads "South · Lee's
+              Unit · YTD · 4 agents". */}
+          <p
+            data-testid="leaderboard-scope-subtitle"
+            data-scope={scope}
+            data-count={scopeCount}
+            className="text-[10.5px] font-mono uppercase tracking-widest text-ink-muted mt-1"
+          >
+            {scopeLabel} · {period} · {scopeCount} agent{scopeCount === 1 ? '' : 's'}
+          </p>
         </div>
-        <PeriodChips value={period} onChange={setPeriod} />
+
+        {/* Right cluster: scope control (managers only) + a 1px divider +
+            period chips. The flex wrapper stacks on mobile (gap-2) and
+            inlines on sm+ via the parent's sm:flex-row. */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+          <LeaderboardScopeControl
+            role={role}
+            viewerUid={viewerUid}
+            scope={scope}
+            targetUnitId={targetUnitId}
+            unitOptions={unitOptions}
+            onSelectBranch={selectBranch}
+            onSelectUnit={selectUnit}
+          />
+          {/* Vertical 1px divider — only when the scope control is visible
+              AND we're on sm+ (mobile stacks them with no divider). */}
+          {(role === 'unit_manager' || role === 'branch_manager') && (
+            <div aria-hidden="true" className="hidden sm:block w-px h-7 bg-border" />
+          )}
+          <PeriodChips value={period} onChange={setPeriod} />
+        </div>
       </div>
 
       {/* Empty / slow-period — replaces podium + tail but keeps the chips above */}
