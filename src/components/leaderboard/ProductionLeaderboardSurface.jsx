@@ -25,6 +25,8 @@ import { formatCurrency } from '../../utils/formatters';
 import MedalCoin from '../ui/MedalCoin';
 import MovementChip from '../ui/MovementChip';
 import useLeaderboard from '../../hooks/useLeaderboard';
+import useWeeklyChampions from '../../hooks/useWeeklyChampions';
+import WeeklyChampionsBanner from '../gamification/WeeklyChampionsBanner';
 import { useAuth } from '../../context/AuthContext';
 import {
   computeAroundMe,
@@ -301,6 +303,7 @@ const PODIUM_LABELS = ['Champion', 'Runner-up', 'Third place'];
 export default function ProductionLeaderboardSurface() {
   const [period, setPeriod] = useState('YTD');
   const { loading, error, byPeriod, doc } = useLeaderboard();
+  const { champions, loading: championsLoading } = useWeeklyChampions();
   const { user, userProfile } = useAuth();
   const viewerUid = user?.uid ?? null;
   const viewerName = userProfile?.name ?? null;
@@ -388,6 +391,15 @@ export default function ProductionLeaderboardSurface() {
 
   return (
     <div className="flex flex-col gap-5" data-testid="production-leaderboard-surface">
+      {/* Track J banner re-home — last-week's tenant-wide champions.
+          Period-independent (always last-week-completed), so it sits ABOVE
+          the period chips. Reuses the unchanged WeeklyChampionsBanner;
+          reads weeklyChampions/{prevWeekStarting} via the new hook (the
+          doc-id matches the CF's priorWeekStartingString by construction).
+          Empty payload → the banner's existing "No data yet" cards render
+          honestly (no rules denial; the CF always writes the doc). */}
+      <WeeklyChampionsBanner champions={champions} loading={championsLoading} />
+
       {/* Header — title block + period chips */}
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>

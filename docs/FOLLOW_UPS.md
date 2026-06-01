@@ -3360,8 +3360,8 @@ Banked: Track J P7 close (PR #403), 2026-05-31.
 ## Track J (V2 Redesign) — P5-prep aggregate-enrichment CF: `previousRank` + `unitId` + last-week champions (MEDIUM, banked 2026-05-31 from PR #402; expanded 2026-05-31 on PR #403/audit + PR #404 — **RESOLVED by PR #405**)
 
 > **RESOLVED 2026-05-31 by Track J P5-prep (PR #405).** All three additions landed in one CF change derived from ONE prior-week computation. Downstream UI consumer status:
-> - (a) **banner re-home** — UNBLOCKED; ships as its own downstream PR.
-> - (b) **movement chip** — **SHIPPED in Track J movement-chip PR #{TBD}** (`ui/MovementChip` consumed by AroundMeCluster YOU row + isViewer TailRow + isViewer PodiumCard + WhereYouRankPanel YOU row; viewer-only + WEEK-only; direction = `previousRank − rank`; ▲ climbed / ▼ dropped / – even / null no-chip).
+> - (a) **banner re-home** — **SHIPPED in Track J banner-rehome PR #{TBD}** (`WeeklyChampionsBanner` reused unchanged; mounted at the top of `ProductionLeaderboardSurface` via new `useWeeklyChampions` hook + new `src/lib/leaderboard/prevWeekStarting.js` helper that mirrors the CF's `priorWeekStartingString` by construction; 11 parity tests cross-check the doc key against the CJS twin's `getPeriodBoundaries`).
+> - (b) **movement chip** — **SHIPPED in Track J movement-chip PR #406** (`ui/MovementChip` consumed by AroundMeCluster YOU row + isViewer TailRow + isViewer PodiumCard + WhereYouRankPanel YOU row; viewer-only + WEEK-only; direction = `previousRank − rank`; ▲ climbed / ▼ dropped / – even / null no-chip).
 > - (c) **P5a UM unit-scope UI** — UNBLOCKED; ships as its own downstream PR.
 >
 > The sequencing constraint (must land BEFORE P5's ManagerDashboard nav swap) is satisfied — managers' working champions banner survives until then because P6 only retired the agent nav slot. Original body preserved below for the design-decision trail.
