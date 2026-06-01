@@ -226,15 +226,17 @@ function computePriorRankByAgent(submissions, users, referenceDate, groupByBranc
   const priorRankByAgent = new Map();
   for (const [/* branchId */, { subs, users: branchUsers }] of priorByBranch.entries()) {
     const ranked = rankForLeaderboard(subs, branchUsers, 'week', priorRef);
+    // Record every agent in the prior-week ranking — INCLUDING those with
+    // periodApi=0 ("ranked-$0" agents tied at the bottom). The current-week
+    // ranking treats $0 agents the same way (they appear in the doc's entry
+    // list at the bottom), so previousRank must too — otherwise low
+    // performers lose movement data and the chip semantics drift from
+    // current-week. The `?? null` fallback in buildLeaderboardDoc handles
+    // the genuinely-absent case (agent's branchId is missing → excluded from
+    // groupByBranch in BOTH prior- and current-week, so they don't appear in
+    // the leaderboard doc at all, so previousRank-null never surfaces).
     for (const entry of ranked) {
-      // Only record agents with positive API in the prior week — entries
-      // with periodApi=0 are placeholder ranks (all zero-production agents
-      // are tied at the bottom), not meaningful prior-week ranks. Agents
-      // with no production prior week should get previousRank=null on the
-      // current entry — meaning "they weren't in the ranking last week."
-      if (entry.periodApi > 0) {
-        priorRankByAgent.set(entry.agentId, entry.rank);
-      }
+      priorRankByAgent.set(entry.agentId, entry.rank);
     }
   }
   return { priorRankByAgent, priorWeekSubs };

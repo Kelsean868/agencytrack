@@ -708,30 +708,69 @@ describe('computePriorRankByAgent', () => {
     expect(priorRankByAgent.get('a3')).toBe(1); // north
   });
 
-  test('agent with zero prior-week production is NOT in priorRankByAgent (→ previousRank null)', () => {
+  test('ranked-$0 agent (in branch, no prior-week sub) carries their prior-week rank (NOT null)', () => {
+    // a1 has prior-week production; a2 is in the branch but had no prior sub.
+    // rankForLeaderboard ranks ALL active branch agents in the prior week:
+    // a1 at rank 1 with 500 API; a2 at rank 2 tied at $0. previousRank must
+    // carry that rank — symmetric with current-week behavior, where $0 agents
+    // appear in the leaderboard entries at the bottom.
     const users = [
       mkAgent('a1', 'Alpha', 'south', 'u1'),
       mkAgent('a2', 'Beta',  'south', 'u1'),
       mkUM('u1', 'UM S', 'south'),
     ];
     const subs = [
-      // Only a1 has prior-week production
       mkSub('p1', 'a1', PREV_WK_SUN, 500),
       mkSub('c1', 'a1', WK_SUN, 100),
       mkSub('c2', 'a2', WK_SUN, 300),
     ];
     const { priorRankByAgent } = computePriorRankByAgent(subs, users, REF, groupByBranch);
     expect(priorRankByAgent.get('a1')).toBe(1);
-    expect(priorRankByAgent.get('a2')).toBeUndefined(); // → previousRank: null
+    expect(priorRankByAgent.get('a2')).toBe(2); // ← ranked-$0, NOT undefined
   });
 
-  test('empty prior week → empty map', () => {
-    const users = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
+  test('agent truly absent from groupByBranch (e.g., missing branchId) → not in priorRankByAgent (→ previousRank null safety-net)', () => {
+    // Defensive coverage: an agent without a branchId is excluded by
+    // groupByBranch in BOTH prior- and current-week passes, so they never
+    // appear in the leaderboard doc's entries. The previousRank `?? null`
+    // fallback only fires defensively in this case; if reached, it must
+    // honestly produce null.
+    const users = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      // a-orphan has NO branchId — excluded by groupByBranch
+      { id: 'a-orphan', role: 'agent', name: 'Orphan', provisioning: false },
+      mkUM('u1', 'UM S', 'south'),
+    ];
+    const subs = [
+      mkSub('p1', 'a1',       PREV_WK_SUN, 500),
+      mkSub('p2', 'a-orphan', PREV_WK_SUN, 999), // would be discarded by groupByBranch
+    ];
+    const { priorRankByAgent } = computePriorRankByAgent(subs, users, REF, groupByBranch);
+    expect(priorRankByAgent.get('a1')).toBe(1);
+    expect(priorRankByAgent.get('a-orphan')).toBeUndefined(); // ← truly absent
+  });
+
+  test('empty prior week → all branch agents still ranked at $0 (carry previousRank into the doc)', () => {
+    // No prior-week submissions, but agents still exist in the branch.
+    // rankForLeaderboard ranks ALL active branch agents in the prior week —
+    // everyone ties at $0. previousRank carries that rank rather than null.
+    const users = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      mkAgent('a2', 'Beta',  'south', 'u1'),
+      mkUM('u1', 'UM', 'south'),
+    ];
     const subs = [mkSub('c1', 'a1', WK_SUN, 100)]; // only current week
     const { priorRankByAgent, priorWeekSubs } = computePriorRankByAgent(
       subs, users, REF, groupByBranch
     );
     expect(priorWeekSubs).toHaveLength(0);
+    // Both agents in the map at $0 — tie-break by name (Alpha < Beta).
+    expect(priorRankByAgent.get('a1')).toBe(1);
+    expect(priorRankByAgent.get('a2')).toBe(2);
+  });
+
+  test('no users at all → empty map (defensive)', () => {
+    const { priorRankByAgent } = computePriorRankByAgent([], [], REF, groupByBranch);
     expect(priorRankByAgent.size).toBe(0);
   });
 
