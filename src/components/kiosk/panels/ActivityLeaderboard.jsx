@@ -3,7 +3,7 @@ import { Trophy, Medal } from 'lucide-react';
 import Avatar from '../Avatar';
 
 function RankIcon({ rank }) {
-  if (rank === 1) return <Trophy size={26} className="text-yellow-400 shrink-0" />;
+  if (rank === 1) return <Trophy size={26} className="text-presentation-gold shrink-0" />;
   if (rank === 2) return <Medal size={26} className="text-slate-300 shrink-0" />;
   if (rank === 3) return <Medal size={26} className="text-amber-600 shrink-0" />;
   return (

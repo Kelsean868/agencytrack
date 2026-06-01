@@ -13,7 +13,7 @@ function fmtApi(n) {
 }
 
 function RankIcon({ rank }) {
-  if (rank === 1) return <Trophy size={28} className="text-yellow-400 shrink-0" />;
+  if (rank === 1) return <Trophy size={28} className="text-presentation-gold shrink-0" />;
   if (rank === 2) return <Medal size={28} className="text-slate-300 shrink-0" />;
   if (rank === 3) return <Medal size={28} className="text-amber-600 shrink-0" />;
   return (
