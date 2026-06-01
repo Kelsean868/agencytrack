@@ -320,18 +320,15 @@ describe('ManagerAwardsPanel — empty state', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BmAtRiskPanel role gating — BM+ and SM mount, UM does NOT
+// BmAtRiskPanel role gating — BM/TA/PA mount; UM and SM do NOT
 // ─────────────────────────────────────────────────────────────────────────────
-describe('ManagerAwardsPanel — BmAtRiskPanel gating', () => {
+// `sales_manager` is intentionally EXCLUDED from isBmPlus. SM has no single
+// branch — whether these panels scope correctly for an all-branches SM is an
+// open product question (cf. P5b for the leaderboard); banked as an FU.
+describe('ManagerAwardsPanel — BmAtRiskPanel gating (SM intentionally excluded)', () => {
   it('mounts at-risk panel for branch_manager', async () => {
     setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
     await renderPanel({ role: 'branch_manager' });
-    expect(screen.getByTestId('bm-at-risk-panel')).toBeInTheDocument();
-  });
-
-  it('mounts at-risk panel for sales_manager', async () => {
-    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
-    await renderPanel({ role: 'sales_manager' });
     expect(screen.getByTestId('bm-at-risk-panel')).toBeInTheDocument();
   });
 
@@ -341,9 +338,21 @@ describe('ManagerAwardsPanel — BmAtRiskPanel gating', () => {
     expect(screen.getByTestId('bm-at-risk-panel')).toBeInTheDocument();
   });
 
+  it('mounts at-risk panel for platform_admin', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel({ role: 'platform_admin' });
+    expect(screen.getByTestId('bm-at-risk-panel')).toBeInTheDocument();
+  });
+
   it('does NOT mount at-risk panel for unit_manager', async () => {
     setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
     await renderPanel({ role: 'unit_manager' });
+    expect(screen.queryByTestId('bm-at-risk-panel')).not.toBeInTheDocument();
+  });
+
+  it('does NOT mount at-risk panel for sales_manager (open product question — FU banked)', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel({ role: 'sales_manager' });
     expect(screen.queryByTestId('bm-at-risk-panel')).not.toBeInTheDocument();
   });
 });

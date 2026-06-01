@@ -242,7 +242,11 @@ export default function ManagerAwardsPanel({
     );
   }
 
-  const isBmPlus = role === 'branch_manager' || role === 'sales_manager' || role === 'tenant_admin' || role === 'platform_admin';
+  // isBmPlus intentionally EXCLUDES sales_manager. SM has no single branch
+  // — whether/how these manager-awards panels scope for an all-branches SM
+  // is an open product decision (cf. P5b for the leaderboard). Tracked as
+  // an FU in docs/FOLLOW_UPS.md; this carve-out is presentational only.
+  const isBmPlus = role === 'branch_manager' || role === 'tenant_admin' || role === 'platform_admin';
 
   return (
     <div className="flex flex-col gap-6" data-testid="manager-awards-panel">

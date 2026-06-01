@@ -5,6 +5,37 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## SM access to ManagerAwardsPanel + BmAtRiskPanel — deliberate decision needed (MEDIUM, banked 2026-06-01 from manager-side carve-out PR #{TBD})
+
+**Status:** product decision needed BEFORE any code change.
+
+PR #{TBD} (Manager Awards v2 carve-out) excluded `sales_manager` from the `isBmPlus` gate in `ManagerAwardsPanel.jsx` — the gate now reads `branch_manager || tenant_admin || platform_admin` (matching the pre-#{TBD} behavior). The PR's initial commit had extended `isBmPlus` to include `sales_manager`; the dispatcher reverted that during pre-review because:
+
+1. **Role-access behavior change is beyond a pure-restyle PR's scope.** The restyle should only touch presentation, not who-sees-what.
+2. **The PR's smoke never exercised the SM path** — the SM credential was not in the smoke matrix, so the change shipped untested for SM.
+3. **SM has no single branch** — same shape as the leaderboard problem P5b solved deliberately (PR #411 `SmLeaderboardView` with all-branches picker + per-UID persistence). Manager awards may need a parallel "SM all-branches awards view" with its own scoping decision, NOT a one-line gate extension.
+
+**Open questions for the decision:**
+
+1. **Should an SM see `ManagerAwardsPanel`?** It computes manager-awards across an `agentIds` list. For an SM with `ownedBranchIds: ['*']`, that list is either: every agent in the tenant (potentially hundreds), or empty until the SM picks a scope. Either default is awkward.
+2. **Should an SM see `BmAtRiskPanel`?** Same question — the panel computes per-agent at-risk status across an `agentIds` list.
+3. **All-branches scope pattern**: should SM follow the P5b leaderboard pattern (branch-picker → per-branch awards view) or a tenant-wide aggregation (composite across all branches)? Both have design rationale.
+4. **Where does the SM's manager-awards view live?** Inside `ManagerAwardsPanel` (with an SM-mode prop) or a new `SmAwardsView` wrapper (mirroring `SmLeaderboardView`)?
+
+**Scope when dispatched (after the decision):**
+
+1. Decide on the SM all-branches awards-scope pattern (likely: mirror `SmLeaderboardView` with `SmAwardsView` for consistency).
+2. Implement the SM view (separate PR — NOT a one-line gate extension).
+3. Smoke must include the SM credential and verify the all-branches scope works as designed.
+
+**Why MEDIUM (not LOW):**
+
+The pattern decision (SmAwardsView vs SM-prop on ManagerAwardsPanel) affects every future manager-tier surface the SM eventually accesses — Master Sheet, Compliance, Goals, Persistency manager-side, etc. Worth a single design pass before shipping.
+
+**Cross-reference:** PR #411 (`40296b6`) for the leaderboard precedent; `src/components/leaderboard/SmLeaderboardView.jsx` for the all-branches picker pattern.
+
+---
+
 ## Awards primitives dedup — consume `awardPrimitives.jsx` from `AgentAwardsPanel.jsx` (LOW, banked 2026-06-01 from manager-side carve-out PR #{TBD})
 
 **Status:** cleanup; no behavior change.
