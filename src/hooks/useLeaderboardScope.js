@@ -61,7 +61,16 @@ function writePersisted(uid, value) {
   }
 }
 
-export default function useLeaderboardScope({ uid, role, availableUnitIds }) {
+/**
+ * Track J P5b: `effectiveRole` lets SM (head of sales) borrow BM-style scope
+ * semantics inside the branch picker. When the SM container passes
+ * `effectiveRole: 'branch_manager'`, the invariants below treat the SM the
+ * same as a BM (scope can be 'unit' tied to a unit in `availableUnitIds`,
+ * else falls back to 'branch'). `role` still governs storage / UI gating
+ * upstream — `effectiveRole` is purely the scope state's view of the user.
+ */
+export default function useLeaderboardScope({ uid, role, availableUnitIds, effectiveRole }) {
+  const scopeRole = effectiveRole ?? role;
   // The default state is { scope: 'branch', targetUnitId: null }. We
   // rehydrate from localStorage on mount (and on uid change — a different
   // signed-in user has a different persisted preference).
@@ -101,8 +110,9 @@ export default function useLeaderboardScope({ uid, role, availableUnitIds }) {
   let effectiveScope        = scope;
   let effectiveTargetUnitId = targetUnitId;
 
-  // Agents never get a scope — force branch.
-  if (role !== 'unit_manager' && role !== 'branch_manager') {
+  // Agents (and any role outside UM/BM under the effectiveRole view) never
+  // get a scope — force branch.
+  if (scopeRole !== 'unit_manager' && scopeRole !== 'branch_manager') {
     effectiveScope        = 'branch';
     effectiveTargetUnitId = null;
   }

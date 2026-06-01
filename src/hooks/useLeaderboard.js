@@ -7,8 +7,13 @@
  *
  * Chip-switching the period re-renders from the same doc — no refetch.
  *
+ * Track J P5b: accepts an optional `branchIdOverride` so SM (head of sales)
+ * can read any tenant branch via the branch-picker. When omitted, the hook
+ * falls back to `userProfile.branchId` exactly as before — every existing
+ * call site stays unchanged.
+ *
  * Returns:
- *   { loading, error, doc, byPeriod }
+ *   { loading, error, doc, byPeriod, branchId }
  *   • loading   — true until the initial getDoc resolves
  *   • error     — null or { code, message } (truncated)
  *   • doc       — raw Firestore doc data (or null) including `computedAt`
@@ -16,6 +21,8 @@
  *   • byPeriod  — convenience accessor: { week, mtd, qtd, ytd } each an array
  *                 (always present as arrays even when missing in the doc, so
  *                 consumers can `.length` without guards)
+ *   • branchId  — the resolved branch id used for the read (override or
+ *                 viewer's own); useful for downstream labels.
  */
 
 import { useEffect, useState } from 'react';
@@ -25,9 +32,9 @@ import { useAuth } from '../context/AuthContext';
 
 const EMPTY_BY_PERIOD = Object.freeze({ week: [], mtd: [], qtd: [], ytd: [] });
 
-export default function useLeaderboard() {
+export default function useLeaderboard(branchIdOverride) {
   const { tenantId, userProfile } = useAuth();
-  const branchId = userProfile?.branchId ?? null;
+  const branchId = branchIdOverride ?? userProfile?.branchId ?? null;
 
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);

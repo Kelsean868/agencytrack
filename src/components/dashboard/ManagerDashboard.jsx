@@ -24,6 +24,7 @@ import SettlementPanel from '../manager/SettlementPanel';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
 import ProductionLeaderboardSurface from '../leaderboard/ProductionLeaderboardSurface';
+import SmLeaderboardView from '../leaderboard/SmLeaderboardView';
 import CampaignPanel from '../campaigns/CampaignPanel';
 import UserManagementPanel from '../manager/UserManagementPanel';
 import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
@@ -275,18 +276,22 @@ export default function ManagerDashboard() {
 
         {activeTab === 'policy-reconciliation' && <PolicyReconciliationPanel />}
 
-        {/* Track J P5 — role-conditional Leaderboard tab.
-            UM/BM → ProductionLeaderboardSurface (scoped to their branch via
-            useLeaderboard, with P5a's scope control active). SM (and any
-            other non-UM/BM role that lands here) → unchanged points board;
-            SM has ownedBranchIds:['*'] and no single default branch, so
-            their leaderboard experience is the all-branches picker = P5b.
-            The points-board component stays referenced via this SM/TA/PA
-            arm — not orphaned. Regression-guarded by tests. */}
+        {/* Track J P5 + P5b — role-conditional Leaderboard tab.
+              UM/BM        → ProductionLeaderboardSurface (own branch, P5a
+                             scope control active).
+              sales_manager → SmLeaderboardView (P5b — all-branches picker
+                             + BM-style unit scope within the picked branch;
+                             ownedBranchIds:['*'] / head of sales).
+              PA (and any other manager role that falls through this arm) →
+                             gamification/Leaderboard points board. The
+                             component stays referenced via this arm — not
+                             orphaned. Regression-guarded by tests. */}
         {activeTab === 'leaderboard' && (
           (role === 'unit_manager' || role === 'branch_manager')
             ? <ProductionLeaderboardSurface />
-            : <Leaderboard />
+            : role === 'sales_manager'
+              ? <SmLeaderboardView />
+              : <Leaderboard />
         )}
 
         {activeTab === 'agent-of-month' && <AgentOfMonthTab />}
