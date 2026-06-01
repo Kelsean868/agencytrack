@@ -12,18 +12,26 @@ import ToastProvider from './components/ui/ToastProvider';
 // still share ManagerDashboard until per-role differentiation lands in P9.
 const MANAGER_ROLES = new Set(['unit_manager', 'branch_manager', 'sales_manager', 'platform_admin']);
 
+// Track J System Screens v2 — state screens lifted onto the v2 card grammar.
+// Visual only; AppRoot routing (below) is untouched.
 const LoadingScreen = () => (
-  <div className="min-h-screen flex items-center justify-center bg-surface">
-    <div className="text-center">
-      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+  <div
+    className="min-h-screen flex items-center justify-center bg-surface px-6"
+    data-testid="state-loading"
+  >
+    <div className="card text-center max-w-sm w-full flex flex-col items-center gap-4 py-10">
+      <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       <p className="text-sm font-medium text-ink-muted">Loading AgencyTrack…</p>
     </div>
   </div>
 );
 
 const PlatformAdminStubScreen = () => (
-  <div className="min-h-screen flex items-center justify-center bg-surface px-6">
-    <div className="max-w-sm w-full text-center flex flex-col items-center gap-6">
+  <div
+    className="min-h-screen flex items-center justify-center bg-surface px-6"
+    data-testid="state-platform-admin-stub"
+  >
+    <div className="card max-w-sm w-full text-center flex flex-col items-center gap-6 py-10">
       <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -37,7 +45,7 @@ const PlatformAdminStubScreen = () => (
       </div>
       <button
         onClick={() => signOut(auth)}
-        className="h-11 px-6 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors"
+        className="btn-primary w-full h-11"
       >
         Sign Out
       </button>
@@ -51,8 +59,11 @@ const PlatformAdminStubScreen = () => (
 // window (no cached tenantId available yet). Signing out and back in after a
 // few seconds will resolve once claims have propagated.
 const ProvisioningScreen = () => (
-  <div className="min-h-screen flex items-center justify-center bg-surface px-6">
-    <div className="max-w-sm w-full text-center flex flex-col items-center gap-6">
+  <div
+    className="min-h-screen flex items-center justify-center bg-surface px-6"
+    data-testid="state-provisioning"
+  >
+    <div className="card max-w-sm w-full text-center flex flex-col items-center gap-6 py-10">
       <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       <div>
         <h1 className="text-xl font-display font-bold text-ink mb-2">Setting up your account</h1>
@@ -62,7 +73,7 @@ const ProvisioningScreen = () => (
       </div>
       <button
         onClick={() => signOut(auth)}
-        className="h-11 px-6 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary-dark transition-colors"
+        className="btn-primary w-full h-11"
       >
         Sign Out &amp; Try Again
       </button>
