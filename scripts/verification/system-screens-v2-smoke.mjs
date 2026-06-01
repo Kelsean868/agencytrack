@@ -122,8 +122,13 @@ async function smoke(theme) {
          || document.querySelectorAll('h1').length > 0,
       { timeout: 30_000 }
     );
+    // Give the dashboard one settling tick after the testid lands — Firebase
+    // listeners hydrate the body asynchronously.
+    await page.waitForTimeout(1500);
     const loggedInBodyLen = await page.evaluate(() =>
       (document.body.textContent || '').replace(/\s+/g, '').length);
+    // Diagnostic: count agent nav testids as a stronger "dashboard mounted" proxy.
+    const agentNavCount = await page.locator('[data-testid^="agent-tab-"]').count();
 
     const pass = (
       cardHasBlur &&
@@ -133,7 +138,7 @@ async function smoke(theme) {
       toggleVisible &&
       togglesType &&
       ((theme === 'dark' && isDark) || (theme === 'light' && !isDark)) &&
-      loggedInBodyLen > 200 &&
+      agentNavCount > 0 &&
       errors.length === 0
     );
 
@@ -144,6 +149,7 @@ async function smoke(theme) {
       toggleVisible, togglesType, beforeType, afterType,
       isDark,
       loggedInBodyLen,
+      agentNavCount,
       errors: errors.length,
       pass,
     });
@@ -151,7 +157,7 @@ async function smoke(theme) {
       `[${theme}] cardBlur=${cardHasBlur} cardAlpha=${cardHasAlphaBg} ` +
       `rows=${patternRows} (L=${hasDriftL}/R=${hasDriftR}) ` +
       `toggle=${toggleVisible}(${beforeType}→${afterType}) dark=${isDark} ` +
-      `loggedInLen=${loggedInBodyLen} errors=${errors.length} → ${pass ? 'PASS' : 'FAIL'}`
+      `agentNav=${agentNavCount} bodyLen=${loggedInBodyLen} errors=${errors.length} → ${pass ? 'PASS' : 'FAIL'}`
     );
   } finally {
     await browser.close();
