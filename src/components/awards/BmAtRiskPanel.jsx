@@ -1,68 +1,130 @@
+/**
+ * Track J — BM At-Risk panel v2.
+ *
+ * Visual port to the #391 grammar:
+ *   • Reality strip at the top: total agents · at-risk · achieved.
+ *   • Filter pill cluster (All / At Risk) matching #391's category control.
+ *   • Per-agent cards using token-driven status surfaces (danger/success/
+ *     primary/ink-muted) instead of mixed-purpose Tailwind opacities.
+ *   • At-risk award chips are gold-tint (recognition) for achieved, danger-tint
+ *     for at-risk — same accent rules as the AwardCard state pills.
+ *
+ * `awardsEngine` calls (`computeAgentAwards`, `computeAtRiskStatus`,
+ * `getPeriodCtx`) + per-agent settlement / submission filtering are PRESERVED.
+ */
+
 import React, { useMemo, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ChevronRight } from 'lucide-react';
 import { computeAgentAwards, computeAtRiskStatus, getPeriodCtx } from '../../utils/awardsEngine';
 
-const STATUS_PILL_CLASS = {
-  achieved:  'bg-success-tint text-success',
-  on_track:  'bg-primary/10 text-primary',
-  at_risk:   'bg-danger-tint text-danger',
-  far_off:   'bg-surface-muted text-ink-muted',
-};
-
 const FILTER_OPTIONS = [
-  { id: 'all',     label: 'All' },
-  { id: 'at_risk', label: 'At Risk' },
+  { id: 'all',     label: 'All agents' },
+  { id: 'at_risk', label: 'At risk only' },
 ];
 
+function statusAccent(status) {
+  switch (status) {
+    case 'achieved':  return { color: 'var(--color-success)',     bg: 'var(--color-success-tint)' };
+    case 'on_track':  return { color: 'var(--color-primary)',     bg: 'var(--color-primary-tint)' };
+    case 'at_risk':   return { color: 'var(--color-danger)',      bg: 'var(--color-danger-tint)'  };
+    default:          return { color: 'var(--color-text-faint)',  bg: 'var(--color-surface-muted)' };
+  }
+}
 
-function AgentRiskRow({ name, statusList }) {
+function AgentRiskCard({ name, statusList }) {
   const counts = { achieved: 0, on_track: 0, at_risk: 0, far_off: 0 };
   statusList.forEach(({ status }) => { counts[status] = (counts[status] || 0) + 1; });
 
   const atRiskAwards = statusList.filter((a) => a.status === 'at_risk').map((a) => a.award.name);
   const hasAtRisk = counts.at_risk > 0;
+  const totalTracked = statusList.length;
 
   return (
     <div
-      className={`rounded-xl border p-3 ${
-        hasAtRisk ? 'border-danger/30 bg-danger-tint/30' : 'border-border bg-card'
-      }`}
+      className="card p-4 flex flex-col gap-3"
+      data-testid="bm-at-risk-agent-card"
+      data-at-risk={hasAtRisk ? 'true' : 'false'}
+      style={{
+        border: hasAtRisk ? '1px solid var(--color-danger)' : '1px solid var(--color-border)',
+        boxShadow: hasAtRisk ? 'var(--shadow-sm)' : 'none',
+      }}
     >
+      {/* Header row: name + total tracked */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="text-sm font-semibold text-ink">{name}</span>
-        <div className="flex items-center gap-2 text-xs shrink-0 flex-wrap">
-          {counts.achieved > 0 && (
-            <span className="font-medium text-success">{counts.achieved} Achieved</span>
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          {hasAtRisk && (
+            <AlertTriangle size={14} className="text-danger shrink-0" aria-hidden="true" />
           )}
-          {counts.at_risk > 0 && (
-            <span className="font-semibold text-danger">{counts.at_risk} At Risk</span>
-          )}
-          {counts.on_track > 0 && (
-            <span className="font-medium text-primary">{counts.on_track} On Track</span>
-          )}
-          {counts.far_off > 0 && (
-            <span className="text-ink-muted">{counts.far_off} Far Off</span>
-          )}
+          <span className="text-sm font-bold text-ink truncate">{name}</span>
         </div>
+        <span className="text-[10px] text-ink-faint font-mono tracking-wide shrink-0">
+          {totalTracked} award{totalTracked === 1 ? '' : 's'} tracked
+        </span>
       </div>
 
+      {/* Status counts row — gold/teal/danger/grey state pills (no opacity hex) */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {counts.achieved > 0 && (
+          <span
+            className="inline-flex items-center text-[10px] font-bold tracking-wide font-mono px-2 py-1 rounded-full"
+            style={{ color: 'var(--color-gold)', background: 'var(--color-gold-tint)' }}
+          >
+            ✓ {counts.achieved} achieved
+          </span>
+        )}
+        {counts.on_track > 0 && (
+          <span
+            className="inline-flex items-center text-[10px] font-bold tracking-wide font-mono px-2 py-1 rounded-full"
+            style={{ color: 'var(--color-primary)', background: 'var(--color-primary-tint)' }}
+          >
+            ↗ {counts.on_track} on track
+          </span>
+        )}
+        {counts.at_risk > 0 && (
+          <span
+            className="inline-flex items-center text-[10px] font-bold tracking-wide font-mono px-2 py-1 rounded-full"
+            style={{ color: 'var(--color-danger)', background: 'var(--color-danger-tint)' }}
+          >
+            ⚠ {counts.at_risk} at risk
+          </span>
+        )}
+        {counts.far_off > 0 && (
+          <span
+            className="inline-flex items-center text-[10px] font-bold tracking-wide font-mono px-2 py-1 rounded-full"
+            style={{ color: 'var(--color-text-faint)', background: 'var(--color-surface-muted)' }}
+          >
+            ◯ {counts.far_off} far off
+          </span>
+        )}
+      </div>
+
+      {/* At-risk award chips — only when present */}
       {atRiskAwards.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-2" aria-label="At-risk awards">
-          {atRiskAwards.map((awardName) => (
-            <span
-              key={awardName}
-              className={`inline-flex items-center h-5 px-1.5 rounded-full text-[10px] font-semibold ${STATUS_PILL_CLASS.at_risk}`}
-            >
-              {awardName.length > 28 ? `${awardName.slice(0, 26)}…` : awardName}
-            </span>
-          ))}
+        <div className="flex flex-wrap gap-1 pt-1 border-t border-border" aria-label="At-risk awards">
+          {atRiskAwards.map((awardName) => {
+            const a = statusAccent('at_risk');
+            return (
+              <span
+                key={awardName}
+                className="inline-flex items-center h-6 px-2 rounded-full text-[10px] font-semibold tracking-wide"
+                style={{ color: a.color, background: a.bg }}
+              >
+                <ChevronRight size={10} aria-hidden="true" />
+                <span className="ml-0.5">
+                  {awardName.length > 32 ? `${awardName.slice(0, 30)}…` : awardName}
+                </span>
+              </span>
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
 
-export default function BmAtRiskPanel({ agentProfiles, settlements, ytdSubs, agentIds, currentDate, ruleset }) {
+export default function BmAtRiskPanel({
+  agentProfiles, settlements, ytdSubs, agentIds, currentDate, ruleset,
+}) {
   const [filter, setFilter] = useState('all');
 
   const agentRows = useMemo(() => {
@@ -71,7 +133,7 @@ export default function BmAtRiskPanel({ agentProfiles, settlements, ytdSubs, age
       .map((agentId) => {
         const profile = agentProfiles.find((u) => u.id === agentId) ?? {};
         const agentSetts = settlements.filter((s) => s.agentId === agentId);
-        const agentSubs = ytdSubs.filter((s) => (s.agentId ?? s.userId) === agentId);
+        const agentSubs  = ytdSubs.filter((s) => (s.agentId ?? s.userId) === agentId);
         const awards = computeAgentAwards(agentSetts, agentSubs, profile, now, ruleset);
 
         const statusList = Object.values(awards).map((award) => ({
@@ -103,40 +165,83 @@ export default function BmAtRiskPanel({ agentProfiles, settlements, ytdSubs, age
   if (agentIds.length === 0) return null;
 
   const atRiskCount = agentRows.filter((r) => r.hasAtRisk).length;
+  const achievedCount = agentRows.filter((r) => r.hasAchieved).length;
 
   return (
-    <section aria-labelledby="at-risk-heading" className="mt-2 pt-4 border-t border-border">
-      <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-        <div className="flex items-center gap-2">
-          <AlertTriangle size={16} className="text-danger shrink-0" aria-hidden="true" />
-          <h3 id="at-risk-heading" className="text-sm font-bold text-ink">
-            Agent Award Risk View
-          </h3>
+    <section
+      aria-labelledby="at-risk-heading"
+      className="flex flex-col gap-4 mt-2 pt-5 border-t border-border"
+      data-testid="bm-at-risk-panel"
+    >
+      {/* Header eyebrow + reality strip */}
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <p
+              id="at-risk-heading"
+              className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase"
+            >
+              Agent Award Risk View
+            </p>
+            <span
+              className="text-[10px] font-mono tracking-wide text-ink-faint"
+              data-testid="bm-at-risk-total"
+            >
+              {agentRows.length} agent{agentRows.length === 1 ? '' : 's'}
+            </span>
+          </div>
+
+          {/* Filter pills — v2 control grammar */}
+          <div
+            role="tablist"
+            aria-label="Filter by risk status"
+            className="flex gap-1 p-1 rounded-xl bg-surface-muted border border-border"
+          >
+            {FILTER_OPTIONS.map(({ id, label }) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={filter === id}
+                onClick={() => setFilter(id)}
+                className={`min-h-[36px] px-3 rounded-lg text-xs font-bold transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                  filter === id
+                    ? 'bg-card text-ink shadow-sm border border-border'
+                    : 'text-ink-muted hover:text-ink'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Reality strip — total + at risk + achieved counts */}
+        <div
+          className="flex items-center gap-3 flex-wrap"
+          data-testid="bm-at-risk-reality"
+        >
           {atRiskCount > 0 && (
-            <span className="text-xs font-semibold px-1.5 py-0.5 rounded-full bg-danger-tint text-danger">
+            <span
+              className="inline-flex items-center gap-1.5 text-xs font-bold tracking-wide font-mono px-2.5 py-1 rounded-full"
+              style={{ color: 'var(--color-danger)', background: 'var(--color-danger-tint)' }}
+            >
+              <AlertTriangle size={11} aria-hidden="true" />
               {atRiskCount} at risk
             </span>
           )}
-        </div>
-        <div className="flex gap-1" role="group" aria-label="Filter by risk status">
-          {FILTER_OPTIONS.map(({ id, label }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setFilter(id)}
-              aria-pressed={filter === id}
-              className={`min-h-8 px-3 rounded-lg text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
-                filter === id
-                  ? 'bg-primary text-white'
-                  : 'bg-surface-muted text-ink-muted hover:bg-primary/10 hover:text-primary'
-              }`}
+          {achievedCount > 0 && (
+            <span
+              className="inline-flex items-center text-xs font-bold tracking-wide font-mono px-2.5 py-1 rounded-full"
+              style={{ color: 'var(--color-gold)', background: 'var(--color-gold-tint)' }}
             >
-              {label}
-            </button>
-          ))}
+              ✓ {achievedCount} qualified
+            </span>
+          )}
         </div>
       </div>
 
+      {/* Agent cards grid */}
       {filtered.length === 0 ? (
         <div className="card text-center py-8">
           <p className="text-sm text-ink-muted">
@@ -146,9 +251,9 @@ export default function BmAtRiskPanel({ agentProfiles, settlements, ytdSubs, age
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-2" data-testid="bm-at-risk-rows">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-testid="bm-at-risk-rows">
           {filtered.map(({ agentId, name, statusList }) => (
-            <AgentRiskRow key={agentId} name={name} statusList={statusList} />
+            <AgentRiskCard key={agentId} name={name} statusList={statusList} />
           ))}
         </div>
       )}
