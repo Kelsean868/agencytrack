@@ -131,6 +131,12 @@ async function smokeSM(theme) {
       () => document.querySelectorAll('[data-testid="sm-leaderboard-view"]').length > 0,
       { timeout: 15_000 }
     );
+    // Wait for the inner ProductionLeaderboardSurface to clear ITS loading
+    // state — useLeaderboard fetches the picked branch's doc on first render.
+    await page.waitForFunction(
+      () => document.querySelectorAll('[data-testid="production-leaderboard-surface"]').length > 0,
+      { timeout: 20_000 }
+    );
     const smViewCount        = await page.locator('[data-testid="sm-leaderboard-view"]').count();
     const surfaceCount       = await page.locator('[data-testid="production-leaderboard-surface"]').count();
     // The OLD points board (gamification/Leaderboard) renders the "Leaderboard"
@@ -186,6 +192,12 @@ async function smokeSM(theme) {
         .map(k => ({ k, v: localStorage.getItem(k) }))
     );
     await page.reload({ waitUntil: 'domcontentloaded' });
+    // After reload, the dashboard's activeTab resets to default (overview);
+    // re-navigate to the leaderboard tab to remount SmLeaderboardView. Wait
+    // for the manager nav to be available first (Firebase auth re-resolves
+    // from IndexedDB cache on reload — should be near-instant but not zero).
+    await page.waitForSelector('[data-testid="nav-leaderboard"]', { timeout: 30_000 });
+    await page.click('[data-testid="nav-leaderboard"]');
     await page.waitForFunction(
       () => document.querySelectorAll('[data-testid="sm-leaderboard-view"]').length > 0,
       { timeout: 15_000 }
