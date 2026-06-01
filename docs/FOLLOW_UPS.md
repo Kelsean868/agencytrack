@@ -5,11 +5,11 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## SM access to ManagerAwardsPanel + BmAtRiskPanel — deliberate decision needed (MEDIUM, banked 2026-06-01 from manager-side carve-out PR #{TBD})
+## SM access to ManagerAwardsPanel + BmAtRiskPanel — deliberate decision needed (MEDIUM, banked 2026-06-01 from manager-side carve-out PR #412)
 
 **Status:** product decision needed BEFORE any code change.
 
-PR #{TBD} (Manager Awards v2 carve-out) excluded `sales_manager` from the `isBmPlus` gate in `ManagerAwardsPanel.jsx` — the gate now reads `branch_manager || tenant_admin || platform_admin` (matching the pre-#{TBD} behavior). The PR's initial commit had extended `isBmPlus` to include `sales_manager`; the dispatcher reverted that during pre-review because:
+PR #412 (Manager Awards v2 carve-out) excluded `sales_manager` from the `isBmPlus` gate in `ManagerAwardsPanel.jsx` — the gate now reads `branch_manager || tenant_admin || platform_admin` (matching the pre-#412 behavior). The PR's initial commit had extended `isBmPlus` to include `sales_manager`; the dispatcher reverted that during pre-review because:
 
 1. **Role-access behavior change is beyond a pure-restyle PR's scope.** The restyle should only touch presentation, not who-sees-what.
 2. **The PR's smoke never exercised the SM path** — the SM credential was not in the smoke matrix, so the change shipped untested for SM.
@@ -36,11 +36,11 @@ The pattern decision (SmAwardsView vs SM-prop on ManagerAwardsPanel) affects eve
 
 ---
 
-## Awards primitives dedup — consume `awardPrimitives.jsx` from `AgentAwardsPanel.jsx` (LOW, banked 2026-06-01 from manager-side carve-out PR #{TBD})
+## Awards primitives dedup — consume `awardPrimitives.jsx` from `AgentAwardsPanel.jsx` (LOW, banked 2026-06-01 from manager-side carve-out PR #412)
 
 **Status:** cleanup; no behavior change.
 
-PR #{TBD} (Manager Awards v2 carve-out) extracted the v2 primitives into a shared module `src/components/awards/awardPrimitives.jsx` (AwardDonut, HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer) + `src/components/awards/awardGrouping.js` (groupByProgress). `ManagerAwardsPanel.jsx` + `BmAtRiskPanel.jsx` consume from those modules.
+PR #412 (Manager Awards v2 carve-out) extracted the v2 primitives into a shared module `src/components/awards/awardPrimitives.jsx` (AwardDonut, HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer) + `src/components/awards/awardGrouping.js` (groupByProgress). `ManagerAwardsPanel.jsx` + `BmAtRiskPanel.jsx` consume from those modules.
 
 `AgentAwardsPanel.jsx` (shipped earlier in #391) still carries inline-duplicated copies of those same primitives. The duplication was intentionally retained at carve-out time to keep the carve-out PR's scope terminal at `src/components/awards/Manager*` + tests (per the brief).
 
@@ -59,11 +59,11 @@ Pure DRY cleanup. No user-facing change. Saves ~250 lines from `AgentAwardsPanel
 
 ---
 
-## Awards orphan cleanup — delete `AwardMedalCard.jsx` + `AwardMedal.jsx` + `awardIconMap.js` (LOW, banked 2026-06-01 from manager-side carve-out PR #{TBD})
+## Awards orphan cleanup — delete `AwardMedalCard.jsx` + `AwardMedal.jsx` + `awardIconMap.js` (LOW, banked 2026-06-01 from manager-side carve-out PR #412)
 
 **Status:** dead-code removal; no behavior change.
 
-After PR #{TBD} (Manager Awards v2 carve-out) replaced `AwardMedalCard` consumption in `ManagerAwardsPanel.jsx` with the new `AwardCard` primitive, these files have no remaining importers:
+After PR #412 (Manager Awards v2 carve-out) replaced `AwardMedalCard` consumption in `ManagerAwardsPanel.jsx` with the new `AwardCard` primitive, these files have no remaining importers:
 
 - `src/components/awards/AwardMedalCard.jsx` — was only imported by `ManagerAwardsPanel.jsx` (now removed)
 - `src/components/awards/AwardMedal.jsx` — was only imported by `AwardMedalCard.jsx`
