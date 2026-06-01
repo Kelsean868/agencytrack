@@ -5,6 +5,52 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Functions runtime + SDK upgrade — Node.js 20 EOL + `firebase-functions` 4.x → 5.x (MEDIUM with hard deadline, banked 2026-06-01 from PR #415 functions deploy)
+
+**Status:** MEDIUM now; **escalate to HIGH approaching October 2026.** Deploys will start failing 2026-10-30.
+
+The `firebase deploy --only functions` run on 2026-06-01 (post-PR-#415) surfaced two deprecation warnings against the production functions deploy:
+
+1. **Node.js 20 runtime is decommissioned 2026-10-30.** After that date, `firebase deploy --only functions` will break for any function pinned to Node 20. `functions/package.json` currently declares:
+   ```
+   "engines": { "node": "20" }
+   ```
+   Must bump to the next supported Node LTS (`22` or later — verify what Firebase Cloud Functions supports at upgrade time; LTS cadence may have moved).
+
+2. **`firebase-functions` 4.9.0 → ≥5.1.0** (breaking-changes migration). `functions/package.json` currently declares:
+   ```
+   "firebase-functions": "^4.9.0"
+   ```
+   The 5.x line has breaking API changes (region declarations, runtime options shape, callable/trigger signatures all evolved). This is NOT a drop-in `npm update`; it requires deliberate per-function review.
+
+**Why one coordinated pass, not two separate PRs:**
+
+- Both upgrades affect the same `functions/` deploy bundle.
+- The Node 22 (or whatever LTS lands) jump is partly motivated by `firebase-functions` 5.x dropping older Node compat.
+- A two-pass migration (Node first, then SDK) wastes a full deploy cycle and doubles the smoke surface.
+- Doing them together amortizes the deploy-risk window into one coordinated pass with one comprehensive smoke pass.
+
+**Scope when dispatched:**
+
+1. **Audit all `functions/` exports.** Inventory every exported function in `functions/index.js` and the modules it delegates to (kiosk, leaderboard, awards, etc.). Note: 22 functions per the 2026-06-01 deploy ("all 22 functions Successful update operation").
+2. **Read the `firebase-functions` 5.x migration guide.** Specific watch points: region declaration (`functions.region()` → `setGlobalOptions`), runtime options (memory / timeout / concurrency shape changes), HTTPS callable signature changes, Firestore trigger signatures (Event Arc vs v1), Scheduled trigger signatures.
+3. **Bump `functions/package.json`:** `engines.node` to current Firebase-supported LTS + `firebase-functions` to ≥5.1.0 + run `npm install` in `functions/` + re-pin lockfile.
+4. **Migrate every export.** Per-function review; no blanket find-replace. Especially careful around `recomputeLeaderboardOnDemand` (callable), `validateKioskToken` / `createKioskToken` / `revokeKioskToken` (kiosk), the scheduled `recomputeLeaderboardScheduled`, and any Firestore-trigger functions.
+5. **Run the full `functions/` test suite.** Add new integration coverage for any function whose signature changed.
+6. **Smoke pass before deploy.** Each function's caller — leaderboard recompute (TA-callable), kiosk validate (anonymous HTTPS), emails (Sunday/Monday/PasswordReset triggers), and any Firestore-triggered functions — exercised once in a smoke harness against the emulator + preview.
+7. **Dispatcher deploys** with the deploy-hygiene check + a careful post-deploy live smoke pass against `agencytrack-2a610`. Per Rule 19 CC does NOT deploy this; CC's role ends at the staged PR.
+8. **Rollback plan**: capture pre-upgrade `firebase-functions` version + Node engine + deploy URL in the PR body so a quick rollback is available if a live function breaks post-deploy.
+
+**Why MEDIUM now:**
+
+- 5 months of runway before the Oct 2026 deadline (deadline → date of first BLOCKED deploy).
+- Reducing to a HIGH item ~6 weeks before the deadline (mid-September 2026) prevents a scramble.
+- Earlier-is-better: any breaking change uncovered in the SDK migration is easier to absorb when the deadline isn't biting.
+
+**Cross-reference:** PR #415 (`aae5c35`) deploy warnings sourced this FU; `functions/package.json` engines.node + dependencies.firebase-functions are the upgrade targets.
+
+---
+
 ## SM access to ManagerAwardsPanel + BmAtRiskPanel — deliberate decision needed (MEDIUM, banked 2026-06-01 from manager-side carve-out PR #412)
 
 **Status:** product decision needed BEFORE any code change.
