@@ -31,7 +31,7 @@ const hoisted = vi.hoisted(() => ({
   saveDraftMock:    vi.fn().mockResolvedValue(),
   getDraftMock:     vi.fn().mockResolvedValue(null),
 }));
-const { submitReportMock, saveDraftMock, getDraftMock } = hoisted;
+const { submitReportMock } = hoisted;
 
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({
