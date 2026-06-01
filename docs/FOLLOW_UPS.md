@@ -3357,13 +3357,13 @@ Banked: Track J P7 close (PR #403), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — P5-prep aggregate-enrichment CF: `previousRank` + `unitId` + last-week champions (MEDIUM, banked 2026-05-31 from PR #402; expanded 2026-05-31 on PR #403/audit + PR {TBD-P6})
+## Track J (V2 Redesign) — P5-prep aggregate-enrichment CF: `previousRank` + `unitId` + last-week champions (MEDIUM, banked 2026-05-31 from PR #402; expanded 2026-05-31 on PR #403/audit + PR #404)
 
 The leaderboard-aggregate Cloud Function (`functions/leaderboard/leaderboardAggregate.js`) needs to land three additions before P5 ships:
 
 1. **`previousRank` per entry** — movement chip (▲ +2 / ▼ −1) on `AroundMeCluster.jsx` + `TailRow` + `PodiumCard` (P4 ships without this).
 2. **`unitId` per entry** — "My Unit" scope toggle on UM scope toggle (P5 read-only audit found the aggregate carries `unitName` but NOT `unitId`; relying on display strings is brittle, see P5 read-only audit Q3).
-3. **Last-week champions doc** — agent-readable champions snapshot (top API / Apps / Activity for the most-recently-completed week) so WeeklyChampionsBanner can re-home onto `ProductionLeaderboardSurface` for both agents AND managers. Surfaced on PR #403/P6 audit: today the banner's tenant-wide submissions query is agent-rules-denied; the .catch-swallowed result is silently empty for agents.
+3. **Last-week champions doc** — agent-readable champions snapshot (top API / Apps / Activity for the most-recently-completed week) so WeeklyChampionsBanner can re-home onto `ProductionLeaderboardSurface` for both agents AND managers. Surfaced on PR #404 P6 Phase 1 audit: today the banner's tenant-wide submissions query is agent-rules-denied; the .catch-swallowed result is silently empty for agents.
 
 Why fold all three into one CF change: computing prior-period rankings (which `previousRank` needs anyway) also yields the top-3 by API/Apps/Activity for that period — same in-memory traversal serves both. `unitId` is a single line in `buildLeaderboardDoc` to add to the mapped entry shape — costs nothing alongside the other writes.
 
@@ -3400,11 +3400,11 @@ Why fold all three into one CF change: computing prior-period rankings (which `p
    - **`AroundMeCluster.jsx` / `TailRow` / `PodiumCard`** — render `▲ {delta}` (success-tint) / `▼ {delta}` (danger-tint) / `· same` (or "—") chip when `previousRank` is non-null. Per the design, the chip sits under the unit name on the You row. Edge cases: first-time-in-the-board (no previousRank) → "new" pill. Rank unchanged → dot or "·". Test agent at rank 1 stably → "—" (no movement).
    - **UM "My Unit" filter** (P5) — `entries.filter(e => e.unitId === callerUid)`.
 
-6. **Sequencing constraint (banked from PR #403/P6 disposition):** the P5-prep CF MUST land BEFORE P5's `ManagerDashboard` nav swap retires the points board for managers. Reason: managers DO see real champions today (`canManage` permits the tenant-wide submissions list); retiring the points-board nav before the re-homed banner exists would regress manager-visible data. Agents have nothing to lose (banner already empty for them; PR #403/P6 retired the empty agent banner with the agent nav swap).
+6. **Sequencing constraint (banked from PR #404 P6 disposition):** the P5-prep CF MUST land BEFORE P5's `ManagerDashboard` nav swap retires the points board for managers. Reason: managers DO see real champions today (`canManage` permits the tenant-wide submissions list); retiring the points-board nav before the re-homed banner exists would regress manager-visible data. Agents have nothing to lose (banner already empty for them; PR #404 P6 retired the empty agent banner with the agent nav swap).
 
-**Priority:** MEDIUM. Unblocks three things at once — movement chip on the around-me, UM unit-scope toggle in P5, and the agent-visible champions re-home that PR #403/P6 had to defer.
+**Priority:** MEDIUM. Unblocks three things at once — movement chip on the around-me, UM unit-scope toggle in P5, and the agent-visible champions re-home that PR #404 P6 had to defer.
 
-Banked: Track J P4 around-me cluster (PR #402), 2026-05-31. Expanded on PR #403 P5 read-only audit (unitId addition). Expanded on PR {TBD-P6} dispatcher disposition (champions write + sequencing constraint), 2026-05-31.
+Banked: Track J P4 around-me cluster (PR #402), 2026-05-31. Expanded on PR #403 P5 read-only audit (unitId addition). Expanded on PR #404 dispatcher disposition (champions write + sequencing constraint), 2026-05-31.
 
 ---
 
