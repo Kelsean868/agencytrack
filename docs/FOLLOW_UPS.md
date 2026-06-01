@@ -5,6 +5,111 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Track J Wizard v2 — REDESIGN, not RESTYLE (banked 2026-06-01 from surprise-stop)
+
+**Status:** brief rewrite needed BEFORE any code work begins.
+
+The first Wizard v2 brief was scoped as a "chrome-only restyle" preserving the existing P7A 9→5 grouping. Source-verifying the v2 mockup (`design_handoff_v2_app/mockups/AgencyTrack Weekly Report Wizard v2.html` + `wizard-v2-shared.jsx` + `wizard-v2-screens.jsx`) surfaced three central design moves that cannot be honored under a presentational-only constraint:
+
+1. **5 screens → 12 micro-steps grouped into 4 named phases** (Activity · Sales · Reflection · Goals). The mockup's `WIZARD_PHASES` + `WIZARD_STEPS` constants and the `PhaseProgress` 11-dot indicator are sized for the re-pagination. The brief explicitly forbade touching grouping/composition.
+2. **`WeekSoFarPanel` — persistent live sidebar** (right rail desktop · collapsing strip mobile) showing real-time production API totals, estimated commission at the agent's commission rate, a 6-week API sparkline, 2×2 mini-scorecards (apps / conv. / calls / names) with vs-last-week deltas, and a "still to enter" hint. Required new computation surface (`computeWizardLive`) that runs as the agent types — not chrome.
+3. **Per-field "SUGGESTED" hints + "LAST WK · N" comparison chips on every input** — required a suggestion engine + per-field last-week lookup at render time. New data plumbing, not styling.
+
+Also notable: `AutosaveChip` replaces `SaveStatusIndicator` with a pill-style chip carrying a timestamp ("Saved · 12s ago"). That sub-piece IS presentational and could be ported standalone if the broader redesign defers.
+
+**What needs to happen before this can be dispatched:**
+
+- **Rewritten brief** that either (a) authorizes the full 12-step / 4-phase re-pagination + `WeekSoFarPanel` + suggestion engine as a REDESIGN PR family with explicit acceptance of composition/computation changes, or (b) enumerates the v2 mockup features to SKIP and re-scopes to a strict presentational subset (header chrome, AutosaveChip, StepTitle eyebrow, progress-bar visual upgrade adapted to 5 screens, field focus-glow). Either is internally consistent; the mis-scoped brief tried to do both.
+- **Claude Design input** on the re-pagination question: does 12 micro-steps actually improve the agent's mobile UX vs the current 5-grouped screens with vertical scroll? P7A's original 9→5 collapse was a deliberate UX win (fewer next-clicks); a 5→12 fan-out reverses that. Worth a design-rationale pass before committing to the brief.
+- **WeekSoFarPanel scope decision:** ships as part of the wizard PR family, or as a separate "live-totals during wizard entry" feature PR? The latter is cleaner from a single-responsibility standpoint.
+
+**Worktree state:** the wizard worktree (`/c/Projects/AgencyTrack-wizard`) was discarded; `redesign/wizard-v2` branch deleted; brief commit `944103f` went with it. Daily Capture brief is HELD in Downloads pending the same audit (STEP 2 of the 2026-06-01 unsupervised window classified it as well — see `docs/track-j-port-ledger.md` and the audit table in the same session).
+
+**Cross-reference:** `docs/track-j-port-ledger.md` row #5 is the source for this FU. Once a rewritten brief is in place, the row's status changes from "PENDING — REDESIGN, not RESTYLE" to whatever the dispatched scope ends up shipping.
+
+---
+
+## Track J — Cyril branch rich seed (LOW, banked 2026-06-01 from PR #411 live-smoke aftermath)
+
+**Status:** OPTIONAL — current honest-empty is sufficient for the SM picker proof.
+
+PR #411's live smoke proved the SM all-branches picker re-reads per branch by demonstrating the contrast between `tatil_south` (populated podium · 6 agents · the PR #410 seed) and `Cyril Murray Branch` (honest empty-state · 3 agents · no submissions). The empty-state demo is correct + honest, but it would be more useful for Tatil-demo prep to have BOTH branches populated so the SM picker shows a side-by-side production comparison.
+
+**What this FU buys:**
+
+- Cyril branch has 3 real agents already (no PR-F roster needed); seed two weeks of submissions across them with a deliberately different ranking shape than `tatil_south` (e.g., Cyril rank 1 ahead of `tatil_south` rank 4, so the SM picker shows a real "cross-branch leadership comparison" not a "populated vs empty" comparison).
+- Re-uses the existing `functions/scripts/seed-leaderboard-test-data.cjs` machinery; the Cyril data design was preserved in the script for this future re-run (per PR #410 dispatcher Path A note).
+- Re-uses the existing two-gate prod-write pattern: dry-run pre-review → `--execute --i-confirm-prod-write` after dispatcher authorization.
+
+**Why it's LOW:**
+
+The honest empty-state is the correct production behavior (no submissions ≠ no agents); the SM picker proves cross-branch re-read regardless of whether the second branch is populated. This FU is purely demo-prep polish, not a correctness gap.
+
+**Scope when dispatched:**
+
+1. Re-enable the Cyril resolution path in `seed-leaderboard-test-data.cjs` (the 3 agents are already resolvable by UID — no roster gap to close).
+2. Dispatcher pre-reviews the Cyril dry-run output (movement shape, ranked-$0 inclusion, idempotency).
+3. Live run via `--execute --i-confirm-prod-write`, then `recomputeLeaderboardOnDemand`, then verify via the existing `scripts/verification/seed-verify.mjs` harness extended for Cyril.
+
+Cross-reference: PR #410 (`2b3c0cb`); seed script header comment block preserves the Cyril design.
+
+---
+
+## Track J — SM picker default-to-populated-branch UX nicety (LOW, banked 2026-06-01 from PR #411 live-smoke aftermath)
+
+**Status:** UX polish, not a correctness gap.
+
+PR #411 defaults the SM's first-use branch to the **first sorted active branch**. Branch sort is alphabetical, so the current tenant defaults to "Cyril Murray Branch" — which is intentionally empty per the seed Path A, producing an immediate empty-state on first use. Once an SM picks a populated branch, persistence kicks in and the empty-state never resurfaces; but the first-impression UX is "open the leaderboard → see empty-state → realize I need to switch branches → see real data."
+
+**Possible UX improvements (each independent, dispatcher picks):**
+
+1. **Default to the branch with the most current-week submissions** instead of alphabetical-first. The aggregate doc carries this signal (sum of WEEK array entries with `periodApi > 0` per branch). Defensible: SM cares about activity, not alphabetization.
+2. **Default to the branch with the most recent `computedAt`** (proxy for most-recently-active). Cheaper read.
+3. **Default-by-config-hint:** add an optional `defaultBranchId` field to `config/companyMinimums` (or a new `config/leaderboard`) that tenant_admin can set as the SM's home-branch on first use.
+4. **Two-pane "you're here, here's the spread" treatment:** branch picker on the left, a tiny per-branch eyebrow stat (e.g., "South · 12 agents · $42k WK") so SM sees comparative shape without picking.
+
+Each is small; the work IS in deciding which one fits.
+
+**Why it's LOW:**
+
+The current default is internally consistent (first sorted) and persistence covers steady-state usage. The first-impression awkwardness only fires on truly empty branches (which the Cyril rich-seed FU above would resolve from a different angle — if every branch has submissions, alphabetical-first lands on populated data anyway).
+
+**Dependency:** ships AFTER Cyril rich-seed if option 1 or 2 is chosen, because the "most-active" signal requires populated branches to test against.
+
+Cross-reference: PR #411 (`40296b6`); `SmLeaderboardView.jsx` default-pick logic at the `// Resolve initial selection` block.
+
+---
+
+## Deploy hygiene — banked for CLAUDE.md addition (banked 2026-06-01 for dispatcher review)
+
+**Status:** rule wording proposed; dispatcher reviews before adding to CLAUDE.md (per the unsupervised-window directive that CC must not edit CLAUDE.md).
+
+Several recent deploy-related near-misses share a common shape: a worktree at the wrong commit, or with stale `node_modules`, runs `firebase deploy` and either ships old code or fails on missing deps mid-deploy. The standing protection ("Order matters when removing key-file workarounds" in CLAUDE.md) covers the credential-rotation case but not the more common everyday-deploy case. The rules-deploy discipline ("§ Workflow — IMPORTANT" bullets) covers the pre-merge-vs-post-merge gating but not the "what state must the worktree be in at deploy time" question.
+
+**Proposed rule wording** (for dispatcher to copy verbatim into CLAUDE.md if approved):
+
+> **`firebase deploy` pre-flight: worktree at `origin/main` HEAD + `node_modules` installed.**
+>
+> Before any `firebase deploy --only functions` / `--only firestore:rules` / `--only firestore:indexes` from a feature worktree:
+>
+> 1. **Confirm the worktree's HEAD matches `origin/main`** (unless this is a pre-merge additive-rule deploy per the existing "Additive Firestore rules / Cloud Functions — deploy from the feature worktree before the PR merges" carve-out). Pattern: `git fetch origin && git rev-parse HEAD == git rev-parse origin/main`. Mismatch → STOP and surface.
+> 2. **Confirm `node_modules` is installed and current** at the worktree's package root for whichever surface is being deployed: `functions/node_modules` for functions deploys, repo-root `node_modules` for any build-step that runs ahead of the deploy. Pattern: a quick `npm install --silent` in the relevant directory (idempotent if already installed). Missing → install before proceeding.
+> 3. **Confirm authenticated against the correct Firebase project** via `firebase use` or the project flag.
+>
+> Why: stale-worktree deploys ship code that doesn't match what the PR proved; missing-`node_modules` deploys fail mid-flight with cryptic errors that look like Firebase issues. Both classes are silent until they bite.
+>
+> Carve-out for pre-merge additive rules / function exports: the existing § Workflow bullet ("Additive Firestore rules / Cloud Functions — deploy from the feature worktree before the PR merges") authorizes a deploy from a worktree NOT at `origin/main` HEAD. Step 1 above is waived for that specific case. Steps 2 + 3 still apply.
+
+**Dispatcher review prompts:**
+
+- Is the carve-out for pre-merge additive deploys correctly stated? (The current CLAUDE.md text is in § Workflow under "Additive Firestore rules / Cloud Functions — deploy from the feature worktree before the PR merges".)
+- Should the rule also gate `firebase deploy` based on `git status --short` being empty (no uncommitted changes in the deploy-relevant subtree)?
+- Section placement: under § Workflow alongside the existing deploy bullets, or under a new "Deploy hygiene" subsection?
+
+This FU exists to capture the proposed wording without modifying CLAUDE.md per the dispatcher's instruction. Bank-only; no code change required.
+
+---
+
 ## Track G — G2–G7 slice plan (banked from G1 brief, 2026-05-25)
 
 G1 (walking skeleton) is the current PR (FOUNDATION GATE). Remaining slices:
