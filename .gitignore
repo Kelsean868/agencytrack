@@ -102,3 +102,4 @@ extensions/*.env
 extensions/*.env.*
 extensions/*.secret.local
 extensions/secrets/
+scripts/verification/emails-v2-rendered/
