@@ -5,6 +5,67 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Social-field write gap in `submissionService.sanitize()` — agents' social activity silently dropped (HIGH, banked 2026-06-01 from Wizard v2 PR1 path-A smoke)
+
+**Status:** silent data loss in PROD. Pre-existing — not introduced by Wizard v2 PR1. Surfaced by path-A smoke field-binding verification.
+
+**Bug:** `src/services/submissionService.js`'s `sanitize()` function enumerates the persisted shape field-by-field. The enumeration is missing ALL 5 social/content fields:
+
+- `socialPostsTotal` (Posts Published)
+- `socialEngagementTotal` (Engagement)
+- `socialInboxEnquiries` (Inbox Enquiries)
+- `namesFromSocial` (Names from Social)
+- `socialPlatformBreakdown.{facebook, instagram, whatsapp, linkedin}` (Platform breakdown)
+
+`StepSocialMedia.jsx` displays + accepts input for these fields and they flow into `formData` correctly, but `sanitize()` strips them before writing to Firestore. Result: every weekly report submitted has its social-activity section silently dropped. Agents think their social activity is logged; managers see zero social activity on every report.
+
+**Impact:**
+
+- HIGH for data integrity: weeks of agent self-reported social activity dropped without warning.
+- HIGH for product trust: the "Social & content" wizard step looks like it works (renders, accepts input, autosaves draft, submits cleanly) — silent loss is worse than a visible error.
+- Not a v2 regression: present in main BEFORE Wizard v2 PR1. The legacy v1 wizard had the same flow + same gap.
+
+**Scope when dispatched:**
+
+1. Audit `submissionService.sanitize()` against the wizard's `INITIAL_DATA` field set (in `WizardForm.jsx`). The audit must enumerate every persisted field name in the wizard, every field name in `sanitize()`, and emit a diff.
+2. Add the 5 missing fields to `sanitize()` with appropriate coercion (all are `int()` except `socialPlatformBreakdown` which is a nested object — needs `{ facebook: int(...), instagram: int(...), whatsapp: int(...), linkedin: int(...) }`).
+3. Regression test: a unit test that exercises every field in `INITIAL_DATA` and asserts every key survives `sanitize()` round-trip with the correct numeric type.
+4. Live verification: after fix, re-run the path-A smoke with `expectPersist: true` on `socialPostsTotal`. Should pass.
+5. Historical-data note: existing submissions in production have NO social fields. After fix, new submissions WILL have them. Manager-facing surfaces should handle BOTH shapes (use `?? 0` defensive reads, which most already do).
+
+**Why HIGH:**
+
+Silent data loss is the worst class of bug — agents and managers both believe the data is captured. Worth fixing before pilot.
+
+**Cross-reference:** `src/services/submissionService.js:17-110` (sanitize body); `src/components/wizard/steps/StepSocialMedia.jsx` (the dead-write source); path-A smoke `STEP_FILLS[3]` (`socialPostsTotal` marked `expectPersist: false` with a comment pointing to this FU).
+
+---
+
+## Trailing autosave permission error after submit — cosmetic console noise (LOW, banked 2026-06-01 from Wizard v2 PR1 path-A smoke)
+
+**Status:** cosmetic. Pre-existing in main; surfaced as 1 console error per submit on the path-A smoke.
+
+**Symptom:** every successful submit emits ONE `FirebaseError: Missing or insufficient permissions` to the browser console. No user impact — the submit is already persisted, the wizard transitions to 'done' correctly, and the smoke's persistence assertion passes.
+
+**Hypothesis (not confirmed):** the autosave scheduling `useEffect` re-runs after `setScreen('done')`. The cleanup-then-reschedule path may fire one trailing `saveDraft()` call against the doc which is now `status: 'submitted'`. The rule arm `allow update: ... && resource.data.status == 'draft'` denies the write. The `doSave.current` guard checks `draftStatus === 'submitted'` and returns early — but the React state-update timing may let one stale-closure call slip through.
+
+**Scope when dispatched (small, low-risk):**
+
+1. Reproduce locally with verbose logging in `doSave.current` to confirm which call path emits the error.
+2. Two candidate fixes — pick one:
+   - Make the autosave scheduling `useEffect` early-return when `screen === 'done' || screen === 'submitted'` (parallel to its existing `screen === 'date'` guard).
+   - Move the `draftStatus === 'submitted'` guard from inside `doSave.current` up into the timer-scheduling step (so no timer is even scheduled once the draft flips to submitted).
+3. Live re-run path-A smoke; assert `errors == 0` (instead of the current `unknownErrors == 0` carve-out).
+4. Smoke's known-permissions-error carve-out can then be removed.
+
+**Why LOW:**
+
+No user impact, no data integrity issue. The error logs to console but doesn't surface to the user. Worth cleaning up but doesn't block pilot.
+
+**Cross-reference:** `src/components/wizard/WizardForm.jsx` autosave `useEffect` + `doSave.current` guard; `scripts/verification/wizard-v2-pr1-pathA-smoke.mjs` `knownPermissionsError` carve-out.
+
+---
+
 ## Wizard v2 PR2 — live-compute layer (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #{TBD})
 
 **Status:** ready to dispatch AFTER PR1 (#{TBD}) merges.
