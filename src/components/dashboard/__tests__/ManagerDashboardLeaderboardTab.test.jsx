@@ -1,21 +1,25 @@
 // @vitest-environment jsdom
 //
-// Track J P5 — ManagerDashboard's role-conditional Leaderboard tab swap.
+// Track J P5 + P5b — ManagerDashboard's role-conditional Leaderboard tab swap.
 //
 // Asserts:
 //   1. unit_manager → ProductionLeaderboardSurface (P5a scope control is on
 //      this surface; this test pins the swap, not the control itself which
 //      is covered by UnitScope.test.jsx).
 //   2. branch_manager → ProductionLeaderboardSurface (same).
-//   3. sales_manager → gamification/Leaderboard (REGRESSION — must NOT
-//      break; SM uses points board until P5b ships the all-branches picker).
-//   4. tenant_admin → gamification/Leaderboard (regression — same default
-//      arm as SM; only UM/BM are gated to the production surface).
-//   5. platform_admin → gamification/Leaderboard (regression — same).
+//   3. sales_manager → SmLeaderboardView (P5b — all-branches picker; SM no
+//      longer mounts the points board).
+//   4. tenant_admin → SHOULD NOT REACH ManagerDashboard's leaderboard arm
+//      (TA routes to TenantAdminDashboard via App.jsx); kept here as a
+//      defensive fallback only for documentation.
+//   5. platform_admin → gamification/Leaderboard (regression — PA still
+//      falls through the default arm; keeps the points-board import
+//      consumed so it is NOT orphaned by P5b).
 //
-// Mocks the two leaderboard components with sentinel divs so the assertions
-// pin which one ManagerDashboard chose to mount; mocks every other heavy
-// sub-component as inert so we don't drag the whole dashboard into the test.
+// Mocks the three leaderboard render targets with sentinel divs so the
+// assertions pin which one ManagerDashboard chose to mount; mocks every
+// other heavy sub-component as inert so we don't drag the whole dashboard
+// into the test.
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -59,6 +63,12 @@ vi.mock('../../leaderboard/ProductionLeaderboardSurface', async () => {
   const React = await import('react');
   return {
     default: () => React.createElement('div', { 'data-testid': 'manager-leaderboard-production-surface-mount' }),
+  };
+});
+vi.mock('../../leaderboard/SmLeaderboardView', async () => {
+  const React = await import('react');
+  return {
+    default: () => React.createElement('div', { 'data-testid': 'manager-leaderboard-sm-view-mount' }),
   };
 });
 
@@ -139,47 +149,48 @@ describe('ManagerDashboard — Leaderboard tab (Track J P5 swap)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Regression — SM/TA/PA still mount the points board
-// (this is the load-bearing safety net; SM must NOT break — P5b is the
-//  proper SM experience, not in this PR)
+// P5b — SM now mounts SmLeaderboardView (NOT the points board)
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('ManagerDashboard — Leaderboard tab regression (SM/TA/PA keep points board)', () => {
-  it('sales_manager → mounts gamification/Leaderboard (REGRESSION GUARD — SM unchanged until P5b)', () => {
+describe('ManagerDashboard — Leaderboard tab (Track J P5b SM swap)', () => {
+  it('sales_manager → mounts SmLeaderboardView (NOT the points board, NOT the production surface)', () => {
     mountWithRole('sales_manager');
     fireEvent.click(screen.getByTestId('go-leaderboard'));
-    expect(screen.getByTestId('manager-leaderboard-points-board-mount')).toBeInTheDocument();
-    expect(screen.queryByTestId('manager-leaderboard-production-surface-mount')).not.toBeInTheDocument();
-  });
-
-  it('tenant_admin → mounts gamification/Leaderboard (regression — default arm)', () => {
-    mountWithRole('tenant_admin');
-    fireEvent.click(screen.getByTestId('go-leaderboard'));
-    expect(screen.getByTestId('manager-leaderboard-points-board-mount')).toBeInTheDocument();
-    expect(screen.queryByTestId('manager-leaderboard-production-surface-mount')).not.toBeInTheDocument();
-  });
-
-  it('platform_admin → mounts gamification/Leaderboard (regression — default arm)', () => {
-    mountWithRole('platform_admin');
-    fireEvent.click(screen.getByTestId('go-leaderboard'));
-    expect(screen.getByTestId('manager-leaderboard-points-board-mount')).toBeInTheDocument();
+    expect(screen.getByTestId('manager-leaderboard-sm-view-mount')).toBeInTheDocument();
+    expect(screen.queryByTestId('manager-leaderboard-points-board-mount')).not.toBeInTheDocument();
     expect(screen.queryByTestId('manager-leaderboard-production-surface-mount')).not.toBeInTheDocument();
   });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Points-board NOT orphaned — its import is still consumed
+// Regression — PA still mounts the points board (load-bearing for the
+// no-orphan guarantee; the import in ManagerDashboard stays consumed via
+// the PA fallback after P5b takes SM out of this arm).
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('ManagerDashboard — gamification/Leaderboard is not orphaned (import stays consumed)', () => {
-  it('the points-board mount path resolves at module load (no Cannot-find-module on SM render)', () => {
+describe('ManagerDashboard — Leaderboard tab regression (PA still on points board)', () => {
+  it('platform_admin → mounts gamification/Leaderboard (regression — default arm)', () => {
+    mountWithRole('platform_admin');
+    fireEvent.click(screen.getByTestId('go-leaderboard'));
+    expect(screen.getByTestId('manager-leaderboard-points-board-mount')).toBeInTheDocument();
+    expect(screen.queryByTestId('manager-leaderboard-production-surface-mount')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('manager-leaderboard-sm-view-mount')).not.toBeInTheDocument();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Points-board NOT orphaned — its import is still consumed by PA
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('ManagerDashboard — gamification/Leaderboard is not orphaned (PA keeps the import live)', () => {
+  it('the points-board mount path resolves at module load (no Cannot-find-module on PA render)', () => {
     // If `gamification/Leaderboard` had been removed or the import deleted,
-    // the SM render path would either throw at module-load OR fail to
+    // the PA render path would either throw at module-load OR fail to
     // resolve the testid below (because the mock provides one). The fact
-    // that SM mounts the sentinel proves the import is intact AND its
-    // render branch is reachable.
+    // that PA mounts the sentinel proves the import is intact AND its
+    // render branch is reachable — i.e., P5b did NOT orphan the import.
     cleanup();
-    expect(() => mountWithRole('sales_manager')).not.toThrow();
+    expect(() => mountWithRole('platform_admin')).not.toThrow();
     fireEvent.click(screen.getByTestId('go-leaderboard'));
     expect(screen.getByTestId('manager-leaderboard-points-board-mount')).toBeInTheDocument();
   });

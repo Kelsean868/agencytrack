@@ -303,14 +303,30 @@ function EmptyState({ periodLabel }) {
 // ─────────────────────────────────────────────────────────────────────────────
 const PODIUM_LABELS = ['Champion', 'Runner-up', 'Third place'];
 
-export default function ProductionLeaderboardSurface() {
+/**
+ * Props (Track J P5b):
+ *   • branchIdOverride — when set (SM via the branch picker), threads into
+ *     useLeaderboard() so the surface reads `leaderboards/{override}` instead
+ *     of the viewer's own branch. Empty/undefined → fallback to own branch.
+ *   • scopeRoleOverride — when set (SM via the picker container), tells
+ *     LeaderboardScopeControl + useLeaderboardScope to render and store
+ *     scope state as if the viewer were that role (BM-style for SM).
+ *   • overrideBranchName — visual label for the picked branch (since
+ *     `userProfile.branchName` reflects the viewer's own branch). Used in
+ *     the subtitle so the SM sees "Cyril · Lee's Unit · YTD · 4 agents".
+ */
+export default function ProductionLeaderboardSurface({
+  branchIdOverride,
+  scopeRoleOverride,
+  overrideBranchName,
+} = {}) {
   const [period, setPeriod] = useState('YTD');
-  const { loading, error, byPeriod, doc } = useLeaderboard();
+  const { loading, error, byPeriod, doc } = useLeaderboard(branchIdOverride);
   const { champions, loading: championsLoading } = useWeeklyChampions();
   const { user, userProfile, role } = useAuth();
   const viewerUid    = user?.uid ?? null;
   const viewerName   = userProfile?.name ?? null;
-  const viewerBranch = userProfile?.branchName ?? null;
+  const viewerBranch = overrideBranchName ?? userProfile?.branchName ?? null;
 
   const activeField = useMemo(
     () => PERIODS.find((p) => p.k === period)?.field ?? 'ytd',
@@ -339,7 +355,12 @@ export default function ProductionLeaderboardSurface() {
   );
   const {
     scope, targetUnitId, selectBranch, selectUnit,
-  } = useLeaderboardScope({ uid: viewerUid, role, availableUnitIds });
+  } = useLeaderboardScope({
+    uid: viewerUid,
+    role,
+    availableUnitIds,
+    effectiveRole: scopeRoleOverride,
+  });
 
   // Apply the scope filter — `ranking` from here on is the DISPLAYED set
   // (podium / tail / around-me / leaderApi all derive from it). My Branch
@@ -480,12 +501,16 @@ export default function ProductionLeaderboardSurface() {
             unitOptions={unitOptions}
             onSelectBranch={selectBranch}
             onSelectUnit={selectUnit}
+            effectiveRole={scopeRoleOverride}
           />
           {/* Vertical 1px divider — only when the scope control is visible
               AND we're on sm+ (mobile stacks them with no divider). */}
-          {(role === 'unit_manager' || role === 'branch_manager') && (
-            <div aria-hidden="true" className="hidden sm:block w-px h-7 bg-border" />
-          )}
+          {(() => {
+            const r = scopeRoleOverride ?? role;
+            return (r === 'unit_manager' || r === 'branch_manager') && (
+              <div aria-hidden="true" className="hidden sm:block w-px h-7 bg-border" />
+            );
+          })()}
           <PeriodChips value={period} onChange={setPeriod} />
         </div>
       </div>

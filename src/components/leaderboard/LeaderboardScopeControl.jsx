@@ -56,12 +56,14 @@ export default function LeaderboardScopeControl({
   unitOptions, // [{ unitId, unitName }]
   onSelectBranch,
   onSelectUnit,
+  effectiveRole, // Track J P5b: SM borrows BM-style; defaults to role
 }) {
-  // ── Agents (and everyone else not UM/BM) get NO control. ──────────────────
-  if (role !== 'unit_manager' && role !== 'branch_manager') return null;
+  const renderRole = effectiveRole ?? role;
+  // ── Agents (and everyone else not UM/BM under the render view) get NO control. ──
+  if (renderRole !== 'unit_manager' && renderRole !== 'branch_manager') return null;
 
   // ── UM: 2-segment My Unit / My Branch. ───────────────────────────────────
-  if (role === 'unit_manager') {
+  if (renderRole === 'unit_manager') {
     // A UM's "My Unit" is the unit they manage — by project convention, the
     // UM's UID IS their unitId (verified at P5-prep). If viewerUid isn't
     // available yet, fall back to a disabled-ish render that defaults to
