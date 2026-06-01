@@ -83,8 +83,10 @@ async function smokeTheme(theme) {
   });
 
   try {
-    const targetUrl = `${URL}/?tab=production-leaderboard`;
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
+    // Track J P6 — production-leaderboard is now a real primary-nav item;
+    // the `?tab=production-leaderboard` temp route was retired. Land at the
+    // dashboard root and click the "Leaderboard" nav item to reach the surface.
+    await page.goto(URL, { waitUntil: 'domcontentloaded' });
     await login(page);
 
     if (theme === 'dark') {
@@ -95,11 +97,8 @@ async function smokeTheme(theme) {
       await page.waitForTimeout(400);
     }
 
-    const currentUrl = page.url();
-    if (!currentUrl.includes('tab=production-leaderboard')) {
-      await page.goto(targetUrl, { waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(1500);
-    }
+    // Click the real Leaderboard nav item.
+    await page.click('[data-testid="agent-tab-leaderboard"]');
 
     await page.waitForSelector('[data-testid="production-leaderboard-surface"]', { timeout: 15_000 });
 
