@@ -28,6 +28,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { formatCurrency } from '../../utils/formatters';
+import MovementChip from '../ui/MovementChip';
 
 function initialsOf(name) {
   if (!name || typeof name !== 'string') return '?';
@@ -113,11 +114,17 @@ function DesktopClusterRow({ entry, isViewer, leaderApi, viewerName }) {
         )}
         <div className="min-w-0">
           <div
-            className={`text-sm truncate ${
+            className={`text-sm truncate flex items-center gap-1.5 ${
               isViewer || isUnrankedRow ? 'font-bold text-primary' : 'font-semibold text-ink'
             }`}
           >
-            {displayName}
+            <span className="truncate">{displayName}</span>
+            {/* Track J movement chip — viewer-only (skipped on unranked YOU
+                row since there's no current rank). WEEK-only via the data
+                path (previousRank=null on non-week entries). */}
+            {isViewer && !isUnrankedRow && (
+              <MovementChip previousRank={entry.previousRank} rank={entry.rank} />
+            )}
           </div>
           {isUnrankedRow ? (
             <div className="text-[10.5px] text-ink-muted mt-0.5 font-mono tracking-wide">
@@ -270,11 +277,15 @@ function MobileExpandedRow({ entry, isViewer, viewerName }) {
       )}
       <div className="flex-1 min-w-0">
         <div
-          className={`text-sm truncate ${
+          className={`text-sm truncate flex items-center gap-1.5 ${
             isViewer || isUnrankedRow ? 'font-bold text-primary' : 'font-semibold text-ink'
           }`}
         >
-          {displayName}
+          <span className="truncate">{displayName}</span>
+          {/* Track J movement chip — viewer-only, ranked-only, WEEK-only via data. */}
+          {isViewer && !isUnrankedRow && (
+            <MovementChip previousRank={entry.previousRank} rank={entry.rank} />
+          )}
         </div>
         {isUnrankedRow ? (
           <div className="text-[10px] text-ink-muted mt-0.5 font-mono">
@@ -396,8 +407,17 @@ export function AroundMeClusterMobile({
 
           {/* Name + rank-of-total */}
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-bold font-display text-primary truncate">
-              {viewerDisplayName}
+            <div className="text-sm font-bold font-display text-primary flex items-center gap-1.5">
+              <span className="truncate">{viewerDisplayName}</span>
+              {/* Track J movement chip — viewer-only, ranked-only (no chip
+                  on unranked YOU bar — no current rank to compare). WEEK-only
+                  via data path. */}
+              {!isUnranked && viewerEntry && (
+                <MovementChip
+                  previousRank={viewerEntry.previousRank}
+                  rank={viewerEntry.rank}
+                />
+              )}
             </div>
             <div className="text-[10.5px] text-ink-muted mt-0.5 font-mono tracking-wide">
               {isUnranked

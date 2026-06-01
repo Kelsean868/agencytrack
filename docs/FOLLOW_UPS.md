@@ -3359,7 +3359,12 @@ Banked: Track J P7 close (PR #403), 2026-05-31.
 
 ## Track J (V2 Redesign) — P5-prep aggregate-enrichment CF: `previousRank` + `unitId` + last-week champions (MEDIUM, banked 2026-05-31 from PR #402; expanded 2026-05-31 on PR #403/audit + PR #404 — **RESOLVED by PR #405**)
 
-> **RESOLVED 2026-05-31 by Track J P5-prep (PR #405).** All three additions landed in one CF change derived from ONE prior-week computation. The (a) banner re-home, (b) movement chip, and (c) P5a UM unit-scope UI are now unblocked (each ships as its own downstream PR). The sequencing constraint (must land BEFORE P5's ManagerDashboard nav swap) is satisfied — managers' working champions banner survives until then because P6 only retired the agent nav slot. Original body preserved below for the design-decision trail.
+> **RESOLVED 2026-05-31 by Track J P5-prep (PR #405).** All three additions landed in one CF change derived from ONE prior-week computation. Downstream UI consumer status:
+> - (a) **banner re-home** — UNBLOCKED; ships as its own downstream PR.
+> - (b) **movement chip** — **SHIPPED in Track J movement-chip PR #{TBD}** (`ui/MovementChip` consumed by AroundMeCluster YOU row + isViewer TailRow + isViewer PodiumCard + WhereYouRankPanel YOU row; viewer-only + WEEK-only; direction = `previousRank − rank`; ▲ climbed / ▼ dropped / – even / null no-chip).
+> - (c) **P5a UM unit-scope UI** — UNBLOCKED; ships as its own downstream PR.
+>
+> The sequencing constraint (must land BEFORE P5's ManagerDashboard nav swap) is satisfied — managers' working champions banner survives until then because P6 only retired the agent nav slot. Original body preserved below for the design-decision trail.
 
 ---
 
