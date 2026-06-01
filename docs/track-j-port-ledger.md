@@ -1,6 +1,6 @@
 # Track J — V2 Redesign port-completeness ledger
 
-**Snapshot date:** 2026-06-01 (main HEAD `a8df456`, post-PR-#411 — Track J P5b SM all-branches picker)
+**Snapshot date:** 2026-06-01 (main HEAD `91f9054`, post-PR-#414 — Track J System Screens v2; awaiting PR #415 Emails v2 to land the final stacked-sequence piece)
 
 **Source of truth:** `design_handoff_v2_app/mockups/` — 35 `.html` files, of which **34 are canonical screens** per the v2 handoff README §6 (`app-leaderboard-around-me.html` is an auxiliary artboard inside the Leaderboard screen, not a separate canonical screen).
 
@@ -10,9 +10,9 @@
 
 ## Headline (snapshot)
 
-**10 of 34 v2 screens ported.** Two of the 10 are agent-side-only ports whose Manager subsections from the same mockup remain pending (Persistency manager-entry side; Manager Awards within the Agent Awards mockup). One (Leaderboard) is largely ported but P5b's SM all-branches picker shipped only the agent + manager nav slots — the cross-branch read pattern is now live.
+**13 of 34 v2 screens ported.** Post #412 (Agent Awards manager-side carve-out fully ported row 13) + #413 (Kiosk Mode row 31) + #414 (System Screens row 33). Persistency v2 row 10 remains agent-side-only (manager-entry side pending). Leaderboard row 28 fully ported through #411 (agent + UM/BM/SM).
 
-**24 pending v2 mockups remain to port.** Surprise-stop on the first restyle attempt (Wizard v2, this session) surfaced a class of brief-vs-mockup contradictions that means several "pending restyle" rows are actually **REDESIGN**s, not chrome-only restyles. See `docs/FOLLOW_UPS.md` for the Wizard v2 REDESIGN reclassification; STEP 2 of the same session re-classifies the remaining 23.
+**21 pending v2 mockups remain to port** (after PR #415 Emails v2 lands, drops to **20 pending**). Surprise-stop on the first restyle attempt (Wizard v2, this session) surfaced a class of brief-vs-mockup contradictions that means several "pending restyle" rows are actually **REDESIGN**s, not chrome-only restyles. See `docs/FOLLOW_UPS.md` for the Wizard v2 REDESIGN reclassification; STEP 2 of the same session re-classifies the remaining 23.
 
 ## Ledger — 34 canonical v2 screens
 
@@ -48,9 +48,9 @@
 | 28 | Leaderboard | **PORTED (agent + UM/BM/SM)** | [#396](https://github.com/Kelsean868/agencytrack/pull/396) (`c0c956a`) + [#401](https://github.com/Kelsean868/agencytrack/pull/401) (`8a1aeb2`) + [#402](https://github.com/Kelsean868/agencytrack/pull/402) (`6eb465c`) + [#404](https://github.com/Kelsean868/agencytrack/pull/404) (`a3b0142`) + [#406](https://github.com/Kelsean868/agencytrack/pull/406) (`20a2be2`) + [#407](https://github.com/Kelsean868/agencytrack/pull/407) (`c5d099e`) + [#408](https://github.com/Kelsean868/agencytrack/pull/408) (`b72bfd0`) + [#409](https://github.com/Kelsean868/agencytrack/pull/409) (`189ae56`) + [#411](https://github.com/Kelsean868/agencytrack/pull/411) (`40296b6`) | `productionReport/ProductionLeaderboardSurface.jsx` + `leaderboard/SmLeaderboardView.jsx` + `WeeklyChampionsBanner`, `RankedLeaderboard`, `gamification/Leaderboard.jsx` | Backend infra: #399 (CJS ranking mirror), #400 (aggregate CF), #405 (aggregate enrichment), #410 (test-data seed). All role tiers shipped through #411 (SM all-branches picker) |
 | 29 | CRO | PENDING | — | `manager/PolicyReconciliationPanel.jsx`, `SettlementPanel.jsx`, `productionReport/*` + ★ Delivery Register / 30-day clawback clock | Role routing also needs decision (README §7 — `App.jsx` has no CRO branch) |
 | 30 | Policy Reconciliation | PENDING | — | `manager/PolicyReconciliationPanel.jsx` | |
-| 31 | Kiosk Mode | PENDING | — | `kiosk/KioskShell.jsx`, `KioskModeTab.jsx`, `KioskRoute.jsx`, `kiosk/panels/*` | Functional ship pre–Track J (E5/E5.1) |
+| 31 | Kiosk Mode | **PORTED** | [#413](https://github.com/Kelsean868/agencytrack/pull/413) (`e685610`) | `kiosk/KioskShell.jsx`, `KioskModeTab.jsx`, `KioskRoute.jsx`, `kiosk/panels/*` | Animation/visual restyle on `--color-presentation-*` (+ new `gold`/`hot` accents). Infra/routes/validation/rotation UNTOUCHED |
 | 32 | Meeting Mode v2 | PENDING | — | `manager/MeetingMode.jsx` | |
-| 33 | System Screens | PENDING | — | `auth/LoginScreen.jsx`, `App.jsx` (Loading/Provisioning/Stub), `onboarding/*`, `ui/Toast`, `ConfirmDialog`, `NotificationDrawer` | |
+| 33 | System Screens | **PORTED** | [#414](https://github.com/Kelsean868/agencytrack/pull/414) (`91f9054`) | `auth/LoginScreen.jsx` ✓ · `App.jsx` (LoadingScreen / PlatformAdminStubScreen / ProvisioningScreen) ✓ · `onboarding/*`, `ui/Toast`, `ConfirmDialog`, `NotificationDrawer` already token-driven (no v2 deltas needed) | Animated drifting glyph backdrop + liquid-glass card + password eye-toggle. Auth flow + AppRoot routing UNCHANGED (the brief's danger zone) |
 | 34 | Emails | PENDING | — | `functions/email-templates/*.html` (monday-nudge, sunday-nudge, password-reset) | Server-rendered HTML, separate path per README §8 |
 
 ## Pending — 24 screens
@@ -75,9 +75,7 @@
 27. Production Report v2 (UM/BM/SM scopes)
 29. CRO (also needs role routing decision per README §7)
 30. Policy Reconciliation
-31. Kiosk Mode
 32. Meeting Mode v2
-33. System Screens
 34. Emails
 
 ## Partial-port carve-outs (already counted as PORTED above)
