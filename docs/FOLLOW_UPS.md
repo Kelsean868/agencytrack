@@ -5,6 +5,130 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Social-field write gap in `submissionService.sanitize()` — agents' social activity silently dropped (HIGH, banked 2026-06-01 from Wizard v2 PR1 path-A smoke)
+
+**Status:** silent data loss in PROD. Pre-existing — not introduced by Wizard v2 PR1. Surfaced by path-A smoke field-binding verification.
+
+**Bug:** `src/services/submissionService.js`'s `sanitize()` function enumerates the persisted shape field-by-field. The enumeration is missing ALL 5 social/content fields:
+
+- `socialPostsTotal` (Posts Published)
+- `socialEngagementTotal` (Engagement)
+- `socialInboxEnquiries` (Inbox Enquiries)
+- `namesFromSocial` (Names from Social)
+- `socialPlatformBreakdown.{facebook, instagram, whatsapp, linkedin}` (Platform breakdown)
+
+`StepSocialMedia.jsx` displays + accepts input for these fields and they flow into `formData` correctly, but `sanitize()` strips them before writing to Firestore. Result: every weekly report submitted has its social-activity section silently dropped. Agents think their social activity is logged; managers see zero social activity on every report.
+
+**Impact:**
+
+- HIGH for data integrity: weeks of agent self-reported social activity dropped without warning.
+- HIGH for product trust: the "Social & content" wizard step looks like it works (renders, accepts input, autosaves draft, submits cleanly) — silent loss is worse than a visible error.
+- Not a v2 regression: present in main BEFORE Wizard v2 PR1. The legacy v1 wizard had the same flow + same gap.
+
+**Scope when dispatched:**
+
+1. Audit `submissionService.sanitize()` against the wizard's `INITIAL_DATA` field set (in `WizardForm.jsx`). The audit must enumerate every persisted field name in the wizard, every field name in `sanitize()`, and emit a diff.
+2. Add the 5 missing fields to `sanitize()` with appropriate coercion (all are `int()` except `socialPlatformBreakdown` which is a nested object — needs `{ facebook: int(...), instagram: int(...), whatsapp: int(...), linkedin: int(...) }`).
+3. Regression test: a unit test that exercises every field in `INITIAL_DATA` and asserts every key survives `sanitize()` round-trip with the correct numeric type.
+4. Live verification: after fix, re-run the path-A smoke with `expectPersist: true` on `socialPostsTotal`. Should pass.
+5. Historical-data note: existing submissions in production have NO social fields. After fix, new submissions WILL have them. Manager-facing surfaces should handle BOTH shapes (use `?? 0` defensive reads, which most already do).
+
+**Why HIGH:**
+
+Silent data loss is the worst class of bug — agents and managers both believe the data is captured. Worth fixing before pilot.
+
+**Cross-reference:** `src/services/submissionService.js:17-110` (sanitize body); `src/components/wizard/steps/StepSocialMedia.jsx` (the dead-write source); path-A smoke `STEP_FILLS[3]` (`socialPostsTotal` marked `expectPersist: false` with a comment pointing to this FU).
+
+---
+
+## Trailing autosave permission error after submit — cosmetic console noise (LOW, banked 2026-06-01 from Wizard v2 PR1 path-A smoke)
+
+**Status:** cosmetic. Pre-existing in main; surfaced as 1 console error per submit on the path-A smoke.
+
+**Symptom:** every successful submit emits ONE `FirebaseError: Missing or insufficient permissions` to the browser console. No user impact — the submit is already persisted, the wizard transitions to 'done' correctly, and the smoke's persistence assertion passes.
+
+**Hypothesis (not confirmed):** the autosave scheduling `useEffect` re-runs after `setScreen('done')`. The cleanup-then-reschedule path may fire one trailing `saveDraft()` call against the doc which is now `status: 'submitted'`. The rule arm `allow update: ... && resource.data.status == 'draft'` denies the write. The `doSave.current` guard checks `draftStatus === 'submitted'` and returns early — but the React state-update timing may let one stale-closure call slip through.
+
+**Scope when dispatched (small, low-risk):**
+
+1. Reproduce locally with verbose logging in `doSave.current` to confirm which call path emits the error.
+2. Two candidate fixes — pick one:
+   - Make the autosave scheduling `useEffect` early-return when `screen === 'done' || screen === 'submitted'` (parallel to its existing `screen === 'date'` guard).
+   - Move the `draftStatus === 'submitted'` guard from inside `doSave.current` up into the timer-scheduling step (so no timer is even scheduled once the draft flips to submitted).
+3. Live re-run path-A smoke; assert `errors == 0` (instead of the current `unknownErrors == 0` carve-out).
+4. Smoke's known-permissions-error carve-out can then be removed.
+
+**Why LOW:**
+
+No user impact, no data integrity issue. The error logs to console but doesn't surface to the user. Worth cleaning up but doesn't block pilot.
+
+**Cross-reference:** `src/components/wizard/WizardForm.jsx` autosave `useEffect` + `doSave.current` guard; `scripts/verification/wizard-v2-pr1-pathA-smoke.mjs` `knownPermissionsError` carve-out.
+
+---
+
+## Wizard v2 PR2 — live-compute layer (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #{TBD})
+
+**Status:** ready to dispatch AFTER PR1 (#{TBD}) merges.
+
+PR1 ports the structural shell only. PR2 adds the v2 mockup's live-compute layer:
+
+- **`WeekSoFarPanel`** — persistent right-rail (desktop) / collapsing bottom-strip (mobile) showing the agent's production API + estimated commission + activity totals as they fill the wizard.
+- **`MiniSparkline`** — 6-week API trend with the current week as a "now" bar.
+- **2×2 mini-scorecards** — Apps · Conv % · Calls · Names with vs-last-week deltas.
+- **Live derivations** — `computeWizardLive` (mockup's `wizard-v2-shared.jsx`) computes total production credit + commission + conversion% from the same formula path as `lib/schema/weeklyReport.computations.js` already uses. Pure read of in-progress formData; no schema additions.
+
+**Scope:** new computation surface; no field schema changes; no submit-path change. Must run client-side as the agent types (debounced computation tick, NOT a Firestore round-trip).
+
+**Why MEDIUM (not LOW):** the panel is the v2 mockup's most visible win for agents — instant feedback on weekly production. Worth doing soon after PR1 lands.
+
+**Cross-reference:** `design_handoff_v2_app/mockups/wizard-v2-shared.jsx` (`WeekSoFarPanel`, `MiniSparkline`, `computeWizardLive` reference impl).
+
+---
+
+## Wizard v2 PR3 — discrete Review step + Edit·Step-N jump-back + submit celebration (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #{TBD})
+
+**Status:** ready to dispatch AFTER PR2 lands (PR1 → PR2 → PR3 sequence).
+
+PR1 ends step 11 with a direct submit. PR3 reintroduces the v2 mockup's discrete step 12 (Review & submit):
+
+- **Step 12 = Review screen** — replaces step 11's "Submit" arm with a Next-to-Review button. The 12-dot rail's step 12 dot lights up as the current step.
+- **Per-screen summary panels** — production credit + commission + activity totals laid out for visual scan before submit (current `ReviewSummary` + `ProductionSummaryPanel` adapted to v2 grammar).
+- **Edit·Step-N jump-back** — every panel has an "Edit" affordance that returns the agent to that specific step. After editing, "Back to Review" returns to step 12.
+- **Submit celebration** — after submit, a brief celebratory frame (confetti + figures + "Submitted ✓") before transitioning to the existing 'done' screen.
+
+**Scope:** UI only. No schema, no compute, no submit-path change. PR3 restores the 'review' screen the legacy WizardForm had (with v2 visual treatment + jump-back), and adds the celebration as a transient state between submit and 'done'.
+
+**Cross-reference:** `design_handoff_v2_app/mockups/wizard-v2-screens.jsx` (`ReviewSubmit`, `Celebration` reference impls).
+
+---
+
+## Wizard v2 — Decision-A SUGGESTED-atom + goal-seeding (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #{TBD})
+
+**Status:** product decision needed BEFORE the SUGGESTED atom is wired.
+
+The v2 mockup adds a NEW per-field SUGGESTED hint atom + per-field last-week comparison chips. These are explicitly DEFERRED in PR1 because each field needs a per-field source decision: should the suggestion come from (a) the agent's last week's value, (b) the company's weekly activity floor, (c) the tenure-based floor, (d) the agent's personal next-week goal from a prior submission, or (e) some hybrid?
+
+**Important distinction (preserve-list from PR1):** the v2 mockup's NEW per-field hints + new SUGGESTED atom visual are deferred here. The wizard's EXISTING last-week reads + suggested derivations are PRESERVED in PR1 (NOT this FU's scope):
+
+- `Step5NewNames.jsx` reads `lastWeekData?.oldNamesPool` → derives a "suggested" pool value
+- `Step6DeliveriesService.jsx` reads `lastWeekData?.policiesOutstanding` → derives a suggested outstanding count
+- `Step4ClosingSales.jsx` derives a `suggestedCiConducted` from `newCIBooked + oldCIBooked` (pure local)
+
+These existing reads use the existing `SuggestedField` atom + the `WizardForm`'s existing `getLastSubmission` data flow. They ride through unchanged across the re-fan.
+
+**Scope when dispatched:**
+
+1. **Per-field source mapping**: decide what each field's SUGGESTED value should be sourced from. Likely a table with rows per persisted field × columns (last-week / weekly floor / tenure floor / personal goal / none).
+2. **`SUGGESTED` atom refresh**: update the existing `SuggestedField` atom in `CardStack.jsx` to match the v2 mockup's visual (small pill near the input, "Suggested · N" + hint phrase). Don't break existing consumers.
+3. **`computeFieldSuggestion(field, agentContext)` helper** — pure function returning the suggested value + caption phrase per field. Pulls from existing data paths (`lastWeekData`, `weeklyActivityFloors`, `companyFloor`, `agentProfile`).
+4. **Wire into each v2 step** that has a target field — typically Activity steps where last-week numbers are useful anchors.
+
+**Why MEDIUM:** core UX hint that closes the v2 mockup's most-explicit deferred decision. Doesn't block PR2 or PR3.
+
+**Cross-reference:** PR1 brief's Decision A (originally deferred); `design_handoff_v2_app/mockups/wizard-v2-shared.jsx` `NumField` SUGGESTED hint pattern.
+
+---
+
 ## Functions runtime + SDK upgrade — Node.js 20 EOL + `firebase-functions` 4.x → 5.x (MEDIUM with hard deadline, banked 2026-06-01 from PR #415 functions deploy)
 
 **Status:** MEDIUM now; **escalate to HIGH approaching October 2026.** Deploys will start failing 2026-10-30.

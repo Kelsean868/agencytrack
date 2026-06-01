@@ -1,74 +1,105 @@
+/**
+ * Track J Wizard v2 PR1 — Structural shell (re-pagination + navigation).
+ *
+ * Re-fans the WAR Wizard from the legacy 9-step/5-group structure to the
+ * v2 mockup's 12-step/4-phase structure. Step 11 ("Targets for next week")
+ * is the final step in PR1 and submits via the existing mechanism. The
+ * discrete Review step 12 ships in PR3.
+ *
+ * Preserve list (NEVER touched, per brief):
+ *   • Submission payload shape — every persisted field name + type stays.
+ *   • Autosave behavior — 1500ms debounce + retry escalation + sticky 8s
+ *     error window + online/offline rebroadcast.
+ *   • `parseFloat` numeric coercion + Sunday-only week-start rule.
+ *   • Field atoms (`NumericField`, `CurrencyField`, `SuggestedField`,
+ *     `ReadOnlyField`, `Card`) from `CardStack.jsx` — unchanged.
+ *   • Existing last-week reads / suggested derivations (oldNamesPool,
+ *     policiesOutstanding, CI-conducted) — these are EXISTING wizard
+ *     behavior, NOT the deferred Decision-A SUGGESTED atom.
+ *   • Existing step files (Step1Prospecting … Step9Goals.jsx) on disk
+ *     and untouched, for the easy-revert property: revert this file +
+ *     delete `v2steps/` + `v2chrome/` → back to 9-step flow.
+ *
+ * What changed:
+ *   • SCREENS (5 entries) → STEPS (12 entries).
+ *   • Active steps 1-3 mount NEW `v2steps/StepLettersOutreach`,
+ *     `StepSeminarsTradeshows`, `StepCallsF2F` (lifted JSX from the
+ *     legacy Step1Prospecting + Step2Telephone; same field names + atoms).
+ *   • Steps 4-11 mount the existing step files 1:1.
+ *   • Screen 'review' is REMOVED from the PR1 state machine — step 11's
+ *     Next button submits directly. Review-with-jump-back arrives in PR3.
+ *   • PhaseProgress (v2chrome) replaces the 5-dot bar.
+ *   • AutosaveChip (v2chrome) replaces the inline indicator visually.
+ *     `SaveStatusIndicator` stays exported for back-compat with
+ *     `WizardFormSaveStatus.test.jsx` consumers.
+ *   • Footer nav: Back · centered "STEP N OF 12" · Next-labeled-with-title.
+ *
+ * Deferred to PR2 (live-compute layer): Week-So-Far panel, sparkline,
+ * conversion %, est-commission, last-week vs deltas. To PR3: discrete
+ * Review step 12 + Edit·Step-N jump-back + submit→celebration moment.
+ */
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { X, Check, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { saveDraft, submitReport, getDraft, getLastSubmission } from '../../services/submissionService';
 import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
-import { formatCurrency, formatDateFriendly, formatDateDisplay } from '../../utils/formatters';
-import {
-  computeLumpsumCredit,
-  computeLumpsumCommission,
-  computeTotalProductionCredit,
-  computeTotalCommission,
-} from '../../lib/schema/weeklyReport.computations';
+import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
-import Step1Prospecting      from './steps/Step1Prospecting';
-import Step2Telephone        from './steps/Step2Telephone';
+
+// Legacy step files (unmodified) — used for v2 steps 4-11 (1:1 mappings).
 import Step3Approaches       from './steps/Step3Approaches';
-import Step4ClosingSales      from './steps/Step4ClosingSales';
-import Step5NewNames          from './steps/Step5NewNames';
+import Step4ClosingSales     from './steps/Step4ClosingSales';
+import Step5NewNames         from './steps/Step5NewNames';
 import Step6DeliveriesService from './steps/Step6DeliveriesService';
 import Step7TimeManagement    from './steps/Step7TimeManagement';
 import Step8SelfEvaluation    from './steps/Step8SelfEvaluation';
 import Step9Goals             from './steps/Step9Goals';
 import StepSocialMedia        from './steps/StepSocialMedia';
 
+// New v2 micro-step components (re-fanned from legacy Step1 + Step2 content).
+import StepLettersOutreach    from './v2steps/StepLettersOutreach';
+import StepSeminarsTradeshows from './v2steps/StepSeminarsTradeshows';
+import StepCallsF2F           from './v2steps/StepCallsF2F';
+
+// v2 chrome.
+import PhaseProgress          from './v2chrome/PhaseProgress';
+import AutosaveChip           from './v2chrome/AutosaveChip';
+
 const MAX_AUTOSAVE_RETRIES = 3;
 const FAILURE_STICKY_MS = 8000;
 
-// 9 step components grouped into 5 screens.
-// Each entry in `components` is [Component, needsLastWeekData].
-const SCREENS = [
-  {
-    title: 'Prospecting & Calls',
-    components: [
-      [Step1Prospecting, false],
-      [Step2Telephone,   false],
-      [StepSocialMedia,  false],
-    ],
-  },
-  {
-    title: 'Interviews & Sales',
-    components: [
-      [Step3Approaches,  false],
-      [Step4ClosingSales, false],
-    ],
-  },
-  {
-    title: 'New Names & Service',
-    components: [
-      [Step5NewNames,          true],
-      [Step6DeliveriesService, true],
-    ],
-  },
-  {
-    title: 'Time & Reflection',
-    components: [
-      [Step7TimeManagement, false],
-      [Step8SelfEvaluation, false],
-    ],
-  },
-  {
-    title: 'Next Week Goals',
-    components: [
-      [Step9Goals, false],
-    ],
-  },
+// ─────────────────────────────────────────────────────────────────────────────
+// v2 12-step / 4-phase structure.
+// PR1 ends at step 11 (Targets) — step 12 (Review) ships in PR3.
+// `needsLastWeekData` mirrors the legacy `[Step, true]` flag for steps that
+// consume the prior week's draft via the legacy data flow (existing wizard
+// behavior — see the brief's preserve note on existing last-week reads).
+// ─────────────────────────────────────────────────────────────────────────────
+const STEPS = [
+  // ── Activity (1-5) ────────────────────────────────────────────────────────
+  { n: 1,  phase: 'activity',   title: 'Letters & outreach',      Component: StepLettersOutreach },
+  { n: 2,  phase: 'activity',   title: 'Seminars & tradeshows',   Component: StepSeminarsTradeshows },
+  { n: 3,  phase: 'activity',   title: 'Calls & face-to-face',    Component: StepCallsF2F },
+  { n: 4,  phase: 'activity',   title: 'Social & content',        Component: StepSocialMedia },
+  { n: 5,  phase: 'activity',   title: 'New names added',         Component: Step5NewNames,         needsLastWeekData: true },
+  // ── Sales (6-8) ───────────────────────────────────────────────────────────
+  { n: 6,  phase: 'sales',      title: 'Approaches & interviews', Component: Step3Approaches },
+  { n: 7,  phase: 'sales',      title: 'New business this week',  Component: Step4ClosingSales },
+  { n: 8,  phase: 'sales',      title: 'Delivery & service',      Component: Step6DeliveriesService, needsLastWeekData: true },
+  // ── Reflection (9-10) ─────────────────────────────────────────────────────
+  { n: 9,  phase: 'reflection', title: 'Hours worked',            Component: Step7TimeManagement },
+  { n: 10, phase: 'reflection', title: 'Rate your week',          Component: Step8SelfEvaluation },
+  // ── Goals (11-12) ─────────────────────────────────────────────────────────
+  { n: 11, phase: 'goals',      title: 'Targets for next week',   Component: Step9Goals },
+  // Step 12 (Review & submit) deferred to PR3. PR1 final step is 11.
 ];
 
-const TOTAL_SCREENS = SCREENS.length; // 5
+const TOTAL_STEPS_DISPLAY = 12; // The mockup's 12-dot rail (step 12 = Review, PR3 placeholder).
+const PR1_FINAL_STEP = 11;
 
 const INITIAL_DATA = {
-  // Step 1
+  // Step 1 — prospecting
   prospectingLettersSent:       0,
   prospectingEmailsSent:        0,
   seminarsConducted:            0,
@@ -81,19 +112,19 @@ const INITIAL_DATA = {
   namesFromTradeshowsAttended:  0,
   f2fAttempts:                  0,
   f2fContacts:                  0,
-  // Step 2
+  // Step 2 — telephone
   referralCalls:                0,
   followUpCalls:                0,
   coldCalls:                    0,
   seminarTradeshowCalls:        0,
   serviceCalls:                 0,
-  // Step 3
+  // Step 3 — approaches & FFI
   qualifiedApproaches:          0,
   appointmentsSet:              0,
   ffisScheduled:                0,
   ffiConducted:                 0,
   solutionPresentations:        0,
-  // Step 4
+  // Step 4 — closing & new business
   newCIBooked:                  0,
   oldCIBooked:                  0,
   ciConducted:                  0,
@@ -101,14 +132,14 @@ const INITIAL_DATA = {
   newBusiness:    { apps: 0, api: 0 },
   pppIncreases:   { apps: 0, apiIncrease: 0 },
   lumpsums:       { grossAmount: 0 },
-  // Step 5
+  // Step 5 — new names
   referralsSought:              0,
   referralsObtained:            0,
   namesFromColdCanvass:         0,
   namesFromOther:               0,
   oldNamesPool:                 0,
   portfolioClientsIdentified:   0,
-  // Step 6
+  // Step 6 — delivery & service
   policiesReceived:             0,
   policiesDelivered:            0,
   policiesOutstanding:          0,
@@ -124,17 +155,17 @@ const INITIAL_DATA = {
   reinstatementsSubmitted:      0,
   reinstatementAPI:             0,
   renewalPremiumsCollected:     0,
-  // Step 7
+  // Step 7 — hours
   officeHours:                  0,
   fieldHours:                   0,
-  // Step 8
+  // Step 8 — self-evaluation
   ratingPlanning:               0,
   ratingTimeManagement:         0,
   ratingSalesPerformance:       0,
   ratingProspecting:            0,
   ratingOverall:                0,
   notes:                        '',
-  // Step 9
+  // Step 9 — next-week goals
   targetDials:                  0,
   targetTelContacts:            0,
   targetF2FAttempts:            0,
@@ -156,7 +187,9 @@ const INITIAL_DATA = {
   },
 };
 
-// screen: 'date' | 'step' | 'review' | 'done' | 'submitted'
+// screen: 'date' | 'step' | 'done' | 'submitted'
+// Note: 'review' removed in PR1 — step 11 submits directly. PR3 reintroduces
+// the discrete review step with Edit·Step-N jump-back.
 export default function WizardForm({ onClose, initialWeek }) {
   const { user, userProfile, tenantId } = useAuth();
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
@@ -165,7 +198,7 @@ export default function WizardForm({ onClose, initialWeek }) {
   const [localWeekChoice, setLocalWeekChoice] = useState(
     () => initialWeek ?? getLastNSundaysForDropdown(1)[0]?.value ?? ''
   );
-  const [step, setStep]                 = useState(1);   // 1–5 grouped screens
+  const [step, setStep]                 = useState(1);   // 1..PR1_FINAL_STEP
   const [formData, setFormData]         = useState(INITIAL_DATA);
   const [lastWeekData, setLastWeekData] = useState(null);
   const [draftStatus, setDraftStatus]   = useState(null);
@@ -241,7 +274,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     }
   };
 
-  // Auto-save on formData change AND on screen/step change (debounced 1500ms)
+  // Auto-save on formData change AND on screen/step change (debounced 1500ms).
   useEffect(() => {
     if (!weekStarting || !user || screen === 'date') return;
     clearTimeout(saveTimer.current);
@@ -249,7 +282,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     return () => clearTimeout(saveTimer.current);
   }, [formData, step, weekStarting, screen, user, draftStatus]);
 
-  // Online / offline detection — update isOffline and re-fire save on reconnect
+  // Online / offline detection — update isOffline and re-fire save on reconnect.
   useEffect(() => {
     const handleOffline = () => setIsOffline(true);
     const handleOnline = () => {
@@ -292,28 +325,6 @@ export default function WizardForm({ onClose, initialWeek }) {
     setError('');
   };
 
-  const submittedAtLabel = (() => {
-    const ts = submissionData?.submittedAt;
-    if (!ts) return '';
-    const d = ts.toDate ? ts.toDate() : new Date(ts);
-    if (isNaN(d.getTime())) return '';
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    return formatDateDisplay(`${yyyy}-${mm}-${dd}`);
-  })();
-
-  const handleNext = () => {
-    if (step < TOTAL_SCREENS) setStep((s) => s + 1);
-    else setScreen('review');
-  };
-
-  const handleBack = () => {
-    if (screen === 'review')                  { setScreen('step'); setStep(TOTAL_SCREENS); }
-    else if (screen === 'step' && step > 1)   { setStep((s) => s - 1); }
-    else if (screen === 'step' && step === 1) { setScreen('date'); }
-  };
-
   const handleSubmit = async () => {
     setError('');
     if (draftStatus === 'submitted') {
@@ -333,70 +344,107 @@ export default function WizardForm({ onClose, initialWeek }) {
     }
   };
 
-  const prevLabel = screen === 'review' ? 'Back' : step === 1 ? 'Change week' : 'Prev';
-  const nextLabel = screen === 'review'
+  const handleNext = () => {
+    if (step < PR1_FINAL_STEP) {
+      setStep((s) => s + 1);
+    } else {
+      handleSubmit();
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 1) setStep((s) => s - 1);
+    else setScreen('date');
+  };
+
+  const handleDotClick = useCallback((stepN) => {
+    if (stepN < step) setStep(stepN);
+  }, [step]);
+
+  const activeStepEntry = STEPS.find((s) => s.n === step) ?? STEPS[0];
+  const ActiveStepComponent = activeStepEntry.Component;
+  const nextStepEntry = STEPS.find((s) => s.n === step + 1);
+
+  const prevLabel = step === 1 ? 'Change week' : 'Back';
+  const nextLabel = step === PR1_FINAL_STEP
     ? (submitting ? 'Submitting…' : 'Submit Report')
-    : step === TOTAL_SCREENS ? 'Review' : 'Next';
+    : `Next · ${nextStepEntry?.title ?? ''}`;
+
+  const submittedAtLabel = (() => {
+    const ts = submissionData?.submittedAt;
+    if (!ts) return '';
+    const d = ts.toDate ? ts.toDate() : new Date(ts);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString('en-TT', {
+      year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit',
+    });
+  })();
 
   return (
-    <div className="fixed inset-0 z-50 bg-bg flex flex-col">
-
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 pt-4 pb-3 bg-bg shrink-0">
-        <div>
-          <p className="text-xs font-medium text-ink-muted">
-            {screen === 'step'      && `Screen ${step} of ${TOTAL_SCREENS}`}
-            {screen === 'review'    && 'Review'}
+    <div
+      className="fixed inset-0 z-50 bg-bg flex flex-col"
+      data-testid="wizard-v2-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Weekly report wizard"
+    >
+      {/* Header — eyebrow + title + autosave chip + close */}
+      <header className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 bg-bg shrink-0">
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-faint">
+            {screen === 'step'      && `Step ${step} · ${activeStepEntry.phase[0].toUpperCase()}${activeStepEntry.phase.slice(1)}`}
             {screen === 'date'      && 'Weekly Report'}
             {screen === 'done'      && 'Complete'}
             {screen === 'submitted' && 'Weekly Report'}
           </p>
-          <h1 className="text-lg font-bold text-ink leading-tight">
+          <h1
+            className="text-xl font-display font-bold text-ink leading-tight mt-1"
+            style={{ letterSpacing: '-0.018em' }}
+            data-testid="wizard-v2-step-title"
+          >
             {screen === 'date'      && 'Select Week'}
-            {screen === 'step'      && SCREENS[step - 1].title}
-            {screen === 'review'    && 'Review & Submit'}
+            {screen === 'step'      && activeStepEntry.title}
             {screen === 'done'      && 'Report Submitted'}
             {screen === 'submitted' && 'Already submitted'}
           </h1>
         </div>
-        <div className="flex items-center gap-2">
-          <SaveStatusIndicator
-            saving={saving}
-            savedAt={savedAt}
-            stickyError={stickyError}
-            isOffline={isOffline}
-            onRetry={handleManualSave}
-          />
+        <div className="flex items-start gap-2 shrink-0">
+          {screen === 'step' && (
+            <AutosaveChip
+              saving={saving}
+              savedAt={savedAt}
+              stickyError={stickyError}
+              isOffline={isOffline}
+              onRetry={handleManualSave}
+            />
+          )}
           <button
             type="button"
             onClick={onClose}
-            className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-ink-muted transition-colors"
+            className="w-11 h-11 flex items-center justify-center rounded-full hover:bg-surface text-ink-muted transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Close"
+            data-testid="wizard-v2-close"
           >
             <X size={20} />
           </button>
         </div>
       </header>
 
-      {/* 5-dot progress bar */}
+      {/* Phase progress rail — only during the step flow */}
       {screen === 'step' && (
-        <div className="flex gap-1.5 px-4 pb-3 shrink-0">
-          {SCREENS.map((_, i) => (
-            <div
-              key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                i + 1 === step
-                  ? 'bg-primary flex-[2]'
-                  : i + 1 < step
-                  ? 'bg-primary/40 flex-1'
-                  : 'bg-border flex-1'
-              }`}
-            />
-          ))}
+        <div className="px-4 pb-3 shrink-0">
+          <PhaseProgress
+            currentStep={step}
+            totalSteps={TOTAL_STEPS_DISPLAY}
+            onDotClick={handleDotClick}
+          />
         </div>
       )}
 
-      {/* Persistent-failure escalation banner */}
+      {/* Persistent-failure escalation banner — preserved verbatim from
+          the legacy WizardForm. Fires after MAX_AUTOSAVE_RETRIES (3)
+          consecutive failures; clears on next successful save. */}
       {saveEscalated && screen !== 'date' && screen !== 'done' && screen !== 'submitted' && (
         <div
           role="alert"
@@ -418,7 +466,6 @@ export default function WizardForm({ onClose, initialWeek }) {
 
       {/* Body */}
       <main className="flex-1 overflow-y-auto">
-
         {/* Date picker */}
         {screen === 'date' && (
           <div className="px-4 py-4 max-w-lg mx-auto">
@@ -448,33 +495,14 @@ export default function WizardForm({ onClose, initialWeek }) {
           </div>
         )}
 
-        {/* Grouped step screens */}
+        {/* Active v2 step */}
         {screen === 'step' && (
-          <div className="px-4 pb-6 max-w-lg mx-auto">
-            {SCREENS[step - 1].components.map(([Component, needsLastWeek], i) => (
-              <div key={i}>
-                {i > 0 && (
-                  <hr className="border-t border-border my-6" />
-                )}
-                <Component
-                  data={formData}
-                  onChange={handleChange}
-                  {...(needsLastWeek ? { lastWeekData } : {})}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Review */}
-        {screen === 'review' && (
-          <div className="px-4 py-4 max-w-lg mx-auto">
-            <ReviewSummary data={formData} weekStarting={weekStarting} />
-            <ProductionSummaryPanel
+          <div className="px-4 pb-6 max-w-lg mx-auto" data-testid={`wizard-v2-step-${step}`}>
+            <ActiveStepComponent
               data={formData}
-              commissionRate={userProfile?.commissionRate ?? 0}
+              onChange={handleChange}
+              {...(activeStepEntry.needsLastWeekData ? { lastWeekData } : {})}
             />
-            {error && <p className="text-sm text-danger mt-4">{error}</p>}
           </div>
         )}
 
@@ -524,9 +552,13 @@ export default function WizardForm({ onClose, initialWeek }) {
             </button>
           </div>
         )}
+
+        {error && screen === 'step' && (
+          <p className="px-4 pb-4 text-sm text-danger text-center" role="alert">{error}</p>
+        )}
       </main>
 
-      {/* Submission viewer overlay (reused as-is from History tab) */}
+      {/* Submission viewer overlay (reused unchanged from the History tab) */}
       {viewingSubmission && submissionData && (
         <SubmissionViewer
           submission={submissionData}
@@ -534,21 +566,34 @@ export default function WizardForm({ onClose, initialWeek }) {
         />
       )}
 
-      {/* Footer nav */}
-      {(screen === 'step' || screen === 'review') && (
-        <footer className="grid grid-cols-5 gap-2 px-4 py-4 border-t border-border bg-card shrink-0">
+      {/* Footer nav — Back · "STEP N OF 12" · Next-with-title.
+          12 = the mockup's full rail length (review step 12 ships in PR3). */}
+      {screen === 'step' && (
+        <footer
+          className="grid items-center px-4 py-4 border-t border-border bg-card shrink-0 gap-3"
+          style={{ gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1.6fr)' }}
+          data-testid="wizard-v2-footer"
+        >
           <button
             type="button"
             onClick={handleBack}
-            className="col-span-2 h-11 rounded-xl border border-border bg-card text-ink font-semibold text-sm hover:bg-surface transition-colors"
+            className="h-11 px-4 rounded-xl border border-border bg-card text-ink font-semibold text-sm hover:bg-surface transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            data-testid="wizard-v2-back"
           >
             {prevLabel}
           </button>
+          <span
+            className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-faint whitespace-nowrap"
+            data-testid="wizard-v2-step-counter"
+          >
+            Step {step} of {TOTAL_STEPS_DISPLAY}
+          </span>
           <button
             type="button"
-            onClick={screen === 'review' ? handleSubmit : handleNext}
+            onClick={handleNext}
             disabled={submitting}
-            className="col-span-3 h-11 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-sm hover:bg-primary/90 dark:hover:bg-primary transition-colors disabled:opacity-60"
+            className="h-11 px-4 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-sm hover:bg-primary/90 dark:hover:bg-primary transition-colors disabled:opacity-60 motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary truncate"
+            data-testid="wizard-v2-next"
           >
             {nextLabel}
           </button>
@@ -558,35 +603,32 @@ export default function WizardForm({ onClose, initialWeek }) {
   );
 }
 
-// ─── Save status indicator ────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Legacy SaveStatusIndicator — preserved for back-compat with
+// `WizardFormSaveStatus.test.jsx` consumers + any future need. The new
+// `AutosaveChip` (v2chrome) is what the wizard actually renders inside its
+// header now; this remains the SoT for the autosave state-machine semantics
+// (saving / saved / failed + 8s sticky window + 2s retry throttle).
+// ─────────────────────────────────────────────────────────────────────────────
 
-// stickyError prop comes from WizardForm (set in the same batch as saving),
-// so the Retry button appears in the same render without an extra useEffect round-trip.
-// visibleError extends that display for FAILURE_STICKY_MS after the prop clears (R5).
 function SaveStatusIndicator({ saving, savedAt, stickyError, isOffline, onRetry }) {
-  const lastRetryAt  = useRef(0);    // R4: retry throttle
-  const failedShownAt = useRef(0);   // R5: anchor for sticky window
-  const stickyTimer  = useRef(null);
-  const savingRef    = useRef(saving); // read inside stickyError effect without dep
-  const [, setStickyTick] = useState(0); // trigger re-render when window expires
+  const lastRetryAt   = useRef(0);
+  const failedShownAt = useRef(0);
+  const stickyTimer   = useRef(null);
+  const savingRef     = useRef(saving);
+  const [, setStickyTick] = useState(0);
 
-  savingRef.current = saving; // always current before any effect fires
+  savingRef.current = saving;
 
-  // R5: track failure timestamp; when prop clears, decide how to release the sticky window.
-  // savingRef.current is used (not saving directly) to avoid an exhaustive-dep violation —
-  // both saving and stickyError change in the same React batch when a save starts, so the
-  // ref reliably reflects whether this is a legitimate replacement vs. a direct transition.
   useEffect(() => {
     if (stickyError) {
-      lastRetryAt.current = 0;          // reset throttle so first click after each failure is never blocked
+      lastRetryAt.current = 0;
       failedShownAt.current = Date.now();
       clearTimeout(stickyTimer.current);
     } else if (savingRef.current) {
-      // Legitimate replacement: saving re-fired, clear immediately so "Saving…" takes over
       clearTimeout(stickyTimer.current);
       failedShownAt.current = 0;
     } else {
-      // Direct failed→saved path: hold visibleError for remaining window, then swap
       const remaining = FAILURE_STICKY_MS - (Date.now() - failedShownAt.current);
       clearTimeout(stickyTimer.current);
       stickyTimer.current = setTimeout(() => {
@@ -598,14 +640,12 @@ function SaveStatusIndicator({ saving, savedAt, stickyError, isOffline, onRetry 
 
   useEffect(() => () => clearTimeout(stickyTimer.current), []);
 
-  // R5: derived — true while stickyError prop is set OR within the 8s sticky window
   const visibleError = stickyError || (
     failedShownAt.current > 0 &&
     Date.now() - failedShownAt.current < FAILURE_STICKY_MS &&
     !saving
   );
 
-  // R4: 2s throttle — prevents rapid double-fire before saving state toggles
   function handleRetry() {
     if (Date.now() - lastRetryAt.current < 2000) return;
     lastRetryAt.current = Date.now();
@@ -614,7 +654,6 @@ function SaveStatusIndicator({ saving, savedAt, stickyError, isOffline, onRetry 
 
   return (
     <div className="flex items-center">
-      {/* R2: polite region — saving / saved states */}
       <div role="status" aria-live="polite" aria-atomic="true">
         {saving && (
           <span className="text-xs text-ink-muted animate-pulse motion-reduce:animate-none">Saving…</span>
@@ -632,7 +671,6 @@ function SaveStatusIndicator({ saving, savedAt, stickyError, isOffline, onRetry 
           </span>
         )}
       </div>
-      {/* R2: assertive region — error / offline warning; sibling, never nested */}
       <div role="alert" aria-atomic="true">
         {!saving && !savedAt && isOffline && !visibleError && (
           <span className="text-xs text-warning">Offline — will save when reconnected</span>
@@ -658,237 +696,3 @@ function SaveStatusIndicator({ saving, savedAt, stickyError, isOffline, onRetry 
 }
 
 export { SaveStatusIndicator };
-
-// ─── Production summary panel ────────────────────────────────────────────────
-
-function ProductionSummaryPanel({ data, commissionRate }) {
-  const nb   = data.newBusiness  ?? {};
-  const ppp  = data.pppIncreases ?? {};
-  const lmps = data.lumpsums     ?? {};
-
-  const nbApi       = parseFloat(nb.api) || 0;
-  const nbApps      = parseInt(nb.apps, 10) || 0;
-  const pppApps     = parseInt(ppp.apps, 10) || 0;
-  const pppInc      = parseFloat(ppp.apiIncrease) || 0;
-  const lmpsGross   = parseFloat(lmps.grossAmount) || 0;
-  const lmpsCredit  = computeLumpsumCredit(lmpsGross);
-  const lmpsComm    = computeLumpsumCommission(lmpsGross);
-
-  const productionShape = {
-    newBusiness:  { api: nbApi },
-    pppIncreases: { apiIncrease: pppInc },
-    lumpsums:     { apiCredit: lmpsCredit },
-  };
-  const totalCredit = computeTotalProductionCredit(productionShape);
-  const rateDecimal = (parseFloat(commissionRate) || 0) / 100;
-  const totalComm   = computeTotalCommission(
-    { ...productionShape, lumpsums: { apiCredit: lmpsCredit, commission: lmpsComm } },
-    rateDecimal
-  );
-
-  const hasPpp  = pppApps > 0 || pppInc > 0;
-  const hasLmps = lmpsGross > 0;
-
-  return (
-    <div className="bg-card rounded-xl border border-border/60 p-4 mb-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">
-        Production this week
-      </h3>
-
-      {/* Production rows */}
-      <div className="flex justify-between py-2 border-b border-border/50">
-        <span className="text-sm text-ink-muted">New Business</span>
-        <span className="text-sm font-semibold text-ink">
-          {nbApps} {nbApps === 1 ? 'app' : 'apps'} · {formatCurrency(nbApi)}
-        </span>
-      </div>
-      {hasPpp && (
-        <div className="flex justify-between py-2 border-b border-border/50">
-          <span className="text-sm text-ink-muted">PPP Increases</span>
-          <span className="text-sm font-semibold text-ink">
-            {pppApps} {pppApps === 1 ? 'increase' : 'increases'} · {formatCurrency(pppInc)}
-          </span>
-        </div>
-      )}
-      {hasLmps && (
-        <div className="flex justify-between py-2 border-b border-border/50">
-          <span className="text-sm text-ink-muted">Lumpsum (10% of {formatCurrency(lmpsGross)})</span>
-          <span className="text-sm font-semibold text-ink">{formatCurrency(lmpsCredit)}</span>
-        </div>
-      )}
-      <div className="flex justify-between py-2">
-        <span className="text-sm font-semibold text-ink">Total Production API</span>
-        <span className="text-sm font-bold text-primary">{formatCurrency(totalCredit)}</span>
-      </div>
-
-      {/* Commission rows */}
-      {commissionRate > 0 && (
-        <>
-          <div className="border-t border-border/60 mt-1 pt-3">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">
-              Estimated commission
-            </h3>
-            <div className="flex justify-between py-1.5 border-b border-border/40">
-              <span className="text-sm text-ink-muted">
-                New Business ({commissionRate}%)
-              </span>
-              <span className="text-sm font-semibold text-ink">{formatCurrency(nbApi * rateDecimal)}</span>
-            </div>
-            {hasLmps && (
-              <div className="flex justify-between py-1.5 border-b border-border/40">
-                <span className="text-sm text-ink-muted">Lumpsum (0.5% × {formatCurrency(lmpsGross)})</span>
-                <span className="text-sm font-semibold text-ink">{formatCurrency(lmpsComm)}</span>
-              </div>
-            )}
-            {hasPpp && (
-              <div className="flex justify-between py-1.5 border-b border-border/40">
-                <span className="text-sm text-ink-muted italic">PPP — production credit only</span>
-                <span className="text-sm text-ink-muted">—</span>
-              </div>
-            )}
-            <div className="flex justify-between py-2 mt-0.5">
-              <span className="text-sm font-semibold text-ink">Estimated commission earned</span>
-              <span className="text-sm font-bold text-primary">{formatCurrency(totalComm)}</span>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ─── Review helpers ───────────────────────────────────────────────────────────
-
-function ReviewRow({ label, value }) {
-  return (
-    <div className="flex justify-between py-2 border-b border-border/50 last:border-0">
-      <span className="text-sm text-ink-muted">{label}</span>
-      <span className="text-sm font-semibold text-ink text-right max-w-[55%]">{value}</span>
-    </div>
-  );
-}
-
-function ReviewSection({ title, children }) {
-  return (
-    <div className="bg-card rounded-xl border border-border/60 p-4 mb-3">
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-3">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-function ReviewSummary({ data, weekStarting: _weekStarting }) {
-  const totalCalls =
-    (data.referralCalls ?? 0) + (data.followUpCalls ?? 0) + (data.coldCalls ?? 0) +
-    (data.seminarTradeshowCalls ?? 0) + (data.serviceCalls ?? 0);
-
-  const totalNames =
-    (data.referralsObtained ?? 0) +
-    (data.namesFromSeminarsConducted ?? 0) + (data.namesFromSeminarsAttended ?? 0) +
-    (data.namesFromTradeshowsConducted ?? 0) + (data.namesFromTradeshowsAttended ?? 0) +
-    (data.namesFromColdCanvass ?? 0) + (data.namesFromOther ?? 0);
-
-  const totalHours = (data.officeHours ?? 0) + (data.fieldHours ?? 0);
-
-  return (
-    <div>
-      <p className="text-sm text-ink-muted mb-4">
-        Check your numbers before submitting. You can go back to edit any screen.
-      </p>
-
-      <ReviewSection title="Screen 1 — Prospecting & Calls">
-        <ReviewRow label="Letters Sent"                    value={data.prospectingLettersSent} />
-        <ReviewRow label="Emails Sent"                     value={data.prospectingEmailsSent} />
-        <ReviewRow label="Seminars Conducted"              value={data.seminarsConducted} />
-        <ReviewRow label="Names (Seminars Conducted)"      value={data.namesFromSeminarsConducted} />
-        <ReviewRow label="Seminars Attended"               value={data.seminarsAttended} />
-        <ReviewRow label="Names (Seminars Attended)"       value={data.namesFromSeminarsAttended} />
-        <ReviewRow label="Tradeshows Conducted"            value={data.tradeshowsConducted} />
-        <ReviewRow label="Names (Tradeshows Conducted)"    value={data.namesFromTradeshowsConducted} />
-        <ReviewRow label="Tradeshows Attended"             value={data.tradeshowsAttended} />
-        <ReviewRow label="Names (Tradeshows Attended)"     value={data.namesFromTradeshowsAttended} />
-        <ReviewRow label="F2F Attempts"                    value={data.f2fAttempts} />
-        <ReviewRow label="F2F Contacts"                    value={data.f2fContacts} />
-        <ReviewRow label="Referral Calls"                  value={data.referralCalls} />
-        <ReviewRow label="Follow-Up Calls"                 value={data.followUpCalls} />
-        <ReviewRow label="Cold Calls"                      value={data.coldCalls} />
-        <ReviewRow label="Seminar / Tradeshow Calls"       value={data.seminarTradeshowCalls} />
-        <ReviewRow label="Service Calls"                   value={data.serviceCalls} />
-        <ReviewRow label="Total Calls"                     value={totalCalls} />
-      </ReviewSection>
-
-      <ReviewSection title="Screen 2 — Interviews & Sales">
-        <ReviewRow label="Qualified Approaches"   value={data.qualifiedApproaches} />
-        <ReviewRow label="Appointments Set"       value={data.appointmentsSet} />
-        <ReviewRow label="FFIs Scheduled"         value={data.ffisScheduled} />
-        <ReviewRow label="FFIs Conducted"         value={data.ffiConducted} />
-        <ReviewRow label="Solution Presentations" value={data.solutionPresentations} />
-        <ReviewRow label="New CI Booked"          value={data.newCIBooked} />
-        <ReviewRow label="Old CI Booked"          value={data.oldCIBooked} />
-        <ReviewRow label="CI Conducted"           value={data.ciConducted} />
-        <ReviewRow label="NB Apps Written"          value={data.newBusiness?.apps ?? 0} />
-        <ReviewRow label="Lives Sold"             value={data.livesSold} />
-        <ReviewRow label="NB API (TTD)"           value={formatCurrency(data.newBusiness?.api ?? 0)} />
-        {(data.pppIncreases?.apps > 0 || data.pppIncreases?.apiIncrease > 0) && <>
-          <ReviewRow label="PPP Increases"        value={data.pppIncreases?.apps ?? 0} />
-          <ReviewRow label="PPP Total API Inc."   value={formatCurrency(data.pppIncreases?.apiIncrease ?? 0)} />
-        </>}
-        {(data.lumpsums?.grossAmount > 0) && <>
-          <ReviewRow label="Lumpsum Gross"        value={formatCurrency(data.lumpsums?.grossAmount ?? 0)} />
-        </>}
-      </ReviewSection>
-
-      <ReviewSection title="Screen 3 — New Names & Service">
-        <ReviewRow label="Referrals Sought"             value={data.referralsSought} />
-        <ReviewRow label="Referrals Obtained"           value={data.referralsObtained} />
-        <ReviewRow label="Names from Cold Canvass"      value={data.namesFromColdCanvass} />
-        <ReviewRow label="Names from Other Sources"     value={data.namesFromOther} />
-        <ReviewRow label="Old Names Pool"               value={data.oldNamesPool} />
-        <ReviewRow label="Portfolio Clients Identified" value={data.portfolioClientsIdentified} />
-        <ReviewRow label="New Names Added"              value={totalNames} />
-        <ReviewRow label="Policies Received"            value={data.policiesReceived} />
-        <ReviewRow label="Policies Delivered"           value={data.policiesDelivered} />
-        <ReviewRow label="Policies Outstanding"         value={data.policiesOutstanding} />
-      </ReviewSection>
-
-      {data.hasServiceWork && (
-        <ReviewSection title="Screen 3 — Service Work">
-          <ReviewRow label="Service Contacts"            value={data.serviceContacts} />
-          <ReviewRow label="Premium Collection Meetings" value={data.premiumCollectionMeetings} />
-          <ReviewRow label="Withdrawal & Loan Requests"  value={data.withdrawalsLoans} />
-          <ReviewRow label="Surrender Requests"          value={data.surrenders} />
-          <ReviewRow label="Policy Change Forms"         value={data.policyChanges} />
-          <ReviewRow label="Annual Reviews"              value={data.annualReviews} />
-          <ReviewRow label="Orphan Reviews"              value={data.orphanReviews} />
-          <ReviewRow label="Orphans Adopted"             value={data.orphansAdopted} />
-          <ReviewRow label="Reinstatements Submitted"    value={data.reinstatementsSubmitted} />
-          <ReviewRow label="Service API Reinstated"      value={formatCurrency(data.reinstatementAPI)} />
-          <ReviewRow label="Renewal Premiums Collected"  value={formatCurrency(data.renewalPremiumsCollected)} />
-        </ReviewSection>
-      )}
-
-      <ReviewSection title="Screen 4 — Time & Reflection">
-        <ReviewRow label="Office Hours"     value={`${data.officeHours}h`} />
-        <ReviewRow label="Field Hours"      value={`${data.fieldHours}h`} />
-        <ReviewRow label="Total Hours"      value={`${totalHours}h`} />
-        <ReviewRow label="Planning"         value={`${data.ratingPlanning}/10`} />
-        <ReviewRow label="Time Management"  value={`${data.ratingTimeManagement}/10`} />
-        <ReviewRow label="Sales Performance" value={`${data.ratingSalesPerformance}/10`} />
-        <ReviewRow label="Prospecting"      value={`${data.ratingProspecting}/10`} />
-        <ReviewRow label="Overall"          value={`${data.ratingOverall}/10`} />
-        {data.notes && <ReviewRow label="Notes" value={data.notes} />}
-      </ReviewSection>
-
-      <ReviewSection title="Screen 5 — Next Week Goals">
-        <ReviewRow label="Target Dials"        value={data.targetDials} />
-        <ReviewRow label="Target Tel Contacts" value={data.targetTelContacts} />
-        <ReviewRow label="Target F2F Attempts" value={data.targetF2FAttempts} />
-        <ReviewRow label="Target FFI"          value={data.targetFFI} />
-        <ReviewRow label="Target CI"           value={data.targetCI} />
-        <ReviewRow label="Target Apps Sold"    value={data.targetAppsSold} />
-        <ReviewRow label="Target API"          value={formatCurrency(data.targetAPI)} />
-        {data.goalNotes && <ReviewRow label="Goal Notes" value={data.goalNotes} />}
-      </ReviewSection>
-    </div>
-  );
-}
