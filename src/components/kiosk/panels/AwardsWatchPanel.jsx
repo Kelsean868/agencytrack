@@ -92,9 +92,10 @@ export default function AwardsWatchPanel({ allSubmissions, allUsers }) {
             {achieved.map(({ agentId, agentName, totals }) => (
               <div
                 key={agentId}
-                className="bg-card rounded-xl px-5 py-3 flex items-center gap-3"
+                className="bg-card rounded-xl px-5 py-3 flex items-center gap-3 motion-reduce:animate-none animate-kiosk-halo-gold"
+                data-testid="awards-watch-achieved-card"
               >
-                <Trophy size={22} className="text-yellow-400 shrink-0" />
+                <Trophy size={22} className="text-presentation-gold shrink-0" />
                 <span className="text-ink text-xl font-semibold">{agentName}</span>
                 <span className="text-primary text-xl">TTD {fmtApi(totals.totalApi)}</span>
               </div>

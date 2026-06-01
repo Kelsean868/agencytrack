@@ -10,7 +10,7 @@ function fmtApi(n) {
   return Math.round(n).toLocaleString();
 }
 
-const RANK_COLORS = ['text-yellow-400', 'text-slate-300', 'text-amber-600'];
+const RANK_COLORS = ['text-presentation-gold', 'text-slate-300', 'text-amber-600'];
 
 export default function UnitLeaderboardPanel({ allSubmissions, allUsers }) {
   const units = useMemo(() => {

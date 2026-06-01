@@ -21,14 +21,23 @@ export default function AOMCategoryColumn({ category, label, Icon, winner, index
 
       {winner ? (
         <>
-          <Avatar
-            agent={{
-              uid: winner.agentUid ?? '',
-              name: winner.agentName ?? '',
-              photoURL: winner.photoURL ?? null,
-            }}
-            size="aom"
-          />
+          {/* Track J Kiosk v2 — wrap the Avatar in a presentation-gold
+              halo ring (animated, motion-reduce safe via Tailwind keyframe
+              + the @media (prefers-reduced-motion) reset in the global CSS).
+              Avatar component itself is unchanged. */}
+          <div
+            className="rounded-full motion-reduce:animate-none animate-kiosk-halo-gold"
+            data-testid="aom-winner-halo"
+          >
+            <Avatar
+              agent={{
+                uid: winner.agentUid ?? '',
+                name: winner.agentName ?? '',
+                photoURL: winner.photoURL ?? null,
+              }}
+              size="aom"
+            />
+          </div>
           <div className="text-center">
             <p className="text-4xl font-display font-bold text-ink leading-tight">
               {winner.agentName}

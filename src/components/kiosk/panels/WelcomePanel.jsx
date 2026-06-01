@@ -39,7 +39,12 @@ export default function WelcomePanel() {
       <div className="mt-8 max-w-3xl text-center">
         <p className="text-2xl text-ink-muted italic">&ldquo;{quote}&rdquo;</p>
       </div>
-      <p className="mt-4 text-xl text-ink-muted opacity-50">AgencyTrack · Tatil Life</p>
+      <p
+        className="mt-4 text-xl text-ink-muted opacity-50 motion-reduce:animate-none animate-kiosk-breathe"
+        data-testid="welcome-brand-mark"
+      >
+        AgencyTrack · Tatil Life
+      </p>
     </div>
   );
 }

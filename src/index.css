@@ -106,6 +106,16 @@
   --color-presentation-accent: rgb(var(--presentation-accent-channels));
   --color-presentation-muted:  rgba(240, 235, 224, 0.7);
   --color-presentation-border: rgba(240, 235, 224, 0.15);
+  /* Track J Kiosk v2 — gold + hot accents for the v2 halo/pulse/breathe
+   * keyframes. Same channel-split form so consumers may apply opacity via
+   * the Tailwind alpha modifier (e.g. `text-presentation-gold/70`). The
+   * channels were sampled from the v2 mockup's KIOSK.gold (#e8b73e) and
+   * KIOSK.hot (#f26a55) and have ≥4.5:1 contrast against
+   * --color-presentation #1a1612. */
+  --presentation-gold-channels: 232 183 62;
+  --color-presentation-gold: rgb(var(--presentation-gold-channels));
+  --presentation-hot-channels:  242 106 85;
+  --color-presentation-hot:  rgb(var(--presentation-hot-channels));
 
   /* ── Medal palette (Design System v2 — B1 medal badges) ──────────────
    * 8 gradient palettes mapped to badge categories. Each palette has a

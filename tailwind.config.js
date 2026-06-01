@@ -67,6 +67,9 @@ export default {
           muted:   'var(--color-presentation-muted)',
           accent:  'rgb(var(--presentation-accent-channels) / <alpha-value>)',
           border:  'var(--color-presentation-border)',
+          // Track J Kiosk v2 — gold + hot accents for v2 halo/pulse animations.
+          gold:    'rgb(var(--presentation-gold-channels) / <alpha-value>)',
+          hot:     'rgb(var(--presentation-hot-channels) / <alpha-value>)',
         },
       },
       boxShadow: {
@@ -80,12 +83,19 @@ export default {
         xl: '1rem',
         '2xl': '1.5rem',
       },
-      // E5/E5.1: kiosk animations
+      // E5/E5.1 + Track J Kiosk v2: kiosk animations
       animation: {
-        'kiosk-fade':    'kiosk-fade 0.6s ease-in-out',
-        'count-up':      'count-up 600ms ease-out',
-        'stagger-in':    'stagger-in 400ms ease-out',
-        'progress-fill': 'progress-fill 1500ms ease-out forwards',
+        'kiosk-fade':       'kiosk-fade 0.6s ease-in-out',
+        'count-up':         'count-up 600ms ease-out',
+        'stagger-in':       'stagger-in 400ms ease-out',
+        'progress-fill':    'progress-fill 1500ms ease-out forwards',
+        // Track J Kiosk v2 — gentle ambient polish on the presentation surface.
+        'kiosk-pulse-dot':  'kiosk-pulse-dot 1.8s ease-in-out infinite',
+        'kiosk-breathe':    'kiosk-breathe 3.2s ease-in-out infinite',
+        'kiosk-halo-gold':  'kiosk-halo-gold 2.8s ease-out infinite',
+        'kiosk-halo-teal':  'kiosk-halo-teal 2.8s ease-out infinite',
+        'kiosk-halo-hot':   'kiosk-halo-hot 2.4s ease-out infinite',
+        'kiosk-sparkle':    'kiosk-sparkle 2.2s ease-in-out infinite',
       },
       keyframes: {
         'kiosk-fade': {
@@ -103,6 +113,43 @@ export default {
         'progress-fill': {
           '0%':   { width: '0%' },
           '100%': { width: 'var(--progress-target, 100%)' },
+        },
+        // Track J Kiosk v2 — ambient + accent animations.
+        'kiosk-pulse-dot': {
+          '0%, 100%': { opacity: '1',    transform: 'scale(1)' },
+          '50%':      { opacity: '0.42', transform: 'scale(0.78)' },
+        },
+        'kiosk-breathe': {
+          '0%, 100%': { opacity: '0.55' },
+          '50%':      { opacity: '1' },
+        },
+        'kiosk-halo-gold': {
+          '0%, 100%': {
+            boxShadow: '0 0 0 0 rgba(var(--presentation-gold-channels), 0.55), inset 0 0 0 2px rgb(var(--presentation-gold-channels))',
+          },
+          '50%': {
+            boxShadow: '0 0 0 14px rgba(var(--presentation-gold-channels), 0), inset 0 0 0 2px rgb(var(--presentation-gold-channels))',
+          },
+        },
+        'kiosk-halo-teal': {
+          '0%, 100%': {
+            boxShadow: '0 0 0 0 rgba(var(--presentation-accent-channels), 0.5), inset 0 0 0 2px rgb(var(--presentation-accent-channels))',
+          },
+          '50%': {
+            boxShadow: '0 0 0 12px rgba(var(--presentation-accent-channels), 0), inset 0 0 0 2px rgb(var(--presentation-accent-channels))',
+          },
+        },
+        'kiosk-halo-hot': {
+          '0%, 100%': {
+            boxShadow: '0 0 0 0 rgba(var(--presentation-hot-channels), 0.5), inset 0 0 0 2px rgb(var(--presentation-hot-channels))',
+          },
+          '50%': {
+            boxShadow: '0 0 0 12px rgba(var(--presentation-hot-channels), 0), inset 0 0 0 2px rgb(var(--presentation-hot-channels))',
+          },
+        },
+        'kiosk-sparkle': {
+          '0%, 100%': { transform: 'scale(0.6)', opacity: '0.2' },
+          '50%':      { transform: 'scale(1)',   opacity: '1' },
         },
       },
     },
