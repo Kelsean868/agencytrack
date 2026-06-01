@@ -5,6 +5,51 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Awards primitives dedup — consume `awardPrimitives.jsx` from `AgentAwardsPanel.jsx` (LOW, banked 2026-06-01 from manager-side carve-out PR #{TBD})
+
+**Status:** cleanup; no behavior change.
+
+PR #{TBD} (Manager Awards v2 carve-out) extracted the v2 primitives into a shared module `src/components/awards/awardPrimitives.jsx` (AwardDonut, HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer) + `src/components/awards/awardGrouping.js` (groupByProgress). `ManagerAwardsPanel.jsx` + `BmAtRiskPanel.jsx` consume from those modules.
+
+`AgentAwardsPanel.jsx` (shipped earlier in #391) still carries inline-duplicated copies of those same primitives. The duplication was intentionally retained at carve-out time to keep the carve-out PR's scope terminal at `src/components/awards/Manager*` + tests (per the brief).
+
+**Scope when dispatched:**
+
+1. Delete the inline `AwardDonut`, `HeroAwardCard`, `GroupHeader`, `AwardCard`, `AwardDrillDrawer` definitions in `AgentAwardsPanel.jsx`. (`RatioMiniSpark` + `RatioTrendCard` are agent-only Activity-Ratio-Trends primitives — leave inline OR move to the shared module if a future manager surface wants them; dispatcher's pick.)
+2. Import all of them from `./awardPrimitives` + `./awardGrouping`.
+3. Replace the inline `useMemo({ heroAward, qualified, almostThere, makingProgress, justStarting })` block in `AgentAwardsPanel.jsx` with `useMemo(() => groupByProgress(filteredAwards), [filteredAwards])`.
+4. Confirm `npm run lint && npm test && npm run build` stays green; the `AgentAwardsPanel.test.jsx` cases continue to pass without modification (the primitives' rendered DOM is unchanged because they're a verbatim extraction).
+
+**Why LOW:**
+
+Pure DRY cleanup. No user-facing change. Saves ~250 lines from `AgentAwardsPanel.jsx`. Safe to defer; not blocking any future work.
+
+**Cross-reference:** `src/components/awards/awardPrimitives.jsx` module header JSDoc explicitly calls out the AgentAwardsPanel-still-inline state for future readers.
+
+---
+
+## Awards orphan cleanup — delete `AwardMedalCard.jsx` + `AwardMedal.jsx` + `awardIconMap.js` (LOW, banked 2026-06-01 from manager-side carve-out PR #{TBD})
+
+**Status:** dead-code removal; no behavior change.
+
+After PR #{TBD} (Manager Awards v2 carve-out) replaced `AwardMedalCard` consumption in `ManagerAwardsPanel.jsx` with the new `AwardCard` primitive, these files have no remaining importers:
+
+- `src/components/awards/AwardMedalCard.jsx` — was only imported by `ManagerAwardsPanel.jsx` (now removed)
+- `src/components/awards/AwardMedal.jsx` — was only imported by `AwardMedalCard.jsx`
+- `src/components/awards/awardIconMap.js` (if present) — was only imported by `AwardMedalCard.jsx`
+
+**Scope when dispatched:**
+
+1. `git grep -E "AwardMedal|awardIconMap" -- src/` to confirm zero importers.
+2. Delete the orphaned files.
+3. Confirm `npm run lint && npm test && npm run build` stays green.
+
+**Why LOW:**
+
+Dead code in the repo doesn't break anything but clutters the awards directory. Safe to defer; not blocking any future work. Combinable with the dedup FU above into a single small PR.
+
+---
+
 ## Track J Wizard v2 — REDESIGN, not RESTYLE (banked 2026-06-01 from surprise-stop)
 
 **Status:** brief rewrite needed BEFORE any code work begins.
