@@ -19,10 +19,11 @@ vi.mock('../../../context/AuthContext', () => ({
 }));
 
 vi.mock('../../../services/submissionService', () => ({
-  saveDraft:        vi.fn().mockResolvedValue(),
-  submitReport:     vi.fn().mockResolvedValue(),
-  getDraft:         vi.fn().mockResolvedValue(null),
-  getLastSubmission:vi.fn().mockResolvedValue(null),
+  saveDraft:            vi.fn().mockResolvedValue(),
+  submitReport:         vi.fn().mockResolvedValue(),
+  getDraft:             vi.fn().mockResolvedValue(null),
+  getLastSubmission:    vi.fn().mockResolvedValue(null),
+  getRecentSubmissions: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('../../../utils/dateHelpers', () => ({

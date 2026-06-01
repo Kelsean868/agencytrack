@@ -121,16 +121,42 @@ export function extractFields(d) {
   // Derived totals (same formula for both schema variants)
   f.totalTelAttempts =
     f.referralCalls + f.coldCalls + f.followUpCalls + f.seminarTradeshowCalls;
-  f.totalNewNames =
-    f.namesFromColdCanvass + f.referralsObtained +
-    f.namesFromSeminarsConducted + f.namesFromSeminarsAttended +
-    f.namesFromTradeshowsConducted + f.namesFromTradeshowsAttended +
-    f.namesFromOther;
+  f.totalNewNames = computeTotalNewNames(f);
   f.prospectingTouches =
     f.f2fAttempts + f.referralCalls + f.coldCalls +
     f.followUpCalls + f.seminarTradeshowCalls + f.prospectingLettersSent;
 
   return f;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Canonical NEW NAMES total. 7 channels — referralsObtained + cold canvass
+// + other + the 4 seminar/tradeshow yield fields. INTENTIONALLY EXCLUDES
+// namesFromSocial (pending decision — tracked as MEDIUM FU in
+// FOLLOW_UPS.md "Social-channel inclusion in canonical aggregations").
+//
+// Single source of truth for the kiosk activity panel (`names` row), the
+// manager Master Sheet "New Names" column, the awards activity floor
+// (`referralsNewLeads`), the CF `activityTotal`, the dashboard
+// WeeklyStandardCard, and the Wizard v2 NAMES scorecard. Do NOT define
+// alternate 7-field sums elsewhere — import this function.
+//
+// Accepts any object that exposes the 7 source fields; tolerates missing
+// keys via `?? 0` so it works on both raw wizard formData and an extracted
+// fields object. Returns a plain number.
+// ────────────────────────────────────────────────────────────────────────
+export function computeTotalNewNames(source) {
+  if (!source) return 0;
+  const p = (v) => Number(v) || 0;
+  return (
+    p(source.namesFromColdCanvass) +
+    p(source.referralsObtained) +
+    p(source.namesFromSeminarsConducted) +
+    p(source.namesFromSeminarsAttended) +
+    p(source.namesFromTradeshowsConducted) +
+    p(source.namesFromTradeshowsAttended) +
+    p(source.namesFromOther)
+  );
 }
 
 // Total Production API — NB.api + PPP.apiIncrease + LMPS.apiCredit

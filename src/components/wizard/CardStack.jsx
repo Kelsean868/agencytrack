@@ -22,11 +22,22 @@ export function Card({ badge, desc, children, variant = 'default' }) {
   );
 }
 
-export function NumericField({ label, name, inputId, value, onChange, desc }) {
+export function NumericField({ label, name, inputId, value, onChange, desc, lastWeek }) {
   const fieldId = inputId ?? name;
+  const showLastWeek = lastWeek != null && Number(lastWeek) > 0;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={fieldId} className="text-sm font-medium text-ink">{label}</label>
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={fieldId} className="text-sm font-medium text-ink">{label}</label>
+        {showLastWeek && (
+          <span
+            data-testid={`${name}-last-week`}
+            className="text-[9.5px] font-mono uppercase tracking-widest text-ink-faint shrink-0"
+          >
+            LAST WK · {lastWeek}
+          </span>
+        )}
+      </div>
       {desc && <p className="text-xs text-ink-muted">{desc}</p>}
       <input
         id={fieldId}
@@ -45,11 +56,22 @@ export function NumericField({ label, name, inputId, value, onChange, desc }) {
   );
 }
 
-export function CurrencyField({ label, name, inputId, value, onChange, desc }) {
+export function CurrencyField({ label, name, inputId, value, onChange, desc, lastWeek }) {
   const fieldId = inputId ?? name;
+  const showLastWeek = lastWeek != null && Number(lastWeek) > 0;
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={fieldId} className="text-sm font-medium text-ink">{label}</label>
+      <div className="flex items-baseline justify-between gap-2">
+        <label htmlFor={fieldId} className="text-sm font-medium text-ink">{label}</label>
+        {showLastWeek && (
+          <span
+            data-testid={`${name}-last-week`}
+            className="text-[9.5px] font-mono uppercase tracking-widest text-ink-faint shrink-0"
+          >
+            LAST WK · TTD {lastWeek}
+          </span>
+        )}
+      </div>
       {desc && <p className="text-xs text-ink-muted">{desc}</p>}
       <div className="flex h-11 rounded-lg border border-border/60 overflow-hidden bg-surface">
         <span className="flex items-center px-3 text-xs font-semibold text-ink-muted bg-surface border-r border-border/60 shrink-0">
