@@ -5,9 +5,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## ~~Social-field write gap in `submissionService.sanitize()` — agents' social activity silently dropped~~ (RESOLVED — PR #{TBD}, `{TBD}`, 2026-06-01)
+## ~~Social-field write gap in `submissionService.sanitize()` — agents' social activity silently dropped~~ (RESOLVED — PR #417, `13df972`, 2026-06-01)
 
-**Status:** RESOLVED in PR #{TBD} (`{TBD}`). The 5 social/content fields are now enumerated in `submissionService.sanitize()` mirroring the existing nested-object pattern (`socialPlatformBreakdown` built inline with `int()` per platform key alongside `newBusiness` / `pppIncreases` / `lumpsums`). Forward-only fix — historical lost social data not recoverable. Rules verified PERMISSIVE in Phase 1 → no rules deploy needed. 7 new direct `sanitize()` unit tests + 2 end-to-end mocked-setDoc payload tests + live write-read-verify smoke both themes (`scripts/verification/social-sanitize-fix-smoke.mjs`). Original banking content retained below for the closure trail.
+**Status:** RESOLVED in PR #417 (`13df972`). The 5 social/content fields are now enumerated in `submissionService.sanitize()` mirroring the existing nested-object pattern (`socialPlatformBreakdown` built inline with `int()` per platform key alongside `newBusiness` / `pppIncreases` / `lumpsums`). Forward-only fix — historical lost social data not recoverable. Rules verified PERMISSIVE in Phase 1 → no rules deploy needed. 7 new direct `sanitize()` unit tests + 2 end-to-end mocked-setDoc payload tests + live write-read-verify smoke both themes (`scripts/verification/social-sanitize-fix-smoke.mjs`). Original banking content retained below for the closure trail.
 
 ---
 
