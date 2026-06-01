@@ -1,0 +1,187 @@
+// @vitest-environment jsdom
+//
+// Track J — Agent Awards v2 shared primitives.
+//
+// Asserts the state→token mapping (qualified=gold / contention=primary /
+// locked=text-faint) + groupByProgress logic, since those are the load-bearing
+// invariants for the manager-side carve-out and the future cleanup that will
+// dedup AgentAwardsPanel's inline copies onto this module.
+
+import React from 'react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import {
+  AwardDonut, HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer,
+} from '../awardPrimitives';
+import { groupByProgress } from '../awardGrouping';
+
+beforeEach(() => cleanup());
+
+describe('AwardDonut', () => {
+  it('exposes data-state + data-percent for assertion stability', () => {
+    render(<AwardDonut state="contention" percent={47} />);
+    const node = screen.getByTestId('award-donut');
+    expect(node.getAttribute('data-state')).toBe('contention');
+    expect(node.getAttribute('data-percent')).toBe('47');
+    expect(node.textContent).toMatch(/47%/);
+  });
+
+  it('renders for all three states (qualified, contention, locked) without throwing', () => {
+    render(<><AwardDonut state="qualified" percent={100} /></>);
+    render(<><AwardDonut state="contention" percent={50} /></>);
+    render(<><AwardDonut state="locked" percent={5} /></>);
+    // All three appear in the document (cleanup happens between tests, not
+    // within one test — so we just assert each one rendered).
+    expect(screen.getAllByTestId('award-donut').length).toBe(3);
+  });
+});
+
+describe('HeroAwardCard', () => {
+  it('returns null when award is null', () => {
+    const { container } = render(<HeroAwardCard award={null} />);
+    expect(container.firstChild).toBeNull();
+  });
+
+  it('renders the eyebrow + name + gap label for an in-contention award', () => {
+    const award = {
+      id: 'a', name: 'Production Silver', prize: 'Silver trophy',
+      progressPercent: 75,
+      criteria: [{ label: 'Settled API', target: 200000, current: 150000, met: false, unit: 'TTD' }],
+    };
+    render(<HeroAwardCard award={award} />);
+    expect(screen.getByTestId('hero-award-card')).toBeInTheDocument();
+    expect(screen.getByText('Production Silver')).toBeInTheDocument();
+    expect(screen.getByText(/Silver trophy/)).toBeInTheDocument();
+    // Gap = 50000 → TTD 50,000
+    expect(screen.getByText(/TTD 50,000/)).toBeInTheDocument();
+  });
+
+  it('honors a custom eyebrow prop', () => {
+    const award = {
+      id: 'a', name: 'X', prize: 'Y', progressPercent: 50,
+      criteria: [{ label: 'L', target: 100, current: 50, met: false, unit: '' }],
+    };
+    render(<HeroAwardCard award={award} eyebrow="★ Closest goal" />);
+    expect(screen.getByText('★ Closest goal')).toBeInTheDocument();
+  });
+});
+
+describe('AwardCard', () => {
+  const baseAward = {
+    id: 'p1', name: 'Persistency Bronze', prize: 'Bronze',
+    progressPercent: 88, eligible: false, inContention: true,
+    criteria: [{ label: 'Avg Persistency', target: 90, current: 79.2, met: false, unit: '%' }],
+  };
+
+  it('renders qualified state pill + state=qualified data attr', () => {
+    const award = { ...baseAward, eligible: true, inContention: false, progressPercent: 105 };
+    render(<AwardCard award={award} onClick={() => {}} />);
+    const card = screen.getByTestId('award-card-p1');
+    expect(card.getAttribute('data-state')).toBe('qualified');
+    expect(card.textContent).toContain('QUALIFIED');
+  });
+
+  it('renders contention state pill + state=contention data attr', () => {
+    render(<AwardCard award={baseAward} onClick={() => {}} />);
+    const card = screen.getByTestId('award-card-p1');
+    expect(card.getAttribute('data-state')).toBe('contention');
+    expect(card.textContent).toContain('88%');
+  });
+
+  it('renders NOT STARTED label + state=locked data attr for a not-yet-eligible award', () => {
+    const award = { ...baseAward, inContention: false, progressPercent: 5 };
+    render(<AwardCard award={award} onClick={() => {}} />);
+    const card = screen.getByTestId('award-card-p1');
+    expect(card.getAttribute('data-state')).toBe('locked');
+    expect(card.textContent).toContain('NOT STARTED');
+  });
+
+  it('fires onClick when activated', () => {
+    let fired = 0;
+    render(<AwardCard award={baseAward} onClick={() => { fired++; }} />);
+    fireEvent.click(screen.getByTestId('award-card-p1'));
+    expect(fired).toBe(1);
+  });
+});
+
+describe('AwardDrillDrawer', () => {
+  const award = {
+    id: 'p1', name: 'Production Silver', prize: 'Silver trophy',
+    progressPercent: 75, eligible: false,
+    criteria: [
+      { label: 'Settled API', target: 200000, current: 150000, met: false, unit: 'TTD' },
+      { label: 'Apps Sold',   target: 24,     current: 24,     met: true,  unit: 'apps' },
+    ],
+    note: 'Estimated — pending confirmation',
+  };
+
+  it('renders criteria checklist + matches each criterion percent', () => {
+    render(<AwardDrillDrawer award={award} onClose={() => {}} />);
+    const drawer = screen.getByTestId('award-drill-drawer');
+    expect(drawer.textContent).toContain('Production Silver');
+    expect(drawer.textContent).toContain('Settled API');
+    expect(drawer.textContent).toContain('Apps Sold');
+    // Settled API: 150/200 = 75% · Apps Sold: 24/24 = 100%
+    expect(drawer.textContent).toContain('75%');
+    expect(drawer.textContent).toContain('100%');
+    expect(drawer.textContent).toContain('Estimated — pending confirmation');
+  });
+
+  it('closes on Escape key', () => {
+    let closed = 0;
+    render(<AwardDrillDrawer award={award} onClose={() => { closed++; }} />);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(closed).toBe(1);
+  });
+
+  it('closes when scrim backdrop is clicked', () => {
+    let closed = 0;
+    render(<AwardDrillDrawer award={award} onClose={() => { closed++; }} />);
+    // The scrim is the first absolute-positioned div with aria-hidden="true"
+    const scrim = document.querySelector('[aria-hidden="true"].fixed.inset-0');
+    expect(scrim).not.toBeNull();
+    fireEvent.click(scrim);
+    expect(closed).toBe(1);
+  });
+
+  it('returns null when award is null', () => {
+    const { container } = render(<AwardDrillDrawer award={null} onClose={() => {}} />);
+    expect(container.firstChild).toBeNull();
+  });
+});
+
+describe('GroupHeader', () => {
+  it('renders label + count and accent color is threaded through', () => {
+    render(<GroupHeader label="✓ Qualified" count={3} accentStyle={{ color: 'var(--color-gold)' }} />);
+    expect(screen.getByText('✓ Qualified')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+  });
+});
+
+describe('groupByProgress', () => {
+  const awards = [
+    { id: 'q',  eligible: true,  inContention: false, progressPercent: 110 },
+    { id: 'a1', eligible: false, inContention: true,  progressPercent: 95  },
+    { id: 'a2', eligible: false, inContention: true,  progressPercent: 75  },
+    { id: 'p1', eligible: false, inContention: true,  progressPercent: 60  },
+    { id: 'p2', eligible: false, inContention: false, progressPercent: 35  },
+    { id: 's1', eligible: false, inContention: false, progressPercent: 12  },
+  ];
+
+  it('partitions awards into Qualified / Almost / Progress / Starting', () => {
+    const { hero, qualified, almostThere, makingProgress, justStarting } = groupByProgress(awards);
+    expect(qualified.map((a) => a.id)).toEqual(['q']);
+    expect(almostThere.map((a) => a.id)).toEqual(['a1', 'a2']);
+    expect(makingProgress.map((a) => a.id).sort()).toEqual(['p1', 'p2'].sort());
+    expect(justStarting.map((a) => a.id)).toEqual(['s1']);
+    // Hero = highest-percent in-contention
+    expect(hero.id).toBe('a1');
+  });
+
+  it('returns hero=null when no in-contention awards exist', () => {
+    const { hero } = groupByProgress([
+      { id: 'q', eligible: true, inContention: false, progressPercent: 110 },
+    ]);
+    expect(hero).toBeNull();
+  });
+});

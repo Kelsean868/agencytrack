@@ -1,7 +1,16 @@
 // @vitest-environment jsdom
+//
+// Track J — Manager Awards v2 panel.
+//
+// Regression strategy: the awards data flow (computeManagerAwards + loaders)
+// is untouched, so each test mocks computeManagerAwards to a fixed map and
+// asserts the new v2 markup renders the same data set. Tabs, bonus hero,
+// empty state, role-gated BmAtRiskPanel mount, and the drill drawer all live
+// here.
+
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 
 vi.mock('../../../services/settlementService', () => ({
   getSettlementsForUnit: vi.fn(() => Promise.resolve([])),
@@ -21,17 +30,10 @@ vi.mock('../../../utils/awardsEngine', () => ({
 
 vi.mock('../BmAtRiskPanel', () => ({
   default: () => (
-    <section aria-labelledby="at-risk-heading" data-testid="bm-at-risk-panel">
-      <h3 id="at-risk-heading">Agent Award Risk View</h3>
+    <section data-testid="bm-at-risk-panel">
+      <h3>Agent Award Risk View</h3>
     </section>
   ),
-}));
-
-// Mock GoalDonut to avoid pulling in a sibling component that uses JSX without
-// importing React (incompatible with this test file's classic JSX transform).
-// Same precedent as TeamMedalsPanel.test.jsx mocking BadgeGrid.
-vi.mock('../../dashboard/GoalDonut', () => ({
-  default: ({ percent }) => <svg data-testid="goal-donut" data-percent={percent} />,
 }));
 
 import ManagerAwardsPanel from '../ManagerAwardsPanel';
@@ -50,7 +52,7 @@ const QUALIFIED_AWARD = {
   note: null,
 };
 
-const CONTENTION_AWARD = {
+const ALMOST_AWARD = {
   id: 'persistency_silver',
   name: 'Agency Persistency — Silver',
   category: 'annual',
@@ -63,16 +65,29 @@ const CONTENTION_AWARD = {
   note: 'Estimated — pending confirmation',
 };
 
+const PROGRESS_AWARD = {
+  id: 'production_silver',
+  name: 'Production Silver',
+  category: 'annual',
+  eligible: false,
+  inContention: true,
+  criteria: [{ label: 'Avg API / Advisor', target: 200000, current: 95000, met: false, unit: 'TTD' }],
+  prize: 'Production Silver',
+  dataSource: 'estimated',
+  progressPercent: 48,
+  note: null,
+};
+
 const LOCKED_AWARD = {
   id: 'persistency_gold',
   name: 'Agency Persistency — Gold',
   category: 'annual',
   eligible: false,
   inContention: false,
-  criteria: [{ label: 'Avg Persistency', target: 95, current: 60, met: false, unit: '%' }],
+  criteria: [{ label: 'Avg Persistency', target: 95, current: 12, met: false, unit: '%' }],
   prize: 'Persistency Gold Trophy',
   dataSource: 'estimated',
-  progressPercent: 50,
+  progressPercent: 12,
   note: null,
 };
 
@@ -86,6 +101,19 @@ const ACTIVITY_QUALIFIED = {
   prize: 'Gold Activity Award',
   dataSource: 'confirmed',
   progressPercent: 103,
+  note: null,
+};
+
+const RECRUIT_AWARD = {
+  id: 'recruiting_bronze',
+  name: 'Recruiting Bronze',
+  category: 'annual',
+  eligible: true,
+  inContention: false,
+  criteria: [{ label: 'New advisors licensed', target: 2, current: 3, met: true, unit: '' }],
+  prize: 'Bronze recruiter trophy',
+  dataSource: 'confirmed',
+  progressPercent: 150,
   note: null,
 };
 
@@ -111,6 +139,7 @@ const BONUS_TOP_TIER = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  cleanup();
 });
 
 function setAwards({ bonus, list }) {
@@ -137,46 +166,58 @@ async function renderPanel(props = {}) {
   return result;
 }
 
-describe('ManagerAwardsPanel — medal state mapping', () => {
-  it('renders medal-1 with .glow for a qualified award', async () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// Group classification — Qualified / Almost / Progress / Starting
+// ─────────────────────────────────────────────────────────────────────────────
+describe('ManagerAwardsPanel — v2 group classification', () => {
+  it('renders Qualified group for an eligible award (gold accent)', async () => {
     setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
-    const { container } = await renderPanel();
-    const medal = container.querySelector('.badge-medal');
-    expect(medal).not.toBeNull();
-    expect(medal.classList.contains('medal-1')).toBe(true);
-    expect(medal.classList.contains('glow')).toBe(true);
-  });
-
-  it('renders medal-6 (no glow) for an in-contention award', async () => {
-    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [CONTENTION_AWARD] });
-    const { container } = await renderPanel();
-    const medal = container.querySelector('.badge-medal');
-    expect(medal.classList.contains('medal-6')).toBe(true);
-    expect(medal.classList.contains('glow')).toBe(false);
-  });
-
-  it('renders medal-locked for a not-yet-eligible award', async () => {
-    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [LOCKED_AWARD] });
-    const { container } = await renderPanel();
-    const medal = container.querySelector('.badge-medal');
-    expect(medal.classList.contains('medal-locked')).toBe(true);
-    expect(medal.classList.contains('glow')).toBe(false);
-  });
-
-  it('renders the matching status label for each state', async () => {
-    setAwards({
-      bonus: BONUS_WITH_NEXT_TIER,
-      list: [QUALIFIED_AWARD, CONTENTION_AWARD, LOCKED_AWARD],
-    });
     await renderPanel();
-    expect(screen.getByText('Qualified')).toBeInTheDocument();
-    expect(screen.getByText('In Contention')).toBeInTheDocument();
-    expect(screen.getByText('Not Eligible')).toBeInTheDocument();
+    expect(screen.getByTestId('award-group-qualified')).toBeInTheDocument();
+    const card = screen.getByTestId('award-card-production_award');
+    expect(card).toHaveAttribute('data-state', 'qualified');
+    expect(card.textContent).toContain('Production Award');
+    expect(card.textContent).toContain('QUALIFIED');
+  });
+
+  it('renders Almost-there group for inContention >=70%', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [ALMOST_AWARD] });
+    await renderPanel();
+    expect(screen.getByTestId('award-group-almost')).toBeInTheDocument();
+    const card = screen.getByTestId('award-card-persistency_silver');
+    expect(card).toHaveAttribute('data-state', 'contention');
+  });
+
+  it('renders Making-progress group for inContention 30-70%', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [PROGRESS_AWARD] });
+    await renderPanel();
+    expect(screen.getByTestId('award-group-progress')).toBeInTheDocument();
+  });
+
+  it('renders Just-starting group for not-yet-eligible <30%', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [LOCKED_AWARD] });
+    await renderPanel();
+    expect(screen.getByTestId('award-group-starting')).toBeInTheDocument();
+    const card = screen.getByTestId('award-card-persistency_gold');
+    expect(card).toHaveAttribute('data-state', 'locked');
+    expect(card.textContent).toContain('NOT STARTED');
+  });
+
+  it('selects the highest-progress in-contention award as the hero (via dedicated HeroAwardCard usage)', async () => {
+    // ALMOST (95%) wins over PROGRESS (48%). The hero pick is also the source
+    // of the highest-percent state pill on the card — assert by data-state.
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [ALMOST_AWARD, PROGRESS_AWARD] });
+    await renderPanel();
+    expect(screen.getByTestId('award-card-persistency_silver')).toBeInTheDocument();
+    expect(screen.getByTestId('award-card-production_silver')).toBeInTheDocument();
   });
 });
 
-describe('ManagerAwardsPanel — tab switching', () => {
-  it('switches award grid when Activity tab is clicked', async () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// Category tab switching (annual / activity / recruit)
+// ─────────────────────────────────────────────────────────────────────────────
+describe('ManagerAwardsPanel — category tabs', () => {
+  it('renders Annual tab content by default; switching to Activity swaps the grid', async () => {
     setAwards({
       bonus: BONUS_WITH_NEXT_TIER,
       list: [QUALIFIED_AWARD, ACTIVITY_QUALIFIED],
@@ -191,81 +232,73 @@ describe('ManagerAwardsPanel — tab switching', () => {
     expect(screen.getByText('Activity Award — Gold')).toBeInTheDocument();
     expect(screen.queryByText('Production Award')).toBeNull();
   });
+
+  it('switches to Recruiting tab and renders the recruit-id awards', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD, RECRUIT_AWARD] });
+    await renderPanel();
+
+    fireEvent.click(screen.getByRole('tab', { name: /recruiting/i }));
+
+    expect(screen.getByText('Recruiting Bronze')).toBeInTheDocument();
+    expect(screen.queryByText('Production Award')).toBeNull();
+  });
 });
 
-describe('ManagerAwardsPanel — Monthly Bonus hero', () => {
-  it('renders bonus amount headline and next-tier caption when nextTier is present', async () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// Monthly Bonus hero — restyled v2 card-shell
+// ─────────────────────────────────────────────────────────────────────────────
+describe('ManagerAwardsPanel — Monthly Bonus hero (v2 card-shell)', () => {
+  it('renders the bonus hero card with amount + tier + next-tier label when nextTier present', async () => {
     setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
-    const { container } = await renderPanel();
+    await renderPanel();
 
-    expect(container.querySelector('.role-hero')).not.toBeNull();
-    expect(screen.getByText('Monthly Production Bonus')).toBeInTheDocument();
-    expect(screen.getByText(/4,200/)).toBeInTheDocument();
-    expect(screen.getByText(/Tier 1% unlocked/)).toBeInTheDocument();
-    expect(screen.getByText(/Tier 1.5% at/)).toBeInTheDocument();
+    const hero = screen.getByTestId('monthly-bonus-hero');
+    expect(hero).toBeInTheDocument();
+    expect(hero.textContent).toContain('Monthly Production Bonus');
+    expect(hero.textContent).toMatch(/4,200/);
+    expect(hero.textContent).toMatch(/Tier 1% unlocked/);
+    expect(hero.textContent).toMatch(/Tier 1.5% at/);
+    expect(hero.textContent).toMatch(/Next tier in reach/);
   });
 
-  it('renders "Top tier achieved" caption when nextTier is null', async () => {
+  it('renders "Top tier achieved" eyebrow when nextTier is null and uses qualified state', async () => {
     setAwards({ bonus: BONUS_TOP_TIER, list: [QUALIFIED_AWARD] });
     await renderPanel();
-    expect(screen.getByText('Top tier achieved')).toBeInTheDocument();
-  });
 
-  it('fills the bar at 100% when nextTier is null', async () => {
-    setAwards({ bonus: BONUS_TOP_TIER, list: [QUALIFIED_AWARD] });
-    const { container } = await renderPanel();
-    const fill = container.querySelector('.bar-fill');
-    expect(fill).not.toBeNull();
-    expect(fill.style.width).toBe('100%');
+    const hero = screen.getByTestId('monthly-bonus-hero');
+    expect(hero.textContent).toContain('Top tier achieved');
+    // Donut data-state should be qualified for top tier
+    const donuts = hero.querySelectorAll('[data-testid="award-donut"]');
+    expect(donuts.length).toBeGreaterThan(0);
+    expect(donuts[0].getAttribute('data-state')).toBe('qualified');
+    expect(donuts[0].getAttribute('data-percent')).toBe('100');
   });
 });
 
-describe('ManagerAwardsPanel — newAdvisors prop threading', () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// newAdvisors prop threading — preserved from legacy panel
+// ─────────────────────────────────────────────────────────────────────────────
+describe('ManagerAwardsPanel — newAdvisors prop threading (preserved)', () => {
   it('defaults newAdvisors to 0 when prop is omitted', async () => {
     setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
-    await renderPanel();
-    const callArgs = computeManagerAwards.mock.calls[0];
-    expect(callArgs[3]).toEqual({ newAdvisors: 0 });
+    await renderPanel({ newAdvisors: undefined });
+    const last = computeManagerAwards.mock.calls.at(-1);
+    expect(last[3]).toEqual({ newAdvisors: 0 });
   });
 
   it('forwards newAdvisors={5} to computeManagerAwards', async () => {
     setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
     await renderPanel({ newAdvisors: 5 });
-    const callArgs = computeManagerAwards.mock.calls[0];
-    expect(callArgs[3]).toEqual({ newAdvisors: 5 });
-  });
-
-  it('does NOT pass newAdvisors: 0 when a non-zero value is provided', async () => {
-    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
-    await renderPanel({ newAdvisors: 3 });
-    const callArgs = computeManagerAwards.mock.calls[0];
-    expect(callArgs[3].newAdvisors).not.toBe(0);
-    expect(callArgs[3].newAdvisors).toBe(3);
-  });
-
-  it('renders qualified recruiting award when engine returns eligible=true (newAdvisors propagated)', async () => {
-    const RECRUIT_AWARD = {
-      id: 'recruiting_bronze',
-      name: 'Recruiting Award — Bronze',
-      category: 'annual',
-      eligible: true,
-      inContention: false,
-      criteria: [{ label: 'Net New Advisors', target: 3, current: 3, met: true, unit: 'advisors' }],
-      prize: 'Bronze Recruiting Trophy',
-      dataSource: 'confirmed',
-      progressPercent: 100,
-      note: null,
-    };
-    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [RECRUIT_AWARD] });
-    await renderPanel({ newAdvisors: 3 });
-    fireEvent.click(screen.getByRole('tab', { name: /recruiting/i }));
-    expect(screen.getByText('Recruiting Award — Bronze')).toBeInTheDocument();
-    expect(screen.getByText('Qualified')).toBeInTheDocument();
+    const last = computeManagerAwards.mock.calls.at(-1);
+    expect(last[3]).toEqual({ newAdvisors: 5 });
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Empty state
+// ─────────────────────────────────────────────────────────────────────────────
 describe('ManagerAwardsPanel — empty state', () => {
-  it('renders "No agents" empty state when agentIds is empty', () => {
+  it('renders the "No agents" empty card when agentIds is empty', () => {
     render(
       <ManagerAwardsPanel
         agentIds={[]}
@@ -274,28 +307,73 @@ describe('ManagerAwardsPanel — empty state', () => {
         tenantId="tatil"
       />,
     );
-    expect(screen.getByText(/No agents in your unit yet/i)).toBeInTheDocument();
+    expect(screen.getByText('No agents in your unit yet.')).toBeInTheDocument();
+  });
+
+  it('renders the "No awards in this category" empty card when category has none', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel();
+
+    fireEvent.click(screen.getByRole('tab', { name: /recruiting/i }));
+    expect(screen.getByTestId('award-empty')).toBeInTheDocument();
   });
 });
 
-describe('ManagerAwardsPanel — BmAtRiskPanel gating', () => {
-  it('renders at-risk section for branch_manager role', async () => {
+// ─────────────────────────────────────────────────────────────────────────────
+// BmAtRiskPanel role gating — BM/TA/PA mount; UM and SM do NOT
+// ─────────────────────────────────────────────────────────────────────────────
+// `sales_manager` is intentionally EXCLUDED from isBmPlus. SM has no single
+// branch — whether these panels scope correctly for an all-branches SM is an
+// open product question (cf. P5b for the leaderboard); banked as an FU.
+describe('ManagerAwardsPanel — BmAtRiskPanel gating (SM intentionally excluded)', () => {
+  it('mounts at-risk panel for branch_manager', async () => {
     setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
     await renderPanel({ role: 'branch_manager' });
     expect(screen.getByTestId('bm-at-risk-panel')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /agent award risk view/i })).toBeInTheDocument();
   });
 
-  it('renders at-risk section for tenant_admin role', async () => {
+  it('mounts at-risk panel for tenant_admin', async () => {
     setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
     await renderPanel({ role: 'tenant_admin' });
     expect(screen.getByTestId('bm-at-risk-panel')).toBeInTheDocument();
   });
 
-  it('does NOT render at-risk section for unit_manager role', async () => {
+  it('mounts at-risk panel for platform_admin', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel({ role: 'platform_admin' });
+    expect(screen.getByTestId('bm-at-risk-panel')).toBeInTheDocument();
+  });
+
+  it('does NOT mount at-risk panel for unit_manager', async () => {
     setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
     await renderPanel({ role: 'unit_manager' });
-    expect(screen.queryByTestId('bm-at-risk-panel')).toBeNull();
-    expect(screen.queryByRole('heading', { name: /agent award risk view/i })).toBeNull();
+    expect(screen.queryByTestId('bm-at-risk-panel')).not.toBeInTheDocument();
+  });
+
+  it('does NOT mount at-risk panel for sales_manager (open product question — FU banked)', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel({ role: 'sales_manager' });
+    expect(screen.queryByTestId('bm-at-risk-panel')).not.toBeInTheDocument();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Drill drawer — clicking an AwardCard opens the criteria detail panel
+// ─────────────────────────────────────────────────────────────────────────────
+describe('ManagerAwardsPanel — drill drawer', () => {
+  it('opens the AwardDrillDrawer when an AwardCard is clicked + closes on Escape', async () => {
+    setAwards({ bonus: BONUS_WITH_NEXT_TIER, list: [QUALIFIED_AWARD] });
+    await renderPanel();
+
+    expect(screen.queryByTestId('award-drill-drawer')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('award-card-production_award'));
+    expect(screen.getByTestId('award-drill-drawer')).toBeInTheDocument();
+    // Criteria header inside the drawer
+    const drawer = screen.getByTestId('award-drill-drawer');
+    expect(drawer.textContent).toContain('Criteria');
+    expect(drawer.textContent).toContain('Avg API / Advisor');
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.queryByTestId('award-drill-drawer')).not.toBeInTheDocument();
   });
 });

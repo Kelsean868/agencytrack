@@ -5,6 +5,82 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## SM access to ManagerAwardsPanel + BmAtRiskPanel — deliberate decision needed (MEDIUM, banked 2026-06-01 from manager-side carve-out PR #{TBD})
+
+**Status:** product decision needed BEFORE any code change.
+
+PR #{TBD} (Manager Awards v2 carve-out) excluded `sales_manager` from the `isBmPlus` gate in `ManagerAwardsPanel.jsx` — the gate now reads `branch_manager || tenant_admin || platform_admin` (matching the pre-#{TBD} behavior). The PR's initial commit had extended `isBmPlus` to include `sales_manager`; the dispatcher reverted that during pre-review because:
+
+1. **Role-access behavior change is beyond a pure-restyle PR's scope.** The restyle should only touch presentation, not who-sees-what.
+2. **The PR's smoke never exercised the SM path** — the SM credential was not in the smoke matrix, so the change shipped untested for SM.
+3. **SM has no single branch** — same shape as the leaderboard problem P5b solved deliberately (PR #411 `SmLeaderboardView` with all-branches picker + per-UID persistence). Manager awards may need a parallel "SM all-branches awards view" with its own scoping decision, NOT a one-line gate extension.
+
+**Open questions for the decision:**
+
+1. **Should an SM see `ManagerAwardsPanel`?** It computes manager-awards across an `agentIds` list. For an SM with `ownedBranchIds: ['*']`, that list is either: every agent in the tenant (potentially hundreds), or empty until the SM picks a scope. Either default is awkward.
+2. **Should an SM see `BmAtRiskPanel`?** Same question — the panel computes per-agent at-risk status across an `agentIds` list.
+3. **All-branches scope pattern**: should SM follow the P5b leaderboard pattern (branch-picker → per-branch awards view) or a tenant-wide aggregation (composite across all branches)? Both have design rationale.
+4. **Where does the SM's manager-awards view live?** Inside `ManagerAwardsPanel` (with an SM-mode prop) or a new `SmAwardsView` wrapper (mirroring `SmLeaderboardView`)?
+
+**Scope when dispatched (after the decision):**
+
+1. Decide on the SM all-branches awards-scope pattern (likely: mirror `SmLeaderboardView` with `SmAwardsView` for consistency).
+2. Implement the SM view (separate PR — NOT a one-line gate extension).
+3. Smoke must include the SM credential and verify the all-branches scope works as designed.
+
+**Why MEDIUM (not LOW):**
+
+The pattern decision (SmAwardsView vs SM-prop on ManagerAwardsPanel) affects every future manager-tier surface the SM eventually accesses — Master Sheet, Compliance, Goals, Persistency manager-side, etc. Worth a single design pass before shipping.
+
+**Cross-reference:** PR #411 (`40296b6`) for the leaderboard precedent; `src/components/leaderboard/SmLeaderboardView.jsx` for the all-branches picker pattern.
+
+---
+
+## Awards primitives dedup — consume `awardPrimitives.jsx` from `AgentAwardsPanel.jsx` (LOW, banked 2026-06-01 from manager-side carve-out PR #{TBD})
+
+**Status:** cleanup; no behavior change.
+
+PR #{TBD} (Manager Awards v2 carve-out) extracted the v2 primitives into a shared module `src/components/awards/awardPrimitives.jsx` (AwardDonut, HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer) + `src/components/awards/awardGrouping.js` (groupByProgress). `ManagerAwardsPanel.jsx` + `BmAtRiskPanel.jsx` consume from those modules.
+
+`AgentAwardsPanel.jsx` (shipped earlier in #391) still carries inline-duplicated copies of those same primitives. The duplication was intentionally retained at carve-out time to keep the carve-out PR's scope terminal at `src/components/awards/Manager*` + tests (per the brief).
+
+**Scope when dispatched:**
+
+1. Delete the inline `AwardDonut`, `HeroAwardCard`, `GroupHeader`, `AwardCard`, `AwardDrillDrawer` definitions in `AgentAwardsPanel.jsx`. (`RatioMiniSpark` + `RatioTrendCard` are agent-only Activity-Ratio-Trends primitives — leave inline OR move to the shared module if a future manager surface wants them; dispatcher's pick.)
+2. Import all of them from `./awardPrimitives` + `./awardGrouping`.
+3. Replace the inline `useMemo({ heroAward, qualified, almostThere, makingProgress, justStarting })` block in `AgentAwardsPanel.jsx` with `useMemo(() => groupByProgress(filteredAwards), [filteredAwards])`.
+4. Confirm `npm run lint && npm test && npm run build` stays green; the `AgentAwardsPanel.test.jsx` cases continue to pass without modification (the primitives' rendered DOM is unchanged because they're a verbatim extraction).
+
+**Why LOW:**
+
+Pure DRY cleanup. No user-facing change. Saves ~250 lines from `AgentAwardsPanel.jsx`. Safe to defer; not blocking any future work.
+
+**Cross-reference:** `src/components/awards/awardPrimitives.jsx` module header JSDoc explicitly calls out the AgentAwardsPanel-still-inline state for future readers.
+
+---
+
+## Awards orphan cleanup — delete `AwardMedalCard.jsx` + `AwardMedal.jsx` + `awardIconMap.js` (LOW, banked 2026-06-01 from manager-side carve-out PR #{TBD})
+
+**Status:** dead-code removal; no behavior change.
+
+After PR #{TBD} (Manager Awards v2 carve-out) replaced `AwardMedalCard` consumption in `ManagerAwardsPanel.jsx` with the new `AwardCard` primitive, these files have no remaining importers:
+
+- `src/components/awards/AwardMedalCard.jsx` — was only imported by `ManagerAwardsPanel.jsx` (now removed)
+- `src/components/awards/AwardMedal.jsx` — was only imported by `AwardMedalCard.jsx`
+- `src/components/awards/awardIconMap.js` (if present) — was only imported by `AwardMedalCard.jsx`
+
+**Scope when dispatched:**
+
+1. `git grep -E "AwardMedal|awardIconMap" -- src/` to confirm zero importers.
+2. Delete the orphaned files.
+3. Confirm `npm run lint && npm test && npm run build` stays green.
+
+**Why LOW:**
+
+Dead code in the repo doesn't break anything but clutters the awards directory. Safe to defer; not blocking any future work. Combinable with the dedup FU above into a single small PR.
+
+---
+
 ## Track J Wizard v2 — REDESIGN, not RESTYLE (banked 2026-06-01 from surprise-stop)
 
 **Status:** brief rewrite needed BEFORE any code work begins.
