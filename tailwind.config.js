@@ -96,6 +96,11 @@ export default {
         'kiosk-halo-teal':  'kiosk-halo-teal 2.8s ease-out infinite',
         'kiosk-halo-hot':   'kiosk-halo-hot 2.4s ease-out infinite',
         'kiosk-sparkle':    'kiosk-sparkle 2.2s ease-in-out infinite',
+        // Track J System Screens v2 — login pattern drift. Per-row duration
+        // is overridden inline (see LoginScreen.jsx) so the rows don't beat
+        // in lockstep; the base utility lives here for tree-shaking.
+        'login-drift-l':    'login-drift-l 30s linear infinite',
+        'login-drift-r':    'login-drift-r 30s linear infinite',
       },
       keyframes: {
         'kiosk-fade': {
@@ -150,6 +155,15 @@ export default {
         'kiosk-sparkle': {
           '0%, 100%': { transform: 'scale(0.6)', opacity: '0.2' },
           '50%':      { transform: 'scale(1)',   opacity: '1' },
+        },
+        // Track J System Screens v2 — login-pattern drift.
+        'login-drift-l': {
+          from: { transform: 'translateX(0)' },
+          to:   { transform: 'translateX(-140px)' },
+        },
+        'login-drift-r': {
+          from: { transform: 'translateX(-140px)' },
+          to:   { transform: 'translateX(0)' },
         },
       },
     },
