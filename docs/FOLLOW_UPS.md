@@ -3357,7 +3357,11 @@ Banked: Track J P7 close (PR #403), 2026-05-31.
 
 ---
 
-## Track J (V2 Redesign) — P5-prep aggregate-enrichment CF: `previousRank` + `unitId` + last-week champions (MEDIUM, banked 2026-05-31 from PR #402; expanded 2026-05-31 on PR #403/audit + PR #404)
+## Track J (V2 Redesign) — P5-prep aggregate-enrichment CF: `previousRank` + `unitId` + last-week champions (MEDIUM, banked 2026-05-31 from PR #402; expanded 2026-05-31 on PR #403/audit + PR #404 — **RESOLVED by PR #{TBD}**)
+
+> **RESOLVED 2026-05-31 by Track J P5-prep (PR #{TBD}).** All three additions landed in one CF change derived from ONE prior-week computation. The (a) banner re-home, (b) movement chip, and (c) P5a UM unit-scope UI are now unblocked (each ships as its own downstream PR). The sequencing constraint (must land BEFORE P5's ManagerDashboard nav swap) is satisfied — managers' working champions banner survives until then because P6 only retired the agent nav slot. Original body preserved below for the design-decision trail.
+
+---
 
 The leaderboard-aggregate Cloud Function (`functions/leaderboard/leaderboardAggregate.js`) needs to land three additions before P5 ships:
 
@@ -3404,7 +3408,7 @@ Why fold all three into one CF change: computing prior-period rankings (which `p
 
 **Priority:** MEDIUM. Unblocks three things at once — movement chip on the around-me, UM unit-scope toggle in P5, and the agent-visible champions re-home that PR #404 P6 had to defer.
 
-Banked: Track J P4 around-me cluster (PR #402), 2026-05-31. Expanded on PR #403 P5 read-only audit (unitId addition). Expanded on PR #404 dispatcher disposition (champions write + sequencing constraint), 2026-05-31.
+Banked: Track J P4 around-me cluster (PR #402), 2026-05-31. Expanded on PR #403 P5 read-only audit (unitId addition). Expanded on PR #404 dispatcher disposition (champions write + sequencing constraint), 2026-05-31. **Resolved 2026-05-31 by Track J P5-prep (PR #{TBD}); downstream UI consumers each ship as their own PR.**
 
 ---
 

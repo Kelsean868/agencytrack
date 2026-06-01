@@ -642,6 +642,25 @@ service cloud.firestore {
         allow write: if false;
       }
 
+      // Track J P5-prep: tenant-wide weekly champions doc (precomputed by the
+      // leaderboard-aggregate CF via Admin SDK). One doc per completed week;
+      // doc-id is the YYYY-MM-DD Sunday. Shape (matches the retired
+      // `WeeklyChampionsBanner`'s `champions` prop):
+      //   { topAPI, topApps, topActivity, weekStarting, computedAt }
+      // where each top-* is { agentId, agentName, value } | null.
+      //
+      // Read: any signed-in tenant member (agents + managers + kiosk). Scope
+      // is TENANT-WIDE — there is no branch arm, mirroring the retired
+      // `gamification/Leaderboard` banner that read all-tenant submissions.
+      // Write: CF-only (Admin SDK bypasses rules).
+      match /weeklyChampions/{weekStarting} {
+        allow get:  if kioskCanRead(tenantId)
+          || (isSignedIn() && getTenantId() == tenantId);
+        allow list: if kioskCanRead(tenantId)
+          || (isSignedIn() && getTenantId() == tenantId);
+        allow write: if false;
+      }
+
       // F1 (Track F): coaching notes — manager-chain private, agent EXCLUDED.
       //
       // Privacy model: rank-based visibility chain.
