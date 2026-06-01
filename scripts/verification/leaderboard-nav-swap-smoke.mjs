@@ -171,12 +171,117 @@ async function smokeTheme(theme) {
   }
 }
 
+// ── Mobile-viewport smoke (390×844) — bottom-nav "Ranks" click path ──────────
+//
+// Belt-and-suspenders coverage requested by dispatcher on PR #404 pre-review.
+// The desktop smoke above exercises the sidebar tabId-routing path; this one
+// exercises the BOTTOM-NAV click path. Both share the same render branch
+// (single `{activeTab === 'production-leaderboard' && <ProductionLeaderboardSurface />}`),
+// but only this mobile pass proves the mobile entry point is wired + clickable.
+//
+// MobileBottomNav.jsx renders each BOTTOM_NAV item with
+//   data-testid = item.testId ?? `bottomnav-${item.id}`.
+// The "Ranks" entry has id 'leaderboard' and no explicit testId, so the
+// resolved testid is `bottomnav-leaderboard`.
+//
+// Note: the existing `login()` helper uses
+//   page.waitForFunction(() => document.body.textContent.length > 400)
+// for the post-login wait — that pattern is mobile-friendly (no dependency
+// on the sidebar nav landmark hidden at 390px) per the banked smoke rules.
+async function smokeMobile(theme) {
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const errors  = [];
+
+  if (IS_PROD) await setupBypassSession(context, URL, BYPASS_TOKEN);
+
+  const page = await context.newPage();
+  page.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const text = m.text();
+    if (text.includes('fontshare.com')) return;
+    if (text.includes('Failed to load resource') && text.includes('net::ERR_FAILED')) return;
+    errors.push(text);
+  });
+
+  try {
+    await page.goto(URL, { waitUntil: 'domcontentloaded' });
+    await login(page);
+
+    if (theme === 'dark') {
+      await page.evaluate(() => {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('agencytrack-dark', 'true');
+      });
+      await page.waitForTimeout(400);
+    }
+
+    // ── 1. Bottom-nav "Ranks" item is present (exactly one).
+    const ranksBtn       = page.locator('[data-testid="bottomnav-leaderboard"]');
+    const ranksBtnCount  = await ranksBtn.count();
+    const ranksLabel     = ranksBtnCount > 0
+      ? (await ranksBtn.first().textContent())?.trim()
+      : null;
+
+    // ── 2. Tap the bottom-nav Ranks button → production-leaderboard surface mounts.
+    await ranksBtn.click();
+    await page.waitForSelector(
+      '[data-testid="production-leaderboard-surface"]',
+      { timeout: 15_000 }
+    );
+    const surfaceCount = await page
+      .locator('[data-testid="production-leaderboard-surface"]').count();
+
+    // ── 3. The "Ranks" button gets the .active class + aria-current="page"
+    //      (per MobileBottomNav.jsx — only the active tab has these).
+    const ranksAriaCurrent = await ranksBtn.first().getAttribute('aria-current');
+    const ranksClass       = await ranksBtn.first().getAttribute('class');
+    const ranksIsActive    = ranksAriaCurrent === 'page' && (ranksClass ?? '').includes('active');
+
+    // ── 4. No points-leaderboard surface markers visible.
+    const championCardCount = await page
+      .locator('[data-testid="champion-card"]').count();
+
+    // ── 5. The URL has no "?tab=production-leaderboard" — temp route retired.
+    const currentUrl = page.url();
+    const tempRoutePresent = currentUrl.includes('tab=production-leaderboard');
+
+    const pass = (
+      ranksBtnCount === 1 &&
+      ranksLabel === 'Ranks' &&
+      surfaceCount === 1 &&
+      ranksIsActive &&
+      championCardCount === 0 &&
+      !tempRoutePresent &&
+      errors.length === 0
+    );
+
+    RESULTS.push({
+      theme: `mobile-${theme}`,
+      ranksBtnCount, ranksLabel,
+      surfaceCount,
+      ranksIsActive,
+      championCardCount,
+      tempRoutePresent,
+      errors: errors.length,
+      pass,
+    });
+
+    console.log(`[mobile-${theme}] ranks-btn=${ranksBtnCount} (label="${ranksLabel}") surface=${surfaceCount} ranks-active=${ranksIsActive} champion-cards=${championCardCount} temp-route=${tempRoutePresent} errors=${errors.length} → ${pass ? 'PASS' : 'FAIL'}`);
+    if (errors.length) errors.slice(0, 3).forEach(e => console.log(`  console.error: ${e}`));
+  } finally {
+    await browser.close();
+  }
+}
+
 console.log(`\nTrack J P6 — leaderboard nav swap smoke`);
 console.log(`Target: ${URL}\n`);
 
 await smokeTheme('light');
 await smokeTheme('dark');
+await smokeMobile('light');
+await smokeMobile('dark');
 
 const allPass = RESULTS.every(r => r.pass);
-console.log(`\nP6 smoke: ${allPass ? '✓ 2/2 PASS' : '✗ FAIL'}`);
+console.log(`\nP6 smoke: ${allPass ? `✓ ${RESULTS.length}/${RESULTS.length} PASS` : '✗ FAIL'}`);
 process.exit(allPass ? 0 : 1);
