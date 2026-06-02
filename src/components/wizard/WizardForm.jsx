@@ -50,11 +50,9 @@ import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 
-// Legacy step files (unmodified) — used for v2 steps 4-11 (1:1 mappings).
-import Step3Approaches       from './steps/Step3Approaches';
-import Step4ClosingSales     from './steps/Step4ClosingSales';
+// Legacy step files — still rendered for steps 4, 5, 9, 10, 11 (retirement
+// pass R2/R3 will extract these next). Steps 6/7/8 migrated to v2 in R1.
 import Step5NewNames         from './steps/Step5NewNames';
-import Step6DeliveriesService from './steps/Step6DeliveriesService';
 import Step7TimeManagement    from './steps/Step7TimeManagement';
 import Step8SelfEvaluation    from './steps/Step8SelfEvaluation';
 import Step9Goals             from './steps/Step9Goals';
@@ -64,6 +62,10 @@ import StepSocialMedia        from './steps/StepSocialMedia';
 import StepLettersOutreach    from './v2steps/StepLettersOutreach';
 import StepSeminarsTradeshows from './v2steps/StepSeminarsTradeshows';
 import StepCallsF2F           from './v2steps/StepCallsF2F';
+// R1 (retirement) — Sales-phase v2 extractions (steps 6/7/8).
+import StepApproachesInterviews from './v2steps/StepApproachesInterviews';
+import StepNewBusiness          from './v2steps/StepNewBusiness';
+import StepDeliveryService      from './v2steps/StepDeliveryService';
 
 // v2 chrome.
 import PhaseProgress          from './v2chrome/PhaseProgress';
@@ -87,10 +89,10 @@ const STEPS = [
   { n: 3,  phase: 'activity',   title: 'Calls & face-to-face',    Component: StepCallsF2F },
   { n: 4,  phase: 'activity',   title: 'Social & content',        Component: StepSocialMedia },
   { n: 5,  phase: 'activity',   title: 'New names added',         Component: Step5NewNames,         needsLastWeekData: true },
-  // ── Sales (6-8) ───────────────────────────────────────────────────────────
-  { n: 6,  phase: 'sales',      title: 'Approaches & interviews', Component: Step3Approaches },
-  { n: 7,  phase: 'sales',      title: 'New business this week',  Component: Step4ClosingSales },
-  { n: 8,  phase: 'sales',      title: 'Delivery & service',      Component: Step6DeliveriesService, needsLastWeekData: true },
+  // ── Sales (6-8) ── v2 components (R1 retirement extraction) ───────────────
+  { n: 6,  phase: 'sales',      title: 'Approaches & interviews', Component: StepApproachesInterviews },
+  { n: 7,  phase: 'sales',      title: 'New business this week',  Component: StepNewBusiness },
+  { n: 8,  phase: 'sales',      title: 'Delivery & service',      Component: StepDeliveryService, needsLastWeekData: true },
   // ── Reflection (9-10) ─────────────────────────────────────────────────────
   { n: 9,  phase: 'reflection', title: 'Hours worked',            Component: Step7TimeManagement },
   { n: 10, phase: 'reflection', title: 'Rate your week',          Component: Step8SelfEvaluation },
