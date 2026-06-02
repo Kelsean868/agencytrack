@@ -72,9 +72,9 @@ No user impact, no data integrity issue. The error logs to console but doesn't s
 
 ---
 
-## ~~Wizard v2 PR2 — live-compute layer~~ (RESOLVED — PR #{TBD}, `{TBD}`, 2026-06-01)
+## ~~Wizard v2 PR2 — live-compute layer~~ (RESOLVED — PR #418, `e301213`, 2026-06-01)
 
-**Status:** RESOLVED in PR #{TBD} (`{TBD}`). Additive overlay on the PR1 shell: `WeekSoFarPanel` (desktop right rail + mobile collapsed strip) + `MiniSparkline` + `computeWizardLive` pure-function lib + per-field last-week hints. Decisions A/C/D/E locked: NAMES = canonical `totalNewNames` (7-field, namesFromSocial-exclusion proven); ciConv = `NB.apps / ciConducted × 100` matching `closingRatio`; totalProductionAPI delegates to canonical `computeTotalProductionCredit` (10-case parity fuzz test); lumpsum rates from `wizardLive.config.js`. ONE Firestore read via new `getRecentSubmissions(tenantId, uid, 6)` serves both lastWeek + sparkline. Persisted shape + submit path UNCHANGED. 25 compute-lib + 15 panel component tests; 1987/1987 vitest. Mobile expand-to-sheet deferred — see "Wizard v2 PR2 — mobile expand-to-sheet" LOW FU below. Original banking content retained for closure trail.
+**Status:** RESOLVED in PR #418 (`e301213`). Additive overlay on the PR1 shell: `WeekSoFarPanel` (desktop right rail + mobile collapsed strip) + `MiniSparkline` + `computeWizardLive` pure-function lib + per-field last-week hints. Decisions A/C/D/E locked: NAMES = canonical `totalNewNames` (7-field, namesFromSocial-exclusion proven); ciConv = `NB.apps / ciConducted × 100` matching `closingRatio`; totalProductionAPI delegates to canonical `computeTotalProductionCredit` (10-case parity fuzz test); lumpsum rates from `wizardLive.config.js`. ONE Firestore read via new `getRecentSubmissions(tenantId, uid, 6)` serves both lastWeek + sparkline. Persisted shape + submit path UNCHANGED. 25 compute-lib + 15 panel component tests; 1987/1987 vitest. Mobile expand-to-sheet deferred — see "Wizard v2 PR2 — mobile expand-to-sheet" LOW FU below. Original banking content retained for closure trail.
 
 ---
 
@@ -121,6 +121,38 @@ PR1 ports the structural shell only. PR2 adds the v2 mockup's live-compute layer
 4. Banked decision lives in the brief and propagates via `computeTotalNewNames` (single source of truth).
 
 **Cross-reference:** `src/utils/extractFields.js:124` `f.totalNewNames = computeTotalNewNames(f)`; `src/utils/extractFields.js:140-160` exported `computeTotalNewNames`; `functions/utils/fieldHelpers.js:43-60` CF `activityTotal`; `src/utils/weeklyActivityFloors.js:55,76` `referralsNewLeads`. PR2 dispatcher decision A (option A) locks the wizard panel to the canonical 7-field formula until this FU resolves.
+
+---
+
+## Step4ClosingSales — duplicate `id="apps"` on NB and PPP inputs — LIVE in v1 + v2 (MEDIUM, banked 2026-06-01 from Wizard v2 PR2 smoke debugging)
+
+**Status:** pre-existing HTML accessibility bug, LIVE IN PRODUCTION on both wizard tracks. Surfaced during Wizard v2 PR2 live-smoke debugging.
+
+`src/components/wizard/steps/Step4ClosingSales.jsx` mounts two `NumericField`s with `name="apps"` (no `inputId` prop): one in the New Business Card ("Applications Written") and one in the PPP Increases Card ("Number of PPP increases"). `CardStack.NumericField` uses `fieldId = inputId ?? name`, producing `<input id="apps">` for both. The PPP card is collapse-by-default; once expanded, the DOM contains two inputs with the same id and two `<label htmlFor="apps">` elements pointing to different label texts.
+
+**The bug ships in BOTH wizard versions today.** v1 (`WizardForm.jsx`'s legacy 9-step shape) renders `Step4ClosingSales` at step 4. v2 (PR1+PR2 shipped) renders the SAME `Step4ClosingSales` component at step 7 (the legacy step file is 1:1-reused per CLAUDE.md's "Step1-9 NEVER modified" rule, and per PR1's `STEPS` mapping). So this is NOT "defer until legacy retirement" — it's a LIVE production bug affecting every agent on every weekly submission.
+
+**Symptom.** Per HTML spec, `htmlFor` resolves to the FIRST element matching the id. Both labels' accessible names ("Applications Written" + "Number of PPP increases") get associated with the FIRST input (NB.apps). The PPP.apps input gets NO accessible name from `htmlFor`. Screen readers announce the wrong label; `getByLabel(...)` queries in Playwright (and any test tooling that walks the accessibility tree) target the wrong input. PR2 smoke worked around via card-scoped `.nth()` locators; without that, fills land on the wrong input and silently corrupt the test baseline.
+
+**Impact.**
+
+- **a11y in PROD:** WCAG 2.1 SC 3.3.2 (Labels or Instructions) — the PPP.apps input has no programmatic label for assistive tech. Severity is bumped from initial LOW to **MEDIUM** because this is LIVE on every weekly submission for every agent, not theoretical.
+- **Test reliability:** any future component or smoke tests targeting these inputs by label will hit the same trap.
+
+**Two paths to fix — dispatcher's call:**
+
+1. **Fix-legacy-now (CLAUDE.md "Step1-9 NEVER modified" rule exception).** Tiny mechanical edit to `Step4ClosingSales.jsx` adding explicit `inputId` props to disambiguate the duplicate ids:
+   - NB.apps: `inputId="newBusinessApps"`
+   - PPP.apps: `inputId="pppApps"`
+   - Audit + fix any other `name=` collisions in the same file (`name="api"`, `name="apiIncrease"` across NB / PPP — same pattern may apply).
+   Per the existing CLAUDE.md "Step1-9 NEVER modified" rule, this needs an explicit dispatcher carve-out. The rule was written to preserve the easy-revert property for the v2 shell — but the duplicate-id fix doesn't change the persisted shape, the field set, the layout, or any user-visible behavior; it only adds explicit per-instance ids. Carve-out is low-risk.
+2. **Wait for step 7's v2 component.** A future PR that re-fans Step4ClosingSales into v2 atoms (similar to how PR1 re-fanned Step1+Step2 into the `v2steps/` directory) would naturally write fresh inputs with unique ids. Defers the fix until then; bug ships in PROD in the meantime.
+
+**Why MEDIUM (not LOW):**
+
+LIVE accessibility violation in PROD affecting every weekly submission. Was previously framed as LOW + "defer until legacy retirement" — that framing was wrong (the bug doesn't wait for legacy retirement to manifest; it ships TODAY). Re-framed.
+
+**Cross-reference:** `src/components/wizard/steps/Step4ClosingSales.jsx:89-94, 138-144` (the two duplicate-name NumericFields); `src/components/wizard/CardStack.jsx:25-46` (NumericField's `fieldId = inputId ?? name` plumbing); `scripts/verification/wizard-v2-pr2-compute-smoke.mjs` `fillProductionStep` (card-scoped `.nth()` workaround).
 
 ---
 

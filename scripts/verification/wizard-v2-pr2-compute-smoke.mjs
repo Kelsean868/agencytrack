@@ -196,43 +196,66 @@ async function next(page) {
   await page.waitForTimeout(700);
 }
 
-async function fillNumeric(page, id, value) {
-  const input = page.locator(`input[id="${id}"]`).first();
-  await input.waitFor({ timeout: 10_000 });
-  await input.scrollIntoViewIfNeeded().catch(() => {});
-  await input.click({ clickCount: 3 }).catch(() => {});
-  await input.fill(String(value));
-  const readBack = await input.inputValue();
+async function fillLocator(locator, value) {
+  await locator.waitFor({ timeout: 10_000 });
+  await locator.scrollIntoViewIfNeeded().catch(() => {});
+  await locator.click({ clickCount: 3 }).catch(() => {});
+  await locator.fill(String(value));
+  const readBack = await locator.inputValue();
   if (readBack !== String(value)) {
-    await input.fill('');
-    await input.type(String(value), { delay: 30 });
+    await locator.fill('');
+    await locator.type(String(value), { delay: 30 });
   }
 }
 
-async function fillProductionStep(page) {
-  // Step 7 — New business this week. Field IDs match the wizard's existing
-  // input names. We fill newBusiness apps/api/lives + PPP apps/apiIncrease
-  // + Lumpsum gross + ciConducted (which is captured on step 6 in v2 but
-  // also accessible from formData state; we'll fill what's available on
-  // step 7's NB form and step 6's CI form).
-  // First, fill step 6 (Approaches & interviews) — ciConducted lives there.
-  // We pass through step 6 to reach 7, so fill the CI count on step 6.
-  await fillNumeric(page, 'ciConducted', PROD_FILL.ciConducted);
-  await page.waitForTimeout(800);
-  await next(page); // 6 → 7
+// (Removed: earlier `fillByLabel` helper with 350ms inter-fill waits — the
+// stale-closure hypothesis it guarded against was SUPERSEDED by the card-
+// scoped `.nth()` locators in `fillProductionStep` below, which correctly
+// disambiguate the duplicate `id="apps"` collision. The active smoke runs
+// successfully WITHOUT any inter-fill waits between same-card fills.)
 
-  // Step 7 NB form. The legacy Step4ClosingSales mounts here in v2.
+async function fillProductionStep(page) {
+  // v2 step 7 = legacy Step4ClosingSales — owns ciConducted + NB + PPP +
+  // Lumpsum across 4 Cards (badges: "Closing Interviews", "New Business",
+  // "PPP Increases", "Lumpsums").
+  //
+  // IMPORTANT: NB and PPP NumericField inputs BOTH use `name="apps"` (no
+  // inputId prop), producing duplicate `id="apps"` in the DOM once PPP is
+  // expanded. Labels with `htmlFor="apps"` resolve to the FIRST matching
+  // input (NB.apps), so `getByLabel('Number of PPP increases')` and
+  // `getByLabel('Applications Written')` both target NB.apps — filling
+  // PPP overwrites NB. Pre-existing HTML accessibility bug; out of PR2's
+  // "do not modify legacy step content" scope. Smoke disambiguates by
+  // SCOPING to each Card and using `.nth()` on its inputs.
   await page.waitForSelector('[data-testid="wizard-v2-step-title"]', { timeout: 10_000 });
-  // Available field IDs on this step (per Step4ClosingSales): newBusinessApps,
-  // newBusinessAPI, newBusinessLives, pppApps, pppAPIIncrease, lumpsumGross.
-  // (These are the wizard's flat-namespace input ids — sanitize() shapes
-  // them into the nested newBusiness/pppIncreases/lumpsums on write.)
-  await fillNumeric(page, 'newBusinessApps',   PROD_FILL.newBusinessApps);
-  await fillNumeric(page, 'newBusinessAPI',    PROD_FILL.newBusinessApi);
-  await fillNumeric(page, 'newBusinessLives',  PROD_FILL.newBusinessLives);
-  await fillNumeric(page, 'pppApps',           PROD_FILL.pppApps);
-  await fillNumeric(page, 'pppAPIIncrease',    PROD_FILL.pppApiIncrease);
-  await fillNumeric(page, 'lumpsumGross',      PROD_FILL.lumpsumGross);
+
+  const card = (badge) => page.locator('.rounded-xl', { hasText: badge }).first();
+
+  // ── Closing Interviews Card — inputs: newCIBooked, oldCIBooked, ciConducted
+  const ciCard = card('Closing Interviews');
+  await fillLocator(ciCard.locator('input').nth(2), PROD_FILL.ciConducted);
+
+  // ── New Business Card — inputs: apps (NB), livesSold, api
+  const nbCard = card('New Business');
+  await fillLocator(nbCard.locator('input').nth(0), PROD_FILL.newBusinessApps);
+  await fillLocator(nbCard.locator('input').nth(1), PROD_FILL.newBusinessLives);
+  await fillLocator(nbCard.locator('input').nth(2), PROD_FILL.newBusinessApi);
+
+  // ── PPP Card — expand, then inputs: apps (PPP), apiIncrease
+  await page.locator('button:has-text("Add PPP details")').click();
+  await page.waitForTimeout(300);
+  const pppCard = card('PPP Increases');
+  await fillLocator(pppCard.locator('input').nth(0), PROD_FILL.pppApps);
+  await fillLocator(pppCard.locator('input').nth(1), PROD_FILL.pppApiIncrease);
+
+  // ── Lumpsum Card — expand, then inputs: grossAmount
+  await page.locator('button:has-text("Add lumpsum details")').click();
+  await page.waitForTimeout(300);
+  const lmpsCard = card('Lumpsums');
+  await fillLocator(lmpsCard.locator('input').nth(0), PROD_FILL.lumpsumGross);
+
+  // Wait through autosave debounce so the panel snapshot reflects the
+  // FINAL field write (no race with debounce).
   await page.waitForTimeout(2200);
 }
 
@@ -240,19 +263,31 @@ async function readPanelLive(page) {
   // Strip TTD / commas / non-digits, return numeric value.
   const parseTtd = (text) => Number(String(text).replace(/[^0-9.-]/g, '')) || 0;
 
-  const apiText  = await page.locator('[data-testid="wizard-v2-week-so-far-api"]').textContent();
-  const apps     = (await page.locator('[data-testid="wizard-v2-week-so-far-card-apps"]').textContent() ?? '').match(/(\d+)/);
-  const conv     = (await page.locator('[data-testid="wizard-v2-week-so-far-card-conv"]').textContent() ?? '').match(/(\d+)%/);
+  const apiText      = await page.locator('[data-testid="wizard-v2-week-so-far-api"]').textContent();
+  // Scorecard JSX: <div testid="…-card-X"> <div>eyebrow+delta</div> <p>{value}</p> <p>{sub}</p> </div>
+  // First <p> inside the card testid is the value. Robust against the older
+  // Scorecard shape on main HEAD that pre-dates the per-value testid (the
+  // value-specific testid was added on the feature branch but didn't make
+  // it into the squash merge — see Phase 6 report).
+  const readValue = async (cardTestid) => {
+    const raw = (await page.locator(`[data-testid="${cardTestid}"] p`).first().textContent() ?? '').trim();
+    return Number(raw.replace(/[^0-9]/g, '')) || 0;
+  };
+  const apps  = await readValue('wizard-v2-week-so-far-card-apps');
+  const conv  = await readValue('wizard-v2-week-so-far-card-conv');
+  const calls = await readValue('wizard-v2-week-so-far-card-calls');
+  const names = await readValue('wizard-v2-week-so-far-card-names');
+  const commText = await page.locator('[data-testid="wizard-v2-week-so-far-comm"]').textContent();
 
   return {
     productionAPI: parseTtd(apiText),
-    apps:          apps ? Number(apps[1]) : NaN,
-    conv:          conv ? Number(conv[1]) : NaN,
+    apps, conv, calls, names,
+    estComm: parseTtd(commText),
   };
 }
 
 async function walkToEndAndSubmit(page) {
-  // Step 7 → step 11 — advance through with no further fills.
+  // Step 7 → step 8 → 9 → 10 → 11 — advance through with no further fills.
   await next(page); // 7 → 8
   await next(page); // 8 → 9
   await next(page); // 9 → 10
@@ -305,12 +340,14 @@ async function smokeTheme(theme, admin, uid) {
     console.log(`[${theme}] picker-locked weekStarting=${weekStarting}`);
     await admin.deleteSubmission(uid, weekStarting, 'any');
 
-    // Advance to step 6 (Approaches & interviews — where ciConducted lives).
+    // Advance to step 7 (New business this week — owns NB + PPP + LMPS
+    // production fields and ciConducted via legacy Step4ClosingSales).
     await next(page); // 1 → 2
     await next(page); // 2 → 3
     await next(page); // 3 → 4
     await next(page); // 4 → 5
     await next(page); // 5 → 6
+    await next(page); // 6 → 7
 
     await fillProductionStep(page);
 
