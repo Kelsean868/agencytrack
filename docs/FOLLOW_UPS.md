@@ -175,9 +175,9 @@ LIVE accessibility violation in PROD affecting every weekly submission. Was prev
 
 ---
 
-## ~~WeekSoFarPanel per-scorecard value testid — orphaned 1-line from PR #418~~ (RESOLVED — folded into Wizard v2 PR3 #{TBD}, 2026-06-01)
+## ~~WeekSoFarPanel per-scorecard value testid — orphaned 1-line from PR #418~~ (RESOLVED — folded into Wizard v2 PR3 #419, `5ee36d5`, 2026-06-01)
 
-**Status:** RESOLVED in PR #{TBD} (Wizard v2 PR3 Review/celebration). The 1-line `data-testid={\`${testid}-value\`}` addition to the `Scorecard` value `<p>` in `src/components/wizard/v2chrome/WeekSoFarPanel.jsx` ships as part of PR3 per the "fold into PR3" plan banked at PR #418 post-merge. Original banking content retained for the closure trail.
+**Status:** RESOLVED in PR #419 (`5ee36d5`, Wizard v2 PR3 Review/celebration). The 1-line `data-testid={\`${testid}-value\`}` addition to the `Scorecard` value `<p>` in `src/components/wizard/v2chrome/WeekSoFarPanel.jsx` shipped as part of PR3 per the "fold into PR3" plan banked at PR #418 post-merge. Original banking content retained for the closure trail.
 
 ---
 
@@ -200,9 +200,9 @@ LIVE accessibility violation in PROD affecting every weekly submission. Was prev
 
 ---
 
-## ~~Wizard v2 PR3 — discrete Review step + Edit·Step-N jump-back + submit celebration~~ (RESOLVED — PR #{TBD}, `{TBD}`, 2026-06-01)
+## ~~Wizard v2 PR3 — discrete Review step + Edit·Step-N jump-back + submit celebration~~ (RESOLVED — PR #419, `5ee36d5`, 2026-06-01)
 
-**Status:** RESOLVED in PR #{TBD} (`{TBD}`). Final slice of the Wizard v2 arc. New `wizard/v2chrome/ReviewSubmit.jsx` (step 12 with hero + 4 sections + Edit·Step-N pills mapped per mockup: Production→7, Activity→3, Reflection→10, Goals→11) + `Celebration.jsx` (confetti/sparkles motion-reduce safe; leaderboard messaging honors the existing scheduled-CF hourly path). Submit moved from step 11 → step 12 with payload-identity preserved (PR1's `WizardFormV2PayloadIdentity` regression tests updated to walk through 12 steps + still pass byte-identical assertion). Compute reuse via PR2's `wizardLive.computations` lib (Review↔panel parity by construction). Folded in the orphaned PR2 value-testid (1-line, from #418 commit `94a196d`). 2025/2025 vitest. Original banking content retained for the closure trail. Post-PR3 legacy-step retirement is now actionable — see separate FU.
+**Status:** RESOLVED in PR #419 (`5ee36d5`). Final slice of the Wizard v2 arc. New `wizard/v2chrome/ReviewSubmit.jsx` (step 12 with hero + 4 sections + Edit·Step-N pills mapped per mockup: Production→7, Activity→3, Reflection→10, Goals→11) + `Celebration.jsx` (confetti/sparkles motion-reduce safe; leaderboard messaging honors the existing scheduled-CF hourly path). Submit moved from step 11 → step 12 with payload-identity preserved (PR1's `WizardFormV2PayloadIdentity` regression tests updated to walk through 12 steps + still pass byte-identical assertion). Compute reuse via PR2's `wizardLive.computations` lib (Review↔panel parity by construction). Folded in the orphaned PR2 value-testid (1-line, from #418 commit `94a196d`). 2025/2025 vitest. Original banking content retained for the closure trail. Post-PR3 legacy-step retirement is now actionable — see separate FU.
 
 ---
 
@@ -250,7 +250,7 @@ These existing reads use the existing `SuggestedField` atom + the `WizardForm`'s
 
 ---
 
-## Post-PR3 — legacy `wizard/steps/Step1–9.jsx` retirement + `v2steps/` markup dedupe (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416; PROMOTED to MEDIUM + actionable at Wizard v2 PR3 #{TBD} merge)
+## Post-PR3 — legacy `wizard/steps/Step1–9.jsx` retirement + `v2steps/` markup dedupe (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416; PROMOTED to MEDIUM + actionable at Wizard v2 PR3 #419 merge)
 
 **Now actionable.** PR3 (Wizard v2 Review/celebration) shipped, completing the 3-PR Wizard v2 arc. The v2 wizard is the complete flow today — agents go through 12 v2 steps and submit from the new Review screen. Legacy `wizard/steps/Step1–9.jsx` files were preserved through PR1/PR2/PR3 for the easy-revert property; that preservation is no longer load-bearing now that v2 is fully shipped + battle-tested in production. **Promoted from LOW to MEDIUM** because the retirement pass also lands the **Step4ClosingSales duplicate-id MEDIUM FU fix** (NB.apps + PPP.apps share `name="apps"` → screen readers + label-based test queries target the wrong input; LIVE accessibility violation in both v1 + v2 since v2 step 7 1:1-reuses Step4ClosingSales).
 
