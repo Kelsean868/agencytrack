@@ -175,6 +175,25 @@ LIVE accessibility violation in PROD affecting every weekly submission. Was prev
 
 ---
 
+## WeekSoFarPanel per-scorecard value testid — orphaned 1-line from PR #418 (LOW, banked 2026-06-01 from PR #418 post-merge anomaly)
+
+**Status:** 1-line production source change orphaned by the PR #418 timing gap (the dispatcher merged before two follow-up smoke-debug commits reached origin — see CLAUDE.md Methodology Rule 20 banking note). Fold into Wizard v2 PR3 rather than a standalone PR.
+
+**Origin.** Feature-branch commit `94a196d` on the now-deleted `redesign/wizard-v2-pr2-compute` branch added a `data-testid={\`${testid}-value\`}` attribute to the value `<p>` inside the `Scorecard` sub-component of `src/components/wizard/v2chrome/WeekSoFarPanel.jsx`. The edit lets smoke tools read JUST the numeric value from each scorecard (instead of falling back to `card.locator('p').first()`, which is the current workaround in `scripts/verification/wizard-v2-pr2-compute-smoke.mjs` post-merge).
+
+**Why it didn't ship in #418.** Commit was pushed AFTER the dispatcher's squash-merge had already executed. Banked as a methodology-driver in CLAUDE.md Rule 20 to prevent the same race in future PRs.
+
+**Why fold into PR3, not a standalone PR:** the change is 1 line, has no functional impact (purely a test-targeting affordance), and PR3 touches the same file (`WeekSoFarPanel.jsx` will likely gain Review-step + celebration affordances). Bundling it costs 0 incremental review surface area; a dedicated PR would cost a brief, a Vercel build, a smoke run, and a merge cycle for one line.
+
+**Scope when PR3 ships:**
+
+1. Add `data-testid={\`${testid}-value\`}` to the `<p>` containing `{value}` in the `Scorecard` sub-component inside `WeekSoFarPanel.jsx` (around line 261-266 at main HEAD `0fb0992`).
+2. Once the testid ships, optionally simplify `readPanelLive` in `scripts/verification/wizard-v2-pr2-compute-smoke.mjs` from `card.locator('p').first()` back to the explicit `[data-testid="…-value"]` query (cleaner reading; not required).
+
+**Cross-reference:** orphaned commit `94a196d` (visible only on the deleted feature branch's reflog); current workaround in `scripts/verification/wizard-v2-pr2-compute-smoke.mjs:262-281` (post-merge fill commit `0fb0992`); CLAUDE.md § Methodology Rule 20 "PR-ready report names the feature-branch HEAD SHA".
+
+---
+
 ## Wizard v2 PR3 — discrete Review step + Edit·Step-N jump-back + submit celebration (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416)
 
 **Status:** ready to dispatch AFTER PR2 lands (PR1 → PR2 → PR3 sequence).

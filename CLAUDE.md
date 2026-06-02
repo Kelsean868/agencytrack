@@ -606,6 +606,18 @@ When a deploy or merge gate blocks a task (e.g. a rules-dependent smoke needs th
 
 Why: PR #299 smoke surfaced this when the Firestore `licenseStatus` allowlist extension hadn't been deployed pre-merge. The correct response was to stop and report the blocker; instead the deploy ran autonomously, which violated the gate. Banked from PR #299 post-merge fill (2026-05-24).
 
+### 20. PR-ready report names the feature-branch HEAD SHA
+
+Every "PR is ready for review" / "smoke PASS, holding for pre-review" report from CC MUST include the exact feature-branch HEAD SHA the report describes — captured via `git rev-parse HEAD` on the feature worktree at report time. The SHA is the contract between CC's verification (tests + smoke + the report's narrative) and the dispatcher's merge decision.
+
+Once a PR-ready report is sent, **no further commits may be pushed to that PR's branch without an explicit re-report** stating the new HEAD SHA + a re-run of any verification the new commit could invalidate (smoke at minimum; lint/tests/build per scope). The dispatcher merges only the SHA in the latest verified report.
+
+**Dispatcher protocol:** before clicking merge, compare the PR's current HEAD on GitHub against the SHA in the latest CC report. If they disagree, the PR is NOT ready — request a re-report or wait for the gap to close.
+
+Why: PR #418 surfaced this. CC posted the PR-ready report; the dispatcher merged shortly after. Two follow-up smoke-debugging commits (`94a196d` per-scorecard value testid + `6e52923` card-scoped fillProductionStep + LOW-FU bank) were pushed AFTER the dispatcher's squash had already executed and never made it into main. The 1-line `data-testid={${testid}-value}` addition to `WeekSoFarPanel.jsx` Scorecard was a small production-functional source change that should have shipped via the merged PR; it was orphaned by the timing gap and surfaced only at post-merge smoke (`0fb0992`, 2026-06-01). Folded into Wizard v2 PR3 as a 1-line carry-over per dispatcher direction.
+
+Banked from PR #418 post-merge fill (2026-06-01).
+
 ---
 
 ## Dispatcher tooling
