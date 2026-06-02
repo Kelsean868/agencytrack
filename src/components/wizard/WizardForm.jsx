@@ -50,12 +50,9 @@ import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 
-// Legacy step files — still rendered for steps 4, 5, 9, 10, 11 (retirement
-// pass R2/R3 will extract these next). Steps 6/7/8 migrated to v2 in R1.
+// Legacy step files — still rendered for steps 4, 5 (retirement R3 will
+// extract these next). Steps 6/7/8 migrated to v2 in R1; 9/10/11 in R2.
 import Step5NewNames         from './steps/Step5NewNames';
-import Step7TimeManagement    from './steps/Step7TimeManagement';
-import Step8SelfEvaluation    from './steps/Step8SelfEvaluation';
-import Step9Goals             from './steps/Step9Goals';
 import StepSocialMedia        from './steps/StepSocialMedia';
 
 // New v2 micro-step components (re-fanned from legacy Step1 + Step2 content).
@@ -66,6 +63,10 @@ import StepCallsF2F           from './v2steps/StepCallsF2F';
 import StepApproachesInterviews from './v2steps/StepApproachesInterviews';
 import StepNewBusiness          from './v2steps/StepNewBusiness';
 import StepDeliveryService      from './v2steps/StepDeliveryService';
+// R2 (retirement) — Reflection + Goals v2 extractions (steps 9/10/11).
+import StepHoursWorked          from './v2steps/StepHoursWorked';
+import StepRateYourWeek         from './v2steps/StepRateYourWeek';
+import StepTargetsNextWeek      from './v2steps/StepTargetsNextWeek';
 
 // v2 chrome.
 import PhaseProgress          from './v2chrome/PhaseProgress';
@@ -93,11 +94,11 @@ const STEPS = [
   { n: 6,  phase: 'sales',      title: 'Approaches & interviews', Component: StepApproachesInterviews },
   { n: 7,  phase: 'sales',      title: 'New business this week',  Component: StepNewBusiness },
   { n: 8,  phase: 'sales',      title: 'Delivery & service',      Component: StepDeliveryService, needsLastWeekData: true },
-  // ── Reflection (9-10) ─────────────────────────────────────────────────────
-  { n: 9,  phase: 'reflection', title: 'Hours worked',            Component: Step7TimeManagement },
-  { n: 10, phase: 'reflection', title: 'Rate your week',          Component: Step8SelfEvaluation },
-  // ── Goals (11-12) ─────────────────────────────────────────────────────────
-  { n: 11, phase: 'goals',      title: 'Targets for next week',   Component: Step9Goals },
+  // ── Reflection (9-10) ── v2 components (R2 retirement extraction) ─────────
+  { n: 9,  phase: 'reflection', title: 'Hours worked',            Component: StepHoursWorked },
+  { n: 10, phase: 'reflection', title: 'Rate your week',          Component: StepRateYourWeek },
+  // ── Goals (11-12) ── v2 component (R2 retirement extraction) ──────────────
+  { n: 11, phase: 'goals',      title: 'Targets for next week',   Component: StepTargetsNextWeek },
   // PR3: step 12 = Review & submit. Mounted as a special-case below
   // (ReviewSubmit isn't a step-component-shape; it needs commissionRate +
   // edit-jump callback). The STEPS entry exists so PhaseProgress, footer
