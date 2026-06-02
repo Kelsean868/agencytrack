@@ -187,16 +187,19 @@ describe('Wizard v2 — modal frame', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Step 11 is the final step (PR1) — Next button labelled "Submit Report"
+// Step 11 → step 12 (PR3) — Next previews the Review screen, not submit
 // ─────────────────────────────────────────────────────────────────────────────
-describe('Wizard v2 — PR1 final step (11)', () => {
-  it('Next label flips to "Submit Report" on step 11; step 12 (Review) is deferred to PR3', async () => {
+describe('Wizard v2 — PR3 step 11 / step 12 transition', () => {
+  it('Step 11 Next previews "Next · Review & submit"; Submit moves to step 12', async () => {
     await openWizardAt();
     for (let n = 1; n < 11; n++) fireEvent.click(screen.getByTestId('wizard-v2-next'));
     expect(screen.getByTestId('wizard-v2-step-counter').textContent).toMatch(/Step 11 of 12/);
+    // PR3: step 11 is no longer the terminal; Next previews step 12 (Review).
+    expect(screen.getByTestId('wizard-v2-next').textContent).toMatch(/Review & submit/);
+    // Advance once more — Step 12 (Review) carries the actual Submit Report label.
+    fireEvent.click(screen.getByTestId('wizard-v2-next'));
+    expect(screen.getByTestId('wizard-v2-step-counter').textContent).toMatch(/Step 12 of 12/);
     expect(screen.getByTestId('wizard-v2-next').textContent).toMatch(/Submit Report/);
-    // Step 12's dot exists but is future-state (PR3 placeholder).
-    expect(screen.getByTestId('wizard-v2-step-dot-12')).toHaveAttribute('data-state', 'future');
   });
 });
 

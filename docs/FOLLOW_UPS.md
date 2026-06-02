@@ -175,7 +175,13 @@ LIVE accessibility violation in PROD affecting every weekly submission. Was prev
 
 ---
 
-## WeekSoFarPanel per-scorecard value testid — orphaned 1-line from PR #418 (LOW, banked 2026-06-01 from PR #418 post-merge anomaly)
+## ~~WeekSoFarPanel per-scorecard value testid — orphaned 1-line from PR #418~~ (RESOLVED — folded into Wizard v2 PR3 #{TBD}, 2026-06-01)
+
+**Status:** RESOLVED in PR #{TBD} (Wizard v2 PR3 Review/celebration). The 1-line `data-testid={\`${testid}-value\`}` addition to the `Scorecard` value `<p>` in `src/components/wizard/v2chrome/WeekSoFarPanel.jsx` ships as part of PR3 per the "fold into PR3" plan banked at PR #418 post-merge. Original banking content retained for the closure trail.
+
+---
+
+**Original banking content:**
 
 **Status:** 1-line production source change orphaned by the PR #418 timing gap (the dispatcher merged before two follow-up smoke-debug commits reached origin — see CLAUDE.md Methodology Rule 20 banking note). Fold into Wizard v2 PR3 rather than a standalone PR.
 
@@ -194,7 +200,13 @@ LIVE accessibility violation in PROD affecting every weekly submission. Was prev
 
 ---
 
-## Wizard v2 PR3 — discrete Review step + Edit·Step-N jump-back + submit celebration (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416)
+## ~~Wizard v2 PR3 — discrete Review step + Edit·Step-N jump-back + submit celebration~~ (RESOLVED — PR #{TBD}, `{TBD}`, 2026-06-01)
+
+**Status:** RESOLVED in PR #{TBD} (`{TBD}`). Final slice of the Wizard v2 arc. New `wizard/v2chrome/ReviewSubmit.jsx` (step 12 with hero + 4 sections + Edit·Step-N pills mapped per mockup: Production→7, Activity→3, Reflection→10, Goals→11) + `Celebration.jsx` (confetti/sparkles motion-reduce safe; leaderboard messaging honors the existing scheduled-CF hourly path). Submit moved from step 11 → step 12 with payload-identity preserved (PR1's `WizardFormV2PayloadIdentity` regression tests updated to walk through 12 steps + still pass byte-identical assertion). Compute reuse via PR2's `wizardLive.computations` lib (Review↔panel parity by construction). Folded in the orphaned PR2 value-testid (1-line, from #418 commit `94a196d`). 2024/2024 vitest. Original banking content retained for the closure trail. Post-PR3 legacy-step retirement is now actionable — see separate FU.
+
+---
+
+**Original banking content:**
 
 **Status:** ready to dispatch AFTER PR2 lands (PR1 → PR2 → PR3 sequence).
 
@@ -238,7 +250,22 @@ These existing reads use the existing `SuggestedField` atom + the `WizardForm`'s
 
 ---
 
-## Post-PR3 — legacy `wizard/steps/Step1–9.jsx` retirement + `v2steps/` markup dedupe (LOW, banked 2026-06-01 from Wizard v2 PR1 shell #416)
+## Post-PR3 — legacy `wizard/steps/Step1–9.jsx` retirement + `v2steps/` markup dedupe (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416; PROMOTED to MEDIUM + actionable at Wizard v2 PR3 #{TBD} merge)
+
+**Now actionable.** PR3 (Wizard v2 Review/celebration) shipped, completing the 3-PR Wizard v2 arc. The v2 wizard is the complete flow today — agents go through 12 v2 steps and submit from the new Review screen. Legacy `wizard/steps/Step1–9.jsx` files were preserved through PR1/PR2/PR3 for the easy-revert property; that preservation is no longer load-bearing now that v2 is fully shipped + battle-tested in production. **Promoted from LOW to MEDIUM** because the retirement pass also lands the **Step4ClosingSales duplicate-id MEDIUM FU fix** (NB.apps + PPP.apps share `name="apps"` → screen readers + label-based test queries target the wrong input; LIVE accessibility violation in both v1 + v2 since v2 step 7 1:1-reuses Step4ClosingSales).
+
+**Scope at retirement-pass dispatch:**
+
+1. Audit which legacy step files are still consumed by `WizardForm.jsx` STEPS array post-PR3 (any 1:1-reused without a v2 re-fan).
+2. Either rewrite the still-consumed legacy steps into proper `wizard/v2steps/*` files (matching the PR1 pattern) OR explicitly carve a CLAUDE.md rule exception to edit them in place with the `inputId` fix.
+3. Delete orphaned legacy step files (no live consumers).
+4. Fold in the Step4ClosingSales duplicate-id fix: add `inputId="newBusinessApps"` + `inputId="pppApps"` (and audit `api` / `apiIncrease` for the same pattern across NB / PPP / LMPS).
+5. Optional: simplify smoke tools that worked around the duplicate-id via card-scoped `.nth()` locators (revert to `getByLabel` once IDs are unique).
+6. Update CLAUDE.md "Step1-9 NEVER modified" rule — the easy-revert property is traded for the v2 wizard being canonical.
+
+### Original LOW framing (retained for closure trail)
+
+
 
 **Status:** dispatched ONLY after Wizard v2 PR3 lands AND the v2 wizard is the only live path. Until then, the legacy `wizard/steps/Step1–9.jsx` files remain on disk as the easy-revert escape hatch (canonical Wizard rule from CLAUDE.md: "Step1–Step9 files are NEVER modified. WizardForm.jsx groups them into 5 screens. Revert to 9 steps = one git revert on WizardForm.jsx only.")
 

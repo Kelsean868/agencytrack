@@ -43,6 +43,8 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { X, Check, AlertTriangle, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import WeekSoFarPanel from './v2chrome/WeekSoFarPanel';
+import ReviewSubmit from './v2chrome/ReviewSubmit';
+import Celebration from './v2chrome/Celebration';
 import { saveDraft, submitReport, getDraft, getRecentSubmissions } from '../../services/submissionService';
 import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
@@ -72,7 +74,8 @@ const FAILURE_STICKY_MS = 8000;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // v2 12-step / 4-phase structure.
-// PR1 ends at step 11 (Targets) — step 12 (Review) ships in PR3.
+// PR3: complete v2 flow (steps 1-12). Step 12 = Review & submit (mounted
+// as a special-case below, not via the step-component shape).
 // `needsLastWeekData` mirrors the legacy `[Step, true]` flag for steps that
 // consume the prior week's draft via the legacy data flow (existing wizard
 // behavior — see the brief's preserve note on existing last-week reads).
@@ -93,11 +96,15 @@ const STEPS = [
   { n: 10, phase: 'reflection', title: 'Rate your week',          Component: Step8SelfEvaluation },
   // ── Goals (11-12) ─────────────────────────────────────────────────────────
   { n: 11, phase: 'goals',      title: 'Targets for next week',   Component: Step9Goals },
-  // Step 12 (Review & submit) deferred to PR3. PR1 final step is 11.
+  // PR3: step 12 = Review & submit. Mounted as a special-case below
+  // (ReviewSubmit isn't a step-component-shape; it needs commissionRate +
+  // edit-jump callback). The STEPS entry exists so PhaseProgress, footer
+  // counter, and the phase-rail logic all see step 12 as a real step.
+  { n: 12, phase: 'goals',      title: 'Review & submit',         Component: null },
 ];
 
-const TOTAL_STEPS_DISPLAY = 12; // The mockup's 12-dot rail (step 12 = Review, PR3 placeholder).
-const PR1_FINAL_STEP = 11;
+const TOTAL_STEPS_DISPLAY = 12;
+const FINAL_STEP = 12;
 
 const INITIAL_DATA = {
   // Step 1 — prospecting
@@ -199,7 +206,12 @@ export default function WizardForm({ onClose, initialWeek }) {
   const [localWeekChoice, setLocalWeekChoice] = useState(
     () => initialWeek ?? getLastNSundaysForDropdown(1)[0]?.value ?? ''
   );
-  const [step, setStep]                 = useState(1);   // 1..PR1_FINAL_STEP
+  const [step, setStep]                 = useState(1);   // 1..FINAL_STEP (12 = Review & submit)
+  // PR3: when the agent clicks "Edit · Step N" from the Review screen, we
+  // navigate back to step N AND set returnToReview=true so a "Back to
+  // Review" affordance appears on the footer (Next-label override). This
+  // avoids extending PR1's visited-step navigation semantics.
+  const [returnToReview, setReturnToReview] = useState(false);
   const [formData, setFormData]         = useState(INITIAL_DATA);
   const [lastWeekData, setLastWeekData] = useState(null);
   const [recentSubmissions, setRecentSubmissions] = useState([]);
@@ -357,9 +369,19 @@ export default function WizardForm({ onClose, initialWeek }) {
   };
 
   const handleNext = () => {
-    if (step < PR1_FINAL_STEP) {
+    // "Back to Review" override: if the agent is editing post-Review, the
+    // footer Next jumps straight back to step 12 regardless of where they
+    // are. This is the dedicated forward-return-to-Review path that's
+    // intentionally separate from `handleDotClick`'s visited-set gate.
+    if (returnToReview && step < FINAL_STEP) {
+      setReturnToReview(false);
+      setStep(FINAL_STEP);
+      return;
+    }
+    if (step < FINAL_STEP) {
       setStep((s) => s + 1);
     } else {
+      // step === FINAL_STEP (12) — Review screen → Submit
       handleSubmit();
     }
   };
@@ -370,17 +392,30 @@ export default function WizardForm({ onClose, initialWeek }) {
   };
 
   const handleDotClick = useCallback((stepN) => {
+    // Backward-only navigation via the phase rail (PR1 semantics).
+    // Forward jump-back to Review uses the explicit Next-as-Back-to-Review
+    // pattern set up by ReviewSubmit's onEditStep callback.
     if (stepN < step) setStep(stepN);
   }, [step]);
+
+  // ReviewSubmit's "Edit · Step N" pill callback: jump back to step N and
+  // arm returnToReview so the footer Next becomes a "Back to Review" button.
+  const handleEditStep = useCallback((stepN) => {
+    if (stepN < 1 || stepN > FINAL_STEP) return;
+    setReturnToReview(true);
+    setStep(stepN);
+  }, []);
 
   const activeStepEntry = STEPS.find((s) => s.n === step) ?? STEPS[0];
   const ActiveStepComponent = activeStepEntry.Component;
   const nextStepEntry = STEPS.find((s) => s.n === step + 1);
 
   const prevLabel = step === 1 ? 'Change week' : 'Back';
-  const nextLabel = step === PR1_FINAL_STEP
-    ? (submitting ? 'Submitting…' : 'Submit Report')
-    : `Next · ${nextStepEntry?.title ?? ''}`;
+  const nextLabel = (() => {
+    if (returnToReview && step < FINAL_STEP) return 'Back to Review';
+    if (step === FINAL_STEP) return submitting ? 'Submitting…' : 'Submit Report';
+    return `Next · ${nextStepEntry?.title ?? ''}`;
+  })();
 
   const submittedAtLabel = (() => {
     const ts = submissionData?.submittedAt;
@@ -509,7 +544,17 @@ export default function WizardForm({ onClose, initialWeek }) {
         )}
 
         {/* Active v2 step */}
-        {screen === 'step' && (
+        {screen === 'step' && step === FINAL_STEP && (
+          <div className="px-4 pb-6 max-w-2xl mx-auto" data-testid={`wizard-v2-step-${step}`}>
+            <ReviewSubmit
+              data={formData}
+              lastWeekData={lastWeekData}
+              commissionRate={userProfile?.commissionRate ?? 0}
+              onEditStep={handleEditStep}
+            />
+          </div>
+        )}
+        {screen === 'step' && step !== FINAL_STEP && ActiveStepComponent && (
           <div className="px-4 pb-6 max-w-lg mx-auto" data-testid={`wizard-v2-step-${step}`}>
             <ActiveStepComponent
               data={formData}
@@ -550,20 +595,13 @@ export default function WizardForm({ onClose, initialWeek }) {
           </div>
         )}
 
-        {/* Done */}
+        {/* Done — PR3 swaps the legacy plain confirmation for the v2 celebration. */}
         {screen === 'done' && (
-          <div className="px-4 py-6 max-w-lg mx-auto flex flex-col items-center text-center pt-16">
-            <div className="w-16 h-16 rounded-full bg-success/15 flex items-center justify-center mb-4">
-              <Check size={32} className="text-success" />
-            </div>
-            <h2 className="text-xl font-bold text-ink mb-2">Report Submitted!</h2>
-            <p className="text-sm text-ink-muted mb-8">
-              Your weekly report for {formatDateFriendly(weekStarting)} has been submitted successfully.
-            </p>
-            <button type="button" onClick={onClose} className="btn-primary w-full max-w-xs">
-              Back to Dashboard
-            </button>
-          </div>
+          <Celebration
+            formData={formData}
+            weekStartingLabel={formatDateFriendly(weekStarting)}
+            onClose={onClose}
+          />
         )}
 
         {error && screen === 'step' && (
@@ -571,8 +609,8 @@ export default function WizardForm({ onClose, initialWeek }) {
         )}
       </main>
 
-      {/* Desktop WeekSoFarPanel — right rail, lg+ only, only during the step flow */}
-      {screen === 'step' && (
+      {/* Desktop WeekSoFarPanel — right rail, lg+ only, hidden on Review (step 12). */}
+      {screen === 'step' && step !== FINAL_STEP && (
         <aside
           className="hidden lg:flex border-l border-border bg-bg overflow-y-auto px-4 py-4"
           aria-label="Live week-so-far panel"
@@ -590,8 +628,8 @@ export default function WizardForm({ onClose, initialWeek }) {
       )}
       </div>
 
-      {/* Mobile WeekSoFarPanel — collapsed strip above the footer, lg-only-hidden. */}
-      {screen === 'step' && (
+      {/* Mobile WeekSoFarPanel — collapsed strip, hidden on Review (step 12). */}
+      {screen === 'step' && step !== FINAL_STEP && (
         <div className="lg:hidden px-4 pb-2 shrink-0">
           <WeekSoFarPanel
             formData={formData}

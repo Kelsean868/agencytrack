@@ -101,6 +101,11 @@ export default {
         // in lockstep; the base utility lives here for tree-shaking.
         'login-drift-l':    'login-drift-l 30s linear infinite',
         'login-drift-r':    'login-drift-r 30s linear infinite',
+        // Track J Wizard v2 PR3 confetti + sparkle keyframes are defined in
+        // src/index.css (not here) so inline-style consumers in
+        // Celebration.jsx can reference them by name with per-particle
+        // delay/duration overrides. Tailwind doesn't emit @keyframes for
+        // inline animation references; index.css does.
       },
       keyframes: {
         'kiosk-fade': {

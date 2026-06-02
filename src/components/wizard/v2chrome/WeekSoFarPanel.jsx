@@ -259,6 +259,7 @@ function Scorecard({ eyebrow, tone, value, sub, delta, deltaSuffix = '', testid 
         )}
       </div>
       <p
+        data-testid={`${testid}-value`}
         className="text-xl font-display font-bold text-ink leading-none"
         style={{ letterSpacing: '-0.022em' }}
       >
