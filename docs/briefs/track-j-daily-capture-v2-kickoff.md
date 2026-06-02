@@ -1,66 +1,164 @@
-# Track J — Daily Capture v2 (chrome-only restyle)
+# Track J — Daily Capture v2 Redesign (Slice 1: Entry-Surface Port)
+**Kickoff brief**
 
-**Sized:** S–M
-**Branch:** `redesign/daily-capture-v2` — **stacked off `redesign/wizard-v2`** (not main) for the unsupervised-window sequence, so the `CONTEXT.md` rows don't collide.
-**Type:** Client-only UI. **Visual restyle** of the Daily Capture modal + FAB to the v2 mockup. Daily-entry schema, write path, and validation **PRESERVED untouched**. **No backend, no deploy.** **Human-merge + dispatcher pre-review.**
+- **Status:** FINAL — decisions locked (D1 = Reflection disclosure + Note; D2 = reduced week-to-date count strip).
+- **Channel:** HUMAN-MERGE + pre-review. (Data-capture surface with a live write **and** a new week-range read.)
+- **Scope class:** Presentational port of the existing daily-entry surface **+ one agent-private week-to-date read** (for the count strip). **No** schema / write / validation / aggregator change. A Firestore-rules implication is possible — see Phase 0.
+- **Branch:** `redesign/daily-capture-v2` off freshly-synced `main` (baseline `eeb855e` — Wizard v2 #416–#422 fully merged + reconciled).
+- **Ledger:** Track J → 16 of 34 on merge.
+- **Rules in force:** Rule 11/17 (source-verify at Phase 0), Rule 12 (halt language), Rule 15 (post-merge sync), Rule 19 (CC never merges/deploys), Rule 20 (report names the feature-branch HEAD SHA).
 
-## Outcome
+---
 
-`DailyEntryModal` and `DailyFAB` match the v2 mockup visually, with zero change to the daily-entry schema, the write path, or validation.
+## 0. Scope fence — what is and isn't in Slice 1
 
-## Decisions baked in (do not re-litigate)
+**IN Slice 1:** the v2 restyle of the existing daily entry **+ a reduced week-to-date count strip** (D2) — week-to-date **counts only**, no targets, no dials, no streak, no progress-against-target fill.
 
-- **VISUAL ONLY.** The daily-entry doc schema, the Firestore write path, and validation (`parseFloat` on numerics) are preserved. If the restyle appears to require a schema/logic change, **STOP and surface**.
-- **Visual source = the Daily Capture v2 mockup** in `design_handoff_v2_app/mockups/` (locate the exact file in Phase 1). Nexus tokens, no raw hex, 44px touch targets, dark mode.
-- Same restyle discipline as the Wizard: presentational diff, logic untouched.
+**OUT (deferred — net-new product capability, not ports):**
+- **Reporting-mode governance** (tenant default / recommend-vs-lock / resolution chain / manager panel). FU; head-of-sales. (Note: daily↔weekly transition plumbing already partially exists — `isCatchUp`, the Sunday cron, the aggregator mode-switch entry point.)
+- **Streak mechanics** (`current`/`best`/`loggedToday`/`milestone` + rules + awards coupling). FU; gamification/incentives owner.
+- **Manager-set targets** + the **DIALS chip** (the daily entry has no calls/dials field — capturing daily dials would be a *new field* = not a port; head-of-sales). FU.
+- **Mode badge / provenance chrome.** No mode source yet — lands with the governance slice.
 
-## Phase 0 — pre-flight
+This matches the original Daily Capture plan-of-record (visual restyle of the existing entry), with the one agreed addition of a counts-only week-to-date strip.
 
-1. `git fetch origin`; confirm the branch base is `redesign/wizard-v2` (stacked — this PR sits on top of the Wizard PR so the shared docs rows don't conflict); `git log --oneline -1` of the base verbatim.
-2. Move brief → `docs/briefs/track-j-daily-capture-v2-kickoff.md`; branch `redesign/daily-capture-v2` off `redesign/wizard-v2`; commit as commit 1.
+---
 
-## Phase 1 — source-verify (read frontend SKILL first)
+## 1. Aggregation-preservation contract (non-negotiable)
 
-1. Read the frontend SKILL (or repo Nexus conventions).
-2. Locate the Daily Capture v2 mockup in `design_handoff_v2_app/mockups/` (confirm the filename); source-verify the modal chrome + FAB treatment.
-3. Map onto `daily/DailyEntryModal.jsx` + `dashboard/DailyFAB.jsx`.
-4. Pin the preserve-list: the daily-entry write service + validation + the doc schema — leave untouched.
-5. Drift / any restyle that can't avoid touching schema/write/validation → STOP.
+Daily→weekly aggregation **MUST** be preserved, **by construction**: storage keys do not change — only display labels — and the aggregator file is not edited. The count strip is a **read-only display sum**; it introduces no write and does not alter the canonical Sunday aggregation.
 
-## Phase 2 — build
+**Verified current daily schema** (`src/lib/schema/dailyActivity.js`, `createEmptyDailyEntry`):
 
-- Restyle `DailyEntryModal` + `DailyFAB` to the mockup. Preserve schema/write/validation. Presentational diff only. Nexus tokens, no raw hex, 44px targets, dark mode.
+```
+version, date, weekStarting, agentId, agentName,
+qualifiedApproaches, appointmentsSet, ffisScheduled, ffisConducted,
+solutionPresentations, newCisBooked, oldCisBooked, cisConducted,
+newBusiness:{ apps, api },
+pppIncreases:{ apps, apiIncrease },
+lumpsums:{ grossAmount, apiCredit, commission },
+newNamesAdded, oldNamesWorked, serviceContacts,
+hoursWorked(null), wins, blockers, notes,
+isCatchUp, catchUpStartDate, catchUpEndDate,
+createdAt, updatedAt
+```
 
-## Phase 3 — gates
+**Verified aggregator behavior** (`src/lib/schema/dailyActivity.aggregator.js`) — DO NOT EDIT THIS FILE:
+- `newNamesAdded` → weekly `namesFromOther`; `oldNamesWorked` → weekly `oldNamesPool`.
+- Reflection fields (`hoursWorked` / `wins` / `blockers` / `notes`) are **journal-only — NOT propagated** to the weekly draft. (So D1 either way is aggregation-safe; the spec/annotation's "Note only drops the weekly Time Management feed" flag is **incorrect** — daily reflection never fed weekly; weekly hours are entered on wizard Step 7/8 and preserved via `{ merge: true }`.)
+- Lumpsum `apiCredit`/`commission` and `totalProductionCredit`/`totalCommission` are **recomputed at week level**, not summed per-day.
 
-- **3a hex-grep** empty.
-- **3b scope (terminal):** the modal + FAB + tests + brief + CONTEXT + FOLLOW_UPS (+ smoke). No `functions/`, no schema/service/validation change, no unrelated `src/`.
-- **3c lint / test / build** green.
-- **3d axe baseline-delta** both themes; NO-NEW serious/critical; 44px targets.
-- **3e REGRESSION tests:** daily entry still writes the correct schema; validation enforced; FAB opens the modal; close/cancel behaves.
-- **3f component tests:** the restyled modal + FAB render; the v2 chrome elements present.
-- **3g LIVE smoke (both themes) — full write-read-verify:** test agent → tap the FAB → fill the daily entry → submit → reload → assert the daily-entry doc persisted with the correct schema. Both themes. Preview; prod in Phase 6.
+**The single forbidden move is renaming a storage key.**
 
-## Phase 4 — docs + FUs
+---
 
-- CONTEXT.md row; resolve the Daily Capture v2 pending row in the Track J ledger.
+## 2. Verified label → key map (CC binds to THIS, never to the mock's invented keys)
 
-## Phase 5 — PR + STOP for pre-review
+The mock spec invents keys (`newNames`, `newCIBooked`, `ciConducted`, `dials`). **Ignore them.** Bind v2 labels to the verified keys below; casing must match source exactly.
 
-Open PR; paste gates + the write-read-verify result. STOP. I pre-review that the diff is presentational only, the regression coverage, and the live write-read-verify.
+| v2 group | v2 label (display) | Real storage key |
+|---|---|---|
+| Prospecting | Qualified approaches | `qualifiedApproaches` |
+| Prospecting | New names added | `newNamesAdded` |
+| Prospecting | Old names worked | `oldNamesWorked` |
+| Prospecting | Service contacts | `serviceContacts` |
+| Appointments & FFI | Appointments set | `appointmentsSet` |
+| Appointments & FFI | FFIs scheduled | `ffisScheduled` |
+| Appointments & FFI | FFIs conducted | `ffisConducted` |
+| Interviews | New CIs booked | `newCisBooked` |
+| Interviews | Old CIs booked | `oldCisBooked` |
+| Interviews | CIs conducted | `cisConducted` |
+| Interviews | Solution presentations | `solutionPresentations` |
+| Production | New business — apps | `newBusiness.apps` |
+| Production | New business — API (TTD) | `newBusiness.api` |
+| Production (collapsed, optional) | PPP increases — apps | `pppIncreases.apps` |
+| Production (collapsed, optional) | PPP increases — API (TTD) | `pppIncreases.apiIncrease` |
+| Production (collapsed, optional) | Lumpsum — gross (TTD) | `lumpsums.grossAmount` |
+| Reflection (collapsed, optional — D1) | Hours worked | `hoursWorked` |
+| Reflection (collapsed, optional — D1) | Wins | `wins` |
+| Reflection (collapsed, optional — D1) | Blockers | `blockers` |
+| Note (visible) | Note | `notes` |
 
-## Phase 6 — post-merge (no deploy)
+**Casing trap (Phase 0 must confirm):** daily uses `cisConducted` / `ffisScheduled` / `ffisConducted` / `newCisBooked` / `oldCisBooked`. The wizard/weekly side uses different casing (`ciConducted` / `ffiConducted`); the aggregator bridges them. **Bind to the daily keys exactly — do not "tidy" casing.**
 
-After the Wizard merges first and this is rebased onto the updated main: sync, fill, push direct to main, Rule 15 verbatim; prod smoke (write-read-verify, both themes) verbatim. Frontend-only.
+**Derived display, NOT a stored field:** the Production card's per-day credit = `newBusiness.api + pppIncreases.apiIncrease + computeLumpsumCredit(lumpsums.grossAmount)`. Compute client-side via the existing `weeklyReport.computations` helpers (`computeTotalProductionCredit` shape) so it matches wizard/Leaderboard math. Do **not** add an `apiCredit`-per-day field.
 
-## Acceptance criteria
+---
 
-- `DailyEntryModal` + `DailyFAB` match the v2 mockup; daily-entry schema/write/validation preserved (regression-tested); the daily-entry flow live-smoked write-read-verify; both themes; 44px targets; gates green.
+## 2b. Reduced week-to-date count strip (D2 as-built)
 
-## Out of scope
+A counts-only strip at the top of the surface, replacing the static date/week header with: **date + week label** plus four **week-to-date count chips** (no targets, no progress fill, no dials, no streak).
 
-Schema/write/validation changes. Other Wave B screens. Any WAR-wizard change (separate PR).
+- **Chips (match the annotation's set, bind to real daily keys):** APPR → `qualifiedApproaches`, FFI → `ffisConducted`, CI → `cisConducted`, APPS → `newBusiness.apps`. (Phase 1 reconciles the exact four against `docs/design/daily-capture-slice-1-build.html`; bind to whichever real keys it shows.)
+- **Source:** sum each field across **this agent's persisted daily docs for the current week** (`weekStarting == getSundayOf(today)`, Sunday→today), read from `tenants/{tid}/users/{uid}/dailyActivity`. Agent-private (own subcollection only).
+- **Reuse, don't fork:** prefer reusing the existing summing path (the aggregator's count logic or a thin sum helper) so the strip can't drift from canonical counts. Read-only — **no write, no aggregator edit.**
+- **Recompute:** on mount, and again after a successful Save round-trip (re-read the week so today's just-saved entry is reflected). The strip shows **persisted** counts, not the in-progress unsaved entry.
+- **New dependency:** this is a **list/range query** over the week's docs (single-doc get is not enough). See Phase 0 — the rules for listing the agent's own `dailyActivity` must be confirmed.
 
-## Rule references
+---
 
-Rule 9, 10, 11, 12, 15, 16, 17.
+## 3. Decisions — LOCKED
+
+- **D1 — Reflection:** **disclosure + Note (Rec).** Keep `hoursWorked` / `wins` / `blockers` behind a collapsed "Reflection (optional)" disclosure, plus the visible Note. No data loss, no schema change. (Slice 1's one intentional deviation from the literal mock, which draws only a Note.)
+- **D2 — Header:** **reduced week-to-date count strip** (per §2b). Counts only.
+- **Auto-resolved:** storage keys preserved (forced by §1); explicit-save retained (matches the current modal); per-day credit derived per §2.
+
+---
+
+## 4. Phases
+
+### Phase 0 — Audit & source-verify (NO writes)
+1. Read `src/components/daily/DailyEntryModal.jsx`, the daily FAB / entry point, `src/lib/schema/dailyActivity.js`, `src/lib/schema/dailyActivity.aggregator.js`, `src/services/dailyActivityService.js`.
+2. Confirm the §2 label→key map against `createEmptyDailyEntry` — every key present, casing exact. Confirm `weeklyReport.computations` exposes the credit helper named in §2.
+3. Confirm reflection is absent from the aggregator's output (journal-only).
+4. Confirm one-doc-per-agent-per-day upsert path and explicit-submit (not autosave).
+5. **Count-strip read gate (E3 guard):** read the actual Firestore rules for the `dailyActivity` match. Confirm the agent can **list/query their own `dailyActivity` subcollection** scoped to the current week (not just single-doc `get`). **If a list/range read is NOT already permitted → STOP and wait for dispatcher.** Do not add or widen a rules block — rules are project-global and require a separate deploy outside CC.
+6. Confirm Nexus tokens + `bg-surface`/`bg-card`/`bg-card-raised` and both light/dark are wired.
+7. **If any real key or behavior differs from this brief → STOP and wait for dispatcher.** Do not proceed on the mock's keys or "fix" casing.
+
+### Phase 1 — Component plan
+1. New v2 surface `DailyCaptureV2` (full-screen mobile `MFrame`, sticky header = the §2b reduced count strip, scroll region, sticky "Save today" CTA above bottom nav).
+2. Group cards: Prospecting (teal), Appointments & FFI (teal), Interviews (gold), Production (gold) with the collapsed "PPP increases & lumpsums — OPTIONAL" disclosure. Reflection disclosure (D1) + visible Note. `{filled}/{total}` per-group counters (presentational, value>0).
+3. Week-to-date read: add/extend a **read-only** method on `dailyActivityService` to fetch the week's docs for the current agent and sum the count-strip fields (or reuse the aggregator's count path). No write.
+4. Entry point: update the daily FAB / launcher to open `DailyCaptureV2`. State replace-vs-wrap of `DailyEntryModal` in the PR body (write path unchanged either way).
+5. Wire every entry field through the **existing** `dailyActivityService` + schema, unchanged.
+6. Touch targets ≥44px (raise the mock's 30/32px).
+7. Visual reference: `docs/design/daily-capture-slice-1-build.html` (the brief governs where they differ).
+
+### Phase 2 — Build (presentational + the one read)
+- Nexus tokens (CSS vars, no inline styles, no gradient buttons). Integer steppers; TTD-prefixed numeric money rows; `parseFloat()` preserved. The count strip is read-only display. No schema / write / validation / aggregator change. Loading / error / empty states on the surface **and** on the count strip (e.g. zeros before the read resolves).
+
+### Phase 3 — Tests + smoke
+1. **Unit tests:** label→key binding (each v2 label writes the correct storage key); the derived per-day credit calc (matches `computeTotalProductionCredit`); the count-strip sum (given N daily docs, the chips equal the summed fields).
+2. **LIVE write-read-verify smoke (BOTH themes, Vercel preview, incognito):** log in as the test agent → open Daily Capture → enter values across all groups + production → **Save** → reload → assert the `tenants/{tid}/users/{uid}/dailyActivity/{date}` doc persisted with the correct keys and values.
+3. **Count-strip live read (E3 guard — required):** with the test agent, ensure **≥2 daily docs exist in the current week** (write a second day) → load Daily Capture → assert the count chips equal the week-to-date sums (LIVE, against real rules, both themes). This exercises the **list/range query** end-to-end.
+4. **Aggregation regression:** an existing daily doc still loads for edit (upsert); the weekly wizard draft still pre-populates from a daily doc with `namesFromOther` / `oldNamesPool` intact. Doc shape unchanged vs `main`.
+5. `hex-grep` empty (tokens only). Lint / test / build green. axe NO-NEW serious/critical vs `main` baseline, both themes.
+
+### Phase 4 — Docs (with placeholders)
+1. `docs/CONTEXT.md` — Recently-shipped row for Daily Capture v2 (Slice 1: entry restyle + reduced WTD count strip) with `#TBD/{TBD}` placeholders; bump Track J ledger to 16/34.
+2. `docs/FOLLOW_UPS.md` — bank FUs with placeholders:
+   - **FU — Daily Capture anchor strip: targets + dials.** Manager-set target chips + a daily calls/dials field (new field = head-of-sales). The counts-only strip already shipped in Slice 1. MEDIUM.
+   - **FU — Reporting-mode governance subsystem.** Head-of-sales; partial plumbing exists. MEDIUM.
+   - **FU — Streak mechanics.** Gamification/incentives owner; awards coupling. LOW until prioritized.
+3. Do **not** edit CLAUDE.md.
+
+### Phase 5 — Commit / push / PR
+1. Conventional commit on `redesign/daily-capture-v2`.
+2. `git push -u origin redesign/daily-capture-v2`; `gh pr create` (body: scope class incl. the read, §1 contract, §2 map, D1/D2 as-built, the count-strip read + its Phase-0 rules verification, deferred slices, gates + smoke evidence).
+3. **STOP. Do not merge (Rule 19). Do not deploy (Rule 19) — incl. no rules deploy.**
+4. Report: PR URL + gate results + both-theme write-read-verify + the **count-strip live-read result** + aggregation-regression result + the **feature-branch HEAD SHA (Rule 20)**.
+
+### Phase 6 — Post-merge (after dispatcher merges)
+- Rule 15: `git fetch origin && git log origin/main --oneline -1`, capture squash SHA, fill `#TBD/{TBD}` placeholders in CONTEXT.md + FOLLOW_UPS.md, commit, push direct-to-main, paste `git log origin/main --oneline -3` + `git rev-parse HEAD` + `git rev-parse origin/main`. Hard-stop on mismatch.
+
+---
+
+## 5. Acceptance criteria
+- Daily Capture renders as the v2 full-screen surface, both themes, ≥44px targets, with the reduced week-to-date count strip (date/week + APPR/FFI/CI/APPS counts; no targets/dials/streak).
+- The count strip's list/range read over the agent's own `dailyActivity` week is **verified permitted (Phase 0)** and **proven live (Phase 3.3)**; if rules don't permit it, CC stopped and surfaced it (no unilateral rules change).
+- Every entry field writes its **verified** storage key; aggregator file untouched; daily→weekly mapping proven intact by Phase 3.4.
+- No schema / write / validation change; one **read-only** week-range method added; explicit-save preserved; one-doc-per-day upsert preserved.
+- Per-day credit derived, not stored.
+- Targets, dials, streak, mode badge/governance absent (deferred per §0) and banked as FUs.
+- `hex-grep` empty; lint/test/build green; axe NO-NEW; live write-read-verify + live count-strip read green, both themes.
