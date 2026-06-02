@@ -124,7 +124,13 @@ PR1 ports the structural shell only. PR2 adds the v2 mockup's live-compute layer
 
 ---
 
-## Step4ClosingSales — duplicate `id="apps"` on NB and PPP inputs — LIVE in v1 + v2 (MEDIUM, banked 2026-06-01 from Wizard v2 PR2 smoke debugging)
+## ~~Step4ClosingSales — duplicate `id="apps"` on NB and PPP inputs — LIVE in v1 + v2~~ (RESOLVED — legacy-step retirement R1, PR #{TBD}, `{TBD}`, 2026-06-01)
+
+**Status:** RESOLVED in legacy-step retirement R1 (PR #{TBD}). The Sales-phase v2 extraction replaced the legacy `Step4ClosingSales` with `v2steps/StepNewBusiness.jsx`, which gives the New-Business-apps + PPP-apps inputs unique `inputId`s (`newBusinessApps` / `pppApps`). The `name="apps"` (nested-object field key) is unchanged, so the persisted shape is byte-identical; only the DOM `id`/`htmlFor` collision is gone. Proven by a component-level no-duplicate-ids assertion (`StepNewBusiness.test.jsx`) + a live no-duplicate-ids check on step 7 in the R1 smoke. The legacy `Step4ClosingSales.jsx` is no longer mounted (deleted in R3). Original banking content retained below for the closure trail.
+
+---
+
+**Original banking content:**
 
 **Status:** pre-existing HTML accessibility bug, LIVE IN PRODUCTION on both wizard tracks. Surfaced during Wizard v2 PR2 live-smoke debugging.
 
@@ -250,7 +256,9 @@ These existing reads use the existing `SuggestedField` atom + the `WizardForm`'s
 
 ---
 
-## Post-PR3 — legacy `wizard/steps/Step1–9.jsx` retirement + `v2steps/` markup dedupe (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416; PROMOTED to MEDIUM + actionable at Wizard v2 PR3 #419 merge)
+## Post-PR3 — legacy `wizard/steps/Step1–9.jsx` retirement + `v2steps/` markup dedupe (MEDIUM, banked 2026-06-01 from Wizard v2 PR1 shell #416; IN PROGRESS via autonomous R1→R2→R3 retirement stack)
+
+**IN PROGRESS — autonomous retirement stack (R1→R2→R3).** R1 (Sales phase, PR #{TBD}) extracts steps 6/7/8 to v2 components (`StepApproachesInterviews` / `StepNewBusiness` / `StepDeliveryService`) + fixes the Step4 duplicate-id (resolved above). R2 (Reflection + Goals) extracts steps 9/10/11. R3 (Activity remainders + deletion) extracts steps 4/5, reconciles PR1's split files, and DELETES all now-unused legacy step files (ends the duplication). Legacy files stay on disk until R3. Remaining scope below tracks R2/R3.
 
 **Now actionable.** PR3 (Wizard v2 Review/celebration) shipped, completing the 3-PR Wizard v2 arc. The v2 wizard is the complete flow today — agents go through 12 v2 steps and submit from the new Review screen. Legacy `wizard/steps/Step1–9.jsx` files were preserved through PR1/PR2/PR3 for the easy-revert property; that preservation is no longer load-bearing now that v2 is fully shipped + battle-tested in production. **Promoted from LOW to MEDIUM** because the retirement pass also lands the **Step4ClosingSales duplicate-id MEDIUM FU fix** (NB.apps + PPP.apps share `name="apps"` → screen readers + label-based test queries target the wrong input; LIVE accessibility violation in both v1 + v2 since v2 step 7 1:1-reuses Step4ClosingSales).
 
