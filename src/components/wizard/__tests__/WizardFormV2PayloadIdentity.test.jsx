@@ -134,15 +134,17 @@ async function openWizard() {
 describe('Wizard v2 — payload identity (regression: re-pagination preserves persisted shape)', () => {
   it('submitReport receives a payload with EXACTLY the legacy persisted-field set', async () => {
     await openWizard();
-    // Advance straight through all 11 steps without touching fields — the
-    // initial state is the canonical persisted-shape baseline. We're
-    // verifying the SHAPE, not the values; that the wizard's submit path
-    // hands `submitReport` an object whose keys match the legacy
-    // INITIAL_DATA enumeration exactly.
-    for (let n = 1; n < 11; n++) {
+    // Advance through all 12 v2 steps. Step 12 is the Review screen (PR3);
+    // its footer Next button calls `submitReport`. PR1's payload-identity
+    // guarantee must still hold: moving the submit trigger from step 11
+    // (PR1's interim terminal) to step 12 (Review) MUST NOT change the
+    // persisted shape — the formData passed to submitReport stays
+    // byte-identical because step 12 is a read-only display surface that
+    // adds nothing to state.
+    for (let n = 1; n < 12; n++) {
       fireEvent.click(screen.getByTestId('wizard-v2-next'));
     }
-    // Step 11: Next button is the submit trigger in PR1.
+    // Step 12: Next is "Submit Report".
     fireEvent.click(screen.getByTestId('wizard-v2-next'));
 
     await waitFor(() => {
@@ -158,7 +160,7 @@ describe('Wizard v2 — payload identity (regression: re-pagination preserves pe
 
   it('submitReport receives the exact tenant/user/week/rate/unit positional args (preserve)', async () => {
     await openWizard();
-    for (let n = 1; n < 11; n++) {
+    for (let n = 1; n < 12; n++) {
       fireEvent.click(screen.getByTestId('wizard-v2-next'));
     }
     fireEvent.click(screen.getByTestId('wizard-v2-next'));
@@ -177,7 +179,7 @@ describe('Wizard v2 — payload identity (regression: re-pagination preserves pe
 
   it('nested-object fields (newBusiness, pppIncreases, lumpsums, socialPlatformBreakdown) keep their nested shape', async () => {
     await openWizard();
-    for (let n = 1; n < 11; n++) {
+    for (let n = 1; n < 12; n++) {
       fireEvent.click(screen.getByTestId('wizard-v2-next'));
     }
     fireEvent.click(screen.getByTestId('wizard-v2-next'));
