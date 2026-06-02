@@ -5,7 +5,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Daily Capture anchor strip — targets + dials chip (MEDIUM, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #TBD)
+## Daily Capture anchor strip — targets + dials chip (MEDIUM, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #426)
 
 **Status:** Slice 1 shipped the counts-only WTD strip (APPR/FFI/CI/APPS, no targets, no dials). Slice 2 evolves it into a manager-set-target experience and adds a new daily dials/calls field.
 
@@ -24,7 +24,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Daily Capture reporting-mode governance subsystem (MEDIUM, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #TBD)
+## Daily Capture reporting-mode governance subsystem (MEDIUM, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #426)
 
 **Status:** deferred net-new product capability — head-of-sales scope.
 
@@ -44,7 +44,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Daily Capture streak mechanics (LOW until prioritized, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #TBD)
+## Daily Capture streak mechanics (LOW until prioritized, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #426)
 
 **Status:** deferred — gamification / incentives owner; awards coupling required.
 
@@ -65,7 +65,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Delete unconsumed `DailyEntryModal.jsx` (LOW, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #TBD)
+## Delete unconsumed `DailyEntryModal.jsx` (LOW, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #426)
 
 **Status:** `src/components/daily/DailyEntryModal.jsx` is unconsumed after Slice 1 shipped — `AgentDashboard` was switched to mount `DailyCaptureV2` and no other consumer references the old modal. Left in tree intentionally as a clean revert path during the Slice 1 bake-in window.
 
