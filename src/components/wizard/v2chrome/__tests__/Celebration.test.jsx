@@ -42,6 +42,17 @@ describe('Celebration — renders submit success + leaderboard messaging', () =>
     expect(screen.getByTestId('wizard-v2-celebration-api')).toHaveTextContent('3 apps');
   });
 
+  it('exposes the API number in isolation via the -value testid (smoke read affordance)', () => {
+    mockMatchMedia(false);
+    render(<Celebration formData={FORM} weekStartingLabel="May 31, 2026" onClose={vi.fn()} />);
+    // The -value testid wraps ONLY the formatted API number, so a smoke
+    // reading it gets "TTD 30,400" without the surrounding "You shipped" /
+    // "3 apps" text that would otherwise concatenate when digits are stripped.
+    const valueEl = screen.getByTestId('wizard-v2-celebration-api-value');
+    expect(valueEl).toHaveTextContent('TTD 30,400');
+    expect(valueEl.textContent).not.toMatch(/apps|shipped/i);
+  });
+
   it('renders the leaderboard messaging (existing submit→aggregate path)', () => {
     mockMatchMedia(false);
     render(<Celebration formData={FORM} weekStartingLabel="May 31, 2026" onClose={vi.fn()} />);

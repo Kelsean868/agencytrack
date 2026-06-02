@@ -330,7 +330,10 @@ async function smokeTheme(theme, admin, uid) {
       .catch(() => false);
     const celebrationApi = celebrationVisible
       ? Number(
-          (await page.locator('[data-testid="wizard-v2-celebration-api"]').textContent() ?? '')
+          // Read JUST the API number <p> (the -value testid), NOT the wrapping
+          // block (which also contains "You shipped" + "… 3 apps" — stripping
+          // non-digits there would concatenate 18000 + 3 = 180003).
+          (await page.locator('[data-testid="wizard-v2-celebration-api-value"]').textContent() ?? '')
             .replace(/[^0-9.-]/g, '')
         ) || 0
       : 0;

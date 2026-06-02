@@ -82,6 +82,7 @@ export default function Celebration({
           You shipped
         </p>
         <p
+          data-testid="wizard-v2-celebration-api-value"
           className="text-4xl sm:text-5xl font-display font-bold text-ink leading-none mt-2"
           style={{ letterSpacing: '-0.028em' }}
         >
