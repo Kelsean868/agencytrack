@@ -5,6 +5,76 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Daily Capture anchor strip — targets + dials chip (MEDIUM, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #TBD)
+
+**Status:** Slice 1 shipped the counts-only WTD strip (APPR/FFI/CI/APPS, no targets, no dials). Slice 2 evolves it into a manager-set-target experience and adds a new daily dials/calls field.
+
+**Background.** The v2 mockup originally drew a richer anchor strip with target chips and a DIALS chip. Slice 1 deliberately deferred both because (a) `target*` writes belong to manager-set goals (`unitGoals` / `branchGoals`) and the dispatcher decision is head-of-sales; (b) the existing daily entry has no `dials`/`calls` field, so capturing daily dials is a *new schema field* — not a port. Slice 1's reduced strip ships the counts mechanic; Slice 2 layers governance + the new field.
+
+**Scope when dispatched:**
+
+1. Decide where target values come from for daily strip (likely the closest applicable layer in the existing goals hierarchy: agent commitment → unit → branch → company floor).
+2. Add `dialsToday` (or equivalent) field to `dailyActivity.js` `createEmptyDailyEntry`; mirror the wizard/legacy field name if one exists (cross-check `extractFields.js` and existing weekly schema).
+3. Extend the aggregator to roll the new field into the weekly draft (need a weekly key — TBD with head-of-sales).
+4. Extend `DailyCaptureV2`'s count strip to (a) draw target ring/progress under each chip and (b) include the DIALS chip alongside APPR/FFI/CI/APPS.
+5. New tests: target-derivation rules + dials field round-trip + aggregator regression with the new field.
+6. Verify Firestore rules accept the new field on writes (additive — likely no rules change required, but confirm during Phase 0).
+
+**Cross-reference:** `src/components/daily/DailyCaptureV2.jsx` `CountStrip` block; `src/lib/schema/dailyActivity.js`; `src/lib/schema/dailyActivity.aggregator.js`; `docs/design/daily-capture-slice-1-build.html` annotations (the build annotation explicitly notes targets/dials were carved out of Slice 1).
+
+---
+
+## Daily Capture reporting-mode governance subsystem (MEDIUM, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #TBD)
+
+**Status:** deferred net-new product capability — head-of-sales scope.
+
+**Background.** The full v2 vision included reporting-mode governance: tenant-default reporting mode, recommend-vs-lock per tier, resolution chain (agent override / unit / branch / tenant), manager panel to set policy. Some plumbing already exists in the daily/weekly transition path (`isCatchUp`, the Sunday cron, the aggregator mode-switch entry point), but no UI surface exposes governance and no resolution chain is wired. Slice 1 of Daily Capture v2 shipped the entry-surface restyle only; the mode badge / provenance chrome is intentionally absent until governance lands.
+
+**Why MEDIUM.** Required for a multi-tenant or multi-branch rollout where reporting mode policy differs across the org. Not blocking for a single-tenant Tatil pilot where mode is implicitly "daily everywhere" or "weekly everywhere."
+
+**Scope when dispatched:**
+
+1. Design decision (head-of-sales): tenant-default → branch-override → unit-override → agent-override resolution; recommend vs lock at each tier; transition rules (mid-week mode switch behavior + the existing aggregator mode-switch entry point).
+2. New `reportingMode` field at appropriate document layers (tenant config / branch / unit / user); claims propagation.
+3. Manager panel UI to set policy at the appropriate tier; agent-side mode indicator (badge in topbar or Daily Capture header).
+4. Rules updates: who can write `reportingMode` at which tier.
+5. Tests for resolution-chain semantics across all permutations.
+
+**Cross-reference:** `src/lib/schema/dailyActivity.js` (`isCatchUp` / `catchUpStartDate` / `catchUpEndDate` fields — partial mode plumbing); `functions/aggregators/sundayDailyToWeekly.js` (Sunday cron); `docs/briefs/track-j-daily-capture-v2-kickoff.md` § 0 (OUT scope list).
+
+---
+
+## Daily Capture streak mechanics (LOW until prioritized, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #TBD)
+
+**Status:** deferred — gamification / incentives owner; awards coupling required.
+
+**Background.** A "streak" component (`current` / `best` / `loggedToday` / `milestone`) on the Daily Capture surface celebrates consecutive-day logging. Slice 1 intentionally excluded streaks because (a) awards coupling is non-trivial (does a streak earn a badge? does breaking a streak revoke recognition?), (b) milestone thresholds need design intent (5? 10? 30? quarterly?), (c) Firestore rules + schema for `streaks` collection need to be designed end-to-end.
+
+**Why LOW.** Pure gamification — no impact on data capture or reporting accuracy. Pilot can ship without it.
+
+**Scope when dispatched:**
+
+1. Decision (incentives owner): streak granularity (daily-log vs daily-log-with-minimum-activity), milestone thresholds, reset rules, badge coupling.
+2. New `streaks/{uid}` doc shape (`current`, `best`, `lastLoggedDate`, `milestonesAchieved`).
+3. Update logic on every Daily Capture save (likely a Cloud Function trigger on `dailyActivity` write to avoid client-side trust); rules forbid client writes.
+4. New `StreakChip` UI on `DailyCaptureV2` header (next to or replacing the count-strip's date sub-line).
+5. Awards engine coupling (if streaks earn badges).
+6. Tests for streak math + reset semantics + milestone-cross transitions.
+
+**Cross-reference:** `src/components/daily/DailyCaptureV2.jsx` header block; `src/utils/awardsEngine.js` (potential coupling); `docs/briefs/track-j-daily-capture-v2-kickoff.md` § 0 (OUT scope list).
+
+---
+
+## Delete unconsumed `DailyEntryModal.jsx` (LOW, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #TBD)
+
+**Status:** `src/components/daily/DailyEntryModal.jsx` is unconsumed after Slice 1 shipped — `AgentDashboard` was switched to mount `DailyCaptureV2` and no other consumer references the old modal. Left in tree intentionally as a clean revert path during the Slice 1 bake-in window.
+
+**Scope when dispatched:** confirm no consumer (`git grep DailyEntryModal` → only `__tests__/DailyEntryModal.test.jsx` should remain) → delete `DailyEntryModal.jsx` + `__tests__/DailyEntryModal.test.jsx` + verify the import in `DailyFAB.jsx` chain is unaffected. Build + test green. No FU body re-audit needed at dispatch time.
+
+**Cross-reference:** `src/components/daily/DailyEntryModal.jsx`; `src/components/daily/__tests__/DailyEntryModal.test.jsx`; `src/components/dashboard/AgentDashboard.jsx` (canonical importer = `DailyCaptureV2` post-Slice 1).
+
+---
+
 ## ~~Social-field write gap in `submissionService.sanitize()` — agents' social activity silently dropped~~ (RESOLVED — PR #417, `13df972`, 2026-06-01)
 
 **Status:** RESOLVED in PR #417 (`13df972`). The 5 social/content fields are now enumerated in `submissionService.sanitize()` mirroring the existing nested-object pattern (`socialPlatformBreakdown` built inline with `int()` per platform key alongside `newBusiness` / `pppIncreases` / `lumpsums`). Forward-only fix — historical lost social data not recoverable. Rules verified PERMISSIVE in Phase 1 → no rules deploy needed. 7 new direct `sanitize()` unit tests + 2 end-to-end mocked-setDoc payload tests + live write-read-verify smoke both themes (`scripts/verification/social-sanitize-fix-smoke.mjs`). Original banking content retained below for the closure trail.

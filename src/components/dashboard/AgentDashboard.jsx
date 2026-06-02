@@ -19,7 +19,7 @@ import { extractFields, extractTotalProductionCredit } from '../../utils/extract
 import { generateAgentPDF } from '../../services/exportService';
 import { getActiveCampaignsForAgent, getCampaignSubmissions } from '../../services/campaignService';
 import WizardForm from '../wizard/WizardForm';
-import DailyEntryModal from '../daily/DailyEntryModal';
+import DailyCaptureV2 from '../daily/DailyCaptureV2';
 import { getDailyEntry } from '../../services/dailyActivityService';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import CareerPortal from '../profile/CareerPortal';
@@ -384,7 +384,7 @@ export default function AgentDashboard() {
 
   if (showDailyModal) {
     return (
-      <DailyEntryModal
+      <DailyCaptureV2
         onClose={() => {
           setShowDailyModal(false);
           refreshDailyEntry();
