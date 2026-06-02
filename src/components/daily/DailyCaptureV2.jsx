@@ -184,6 +184,8 @@ function CountStrip({ chips, loading }) {
   return (
     <div
       data-testid="dcv2-count-strip"
+      data-loading={loading ? 'true' : 'false'}
+      data-chips={`${chips.appr}|${chips.ffi}|${chips.ci}|${chips.apps}`}
       className="grid grid-cols-4 gap-2 mt-2"
       aria-label="Week-to-date counts"
     >

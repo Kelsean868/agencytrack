@@ -182,31 +182,18 @@ async function openDailyCapture(page) {
   await page.waitForSelector('[data-testid="daily-fab"]', { timeout: 20000 });
   await page.click('[data-testid="daily-fab"]');
   await page.waitForSelector('[data-testid="daily-capture-v2"]', { timeout: 15000 });
-  // Allow week-doc read to resolve.
-  await page.waitForFunction(
-    () => {
-      const v = document.querySelector('[data-testid="dcv2-chip-appr"]')?.textContent?.trim();
-      return v != null && v !== '–';
-    },
-    { timeout: 15000 }
-  );
+  // Wait for the chip read to complete — the strip writes data-loading=false
+  // only after the firestore read resolves AND the chips state is set in the
+  // same React render (data-chips reflects the freshly-set values).
+  await page.waitForSelector('[data-testid="dcv2-count-strip"][data-loading="false"]', { timeout: 15000 });
 }
 
 async function readChips(page) {
-  return await page.evaluate(() => {
-    const get = (id) => {
-      const el = document.querySelector(`[data-testid="${id}"]`);
-      if (!el) return null;
-      const n = el.textContent.replace(/[^0-9]/g, '');
-      return n === '' ? 0 : parseInt(n, 10);
-    };
-    return {
-      appr: get('dcv2-chip-appr'),
-      ffi:  get('dcv2-chip-ffi'),
-      ci:   get('dcv2-chip-ci'),
-      apps: get('dcv2-chip-apps'),
-    };
-  });
+  // Read directly from the data-chips attribute set by the same render that
+  // sets data-loading=false — bypasses any text-render ordering subtleties.
+  const raw = await page.locator('[data-testid="dcv2-count-strip"]').first().getAttribute('data-chips');
+  const [appr, ffi, ci, apps] = (raw ?? '0|0|0|0').split('|').map((x) => parseInt(x, 10) || 0);
+  return { appr, ffi, ci, apps };
 }
 
 async function clickStepperIncrease(page, fieldLabel, times = 1) {
