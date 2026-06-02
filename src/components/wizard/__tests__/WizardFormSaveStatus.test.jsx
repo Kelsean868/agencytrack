@@ -18,19 +18,9 @@ const { mockSaveDraft, mockGetDraft, mockGetLastSubmission } = vi.hoisted(() => 
   mockGetLastSubmission: vi.fn(() => Promise.resolve(null)),
 }));
 
-// Step components use JSX without explicit React import (automatic runtime,
-// fine in production); mock them here so the test environment doesn't need to
-// resolve their JSX at runtime.
-vi.mock('../steps/Step1Prospecting', () => ({ default: () => null }));
-vi.mock('../steps/Step2Telephone', () => ({ default: () => null }));
-vi.mock('../steps/Step3Approaches', () => ({ default: () => null }));
-vi.mock('../steps/Step4ClosingSales', () => ({ default: () => null }));
-vi.mock('../steps/Step5NewNames', () => ({ default: () => null }));
-vi.mock('../steps/Step6DeliveriesService', () => ({ default: () => null }));
-vi.mock('../steps/Step7TimeManagement', () => ({ default: () => null }));
-vi.mock('../steps/Step8SelfEvaluation', () => ({ default: () => null }));
-vi.mock('../steps/Step9Goals', () => ({ default: () => null }));
-vi.mock('../steps/StepSocialMedia', () => ({ default: () => null }));
+// All wizard steps are v2 components (legacy steps/ retired) that import React
+// and mount cleanly under vitest — no inert step mocks needed; the real step 1
+// (StepLettersOutreach) renders and the autosave-indicator tests drive it.
 
 vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({

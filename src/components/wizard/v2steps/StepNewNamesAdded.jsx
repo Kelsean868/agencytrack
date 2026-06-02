@@ -1,7 +1,19 @@
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { Card, NumericField, ReadOnlyField, SuggestedField } from '../CardStack';
 
-export default function Step5NewNames({ data, onChange, lastWeekData }) {
+/**
+ * Wizard v2 step 5 — New names added.
+ *
+ * v2 extraction of the legacy Step5NewNames component (retirement R3).
+ * Faithful 1:1 port — same persisted keys (referralsSought /
+ * referralsObtained / namesFromColdCanvass / namesFromOther / oldNamesPool /
+ * portfolioClientsIdentified), same direct on-change, same lastWeek-derived
+ * `suggestedPool` (= max(0, lastWeek.oldNamesPool + new names − calls used)),
+ * same auto-pulled "From Events" ReadOnly fields, same totalNewNames banner.
+ * Consumes `lastWeekData` exactly as the legacy step did (wizard passes it via
+ * the `needsLastWeekData` flag).
+ */
+export default function StepNewNamesAdded({ data, onChange, lastWeekData }) {
   const totalFromEvents = useMemo(
     () =>
       (data.namesFromSeminarsConducted ?? 0) +

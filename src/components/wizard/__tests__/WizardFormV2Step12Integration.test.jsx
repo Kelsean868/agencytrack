@@ -45,15 +45,8 @@ vi.mock('../../../utils/formatters', () => ({
 
 vi.mock('../../submissions/SubmissionViewer', () => ({ default: () => null }));
 
-// Stub legacy step content inert — we only care about wizard chrome here.
-vi.mock('../steps/Step3Approaches',        () => ({ default: () => <div data-testid="legacy-step3" /> }));
-vi.mock('../steps/Step4ClosingSales',      () => ({ default: () => <div data-testid="legacy-step4" /> }));
-vi.mock('../steps/Step5NewNames',          () => ({ default: () => <div data-testid="legacy-step5" /> }));
-vi.mock('../steps/Step6DeliveriesService', () => ({ default: () => <div data-testid="legacy-step6" /> }));
-vi.mock('../steps/Step7TimeManagement',    () => ({ default: () => <div data-testid="legacy-step7" /> }));
-vi.mock('../steps/Step8SelfEvaluation',    () => ({ default: () => <div data-testid="legacy-step8" /> }));
-vi.mock('../steps/Step9Goals',             () => ({ default: () => <div data-testid="legacy-step9" /> }));
-vi.mock('../steps/StepSocialMedia',        () => ({ default: () => <div data-testid="legacy-step-social" /> }));
+// All 12 steps are v2 components now (legacy steps/ retired) — they mount
+// cleanly under vitest, so no inert step mocks are needed here.
 
 import WizardForm from '../WizardForm';
 
@@ -77,9 +70,12 @@ describe('PR3 step 12 — Review screen mount', () => {
     expect(screen.getByTestId('wizard-v2-step-12')).toBeInTheDocument();
   });
 
-  it('does NOT mount the legacy step 11 component on step 12', async () => {
+  it('does NOT mount the step-11 component on step 12 (Review replaces it)', async () => {
     await advanceToStep(12);
-    expect(screen.queryByTestId('legacy-step9')).toBeNull();
+    // Step 12 mounts ReviewSubmit, not the step-11 component — assert the
+    // step-11 container testid is absent while the Review testid is present.
+    expect(screen.queryByTestId('wizard-v2-step-11')).toBeNull();
+    expect(screen.getByTestId('wizard-v2-step-12')).toBeInTheDocument();
   });
 
   it('footer counter reads "Step 12 of 12"', async () => {
