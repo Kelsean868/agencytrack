@@ -245,11 +245,8 @@ async function runTheme(browser, theme, expectedBaseChips) {
     await setTheme(context, theme);
 
     const page = await context.newPage();
-    const debugLogs = [];
     page.on('console', (msg) => {
-      const text = msg.text();
-      if (text.startsWith('[dcv2-debug]')) debugLogs.push(`[${msg.type()}] ${text}`);
-      if (msg.type() === 'error') errors.push(text);
+      if (msg.type() === 'error') errors.push(msg.text());
     });
     page.on('pageerror', (e) => pageErrors.push(e.message));
 
@@ -345,14 +342,6 @@ async function runTheme(browser, theme, expectedBaseChips) {
     else fail(`[${theme}] today-pre-populates`, `expected 5000 got "${apiInputVal}"`);
 
     await shoot(page, `${theme}-dcv2-postreload`);
-
-    // ── DCV2 diagnostic dump
-    if (debugLogs.length) {
-      console.log(`  [${theme}] dcv2-debug log entries (${debugLogs.length}):`);
-      debugLogs.forEach((l) => console.log('    ' + l));
-    } else {
-      console.log(`  [${theme}] dcv2-debug log entries: 0 (component may not have logged)`);
-    }
 
     // ── JS errors / page errors (ignore CORS-blocked Fontshare CDN — design font, not load-bearing)
     const filt = (xs) => xs.filter((t) => !/ResizeObserver|favicon|net::ERR|api\.fontshare\.com/.test(t));
