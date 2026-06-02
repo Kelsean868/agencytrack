@@ -463,6 +463,8 @@ Audit-only dispatches stay inline. Pre-flight surface audits, read-only investig
 
 Banked from May 2026 closure cadence (PRs #161/#162, #163/#164, #165/#166 all followed this pattern).
 
+**Execution.** The docs-PR landing is performed by the `/land-brief <topic-slug>` skill — CC creates the docs branch off `origin/main`, moves the brief (+ optional annotation) into `docs/briefs/` / `docs/design/`, and opens the `docs(briefs)` PR. The dispatcher merges it, then `/dispatch`es the merged brief. The separate-docs-PR requirement above is unchanged; only the executor moves from manual dispatcher terminal to CC. Banked from PR #{TBD}.
+
 ### 11. FU body re-audit before first work
 
 When a FU is referenced for first implementation work after any gap (banking-date to dispatch-date), the brief author must verify the FU body's diagnosis claims against current source code BEFORE locking the brief's "Decisions locked" section. Specifically, for any FU body that names:
@@ -548,6 +550,7 @@ When a brief or methodology rule describes source behavior — default behavior,
 - **Enumeration tracked-status:** when listing files via `grep -rn` to scope a migration or audit, pair with `git ls-files` (or use `git grep`) to filter to tracked-only paths. Untracked or excluded files appear in `grep` output but are not part of canonical repo state, and silently inflate migration-target counts in briefs.
 - **Existing structural format:** read the existing target document end-to-end before prescribing changes (table cadence, paragraph count, heading levels).
 - **Operational possibility of proposed wording:** for rule additions, mentally simulate the rule's first execution and check for chicken-and-egg conditions (e.g., "fill commit SHA captured before fill commit exists").
+- **Aggregated snapshots:** aggregated snapshots (e.g. `repomix` output) compress function bodies to `⋮----`; a value seen in such a snapshot is **not** verified source — open the actual file, and never substitute an embedded older brief for a compressed body. (Banked from the 2026-06-02 Daily Capture key-casing catch.)
 
 Rule 11 is the specific case of this discipline for FU-body diagnoses; Rule 17 is the general principle applied to all source-derived claims in briefs and rule wording. Cite Rule 11 when the FU-body diagnosis itself is the gap; cite Rule 17 otherwise.
 
