@@ -43,20 +43,10 @@ vi.mock('../../submissions/SubmissionViewer', () => ({
   default: () => <div data-testid="submission-viewer-mock" />,
 }));
 
-// Legacy step files (Step3-9, StepSocialMedia, Step5/6/7/8/9) don't carry an
-// explicit `import React from 'react'` and break under vitest's classic JSX
-// transform when mounted. Brief preserves these files as-is for the
-// easy-revert property. Stub them inert here — the v2 tests pin the wizard's
-// composition + chrome, not the legacy step components' field markup.
-// (Inlined factories — vi.mock is hoisted; closure-captured helpers fail.)
-vi.mock('../steps/Step3Approaches',       () => ({ default: () => <div data-testid="legacy-step3" /> }));
-vi.mock('../steps/Step4ClosingSales',     () => ({ default: () => <div data-testid="legacy-step4" /> }));
-vi.mock('../steps/Step5NewNames',         () => ({ default: () => <div data-testid="legacy-step5" /> }));
-vi.mock('../steps/Step6DeliveriesService',() => ({ default: () => <div data-testid="legacy-step6" /> }));
-vi.mock('../steps/Step7TimeManagement',   () => ({ default: () => <div data-testid="legacy-step7" /> }));
-vi.mock('../steps/Step8SelfEvaluation',   () => ({ default: () => <div data-testid="legacy-step8" /> }));
-vi.mock('../steps/Step9Goals',            () => ({ default: () => <div data-testid="legacy-step9" /> }));
-vi.mock('../steps/StepSocialMedia',       () => ({ default: () => <div data-testid="legacy-step-social" /> }));
+// All 12 wizard steps are v2 components now (legacy steps/ retired in the
+// R1→R2→R3 pass). v2 components import React explicitly, so they mount
+// cleanly under vitest — no inert step mocks needed; these tests render the
+// real components and pin the wizard's composition + chrome.
 
 import WizardForm from '../WizardForm';
 

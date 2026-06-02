@@ -50,23 +50,19 @@ import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
 
-// Legacy step files — still rendered for steps 4, 5 (retirement R3 will
-// extract these next). Steps 6/7/8 migrated to v2 in R1; 9/10/11 in R2.
-import Step5NewNames         from './steps/Step5NewNames';
-import StepSocialMedia        from './steps/StepSocialMedia';
-
-// New v2 micro-step components (re-fanned from legacy Step1 + Step2 content).
-import StepLettersOutreach    from './v2steps/StepLettersOutreach';
-import StepSeminarsTradeshows from './v2steps/StepSeminarsTradeshows';
-import StepCallsF2F           from './v2steps/StepCallsF2F';
-// R1 (retirement) — Sales-phase v2 extractions (steps 6/7/8).
-import StepApproachesInterviews from './v2steps/StepApproachesInterviews';
-import StepNewBusiness          from './v2steps/StepNewBusiness';
-import StepDeliveryService      from './v2steps/StepDeliveryService';
-// R2 (retirement) — Reflection + Goals v2 extractions (steps 9/10/11).
-import StepHoursWorked          from './v2steps/StepHoursWorked';
-import StepRateYourWeek         from './v2steps/StepRateYourWeek';
-import StepTargetsNextWeek      from './v2steps/StepTargetsNextWeek';
+// All 12 wizard steps are now v2 components (legacy step files retired in the
+// R1→R2→R3 pass). v2steps/ holds every step's component.
+import StepLettersOutreach    from './v2steps/StepLettersOutreach';      // step 1
+import StepSeminarsTradeshows from './v2steps/StepSeminarsTradeshows';   // step 2
+import StepCallsF2F           from './v2steps/StepCallsF2F';             // step 3
+import StepSocialContent      from './v2steps/StepSocialContent';        // step 4 (R3)
+import StepNewNamesAdded      from './v2steps/StepNewNamesAdded';        // step 5 (R3)
+import StepApproachesInterviews from './v2steps/StepApproachesInterviews'; // step 6 (R1)
+import StepNewBusiness          from './v2steps/StepNewBusiness';          // step 7 (R1)
+import StepDeliveryService      from './v2steps/StepDeliveryService';      // step 8 (R1)
+import StepHoursWorked          from './v2steps/StepHoursWorked';          // step 9 (R2)
+import StepRateYourWeek         from './v2steps/StepRateYourWeek';         // step 10 (R2)
+import StepTargetsNextWeek      from './v2steps/StepTargetsNextWeek';      // step 11 (R2)
 
 // v2 chrome.
 import PhaseProgress          from './v2chrome/PhaseProgress';
@@ -88,8 +84,8 @@ const STEPS = [
   { n: 1,  phase: 'activity',   title: 'Letters & outreach',      Component: StepLettersOutreach },
   { n: 2,  phase: 'activity',   title: 'Seminars & tradeshows',   Component: StepSeminarsTradeshows },
   { n: 3,  phase: 'activity',   title: 'Calls & face-to-face',    Component: StepCallsF2F },
-  { n: 4,  phase: 'activity',   title: 'Social & content',        Component: StepSocialMedia },
-  { n: 5,  phase: 'activity',   title: 'New names added',         Component: Step5NewNames,         needsLastWeekData: true },
+  { n: 4,  phase: 'activity',   title: 'Social & content',        Component: StepSocialContent },
+  { n: 5,  phase: 'activity',   title: 'New names added',         Component: StepNewNamesAdded,     needsLastWeekData: true },
   // ── Sales (6-8) ── v2 components (R1 retirement extraction) ───────────────
   { n: 6,  phase: 'sales',      title: 'Approaches & interviews', Component: StepApproachesInterviews },
   { n: 7,  phase: 'sales',      title: 'New business this week',  Component: StepNewBusiness },

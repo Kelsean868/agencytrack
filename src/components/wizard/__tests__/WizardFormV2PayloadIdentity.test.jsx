@@ -63,16 +63,9 @@ vi.mock('../../submissions/SubmissionViewer', () => ({
   default: () => null,
 }));
 
-// Same legacy-step stub-mocks rationale as in WizardFormV2Shell.test.jsx.
-// (Inlined factories — vi.mock is hoisted; closure-captured helpers fail.)
-vi.mock('../steps/Step3Approaches',       () => ({ default: () => null }));
-vi.mock('../steps/Step4ClosingSales',     () => ({ default: () => null }));
-vi.mock('../steps/Step5NewNames',         () => ({ default: () => null }));
-vi.mock('../steps/Step6DeliveriesService',() => ({ default: () => null }));
-vi.mock('../steps/Step7TimeManagement',   () => ({ default: () => null }));
-vi.mock('../steps/Step8SelfEvaluation',   () => ({ default: () => null }));
-vi.mock('../steps/Step9Goals',            () => ({ default: () => null }));
-vi.mock('../steps/StepSocialMedia',       () => ({ default: () => null }));
+// All 12 steps are v2 components (legacy steps/ retired); they mount cleanly
+// under vitest, so no inert step mocks are needed — the wizard renders real
+// step components and this test asserts the persisted shape is unchanged.
 
 import WizardForm from '../WizardForm';
 

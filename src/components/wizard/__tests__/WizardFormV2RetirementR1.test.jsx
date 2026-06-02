@@ -10,9 +10,9 @@
 // Review, and asserts `submitReport` receives EXACTLY those values under the
 // canonical persisted keys — proving the extraction preserved shape + values.
 //
-// Steps 4/5/9/10/11 + Social are still legacy (lack an explicit React import
-// → break under vitest's classic transform when mounted) so they stay mocked
-// inert; they contribute zero fields to this test's filled set.
+// Post-R3 all 12 steps are v2 components that mount cleanly under vitest, so
+// no step mocks are needed; this test still fills ONLY the R1 Sales-phase
+// fields (steps 6/7/8) and asserts they reach submitReport unchanged.
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -53,13 +53,7 @@ vi.mock('../../../utils/formatters', () => ({
 
 vi.mock('../../submissions/SubmissionViewer', () => ({ default: () => null }));
 
-// Legacy steps NOT yet extracted (R2/R3) stay mocked inert.
-vi.mock('../steps/Step5NewNames',         () => ({ default: () => null }));
-vi.mock('../steps/Step7TimeManagement',   () => ({ default: () => null }));
-vi.mock('../steps/Step8SelfEvaluation',   () => ({ default: () => null }));
-vi.mock('../steps/Step9Goals',            () => ({ default: () => null }));
-vi.mock('../steps/StepSocialMedia',       () => ({ default: () => null }));
-// Steps 6/7/8 v2 components render REAL (the point of this test).
+// All steps render REAL (v2). Steps 6/7/8 are the focus of this R1 regression.
 
 import WizardForm from '../WizardForm';
 
@@ -116,7 +110,7 @@ describe('R1 retirement — value-level payload identity (real v2 steps 6/7/8)',
     fireEvent.change(screen.getByLabelText('Policies Delivered'), { target: { value: '4' } });
     next(); // 8 → 9
 
-    // Steps 9/10/11 mocked inert; advance to 12.
+    // Steps 9/10/11 (real v2, R2) left untouched; advance to 12.
     next(); // 9 → 10
     next(); // 10 → 11
     next(); // 11 → 12 (Review)

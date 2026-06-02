@@ -3,6 +3,17 @@ import { ChevronDown, ChevronUp } from 'lucide-react';
 import { Card, NumericField } from '../CardStack';
 import { SOCIAL_PLATFORMS } from './socialMediaConstants';
 
+/**
+ * Wizard v2 step 4 — Social & content.
+ *
+ * v2 extraction of the legacy StepSocialMedia component (retirement R3).
+ * Faithful 1:1 port — same persisted keys (socialPostsTotal /
+ * socialEngagementTotal / socialInboxEnquiries / namesFromSocial flat +
+ * socialPlatformBreakdown.{facebook,instagram,whatsapp,linkedin} nested),
+ * same direct on-change for the flat fields, same nested-spread
+ * `handleBreakdownChange` writer, same collapsible platform-breakdown.
+ */
+
 const PLATFORM_LABELS = {
   facebook:  'Facebook',
   instagram: 'Instagram',
@@ -10,7 +21,7 @@ const PLATFORM_LABELS = {
   linkedin:  'LinkedIn',
 };
 
-export default function StepSocialMedia({ data, onChange }) {
+export default function StepSocialContent({ data, onChange }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   const breakdown = data.socialPlatformBreakdown ?? {};

@@ -10,8 +10,9 @@
 // steps, submits from the step-12 Review, and asserts `submitReport` receives
 // EXACTLY those values under the canonical persisted keys.
 //
-// Steps 4 (Social) + 5 (New Names) are still legacy (lack an explicit React
-// import → break under vitest's classic transform) so they stay mocked inert.
+// Post-R3 all 12 steps are v2 components that mount cleanly under vitest, so
+// no step mocks are needed; this test fills the R2 Reflection+Goals fields
+// (steps 9/10/11) and asserts they reach submitReport unchanged.
 
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -52,10 +53,7 @@ vi.mock('../../../utils/formatters', () => ({
 
 vi.mock('../../submissions/SubmissionViewer', () => ({ default: () => null }));
 
-// Only steps 4/5 remain legacy after R2 → mock inert. 6/7/8 (R1) + 9/10/11
-// (R2) render REAL.
-vi.mock('../steps/Step5NewNames',   () => ({ default: () => null }));
-vi.mock('../steps/StepSocialMedia', () => ({ default: () => null }));
+// All steps render REAL (v2). Steps 9/10/11 are the focus of this R2 regression.
 
 import WizardForm from '../WizardForm';
 
