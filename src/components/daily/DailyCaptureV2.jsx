@@ -261,11 +261,14 @@ export default function DailyCaptureV2({ onClose }) {
     if (!user?.uid) return;
     setChipsLoading(true);
     try {
+      // eslint-disable-next-line no-console
+      console.log('[dcv2-debug] refreshChips firing', { tenantId, uid: user.uid, weekStarting });
       const weekDocs = await getDailyEntriesForWeek(tenantId, user.uid, weekStarting);
+      // eslint-disable-next-line no-console
+      console.log('[dcv2-debug] weekDocs len=', weekDocs.length, 'dates=', weekDocs.map((d) => d.id ?? d.date));
       setChips(deriveCountStripChips(weekDocs));
     } catch (e) {
-      console.error('Count-strip read failed:', e);
-      // Leave previous chips in place rather than zero them.
+      console.error('[dcv2-debug] catch fired:', e?.code, e?.message);
     } finally {
       setChipsLoading(false);
     }

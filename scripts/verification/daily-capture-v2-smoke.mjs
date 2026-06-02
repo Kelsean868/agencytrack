@@ -59,8 +59,11 @@ function loadEnv() {
 }
 const E = loadEnv();
 
-const BRANCH = 'redesign-daily-capture-v2';
-const PREVIEW_URL = `https://agencytrack-git-${BRANCH}-kyron-marchan-s-projects.vercel.app`;
+// Vercel truncated the long branch name with a hash suffix —
+// `redesign/daily-capture-v2` → `redesign-daily-5c6e28`. Captured from the
+// Vercel preview-bot comment on PR #426 (target_url decoded).
+const PREVIEW_URL = process.env.SMOKE_PREVIEW_URL
+  ?? 'https://agencytrack-git-redesign-daily-5c6e28-kyron-marchan-s-projects.vercel.app';
 const RUN_TS = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const SHOTS_DIR = join(__dir, `${RUN_TS}-dcv2-screenshots`);
 
@@ -226,9 +229,11 @@ async function saveDaily(page) {
 }
 
 async function setTheme(context, theme) {
+  // main.jsx reads localStorage.getItem('agencytrack-dark') === '1' — not 'true'.
   await context.addInitScript((t) => {
     try {
-      localStorage.setItem('agencytrack-dark', t === 'dark' ? 'true' : 'false');
+      if (t === 'dark') localStorage.setItem('agencytrack-dark', '1');
+      else localStorage.removeItem('agencytrack-dark');
     } catch {}
   }, theme);
 }
@@ -253,8 +258,11 @@ async function runTheme(browser, theme, expectedBaseChips) {
     await setTheme(context, theme);
 
     const page = await context.newPage();
+    const debugLogs = [];
     page.on('console', (msg) => {
-      if (msg.type() === 'error') errors.push(msg.text());
+      const text = msg.text();
+      if (text.startsWith('[dcv2-debug]')) debugLogs.push(`[${msg.type()}] ${text}`);
+      if (msg.type() === 'error') errors.push(text);
     });
     page.on('pageerror', (e) => pageErrors.push(e.message));
 
@@ -351,8 +359,16 @@ async function runTheme(browser, theme, expectedBaseChips) {
 
     await shoot(page, `${theme}-dcv2-postreload`);
 
-    // ── JS errors / page errors
-    const filt = (xs) => xs.filter((t) => !/ResizeObserver|favicon|net::ERR/.test(t));
+    // ── DCV2 diagnostic dump
+    if (debugLogs.length) {
+      console.log(`  [${theme}] dcv2-debug log entries (${debugLogs.length}):`);
+      debugLogs.forEach((l) => console.log('    ' + l));
+    } else {
+      console.log(`  [${theme}] dcv2-debug log entries: 0 (component may not have logged)`);
+    }
+
+    // ── JS errors / page errors (ignore CORS-blocked Fontshare CDN — design font, not load-bearing)
+    const filt = (xs) => xs.filter((t) => !/ResizeObserver|favicon|net::ERR|api\.fontshare\.com/.test(t));
     if (filt(errors).length === 0 && filt(pageErrors).length === 0) {
       pass(`[${theme}] no-js-errors`);
     } else {
