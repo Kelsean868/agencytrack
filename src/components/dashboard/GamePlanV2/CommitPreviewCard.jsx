@@ -11,17 +11,17 @@ import { Lock, ArrowRight, ArrowUpRight } from 'lucide-react';
 export default function CommitPreviewCard({ year, onOpenGoals }) {
   return (
     <div className="relative rounded-2xl border border-dashed border-border bg-card p-4 opacity-95" data-testid="game-plan-commit">
-      <span className="absolute right-3.5 top-3.5 flex items-center gap-1 rounded-full bg-surface-muted px-2 py-1 font-mono text-[8px] font-bold uppercase tracking-wider text-ink-faint">
+      <span className="absolute right-3.5 top-3.5 flex items-center gap-1 rounded-full bg-surface-muted px-2 py-1 font-mono text-[8px] font-bold uppercase tracking-wider text-ink-muted">
         <Lock size={9} aria-hidden="true" /> Preview
       </span>
 
-      <div className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-faint">
+      <div className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-muted">
         Step 4 · Review &amp; Commit
       </div>
       <div className="mt-2 font-display text-base font-extrabold tracking-tight text-ink-muted">
         Lock your plan to set your Goals
       </div>
-      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-faint">
+      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-muted">
         Committing <em>will</em> write your API + apps to the Goals page as your personal commitment.{' '}
         <span className="font-semibold text-ink-muted">Available once the Year &amp; Monthly steps ship.</span>
       </p>
@@ -31,7 +31,7 @@ export default function CommitPreviewCard({ year, onOpenGoals }) {
         disabled
         aria-disabled="true"
         data-testid="game-plan-commit-btn"
-        className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-surface-muted px-3 text-sm font-bold text-ink-faint"
+        className="mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-surface-muted px-3 text-sm font-bold text-ink-muted"
       >
         Commit {year} plan
         <ArrowRight size={14} aria-hidden="true" />

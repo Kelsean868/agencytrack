@@ -29,7 +29,7 @@ function StepCard({ variant, num, kicker, title, sub, onClick }) {
 
   const circleClass =
     variant === 'coming'
-      ? 'bg-surface-muted text-ink-faint'
+      ? 'bg-surface-muted text-ink-muted'
       : `${token.solid} text-white`;
 
   const inner = (
@@ -45,7 +45,7 @@ function StepCard({ variant, num, kicker, title, sub, onClick }) {
           {kicker}
         </span>
         <span className="mt-0.5 block truncate text-xs font-bold tracking-tight text-ink">{title}</span>
-        <span className="block text-[9px] text-ink-faint">{sub}</span>
+        <span className="block text-[9px] text-ink-muted">{sub}</span>
       </span>
     </>
   );
@@ -73,7 +73,7 @@ function StepCard({ variant, num, kicker, title, sub, onClick }) {
 
 function Chevron() {
   return (
-    <div className="flex shrink-0 items-center text-ink-faint" aria-hidden="true">
+    <div className="flex shrink-0 items-center text-ink-muted" aria-hidden="true">
       <ChevronRight size={16} />
     </div>
   );

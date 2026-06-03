@@ -85,7 +85,7 @@ export default function PlanAnchorStrip({
         </div>
 
         <div className="shrink-0 text-right">
-          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ink-faint">
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.14em] text-ink-muted">
             Plan Built
           </div>
           <div className="mt-1 font-display text-3xl font-extrabold leading-none tracking-tight text-ink">
@@ -102,13 +102,13 @@ export default function PlanAnchorStrip({
           <div key={c.label} className="flex items-center gap-2">
             <span className={`h-2 w-2 shrink-0 rounded-sm ${c.dot}`} aria-hidden="true" />
             <div className="flex flex-col leading-tight">
-              <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.1em] text-ink-faint">
+              <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.1em] text-ink-muted">
                 {c.label}
               </span>
               <span className="mt-0.5 whitespace-nowrap font-display text-sm font-extrabold tracking-tight text-ink">
                 {c.value}
                 {c.hint ? (
-                  <span className="ml-1.5 font-sans text-[9px] font-medium text-ink-faint">{c.hint}</span>
+                  <span className="ml-1.5 font-sans text-[9px] font-medium text-ink-muted">{c.hint}</span>
                 ) : null}
               </span>
             </div>

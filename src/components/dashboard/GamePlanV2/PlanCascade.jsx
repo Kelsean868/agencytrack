@@ -14,12 +14,12 @@ function ComingRung({ step, title, desc }) {
     <div className="rounded-xl border border-dashed border-border bg-surface-raised p-3.5">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-faint">
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
             {step}
           </div>
           <div className="mt-0.5 text-xs text-ink-muted">{desc}</div>
         </div>
-        <span className="shrink-0 rounded-full bg-surface-muted px-2.5 py-1 font-mono text-[8.5px] font-bold uppercase tracking-wider text-ink-faint">
+        <span className="shrink-0 rounded-full bg-surface-muted px-2.5 py-1 font-mono text-[8.5px] font-bold uppercase tracking-wider text-ink-muted">
           Coming
         </span>
       </div>
@@ -30,7 +30,7 @@ function ComingRung({ step, title, desc }) {
 
 function CascadeArrow() {
   return (
-    <div className="flex justify-center py-1 text-ink-faint" aria-hidden="true">
+    <div className="flex justify-center py-1 text-ink-muted" aria-hidden="true">
       <ChevronDown size={16} />
     </div>
   );
@@ -40,10 +40,10 @@ export default function PlanCascade({ commissionNeed, moneyNeedsFilled }) {
   return (
     <div className="card" data-testid="game-plan-cascade">
       <div className="mb-3 flex items-baseline gap-2">
-        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-faint">
+        <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-ink-muted">
           The plan so far
         </span>
-        <span className="font-mono text-[9px] text-ink-faint">Need → split → months</span>
+        <span className="font-mono text-[9px] text-ink-muted">Need → split → months</span>
       </div>
 
       <div className="rounded-xl border border-gold/30 bg-gold-tint p-3.5">
