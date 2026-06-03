@@ -71,6 +71,10 @@ drift; consolidation is out of scope for FU-G.
 - Role: `agent` (used for all current walks)
 - Password: `A11Y_AGENT_PASSWORD` in `.env.local`
 
+## Shared helpers
+
+Screen-agnostic smoke primitives live in [`lib/walk-helpers.mjs`](lib/walk-helpers.mjs) — `setupBypassSession`, `resolvePreviewUrl` (use `SMOKE_PREVIEW_URL`), `setTheme` / `runBothThemes` (light+dark runner), `waitForLoaded` (`data-loading="false"` wait), plus the React-19 / overflow / console-capture helpers. Import these in new per-screen smokes instead of re-deriving the banked lessons (see `daily-capture-v2-smoke.mjs` for the canonical consumer).
+
 ## Reusable patterns (banked from E2 development)
 
 ### Login flow

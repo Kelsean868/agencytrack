@@ -168,6 +168,108 @@ export async function setupBypassSession(context, baseUrl, token) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SMOKE-HARNESS PRIMITIVES — screen-agnostic helpers shared by per-screen
+// smokes (Daily Capture, Game Plan, Commission, Policy Ledger, Settings, …).
+// Each encodes a hard-won lesson so per-screen smokes never re-derive it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * resolvePreviewUrl — resolves the Vercel target for a smoke run.
+ *
+ * LESSON: Vercel truncates long branch names into per-branch aliases with a
+ * hash suffix (e.g. `redesign/daily-capture-v2` →
+ * `agencytrack-git-redesign-daily-5c6e28-…`). The alias is branch-specific and
+ * MUST NOT be hardcoded across smokes — pass the PR's preview alias (decoded
+ * from the Vercel preview-bot comment's target_url) via SMOKE_PREVIEW_URL. With
+ * no override, falls back to production.
+ *
+ * @returns {string} SMOKE_PREVIEW_URL if set, else the production URL.
+ */
+export function resolvePreviewUrl() {
+  return process.env.SMOKE_PREVIEW_URL ?? 'https://agencytrack.vercel.app';
+}
+
+/**
+ * setTheme — primes a Playwright context to boot the app in light or dark.
+ *
+ * LESSON: main.jsx reads localStorage.getItem('agencytrack-dark') === '1' —
+ * the value is the string '1', NOT 'true'. Writing 'true' leaves the app in
+ * light mode. Removing the key selects light. Runs as a context init script so
+ * the value is present before the app's first paint (no FOUC, no post-load
+ * toggle). Theme is therefore a per-context concern — see runBothThemes.
+ *
+ * @param {import('playwright').BrowserContext} context
+ * @param {'light'|'dark'} theme
+ */
+export async function setTheme(context, theme) {
+  await context.addInitScript((t) => {
+    try {
+      if (t === 'dark') localStorage.setItem('agencytrack-dark', '1');
+      else localStorage.removeItem('agencytrack-dark');
+    } catch {}
+  }, theme);
+}
+
+/**
+ * waitForLoaded — waits for a data-loading="false" ready signal on a testid'd
+ * element.
+ *
+ * LESSON: panels that read Firestore expose readiness via
+ * [data-testid="<id>"][data-loading="false"] — the attribute flips to "false"
+ * only after the read resolves AND the derived state is committed in the same
+ * render. Wait on the compound selector, not on text content (which can race
+ * the attribute).
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} testid - The data-testid of the loading-gated element.
+ * @param {number} [timeout=15000]
+ */
+export async function waitForLoaded(page, testid, timeout = 15_000) {
+  await page.waitForSelector(`[data-testid="${testid}"][data-loading="false"]`, { timeout });
+}
+
+/**
+ * runBothThemes — runs a per-screen smoke body in light then dark, each in a
+ * fresh bypassed context.
+ *
+ * LESSON: theme is a context-level concern (set before first paint via
+ * setTheme's init script), so each theme needs its OWN context — a single page
+ * cannot be reused across both. This runner owns the context lifecycle: for
+ * each of light then dark it creates a context (at the given viewport),
+ * establishes the Vercel bypass session, primes the theme, opens a page, and
+ * hands it to perTheme. The context is always closed in finally.
+ *
+ * perTheme receives (page, theme) and owns ALL screen-specific work plus its
+ * own assertions and error handling — the runner deliberately does not catch
+ * body errors, so the body controls how a failure is recorded.
+ *
+ * Signature note: the kickoff brief sketched `runBothThemes(page, fn)`; a single
+ * shared page is structurally impossible (theme is per-context), so the
+ * finalized signature is `(browser, { baseUrl, token, viewport, perTheme })`.
+ *
+ * @param {import('playwright').Browser} browser
+ * @param {{
+ *   baseUrl: string,
+ *   token: string,
+ *   viewport?: { width: number, height: number },
+ *   perTheme: (page: import('playwright').Page, theme: 'light'|'dark') => Promise<void>,
+ * }} options
+ */
+export async function runBothThemes(browser, { baseUrl, token, viewport, perTheme }) {
+  for (const theme of ['light', 'dark']) {
+    const context = await browser.newContext(viewport ? { viewport } : {});
+    try {
+      await setupBypassSession(context, baseUrl, token);
+      await setTheme(context, theme);
+      const page = await context.newPage();
+      await perTheme(page, theme);
+    } finally {
+      await context.close();
+    }
+  }
+}
+
 /**
  * waitForFirebaseReady — waits for the app to finish initial Firebase auth
  * resolution after a navigation or reload.
