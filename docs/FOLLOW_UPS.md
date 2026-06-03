@@ -3742,22 +3742,22 @@ Banked from Track H agent confirmation-surfacing PR #305 (`97a8493`).
 
 ---
 
-## ✅ Track J (V2 Redesign) — Game Plan v2 screen deferred; Money Needs re-nesting pending (LOW, banked 2026-05-30, PR #392) — RESOLVED {TBD} (PR #TBD)
+## ✅ Track J (V2 Redesign) — Game Plan v2 screen deferred; Money Needs re-nesting pending (LOW, banked 2026-05-30, PR #392) — RESOLVED 2026-06-03 (PR #438)
 
-**RESOLVED:** Game Plan v2 **Slice 1** (PR #TBD) ships the Game Plan hub shell and re-nests the nav exactly as the restore path prescribed:
+**RESOLVED:** Game Plan v2 **Slice 1** (PR #438) ships the Game Plan hub shell and re-nests the nav exactly as the restore path prescribed:
 - Added `{ id: 'game-plan', label: 'Game Plan', tabId: 'game-plan', Icon: BarChart2, sectionLabel: 'Planning', badgeNew: true }` before `money-needs`.
 - Converted `money-needs` to `{ child: true }` (dropped `sectionLabel`) — still its own tabId/route, reachable as a nav child and from the hub's rail card.
 - The `game-plan` tab renders a composition-only hub (PlanAnchorStrip / StepRail / PlanCascade / disabled CommitPreviewCard) reading the EXISTING `moneyNeeds` worksheet — no new collection, write, rule, or index.
 
 **Corrected diagnosis (Rule 11):** the original restore-path note said "the `goals` tab (GapAnalysisPanel) also moves under Game Plan." That was superseded by the Slice-1 locked decision — **Goals stays a sibling under Planning**; only Money Needs nests. Game Plan will *feed* Goals on commit (a deferred slice), it does not nest it.
 
-Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30. **RESOLVED: Game Plan v2 Slice 1 (PR #TBD).**
+Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30. **RESOLVED: Game Plan v2 Slice 1 (PR #438).**
 
 ---
 
-## Track J (V2 Redesign) — Game Plan v2 — remaining slices (MEDIUM, banked {TBD}, PR #TBD)
+## Track J (V2 Redesign) — Game Plan v2 — remaining slices (MEDIUM, banked 2026-06-03, PR #438)
 
-Game Plan v2 **Slice 1** (PR #TBD) shipped the shell + Money Needs re-home. The remaining slices each introduce **net-new data** (a new store, read, write, or user attribute) and were deliberately deferred — none is a port:
+Game Plan v2 **Slice 1** (PR #438) shipped the shell + Money Needs re-home. The remaining slices each introduce **net-new data** (a new store, read, write, or user attribute) and were deliberately deferred — none is a port:
 
 - **Year Plan (allocator):** product-line split, percent/direct mode, add-line, award-eligibility calc, license-profile tabs. Needs a stored per-line allocation. → new store.
 - **License-profile user attribute:** Composite / Life-only / General-only — "not stored on the user yet." → new user field.
@@ -3769,7 +3769,7 @@ Game Plan v2 **Slice 1** (PR #TBD) shipped the shell + Money Needs re-home. The 
 
 **Priority:** MEDIUM. Slice 1 is functional and honest on its own. Slices ship one brief + PR each.
 
-Banked: Game Plan v2 Slice 1 (PR #TBD), {TBD}.
+Banked: Game Plan v2 Slice 1 (PR #438), 2026-06-03.
 
 ---
 
