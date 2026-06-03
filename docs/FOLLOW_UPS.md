@@ -22,7 +22,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Policy Reconciliation v2 — Slice 2 (deferred, banked 2026-06-03 from Policy Reconciliation v2 Slice 1 PR #TBD)
+## Policy Reconciliation v2 — Slice 2 (deferred, banked 2026-06-03 from Policy Reconciliation v2 Slice 1 PR #434)
 
 **Status:** Slice 1 shipped the manager-surface restyle on the **existing manual model** (read Tatil's printed circular → key the figure per policy; at-risk hero + 3 tiles + worklist + in-row key-in; `statusToken()` reuse; `text-text*` token fix; Lapse kept as a BM-only secondary tab). The following **richer manual** reconciliation features were explicitly cut from Slice 1.
 
