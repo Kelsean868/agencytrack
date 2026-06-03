@@ -95,6 +95,9 @@ export default function Sidebar({
                 {isDisabled && (
                   <span className="badge badge-soon" aria-label="Coming soon">Soon</span>
                 )}
+                {!isDisabled && item.badgeNew && (
+                  <span className="badge badge-new" aria-label="New">New</span>
+                )}
                 {!isDisabled && item.badgeCount != null && item.badgeCount > 0 && (
                   <span
                     className={`badge${item.badgeVariant === 'warning' ? ' badge-warning' : ''}`}

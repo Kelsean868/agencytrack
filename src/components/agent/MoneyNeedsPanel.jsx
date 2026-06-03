@@ -12,12 +12,15 @@ import {
 } from '../../services/moneyNeedsService';
 import { formatCurrency } from '../../utils/formatters';
 
+// Checklist restyle (Game Plan v2 Slice 1): each group leads with a colored
+// dot, mirroring the build annotation's group key. Presentation only — no
+// data-model change.
 const EXPENSE_GROUPS = [
-  { key: 'fixedExpenses',       label: 'Fixed Expenses' },
-  { key: 'livingExpenses',      label: 'Living Expenses' },
-  { key: 'businessExpenses',    label: 'Business Expenses' },
-  { key: 'savingsAccumulation', label: 'Savings & Accumulation' },
-  { key: 'miscellaneous',       label: 'Miscellaneous' },
+  { key: 'fixedExpenses',       label: 'Fixed Expenses',         dot: 'bg-primary'    },
+  { key: 'livingExpenses',      label: 'Living Expenses',        dot: 'bg-ink-muted'  },
+  { key: 'businessExpenses',    label: 'Business Expenses',      dot: 'bg-gold'       },
+  { key: 'savingsAccumulation', label: 'Savings & Accumulation', dot: 'bg-success'    },
+  { key: 'miscellaneous',       label: 'Miscellaneous',          dot: 'bg-ink-faint'  },
 ];
 
 const FREQUENCY_OPTIONS = [
@@ -43,7 +46,7 @@ function LineItemRow({ item, onChange, onDelete, onBlur }) {
         onBlur={onBlur}
         placeholder="Description"
         aria-label="Expense description"
-        className="flex-1 min-w-0 h-9 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+        className="flex-1 min-w-0 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
       <input
         type="number"
@@ -53,13 +56,13 @@ function LineItemRow({ item, onChange, onDelete, onBlur }) {
         placeholder="0"
         min={0}
         aria-label="Expense amount"
-        className="w-24 h-9 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
+        className="w-24 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
       />
       <select
         value={item.frequency}
         onChange={(e) => onChange(item.id, 'frequency', e.target.value, true)}
         aria-label="Frequency"
-        className="h-9 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+        className="h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
       >
         {FREQUENCY_OPTIONS.map((opt) => (
           <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -80,7 +83,7 @@ function LineItemRow({ item, onChange, onDelete, onBlur }) {
   );
 }
 
-function ExpenseGroupAccordion({ groupKey, label, group, worksheetDoc, onGroupSaved }) {
+function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGroupSaved }) {
   const { tenantId, user } = useAuth();
   const [open, setOpen] = useState(false);
   const [localItems, setLocalItems] = useState(() => group?.lineItems ?? []);
@@ -162,16 +165,26 @@ function ExpenseGroupAccordion({ groupKey, label, group, worksheetDoc, onGroupSa
     subCalculatorRefs: group?.subCalculatorRefs ?? [],
   });
 
+  const filledCount = localItems.filter((i) => (parseFloat(i.amount) || 0) > 0).length;
+
   return (
     <div className="border border-border rounded-xl overflow-hidden">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
+        className="w-full flex items-center justify-between gap-2 px-4 h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
         aria-expanded={open}
       >
-        <span>{label}</span>
-        <div className="flex items-center gap-2">
+        <span className="flex items-center gap-2.5 min-w-0">
+          <span className={`h-2 w-2 shrink-0 rounded-sm ${dot}`} aria-hidden="true" />
+          <span className="truncate">{label}</span>
+          {localItems.length > 0 && (
+            <span className="font-mono text-[10px] font-medium text-ink-faint tracking-wide shrink-0">
+              {filledCount} of {localItems.length} filled
+            </span>
+          )}
+        </span>
+        <div className="flex items-center gap-2 shrink-0">
           {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
           {groupAnnualTotal > 0 && (
             <span className="text-xs font-medium text-ink-muted tabular-nums">
@@ -234,23 +247,38 @@ function ExpenseGroupAccordion({ groupKey, label, group, worksheetDoc, onGroupSa
 
 function PAYESummary({ worksheet }) {
   if (!worksheet) return null;
-  const { totalAnnualAfterTax = 0, totalAnnualPreTax = 0, computedPAYE = 0 } = worksheet;
+  const { totalAnnualAfterTax = 0, totalAnnualPreTax = 0 } = worksheet;
   if (totalAnnualAfterTax === 0 && totalAnnualPreTax === 0) return null;
 
+  // Read-only summary cascade — all derived from existing worksheet fields.
+  const payeGrossUp = Math.max(0, totalAnnualPreTax - totalAnnualAfterTax);
+  const renewals = parseFloat(worksheet.estimatedRenewalIncome?.total) || 0;
+  const commissionsRequired = Math.max(0, totalAnnualPreTax - renewals);
+
   return (
-    <div className="rounded-xl bg-primary/5 border border-primary/20 px-4 py-3 space-y-1.5">
-      <p className="text-xs font-semibold text-primary uppercase tracking-wide">PAYE Summary</p>
+    <div className="rounded-xl bg-surface-raised border border-border px-4 py-3 space-y-2">
+      <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Annual Income Target</p>
       <div className="flex justify-between text-sm">
-        <span className="text-ink-muted">Total After-Tax Need</span>
+        <span className="text-ink-muted">After-tax total need</span>
         <span className="text-ink font-semibold tabular-nums">{formatCurrency(totalAnnualAfterTax)}</span>
       </div>
-      <div className="flex justify-between text-sm border-t border-primary/20 pt-1.5">
-        <span className="text-ink-muted">Required Gross Income</span>
+      <div className="flex justify-between text-xs">
+        <span className="text-ink-muted">+ PAYE gross-up</span>
+        <span className="text-ink-muted tabular-nums">+ {formatCurrency(payeGrossUp)}</span>
+      </div>
+      <div className="flex justify-between text-sm border-t border-border pt-2">
+        <span className="text-ink font-semibold">Pre-tax / gross need</span>
         <span className="text-ink font-bold tabular-nums">{formatCurrency(totalAnnualPreTax)}</span>
       </div>
-      <div className="flex justify-between text-xs">
-        <span className="text-ink-muted">Estimated PAYE</span>
-        <span className="text-ink-muted tabular-nums">{formatCurrency(computedPAYE)}</span>
+      {renewals > 0 && (
+        <div className="flex justify-between text-xs">
+          <span className="text-ink-muted">− Renewal income</span>
+          <span className="text-success tabular-nums">− {formatCurrency(renewals)}</span>
+        </div>
+      )}
+      <div className="flex justify-between items-baseline border-t border-border pt-2">
+        <span className="text-ink font-semibold text-sm">1st-year commissions required</span>
+        <span className="text-gold font-extrabold text-lg tabular-nums">{formatCurrency(commissionsRequired)}</span>
       </div>
     </div>
   );
@@ -375,7 +403,7 @@ function CommissionTargetsPanel({ worksheet, onTargetsSaved }) {
               placeholder="0"
               min={0}
               aria-label={`${label} commission target`}
-              className="w-36 h-9 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="w-36 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
           </div>
         ))}
@@ -809,11 +837,12 @@ export default function MoneyNeedsPanel() {
             </label>
           </div>
 
-          {EXPENSE_GROUPS.map(({ key, label }) => (
+          {EXPENSE_GROUPS.map(({ key, label, dot }) => (
             <ExpenseGroupAccordion
               key={key}
               groupKey={key}
               label={label}
+              dot={dot}
               group={worksheet.expenseGroups?.[key]}
               worksheetDoc={worksheet}
               onGroupSaved={handleGroupSaved}

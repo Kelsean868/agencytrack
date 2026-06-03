@@ -898,6 +898,11 @@ h1, h2, h3, h4 {
   color: white;
 }
 .sidebar-link .badge.badge-warning { background: var(--color-warning); }
+.sidebar-link .badge.badge-new {
+  background: var(--color-gold-tint);
+  color: var(--color-gold);
+  letter-spacing: 0.06em;
+}
 .sidebar-foot {
   margin-top: auto;
   padding: 14px 10px 0;
