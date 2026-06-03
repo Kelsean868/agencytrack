@@ -5,7 +5,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Over-goal MDRT marker treatment on the HeroCard (LOW, banked 2026-06-03 from HeroCard marker-label fix PR #TBD)
+## Over-goal MDRT marker treatment on the HeroCard (LOW, banked 2026-06-03 from HeroCard marker-label fix PR #436)
 
 **Context.** The HeroCard marker-label fix (`src/components/dashboard/HomeV2/HeroCard.jsx`) now **hides** the MDRT marker when it's off-scale (`MDRT_THRESHOLD > goal` — e.g. the default 200,000 goal vs the 500,000 MDRT threshold). This is correct for legibility (it was the clamp-onto-the-goal-label collision source), but it means an agent whose personal goal is below the MDRT threshold sees no MDRT reference on the hero bar at all.
 
