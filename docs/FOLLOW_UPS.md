@@ -5,6 +5,18 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Over-goal MDRT marker treatment on the HeroCard (LOW, banked 2026-06-03 from HeroCard marker-label fix PR #TBD)
+
+**Context.** The HeroCard marker-label fix (`src/components/dashboard/HomeV2/HeroCard.jsx`) now **hides** the MDRT marker when it's off-scale (`MDRT_THRESHOLD > goal` — e.g. the default 200,000 goal vs the 500,000 MDRT threshold). This is correct for legibility (it was the clamp-onto-the-goal-label collision source), but it means an agent whose personal goal is below the MDRT threshold sees no MDRT reference on the hero bar at all.
+
+**Possible treatment (if wanted).** Surface over-goal MDRT progress with its own affordance rather than omitting it — e.g. an "MDRT: TTD {ytd} / 500,000" caption below the bar, a secondary mini-bar scaled to MDRT, or a link to the Career/MDRT tracker where MDRT progress already lives. Purely additive; no change to the on-scale bar behavior shipped here.
+
+**Why LOW.** The shipped fix is correct and complete for the bug (legible, non-overlapping labels). MDRT progress is already tracked in the Career/MDRT surface, so nothing is lost — this is an optional enhancement, not a gap. Decide alongside any broader hero/MDRT design pass.
+
+**Cross-reference:** `src/components/dashboard/HomeV2/HeroCard.jsx` (`mdrtOnScale` gate); `src/constants/mdrt.js` (`MDRT_THRESHOLD = 500000`).
+
+---
+
 ## Policy Ledger v2 — deferred slices (banked 2026-06-02 from Policy Ledger v2 Slice 1 PR #432)
 
 **Status:** Slice 1 shipped the agent-surface presentational reorg (3 tiers + drill drawer, derived Confirmed, state-machine-filtered transitions, `statusToken()` token pass). The following were explicitly carved OUT of Slice 1 and remain to do.

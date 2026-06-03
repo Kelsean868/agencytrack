@@ -16,7 +16,12 @@ import { MDRT_THRESHOLD } from '../../../constants/mdrt';
 export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
   const goal = personalAnnualAPI > 0 ? personalAnnualAPI : MDRT_THRESHOLD;
   const pct = goal > 0 ? Math.min(100, Math.max(0, Math.round((ytdApi / goal) * 100))) : 0;
-  const mdrtPct = goal > 0 ? Math.min(100, Math.round((MDRT_THRESHOLD / goal) * 100)) : 0;
+  // MDRT marker renders only when on-scale (MDRT ≤ goal). When MDRT exceeds the
+  // goal it's off-scale for this bar — hide it rather than clamping it onto the
+  // goal label (the clamp was the marker/label collision). Over-goal MDRT
+  // progress is surfaced separately (Career/MDRT tracker).
+  const mdrtOnScale = goal > 0 && MDRT_THRESHOLD <= goal;
+  const mdrtPct = mdrtOnScale ? Math.round((MDRT_THRESHOLD / goal) * 100) : 0;
 
   // Weeks left in current calendar year (approximate, for the secondary copy)
   const now = new Date();
@@ -75,13 +80,23 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
               }}
             />
           </div>
-          {/* MDRT marker label */}
+          {/* MDRT marker — only when on-scale; staggered into its own band above
+              the axis endpoints so its label never collides with "Goal". */}
+          {mdrtOnScale && (
+            <div className="relative mt-2 text-[10px] font-mono tracking-wider uppercase" style={{ height: 14 }}>
+              <span
+                className="absolute top-0 whitespace-nowrap"
+                style={{ left: `${mdrtPct}%`, transform: 'translateX(-50%)', color: 'var(--color-warning)' }}
+              >
+                MDRT · {formatCurrency(MDRT_THRESHOLD)}
+              </span>
+            </div>
+          )}
+          {/* Axis endpoints — goal amount lives in the subtitle above, so the
+              end label is a bare "Goal" tick (no duplicated amount). */}
           <div className="flex justify-between items-center mt-2 text-[10px] font-mono tracking-wider uppercase text-ink-muted">
             <span>{formatCurrency(0)}</span>
-            <span style={{ position: 'relative', left: `${mdrtPct - 50}%`, color: 'var(--color-warning)' }}>
-              MDRT · {formatCurrency(MDRT_THRESHOLD)}
-            </span>
-            <span>Goal · {formatCurrency(goal)}</span>
+            <span>Goal</span>
           </div>
         </div>
       </div>
