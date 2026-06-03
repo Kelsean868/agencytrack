@@ -515,6 +515,8 @@ Pure DRY cleanup. No user-facing change. Saves ~250 lines from `AgentAwardsPanel
 
 **Cross-reference:** `src/components/awards/awardPrimitives.jsx` module header JSDoc explicitly calls out the AgentAwardsPanel-still-inline state for future readers.
 
+**Note (PR #TBD, `{TBD}` — round displayed award %):** the progress-percentage rounding fix had to be applied to BOTH the shared `awardPrimitives.jsx` and the inline copies in `AgentAwardsPanel.jsx` precisely because of this duplication — a one-site fix would have left the agent panel showing raw floats. Both now route their displayed percent through `formatAwardPct` (`src/utils/formatters.js`). This dedup FU **remains open and untouched**; once consumed, the duplicated `formatAwardPct` call sites collapse to the single shared one.
+
 ---
 
 ## Awards orphan cleanup — delete `AwardMedalCard.jsx` + `AwardMedal.jsx` + `awardIconMap.js` (LOW, banked 2026-06-01 from manager-side carve-out PR #412)

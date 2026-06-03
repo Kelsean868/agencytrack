@@ -150,6 +150,40 @@ describe('AwardDrillDrawer', () => {
   });
 });
 
+// Display-formatting guard (fix: round displayed progress percentage).
+// progressPercent arrives from the awards engine as a raw float (e.g.
+// 13.333…); every render site must whole-number it. A formatter-only test
+// is insufficient given the awardPrimitives ↔ AgentAwardsPanel duplication,
+// so this asserts against the actual rendered components.
+describe('award percent rounding (display-only)', () => {
+  const RAW_FLOAT = /\d+\.\d{3,}\s*%/;
+
+  it('AwardDonut whole-numbers a fractional percent', () => {
+    render(<AwardDonut state="contention" percent={13.333333333333334} />);
+    const node = screen.getByTestId('award-donut');
+    expect(node.textContent).toContain('13%');
+    expect(node.textContent).not.toMatch(RAW_FLOAT);
+  });
+
+  it('AwardCard whole-numbers the state pill + big percent', () => {
+    const award = {
+      id: 'p1', name: 'Persistency Bronze', prize: 'Bronze',
+      progressPercent: 9.538461538461538, eligible: false, inContention: true,
+      criteria: [{ label: 'API', target: 100, current: 9.5, met: false, unit: '' }],
+    };
+    render(<AwardCard award={award} onClick={() => {}} />);
+    const card = screen.getByTestId('award-card-p1');
+    // Both the state pill and the large percent display read "10%".
+    expect(card.textContent).toContain('10%');
+    expect(card.textContent).not.toMatch(RAW_FLOAT);
+  });
+
+  it('rounds 0.5 boundary up (half-up via Math.round)', () => {
+    render(<AwardDonut state="contention" percent={49.5} />);
+    expect(screen.getByTestId('award-donut').textContent).toContain('50%');
+  });
+});
+
 describe('GroupHeader', () => {
   it('renders label + count and accent color is threaded through', () => {
     render(<GroupHeader label="✓ Qualified" count={3} accentStyle={{ color: 'var(--color-gold)' }} />);

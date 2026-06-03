@@ -27,6 +27,12 @@ export const formatCurrency = (amount) => {
 export const formatPercent = (value, total) =>
   total > 0 ? Math.round((value / total) * 100) : 0;
 
+// Round an already-computed award progress percentage for DISPLAY only.
+// The awards engine clamps progressPercent to 0–100 as a raw float; this
+// whole-numbers it at the render layer so cards/donuts never show
+// `13.333…%`. Bar-fill widths + threshold/criterion logic keep the raw value.
+export const formatAwardPct = (pct) => Math.round(Number(pct) || 0);
+
 // Compact TTD for dense summaries (pipeline tiles, flow bar, hero):
 // 1_240 → "TTD 1.2K", 161_400 → "TTD 161.4K", 2_400_000 → "TTD 2.4M".
 export const formatCompactTTD = (amount) => {

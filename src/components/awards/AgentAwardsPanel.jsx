@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { X, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { computeAgentAwards, computeRatioTrends, computeAtRiskStatus, getPeriodCtx, nextTierDistance, isPersistencyOnlyBlock } from '../../utils/awardsEngine';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatAwardPct } from '../../utils/formatters';
 import { useAuth } from '../../context/AuthContext';
 import { getOwnPolicies, settlementShapeFromPolicies } from '../../services/policiesService';
 
@@ -26,7 +26,7 @@ function AwardDonut({ percent, state, size = 100, strokeWidth = 10 }) {
         />
       </svg>
       <span style={{ fontSize: size * 0.26, fontWeight: 700, color: accentColor, letterSpacing: '-0.025em', fontFamily: '"Cabinet Grotesk", system-ui', lineHeight: 1, position: 'relative' }}>
-        {percent}%
+        {formatAwardPct(percent)}%
       </span>
     </div>
   );
@@ -90,7 +90,7 @@ function AwardCard({ award, onClick }) {
   const isContention = !award.eligible && award.inContention;
   const accentColor = isQualified ? 'var(--color-gold)' : isContention ? 'var(--color-primary)' : 'var(--color-text-faint)';
   const pillBg      = isQualified ? 'var(--color-gold-tint)' : isContention ? 'var(--color-primary-tint)' : 'var(--color-surface-muted)';
-  const stateText   = isQualified ? 'QUALIFIED' : isContention ? `${award.progressPercent}%` : 'NOT STARTED';
+  const stateText   = isQualified ? 'QUALIFIED' : isContention ? `${formatAwardPct(award.progressPercent)}%` : 'NOT STARTED';
 
   const prim = award.criteria?.[0];
   const gapLine = isQualified ? (award.earnedDate ?? 'Earned')
@@ -120,7 +120,7 @@ function AwardCard({ award, onClick }) {
       <div>
         <div className="flex items-baseline justify-between mb-1.5">
           <span className="text-2xl font-bold" style={{ color: accentColor, fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.022em', lineHeight: 1 }}>
-            {award.progressPercent}<span className="text-sm text-ink-muted ml-0.5">%</span>
+            {formatAwardPct(award.progressPercent)}<span className="text-sm text-ink-muted ml-0.5">%</span>
           </span>
           <span className="text-[10px] text-ink-muted font-mono tracking-wide">{gapLine}</span>
         </div>
