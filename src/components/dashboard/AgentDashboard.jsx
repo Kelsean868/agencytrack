@@ -38,6 +38,7 @@ import AgentPersistencyTab from '../agent/PersistencyTab';
 import ProspectInfoPanel from '../agent/ProspectInfoPanel';
 import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
+import GamePlanScreen from './GamePlanV2';
 import CommissionPlayground from '../goals/CommissionPlayground';
 import DailyFAB from '../daily/DailyFAB';
 import AgentDashboardHomeV2 from './HomeV2';
@@ -54,8 +55,11 @@ const NAV_ITEMS = [
   { id: 'dashboard',         label: 'Dashboard',         tabId: 'dashboard',         Icon: Home,      testId: 'agent-tab-dashboard' },
   { id: 'wizard',            label: 'Weekly Report',     action: 'submit',            Icon: NotebookPen, testId: 'agent-tab-wizard' },
   { id: 'history',           label: 'History',           tabId: 'history',           Icon: History,   testId: 'agent-tab-history' },
-  // Planning
-  { id: 'money-needs',       label: 'Money Needs',       tabId: 'money-needs',       Icon: Wallet,    sectionLabel: 'Planning',     testId: 'agent-tab-money-needs' },
+  // Planning — Game Plan is the Planning parent; Money Needs nests under it as
+  // a child (still its own tabId/route). Goals stays a sibling — Game Plan will
+  // FEED Goals on commit (deferred slice), it does not nest under it.
+  { id: 'game-plan',         label: 'Game Plan',         tabId: 'game-plan',         Icon: BarChart2, sectionLabel: 'Planning', badgeNew: true, testId: 'agent-tab-game-plan' },
+  { id: 'money-needs',       label: 'Money Needs',       tabId: 'money-needs',       Icon: Wallet,    child: true,                  testId: 'agent-tab-money-needs' },
   { id: 'goals',             label: 'Goals',             tabId: 'goals',             Icon: Target,    testId: 'agent-tab-goals' },
   // Tools
   { id: 'commission',        label: 'Commission',        tabId: 'commission',        Icon: Zap,       sectionLabel: 'Tools',        testId: 'agent-tab-commission' },
@@ -578,6 +582,14 @@ export default function AgentDashboard() {
         <PolicyLedgerPanel
           initialForm={prefillPolicy}
           onPrefillConsumed={() => setPrefillPolicy(null)}
+        />
+      )}
+
+      {/* ── GAME PLAN HUB (v2 — Planning parent) ── */}
+      {activeTab === 'game-plan' && (
+        <GamePlanScreen
+          committedAnnualAPI={goals?.personalAnnualAPI ?? null}
+          onOpenTab={setActiveTab}
         />
       )}
 

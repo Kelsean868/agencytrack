@@ -3742,20 +3742,34 @@ Banked from Track H agent confirmation-surfacing PR #305 (`97a8493`).
 
 ---
 
-## Track J (V2 Redesign) — Game Plan v2 screen deferred; Money Needs re-nesting pending (LOW, banked 2026-05-30, PR #392)
+## ✅ Track J (V2 Redesign) — Game Plan v2 screen deferred; Money Needs re-nesting pending (LOW, banked 2026-05-30, PR #392) — RESOLVED {TBD} (PR #TBD)
 
-The v2 sidebar (`app-shell.jsx`) shows **Game Plan** as the parent PLANNING item with **Money Needs** nested as a child indent beneath it. The J-AD-nav PR (PR #392) deferred Game Plan and made Money Needs a top-level PLANNING item instead.
+**RESOLVED:** Game Plan v2 **Slice 1** (PR #TBD) ships the Game Plan hub shell and re-nests the nav exactly as the restore path prescribed:
+- Added `{ id: 'game-plan', label: 'Game Plan', tabId: 'game-plan', Icon: BarChart2, sectionLabel: 'Planning', badgeNew: true }` before `money-needs`.
+- Converted `money-needs` to `{ child: true }` (dropped `sectionLabel`) — still its own tabId/route, reachable as a nav child and from the hub's rail card.
+- The `game-plan` tab renders a composition-only hub (PlanAnchorStrip / StepRail / PlanCascade / disabled CommitPreviewCard) reading the EXISTING `moneyNeeds` worksheet — no new collection, write, rule, or index.
 
-**Current state post-PR #392:**
-- `money-needs` is a top-level PLANNING nav item in `AgentDashboard` NAV_ITEMS.
-- No `game-plan` / `lookahead` tab exists.
-- `GapAnalysisPanel` surfaces via the `goals` tab (not a Game Plan parent).
+**Corrected diagnosis (Rule 11):** the original restore-path note said "the `goals` tab (GapAnalysisPanel) also moves under Game Plan." That was superseded by the Slice-1 locked decision — **Goals stays a sibling under Planning**; only Money Needs nests. Game Plan will *feed* Goals on commit (a deferred slice), it does not nest it.
 
-**Restore path:** When the Game Plan screen ships (its own brief + PR), add `{ id: 'game-plan', label: 'Game Plan', tabId: 'game-plan', Icon: BarChart2, sectionLabel: 'Planning' }` before `money-needs` and convert `money-needs` to `{ child: true }` (drop `sectionLabel`). The `goals` tab (GapAnalysisPanel) also moves under Game Plan at that point per the v2 design.
+Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30. **RESOLVED: Game Plan v2 Slice 1 (PR #TBD).**
 
-**Priority:** LOW. Money Needs is fully accessible as a top-level item. No production impact. Address when the Game Plan v2 screen is designed and briefed.
+---
 
-Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30.
+## Track J (V2 Redesign) — Game Plan v2 — remaining slices (MEDIUM, banked {TBD}, PR #TBD)
+
+Game Plan v2 **Slice 1** (PR #TBD) shipped the shell + Money Needs re-home. The remaining slices each introduce **net-new data** (a new store, read, write, or user attribute) and were deliberately deferred — none is a port:
+
+- **Year Plan (allocator):** product-line split, percent/direct mode, add-line, award-eligibility calc, license-profile tabs. Needs a stored per-line allocation. → new store.
+- **License-profile user attribute:** Composite / Life-only / General-only — "not stored on the user yet." → new user field.
+- **Monthly Plan:** 12-month target-vs-actual chart, the monthly **target store** (plan) + **actual-by-month read** (production), variance + "to finish the month" suggestions. → new store + read.
+- **Review & Commit → Goals write:** the loop-close — writes personal API/apps into the 3-tier Goals system. The status pill goes live (draft → committed) only here. → new write.
+- **Manager review / suggest workflow:** the share-with-manager affordance (the NEW one — distinct from Money Needs' existing visibility toggle, which Slice 1 preserved), manager read of the shared plan, suggest-a-change + notify, plan-health banner. → new workflow.
+- **Commission Playground fold:** folding the Playground ratio engine behind Year Plan cases / retiring the standalone tab. Untouched in Slice 1 — reconcile later.
+- **Weekly/daily activity planner (Path B) — CONFIRMED derived + tracked, intended next slice:** surface the personal weekly activity derived from the plan (the Commission Playground decomposition: income → API → apps → CIs → dials → prospects, weekly/daily), **plus** set-plan / log-actual / variance / manager roll-up. Net-new store + write surface + manager roll-up. **High priority — likely the next slice after Slice 1** (possibly ahead of Year Plan; final ordering set when scoped). Distinct from the company-floor weekly minimums in `WeeklyStandardCard`.
+
+**Priority:** MEDIUM. Slice 1 is functional and honest on its own. Slices ship one brief + PR each.
+
+Banked: Game Plan v2 Slice 1 (PR #TBD), {TBD}.
 
 ---
 
