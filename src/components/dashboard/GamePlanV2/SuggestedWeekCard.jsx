@@ -166,7 +166,7 @@ export default function SuggestedWeekCard({
             <button
               type="button"
               onClick={onBuildPlan}
-              className="mt-1 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="mt-1 inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary dark:bg-primary-dark px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark dark:hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Build your Game Plan <ArrowRight size={15} aria-hidden="true" />
             </button>
