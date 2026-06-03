@@ -5,7 +5,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Policy Ledger v2 — deferred slices (banked 2026-06-02 from Policy Ledger v2 Slice 1 PR #TBD)
+## Policy Ledger v2 — deferred slices (banked 2026-06-02 from Policy Ledger v2 Slice 1 PR #432)
 
 **Status:** Slice 1 shipped the agent-surface presentational reorg (3 tiers + drill drawer, derived Confirmed, state-machine-filtered transitions, `statusToken()` token pass). The following were explicitly carved OUT of Slice 1 and remain to do.
 
