@@ -31,6 +31,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 3. **Dispute / escalate resolution-state workflow (MEDIUM).** A resolution-state machine (disputed / escalated / resolved) over the existing confirm + flag + notify. Needs a new persisted state field — out of the no-schema-change Slice 1.
 4. **Lapse-in-worklist (LOW).** Whether the BM Lapse flow merges into the reconciliation worklist (vs the kept secondary tab). Product decision.
 5. **FEEDS / campaign chips + "Export proof" (gated).** Couple reconciliation to award/campaign rollups — behind the dormant `usesPolicyLedger` flip-gate (see the H3 FLIP-GATE FU).
+6. **Bulk-confirm (MEDIUM — needs a verified-clean state first).** Slice 1 shipped per-policy confirm only. A "Confirm all clean" bulk was built then **dropped** during PR #434 review: with no persisted pre-confirm keyed figure, "clean" isn't knowable before the manager keys, so a bulk would rubber-stamp unconfirmed policies at the ledger value — recording the very discrepancies reconciliation exists to catch. Bulk-confirm returns in Slice 2 **only once a verified-clean state exists** (e.g. the manager has keyed-and-matched a set, or a structured source confirms equality), so the bulk acts on a genuinely-clean subset rather than silently agreeing with the ledger.
 
 **Explicitly NOT planned:** file ingestion / PDF parsing / OCR / auto-matching — revisit only if Tatil ships a structured settlement export. The reconciliation model is manual by data reality.
 

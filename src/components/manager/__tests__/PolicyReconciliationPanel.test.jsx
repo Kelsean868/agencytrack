@@ -137,28 +137,37 @@ describe('PolicyReconciliationPanel', () => {
     expect(screen.getAllByText(/from circular/i).length).toBeGreaterThan(0);
   });
 
-  it('at-risk hero + 3 tiles render from existing data', async () => {
+  it('pending-reconciliation hero + 3 tiles render from existing data', async () => {
     setupBM();
     hoisted.getPoliciesForManager.mockResolvedValue([makePolicy(), makePolicyB()]);
     render(<PolicyReconciliationPanel />);
-    await waitFor(() => expect(screen.getByTestId('at-risk-hero')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('pending-hero')).toBeInTheDocument());
     expect(screen.getByTestId('recon-tile-toReconcile')).toBeInTheDocument();
     expect(screen.getByTestId('recon-tile-flagged')).toBeInTheDocument();
     expect(screen.getByTestId('recon-tile-confirmed')).toBeInTheDocument();
-    // 2 unconfirmed settled in period → Clean·ready count = 2.
+    // 2 unconfirmed settled in period → "To reconcile" count = 2; hero = Σ settledAPI = TTD 13.0K.
     expect(screen.getByTestId('recon-tile-count-toReconcile')).toHaveTextContent('2');
+    expect(screen.getByTestId('pending-value')).toHaveTextContent(/TTD\s*13\.0K/);
   });
 
-  it('"Confirm all clean" bulk-confirms unconfirmed at the ledger figure when blank', async () => {
+  it('NO bulk "Confirm all clean" control — per-policy confirm only (unsafe-bulk dropped)', async () => {
     setupBM();
     hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);
     render(<PolicyReconciliationPanel />);
-    await waitFor(() => expect(screen.getByTestId('confirm-all-clean-btn')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('confirm-btn-pol-1')).toBeInTheDocument());
+    expect(screen.queryByTestId('confirm-all-clean-btn')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Confirm all/i)).not.toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByTestId('confirm-all-clean-btn'));
+  it('per-policy confirm with a blank key-in defaults to the ledger figure', async () => {
+    setupBM();
+    hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);
+    render(<PolicyReconciliationPanel />);
+    await waitFor(() => expect(screen.getByTestId('confirm-btn-pol-1')).toBeInTheDocument());
 
+    // Leave the key-in blank → Confirm → resolvedAPI defaults to the ledger settledAPI (5000).
+    fireEvent.click(screen.getByTestId('confirm-btn-pol-1'));
     await waitFor(() => expect(hoisted.confirmPolicy).toHaveBeenCalledTimes(1));
-    // resolvedAPI defaults to '5000' (the ledger settledAPI) since input is blank.
     const [, , , , resolvedAPI] = hoisted.confirmPolicy.mock.calls[0];
     expect(parseFloat(resolvedAPI)).toBe(5000);
   });

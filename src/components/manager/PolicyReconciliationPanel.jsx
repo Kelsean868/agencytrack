@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Timestamp } from 'firebase/firestore';
-import { Loader2, AlertCircle, Check, ArrowRight, RotateCcw } from 'lucide-react';
+import { AlertCircle, Check, ArrowRight, RotateCcw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getPoliciesForManager, confirmPolicy, lapsePolicy } from '../../services/policiesService';
 import { getTenantUsers } from '../../services/managerService';
@@ -11,10 +11,10 @@ import { statusToken } from '../../lib/policyStatusTokens';
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 // Reconciliation display state → shared statusToken() base role (no fork — PR #432).
-//   clean / to-reconcile → settled (success/green) · flagged → soft (warning)
-//   confirmed → gold · at-risk → hard (danger)
+//   to-reconcile (pending, unconfirmed) → in-flight (primary) · clean (keyed=ledger) → settled (success)
+//   flagged → soft (warning) · confirmed → gold
 const reconToken = (state) =>
-  statusToken({ clean: 'settled', toReconcile: 'settled', flagged: 'soft', confirmed: 'confirmed', risk: 'hard' }[state] ?? 'settled');
+  statusToken({ toReconcile: 'in-flight', clean: 'settled', flagged: 'soft', confirmed: 'confirmed' }[state] ?? 'in-flight');
 
 function buildYearOptions() {
   const current = new Date().getFullYear();
@@ -69,7 +69,6 @@ export default function PolicyReconciliationPanel() {
 
   // Per-policy confirm form state keyed by policyId
   const [formState, setFormState] = useState({});
-  const [bulkConfirming, setBulkConfirming] = useState(false);
 
   // Per-policy lapse form state
   const [lapseState, setLapseState] = useState({});
@@ -143,24 +142,6 @@ export default function PolicyReconciliationPanel() {
     else { setError(null); setTimeout(loadData, 800); }
   };
 
-  /** Confirm every unconfirmed policy at its keyed figure (blank → ledger = clean). */
-  const handleConfirmAllClean = async (toReconcile) => {
-    const pending = toReconcile.filter((p) => !formState[p.id]?.done);
-    if (pending.length === 0) return;
-    setError(null);
-    setBulkConfirming(true);
-    const errors = [];
-    for (const policy of pending) {
-      const fs = formState[policy.id];
-      const resolvedAPI = fs?.managerSettledAPI?.trim() ? fs.managerSettledAPI : String(policy.settledAPI ?? '');
-      const result = await confirmOne(policy, resolvedAPI);
-      if (result.error) errors.push(result.error);
-    }
-    setBulkConfirming(false);
-    if (errors.length > 0) setError(errors[0]);
-    setTimeout(loadData, 800);
-  };
-
   const handleLapse = async (policy) => {
     const ls = lapseState[policy.id];
     if (!ls?.dateLapsed) { setError('Date lapsed is required.'); return; }
@@ -194,16 +175,19 @@ export default function PolicyReconciliationPanel() {
   const toReconcile = periodSettled.filter((p) => !p.confirmedAt);
   const flaggedSet  = periodSettled.filter((p) => p.confirmedAt && p.hasDiscrepancy);
   const confirmedClean = periodSettled.filter((p) => p.confirmedAt && !p.hasDiscrepancy);
-  const atRisk = flaggedSet.reduce((s, p) => s + Math.abs((Number(p.settledAPI) || 0) - (Number(p.managerSettledAPI) || 0)), 0);
+  // Pending reconciliation = Σ ledger settledAPI over the UNCONFIRMED queue (the
+  // "To reconcile" set). A pre-confirmation "at-risk delta" is not knowable —
+  // hasDiscrepancy only exists after the manager keys + confirms.
+  const pendingValue = toReconcile.reduce((s, p) => s + (Number(p.settledAPI) || 0), 0);
 
   const lapseTabPolicies = allPoliciesRaw.filter((p) =>
     (p.status === 'settled' || p.status === 'lapsed') && inPeriod(p.dateIssued, selectedYear, selectedMonth),
   );
 
   const TILES = [
-    { key: 'toReconcile', label: 'Clean · ready', state: 'clean',     count: toReconcile.length,    note: 'confirm in one tap' },
-    { key: 'flagged',     label: 'Flagged',       state: 'flagged',   count: flaggedSet.length,     note: 'need a decision' },
-    { key: 'confirmed',   label: 'Confirmed',     state: 'confirmed', count: confirmedClean.length, note: 'locked this cycle' },
+    { key: 'toReconcile', label: 'To reconcile', state: 'toReconcile', count: toReconcile.length,    note: 'awaiting your confirm' },
+    { key: 'flagged',     label: 'Flagged',      state: 'flagged',     count: flaggedSet.length,     note: 'need a decision' },
+    { key: 'confirmed',   label: 'Confirmed',    state: 'confirmed',   count: confirmedClean.length, note: 'locked this cycle' },
   ];
 
   const worklist =
@@ -290,12 +274,12 @@ export default function PolicyReconciliationPanel() {
             </div>
           ) : (
             <>
-              {/* At-risk hero + tiles */}
-              <div className="card bg-card p-5 flex items-center gap-6 flex-wrap" data-testid="at-risk-hero">
+              {/* Pending-reconciliation hero + tiles */}
+              <div className="card bg-card p-5 flex items-center gap-6 flex-wrap" data-testid="pending-hero">
                 <div className="shrink-0">
-                  <p className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase text-danger">★ TTD at risk this cycle</p>
-                  <p className="font-display font-extrabold text-[34px] text-danger tracking-tight leading-none mt-1.5" data-testid="at-risk-value">{formatCompactTTD(atRisk)}</p>
-                  <p className="text-[11px] text-ink-muted mt-1.5">across {flaggedSet.length} flagged · from your keyed deltas</p>
+                  <p className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase text-primary">Pending reconciliation</p>
+                  <p className="font-display font-extrabold text-[34px] text-primary tracking-tight leading-none mt-1.5" data-testid="pending-value">{formatCompactTTD(pendingValue)}</p>
+                  <p className="text-[11px] text-ink-muted mt-1.5">across {toReconcile.length} {toReconcile.length === 1 ? 'policy' : 'policies'} · awaiting your confirm</p>
                 </div>
                 <span className="w-px self-stretch bg-border hidden sm:block" />
                 <div className="flex-1 flex gap-3 min-w-[260px]">
@@ -315,7 +299,7 @@ export default function PolicyReconciliationPanel() {
                 </div>
               </div>
 
-              {/* Filter chips + Confirm all clean */}
+              {/* Filter chips — per-policy confirm only (no bulk; see Slice-2 FU) */}
               <div className="flex items-center gap-3 flex-wrap">
                 <div className="flex gap-1 p-1 bg-surface-muted border border-border rounded-[10px]" role="tablist" aria-label="Filter reconciliation worklist">
                   {[
@@ -334,15 +318,6 @@ export default function PolicyReconciliationPanel() {
                     );
                   })}
                 </div>
-                <div className="flex-1" />
-                {toReconcile.length > 0 && (
-                  <button type="button" onClick={() => handleConfirmAllClean(toReconcile)} disabled={bulkConfirming}
-                    className="inline-flex items-center gap-2 h-10 px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50"
-                    data-testid="confirm-all-clean-btn">
-                    {bulkConfirming ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
-                    {bulkConfirming ? 'Confirming…' : `Confirm all ${toReconcile.length} clean`}
-                  </button>
-                )}
               </div>
 
               {/* Worklist */}
@@ -356,7 +331,9 @@ export default function PolicyReconciliationPanel() {
                   const keyed = isConfirmedView ? (Number(policy.managerSettledAPI) || 0) : (fs.managerSettledAPI?.trim() ? Number(fs.managerSettledAPI) : null);
                   const delta = keyed != null ? keyed - ledger : 0;
                   const flagged = isConfirmedView ? Boolean(policy.hasDiscrepancy) : (keyed != null && delta !== 0);
-                  const tok = reconToken(isConfirmedView ? (flagged ? 'flagged' : 'confirmed') : (flagged ? 'flagged' : 'clean'));
+                  const pillState = isConfirmedView ? (flagged ? 'flagged' : 'confirmed') : (keyed == null ? 'toReconcile' : flagged ? 'flagged' : 'clean');
+                  const pillLabel = isConfirmedView ? (flagged ? 'Flagged' : 'Confirmed') : (keyed == null ? 'To reconcile' : flagged ? 'Flagged' : 'Clean');
+                  const tok = reconToken(pillState);
                   const agentName = agentMap[policy.agentId] ?? policy.agentId;
 
                   return (
@@ -404,7 +381,7 @@ export default function PolicyReconciliationPanel() {
                             {keyed == null ? '—' : flagged ? `${delta > 0 ? '+' : '−'}${formatCompactTTD(Math.abs(delta)).replace('TTD ', 'TTD ')}` : '✓ match'}
                           </p>
                           <span className={`inline-flex items-center mt-1 px-2 py-0.5 rounded-full font-mono text-[9px] font-bold uppercase tracking-wide ${tok.tint} ${tok.text}`}>
-                            {isConfirmedView ? (flagged ? 'Flagged' : 'Confirmed') : (flagged ? 'Flagged' : 'Clean')}
+                            {pillLabel}
                           </span>
                         </div>
 

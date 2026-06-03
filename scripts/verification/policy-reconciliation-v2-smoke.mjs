@@ -164,7 +164,7 @@ async function loginAsBM(page) {
 async function openReconciliation(page) {
   await page.getByRole('button', { name: /Policy Reconciliation/i }).first().click();
   await page.waitForSelector('[data-testid="tab-confirm"]', { timeout: 20000 });
-  await page.waitForSelector('[data-testid="at-risk-hero"]', { timeout: 20000 });
+  await page.waitForSelector('[data-testid="pending-hero"]', { timeout: 20000 });
 }
 
 async function runTheme(page, theme) {
@@ -183,9 +183,15 @@ async function runTheme(page, theme) {
     const ok = await page.locator(`[data-testid="recon-tile-${k}"]`).first().isVisible().catch(() => false);
     if (!ok) { fail(`[${theme}] tile-${k}`); return; }
   }
-  const atRisk = await page.locator('[data-testid="at-risk-value"]').first().innerText();
-  if (/[1-9]/.test(atRisk)) pass(`[${theme}] at-risk-nonzero`, atRisk);
-  else fail(`[${theme}] at-risk-nonzero`, `value="${atRisk}"`);
+  const pending = await page.locator('[data-testid="pending-value"]').first().innerText();
+  if (/[1-9]/.test(pending)) pass(`[${theme}] pending-reconciliation-nonzero`, pending);
+  else fail(`[${theme}] pending-reconciliation-nonzero`, `value="${pending}"`);
+
+  // Unsafe bulk-confirm must NOT exist (dropped per dispatcher revision; Slice-2 FU).
+  const bulkAbsent = (await page.locator('[data-testid="confirm-all-clean-btn"]').count()) === 0
+    && !/confirm all/i.test(await page.locator('body').innerText());
+  if (bulkAbsent) pass(`[${theme}] no-bulk-confirm-control`);
+  else fail(`[${theme}] no-bulk-confirm-control`, 'a "Confirm all clean" control is present');
 
   // Honest framing: "from circular" present, "Tatil Report" absent (whole page).
   const body = await page.locator('body').innerText();
