@@ -24,7 +24,7 @@
 
 import React, { useCallback, useEffect } from 'react';
 import { X } from 'lucide-react';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatAwardPct } from '../../utils/formatters';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AwardDonut — SVG progress ring
@@ -66,7 +66,7 @@ export function AwardDonut({ percent, state, size = 100, strokeWidth = 10 }) {
         letterSpacing: '-0.025em', fontFamily: '"Cabinet Grotesk", system-ui',
         lineHeight: 1, position: 'relative',
       }}>
-        {percent}%
+        {formatAwardPct(percent)}%
       </span>
     </div>
   );
@@ -171,7 +171,7 @@ export function AwardCard({ award, onClick }) {
                    'var(--color-surface-muted)';
   const stateText =
     isQualified  ? 'QUALIFIED' :
-    isContention ? `${award.progressPercent}%` :
+    isContention ? `${formatAwardPct(award.progressPercent)}%` :
                    'NOT STARTED';
 
   const prim = award.criteria?.[0];
@@ -219,7 +219,7 @@ export function AwardCard({ award, onClick }) {
               letterSpacing: '-0.022em', lineHeight: 1,
             }}
           >
-            {award.progressPercent}<span className="text-sm text-ink-muted ml-0.5">%</span>
+            {formatAwardPct(award.progressPercent)}<span className="text-sm text-ink-muted ml-0.5">%</span>
           </span>
           <span className="text-[10px] text-ink-muted font-mono tracking-wide">{gapLine}</span>
         </div>
