@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Policy Ledger v2 — Slice 1 Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:26px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:720px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  /* semantic role legend */
+  .roles{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  .role{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:12px 13px}
+  .role .sw{width:100%;height:7px;border-radius:99px;margin-bottom:9px}
+  .role .rn{font-family:var(--display);font-weight:800;font-size:13px;letter-spacing:-.01em}
+  .role .rs{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.04em;margin-top:4px;line-height:1.5}
+  .roles-note{font-size:11.5px;color:var(--inkMute);margin-top:10px;font-style:italic}
+  .roles-note code{font-family:var(--mono);font-style:normal;font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  /* numbered marker chip */
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+
+  /* ── app frame (faithful surface render) ── */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:18px;box-shadow:0 14px 40px rgba(38,35,28,.10)}
+  .appbar{display:flex;align-items:center;gap:9px;margin-bottom:14px;padding:0 2px}
+  .appbar .dt{display:flex;gap:6px}
+  .appbar .dt i{width:9px;height:9px;border-radius:50%;background:var(--ruleStrong)}
+  .appbar .ttl{font-family:var(--display);font-weight:800;font-size:14px;margin-left:6px}
+  .appbar .crumb{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.06em}
+
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:14px}
+
+  /* tier 1 pipeline */
+  .pipe{padding:18px 20px;position:relative;overflow:hidden}
+  .pipe-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .pipe-eye{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--inkMute)}
+  .pipe-h{font-family:var(--display);font-weight:800;font-size:24px;letter-spacing:-.02em;margin-top:4px;white-space:nowrap}
+  .pipe-tot{text-align:right;flex-shrink:0}
+  .pipe-tot .l{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--inkFaint)}
+  .pipe-tot .v{font-family:var(--display);font-weight:800;font-size:26px;color:var(--teal);letter-spacing:-.022em;margin-top:3px;white-space:nowrap}
+  .pipe-tot .s{font-size:10.5px;color:var(--inkMute);margin-top:3px}
+  .tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px}
+  .tile{background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px;padding:12px 13px}
+  .tile .dot{width:7px;height:7px;border-radius:50%;margin-bottom:8px}
+  .tile .tl{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tile .tc{font-family:var(--display);font-weight:800;font-size:21px;letter-spacing:-.02em;margin-top:8px;line-height:1}
+  .tile .tt{font-family:var(--mono);font-size:10px;color:var(--inkMute);margin-top:6px}
+  /* flow bar */
+  .flow{margin-top:18px}
+  .flow-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .flow-h .l{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--inkFaint)}
+  .flow-h .r{font-size:11px;color:var(--inkMute)}
+  .flow-h .r b{color:var(--ink)}
+  .flow-bar{display:flex;height:14px;border-radius:99px;overflow:hidden;background:var(--surfaceMute);gap:2px}
+  .flow-leg{display:flex;gap:18px;margin-top:9px;flex-wrap:wrap}
+  .flow-leg span{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:10px;color:var(--inkMute);letter-spacing:.04em}
+  .flow-leg i{width:10px;height:10px;border-radius:3px}
+
+  /* tier 2 filter */
+  .filt{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+  .chips{display:flex;gap:4px;padding:4px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px}
+  .chip{padding:7px 13px;border-radius:7px;font-size:12px;font-weight:700;color:var(--inkMute);display:flex;align-items:center;gap:6px;white-space:nowrap}
+  .chip.on{background:var(--surface);color:var(--ink);border:1px solid var(--rule);box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .chip .ct{font-family:var(--mono);font-size:10px;padding:0 6px;border-radius:99px;background:transparent;color:var(--inkFaint)}
+  .chip.on .ct{background:var(--tealTint);color:var(--teal)}
+  .grow{flex:1}
+  .search{display:flex;align-items:center;gap:8px;padding:8px 13px;background:var(--surface);border:1px solid var(--rule);border-radius:9px;width:210px;font-size:12.5px;color:var(--inkFaint)}
+  .newp{padding:9px 15px;background:var(--teal);color:#fff;border-radius:9px;font-size:12.5px;font-weight:700;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 6px color-mix(in srgb,var(--teal) 27%,transparent)}
+
+  /* tier 3 cards */
+  .feed{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+  .pcard{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:15px 17px 13px}
+  .pcard.active{border-color:color-mix(in srgb,var(--teal) 55%,transparent);box-shadow:0 0 0 1px color-mix(in srgb,var(--teal) 20%,transparent)}
+  .pc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .pc-own{font-size:15px;font-weight:700;letter-spacing:-.005em}
+  .pc-no{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--inkMute);margin-left:9px}
+  .pc-no.pending{color:var(--warning)}
+  .pc-plan{font-size:11px;color:var(--inkMute);margin-top:3px}
+  .pill{padding:3px 9px;border-radius:99px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap}
+  /* mini lifecycle */
+  .mini{display:flex;align-items:center;gap:3px;margin-bottom:10px}
+  .mini .md{width:8px;height:8px;border-radius:50%}
+  .mini .ml{width:14px;height:1.5px}
+  .pc-detail{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  .pc-api{font-family:var(--display);font-weight:800;font-size:17px;letter-spacing:-.012em;line-height:1}
+  .pc-sub{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.08em;margin-top:3px}
+  .pc-div{width:1px;height:22px;background:var(--rule)}
+  .pc-meta .v{font-size:11.5px}
+  .pc-meta .k{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.08em;margin-top:3px}
+  .pc-act{padding:6px 12px;border-radius:8px;font-size:11.5px;font-weight:700;display:inline-flex;align-items:center;gap:5px;background:var(--tealTint);color:var(--teal);border:1px solid color-mix(in srgb,var(--teal) 20%,transparent)}
+  .pc-date{font-family:var(--mono);font-size:10.5px;color:var(--inkFaint)}
+
+  /* ── two-col annotated sections ── */
+  .split{display:grid;grid-template-columns:1.15fr .85fr;gap:26px;align-items:start;margin-top:8px}
+  .annocol{display:flex;flex-direction:column;gap:12px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13.5px;font-weight:700}
+  .anno .ad{font-size:12.5px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.lock{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 28%,transparent)}
+  .anno.lock .mk{background:var(--teal)}
+  .anno.lock .ad b{color:var(--tealDark)}
+
+  /* drill drawer render */
+  .drawer{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+  .dw-head{padding:18px 20px 16px;border-bottom:1px solid var(--rule)}
+  .dw-eye{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--teal)}
+  .dw-own{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.018em;margin-top:6px}
+  .dw-no{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--inkMute);margin-left:9px}
+  .dw-plan{font-size:12px;color:var(--inkMute);margin-top:6px}
+  .dw-statline{display:flex;align-items:center;gap:12px;margin-top:13px}
+  .dw-api{font-family:var(--display);font-weight:800;font-size:21px;color:var(--teal);letter-spacing:-.022em;line-height:1}
+  .dw-body{padding:16px 20px}
+  .dw-lab{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--inkMute);margin-bottom:12px}
+  /* lifecycle bar */
+  .life{display:flex;align-items:flex-start;gap:0}
+  .life .stage{display:flex;flex-direction:column;align-items:center;width:80px;flex-shrink:0;position:relative}
+  .life .node{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+  .life .node.done{background:var(--teal);color:#fff}
+  .life .node.cur{background:var(--gold);box-shadow:0 0 0 4px var(--goldTint)}
+  .life .node.cur i{width:8px;height:8px;border-radius:50%;background:#fff;display:block}
+  .life .node.future{background:var(--surface);border:1.5px solid var(--inkDim)}
+  .life .sl{font-size:11px;font-weight:700;margin-top:8px;letter-spacing:.01em}
+  .life .sd{font-family:var(--mono);font-size:9px;color:var(--inkFaint);margin-top:2px}
+  .life .deriv{font-family:var(--mono);font-size:7.5px;font-weight:700;letter-spacing:.08em;color:var(--gold);background:var(--goldTint);padding:1px 5px;border-radius:99px;margin-top:4px}
+  .life .conn{flex:1;height:2px;margin-top:13px}
+  /* details grid */
+  .dgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+  .dcell{padding:9px 11px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px}
+  .dcell .k{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--inkFaint);letter-spacing:.1em}
+  .dcell .v{font-size:12px;font-weight:600;margin-top:3px}
+  /* transition footer */
+  .dw-foot{padding:14px 20px;border-top:1px solid var(--rule);background:var(--surfaceSoft)}
+  .dw-next{font-size:11.5px;color:var(--inkMute);margin-bottom:10px}
+  .splitbtn{display:flex;align-items:stretch;border-radius:9px;overflow:hidden;width:fit-content;box-shadow:0 2px 6px color-mix(in srgb,var(--teal) 27%,transparent)}
+  .splitbtn .pri{padding:10px 15px;background:var(--teal);color:#fff;font-size:12.5px;font-weight:700}
+  .splitbtn .sep{width:1px;background:rgba(255,255,255,.25)}
+  .splitbtn .drop{padding:10px 11px;background:var(--teal);color:#fff;display:flex;align-items:center}
+  .ddmenu{margin-top:9px;width:280px;background:var(--surface);border:1px solid var(--ruleStrong);border-radius:11px;padding:6px;box-shadow:0 12px 28px rgba(38,35,28,.16)}
+  .ddmenu .dh{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.14em;color:var(--inkFaint);padding:8px 11px 6px}
+  .ddmenu .opt{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px}
+  .ddmenu .opt .od{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .ddmenu .opt .on{font-size:12.5px;font-weight:700}
+  .ddmenu .opt .oss{font-size:10.5px;color:var(--inkMute);margin-top:1px}
+  .ddmenu .gone{margin-top:5px;padding:8px 11px;border-top:1px dashed var(--rule);font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);display:flex;align-items:center;gap:7px}
+  .ddmenu .gone s{color:var(--danger);opacity:.8}
+
+  /* deferred red-flag */
+  .deferbox{background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:14px;padding:18px 20px;margin-top:8px}
+  .deferbox .dt{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);margin-bottom:5px;display:flex;align-items:center;gap:8px}
+  .deferbox .dsub{font-size:12.5px;color:var(--ink);margin-bottom:14px;text-wrap:pretty}
+  .defgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .defitem{background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 22%,transparent);border-radius:10px;padding:12px 14px}
+  .defitem .dn{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .defitem .dn::before{content:'✕';color:var(--danger);font-weight:700;font-size:11px}
+  .defitem .dd{font-size:11.5px;color:var(--inkMute);margin-top:4px;text-wrap:pretty}
+
+  /* not-drawn states */
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:16px 14px;min-height:150px;display:flex;flex-direction:column;gap:10px}
+  /* skeleton */
+  .skel{background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;padding:13px;display:flex;flex-direction:column;gap:8px}
+  .shimmer{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  /* empty */
+  .empty,.errs{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;padding:8px}
+  .empty .ic{width:42px;height:42px;border-radius:12px;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .empty .et{font-family:var(--display);font-weight:800;font-size:15px}
+  .empty .ed{font-size:11.5px;color:var(--inkMute)}
+  .empty .eb{margin-top:4px;padding:8px 14px;background:var(--teal);color:#fff;border-radius:9px;font-size:12px;font-weight:700}
+  .errs .ic{width:42px;height:42px;border-radius:12px;background:var(--dangerTint);color:var(--danger);display:flex;align-items:center;justify-content:center;font-size:20px}
+  .errs .eb{margin-top:4px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden;margin-top:8px}
+  .crow{display:grid;grid-template-columns:180px 1fr;gap:14px;padding:11px 16px;border-top:1px solid var(--rule)}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd b{color:var(--ink);font-weight:600}
+
+  .scope{display:flex;gap:13px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:13px;padding:15px 18px;margin-top:22px}
+  .scope .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scope p{font-size:13px;color:var(--ink);text-wrap:pretty}
+  .scope b{font-weight:700}
+
+  @media(max-width:1000px){.split{grid-template-columns:1fr}.roles{grid-template-columns:repeat(3,1fr)}.defgrid{grid-template-columns:1fr}.states{grid-template-columns:1fr}.tiles{grid-template-columns:repeat(3,1fr)}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Policy Ledger v2 · Slice 1 — Build annotation</div>
+      <h1>Agent ledger — presentational reorg, decisions baked in.</h1>
+      <p class="subt">The three tiers + drill drawer, restyled from the shipped ledger. <b>No new policy fields, no new reads, no awards path.</b> The mockup's wrong bits are already corrected here: <code style="font-family:var(--mono);font-size:12px">confirmed</code> is a derived dot, transitions obey the real state machine, Lapsed is gone, awards framing is neutralized, and the Lens is deferred.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />POLICY LEDGER · SLICE 1<br />AGENT SURFACE · DESKTOP<br />REV 2026-06-02</div>
+  </header>
+
+  <!-- SEMANTIC ROLE LEGEND -->
+  <div class="secttl">Semantic status roles — one <code style="font-family:var(--mono);text-transform:none;letter-spacing:0;color:var(--tealDark)">statusToken()</code> helper</div>
+  <div class="roles">
+    <div class="role"><div class="sw" style="background:var(--teal)"></div><div class="rn">In-flight</div><div class="rs">submitted · rated</div></div>
+    <div class="role"><div class="sw" style="background:var(--success)"></div><div class="rn">Settled</div><div class="rs">settled<br>(awaiting confirm)</div></div>
+    <div class="role"><div class="sw" style="background:var(--gold)"></div><div class="rn">Confirmed</div><div class="rs">confirmed<br>(derived)</div></div>
+    <div class="role"><div class="sw" style="background:var(--warning)"></div><div class="rn">Soft exception</div><div class="rs">postponed</div></div>
+    <div class="role"><div class="sw" style="background:var(--danger)"></div><div class="rn">Hard exception</div><div class="rs">ntu · denied</div></div>
+    <div class="role"><div class="sw" style="background:var(--inkFaint)"></div><div class="rn">Closed</div><div class="rs">lapsed (BM-set)</div></div>
+  </div>
+  <div class="roles-note">Express colors as these <b>roles</b>, not hex — each maps through one <code>statusToken(role) → {fg, bg}</code> helper. The real Nexus token binding (primary / success / gold / warning / danger / ink-faint + tints) is <b>verified at build time</b>; this sheet asserts the roles, not the token names.</div>
+
+  <!-- THE SURFACE -->
+  <div class="secttl">The surface — three tiers</div>
+  <div class="appframe">
+    <div class="appbar"><div class="dt"><i></i><i></i><i></i></div><span class="ttl">Policy Ledger</span><span class="crumb">· MARSHA SINGH · 6 POLICIES · YTD 2026</span></div>
+
+    <!-- TIER 1 -->
+    <div class="card pipe">
+      <div class="pipe-head">
+        <div>
+          <div class="pipe-eye"><span class="mk" style="margin-right:7px">1</span>Your policy pipeline</div>
+          <div class="pipe-h">6 policies in motion</div>
+        </div>
+        <div class="pipe-tot">
+          <div class="l">TOTAL · YTD</div>
+          <div class="v">TTD 161.4K</div>
+          <div class="s">TTD 75K in flight</div>
+        </div>
+      </div>
+      <div class="tiles">
+        <div class="tile"><div class="dot" style="background:var(--teal)"></div><div class="tl">SUBMITTED</div><div class="tc">1</div><div class="tt">TTD 24.0K</div></div>
+        <div class="tile"><div class="dot" style="background:var(--teal)"></div><div class="tl">RATED</div><div class="tc">2</div><div class="tt">TTD 51.0K</div></div>
+        <div class="tile"><div class="dot" style="background:var(--success)"></div><div class="tl">AWAITING CONFIRM</div><div class="tc">1</div><div class="tt">TTD 21.6K</div></div>
+        <div class="tile" style="position:relative"><span class="mk" style="position:absolute;top:-9px;right:-7px">2</span><div class="dot" style="background:var(--gold)"></div><div class="tl">CONFIRMED</div><div class="tc">1</div><div class="tt">TTD 48.0K</div></div>
+        <div class="tile"><div class="dot" style="background:var(--inkFaint)"></div><div class="tl">CLOSED · LAPSED</div><div class="tc">1</div><div class="tt">TTD 16.8K</div></div>
+      </div>
+      <div class="flow">
+        <div class="flow-h"><div class="l">POLICY FLOW · ACTIVE BOOK</div><div class="r"><b>TTD 75K</b> in flight · push these to settle</div></div>
+        <div class="flow-bar">
+          <div style="width:33%;background:linear-gradient(90deg,var(--gold),#d6a94a)"></div>
+          <div style="width:15%;background:linear-gradient(90deg,var(--tealDark),var(--teal))"></div>
+          <div style="width:52%;background:var(--inkDim)"></div>
+        </div>
+        <div class="flow-leg">
+          <span><i style="background:var(--gold)"></i>CONFIRMED VALUE · <b style="color:var(--ink)">TTD 48.0K</b> · 33%</span>
+          <span><i style="background:var(--teal)"></i>AWAITING CONFIRM · <b style="color:var(--ink)">TTD 21.6K</b> · 15%</span>
+          <span><i style="background:var(--inkDim)"></i>IN FLIGHT · <b style="color:var(--ink)">TTD 75.0K</b> · 52%</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TIER 2 -->
+    <div class="filt">
+      <span class="mk">3</span>
+      <div class="chips">
+        <div class="chip on">All <span class="ct">6</span></div>
+        <div class="chip">In flight <span class="ct">4</span></div>
+        <div class="chip">Action needed <span class="ct">1</span></div>
+        <div class="chip">Confirmed <span class="ct">1</span></div>
+        <div class="chip">Closed <span class="ct">1</span></div>
+      </div>
+      <div class="grow"></div>
+      <div class="search">⌕ Search owner, plan…</div>
+      <div class="newp">＋ New policy</div>
+    </div>
+
+    <!-- TIER 3 -->
+    <div class="feed">
+      <!-- submitted -->
+      <div class="pcard">
+        <div class="pc-top">
+          <div><span class="pc-own">Anjali Persaud</span><span class="pc-no pending"># PENDING</span><div class="pc-plan">Tatil Whole Life Premier</div></div>
+          <span class="pill" style="background:var(--tealTint);color:var(--teal)">SUBMITTED</span>
+        </div>
+        <div class="mini">
+          <span class="md" style="background:var(--gold);box-shadow:0 0 6px color-mix(in srgb,var(--gold) 55%,transparent)"></span><span class="ml" style="background:var(--inkDim);opacity:.35"></span>
+          <span class="md" style="background:transparent;border:1.5px solid var(--inkDim)"></span><span class="ml" style="background:var(--inkDim);opacity:.35"></span>
+          <span class="md" style="background:transparent;border:1.5px solid var(--inkDim)"></span><span class="ml" style="background:var(--inkDim);opacity:.35"></span>
+          <span class="md" style="background:transparent;border:1.5px solid var(--inkDim)"></span>
+        </div>
+        <div class="pc-detail">
+          <div><div class="pc-api">TTD 24.0K</div><div class="pc-sub">API · TTD 2.0K/M</div></div>
+          <div class="pc-div"></div>
+          <div class="pc-meta"><div class="v">Referral</div><div class="k">SOURCE</div></div>
+          <div class="pc-div"></div>
+          <div class="pc-meta"><div class="v">TTD 500</div><div class="k">CASH W/ APP</div></div>
+          <div class="grow"></div>
+          <div class="pc-act">Move to Rated →</div>
+          <div class="pc-date">14 Nov</div>
+        </div>
+      </div>
+      <!-- rated · active -->
+      <div class="pcard active">
+        <div class="pc-top">
+          <div><span class="pc-own">Kareem Mohammed</span><span class="pc-no">#TL-2026-08503</span><div class="pc-plan">Platinum Edge</div></div>
+          <div style="display:flex;align-items:center;gap:9px"><span class="mk">4</span><span class="pill" style="background:var(--tealTint);color:var(--teal)">RATED</span></div>
+        </div>
+        <div class="mini">
+          <span class="md" style="background:var(--teal)"></span><span class="ml" style="background:var(--teal)"></span>
+          <span class="md" style="background:var(--gold);box-shadow:0 0 6px color-mix(in srgb,var(--gold) 55%,transparent)"></span><span class="ml" style="background:var(--inkDim);opacity:.35"></span>
+          <span class="md" style="background:transparent;border:1.5px solid var(--inkDim)"></span><span class="ml" style="background:var(--inkDim);opacity:.35"></span>
+          <span class="md" style="background:transparent;border:1.5px solid var(--inkDim)"></span>
+        </div>
+        <div class="pc-detail">
+          <div><div class="pc-api">TTD 32.4K</div><div class="pc-sub">API · TTD 2.7K/M</div></div>
+          <div class="pc-div"></div>
+          <div class="pc-meta"><div class="v">Social · IG</div><div class="k">SOURCE</div></div>
+          <div class="pc-div"></div>
+          <div class="pc-meta"><div class="v">TTD 800</div><div class="k">CASH W/ APP</div></div>
+          <div class="grow"></div>
+          <div class="pc-act">Move to Settled →</div>
+          <div class="pc-date">24 Oct</div>
+        </div>
+      </div>
+      <!-- confirmed -->
+      <div class="pcard">
+        <div class="pc-top">
+          <div><span class="pc-own">Naomi Hosein</span><span class="pc-no">#TL-2026-08245</span><div class="pc-plan">Platinum Edge</div></div>
+          <span class="pill" style="background:var(--goldTint);color:var(--gold)">CONFIRMED</span>
+        </div>
+        <div class="mini">
+          <span class="md" style="background:var(--teal)"></span><span class="ml" style="background:var(--teal)"></span>
+          <span class="md" style="background:var(--teal)"></span><span class="ml" style="background:var(--teal)"></span>
+          <span class="md" style="background:var(--teal)"></span><span class="ml" style="background:var(--teal)"></span>
+          <span class="md" style="background:var(--gold);box-shadow:0 0 6px color-mix(in srgb,var(--gold) 55%,transparent)"></span>
+        </div>
+        <div class="pc-detail">
+          <div><div class="pc-api">TTD 48.0K</div><div class="pc-sub">API · TTD 4.0K/M</div></div>
+          <div class="pc-div"></div>
+          <div class="pc-meta"><div class="v">Referral</div><div class="k">SOURCE</div></div>
+          <div class="pc-div"></div>
+          <div class="pc-meta"><div class="v">Confirmed by manager</div><div class="k">T. RAMCHARAN · 14 OCT</div></div>
+          <div class="grow"></div>
+          <div class="pc-date">2 Aug</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TIER ANNOTATIONS -->
+  <div class="split" style="margin-top:18px">
+    <div class="annocol">
+      <div class="anno"><span class="mk">1</span><div><div class="at">Tier 1 · Pipeline strip — client-derived</div><div class="ad">Counts + Σ TTD per stage and the YTD hero are <b>aggregated from the existing policy list</b> — no new reads. Pure presentational compute.</div></div></div>
+      <div class="anno lock"><span class="mk">2</span><div><div class="at">“Confirmed” stage — derived, not stored</div><div class="ad"><b>LOCKED:</b> render Confirmed as the 4th stage/tile, but it's a <b>derived display state</b> from the manager-confirmation fields — <b>not</b> a new <code>status</code> enum value. Don't add it to the policy state machine.</div></div></div>
+      <div class="anno lock"><span class="mk">2</span><div><div class="at">Neutral labels</div><div class="ad"><b>LOCKED:</b> the flow segment reads <b>“Confirmed value”</b> (not “Commissionable”); the card/drawer reads <b>“Confirmed by manager”</b> (not “locked in for awards + persistency”). No surface asserts an awards feed.</div></div></div>
+      <div class="anno"><span class="mk">3</span><div><div class="at">Tier 2 · Filter + New policy</div><div class="ad">Chips All · In flight · Action needed (=settled) · Confirmed · Closed + search. <b>“New policy”</b> opens the existing create form unchanged; preserve the Prospect Prep → “Log Policy” prefill.</div></div></div>
+      <div class="anno"><span class="mk">4</span><div><div class="at">Tier 3 · Policy card + MiniLifecycle</div><div class="ad">Restyle of today's cards. <code># PENDING</code> when no policy number. MiniLifecycle dots use the <b>semantic roles</b>. The contextual action (“Move to Rated”, “Pending manager”) is display; the real mutation lives in the drawer.</div></div></div>
+    </div>
+    <div class="annocol">
+      <div class="anno" style="background:var(--surfaceSoft)"><span class="mk" style="background:var(--inkFaint)">i</span><div><div class="at">What changes vs today</div><div class="ad">Inline card-expand → <b>drill drawer</b> (next section). Status-transition modal → <b>in-drawer split-button</b>. Everything else (create form, history data, status machine, services) is unchanged underneath the skin.</div></div></div>
+      <div class="anno" style="background:var(--surfaceSoft)"><span class="mk" style="background:var(--inkFaint)">i</span><div><div class="at">Sample math (for reference)</div><div class="ad">6 policies · YTD Σ = TTD 161.4K · in-flight (submitted+rated) = TTD 75K · flow active book = confirmed 48K / settled 21.6K / in-flight 75K.</div></div></div>
+    </div>
+  </div>
+
+  <!-- DRILL DRAWER -->
+  <div class="secttl">Tier 3 · drill drawer — lifecycle &amp; state-machine-filtered transition</div>
+  <div class="split">
+    <div class="drawer">
+      <div class="dw-head">
+        <div class="dw-eye">Policy · Life</div>
+        <div style="margin-top:6px"><span class="dw-own">Kareem Mohammed</span><span class="dw-no">#TL-2026-08503</span></div>
+        <div class="dw-plan">Platinum Edge · Universal Life</div>
+        <div class="dw-statline"><span class="pill" style="background:var(--tealTint);color:var(--teal)">RATED</span><span class="dw-api">TTD 32.4K</span><span style="font-family:var(--mono);font-size:10px;color:var(--inkFaint)">API</span></div>
+      </div>
+      <div class="dw-body">
+        <div class="dw-lab">Lifecycle</div>
+        <div class="life">
+          <div class="stage"><div class="node done">✓</div><div class="sl" style="color:var(--teal)">Submitted</div><div class="sd">24 Oct</div></div>
+          <div class="conn" style="background:var(--teal)"></div>
+          <div class="stage"><div class="node cur"><i></i></div><div class="sl" style="color:var(--gold)">Rated</div><div class="sd">4 Nov</div></div>
+          <div class="conn" style="background:var(--inkDim);opacity:.35"></div>
+          <div class="stage"><div class="node future"></div><div class="sl" style="color:var(--inkFaint)">Settled</div><div class="sd">—</div></div>
+          <div class="conn" style="background:var(--inkDim);opacity:.35"></div>
+          <div class="stage"><div class="node future"></div><div class="sl" style="color:var(--inkFaint)">Confirmed</div><div class="sd">—</div><div class="deriv">DERIVED</div></div>
+        </div>
+
+        <div class="dw-lab" style="margin-top:20px">Details</div>
+        <div class="dgrid">
+          <div class="dcell"><div class="k">PRODUCT</div><div class="v">Universal Life · Platinum Edge</div></div>
+          <div class="dcell"><div class="k">PREMIUM</div><div class="v">TTD 2.7K/M</div></div>
+          <div class="dcell"><div class="k">SOURCE</div><div class="v">Social · IG</div></div>
+          <div class="dcell"><div class="k">CASH W/ APP</div><div class="v">TTD 800</div></div>
+        </div>
+      </div>
+      <div class="dw-foot">
+        <div class="dw-next">Next step: settled</div>
+        <div class="splitbtn"><div class="pri">Move to Settled</div><div class="sep"></div><div class="drop">▾</div></div>
+        <div class="ddmenu">
+          <div class="dh">OTHER STATUS · ALLOWED FROM “RATED”</div>
+          <div class="opt"><span class="od" style="background:var(--danger)"></span><div style="flex:1"><div class="on">Not Taken Up</div><div class="oss">Client withdrew the application</div></div><span class="pill" style="background:var(--dangerTint);color:var(--danger)">NTU</span></div>
+          <div class="gone"><s>✕ Postponed · Denied · Lapsed</s> — not reachable from Rated</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="annocol">
+      <div class="anno"><span class="mk">5</span><div><div class="at">Lifecycle bar — derived Confirmed dot</div><div class="ad">Submitted ✓ → Rated (current) → Settled → Confirmed. The 4th node carries a <b>DERIVED</b> tag: it lights from manager-confirmation fields, never from a stored <code>confirmed</code> status.</div></div></div>
+      <div class="anno lock"><span class="mk">6</span><div><div class="at">Transition control is state-machine-filtered</div><div class="ad"><b>LOCKED:</b> options are computed from the <i>current</i> status, not a static list. From <code>rated</code> the machine allows only <b>→ Settled</b> (primary) and <b>→ NTU</b> (dropdown). Postponed/Denied are unreachable from Rated and omitted.</div></div></div>
+      <div class="anno lock"><span class="mk">6</span><div><div class="at">Lapsed is absent — BM-only</div><div class="ad"><b>LOCKED:</b> <code>settled → lapsed</code> is a Branch-Manager action. <b>Lapsed never renders on the agent surface</b> — not in this dropdown, not anywhere in the agent ledger.</div></div></div>
+      <div class="anno"><span class="mk">7</span><div><div class="at">Details + history</div><div class="ad">Details grid + append-only history timeline read existing fields/subcollection. The transition writes through the <b>existing</b> status-transition logic (transition-specific fields unchanged); only the chrome moved into the drawer.</div></div></div>
+      <div class="anno lock"><span class="mk">8</span><div><div class="at">Confirmed footer copy</div><div class="ad"><b>LOCKED:</b> a confirmed policy reads <b>“Confirmed by {manager} · {date}”</b> — no “locked for awards + persistency”. States ledger fact only.</div></div></div>
+    </div>
+  </div>
+
+  <!-- DEFERRED -->
+  <div class="secttl">Deferred — not in this slice</div>
+  <div class="deferbox">
+    <div class="dt">⚑ Cut from Slice 1 — dormant awards path (<code style="font-family:var(--mono);text-transform:none;letter-spacing:0;color:var(--danger)">usesPolicyLedger</code> OFF)</div>
+    <div class="dsub">Each of these <b>asserts the ledger feeds awards/campaigns</b> — exactly the path that's gated OFF pending parity. They are not “display-only”; they render eligibility outcomes. Build none of them in Slice 1.</div>
+    <div class="defgrid">
+      <div class="defitem"><div class="dn">Campaign “Lens” mode</div><div class="dd">CampaignProgressStrip (progress %, counts, target) — needs a campaign-eligibility engine + the live awards path.</div></div>
+      <div class="defitem"><div class="dn">Contribution badges</div><div class="dd">COUNTS / PENDING / EXCLUDED per-policy chips — per-policy award-contribution compute.</div></div>
+      <div class="defitem"><div class="dn">FEEDS chips</div><div class="dd">“★ MDRT 2026 / Christmas Campaign” linkage — couples a policy to award/campaign rollups.</div></div>
+      <div class="defitem"><div class="dn">“Export proof”</div><div class="dd">Campaign-proof export artifact — depends on the Lens compute above.</div></div>
+    </div>
+  </div>
+
+  <!-- NOT-DRAWN STATES -->
+  <div class="secttl">Not drawn in the mockup — spec’d here</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk" style="background:var(--inkFaint)">S</span>Skeleton · loading</div>
+      <div class="sc-b">
+        <div class="skel"><div class="shimmer" style="width:40%"></div><div class="shimmer" style="width:70%"></div><div class="shimmer" style="width:55%;height:14px"></div></div>
+        <div class="skel"><div class="shimmer" style="width:50%"></div><div class="shimmer" style="width:65%"></div></div>
+      </div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk" style="background:var(--inkFaint)">E</span>Empty</div>
+      <div class="sc-b"><div class="empty"><div class="ic">＋</div><div class="et">No policies yet</div><div class="ed">Your written business will show here as a live pipeline.</div><div class="eb">＋ Log a policy</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk" style="background:var(--inkFaint)">!</span>Error</div>
+      <div class="sc-b"><div class="errs"><div class="ic">!</div><div class="et" style="font-family:var(--display);font-weight:800;font-size:15px">Couldn’t load your ledger</div><div class="ed" style="font-size:11.5px;color:var(--inkMute)">Check your connection and try again.</div><div class="eb">↻ Retry</div></div></div>
+    </div>
+  </div>
+
+  <!-- COMPONENT LIST -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · Slice-1 scope</div></div>
+    <div class="crow"><div class="cn">PolicyLedgerScreen</div><div class="cd">AppShell <code>active='ledger'</code> container. Wraps the shipped <b>PolicyLedgerPanel</b> logic; adds loading/empty/error states.</div></div>
+    <div class="crow"><div class="cn">PipelineStrip</div><div class="cd">Tier 1 — stage tiles + YTD hero + flow bar. <b>Client-derived</b> from policies; “Confirmed value” label.</div></div>
+    <div class="crow"><div class="cn">FilterRow</div><div class="cd">Tier 2 — chips + search + New policy (opens existing create form).</div></div>
+    <div class="crow"><div class="cn">PolicyCard + MiniLifecycle</div><div class="cd">Tier 3 — restyled row; lifecycle dots via <code>statusToken()</code>.</div></div>
+    <div class="crow"><div class="cn">PolicyDrillDrawer</div><div class="cd">Slide-over: LifecycleBar (derived Confirmed) + details + history + transition footer.</div></div>
+    <div class="crow"><div class="cn">TransitionSplitButton</div><div class="cd"><b>State-machine-filtered</b> options; Lapsed excluded; writes through existing transition logic.</div></div>
+    <div class="crow"><div class="cn">statusToken(role)</div><div class="cd">Single helper mapping the 6 semantic roles → {fg,bg}. Replaces raw palette chips.</div></div>
+  </div>
+
+  <div class="scope"><span class="tag">Slice rule</span><p><b>Presentational reorg only.</b> Existing policy schema &amp; keys, existing create form, existing status machine + transition fields, existing history subcollection — all unchanged. The <b>only</b> non-presentational requirements are the four locked corrections (derived Confirmed · state-machine-filtered transitions · Lapsed absent · neutral labels) and the three added states. Manager reconciliation, the Lens, and any awards coupling are <b>out</b>.</p></div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>
