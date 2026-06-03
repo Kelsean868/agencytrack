@@ -27,6 +27,16 @@ export const formatCurrency = (amount) => {
 export const formatPercent = (value, total) =>
   total > 0 ? Math.round((value / total) * 100) : 0;
 
+// Compact TTD for dense summaries (pipeline tiles, flow bar, hero):
+// 1_240 → "TTD 1.2K", 161_400 → "TTD 161.4K", 2_400_000 → "TTD 2.4M".
+export const formatCompactTTD = (amount) => {
+  const num = parseFloat(amount ?? 0) || 0;
+  const abs = Math.abs(num);
+  if (abs >= 1_000_000) return `TTD ${(num / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000)     return `TTD ${(num / 1_000).toFixed(1)}K`;
+  return `TTD ${num.toLocaleString('en-TT', { maximumFractionDigits: 0 })}`;
+};
+
 export const formatDateDisplay = (isoString) => {
   if (!isoString) return '';
   const [yyyy, mm, dd] = isoString.split('-');
