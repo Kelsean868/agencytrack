@@ -565,9 +565,11 @@ Also notable: `AutosaveChip` replaces `SaveStatusIndicator` with a pill-style ch
 
 ---
 
-## Track J — Cyril branch rich seed (LOW, banked 2026-06-01 from PR #411 live-smoke aftermath)
+## ~~Track J — Cyril branch rich seed~~ (SUPERSEDED — demo-surfaces seed PR #TBD, `{TBD}`, 2026-06-03)
 
-**Status:** OPTIONAL — current honest-empty is sufficient for the SM picker proof.
+**Status:** SUPERSEDED. The demo-surfaces seed (`functions/scripts/seed-demo-surfaces.cjs`, PR #TBD) now seeds **goals + policies** for the 3 real Cyril agents (and every other real agent) — partial Cyril enrichment shipped. The original FU's core remainder (Cyril **submissions** for the cross-branch leaderboard comparison) is **re-banked precisely** as "Track J — Cyril agents lack seeded submissions" below. Original banking content retained for the trail.
+
+**Status (original):** OPTIONAL — current honest-empty is sufficient for the SM picker proof.
 
 PR #411's live smoke proved the SM all-branches picker re-reads per branch by demonstrating the contrast between `tatil_south` (populated podium · 6 agents · the PR #410 seed) and `Cyril Murray Branch` (honest empty-state · 3 agents · no submissions). The empty-state demo is correct + honest, but it would be more useful for Tatil-demo prep to have BOTH branches populated so the SM picker shows a side-by-side production comparison.
 
@@ -588,6 +590,22 @@ The honest empty-state is the correct production behavior (no submissions ≠ no
 3. Live run via `--execute --i-confirm-prod-write`, then `recomputeLeaderboardOnDemand`, then verify via the existing `scripts/verification/seed-verify.mjs` harness extended for Cyril.
 
 Cross-reference: PR #410 (`2b3c0cb`); seed script header comment block preserves the Cyril design.
+
+---
+
+## Track J — Cyril agents have goals + policies but no seeded submissions (LOW, banked 2026-06-03 from demo-surfaces seed PR #TBD)
+
+**Status:** OPTIONAL demo-prep polish (re-banked from the superseded "Cyril branch rich seed" FU above).
+
+The demo-surfaces seed (`seed-demo-surfaces.cjs`) gives the **3 real Cyril agents** (`ljbBHP1g7lbZXvHlpcDn`: PR-D Smoke Agent 2/3/4) personal **goals + policies**, so their agent dashboards / Policy Ledgers look alive. But **submissions** for Cyril are still NOT seeded — `seed-leaderboard-test-data.cjs` only resolves the `tatil_south` agents (its Cyril path keys on the absent `@agencytrack.test` roster). So the SM cross-branch leaderboard comparison still shows Cyril empty.
+
+**What this FU buys:** populate Cyril's leaderboard so the SM all-branches picker shows a real side-by-side comparison (vs. populated-vs-empty).
+
+**Scope when dispatched:** extend `seed-leaderboard-test-data.cjs`'s roster resolution to cover Cyril's **real** agents by UID/name (the 3 PR-D smoke agents — NOT the absent `@agencytrack.test` roster), with a deliberately different ranking shape than `tatil_south`; dispatcher pre-reviews the dry-run; live `--execute --i-confirm-prod-write`; recompute; verify. This is the precise remainder of the superseded Cyril rich-seed FU.
+
+**Why LOW:** honest empty-state is correct production behavior; this is demo polish, not a correctness gap.
+
+**Cross-reference:** `functions/scripts/seed-demo-surfaces.cjs` (goals+policies, this PR); `functions/scripts/seed-leaderboard-test-data.cjs` (`CYRIL_RANKINGS` keys on `@agencytrack.test` emails — the gap); superseded FU above.
 
 ---
 

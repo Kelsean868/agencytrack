@@ -109,6 +109,88 @@ To remove all data this script seeded:
    functionsClient.httpsCallable('recomputeLeaderboardOnDemand')({});
    ```
 
+---
+
+# Companion seed — demo surfaces (goals / policies / manager WAR)
+
+`functions/scripts/seed-demo-surfaces.cjs` extends the seed ecosystem with the
+NET-NEW surfaces the leaderboard seed does NOT cover, plus the **unified teardown**
+for the whole ecosystem. Same two-gate model, same hardcoded `tatillife_south`
+lock, and the **same shared allowlist** (`functions/scripts/lib/test-account-allowlist.cjs`,
+required by both scripts — one safety surface).
+
+## What this seeds
+
+- **Personal goals** (`tenants/tatillife_south/goals/{agentId}`) — `personalAnnualAPI`
+  (+ `personalAnnualApps`, `personalAnnualPersistency`) for every real `agent`-role
+  user, so the Game Plan anchor / gap analysis show a real target.
+- **Policies** (`tenants/tatillife_south/policies/seedpolicy_{uid}_{n}`) — 4 per
+  agent (1 submitted, 2 settled, 1 lapsed) so the Policy Ledger populates, the
+  manager Policy-Reconciliation worklist has settled policies, and persistency has data.
+- **Manager WAR** (`tenants/tatillife_south/managerWeeklyReports/{bmUid}_{week}`) —
+  for the branch_manager, prior + current week. NOTE: in practice this is usually a
+  **no-op** because the BM already has real WAR docs for those weeks; the create-only
+  safety (below) skips them.
+- Roster = the **real existing agents** resolved at runtime by role — NOT the
+  `@agencytrack.test` roster in `scripts/seed/test-roster.mjs` (that roster was never
+  imported into production; dispatcher directive 2026-06-03).
+
+## CREATE-ONLY safety invariant
+
+The seed NEVER merges seeded fields into a pre-existing real doc and marks it seeded.
+For each target it checks existence first:
+- doc absent → **create** (marked `seededTestData: true`).
+- doc exists WITH `seededTestData: true` → **overwrite** (own seed; idempotent).
+- doc exists WITHOUT the marker → **SKIP** (treated as real; never touched).
+
+This is why e.g. Letitia's real manager-target goal and the BM's real WARs are
+skipped — teardown then only ever deletes docs the seed itself created.
+
+## Dry-run / live (same gates)
+
+```
+# seed dry-run (default; logs the full create/skip plan; NO writes)
+node functions/scripts/seed-demo-surfaces.cjs --dry-run
+# seed live (authorized dispatcher action)
+node functions/scripts/seed-demo-surfaces.cjs --execute --i-confirm-prod-write
+```
+
+## Unified teardown (the ONE cleanup for the whole seed ecosystem)
+
+Removes **every** `seededTestData: true` doc across `submissions` + `goals` +
+`policies` + `managerWeeklyReports` — i.e. it also sweeps the leaderboard seed's
+submissions. It only ever deletes marked docs, so real data (real goals, real WARs,
+user accounts, profiles) is untouched.
+
+```
+# teardown dry-run (lists every doc that WOULD be deleted)
+node functions/scripts/seed-demo-surfaces.cjs --teardown --dry-run
+# teardown live
+node functions/scripts/seed-demo-surfaces.cjs --teardown --execute --i-confirm-prod-write
+```
+
+> This unified teardown **supersedes** the manual per-collection cleanup pseudo-code in
+> the leaderboard "Cleanup" section above for the data docs. It does NOT delete user
+> accounts (e.g. a seeded SM) — remove those via the leaderboard runbook's account-cleanup
+> step if needed.
+
+## Populated demo = run BOTH seeds
+
+A fully-populated demo tenant requires **both** seeds with `--execute`:
+1. `seed-leaderboard-test-data.cjs` — submissions + leaderboard movement/podium/champions (+ SM account).
+2. `seed-demo-surfaces.cjs` — goals + policies (+ BM WAR where not already present).
+
+The unified teardown empties **both** in one sweep. After a teardown the tenant is
+fully clean (including any prior leaderboard seed data) — re-run both seeds to repopulate.
+
+## App read-back verification
+
+`scripts/verification/demo-surfaces-walk.mjs` (run AFTER `seed-demo-surfaces.cjs --execute`)
+confirms via the live app: Admin read-back counts; the agent's Game Plan anchor shows the
+seeded `personalAnnualAPI`; the Policy Ledger shows settled + lapsed policies; the BM's
+Policy-Reconciliation worklist picks up the seeded settled policies; the BM's own WAR view
+renders. Read-only; needs `A11Y_AGENT_*` + `A11Y_BRANCH_MANAGER_*`.
+
 ## Safety notes
 
 - The script CANNOT be redirected to a different tenant — `tatillife_south` is hardcoded.
