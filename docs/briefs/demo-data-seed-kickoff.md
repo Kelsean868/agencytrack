@@ -1,90 +1,78 @@
-# Demo/test data seed — idempotent, reversible, test-tenant-only
+# Demo/test data seed — EXTEND existing seed infrastructure (CORRECTED)
+
+> **Correction note.** The prior version of this brief was authored greenfield. Phase-0 source-verify found mature seed infrastructure already shipped (PR #410) with the same safety architecture: a load-bearing `seededTestData: true` marker, an in-repo allowlist (`scripts/seed/test-roster.mjs`), a two-gate prod-write model, and a runbook — plus a banked FU (`FOLLOW_UPS.md` "Track J — Cyril branch rich seed") that explicitly directs **extending** that script. This corrected brief **extends** the existing infrastructure. The greenfield premises — a new `__seed` marker, a `.env.local` allowlist, a new `scripts/seed/demo-data.mjs`, and re-seeding submissions — are **withdrawn**.
 
 **Track:** Tooling / verification infra (demo-driven)
-**Type:** A standalone Admin-SDK script that writes test data to **production** Firestore, scoped to the test tenant. No app / UI / Firestore-rules change.
-**Risk:** ⚠️ **ELEVATED** — this writes to the production database (the deployed app reads from it). The risk is concentrated in the SAFETY GUARDS, which are non-negotiable (§2). A mis-scoped write is a data-safety event.
+**Type:** EXTEND the existing prod-write seed infrastructure — add net-new surfaces (goals, policies, manager WAR) + a unified teardown. No app / UI / Firestore-rules change.
+**Risk:** ⚠️ **ELEVATED** — writes to production Firestore, scoped to the test tenant. The existing safety model IS the safety surface — extend it, do not fork it.
 
 ---
 
-## 1. Why
+## 1. The decision (Rule 1 — locked)
 
-Demos and live verification start data-starved today: the agent has ~31k API (every award "NOT STARTED"), the manager's team shows TTD 0. We need a reusable seed that populates the test tenant so the agent dashboard / awards / career, the Policy Ledger, the leaderboard, and the manager's roll-up + activity all look alive — and that can be cleanly torn down. It also activates the leaderboard features (podium, ▲/▼ movement, around-me cluster, champions banner) that need multi-week, multi-agent, varied-ranking data.
+Extend the existing seed infrastructure; do NOT build a parallel script.
 
-The PR ships and *verifies* the script (seed → teardown round-trip, clean). Using it for an actual demo is a separate operator action: run `seed --apply`, demo, then `teardown`.
-
----
-
-## 2. HARD safety requirements (non-negotiable — Phase 1 gate)
-
-The script writes to PRODUCTION Firestore (project `agencytrack-2a610`), scoped to the test tenant. Therefore:
-
-1. **Test-tenant guard.** Hard-coded: the script REFUSES to run unless the target tenant is exactly `tatillife_south`. No flag, env, or arg can override it to another tenant.
-2. **Agent allowlist.** It only writes data for the known test-agent UIDs (source from `.env.local` / the documented test accounts — `kelsean@gmail.com` and the team members under the test BM). It never touches other users.
-3. **ADD-only / non-destructive.** It only creates/updates SEEDED docs; it never modifies or deletes any doc it didn't create. Every seeded doc carries a marker (e.g. `__seed: true`) so teardown is precise.
-4. **Idempotent.** Re-running yields the same state — deterministic doc IDs keyed by tenant+agent+week / tenant+agent+policyKey; upsert, never append duplicates.
-5. **Reversible.** A `teardown` mode removes ONLY docs with the `__seed` marker, in the test tenant, for the allowlisted UIDs — verified to leave all real data intact.
-6. **Dry-run default.** A `--dry-run` mode prints exactly what it WOULD write/delete (counts + sample paths) without writing. Writing requires an explicit `--apply`.
-7. **Never echo or commit the service-account key.** Authenticate the way existing Admin-SDK scripts do (source-verify in Phase 0).
+- **Reuse the existing marker** `seededTestData: true` on every seeded doc. Do NOT introduce `__seed` — it would fragment the teardown (the existing `seededTestData`-keyed sweep wouldn't catch new-marker docs, and vice versa), breaking the reversibility guarantee on a prod-write tool.
+- **Reuse the canonical allowlist** `scripts/seed/test-roster.mjs` (the 10 test users — BM / UMs / agents, `@agencytrack.test`, `tatillife_south` / Cyril Murray Branch) + the existing two-layer `TEST_EMAIL_ALLOWLIST`. Do NOT source from `.env.local`.
+- **Reuse the existing two-gate prod-write model** (`--dry-run` default; `--execute --i-confirm-prod-write` to write) and the hardcoded `tatillife_south` tenant lock.
+- **Submissions + leaderboard activation are already shipped** (`functions/scripts/seed-leaderboard-test-data.cjs`, PR #410 — multi-week, varied-ranking submissions for podium / ▲▼ / around-me / champions). Do NOT re-build them. Confirm only that they still produce enough cumulative API for awards to read as in-progress; an amount-tune is in scope **only if** Phase 0 shows it's needed, flagged explicitly (§3).
 
 ---
 
-## 3. What it seeds (source-verify each schema in Phase 0 — Rule 17)
+## 2. What's net-new (the actual gap)
 
-Populate the surfaces that matter for demos + the leaderboard. **Read an existing real doc of each type first and match its shape exactly.** If any shape is uncertain or heavy, STOP and surface.
+The existing seed covers submissions (+ SM account provision). NOT covered, and what this work adds:
 
-Priority tiers (if scope must be cut, keep the MUSTs):
-
-- **MUST — Weekly submissions.** For the ~5 team agents, across the current week + ≥3 prior weeks, with varied API + activity counts and **deliberately different week-over-week rankings** (so the leaderboard shows a real podium, ▲/▼ movement, and an around-me cluster). Cumulative API should span award-relevant territory (a spread: one agent high ~300k+, others mid/low). Drives KPIs, awards, career, trends, the roll-up, and the leaderboard.
-- **MUST — Goals.** A `personalAnnualAPI` (+ apps/activity goals per the schema) per agent, so the hero card, gap analysis, and Game Plan anchor show real targets.
-- **SHOULD — Policies (ledger).** A handful per agent, mixed statuses incl. some `settled` and a `lapsed`, so the Policy Ledger populates and persistency has data.
-- **SHOULD — Manager WAR.** A manager activity report for the test BM (planning / training / 1-on-1 / joint / recruiting / supervision per the Track I schema), so the manager's own activity view populates.
-- **If needed for the champions banner** — write the `weeklyChampions/{prevWeekStarting}` doc directly (the aggregation function won't fire for back-dated seeded weeks). Verify the banner's read path in Phase 0.
-
-All weeks = Sundays. Currency TTD. `parseFloat` on numeric writes (match the app's contract).
+- **Goals** — per test roster: `personalAnnualAPI` (+ the goal fields per the goals schema). Drives the hero card, gap analysis, the Game Plan anchor, AND the Weekly Planner Slice 1 anchor (so seeding this makes that card demoable too).
+- **Policies (ledger)** — per test agent: a handful, mixed statuses incl. some `settled` and a `lapsed`, so the Policy Ledger populates and persistency has data.
+- **Manager WAR** — for the test BM / UMs: a manager activity report (the Track I schema).
+- **Unified teardown** — a teardown that removes ALL `seededTestData` docs across submissions + goals + policies + manager-WAR (one sweep, one marker), scoped to the test tenant + roster, verified to leave real data intact. If a teardown exists in the infra, extend it to cover the new types; if not, add it.
 
 ---
 
-## 4. Phases
+## 3. Phases
 
-### Phase 0 — gate + source-verify
+### Phase 0 — gate + source-verify (build on the audit already done)
 - `git fetch origin`, verify origin/main HEAD against CONTEXT.md, branch off origin/main.
-- Source-verify: how existing Admin-SDK scripts authenticate + connect; the exact live doc shape for each seeded type (submission, goal, policy, manager-WAR, weeklyChampions) by reading a real example; the test-agent UIDs; the leaderboard's `previousRank` + champions read paths.
-- Confirm the test tenant id (`tatillife_south`) and the agent allowlist.
+- Re-confirm the existing infra: the `seededTestData` marker + its sweep (`scripts/verification/seed-verify.mjs`), `test-roster.mjs`, `seed-leaderboard-test-data.cjs`'s two-gate model + tenant lock, the runbook (`docs/runbooks/seed-leaderboard-test-data.md`), the FU (`FOLLOW_UPS.md` "Track J — Cyril branch rich seed").
+- Source-verify the NET-NEW schemas (read a real example of each): the goals doc, the policy doc, the manager-WAR doc. Match shapes exactly.
+- Determine where the new per-surface seeders fit in the existing structure (per-type seeders vs the main script — match the established pattern + module convention, e.g. `.cjs`).
+- Confirm the existing submission seed's amounts give enough cumulative API for awards to read as in-progress; note if a small amount-tune is warranted.
 
-### Phase 1 — confirm safety design (HARD gate)
-- Confirm the design satisfies ALL of §2 (tenant guard, allowlist, ADD-only, idempotent, reversible, dry-run, no key leak). If any can't be guaranteed, **STOP and wait for dispatcher.**
+### Phase 1 — confirm safety (HARD gate)
+- Confirm the extension preserves ONE safety surface: the single `seededTestData` marker, the `test-roster.mjs` allowlist, the two-gate model, the `tatillife_south` lock, and a UNIFIED teardown. If the net-new surfaces can't share that one safety surface cleanly, **STOP and wait for dispatcher.**
 
 ### Phase 2 — build
-- One script (e.g. `scripts/seed/demo-data.mjs`) with `seed` (default `--dry-run`, `--apply` to write) and `teardown` modes. Deterministic IDs, `__seed` marker, clear console summary.
+- Add the goals / policies / manager-WAR seeders into the existing structure, each writing `seededTestData: true`, scoped to the roster + test tenant, behind the existing gates.
+- Add/extend the unified teardown to sweep all seeded types.
+- (Optional, only if Phase 0 found it needed) a minimal amount-tune to the submission seed so awards show progress — flag it explicitly; do not silently rework #410's logic.
 
-### Phase 3 — verify (script runs; lint clean)
-- Lint clean. The `--dry-run` prints a correct plan.
+### Phase 3 — verify
+- Lint clean. The `--dry-run` prints a correct combined plan (submissions [existing] + goals + policies + manager-WAR).
 
-### Phase 4 — verification walk (seed → app read-back → teardown)
-This is the real verification — a seed that writes unreadable or wrong-shaped data is worse than none:
-1. `--dry-run` → review the plan.
-2. `seed --apply` against the test tenant.
-3. **Read-back via the app** (not just Firestore): log in as the test agent → dashboard KPIs / awards / career / leaderboard populate from the seeded data; the Policy Ledger shows seeded policies. Log in as the test BM → Team WARs / roll-up / agent-risk-view show the seeded team; the manager activity view shows the seeded WAR. (Confirms the seeded shape satisfies READ rules + the UI's expectations.)
-4. Leaderboard specifically: podium (top 3), ▲/▼ movement vs prior week, around-me cluster, champions banner all render.
-5. `teardown` → confirm seeded docs gone AND a known real doc (e.g. the agent's real profile) is untouched.
+### Phase 4 — verification walk (seed → app read-back → unified teardown)
+1. `--dry-run` → review the combined plan.
+2. Seed (existing submissions + the new surfaces) with the prod-write gate.
+3. **App read-back:** log in as a test agent → dashboard / awards (in-progress) / career / Policy Ledger (seeded policies) / Game Plan anchor + Weekly Planner suggested-target (from the seeded `personalAnnualAPI`). Log in as the test BM → Team WARs / roll-up / agent-risk-view (seeded team) + the manager activity view (seeded WAR). Leaderboard: podium / ▲▼ / around-me / champions (from #410's submissions).
+4. **Unified teardown** → confirm ALL seeded docs (all types) gone AND a known real doc (e.g. a real profile) untouched.
 - Capture a couple of screenshots (agent dashboard + manager roll-up, populated) for the report.
 
 ### Phase 4 — docs (placeholders; Rule 16)
 - `CONTEXT.md` Recently-shipped row + `#TBD`/`{TBD}` placeholders; refresh top-of-file fields + Where-we-left-off.
-- `FOLLOW_UPS.md`: mark the queued "test-data seed" item resolved. Document `seed` / `teardown` / `--dry-run` usage in a short runbook or the script header.
+- Extend the existing runbook (`docs/runbooks/seed-leaderboard-test-data.md`) to cover the new surfaces + the unified teardown. Resolve the "Track J — Cyril branch rich seed" FU.
 
 ### Phase 5 — commit / push / PR
-- Conventional commit: `feat(tooling): idempotent reversible demo-data seed (test-tenant-only)`.
-- PR body: the safety guards, what it seeds, the `seed` / `teardown` / `--dry-run` usage, the verification result + screenshots, the smoke checklist (Rule 18).
+- Conventional commit: `feat(tooling): extend demo seed — goals, policies, manager WAR + unified teardown`.
+- PR body: the EXTEND decision (reuse marker/allowlist/gates), the net-new surfaces, the unified teardown, the verification + screenshots, the smoke checklist (Rule 18).
 - Report feature-branch HEAD SHA (Rule 20). **Do not merge or deploy (Rule 19).**
 
 ---
 
-## 5. Acceptance criteria
-- [ ] Hard test-tenant guard + agent allowlist; refuses any other tenant/UID.
-- [ ] ADD-only, idempotent (re-run = same state), reversible (teardown removes only `__seed` docs, real data intact), `--dry-run` default.
-- [ ] Seeds submissions + goals (MUST), policies + manager WAR (SHOULD), + champions doc if needed — each matching the live schema.
-- [ ] App read-back confirms all target surfaces populate (agent + manager); leaderboard podium / movement / cluster / champions render.
-- [ ] Teardown verified clean; no real data touched.
+## 4. Acceptance criteria
+- [ ] Reuses `seededTestData` marker + `test-roster.mjs` allowlist + the two-gate model + the `tatillife_south` lock — NO `__seed`, NO `.env.local` allowlist, NO parallel script.
+- [ ] Adds goals + policies + manager-WAR seeders, each matching the live schema.
+- [ ] Submissions NOT re-built (#410 owns them); any amount-tune flagged explicitly.
+- [ ] Unified teardown sweeps ALL seeded types (one marker); verified clean; real data untouched.
+- [ ] App read-back confirms agent + manager surfaces populate (incl. the Game Plan + Weekly Planner anchors); leaderboard renders.
 - [ ] Service-account key never echoed or committed.
-- [ ] Lint clean; docs updated with placeholders.
+- [ ] Lint clean; runbook extended; FU resolved.
