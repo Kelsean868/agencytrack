@@ -47,7 +47,7 @@ export default function PlanCascade({ commissionNeed, moneyNeedsFilled }) {
       </div>
 
       <div className="rounded-xl border border-gold/30 bg-gold-tint p-3.5">
-        <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-gold">
+        <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
           Step 1 · Money Needs
         </div>
         <div className="mt-1 flex items-center justify-between gap-3">

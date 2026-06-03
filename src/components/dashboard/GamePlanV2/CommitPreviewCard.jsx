@@ -11,7 +11,7 @@ import { Lock, ArrowRight, ArrowUpRight } from 'lucide-react';
 export default function CommitPreviewCard({ year, onOpenGoals }) {
   return (
     <div className="relative rounded-2xl border border-dashed border-border bg-card p-4 opacity-95" data-testid="game-plan-commit">
-      <span className="absolute right-3.5 top-3.5 flex items-center gap-1 rounded-full bg-surface-muted px-2 py-1 font-mono text-[8px] font-bold uppercase tracking-wider text-ink-muted">
+      <span className="absolute right-3.5 top-3.5 flex items-center gap-1 rounded-full bg-surface-muted px-2 py-1 font-mono text-[8px] font-bold uppercase tracking-wider text-ink">
         <Lock size={9} aria-hidden="true" /> Preview
       </span>
 
