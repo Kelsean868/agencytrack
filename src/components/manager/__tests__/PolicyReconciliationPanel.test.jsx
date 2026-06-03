@@ -114,62 +114,62 @@ describe('PolicyReconciliationPanel', () => {
     await waitFor(() => expect(screen.getByTestId('reconcil-empty')).toBeInTheDocument());
   });
 
-  it('groups policies by agent — two agents produce two section headers', async () => {
+  it('worklist renders a row per unconfirmed policy (flat, not agent-grouped)', async () => {
     setupBM();
     hoisted.getPoliciesForManager.mockResolvedValue([makePolicy(), makePolicyB()]);
     render(<PolicyReconciliationPanel />);
-    await waitFor(() => {
-      expect(screen.getByText('Alice Agent')).toBeInTheDocument();
-      expect(screen.getByText('Bob Agent')).toBeInTheDocument();
-    });
-    expect(screen.getByTestId('agent-group-agent-a')).toBeInTheDocument();
-    expect(screen.getByTestId('agent-group-agent-b')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('recon-row-pol-1')).toBeInTheDocument());
+    expect(screen.getByTestId('recon-row-pol-2')).toBeInTheDocument();
+    // Owner names visible; no agent-group section wrappers.
+    expect(screen.getByText('Alice Doe')).toBeInTheDocument();
+    expect(screen.queryByTestId('agent-group-agent-a')).not.toBeInTheDocument();
   });
 
-  it('side-by-side: agent settled API and manager input are visible in same card', async () => {
+  it('row shows the ledger figure ("from circular" framing) and the key-in input', async () => {
     setupBM();
     hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);
     render(<PolicyReconciliationPanel />);
-    await waitFor(() => expect(screen.getByTestId('agent-api-pol-1')).toBeInTheDocument());
-    expect(screen.getByTestId('agent-api-pol-1')).toHaveTextContent('$5000.00');
+    await waitFor(() => expect(screen.getByTestId('ledger-api-pol-1')).toBeInTheDocument());
+    expect(screen.getByTestId('ledger-api-pol-1')).toHaveTextContent(/TTD\s*5,000/);
     expect(screen.getByTestId('manager-api-input-pol-1')).toBeInTheDocument();
+    // Honest framing — no "Tatil Report" anywhere; "from circular" present.
+    expect(screen.queryByText(/Tatil Report/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/from circular/i).length).toBeGreaterThan(0);
   });
 
-  it('checkbox selection — selecting a policy activates bulk-confirm button', async () => {
+  it('pending-reconciliation hero + 3 tiles render from existing data', async () => {
+    setupBM();
+    hoisted.getPoliciesForManager.mockResolvedValue([makePolicy(), makePolicyB()]);
+    render(<PolicyReconciliationPanel />);
+    await waitFor(() => expect(screen.getByTestId('pending-hero')).toBeInTheDocument());
+    expect(screen.getByTestId('recon-tile-toReconcile')).toBeInTheDocument();
+    expect(screen.getByTestId('recon-tile-flagged')).toBeInTheDocument();
+    expect(screen.getByTestId('recon-tile-confirmed')).toBeInTheDocument();
+    // 2 unconfirmed settled in period → "To reconcile" count = 2; hero = Σ settledAPI = TTD 13.0K.
+    expect(screen.getByTestId('recon-tile-count-toReconcile')).toHaveTextContent('2');
+    expect(screen.getByTestId('pending-value')).toHaveTextContent(/TTD\s*13\.0K/);
+  });
+
+  it('NO bulk "Confirm all clean" control — per-policy confirm only (unsafe-bulk dropped)', async () => {
     setupBM();
     hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);
     render(<PolicyReconciliationPanel />);
-    await waitFor(() => expect(screen.getByTestId('policy-checkbox-pol-1')).toBeInTheDocument());
-    expect(screen.queryByTestId('bulk-confirm-btn')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByTestId('policy-checkbox-pol-1'));
-    expect(screen.getByTestId('bulk-confirm-btn')).toBeInTheDocument();
-    expect(screen.getByTestId('bulk-confirm-btn')).toHaveTextContent('Confirm Selected (1)');
+    await waitFor(() => expect(screen.getByTestId('confirm-btn-pol-1')).toBeInTheDocument());
+    expect(screen.queryByTestId('confirm-all-clean-btn')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Confirm all/i)).not.toBeInTheDocument();
   });
 
-  it('bulk-confirm with blank managerSettledAPI defaults to agent settledAPI', async () => {
+  it('per-policy confirm with a blank key-in defaults to the ledger figure', async () => {
     setupBM();
     hoisted.getPoliciesForManager.mockResolvedValue([makePolicy()]);
     render(<PolicyReconciliationPanel />);
-    await waitFor(() => expect(screen.getByTestId('policy-checkbox-pol-1')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('confirm-btn-pol-1')).toBeInTheDocument());
 
-    // Select the policy (don't fill managerSettledAPI)
-    fireEvent.click(screen.getByTestId('policy-checkbox-pol-1'));
-    fireEvent.click(screen.getByTestId('bulk-confirm-btn'));
-
+    // Leave the key-in blank → Confirm → resolvedAPI defaults to the ledger settledAPI (5000).
+    fireEvent.click(screen.getByTestId('confirm-btn-pol-1'));
     await waitFor(() => expect(hoisted.confirmPolicy).toHaveBeenCalledTimes(1));
-    // resolvedAPI should default to '5000' (agent's settledAPI) since input is blank
     const [, , , , resolvedAPI] = hoisted.confirmPolicy.mock.calls[0];
     expect(parseFloat(resolvedAPI)).toBe(5000);
-  });
-
-  it('select-all checkbox selects all unconfirmed policies', async () => {
-    setupBM();
-    hoisted.getPoliciesForManager.mockResolvedValue([makePolicy(), makePolicyB()]);
-    render(<PolicyReconciliationPanel />);
-    await waitFor(() => expect(screen.getByTestId('select-all-checkbox')).toBeInTheDocument());
-
-    fireEvent.click(screen.getByTestId('select-all-checkbox'));
-    expect(screen.getByTestId('bulk-confirm-btn')).toHaveTextContent('Confirm Selected (2)');
   });
 
   it('individual confirm calls confirmPolicy with the entered manager API', async () => {

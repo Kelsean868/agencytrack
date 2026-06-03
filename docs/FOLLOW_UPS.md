@@ -22,6 +22,23 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Policy Reconciliation v2 — Slice 2 (deferred, banked 2026-06-03 from Policy Reconciliation v2 Slice 1 PR #TBD)
+
+**Status:** Slice 1 shipped the manager-surface restyle on the **existing manual model** (read Tatil's printed circular → key the figure per policy; at-risk hero + 3 tiles + worklist + in-row key-in; `statusToken()` reuse; `text-text*` token fix; Lapse kept as a BM-only secondary tab). The following **richer manual** reconciliation features were explicitly cut from Slice 1.
+
+1. **8-way discrepancy taxonomy (MEDIUM).** Slice 1 uses only the existing boolean `hasDiscrepancy` + the keyed delta. Slice 2 sub-classifies a flagged row (amount / partial / status / period / duplicate / …) — still a **manual** classification (the manager picks the type), no file needed.
+2. **`unmatched` / `missing` rows as manual manager actions (MEDIUM).** Policies with no ledger doc, or that the manager finds on the circular with no ledger entry, surfaced as **manual** add/flag actions — NOT a file-match (there is no ingestible file).
+3. **Dispute / escalate resolution-state workflow (MEDIUM).** A resolution-state machine (disputed / escalated / resolved) over the existing confirm + flag + notify. Needs a new persisted state field — out of the no-schema-change Slice 1.
+4. **Lapse-in-worklist (LOW).** Whether the BM Lapse flow merges into the reconciliation worklist (vs the kept secondary tab). Product decision.
+5. **FEEDS / campaign chips + "Export proof" (gated).** Couple reconciliation to award/campaign rollups — behind the dormant `usesPolicyLedger` flip-gate (see the H3 FLIP-GATE FU).
+6. **Bulk-confirm (MEDIUM — needs a verified-clean state first).** Slice 1 shipped per-policy confirm only. A "Confirm all clean" bulk was built then **dropped** during PR #434 review: with no persisted pre-confirm keyed figure, "clean" isn't knowable before the manager keys, so a bulk would rubber-stamp unconfirmed policies at the ledger value — recording the very discrepancies reconciliation exists to catch. Bulk-confirm returns in Slice 2 **only once a verified-clean state exists** (e.g. the manager has keyed-and-matched a set, or a structured source confirms equality), so the bulk acts on a genuinely-clean subset rather than silently agreeing with the ledger.
+
+**Explicitly NOT planned:** file ingestion / PDF parsing / OCR / auto-matching — revisit only if Tatil ships a structured settlement export. The reconciliation model is manual by data reality.
+
+**Cross-reference:** `src/components/manager/PolicyReconciliationPanel.jsx`; `src/lib/policyStatusTokens.js` (shared); `docs/design/policy-reconciliation-v2-slice-1.html` (build annotation — "Deferred" + "Data reality" sections); § Policy Ledger v2 — deferred slices; § H3 FLIP-GATE.
+
+---
+
 ## Daily Capture anchor strip — targets + dials chip (MEDIUM, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #426)
 
 **Status:** Slice 1 shipped the counts-only WTD strip (APPR/FFI/CI/APPS, no targets, no dials). Slice 2 evolves it into a manager-set-target experience and adds a new daily dials/calls field.
