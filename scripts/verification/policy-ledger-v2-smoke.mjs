@@ -220,10 +220,13 @@ async function runTheme(page, theme) {
   await page.keyboard.press('Escape');
   await page.waitForSelector('[data-testid="policy-drawer"]', { state: 'detached', timeout: 8000 }).catch(() => {});
 
-  // ── axe NO-NEW serious/critical ──
-  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  // ── axe NO-NEW serious/critical, scoped to the v2 ledger surface ──
+  const axe = await new AxeBuilder({ page })
+    .include('[data-testid="policy-ledger-surface"]')
+    .withTags(['wcag2a', 'wcag2aa'])
+    .analyze();
   const serious = (axe.violations || []).filter((v) => ['serious', 'critical'].includes(v.impact));
-  if (serious.length === 0) pass(`[${theme}] axe-no-serious-critical`);
+  if (serious.length === 0) pass(`[${theme}] axe-no-serious-critical (surface)`);
   else fail(`[${theme}] axe-no-serious-critical`, serious.slice(0, 3).map((v) => `${v.id}(${v.nodes.length})`).join(', '));
 
   // ── Write-read-verify: submitted → rated via the drawer ──

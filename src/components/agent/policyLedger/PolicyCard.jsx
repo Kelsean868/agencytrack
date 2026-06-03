@@ -80,12 +80,12 @@ export default function PolicyCard({ policy, onOpen }) {
       <div className="flex items-baseline gap-3.5 flex-wrap">
         <div>
           <p className="font-display font-extrabold text-[17px] tracking-tight leading-none text-ink">{formatCurrency(policy.proposedAPI)}</p>
-          <p className="font-mono text-[9px] text-ink-faint tracking-[0.08em] mt-0.5">API</p>
+          <p className="font-mono text-[9px] text-ink-muted tracking-[0.08em] mt-0.5">API</p>
         </div>
         <span className="w-px h-[22px] bg-border" />
         <div>
           <p className="text-[11.5px] text-ink">{PROSPECTING_SOURCE_LABELS[policy.sourceOfProspect] || policy.sourceOfProspect || '—'}</p>
-          <p className="font-mono text-[9px] text-ink-faint tracking-[0.08em] mt-0.5">SOURCE</p>
+          <p className="font-mono text-[9px] text-ink-muted tracking-[0.08em] mt-0.5">SOURCE</p>
         </div>
         <span className="w-px h-[22px] bg-border" />
         <div>
@@ -94,13 +94,13 @@ export default function PolicyCard({ policy, onOpen }) {
               ? (policy.cashWithApp.amount != null ? formatCurrency(policy.cashWithApp.amount) : 'Yes')
               : 'No'}
           </p>
-          <p className="font-mono text-[9px] text-ink-faint tracking-[0.08em] mt-0.5">CASH W/ APP</p>
+          <p className="font-mono text-[9px] text-ink-muted tracking-[0.08em] mt-0.5">CASH W/ APP</p>
         </div>
         <div className="flex-1" />
         {hint && (
           <span className={`px-3 py-1.5 rounded-lg text-[11.5px] font-bold ${t.tint} ${t.text}`}>{hint}</span>
         )}
-        <span className="font-mono text-[10.5px] text-ink-faint">{fmtDate(policy.dateWritten)}</span>
+        <span className="font-mono text-[10.5px] text-ink-muted">{fmtDate(policy.dateWritten)}</span>
       </div>
     </button>
   );

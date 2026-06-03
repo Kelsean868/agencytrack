@@ -240,7 +240,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
     const visible = applyLedgerFilter(policies, { filter, search });
 
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" data-testid="policy-ledger-surface">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-ink">Policy Ledger</h2>
           <button
@@ -306,14 +306,14 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
                       data-testid={`ledger-filter-${f.key}`}
                     >
                       {f.label}
-                      <span className={`font-mono text-[10px] px-1.5 rounded-full ${on ? 'bg-primary-tint text-primary' : 'text-ink-faint'}`}>{counts[f.key]}</span>
+                      <span className={`font-mono text-[10px] px-1.5 rounded-full ${on ? 'bg-primary-tint text-primary' : 'text-ink-muted'}`}>{counts[f.key]}</span>
                     </button>
                   );
                 })}
               </div>
               <div className="flex-1" />
               <div className="flex items-center gap-2 px-3 h-11 bg-card border border-border rounded-lg w-full sm:w-56">
-                <Search size={15} className="text-ink-faint shrink-0" />
+                <Search size={15} className="text-ink-muted shrink-0" />
                 <input
                   type="search"
                   value={search}

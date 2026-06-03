@@ -122,7 +122,7 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
               {policyPillLabel(policy)}
             </span>
             <span className="font-display font-extrabold text-xl text-primary tracking-tight">{formatCurrency(policy.proposedAPI)}</span>
-            <span className="font-mono text-[10px] text-ink-faint">API</span>
+            <span className="font-mono text-[10px] text-ink-muted">API</span>
           </div>
         </div>
 
@@ -149,8 +149,8 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
                     {n.state === 'done' && <Check size={14} />}
                     {n.state === 'cur' && <span className="w-2 h-2 rounded-full bg-white" />}
                   </span>
-                  <span className={`text-[11px] font-bold mt-2 ${n.state === 'future' ? 'text-ink-faint' : n.state === 'cur' ? 'text-gold' : 'text-primary'}`}>{n.label}</span>
-                  <span className="font-mono text-[9px] text-ink-faint mt-0.5">{n.date ? fmtDate(n.date) : '—'}</span>
+                  <span className={`text-[11px] font-bold mt-2 ${n.state === 'future' ? 'text-ink-muted' : n.state === 'cur' ? 'text-gold' : 'text-primary'}`}>{n.label}</span>
+                  <span className="font-mono text-[9px] text-ink-muted mt-0.5">{n.date ? fmtDate(n.date) : '—'}</span>
                   {n.derived && (
                     <span className="font-mono text-[7.5px] font-bold tracking-[0.08em] text-gold bg-gold-tint px-1.5 py-px rounded-full mt-1">DERIVED</span>
                   )}
@@ -196,10 +196,10 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
             )}
             {history?.map((h) => (
               <div key={h.id} className="flex items-start gap-2 text-xs">
-                <span className="font-mono text-ink-faint shrink-0">{fmtDate(h.at)}</span>
+                <span className="font-mono text-ink-muted shrink-0">{fmtDate(h.at)}</span>
                 <span className="text-ink">
                   {(POLICY_STATUS_LABELS[h.fromStatus] ?? h.fromStatus)} → {(POLICY_STATUS_LABELS[h.toStatus] ?? h.toStatus)}
-                  <span className="text-ink-faint ml-1.5">({h.actorRole})</span>
+                  <span className="text-ink-muted ml-1.5">({h.actorRole})</span>
                 </span>
               </div>
             ))}
@@ -232,7 +232,7 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
 
               {menuOpen && legalNext.length > 1 && (
                 <div className="w-full sm:w-72 bg-card border border-border rounded-xl p-1.5 shadow-lg" role="menu">
-                  <p className="font-mono text-[9px] font-bold tracking-[0.14em] text-ink-faint px-2.5 pt-2 pb-1.5">
+                  <p className="font-mono text-[9px] font-bold tracking-[0.14em] text-ink-muted px-2.5 pt-2 pb-1.5">
                     OTHER STATUS · ALLOWED FROM “{(POLICY_STATUS_LABELS[policy.status] ?? policy.status).toUpperCase()}”
                   </p>
                   {legalNext.filter((s) => s !== txTo).map((s) => (
@@ -316,7 +316,7 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
 function Detail({ k, v }) {
   return (
     <div className="px-3 py-2.5 bg-surface-muted border border-border rounded-lg">
-      <p className="font-mono text-[9px] font-bold text-ink-faint tracking-[0.1em]">{k}</p>
+      <p className="font-mono text-[9px] font-bold text-ink-muted tracking-[0.1em]">{k}</p>
       <p className="text-[12px] font-semibold text-ink mt-0.5 break-words">{v}</p>
     </div>
   );

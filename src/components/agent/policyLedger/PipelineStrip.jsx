@@ -25,7 +25,7 @@ export default function PipelineStrip({ policies }) {
           </h2>
         </div>
         <div className="text-right shrink-0">
-          <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-ink-faint">TOTAL · YTD</p>
+          <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-ink-muted">TOTAL · YTD</p>
           <p className="font-display font-extrabold text-2xl text-primary tracking-tight mt-0.5" data-testid="pipeline-total">
             {formatCompactTTD(totalSum)}
           </p>
@@ -40,7 +40,7 @@ export default function PipelineStrip({ policies }) {
           return (
             <div key={s.key} className="bg-surface-muted border border-border rounded-[10px] p-3" data-testid={`pipeline-tile-${s.key}`}>
               <div className={`w-[7px] h-[7px] rounded-full mb-2 ${t.solid}`} />
-              <p className="font-mono text-[8.5px] font-bold tracking-[0.1em] text-ink-faint uppercase truncate">{s.label}</p>
+              <p className="font-mono text-[8.5px] font-bold tracking-[0.1em] text-ink-muted uppercase truncate">{s.label}</p>
               <p className="font-display font-extrabold text-xl tracking-tight text-ink mt-2 leading-none" data-testid={`pipeline-count-${s.key}`}>{s.count}</p>
               <p className="font-mono text-[10px] text-ink-muted mt-1.5">{formatCompactTTD(s.sum)}</p>
             </div>
@@ -51,7 +51,7 @@ export default function PipelineStrip({ policies }) {
       {/* Active-Book flow bar */}
       <div className="mt-[18px]">
         <div className="flex justify-between items-baseline mb-2">
-          <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-ink-faint">POLICY FLOW · ACTIVE BOOK</p>
+          <p className="font-mono text-[10px] font-bold tracking-[0.14em] text-ink-muted">POLICY FLOW · ACTIVE BOOK</p>
           <p className="text-[11px] text-ink-muted"><b className="text-ink">{formatCompactTTD(inFlightSum)}</b> in flight · push these to settle</p>
         </div>
         <div className="flex h-3.5 rounded-full overflow-hidden bg-surface-muted gap-0.5" data-testid="flow-bar">

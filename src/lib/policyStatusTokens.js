@@ -64,7 +64,7 @@ const ROLE_TOKENS = {
   confirmed:   { text: 'text-gold',      tint: 'bg-gold-tint',    solid: 'bg-gold'      },
   soft:        { text: 'text-warning',   tint: 'bg-warning-tint', solid: 'bg-warning'   },
   hard:        { text: 'text-danger',    tint: 'bg-danger-tint',  solid: 'bg-danger'    },
-  closed:      { text: 'text-ink-faint', tint: 'bg-surface-muted', solid: 'bg-ink-faint' },
+  closed:      { text: 'text-ink-muted', tint: 'bg-surface-muted', solid: 'bg-ink-faint' },
 };
 
 /**
