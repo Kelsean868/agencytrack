@@ -39,7 +39,7 @@ import { readFileSync, mkdirSync } from 'fs';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 
-import { setupBypassSession } from './lib/walk-helpers.mjs';
+import { resolvePreviewUrl, runBothThemes, waitForLoaded } from './lib/walk-helpers.mjs';
 import { aggregateDailyToWeekly } from '../../src/lib/schema/dailyActivity.aggregator.js';
 import { getSundayOf } from '../../src/lib/schema/dailyActivity.js';
 
@@ -59,11 +59,10 @@ function loadEnv() {
 }
 const E = loadEnv();
 
-// Vercel truncated the long branch name with a hash suffix —
-// `redesign/daily-capture-v2` → `redesign-daily-5c6e28`. Captured from the
-// Vercel preview-bot comment on PR #426 (target_url decoded).
-const PREVIEW_URL = process.env.SMOKE_PREVIEW_URL
-  ?? 'https://agencytrack-git-redesign-daily-5c6e28-kyron-marchan-s-projects.vercel.app';
+// Preview target resolves via SMOKE_PREVIEW_URL (pass the PR's truncated branch
+// alias from the Vercel preview-bot comment), falling back to production. The
+// per-branch alias is no longer hardcoded here — see resolvePreviewUrl().
+const PREVIEW_URL = resolvePreviewUrl();
 const RUN_TS = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const SHOTS_DIR = join(__dir, `${RUN_TS}-dcv2-screenshots`);
 
@@ -185,7 +184,7 @@ async function openDailyCapture(page) {
   // Wait for the chip read to complete — the strip writes data-loading=false
   // only after the firestore read resolves AND the chips state is set in the
   // same React render (data-chips reflects the freshly-set values).
-  await page.waitForSelector('[data-testid="dcv2-count-strip"][data-loading="false"]', { timeout: 15000 });
+  await waitForLoaded(page, 'dcv2-count-strip');
 }
 
 async function readChips(page) {
@@ -215,16 +214,6 @@ async function saveDaily(page) {
   await page.waitForSelector('[data-testid="daily-capture-v2"]', { state: 'detached', timeout: 15000 });
 }
 
-async function setTheme(context, theme) {
-  // main.jsx reads localStorage.getItem('agencytrack-dark') === '1' — not 'true'.
-  await context.addInitScript((t) => {
-    try {
-      if (t === 'dark') localStorage.setItem('agencytrack-dark', '1');
-      else localStorage.removeItem('agencytrack-dark');
-    } catch {}
-  }, theme);
-}
-
 async function shoot(page, name) {
   try {
     mkdirSync(SHOTS_DIR, { recursive: true });
@@ -232,19 +221,14 @@ async function shoot(page, name) {
   } catch {}
 }
 
-// ─── Theme run ────────────────────────────────────────────────────────────
+// ─── Per-screen body (run in light then dark by runBothThemes) ──────────────
 
-async function runTheme(browser, theme, expectedBaseChips) {
+async function dailyCaptureBody(page, theme, expectedBaseChips) {
   console.log(`\n── theme: ${theme} ──`);
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const errors = [];
-  let pageErrors = [];
+  const pageErrors = [];
 
   try {
-    await setupBypassSession(context, PREVIEW_URL, E.VERCEL_BYPASS_TOKEN);
-    await setTheme(context, theme);
-
-    const page = await context.newPage();
     page.on('console', (msg) => {
       if (msg.type() === 'error') errors.push(msg.text());
     });
@@ -352,8 +336,6 @@ async function runTheme(browser, theme, expectedBaseChips) {
     }
   } catch (err) {
     fail(`[${theme}] browser-error`, String(err?.message ?? err).slice(0, 240));
-  } finally {
-    await context.close();
   }
 }
 
@@ -385,27 +367,35 @@ async function main() {
     await seedSecondDay(db, tenantId, uid, 'Test Agent', seedDate);
     pass('pre-seed-second-day', `${seedDate} weekStarting=${weekStarting}`);
 
-    // Expected chip baseline = the seed values.
-    const expectedBaseChips = { appr: 4, ffi: 1, ci: 1, apps: 1 };
-
     // ── Browser runs ──────────────────────────────────────────────────────
     browser = await chromium.launch({ headless: true });
 
-    await runTheme(browser, 'light', expectedBaseChips);
+    // Per-theme chip baseline: light starts from the pre-seed; dark starts from
+    // the live week state AFTER the light run wrote today's doc (read fresh from
+    // Firestore so its assertion matches actual state). Preserves the inter-theme
+    // threading the previous two-call sequence performed between runs.
+    const baselineFor = async (theme) => {
+      if (theme === 'light') return { appr: 4, ffi: 1, ci: 1, apps: 1 };
+      const afterLight = await listWeekDocs(db, tenantId, uid, weekStarting);
+      return afterLight.reduce(
+        (acc, e) => ({
+          appr: acc.appr + (parseInt(e.qualifiedApproaches, 10) || 0),
+          ffi:  acc.ffi  + (parseInt(e.ffiConducted,         10) || 0),
+          ci:   acc.ci   + (parseInt(e.ciConducted,          10) || 0),
+          apps: acc.apps + (parseInt(e.newBusiness?.apps,    10) || 0),
+        }),
+        { appr: 0, ffi: 0, ci: 0, apps: 0 }
+      );
+    };
 
-    // After theme 1, today's doc has been written with deltas. Read current
-    // chip state to feed theme 2 (so its baseline assertion is accurate).
-    const afterLight = await listWeekDocs(db, tenantId, uid, weekStarting);
-    const chipsAfterLight = afterLight.reduce(
-      (acc, e) => ({
-        appr: acc.appr + (parseInt(e.qualifiedApproaches, 10) || 0),
-        ffi:  acc.ffi  + (parseInt(e.ffiConducted,         10) || 0),
-        ci:   acc.ci   + (parseInt(e.ciConducted,          10) || 0),
-        apps: acc.apps + (parseInt(e.newBusiness?.apps,    10) || 0),
-      }),
-      { appr: 0, ffi: 0, ci: 0, apps: 0 }
-    );
-    await runTheme(browser, 'dark', chipsAfterLight);
+    await runBothThemes(browser, {
+      baseUrl: PREVIEW_URL,
+      token: E.VERCEL_BYPASS_TOKEN,
+      viewport: { width: 390, height: 844 },
+      perTheme: async (page, theme) => {
+        await dailyCaptureBody(page, theme, await baselineFor(theme));
+      },
+    });
 
     // ── Phase 3.4 — aggregation regression via local aggregator import ────
     const finalDocs = await listWeekDocs(db, tenantId, uid, weekStarting);
