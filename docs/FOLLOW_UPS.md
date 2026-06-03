@@ -565,9 +565,9 @@ Also notable: `AutosaveChip` replaces `SaveStatusIndicator` with a pill-style ch
 
 ---
 
-## ~~Track J — Cyril branch rich seed~~ (SUPERSEDED — demo-surfaces seed PR #TBD, `{TBD}`, 2026-06-03)
+## ~~Track J — Cyril branch rich seed~~ (SUPERSEDED — demo-surfaces seed PR #443, `cdc836e`, 2026-06-03)
 
-**Status:** SUPERSEDED. The demo-surfaces seed (`functions/scripts/seed-demo-surfaces.cjs`, PR #TBD) now seeds **goals + policies** for the 3 real Cyril agents (and every other real agent) — partial Cyril enrichment shipped. The original FU's core remainder (Cyril **submissions** for the cross-branch leaderboard comparison) is **re-banked precisely** as "Track J — Cyril agents lack seeded submissions" below. Original banking content retained for the trail.
+**Status:** SUPERSEDED. The demo-surfaces seed (`functions/scripts/seed-demo-surfaces.cjs`, PR #443) now seeds **goals + policies** for the 3 real Cyril agents (and every other real agent) — partial Cyril enrichment shipped. The original FU's core remainder (Cyril **submissions** for the cross-branch leaderboard comparison) is **re-banked precisely** as "Track J — Cyril agents lack seeded submissions" below. Original banking content retained for the trail.
 
 **Status (original):** OPTIONAL — current honest-empty is sufficient for the SM picker proof.
 
@@ -593,7 +593,7 @@ Cross-reference: PR #410 (`2b3c0cb`); seed script header comment block preserves
 
 ---
 
-## Track J — Cyril agents have goals + policies but no seeded submissions (LOW, banked 2026-06-03 from demo-surfaces seed PR #TBD)
+## Track J — Cyril agents have goals + policies but no seeded submissions (LOW, banked 2026-06-03 from demo-surfaces seed PR #443)
 
 **Status:** OPTIONAL demo-prep polish (re-banked from the superseded "Cyril branch rich seed" FU above).
 
