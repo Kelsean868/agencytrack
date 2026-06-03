@@ -196,7 +196,7 @@ export default function PolicyReconciliationPanel() {
     toReconcile;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-testid="policy-reconciliation-surface">
       {/* Header + tabs */}
       <div className="flex items-center gap-3 flex-wrap">
         <div>
@@ -357,7 +357,7 @@ export default function PolicyReconciliationPanel() {
                           </div>
                           <ArrowRight size={14} className="text-ink-muted shrink-0" />
                           <div>
-                            <p className="font-mono text-[8.5px] font-bold tracking-[0.1em] text-gold">CONFIRMED · FROM CIRCULAR</p>
+                            <p className="font-mono text-[8.5px] font-bold tracking-[0.1em] text-ink-muted">CONFIRMED · FROM CIRCULAR</p>
                             {isConfirmedView ? (
                               <p className={`font-mono text-[13px] font-bold mt-0.5 ${flagged ? 'text-danger' : 'text-ink'}`}>{formatCurrency(keyed)}</p>
                             ) : (

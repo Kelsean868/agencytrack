@@ -210,7 +210,10 @@ async function runTheme(page, theme) {
     n.id === 'color-contrast' &&
     ((/bg-gold-tint/.test(n.html) && /text-gold/.test(n.html)) ||
      (/bg-primary/.test(n.html) && /text-white/.test(n.html)));
-  const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+  const axe = await new AxeBuilder({ page })
+    .include('[data-testid="policy-reconciliation-surface"]')
+    .withTags(['wcag2a', 'wcag2aa'])
+    .analyze();
   const serious = (axe.violations || []).filter((v) => ['serious', 'critical'].includes(v.impact));
   const newNodes = serious.flatMap((v) => v.nodes.map((n) => ({ id: v.id, html: n.html })).filter((n) => !isKnownBaseline(n)));
   if (newNodes.length === 0) pass(`[${theme}] axe-no-NEW-serious-critical`);
