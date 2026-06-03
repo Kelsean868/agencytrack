@@ -1,16 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, AlertCircle, ArrowLeft, X, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Loader2, AlertCircle, ArrowLeft, Info, Search } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { formatCurrency } from '../../utils/formatters';
-import { PROSPECTING_SOURCES, PROSPECTING_SOURCE_LABELS } from '../../services/prospectInfoService';
+import { PROSPECTING_SOURCES } from '../../services/prospectInfoService';
 import { SOCIAL_PLATFORMS_ATTRIBUTION } from '../../utils/prospectingConstants';
-import { createPolicy, getOwnPolicies, transitionPolicyStatus, getPolicyHistory } from '../../services/policiesService';
+import { createPolicy, getOwnPolicies, transitionPolicyStatus } from '../../services/policiesService';
 import { getPolicyPlans } from '../../services/planCatalogService';
 import { getTodayTT } from '../../utils/dateInputs';
-import {
-  LEGAL_AGENT_TRANSITIONS,
-  POLICY_STATUS_LABELS,
-} from '../../constants/policyLifecycle';
+import { applyLedgerFilter, filterCounts, LEDGER_FILTERS } from '../../lib/policyLedgerDerivation';
+import PipelineStrip from './policyLedger/PipelineStrip';
+import PolicyCard from './policyLedger/PolicyCard';
+import PolicyDrillDrawer from './policyLedger/PolicyDrillDrawer';
 
 const FREQ_MULT = { A: 1, S: 2, Q: 4, M: 12 };
 const FREQ_LABELS = { A: 'Annual', S: 'Semi-Annual', Q: 'Quarterly', M: 'Monthly' };
@@ -41,23 +40,6 @@ const POLICY_CLASSES = [
 
 const today = getTodayTT();
 
-const STATUS_BADGE_CLS = {
-  submitted: 'bg-blue-50   text-blue-700   dark:bg-blue-950/30   dark:text-blue-400',
-  rated:     'bg-green-50  text-green-700  dark:bg-green-950/30  dark:text-green-400',
-  postponed: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/30 dark:text-yellow-400',
-  ntu:       'bg-orange-50 text-orange-700 dark:bg-orange-950/30 dark:text-orange-400',
-  denied:    'bg-red-50    text-red-700    dark:bg-red-950/30    dark:text-red-400',
-  settled:   'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400',
-  lapsed:    'bg-gray-100  text-gray-500   dark:bg-gray-800/40   dark:text-gray-400',
-};
-
-const EMPTY_TX_FIELDS = {
-  ratedPremium: '', rateReason: '',
-  pendingReason: '',
-  reason: '',
-  dateIssued: today, settledAPI: '', issuedCoverage: '', initialPremium: '', earnedCommission: '',
-};
-
 const EMPTY_FORM = {
   ownerName: '',
   insuredName: '',
@@ -81,17 +63,11 @@ const EMPTY_FORM = {
   cashWithApp: { collected: false, amount: '' },
 };
 
-function fmtDate(ts) {
-  if (!ts) return '—';
-  const d = ts?.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleDateString('en-TT', { year: 'numeric', month: 'short', day: 'numeric' });
-}
-
 function FieldGroup({ label, children, required, id }) {
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+        {label}{required && <span className="text-danger ml-0.5">*</span>}
       </label>
       {children}
     </div>
@@ -119,37 +95,14 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
     initialForm?.planId ? 'catalog' : (initialForm?.planName ? 'other' : 'catalog')
   );
 
-  // ── History timeline state ──
-  const [histExpanded, setHistExpanded] = useState(new Set());
-  const [histData,     setHistData]     = useState({});  // policyId → history[]
-  const [histLoading,  setHistLoading]  = useState({});  // policyId → boolean
+  // ── Tier 2 filter / search ──
+  const [filter, setFilter] = useState('all');
+  const [search, setSearch] = useState('');
 
-  const toggleHistory = useCallback(async (policyId) => {
-    setHistExpanded((prev) => {
-      const next = new Set(prev);
-      if (next.has(policyId)) { next.delete(policyId); return next; }
-      next.add(policyId);
-      return next;
-    });
-    if (!histData[policyId]) {
-      setHistLoading((prev) => ({ ...prev, [policyId]: true }));
-      try {
-        const rows = await getPolicyHistory(tenantId, policyId, user?.uid);
-        setHistData((prev) => ({ ...prev, [policyId]: rows }));
-      } catch {
-        setHistData((prev) => ({ ...prev, [policyId]: [] }));
-      } finally {
-        setHistLoading((prev) => ({ ...prev, [policyId]: false }));
-      }
-    }
-  }, [tenantId, user?.uid, histData]);
-
-  // ── Transition modal state ──
-  const [txPolicy, setTxPolicy] = useState(null);  // policy object being transitioned, or null
-  const [txTo, setTxTo] = useState('');
-  const [txFields, setTxFields] = useState(EMPTY_TX_FIELDS);
-  const [txing, setTxing] = useState(false);
-  const [txError, setTxError] = useState(null);
+  // ── Tier 3 drawer ──
+  const [drawerPolicy, setDrawerPolicy] = useState(null);
+  const [transitioning, setTransitioning] = useState(false);
+  const [transitionError, setTransitionError] = useState(null);
 
   useEffect(() => {
     if (!tenantId || !user?.uid) return;
@@ -237,39 +190,30 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
     }
   }
 
-  function openTxModal(policy) {
-    const nexts = LEGAL_AGENT_TRANSITIONS[policy.status] ?? [];
-    if (nexts.length === 0) return;
-    setTxPolicy(policy);
-    setTxTo(nexts[0]);
-    setTxFields(EMPTY_TX_FIELDS);
-    setTxError(null);
+  function openDrawer(policy) {
+    setTransitionError(null);
+    setDrawerPolicy(policy);
   }
 
-  function closeTxModal() {
-    setTxPolicy(null);
-    setTxError(null);
+  function closeDrawer() {
+    setDrawerPolicy(null);
+    setTransitionError(null);
   }
 
-  function handleTxFieldChange(e) {
-    const { name, value } = e.target;
-    setTxFields((prev) => ({ ...prev, [name]: value }));
-  }
-
-  async function handleTxSubmit(e) {
-    e.preventDefault();
-    setTxing(true);
-    setTxError(null);
+  async function handleTransition(toStatus, fields) {
+    if (!drawerPolicy) return;
+    setTransitioning(true);
+    setTransitionError(null);
     try {
       const agentRef = { uid: user.uid, ...userProfile };
-      await transitionPolicyStatus(tenantId, agentRef, txPolicy.id, txPolicy.status, txTo, txFields);
+      await transitionPolicyStatus(tenantId, agentRef, drawerPolicy.id, drawerPolicy.status, toStatus, fields);
       const fresh = await getOwnPolicies(tenantId, user.uid);
       setPolicies(fresh);
-      closeTxModal();
+      closeDrawer();
     } catch (err) {
-      setTxError(err.message);
+      setTransitionError(err.message);
     } finally {
-      setTxing(false);
+      setTransitioning(false);
     }
   }
 
@@ -279,7 +223,6 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
     setSameAsOwner(false);
     setSaveError(null);
     onPrefillConsumed?.();
-    // Determine initial picker mode from prefill
     setPlanPickerMode(
       merged.planId ? 'catalog' : (merged.planName ? 'other' : 'catalog')
     );
@@ -291,10 +234,13 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
     setView('list');
   }
 
-  // ── LIST VIEW ──
+  // ── LIST VIEW (v2 — three tiers + drill drawer) ──
   if (view === 'list') {
+    const counts = filterCounts(policies);
+    const visible = applyLedgerFilter(policies, { filter, search });
+
     return (
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" data-testid="policy-ledger-surface">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-ink">Policy Ledger</h2>
           <button
@@ -306,265 +252,114 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
         </div>
 
         {loading && (
-          <div className="space-y-3">
+          <div className="space-y-3" data-testid="ledger-loading">
+            <div className="h-32 rounded-2xl bg-border/40 animate-pulse" />
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-20 rounded-xl bg-border/40 animate-pulse" />
+              <div key={i} className="h-24 rounded-xl bg-border/40 animate-pulse" />
             ))}
           </div>
         )}
 
         {loadError && (
-          <div className="flex items-center gap-2 p-4 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm">
-            <AlertCircle size={16} /> {loadError}
+          <div className="card text-center py-12 flex flex-col items-center gap-3" data-testid="ledger-error">
+            <div className="w-11 h-11 rounded-xl bg-danger-tint text-danger flex items-center justify-center">
+              <AlertCircle size={20} />
+            </div>
+            <p className="font-display font-extrabold text-[15px] text-ink">Couldn’t load your ledger</p>
+            <p className="text-xs text-ink-muted">{loadError}</p>
           </div>
         )}
 
         {!loading && !loadError && policies.length === 0 && (
-          <div className="card text-center py-12">
-            <p className="text-sm text-ink-muted">No policies yet. Tap "New Policy" to log your first.</p>
+          <div className="card text-center py-12 flex flex-col items-center gap-2.5" data-testid="ledger-empty">
+            <div className="w-11 h-11 rounded-xl bg-primary-tint text-primary flex items-center justify-center text-xl">＋</div>
+            <p className="font-display font-extrabold text-[15px] text-ink">No policies yet</p>
+            <p className="text-xs text-ink-muted">Your written business will show here as a live pipeline.</p>
+            <button
+              onClick={openCreate}
+              className="mt-1 h-11 px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+            >
+              Log a policy
+            </button>
           </div>
         )}
 
-        {!loading && policies.map((p) => {
-          const nexts = LEGAL_AGENT_TRANSITIONS[p.status] ?? [];
-          return (
-            <div key={p.id} className="card flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-sm text-ink">{p.ownerName}</p>
-                  {p.insuredName !== p.ownerName && (
-                    <p className="text-xs text-ink-muted">Insured: {p.insuredName}</p>
-                  )}
-                </div>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-semibold shrink-0 ${STATUS_BADGE_CLS[p.status] ?? 'bg-primary/10 text-primary'}`}>
-                  {POLICY_STATUS_LABELS[p.status] ?? p.status}
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-ink-muted">
-                <span>API: <span className="text-ink font-semibold">{formatCurrency(p.proposedAPI)}</span></span>
-                <span>Source: {PROSPECTING_SOURCE_LABELS[p.sourceOfProspect] || p.sourceOfProspect}</span>
-                <span>
-                  Cash w/ App:{' '}
-                  {p.cashWithApp?.collected
-                    ? (p.cashWithApp.amount != null ? formatCurrency(p.cashWithApp.amount) : 'Yes')
-                    : 'No'}
-                </span>
-                <span>Written: {fmtDate(p.dateWritten)}</span>
-              </div>
-              {p.productLine && p.productLine !== 'life' && (
-                <p className="flex items-center gap-1 text-xs text-ink-muted">
-                  <Info size={11} className="shrink-0" />
-                  Does not count toward Tatil Life awards or persistency
-                </p>
-              )}
-              {p.status === 'lapsed' ? (
-                <div className="pt-1 border-t border-border">
-                  <span className="text-xs text-ink-muted">
-                    Lapsed{p.dateLapsed ? ` on ${fmtDate(p.dateLapsed)}` : ''}
-                  </span>
-                </div>
-              ) : p.confirmedAt ? (
-                <div className="pt-1 border-t border-border flex flex-col gap-1.5">
-                  <div className="flex flex-wrap gap-2">
-                    <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400">
-                      Confirmed by {p.confirmedByManager}
-                    </span>
-                    {p.hasDiscrepancy && (
-                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
-                        Discrepancy
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-ink-muted">
-                    {p.hasDiscrepancy ? (
-                      <>Your value: <span className="text-ink font-semibold">{formatCurrency(p.settledAPI)}</span>{' · '}Manager: <span className="text-ink font-semibold">{formatCurrency(p.managerSettledAPI)}</span></>
-                    ) : (
-                      <>Settled: <span className="text-ink font-semibold">{formatCurrency(p.managerSettledAPI)}</span></>
-                    )}
-                  </p>
-                  {p.managerNote && (
-                    <p className="text-xs text-ink-muted">Note: {p.managerNote}</p>
-                  )}
-                </div>
-              ) : p.status === 'settled' ? (
-                <div className="pt-1 border-t border-border">
-                  <p className="text-xs text-ink-muted">Awaiting manager confirmation.</p>
-                </div>
-              ) : nexts.length > 0 ? (
-                <div className="pt-1 border-t border-border">
-                  <button
-                    onClick={() => openTxModal(p)}
-                    className="h-9 px-3 rounded-lg text-xs font-semibold text-primary border border-primary/30 hover:bg-primary/5 transition-colors min-w-[44px]"
-                  >
-                    Update Status
-                  </button>
-                </div>
-              ) : null}
+        {!loading && !loadError && policies.length > 0 && (
+          <>
+            {/* Tier 1 */}
+            <PipelineStrip policies={policies} />
 
-              {/* ── History timeline ── */}
-              <div className="border-t border-border pt-1">
-                <button
-                  onClick={() => toggleHistory(p.id)}
-                  className="flex items-center gap-1 text-xs text-ink-muted hover:text-ink transition-colors h-8 min-w-[44px]"
-                  aria-expanded={histExpanded.has(p.id)}
-                  data-testid={`policy-history-toggle-${p.id}`}
-                >
-                  {histExpanded.has(p.id) ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  History
-                </button>
-                {histExpanded.has(p.id) && (
-                  <div className="mt-1 flex flex-col gap-1.5" data-testid={`policy-history-list-${p.id}`}>
-                    {histLoading[p.id] && (
-                      <div className="flex items-center gap-1.5 text-xs text-ink-muted">
-                        <Loader2 size={12} className="animate-spin" /> Loading…
-                      </div>
-                    )}
-                    {!histLoading[p.id] && histData[p.id]?.length === 0 && (
-                      <p className="text-xs text-ink-muted">No history yet.</p>
-                    )}
-                    {!histLoading[p.id] && histData[p.id]?.map((h) => (
-                      <div key={h.id} className="flex items-start gap-2 text-xs">
-                        <span className="text-ink-muted shrink-0">{fmtDate(h.at)}</span>
-                        <span className="text-ink">
-                          <span className={`inline-block px-1.5 py-0.5 rounded-full font-semibold ${STATUS_BADGE_CLS[h.fromStatus] ?? 'bg-primary/10 text-primary'}`}>
-                            {POLICY_STATUS_LABELS[h.fromStatus] ?? h.fromStatus}
-                          </span>
-                          {' → '}
-                          <span className={`inline-block px-1.5 py-0.5 rounded-full font-semibold ${STATUS_BADGE_CLS[h.toStatus] ?? 'bg-primary/10 text-primary'}`}>
-                            {POLICY_STATUS_LABELS[h.toStatus] ?? h.toStatus}
-                          </span>
-                          <span className="text-ink-muted ml-1.5">({h.actorRole})</span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+            {/* Tier 2 — filter chips + search */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex gap-1 p-1 bg-surface-muted border border-border rounded-[10px]" role="tablist" aria-label="Filter policies">
+                {LEDGER_FILTERS.map((f) => {
+                  const on = filter === f.key;
+                  return (
+                    <button
+                      key={f.key}
+                      role="tab"
+                      aria-selected={on}
+                      onClick={() => setFilter(f.key)}
+                      className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1.5 whitespace-nowrap transition-colors ${
+                        on ? 'bg-card text-ink border border-border shadow-sm' : 'text-ink-muted hover:text-ink'
+                      }`}
+                      data-testid={`ledger-filter-${f.key}`}
+                    >
+                      {f.label}
+                      <span className={`font-mono text-[10px] px-1.5 rounded-full ${on ? 'bg-primary-tint text-primary' : 'text-ink-muted'}`}>{counts[f.key]}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="flex-1" />
+              <div className="flex items-center gap-2 px-3 h-11 bg-card border border-border rounded-lg w-full sm:w-56">
+                <Search size={15} className="text-ink-muted shrink-0" />
+                <input
+                  type="search"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Search owner, plan…"
+                  className="bg-transparent text-[12.5px] text-ink w-full focus:outline-none"
+                  aria-label="Search policies"
+                  data-testid="ledger-search"
+                />
               </div>
             </div>
-          );
-        })}
-      {/* ── Transition modal ── */}
-      {txPolicy && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 p-4">
-          <div className="bg-card rounded-2xl w-full max-w-md flex flex-col gap-4 p-5 shadow-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-base text-ink">Update Status</h3>
-              <button
-                onClick={closeTxModal}
-                className="h-9 w-9 flex items-center justify-center rounded-lg text-ink-muted hover:bg-surface transition-colors min-w-[44px] min-h-[44px]"
-                aria-label="Close"
-              >
-                <X size={18} />
-              </button>
+
+            {/* Tier 3 — feed */}
+            <div className="flex flex-col gap-2.5" data-testid="ledger-feed">
+              {visible.length === 0 ? (
+                <div className="card text-center py-8">
+                  <p className="text-sm text-ink-muted">No policies match this filter.</p>
+                </div>
+              ) : (
+                visible.map((p) => <PolicyCard key={p.id} policy={p} onOpen={openDrawer} />)
+              )}
             </div>
 
-            <p className="text-xs text-ink-muted">
-              <span className="font-semibold text-ink">{txPolicy.ownerName}</span>
-              {' '}— current status: <span className="font-semibold">{POLICY_STATUS_LABELS[txPolicy.status]}</span>
-            </p>
+            {policies.some((p) => p.productLine && p.productLine !== 'life') && (
+              <p className="flex items-center gap-1 text-xs text-ink-muted">
+                <Info size={11} className="shrink-0" />
+                Non-Life policies do not count toward Tatil Life awards or persistency.
+              </p>
+            )}
+          </>
+        )}
 
-            <form onSubmit={handleTxSubmit} className="flex flex-col gap-4">
-              {/* Target status */}
-              <FieldGroup label="New Status" required id="tx-status">
-                <select
-                  id="tx-status"
-                  value={txTo}
-                  onChange={(e) => { setTxTo(e.target.value); setTxFields(EMPTY_TX_FIELDS); setTxError(null); }}
-                  className={selectCls}
-                >
-                  {(LEGAL_AGENT_TRANSITIONS[txPolicy.status] ?? []).map((s) => (
-                    <option key={s} value={s}>{POLICY_STATUS_LABELS[s] ?? s}</option>
-                  ))}
-                </select>
-              </FieldGroup>
-
-              {/* Per-transition fields */}
-              {txTo === 'rated' && (
-                <>
-                  <FieldGroup label="Rated Premium (TTD)" required id="tx-ratedPremium">
-                    <input id="tx-ratedPremium" name="ratedPremium" type="number" step="0.01" min="0.01"
-                      value={txFields.ratedPremium} onChange={handleTxFieldChange}
-                      placeholder="0.00" className={inputCls} required />
-                  </FieldGroup>
-                  <FieldGroup label="Rate Reason" id="tx-rateReason">
-                    <input id="tx-rateReason" name="rateReason" type="text"
-                      value={txFields.rateReason} onChange={handleTxFieldChange}
-                      placeholder="Optional" className={inputCls} />
-                  </FieldGroup>
-                </>
-              )}
-
-              {txTo === 'postponed' && (
-                <FieldGroup label="Pending Reason" id="tx-pendingReason">
-                  <input id="tx-pendingReason" name="pendingReason" type="text"
-                    value={txFields.pendingReason} onChange={handleTxFieldChange}
-                    placeholder="Optional" className={inputCls} />
-                </FieldGroup>
-              )}
-
-              {(txTo === 'ntu' || txTo === 'denied') && (
-                <FieldGroup label="Reason" id="tx-reason">
-                  <input id="tx-reason" name="reason" type="text"
-                    value={txFields.reason} onChange={handleTxFieldChange}
-                    placeholder="Optional" className={inputCls} />
-                </FieldGroup>
-              )}
-
-              {txTo === 'settled' && (
-                <>
-                  <FieldGroup label="Date Issued" required id="tx-dateIssued">
-                    <input id="tx-dateIssued" name="dateIssued" type="date" max={today}
-                      value={txFields.dateIssued} onChange={handleTxFieldChange}
-                      className={inputCls} required />
-                  </FieldGroup>
-                  <FieldGroup label="Settled API (TTD)" required id="tx-settledAPI">
-                    <input id="tx-settledAPI" name="settledAPI" type="number" step="0.01" min="0.01"
-                      value={txFields.settledAPI} onChange={handleTxFieldChange}
-                      placeholder="0.00" className={inputCls} required />
-                  </FieldGroup>
-                  <FieldGroup label="Issued Coverage (TTD)" required id="tx-issuedCoverage">
-                    <input id="tx-issuedCoverage" name="issuedCoverage" type="number" step="0.01" min="0.01"
-                      value={txFields.issuedCoverage} onChange={handleTxFieldChange}
-                      placeholder="0.00" className={inputCls} required />
-                  </FieldGroup>
-                  <FieldGroup label="Initial Premium (TTD)" required id="tx-initialPremium">
-                    <input id="tx-initialPremium" name="initialPremium" type="number" step="0.01" min="0.01"
-                      value={txFields.initialPremium} onChange={handleTxFieldChange}
-                      placeholder="0.00" className={inputCls} required />
-                  </FieldGroup>
-                  <FieldGroup label="Earned Commission (TTD)" required id="tx-earnedCommission">
-                    <input id="tx-earnedCommission" name="earnedCommission" type="number" step="0.01" min="0"
-                      value={txFields.earnedCommission} onChange={handleTxFieldChange}
-                      placeholder="0.00" className={inputCls} required />
-                  </FieldGroup>
-                </>
-              )}
-
-              {txError && (
-                <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm">
-                  <AlertCircle size={16} /> {txError}
-                </div>
-              )}
-
-              <div className="flex gap-3">
-                <button type="button" onClick={closeTxModal}
-                  className="flex-1 h-11 rounded-lg border border-border text-sm font-semibold text-ink-muted hover:bg-surface/70 transition-colors">
-                  Cancel
-                </button>
-                <button type="submit" disabled={txing}
-                  className="flex-1 h-11 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-                  {txing ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : 'Confirm'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+        {drawerPolicy && (
+          <PolicyDrillDrawer
+            policy={drawerPolicy}
+            onClose={closeDrawer}
+            onTransition={handleTransition}
+            transitioning={transitioning}
+            transitionError={transitionError}
+          />
+        )}
       </div>
     );
   }
 
-  // ── CREATE FORM ──
+  // ── CREATE FORM (reused unchanged) ──
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-3">
@@ -758,7 +553,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
         </div>
 
         {saveError && (
-          <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 text-sm">
+          <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-danger-tint text-danger text-sm">
             <AlertCircle size={16} /> {saveError}
           </div>
         )}

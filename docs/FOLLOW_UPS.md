@@ -5,6 +5,23 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Policy Ledger v2 — deferred slices (banked 2026-06-02 from Policy Ledger v2 Slice 1 PR #TBD)
+
+**Status:** Slice 1 shipped the agent-surface presentational reorg (3 tiers + drill drawer, derived Confirmed, state-machine-filtered transitions, `statusToken()` token pass). The following were explicitly carved OUT of Slice 1 and remain to do.
+
+1. **Campaign "Lens" mode + awards coupling (MEDIUM — gated on the `usesPolicyLedger` flip-gate).** The mockup's CampaignProgressStrip / ContributionBadges (COUNTS·PENDING·EXCLUDED per-policy) / FEEDS chips ("★ MDRT 2026 / Christmas Campaign") / "Export proof" were deferred **entirely** (not display-only) — each asserts the ledger feeds awards/campaigns, which is the dormant path gated OFF pending parity (see the H3 FLIP-GATE FU). Build only once `usesPolicyLedger` is cleared for the pilot agents AND a campaign-eligibility engine exists.
+2. **Manager reconciliation rebuild (its own track).** The `PolicyReconciliationPanel` v2 restyle (port-ledger rows 29 CRO / 30 Policy Reconciliation) is a separate track — Slice 1 did not touch the manager surface.
+3. **Lapse re-homing (manager track).** `settled → lapsed` stays a BM-only action on the manager surface; Slice 1 deliberately renders no Lapse affordance on the agent ledger. Any re-homing of the lapse UX lands with the manager reconciliation track.
+4. **Pre-existing dark-mode contrast patterns (LOW — codebase-wide a11y).** The Slice 1 smoke's surface-scoped axe surfaces two **pre-existing** color-contrast nodes (NOT new to this PR — both verified against main):
+   - **`bg-gold-tint text-gold`** small-text pill (Confirmed pill + drawer DERIVED tag) — the established gold-tint convention (e.g. `RankedLeaderboard.jsx:33` rank-1 gold). ~3.3:1 light; sub-AA for small text. Needs a darker gold-ink text token (`--color-gold-ink`-style, ~#8A6010) applied codebase-wide.
+   - **`bg-primary text-white`** standard primary button in **dark** mode — lifted-teal `--primary` (#4AB5B8) + white ≈ 2.4:1. This is the app-wide primary-button pattern (the "New Policy" button is carried verbatim from the pre-PR `PolicyLedgerPanel`); it fails on every dark surface, not just here. Needs a primary-button foreground/treatment fix at the token/button level.
+
+   Both are out of scope for a no-new-token presentational slice. Do as a dedicated a11y/token pass spanning RankedLeaderboard + WhereYouRankPanel + the shared primary button + the policy-ledger confirmed pill.
+
+**Cross-reference:** `src/components/agent/policyLedger/*`; `src/lib/policyStatusTokens.js` (shared — the manager surface imports the same helper later); `docs/design/policy-ledger-v2-slice-1.html` (build annotation — "Deferred" + "DEFERRED awards path" sections); `docs/FOLLOW_UPS.md` § H3 FLIP-GATE.
+
+---
+
 ## Daily Capture anchor strip — targets + dials chip (MEDIUM, banked 2026-06-02 from Daily Capture v2 Slice 1 PR #426)
 
 **Status:** Slice 1 shipped the counts-only WTD strip (APPR/FFI/CI/APPS, no targets, no dials). Slice 2 evolves it into a manager-set-target experience and adds a new daily dials/calls field.

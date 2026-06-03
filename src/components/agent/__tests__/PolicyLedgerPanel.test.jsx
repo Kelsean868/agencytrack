@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
@@ -102,110 +102,82 @@ beforeEach(() => {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe('PolicyLedgerPanel — confirmation strip', () => {
-  it('confirmed + discrepancy → shows all chips, both values, and note', async () => {
-    hoisted.getOwnPolicies.mockResolvedValueOnce([
-      makePolicy({
-        status:            'settled',
-        proposedAPI:       3000,
-        confirmedAt:       { toDate: () => new Date() },
-        confirmedByManager: 'Test Branch Manager',
-        hasDiscrepancy:    true,
-        settledAPI:        5000,
-        managerSettledAPI: 6000,
-        managerNote:       'Adjusted per receipt.',
-      }),
-    ]);
-
+describe('PolicyLedgerPanel — drawer confirmation (v2)', () => {
+  async function openDrawerFor(policy) {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([policy]);
     render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByTestId(`policy-card-${policy.id}`));
+    fireEvent.click(screen.getByTestId(`policy-card-${policy.id}`));
+    return waitFor(() => screen.getByTestId('policy-drawer'));
+  }
 
-    await waitFor(() =>
-      expect(screen.getByText(/Confirmed by Test Branch Manager/)).toBeInTheDocument()
-    );
+  it('confirmed + discrepancy → drawer shows confirmation, both values, and note', async () => {
+    await openDrawerFor(makePolicy({
+      status:            'settled',
+      proposedAPI:       3000,
+      confirmedAt:       { toDate: () => new Date() },
+      confirmedByManager: 'Test Branch Manager',
+      hasDiscrepancy:    true,
+      settledAPI:        5000,
+      managerSettledAPI: 6000,
+      managerNote:       'Adjusted per receipt.',
+    }));
 
-    expect(screen.getByText('Discrepancy')).toBeInTheDocument();
-    expect(screen.getByText(/TTD\s*5,000/)).toBeInTheDocument();
-    expect(screen.getByText(/TTD\s*6,000/)).toBeInTheDocument();
-    expect(screen.getByText(/Note: Adjusted per receipt\./)).toBeInTheDocument();
+    const drawer = screen.getByTestId('policy-drawer');
+    expect(within(drawer).getByText(/Confirmed by Test Branch Manager/)).toBeInTheDocument();
+    expect(within(drawer).getByText(/TTD\s*5,000/)).toBeInTheDocument();
+    expect(within(drawer).getByText(/TTD\s*6,000/)).toBeInTheDocument();
+    expect(within(drawer).getByText(/Note: Adjusted per receipt\./)).toBeInTheDocument();
   });
 
-  it('confirmed + clean → shows Confirmed chip and Settled value; no Discrepancy chip', async () => {
-    hoisted.getOwnPolicies.mockResolvedValueOnce([
-      makePolicy({
-        status:            'settled',
-        confirmedAt:       { toDate: () => new Date() },
-        confirmedByManager: 'Branch Manager',
-        hasDiscrepancy:    false,
-        settledAPI:        4000,
-        managerSettledAPI: 4000,
-      }),
-    ]);
+  it('confirmed + clean → drawer shows "Confirmed value"; no discrepancy split', async () => {
+    await openDrawerFor(makePolicy({
+      status:            'settled',
+      confirmedAt:       { toDate: () => new Date() },
+      confirmedByManager: 'Branch Manager',
+      hasDiscrepancy:    false,
+      settledAPI:        4000,
+      managerSettledAPI: 4000,
+    }));
 
-    render(<PolicyLedgerPanel />);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Confirmed by Branch Manager/)).toBeInTheDocument()
-    );
-
-    expect(screen.queryByText('Discrepancy')).not.toBeInTheDocument();
-    expect(screen.getByText(/TTD\s*4,000/)).toBeInTheDocument();
+    const drawer = screen.getByTestId('policy-drawer');
+    expect(within(drawer).getByText(/Confirmed value:/)).toBeInTheDocument();
+    expect(within(drawer).getByText(/TTD\s*4,000/)).toBeInTheDocument();
+    expect(within(drawer).queryByText(/Manager:/)).not.toBeInTheDocument();
   });
 
-  it('confirmed + no managerNote → no Note line', async () => {
-    hoisted.getOwnPolicies.mockResolvedValueOnce([
-      makePolicy({
-        status:            'settled',
-        confirmedAt:       { toDate: () => new Date() },
-        confirmedByManager: 'Branch Manager',
-        hasDiscrepancy:    false,
-        managerSettledAPI: 4000,
-        managerNote:       null,
-      }),
-    ]);
+  it('confirmed + no managerNote → no Note line in drawer', async () => {
+    await openDrawerFor(makePolicy({
+      status:            'settled',
+      confirmedAt:       { toDate: () => new Date() },
+      confirmedByManager: 'Branch Manager',
+      hasDiscrepancy:    false,
+      managerSettledAPI: 4000,
+      managerNote:       null,
+    }));
 
-    render(<PolicyLedgerPanel />);
-
-    await waitFor(() =>
-      expect(screen.getByText(/Confirmed by Branch Manager/)).toBeInTheDocument()
-    );
-
-    expect(screen.queryByText(/^Note:/)).not.toBeInTheDocument();
+    const drawer = screen.getByTestId('policy-drawer');
+    expect(within(drawer).queryByText(/^Note:/)).not.toBeInTheDocument();
   });
 
-  it('settled + not confirmed → shows "Awaiting manager confirmation"; no chip; no Update Status', async () => {
-    hoisted.getOwnPolicies.mockResolvedValueOnce([
-      makePolicy({
-        status:      'settled',
-        confirmedAt: null,
-      }),
-    ]);
-
+  it('settled + not confirmed → card hint "Awaiting manager"; drawer has no confirmation + no transition footer', async () => {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({ status: 'settled', confirmedAt: null })]);
     render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByTestId('policy-card-p1'));
+    expect(screen.getByText('Awaiting manager')).toBeInTheDocument();
 
-    await waitFor(() =>
-      expect(screen.getByText('Awaiting manager confirmation.')).toBeInTheDocument()
-    );
-
-    expect(screen.queryByText(/Confirmed by/)).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Update Status/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('policy-card-p1'));
+    await waitFor(() => screen.getByTestId('policy-drawer'));
+    const drawer = screen.getByTestId('policy-drawer');
+    expect(within(drawer).queryByTestId('drawer-confirmation')).not.toBeInTheDocument();
+    expect(within(drawer).queryByTestId('drawer-tx-confirm')).not.toBeInTheDocument();
   });
 
-  it('non-terminal (submitted) → Update Status button; no confirmation strip; no awaiting line', async () => {
-    hoisted.getOwnPolicies.mockResolvedValueOnce([
-      makePolicy({
-        status:      'submitted',
-        confirmedAt: null,
-      }),
-    ]);
-
-    render(<PolicyLedgerPanel />);
-
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /Update Status/i })).toBeInTheDocument()
-    );
-
-    expect(screen.queryByText(/Confirmed by/)).not.toBeInTheDocument();
-    expect(screen.queryByText('Awaiting manager confirmation.')).not.toBeInTheDocument();
+  it('non-terminal (submitted) → drawer transition footer present; no confirmation card', async () => {
+    await openDrawerFor(makePolicy({ status: 'submitted', confirmedAt: null }));
+    const drawer = screen.getByTestId('policy-drawer');
+    expect(within(drawer).getByTestId('drawer-tx-confirm')).toBeInTheDocument();
+    expect(within(drawer).queryByTestId('drawer-confirmation')).not.toBeInTheDocument();
   });
 });
 
@@ -234,11 +206,13 @@ describe('PolicyLedgerPanel — list view states', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /New Policy/i })).toBeInTheDocument());
   });
 
-  it('renders policy owner name and status badge in list', async () => {
+  it('renders policy owner name and status pill in card', async () => {
     hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({ ownerName: 'Jane Doe', status: 'submitted' })]);
     render(<PolicyLedgerPanel />);
-    await waitFor(() => expect(screen.getByText('Jane Doe')).toBeInTheDocument());
-    expect(screen.getByText('Submitted')).toBeInTheDocument();
+    await waitFor(() => screen.getByTestId('policy-card-p1'));
+    const card = screen.getByTestId('policy-card-p1');
+    expect(within(card).getByText('Jane Doe')).toBeInTheDocument();
+    expect(within(card).getByText('Submitted')).toBeInTheDocument();
   });
 });
 
@@ -288,50 +262,53 @@ describe('PolicyLedgerPanel — create form', () => {
 
 // ── Status transition modal tests ─────────────────────────────────────────────
 
-describe('PolicyLedgerPanel — transition modal', () => {
-  it('Update Status button opens transition modal for a submitted policy', async () => {
-    hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({ status: 'submitted' })]);
+describe('PolicyLedgerPanel — transition (drawer split-button)', () => {
+  async function openDrawerFor(policy) {
+    hoisted.getOwnPolicies.mockResolvedValueOnce([policy]);
     render(<PolicyLedgerPanel />);
-    await waitFor(() => expect(screen.getByRole('button', { name: /Update Status/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: /Update Status/i }));
-    // Modal title is "Update Status" — it now appears twice (card button + modal heading)
-    await waitFor(() => {
-      const h3 = document.querySelector('h3');
-      expect(h3).toBeTruthy();
-      expect(h3.textContent).toMatch(/Update Status/i);
-    });
+    await waitFor(() => screen.getByTestId(`policy-card-${policy.id}`));
+    fireEvent.click(screen.getByTestId(`policy-card-${policy.id}`));
+    return waitFor(() => screen.getByTestId('policy-drawer'));
+  }
+
+  it('opening a submitted policy drawer shows the transition split-button (primary = Rated)', async () => {
+    await openDrawerFor(makePolicy({ status: 'submitted' }));
+    const drawer = screen.getByTestId('policy-drawer');
+    expect(within(drawer).getByText('Move to Rated')).toBeInTheDocument();
+    expect(within(drawer).getByTestId('drawer-tx-confirm')).toBeInTheDocument();
   });
 
-  it('transition modal lists legal next statuses for submitted policy', async () => {
-    hoisted.getOwnPolicies.mockResolvedValueOnce([makePolicy({ status: 'submitted' })]);
-    render(<PolicyLedgerPanel />);
-    await waitFor(() => expect(screen.getByRole('button', { name: /Update Status/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: /Update Status/i }));
-    await waitFor(() => {
-      // Modal should list rated/postponed/ntu/denied/settled as options
-      const select = screen.getByRole('combobox');
-      expect(select).toBeInTheDocument();
-    });
+  it('rated policy → transition offers only Settled + NTU; Lapsed/Postponed/Denied are absent', async () => {
+    await openDrawerFor(makePolicy({ status: 'rated' }));
+    const drawer = screen.getByTestId('policy-drawer');
+    // Primary action = first legal next for rated = Settled.
+    expect(within(drawer).getByText('Move to Settled')).toBeInTheDocument();
+    // Open the "other status" menu → only NTU is offered.
+    fireEvent.click(within(drawer).getByTestId('drawer-tx-menu-toggle'));
+    expect(within(drawer).getByTestId('drawer-tx-option-ntu')).toBeInTheDocument();
+    expect(within(drawer).queryByTestId('drawer-tx-option-lapsed')).not.toBeInTheDocument();
+    expect(within(drawer).queryByTestId('drawer-tx-option-postponed')).not.toBeInTheDocument();
+    expect(within(drawer).queryByTestId('drawer-tx-option-denied')).not.toBeInTheDocument();
   });
 
-  it('successful transition calls transitionPolicyStatus and closes modal', async () => {
+  it('confirming a transition calls transitionPolicyStatus and closes the drawer', async () => {
     hoisted.getOwnPolicies
       .mockResolvedValueOnce([makePolicy({ status: 'submitted' })])
       .mockResolvedValueOnce([makePolicy({ status: 'rated' })]);
+    render(<PolicyLedgerPanel />);
+    await waitFor(() => screen.getByTestId('policy-card-p1'));
+    fireEvent.click(screen.getByTestId('policy-card-p1'));
+    await waitFor(() => screen.getByTestId('policy-drawer'));
 
-    const { container } = render(<PolicyLedgerPanel />);
-    await waitFor(() => expect(screen.getByRole('button', { name: /Update Status/i })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: /Update Status/i }));
-
-    // Wait for transition modal form to appear
-    await waitFor(() => container.querySelector('form'));
-
-    // Submit via form element — Confirm button is type="submit" inside the form
-    fireEvent.submit(container.querySelector('form'));
+    // Default target for a submitted policy is "rated"; submit the drawer form.
+    fireEvent.submit(screen.getByTestId('policy-drawer').querySelector('form'));
 
     await waitFor(() => expect(hoisted.transitionPolicyStatus).toHaveBeenCalledOnce());
-    // After successful transition, modal closes — h3 "Update Status" disappears
-    await waitFor(() => expect(document.querySelector('h3')).toBeNull());
+    const [, , policyId, fromStatus, toStatus] = hoisted.transitionPolicyStatus.mock.calls[0];
+    expect(policyId).toBe('p1');
+    expect(fromStatus).toBe('submitted');
+    expect(toStatus).toBe('rated');
+    await waitFor(() => expect(screen.queryByTestId('policy-drawer')).toBeNull());
   });
 });
 
