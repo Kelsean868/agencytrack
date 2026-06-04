@@ -3,32 +3,26 @@ import { History, Info, Check } from 'lucide-react';
 import { useAuth } from '../../../../context/AuthContext';
 import { setGoals } from '../../../../services/goalsService';
 import { formatCurrency } from '../../../../utils/formatters';
+import {
+  decomposeFromIncome,
+  deriveRatiosFromHistory,
+  roundTo10,
+  roundToWhole,
+  WEEKLY_DIVISOR,
+  DEFAULT_DECOMPOSITION_INPUTS,
+} from '../../../../utils/goalDecomposition';
 
-// Local helpers — only used by this tab.
-const roundTo10    = (v) => Math.round(parseFloat(v) / 10) * 10;
-const roundToWhole = (v) => Math.round(parseFloat(v));
-
+// Decomposition math, rounding, defaults, and the weekly divisor now live in
+// utils/goalDecomposition.js — shared with the Game Plan Weekly Planner card so
+// there is a single source of truth for the chain (no drift).
 const PERIODS = [
-  { key: 'annual',    label: 'Annual',      divisor: 1   },
-  { key: 'semi',      label: 'Semi-Annual', divisor: 2   },
-  { key: 'quarterly', label: 'Quarterly',   divisor: 4   },
-  { key: 'monthly',   label: 'Monthly',     divisor: 10  },
-  { key: 'weekly',    label: 'Weekly',      divisor: 43  },
-  { key: 'daily',     label: 'Daily',       divisor: 215 },
+  { key: 'annual',    label: 'Annual',      divisor: 1             },
+  { key: 'semi',      label: 'Semi-Annual', divisor: 2             },
+  { key: 'quarterly', label: 'Quarterly',   divisor: 4             },
+  { key: 'monthly',   label: 'Monthly',     divisor: 10            },
+  { key: 'weekly',    label: 'Weekly',      divisor: WEEKLY_DIVISOR },
+  { key: 'daily',     label: 'Daily',       divisor: 215           },
 ];
-
-const DEFAULT_INPUTS = {
-  incomeGoal:      300000,
-  taxRate:         25,
-  renewalIncome:   0,
-  settlementRate:  90,
-  commissionRate:  35,
-  avgPolicyAPI:    12000,
-  persistencyRate: 90,
-  ciToSaleRatio:   2,
-  dialsToCIRatio:  2.5,
-  prospectRatio:   2,
-};
 
 function NumField({ label, value, onChange, prefix, step = 1, min = 0, badge }) {
   return (
@@ -109,7 +103,7 @@ function OutputTable({ computed, freqKey, onFreqChange }) {
 
 export default function GoalDecompositionTab({ submissions = [], agentId, tenantId }) {
   const { user, userProfile } = useAuth();
-  const [inputs, setInputs]                     = useState(DEFAULT_INPUTS);
+  const [inputs, setInputs]                     = useState(DEFAULT_DECOMPOSITION_INPUTS);
   const [freqKey, setFreqKey]                   = useState('annual');
   const [saving, setSaving]                     = useState(false);
   const [savedGoals, setSavedGoals]             = useState(false);
@@ -124,33 +118,10 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
     }
   }, []);
 
-  const { autoCiToSale, autoDialsToCI, hasHistory } = useMemo(() => {
-    const submitted = (submissions ?? [])
-      .filter((s) => s.status === 'submitted')
-      .slice(0, 12);
-
-    if (submitted.length < 8) return { autoCiToSale: null, autoDialsToCI: null, hasHistory: false };
-
-    const totalCI    = submitted.reduce((sum, s) => sum + (parseFloat(s.ciConducted) || 0), 0);
-    const totalApps  = submitted.reduce((sum, s) => sum + (parseFloat(s.applicationsSold || s.appsSold) || 0), 0);
-    const totalDials = submitted.reduce(
-      (sum, s) =>
-        sum +
-        (parseFloat(s.referralCalls) || 0) +
-        (parseFloat(s.followUpCalls) || 0) +
-        (parseFloat(s.coldCalls) || 0) +
-        (parseFloat(s.seminarTradeshowCalls) || 0),
-      0,
-    );
-
-    const autoCiToSale  = totalApps > 0 ? totalCI / totalApps : null;
-    const autoDialsToCI = totalCI   > 0 ? totalDials / totalCI : null;
-    return {
-      autoCiToSale,
-      autoDialsToCI,
-      hasHistory: autoCiToSale !== null && autoDialsToCI !== null,
-    };
-  }, [submissions]);
+  const { autoCiToSale, autoDialsToCI, hasHistory } = useMemo(
+    () => deriveRatiosFromHistory(submissions),
+    [submissions],
+  );
 
   useEffect(() => {
     if (hasHistory) {
@@ -164,25 +135,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
 
   const setField = (key) => (value) => setInputs((prev) => ({ ...prev, [key]: value }));
 
-  const computed = useMemo(() => {
-    const {
-      incomeGoal, taxRate, renewalIncome, settlementRate,
-      commissionRate, avgPolicyAPI, persistencyRate,
-      ciToSaleRatio, dialsToCIRatio, prospectRatio,
-    } = inputs;
-
-    const preTaxIncome           = taxRate < 100 ? incomeGoal / (1 - taxRate / 100) : 0;
-    const firstYearCommRequired  = Math.max(0, preTaxIncome - renewalIncome);
-    const adjustedForPersistency = persistencyRate > 0 ? firstYearCommRequired / (persistencyRate / 100) : 0;
-    const apiToWrite             = commissionRate > 0 ? adjustedForPersistency / (commissionRate / 100) : 0;
-    const apiToSettle            = apiToWrite * (settlementRate / 100);
-    const applications           = avgPolicyAPI > 0 ? apiToWrite / avgPolicyAPI : 0;
-    const ci                     = applications * ciToSaleRatio;
-    const dials                  = ci * dialsToCIRatio;
-    const prospects              = dials * prospectRatio;
-
-    return { incomeGoal, apiToWrite, apiToSettle, applications, ci, dials, prospects };
-  }, [inputs]);
+  const computed = useMemo(() => decomposeFromIncome(inputs), [inputs]);
 
   const handleSaveGoals = async () => {
     setSaving(true);

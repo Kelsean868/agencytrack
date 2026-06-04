@@ -6,6 +6,7 @@ import PlanAnchorStrip from './PlanAnchorStrip';
 import StepRail from './StepRail';
 import PlanCascade from './PlanCascade';
 import CommitPreviewCard from './CommitPreviewCard';
+import SuggestedWeekCard from './SuggestedWeekCard';
 
 /**
  * GamePlanScreen — Game Plan v2 hub (Slice 1).
@@ -24,13 +25,34 @@ import CommitPreviewCard from './CommitPreviewCard';
  * never fabricates a figure.
  *
  * `onOpenTab(tabId)` routes to the Money Needs step and the Goals page.
+ *
+ * The Weekly Planner card (Slice 1) is a read-only "This week" rung below the
+ * cascade. It composes the existing goal-decomposition engine over the agent's
+ * committed API anchor + history-derived ratios — no new data, no store. Its
+ * inputs (goals assumptions, submission history, the company floor) are loaded
+ * once by AgentDashboard and threaded in; `dataLoading` / `dataError` / `onRetry`
+ * drive its honest loading / error states.
  */
 const TOTAL_STEPS = 4;
 
-export default function GamePlanScreen({ committedAnnualAPI = null, onOpenTab }) {
+export default function GamePlanScreen({
+  committedAnnualAPI = null,
+  onOpenTab,
+  avgPolicyAPI = null,
+  prospectRatio = null,
+  submissions = [],
+  weeklyActivityFloors = null,
+  dataLoading = false,
+  dataError = false,
+  onRetry,
+}) {
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
-  const year = new Date().getFullYear();
+  const now = new Date();
+  const year = now.getFullYear();
+  // Week-of-year label (mirrors AgentDashboard's topbar crumb math).
+  const yearStart = new Date(year, 0, 1);
+  const weekNum = Math.ceil(((now - yearStart) / 86400000 + yearStart.getDay() + 1) / 7);
 
   const [worksheet, setWorksheet] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -129,6 +151,19 @@ export default function GamePlanScreen({ committedAnnualAPI = null, onOpenTab })
             <PlanCascade commissionNeed={commissionNeed} moneyNeedsFilled={moneyNeedsFilled} />
             <CommitPreviewCard year={year} onOpenGoals={openGoals} />
           </div>
+
+          <SuggestedWeekCard
+            committedAnnualAPI={committedAnnualAPI}
+            avgPolicyAPI={avgPolicyAPI}
+            prospectRatio={prospectRatio}
+            submissions={submissions}
+            floors={weeklyActivityFloors}
+            loading={dataLoading}
+            error={dataError}
+            onRetry={onRetry}
+            onBuildPlan={openGoals}
+            weekLabel={`Wk ${weekNum}`}
+          />
         </>
       )}
     </div>

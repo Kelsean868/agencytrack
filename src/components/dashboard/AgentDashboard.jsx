@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   X, Download, Loader2,
   ClipboardList, FileText, Home, NotebookPen, Wallet, Target, Zap, Repeat, Search, Medal, Shield,
@@ -157,7 +157,7 @@ export default function AgentDashboard() {
     setActiveTab('policy-ledger');
   }
 
-  useEffect(() => {
+  const loadCoreData = useCallback(() => {
     if (!user?.uid || !tenantId) return;
     setLoading(true);
     setSubmissionsError(null);
@@ -182,6 +182,8 @@ export default function AgentDashboard() {
       setAwardsRuleset(ruleset);
     }).catch(console.error).finally(() => setLoading(false));
   }, [user?.uid, tenantId, currentWeek, thisYear]);
+
+  useEffect(() => { loadCoreData(); }, [loadCoreData]);
 
   // Resolved personal annual API: agent's own commitment if set, else the
   // tenant company-floor minimum, else 200000 (matches getCompanyMinimums
@@ -590,6 +592,13 @@ export default function AgentDashboard() {
         <GamePlanScreen
           committedAnnualAPI={goals?.personalAnnualAPI ?? null}
           onOpenTab={setActiveTab}
+          avgPolicyAPI={goals?.playgroundAvgPolicyAPI ?? null}
+          prospectRatio={goals?.playgroundProspectRatio ?? null}
+          submissions={allSubmissions}
+          weeklyActivityFloors={resolvedMinimums?.weeklyActivityFloors ?? null}
+          dataLoading={loading}
+          dataError={Boolean(submissionsError)}
+          onRetry={loadCoreData}
         />
       )}
 

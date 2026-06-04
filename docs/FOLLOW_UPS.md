@@ -5,6 +5,23 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Weekly-activity planner — remaining slices (banked 2026-06-03 from Weekly Planner v2 Slice 1, PR #TBD)
+
+**Context:** Slice 1 (PR #TBD) shipped the read-only **"Suggested weekly plan"** card in the Game Plan hub + extracted the goal-decomposition engine to `src/utils/goalDecomposition.js` (a small cleanup-debt reduction — the income→activity chain is now a shared, tested, single-source pure module instead of inline-in-the-Playground-tab). The remaining Path-B slices turn the read-only suggestion into a tracked, committed, rolled-up plan.
+
+**Remaining slices:**
+- **Slice 2 — agent-set plan + store.** Steppers on the weekly line, a `weeklyPlan` doc (per agent/week — new collection + write + rules + likely an index), commit + reset-to-suggested, floored at the company minimum. This is where the **set-plan steppers cover all 5 floor metrics** (Dials·Contacts·FFIs·CIs·Apps) with honest pre-fill provenance: **derived** for Dials/CIs/Apps (from the engine) and **company floor** for Contacts/FFIs (until the contacts/FFI derivation below exists).
+- **Slice 3 — plan vs actual vs variance.** Read actuals from the weekly submission (+ daily from Daily Capture); compute variance/pace; add the **daily breakdown** (deferred from Slice 1 — meaningless without daily actuals); evolve `WeeklyStandardCard` to plan-vs-actual with the floor as a baseline. (Slice 1 deliberately did **not** touch `WeeklyStandardCard`.)
+- **Slice 4 — manager roll-up.** Team aggregate: who set a plan, plan-vs-actual per metric, on-pace/behind/no-plan flags.
+
+**Personal contacts/FFI weekly derivation (product decision, blocks the derived path showing 5 chips).** Slice 1's derived line shows only the **3 engine-derivable chips (Dials·CIs·Apps)** because the decomposition engine's chain (API → apps → CIs → dials → prospects) has **no contacts or FFI stage** (dispatcher Finding-A, 2026-06-03). Showing personal contacts/FFI targets needs a **deliberate ratio methodology** — wizard history could support a contacts-per-dial and an FFI-per-CI ratio (mirroring the existing `deriveRatiosFromHistory` 8-week auto-population), but which ratios, from which fields, with what fallback is a future product decision. Do **not** extend the decomposition engine ad-hoc (locked decision 1: don't change the chain math). Until then, contacts/FFIs appear only on the **floor fallback** (the company floor carries those columns) and in Slice 2's set-plan steppers (floor-provenance pre-fill).
+
+**Annotation refresh (LOW).** `docs/design/Weekly-Planner-Slice-1-Build.html` draws 5 derived chips + an apps→CIs→FFIs→dials reveal chain; the shipped card draws 3 derived chips + the real engine chain (API→apps→CIs→dials→prospects). Refresh the annotation to match engine reality when convenient.
+
+**Commission Playground tab absorption (RECONCILE LATER).** Slice 1 *reuses* the extracted engine; the standalone `CommissionPlayground/tabs/GoalDecompositionTab.jsx` tab still exists (re-pointed, zero behavior change). Retiring it once the planner owns the surface is a later decision.
+
+---
+
 ## Over-goal MDRT marker treatment on the HeroCard (LOW, banked 2026-06-03 from HeroCard marker-label fix PR #436)
 
 **Context.** The HeroCard marker-label fix (`src/components/dashboard/HomeV2/HeroCard.jsx`) now **hides** the MDRT marker when it's off-scale (`MDRT_THRESHOLD > goal` — e.g. the default 200,000 goal vs the 500,000 MDRT threshold). This is correct for legibility (it was the clamp-onto-the-goal-label collision source), but it means an agent whose personal goal is below the MDRT threshold sees no MDRT reference on the hero bar at all.
