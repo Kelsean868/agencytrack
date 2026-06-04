@@ -1122,6 +1122,98 @@ service cloud.firestore {
         allow list: if false;
       }
 
+      // ── Weekly Planner v2 Slice 2: agent-set committed weekly plan ────────────
+      // /tenants/{tid}/weeklyPlans/{agentId}_{weekStart}  (weekStart = YYYY-MM-DD Sunday)
+      //
+      // Agent owns full CRUD on OWN doc only (isAgent() denies managers incl. TA/PA
+      // from writing/deleting — "no manager write"). Upline GET mirrors the moneyNeeds
+      // sibling's cross-doc-lookup scoping (UM same-unit, BM same-branch, SM/TA/PA
+      // tenant-wide) MINUS the visibility gate — plans are unconditionally upline-
+      // readable, like submissions. NO list arm / NO composite index this slice:
+      // every read is a deterministic-ID get. S4's manager roll-up is a get-fan-out
+      // over the roster ({agentId}_{weekStart} per member), each get authorized by
+      // the upline arm here — still no list, still no index.
+      //
+      // Rules enforce SECURITY + SHAPE only: ownership, exact key sets (hasOnly+hasAll
+      // on all three: top-level / targets / provenance), int ≥0 targets, provenance
+      // enums, tenant match, timestamp types, weekStart immutability on update, and
+      // the planId date-segment format. The resolved-floor MINIMUM (tenure-resolved,
+      // JS-side) is enforced by the stepper clamp + weeklyPlanService re-validation,
+      // NOT here. Sunday semantics + ID-date == weekStart consistency also live in the
+      // service (validateSundayDate / parseDateOnlyTT).
+      match /weeklyPlans/{planId} {
+
+        function validPlanWrite() {
+          let d = request.resource.data;
+          return d.agentId == request.auth.uid
+            && d.tenantId == tenantId
+            && planId.split('_').size() == 2
+            && planId.split('_')[0] == request.auth.uid
+            && planId.split('_')[1].matches('\\d{4}-\\d{2}-\\d{2}')
+            && d.keys().hasAll(['agentId','tenantId','weekStart','targets','provenance',
+                                'anchorAPIAtCommit','committedAt','updatedAt'])
+            && d.keys().hasOnly(['agentId','tenantId','weekStart','targets','provenance',
+                                 'anchorAPIAtCommit','committedAt','updatedAt'])
+            && d.weekStart is timestamp
+            && d.committedAt is timestamp
+            && d.updatedAt is timestamp
+            && (d.anchorAPIAtCommit == null || d.anchorAPIAtCommit is number)
+            && d.targets.keys().hasAll(['callsMade','contactsMade','factFindsCompleted',
+                                        'closingInterviewsKept','applicationsSubmitted'])
+            && d.targets.keys().hasOnly(['callsMade','contactsMade','factFindsCompleted',
+                                         'closingInterviewsKept','applicationsSubmitted'])
+            && d.targets.callsMade             is int && d.targets.callsMade             >= 0
+            && d.targets.contactsMade          is int && d.targets.contactsMade          >= 0
+            && d.targets.factFindsCompleted    is int && d.targets.factFindsCompleted    >= 0
+            && d.targets.closingInterviewsKept is int && d.targets.closingInterviewsKept >= 0
+            && d.targets.applicationsSubmitted is int && d.targets.applicationsSubmitted >= 0
+            && d.provenance.keys().hasAll(['callsMade','contactsMade','factFindsCompleted',
+                                           'closingInterviewsKept','applicationsSubmitted'])
+            && d.provenance.keys().hasOnly(['callsMade','contactsMade','factFindsCompleted',
+                                            'closingInterviewsKept','applicationsSubmitted'])
+            && d.provenance.callsMade             in ['derived','floor','agent']
+            && d.provenance.contactsMade          in ['derived','floor','agent']
+            && d.provenance.factFindsCompleted    in ['derived','floor','agent']
+            && d.provenance.closingInterviewsKept in ['derived','floor','agent']
+            && d.provenance.applicationsSubmitted in ['derived','floor','agent'];
+        }
+
+        // Upline scoping via cross-doc lookup of the agent's user doc (no denormalized
+        // unitId/branchId on the plan — the roster integrity probe confirmed those
+        // fields are clean, so the lookup is fail-closed-safe). agentId from planId.
+        function uplineCanReadPlan() {
+          let agentId = planId.split('_')[0];
+          return canManage(tenantId) && (
+            getRole() in ['sales_manager','tenant_admin','platform_admin']
+            || (getRole() == 'unit_manager'
+                && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(agentId)).data.unitId == callerUnitId(tenantId))
+            || (getRole() == 'branch_manager'
+                && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(agentId)).data.branchId == callerBranchId(tenantId))
+          );
+        }
+
+        allow create: if isAgent() && getTenantId() == tenantId && validPlanWrite();
+
+        // weekStart is the week's identity — re-commit overwrites targets, never the week.
+        allow update: if isAgent() && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid
+          && request.resource.data.weekStart == resource.data.weekStart
+          && validPlanWrite();
+
+        // Single-doc get: owner (incl. pre-write null-resource prefix check) OR upline.
+        // Non-owners get NO existence oracle — when the doc is absent (resource == null)
+        // only the owner-prefix arm can succeed; managers must hit an existing doc.
+        allow get: if isSignedIn() && getTenantId() == tenantId
+          && (resource == null
+              ? planId.split('_')[0] == request.auth.uid
+              : resource.data.agentId == request.auth.uid || uplineCanReadPlan());
+
+        allow delete: if isAgent() && getTenantId() == tenantId
+          && resource.data.agentId == request.auth.uid;
+
+        // No list arm by design (see header). S4 stays get-fan-out, no index.
+      }
+
       // G5: Money Needs Worksheet — agent-own + manager-read arms (opt-in consent model).
       // True-ownership: uid match only. No canAccessOwn (avoids TA/PA blanket-read).
       // TA and platform_admin have no read arm — moneyNeeds is agent-private by design.

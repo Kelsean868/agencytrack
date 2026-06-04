@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Clock, AlertCircle, RotateCw, ChevronDown, ArrowRight } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Clock, AlertCircle, RotateCw, ChevronDown, ArrowRight, Minus, Plus, Loader2, Pencil } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
 import { statusToken } from '../../../lib/policyStatusTokens';
 import {
@@ -9,27 +9,30 @@ import {
   WEEKLY_DIVISOR,
   DEFAULT_DECOMPOSITION_INPUTS,
 } from '../../../utils/goalDecomposition';
+import { assembleSuggestion, stepTarget } from '../../../utils/weeklyPlanAssembly';
 
 /**
- * SuggestedWeekCard — Game Plan v2 Weekly Planner, Slice 1 (NEW chrome, read-only).
+ * SuggestedWeekCard — Game Plan v2 Weekly Planner.
  *
- * A "This week" cascade rung in the Game Plan hub. Composition over the existing
- * Commission Playground decomposition engine (utils/goalDecomposition.js) — it
- * NEVER recomputes the chain and NEVER stores a plan. The derived weekly line
- * shows the three engine-derivable metrics (dials · CIs · apps); the full chain
- * (incl. prospects) appears only in the tap-to-expand derivation reveal.
+ * Slice 1 (read-only): composes the goal-decomposition engine over the agent's
+ * committed API anchor + history-derived ratios to show a suggested week. Never
+ * recomputes the chain.
  *
- * Honest-framing resolution (never a fabricated target):
- *   loading                          → skeleton
- *   error                            → error + retry
- *   no committed API anchor          → "set a plan" prompt + CTA
- *   anchor but < 8 weeks history     → company-floor fallback, flagged
- *   anchor + ≥ 8 weeks history       → derived weekly line (teal) + reveal
+ * Slice 2 (this change): the suggestion becomes a committable plan. When planning
+ * is enabled (an `onCommit` handler is supplied and the resolution is derived or
+ * floor — never no-anchor), the card gains:
+ *   · a "Plan this week" affordance → EDIT mode (5 floor-clamped steppers, each
+ *     labelled with its provenance: Personal / Floor / Custom) → Commit + Reset
+ *   · a COMMITTED view ("Your weekly plan": the 5 values + provenance chips +
+ *     committed-date + Edit) once a plan exists for the week
  *
- * Contacts/FFIs do NOT appear on the derived path — the engine doesn't model
- * them. They appear on the floor fallback (the floor carries those columns).
- * A future product decision adds a contacts/FFI weekly derivation (see the
- * "Weekly-activity planner — remaining slices" follow-up).
+ * Pre-fill is honest (decision 2): dials/CIs/apps from the derived chain;
+ * contacts/FFIs from the company floor; in the floor state all five from the
+ * floor. Any value the agent changes flips its provenance to 'agent'. The
+ * stepper floor clamp + weeklyPlanService re-validation block below-floor commits.
+ *
+ * Without `onCommit` (Slice-1 callers / tests) the card is byte-for-byte the
+ * read-only S1 surface — the planning UI is fully gated behind the new props.
  *
  * statusToken roles (locked decision 6): suggested target = 'in-flight' (teal);
  * floor baseline = 'closed' (thin neutral reference).
@@ -46,6 +49,13 @@ const FLOOR_METRICS = [
   { key: 'applicationsSubmitted', label: 'Apps' },
 ];
 
+// Honest provenance chip copy — never presents a floor value as personal.
+const PROVENANCE_CHIP = {
+  derived: 'Personal',
+  floor:   'Floor',
+  agent:   'Custom',
+};
+
 function Skeleton() {
   return (
     <div className="space-y-3" aria-busy="true" aria-label="Loading your suggested week">
@@ -59,6 +69,13 @@ function Skeleton() {
   );
 }
 
+function formatCommittedDate(committedAt) {
+  // Firestore Timestamp → "Jun 4". Tolerates a pending serverTimestamp (null).
+  const d = committedAt?.toDate ? committedAt.toDate() : null;
+  if (!d || Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(d);
+}
+
 export default function SuggestedWeekCard({
   committedAnnualAPI = null,
   avgPolicyAPI = null,
@@ -70,8 +87,15 @@ export default function SuggestedWeekCard({
   onRetry,
   onBuildPlan,
   weekLabel,
+  // ── Slice 2 (all optional — absence = read-only S1 surface) ──
+  committedPlan = null,
+  onCommit,
+  planBusy = false,
+  planError = false,
 }) {
   const [expanded, setExpanded] = useState(null); // which metric's chain is revealed
+  const [editing, setEditing] = useState(false);
+  const [editState, setEditState] = useState(null); // { targets, provenance }
   const teal = statusToken('in-flight');
   const neutral = statusToken('closed');
 
@@ -105,14 +129,49 @@ export default function SuggestedWeekCard({
     return { mode: 'derived', anchor, avg, ciToSaleRatio, dialsToCIRatio, prospectRatio: pRatio, weekly, weeksUsed };
   }, [committedAnnualAPI, submissions, avgPolicyAPI, prospectRatio]);
 
+  // Planning is only offered on the derived/floor states, and only when a commit
+  // handler is wired (Slice-1 callers pass none → pure read-only surface).
+  const planningEnabled =
+    typeof onCommit === 'function' && (resolution.mode === 'derived' || resolution.mode === 'floor');
+  const showCommitted = planningEnabled && committedPlan && !editing;
+
+  // If the committed plan changes underneath us (refetch after commit/delete),
+  // leave edit mode so the fresh state shows.
+  useEffect(() => { setEditing(false); }, [committedPlan]);
+
+  const openEditFromSuggestion = () => {
+    setEditState(assembleSuggestion(resolution, floors));
+    setEditing(true);
+  };
+  const openEditFromCommitted = () => {
+    setEditState({ targets: { ...committedPlan.targets }, provenance: { ...committedPlan.provenance } });
+    setEditing(true);
+  };
+  const handleStep = (key, delta) =>
+    setEditState((s) => stepTarget(s, key, delta, floors));
+  const handleReset = () => setEditState(assembleSuggestion(resolution, floors));
+  const handleCommit = async () => {
+    if (!editState) return;
+    try {
+      await onCommit(editState.targets, editState.provenance, committedAnnualAPI);
+      // committedPlan refetch drives the effect above out of edit mode; clearing
+      // here too in case the parent keeps the same committedPlan reference.
+      setEditing(false);
+    } catch {
+      // Parent surfaces planError; stay in edit mode so the agent can retry.
+    }
+  };
+
   const eyebrow = (
     <div className="flex items-center gap-2">
       <span className={`font-mono text-[10px] font-bold uppercase tracking-[0.16em] ${teal.text}`}>
-        Suggested weekly plan{weekLabel ? ` · ${weekLabel}` : ''}
+        {showCommitted ? 'Your weekly plan' : 'Suggested weekly plan'}{weekLabel ? ` · ${weekLabel}` : ''}
       </span>
-      <span className="rounded-full bg-surface-muted px-2.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-ink-muted">
-        Read-only
-      </span>
+      {!planningEnabled && (
+        <span className="rounded-full bg-surface-muted px-2.5 py-0.5 font-mono text-[9px] font-bold uppercase tracking-wider text-ink-muted">
+          Read-only
+        </span>
+      )}
     </div>
   );
 
@@ -174,8 +233,130 @@ export default function SuggestedWeekCard({
         </div>
       )}
 
-      {/* ── floor fallback ── */}
-      {!loading && !error && resolution.mode === 'floor' && (
+      {/* ── committed plan view (Slice 2) ── */}
+      {!loading && !error && showCommitted && (
+        <div className="mt-4 space-y-3" data-testid="weekly-plan-committed">
+          <div className="grid grid-cols-5 gap-2">
+            {FLOOR_METRICS.map((m) => (
+              <div
+                key={m.key}
+                className="rounded-lg border border-border bg-surface-raised px-1.5 py-2.5 text-center"
+              >
+                <div
+                  className="font-display text-lg font-extrabold tracking-tight text-ink"
+                  data-testid={`plan-committed-${m.key}-value`}
+                >
+                  {committedPlan.targets?.[m.key] ?? '—'}
+                </div>
+                <div className="mt-1 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-muted">
+                  {m.label}
+                </div>
+                <div className="mt-1 font-mono text-[7px] font-bold uppercase tracking-wide text-ink-muted/80">
+                  {PROVENANCE_CHIP[committedPlan.provenance?.[m.key]] ?? ''}
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] text-ink-muted">
+              {formatCommittedDate(committedPlan.committedAt)
+                ? `Committed ${formatCommittedDate(committedPlan.committedAt)}`
+                : 'Committed'}
+            </span>
+            <button
+              type="button"
+              onClick={openEditFromCommitted}
+              data-testid="weekly-plan-edit-btn"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Pencil size={14} aria-hidden="true" /> Edit
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── edit mode (Slice 2): 5 floor-clamped steppers ── */}
+      {!loading && !error && planningEnabled && editing && editState && (
+        <div className="mt-4 space-y-2.5" data-testid="weekly-plan-edit">
+          {FLOOR_METRICS.map((m) => {
+            const floorMin = typeof floors?.[m.key] === 'number' ? floors[m.key] : 0;
+            const value = editState.targets?.[m.key] ?? 0;
+            const atFloor = value <= floorMin;
+            return (
+              <div
+                key={m.key}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-raised px-3 py-2"
+                data-testid={`plan-step-${m.key}`}
+              >
+                <div className="flex flex-col">
+                  <span className="font-display text-sm font-extrabold tracking-tight text-ink">{m.label}</span>
+                  <span className="font-mono text-[8px] font-bold uppercase tracking-wide text-ink-muted">
+                    {PROVENANCE_CHIP[editState.provenance?.[m.key]] ?? ''}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleStep(m.key, -1)}
+                    disabled={atFloor}
+                    aria-label={`Decrease ${m.label}`}
+                    data-testid={`plan-step-${m.key}-dec`}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card text-ink transition-colors hover:bg-surface-muted disabled:opacity-40 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <Minus size={16} aria-hidden="true" />
+                  </button>
+                  <span
+                    className="w-10 text-center font-display text-xl font-extrabold tracking-tight text-ink"
+                    data-testid={`plan-step-${m.key}-value`}
+                  >
+                    {value}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleStep(m.key, 1)}
+                    aria-label={`Increase ${m.label}`}
+                    data-testid={`plan-step-${m.key}-inc`}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-card text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    <Plus size={16} aria-hidden="true" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {planError && (
+            <p className="text-xs text-danger" data-testid="weekly-plan-error" role="alert">
+              Couldn&apos;t save your plan — check your connection and try again.
+            </p>
+          )}
+
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              onClick={handleCommit}
+              disabled={planBusy}
+              data-testid="weekly-plan-commit"
+              className="inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg bg-primary dark:bg-primary-dark px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark dark:hover:bg-primary disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {planBusy && <Loader2 size={15} className="animate-spin" aria-hidden="true" />}
+              {planBusy ? 'Committing…' : 'Commit'}
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={planBusy}
+              data-testid="weekly-plan-reset"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── floor fallback (read-only suggestion) ── */}
+      {!loading && !error && !showCommitted && !editing && resolution.mode === 'floor' && (
         <div className="mt-4 space-y-3" data-testid="suggested-week-floor">
           <div className="grid grid-cols-5 gap-2">
             {FLOOR_METRICS.map((m) => (
@@ -202,11 +383,14 @@ export default function SuggestedWeekCard({
               {' '}— then we&apos;ll personalise it from your own ratios.
             </span>
           </div>
+          {planningEnabled && (
+            <PlanThisWeekButton onClick={openEditFromSuggestion} />
+          )}
         </div>
       )}
 
-      {/* ── derived ── */}
-      {!loading && !error && resolution.mode === 'derived' && (
+      {/* ── derived (read-only suggestion) ── */}
+      {!loading && !error && !showCommitted && !editing && resolution.mode === 'derived' && (
         <div className="mt-3" data-testid="suggested-week-derived">
           <p className="font-display text-base font-extrabold leading-snug tracking-tight text-ink">
             To stay on your <span className={teal.text}>{formatCurrency(resolution.anchor)}</span> plan, your week looks like:
@@ -295,8 +479,27 @@ export default function SuggestedWeekCard({
               </p>
             </div>
           )}
+
+          {planningEnabled && (
+            <div className="mt-3">
+              <PlanThisWeekButton onClick={openEditFromSuggestion} />
+            </div>
+          )}
         </div>
       )}
     </section>
+  );
+}
+
+function PlanThisWeekButton({ onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid="plan-this-week"
+      className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-primary dark:bg-primary-dark px-5 text-sm font-semibold text-white transition-colors hover:bg-primary-dark dark:hover:bg-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      Plan this week <ArrowRight size={15} aria-hidden="true" />
+    </button>
   );
 }
