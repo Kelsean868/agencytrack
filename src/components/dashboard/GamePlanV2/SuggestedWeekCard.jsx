@@ -571,9 +571,9 @@ function PaceRow({ row }) {
       <div className="min-w-0">
         <div className="truncate text-xs font-bold text-ink">{row.label}</div>
         {row.clarifier && (
-          <div className="truncate font-mono text-[8px] tracking-wide text-ink-faint">{row.clarifier}</div>
+          <div className="truncate font-mono text-[8px] tracking-wide text-ink-muted">{row.clarifier}</div>
         )}
-        <div className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-faint">
+        <div className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-muted">
           FLOOR {row.floor} · PLAN{' '}
           <span data-testid={`plan-committed-${row.key}-value`}>{row.plan}</span>
           {' · '}
@@ -617,7 +617,7 @@ function PaceRow({ row }) {
       {/* readout */}
       <div className="text-right">
         {row.noDailySource ? (
-          <span className="font-mono text-[8.5px] font-bold leading-tight text-ink-faint" data-testid={`pace-nodaily-${row.key}`}>
+          <span className="font-mono text-[8.5px] font-bold leading-tight text-ink-muted" data-testid={`pace-nodaily-${row.key}`}>
             weekly only · no daily pace
           </span>
         ) : (
@@ -626,7 +626,7 @@ function PaceRow({ row }) {
               <span className={`font-display text-base font-extrabold ${tone?.text ?? 'text-ink'}`} data-testid={`pace-actual-${row.key}`}>
                 {row.actual}
               </span>
-              <span className="font-mono text-[10px] text-ink-faint"> / {row.plan}</span>
+              <span className="font-mono text-[10px] text-ink-muted"> / {row.plan}</span>
             </div>
             {tone && (
               <span className={`mt-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-bold ${tone.chip}`} data-testid={`pace-variance-${row.key}`}>

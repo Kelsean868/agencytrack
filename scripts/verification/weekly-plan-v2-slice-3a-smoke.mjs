@@ -10,14 +10,20 @@
  * → assert the actual fills + "mid-week · daily capture" chip + pace marker +
  * variance states reflect what was entered.
  *
- * E3 standard, both themes:
+ * E3 standard, both themes. SOURCE-AWARE (brief D3): the committed pace rows read
+ * from a submitted weekly report when one exists for the week (source "final ·
+ * submitted" — calls resolves to the 5-component sum, no live pace marker),
+ * otherwise from the Daily Capture aggregate (source "mid-week · daily capture" —
+ * calls hatched, live pace marker). The walk detects which arm the account is in
+ * and asserts the matching behaviour; the Daily Capture write+own-delete path is
+ * exercised either way.
  *   COMMIT     Plan this week → Commit (S2 path) so the committed view renders.
- *   MID-WEEK   pace rows present; source chip "mid-week · daily capture"; live
- *              pace readout "Day N of 6"; calls row hatched (no daily source).
+ *   PACE ROWS  five rows render; source chip valid; FINAL → calls resolved + no
+ *              live readout · DAILY → calls hatched + "Day N of 6" readout.
  *   DAILY      open Daily Capture (real modal), enter qualifiedApproaches /
- *              ffiConducted / ciConducted / new-business apps, save.
- *   RESOLVE    back on Game Plan, the four daily-sourced rows show the entered
- *              actuals; calls stays hatched (no daily source); pace marker shown.
+ *              ffiConducted / ciConducted / new-business apps, save (write path).
+ *   RESOLVE    back on Game Plan, actuals are present; DAILY → reflect the entered
+ *              values · FINAL → come from the submission (calls resolved).
  *   A11Y       axe NO-NEW serious/critical on the hub; 0 console errors.
  *   CLEANUP    delete the plan doc AND the daily entry as the AGENT (own-delete
  *              path through real rules), then getDoc-confirm both are gone.
@@ -141,17 +147,28 @@ async function run() {
     await page.goto(URL, { waitUntil: 'domcontentloaded' });
     await login(page);
 
-    // ── Phase A: commit a plan, observe mid-week pace rows (both themes) ────────
+    // ── Phase A: commit a plan, observe the pace rows (source-aware, both themes) ─
     await gotoGamePlan(page);
     await ensureCommitted(page);
 
     r.paceRows = await has(page, 'weekly-plan-pace-rows');
-    r.sourceChipMidweek = /mid-week · daily capture/i.test(await textOf(page, 'weekly-plan-source-chip'));
-    r.paceReadout = /Day \d of 6/i.test(await textOf(page, 'weekly-plan-pace-readout'));
-    r.callsHatched = await has(page, 'pace-nodaily-callsMade');
-    await shot(page, 'midweek-light');
+    const chip0 = await textOf(page, 'weekly-plan-source-chip');
+    const source = /final · submitted/i.test(chip0) ? 'final'
+      : /mid-week · daily capture/i.test(chip0) ? 'daily' : 'unknown';
+    r.source = source;
+    r.sourceChipValid = source !== 'unknown';
+    if (source === 'daily') {
+      // mid-week: calls is the hatched no-daily-source state + a live pace readout.
+      r.callsHatched = await has(page, 'pace-nodaily-callsMade');
+      r.paceReadout = /Day \d of 6/i.test(await textOf(page, 'weekly-plan-pace-readout'));
+    } else {
+      // final: the submission drives actuals — calls RESOLVES (5-sum), no live marker.
+      r.callsResolved = await has(page, 'pace-actual-callsMade');
+      r.noLiveReadout = !(await has(page, 'weekly-plan-pace-readout'));
+    }
+    await shot(page, `pacerows-${source}-light`);
     await setTheme(page, 'dark');
-    await shot(page, 'midweek-dark');
+    await shot(page, `pacerows-${source}-dark`);
     await setTheme(page, 'light');
 
     // ── Phase B: enter Daily Capture values through the real UI ─────────────────
@@ -166,26 +183,35 @@ async function run() {
     await page.waitForSelector('[data-testid="daily-capture-v2"]', { state: 'detached', timeout: 15_000 });
     r.dailySaved = true;
 
-    // ── Phase C: return to Game Plan, actuals resolve from the daily aggregate ──
+    // ── Phase C: return to Game Plan, assert the actuals resolve (source-aware) ──
     await page.reload({ waitUntil: 'domcontentloaded' });
     await login(page).catch(() => {});
     await gotoGamePlan(page);
 
-    r.stillMidweek = /mid-week · daily capture/i.test(await textOf(page, 'weekly-plan-source-chip'));
     r.contactsActual = parseInt(await valOf(page, 'pace-actual-contactsMade'), 10);
     r.ffiActual = parseInt(await valOf(page, 'pace-actual-factFindsCompleted'), 10);
     r.ciActual = parseInt(await valOf(page, 'pace-actual-closingInterviewsKept'), 10);
     r.appsActual = parseInt(await valOf(page, 'pace-actual-applicationsSubmitted'), 10);
-    r.callsStillHatched = await has(page, 'pace-nodaily-callsMade');
     r.variancePresent = await has(page, 'pace-variance-applicationsSubmitted');
-    await shot(page, 'resolved-light');
+    await shot(page, `resolved-${source}-light`);
     await setTheme(page, 'dark');
-    await shot(page, 'resolved-dark');
+    await shot(page, `resolved-${source}-dark`);
     await setTheme(page, 'light');
 
-    r.actualsMatch =
-      r.contactsActual >= DAILY.qa && r.ffiActual >= DAILY.ffi &&
-      r.ciActual >= DAILY.ci && r.appsActual >= DAILY.apps;
+    if (source === 'daily') {
+      // daily aggregate ≥ the values we just entered (pre-existing days may add more).
+      r.callsStillHatched = await has(page, 'pace-nodaily-callsMade');
+      r.actualsResolved =
+        r.contactsActual >= DAILY.qa && r.ffiActual >= DAILY.ffi &&
+        r.ciActual >= DAILY.ci && r.appsActual >= DAILY.apps;
+    } else {
+      // final: actuals come from the submission — calls resolves to the 5-sum, the
+      // four daily-sourced rows show finite values from the submitted report.
+      r.callsActual = parseInt(await valOf(page, 'pace-actual-callsMade'), 10);
+      r.actualsResolved =
+        Number.isFinite(r.callsActual) && Number.isFinite(r.contactsActual) &&
+        Number.isFinite(r.ffiActual) && Number.isFinite(r.ciActual) && Number.isFinite(r.appsActual);
+    }
 
     // ── axe NO-NEW serious/critical on the hub ──────────────────────────────────
     try {
@@ -231,17 +257,23 @@ async function run() {
   }
   r.cleanup = cleanup;
 
+  // Source-specific gate: daily → hatched calls + pace readout; final → calls resolved + no live readout.
+  const sourceGate = r.source === 'daily'
+    ? (r.callsHatched && r.paceReadout && r.callsStillHatched)
+    : (r.source === 'final' && r.callsResolved && r.noLiveReadout);
+
   const pass = (
-    r.paceRows && r.sourceChipMidweek && r.paceReadout && r.callsHatched &&
-    r.dailySaved && r.stillMidweek && r.callsStillHatched && r.variancePresent &&
-    r.actualsMatch &&
+    r.paceRows && r.sourceChipValid && sourceGate &&
+    r.dailySaved && r.variancePresent && r.actualsResolved &&
     Array.isArray(r.axeSC) && r.axeSC.length === 0 && errors.length === 0 &&
     cleanup.planDeleted && cleanup.planGone && cleanup.dailyDeleted && cleanup.dailyGone && !r.fatal
   );
 
-  console.log(`  paceRows=${r.paceRows} sourceChipMidweek=${r.sourceChipMidweek} paceReadout=${r.paceReadout} callsHatched=${r.callsHatched}`);
-  console.log(`  dailySaved=${r.dailySaved} stillMidweek=${r.stillMidweek} callsStillHatched=${r.callsStillHatched} variancePresent=${r.variancePresent}`);
-  console.log(`  actuals contacts=${r.contactsActual} ffi=${r.ffiActual} ci=${r.ciActual} apps=${r.appsActual} (entered ${JSON.stringify(DAILY)}) match=${r.actualsMatch}`);
+  console.log(`  source=${r.source} paceRows=${r.paceRows} sourceChipValid=${r.sourceChipValid} sourceGate=${sourceGate}`);
+  if (r.source === 'daily') console.log(`    callsHatched=${r.callsHatched} paceReadout=${r.paceReadout} callsStillHatched=${r.callsStillHatched}`);
+  else console.log(`    callsResolved=${r.callsResolved} noLiveReadout=${r.noLiveReadout} callsActual=${r.callsActual}`);
+  console.log(`  dailySaved=${r.dailySaved} variancePresent=${r.variancePresent} actualsResolved=${r.actualsResolved}`);
+  console.log(`  actuals contacts=${r.contactsActual} ffi=${r.ffiActual} ci=${r.ciActual} apps=${r.appsActual} (entered ${JSON.stringify(DAILY)})`);
   console.log(`  axe-sc=${Array.isArray(r.axeSC) ? r.axeSC.length : 'n/a'} consoleErrors=${errors.length} cleanup=${JSON.stringify(cleanup)}`);
   if (Array.isArray(r.axeSC)) r.axeSC.slice(0, 4).forEach((n) => console.log(`    axe ${n.id}: ${n.target}`));
   if (errors.length) errors.slice(0, 4).forEach((e) => console.log(`    console.error: ${e}`));
