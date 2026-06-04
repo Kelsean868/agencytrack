@@ -44,6 +44,10 @@ export default function AgentDashboardHomeV2({
   campaignsLoading,
   campaignSubs,
   agentUid,
+  // S3b — plan-vs-actual Standard drawer
+  committedPlan,
+  weekDailyDocs,
+  weekStart,
   // Daily nudge inputs
   showDailyCTA,
   todayDailyChecked,
@@ -246,8 +250,12 @@ export default function AgentDashboardHomeV2({
         <StandardDetail
           minimums={resolvedMinimums}
           currentWeekSub={currentWeekSub}
+          committedPlan={committedPlan}
+          dailyDocs={weekDailyDocs}
+          weekStart={weekStart}
           onClose={() => setDrawer(null)}
           onSubmit={() => { setDrawer(null); onSubmit?.(); }}
+          onOpenGamePlan={() => { setDrawer(null); onOpenTab?.('game-plan'); }}
         />
       )}
     </div>

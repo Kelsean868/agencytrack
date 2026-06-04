@@ -20,7 +20,8 @@ import { generateAgentPDF } from '../../services/exportService';
 import { getActiveCampaignsForAgent, getCampaignSubmissions } from '../../services/campaignService';
 import WizardForm from '../wizard/WizardForm';
 import DailyCaptureV2 from '../daily/DailyCaptureV2';
-import { getDailyEntry } from '../../services/dailyActivityService';
+import { getDailyEntry, getDailyEntriesForWeek } from '../../services/dailyActivityService';
+import { getWeeklyPlan } from '../../services/weeklyPlanService';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
@@ -119,6 +120,10 @@ export default function AgentDashboard() {
   const [hierarchyError, setHierarchyError]     = useState(null);
   const [showWelcome, setShowWelcome]           = useState(false);
   const [submissionsError, setSubmissionsError] = useState(null);
+  // S3b — committed plan + daily docs for the Standard drawer's plan-vs-actual rows.
+  // undefined = loading, null = no plan committed for this week.
+  const [committedPlan, setCommittedPlan]     = useState(undefined);
+  const [weekDailyDocs, setWeekDailyDocs]     = useState([]);
 
   const currentWeek  = useMemo(() => getMostRecentSunday(), []);
   const thisYear     = new Date().getFullYear();
@@ -184,6 +189,27 @@ export default function AgentDashboard() {
   }, [user?.uid, tenantId, currentWeek, thisYear]);
 
   useEffect(() => { loadCoreData(); }, [loadCoreData]);
+
+  // S3b — fetch committed plan + daily docs for the Standard drawer. Each
+  // degrades gracefully (null plan / empty docs) so a fetch error never blocks
+  // the dashboard render. Exposed as a named callback so GamePlanV2 can trigger
+  // a refetch after a same-session commit or delete (prevents in-session staleness
+  // where the Standard drawer would still show the old state until a full page reload).
+  const loadWeekPlanData = useCallback(() => {
+    if (!tenantId || !user?.uid) return;
+    Promise.all([
+      getWeeklyPlan(tenantId, user.uid, currentWeek).catch(() => null),
+      getDailyEntriesForWeek(tenantId, user.uid, currentWeek).catch(() => []),
+    ]).then(([plan, docs]) => {
+      setCommittedPlan(plan ?? null);
+      setWeekDailyDocs(Array.isArray(docs) ? docs : []);
+    });
+  }, [tenantId, user?.uid, currentWeek]);
+
+  useEffect(() => {
+    setCommittedPlan(undefined); // reset to loading on week/auth change
+    loadWeekPlanData();
+  }, [loadWeekPlanData]);
 
   // Resolved personal annual API: agent's own commitment if set, else the
   // tenant company-floor minimum, else 200000 (matches getCompanyMinimums
@@ -514,6 +540,9 @@ export default function AgentDashboard() {
             todayDailyChecked={todayDailyChecked}
             todayDailyEntry={todayDailyEntry}
             submissionsError={submissionsError}
+            committedPlan={committedPlan}
+            weekDailyDocs={weekDailyDocs}
+            weekStart={currentWeek}
             onSubmit={() => setShowWizard(true)}
             onLogToday={() => setShowDailyModal(true)}
             onOpenTab={setActiveTab}
@@ -599,6 +628,7 @@ export default function AgentDashboard() {
           dataLoading={loading}
           dataError={Boolean(submissionsError)}
           onRetry={loadCoreData}
+          onPlanChanged={loadWeekPlanData}
         />
       )}
 

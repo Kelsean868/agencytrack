@@ -94,6 +94,7 @@ export default function SuggestedWeekCard({
   onCommit,
   planBusy = false,
   planError = false,
+  onDeletePlan,        // optional — renders a "Clear plan" link in the committed view
   // ── Slice 3a (committed-view actuals + variance) ──
   weekStart = null,        // this week's Sunday (YYYY-MM-DD) — pace week membership
   weekSubmission = null,   // the week's submitted report (final source), or null
@@ -295,13 +296,26 @@ export default function SuggestedWeekCard({
             </>
           )}
 
-          {/* committed-date + Edit (preserved from Slice 2) */}
+          {/* committed-date + Clear + Edit (preserved from Slice 2) */}
           <div className="flex items-center justify-between gap-2 pt-1">
-            <span className="text-[11px] text-ink-muted">
-              {formatCommittedDate(committedPlan.committedAt)
-                ? `Committed ${formatCommittedDate(committedPlan.committedAt)}`
-                : 'Committed'}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-[11px] text-ink-muted">
+                {formatCommittedDate(committedPlan.committedAt)
+                  ? `Committed ${formatCommittedDate(committedPlan.committedAt)}`
+                  : 'Committed'}
+              </span>
+              {onDeletePlan && (
+                <button
+                  type="button"
+                  onClick={onDeletePlan}
+                  disabled={planBusy}
+                  data-testid="weekly-plan-clear"
+                  className="text-[11px] text-danger hover:underline disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
             <button
               type="button"
               onClick={openEditFromCommitted}

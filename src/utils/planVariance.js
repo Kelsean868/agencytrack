@@ -85,6 +85,28 @@ function clampPct(v) {
 }
 
 /**
+ * computeCallsActual — the calls 5-component sum from an extractFields() output.
+ *
+ * Includes serviceCalls to match the wizard's displayed Step-2 total
+ * (StepCallsF2F.jsx:20-28) — this is intentionally NOT the 4-sum
+ * `totalTelAttempts` (which excludes serviceCalls and was the prior floor-card
+ * mapping). Single export so every floor-comparison consumer can import this
+ * one definition rather than each reimplementing the sum.
+ *
+ * @param {object} extractedFields — output of extractFields(submission)
+ * @returns {number}
+ */
+export function computeCallsActual(extractedFields) {
+  return (
+    num(extractedFields?.referralCalls) +
+    num(extractedFields?.followUpCalls) +
+    num(extractedFields?.coldCalls) +
+    num(extractedFields?.seminarTradeshowCalls) +
+    num(extractedFields?.serviceCalls)
+  );
+}
+
+/**
  * elapsedWorkingDays — working days elapsed in the plan's week, TT-safe.
  *
  * weekStart is the week's Sunday (YYYY-MM-DD). Working days are Mon(1)…Sat(6);
