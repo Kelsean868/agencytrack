@@ -5,6 +5,57 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Compliance v2 — remaining slices (banked 2026-06-04 from Compliance v2 Slice 1, PR #TBD)
+
+**Context:** S1 (PR #TBD) shipped the **read/derive-only filing surface** for the manager
+Compliance panel per `docs/design/compliance-v2-s1.html`: a filing **reality bar**
+(filed % · on-time · late · not-in), an **exception-first "Haven't filed" list**, an
+**on-time roster** (status pill · submitted time · 8-week on-time streak) whose row-click
+opens the shared coaching drawer (`CoachingNotesModal`, reused), and the **CBTT section
+kept** as its own regulatory block. New pure util `src/utils/complianceDerive.js`
+(`isOnTime`/`classifyWeek`/`onTimeStreak`, TT-safe; deadline = Sun 23:59:59 AST following
+the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeeklySubmissions`
++ `getTenantUsers`) — **no new collection / rule / index**.
+
+**Remaining slices (each needs its own kickoff brief):**
+
+- **S2 — the WRITE: notifications collection + Nudge (LOCKED scope).** The app's first
+  general `tenants/{tid}/notifications/{id}` object (`type: 'compliance.filing.nudge'`,
+  `audienceUid`, `payload {weekStart, lens, managerName}`, `createdBy`, `createdAt`,
+  `readAt`) written by a **`sendComplianceNudge` Cloud Function** (fan-out writes N docs).
+  Per-row Nudge + Nudge-all (count+scope confirm, never silent) + cooldown chip. Triggers
+  the **full new-collection checklist**: rules + write + read + composite indexes + smoke.
+  **ALSO re-homes both S1-dropped affordances as row actions** — UNLOCK on submitted rows
+  via the **existing `unlockSubmission` service write (no new write path, no rules change —
+  re-mount only)**, and a read-only **view-report** affordance (`SubmissionViewer`)
+  adjacent. Submitted rows get unlock/view; not-in rows get Nudge — one row-action
+  grammar. **unlock + view-report re-home in Compliance S2 (LOCKED scope) —
+  CompliancePanel was unlock's sole access path; interim gap accepted (test-only prod;
+  Platform Admin console is the emergency fallback).**
+  - **Open product decisions for the S2 brief** (flagged in the annotation, not decided
+    here): nudge rate-limit / dedupe key (per uid+type+week?); Nudge-all blast radius
+    (whole not-in set vs current unit/filter; skip already-nudged?); auto-escalation
+    (to BM / to email after N in-app, or never?); notification transport (in-app doc only
+    · + SendGrid Trigger Email · both — doc written regardless); CBTT placement sign-off
+    (kept section · own tab · relocated); on-time deadline grace period (S1 implemented the
+    exact Sun 23:59:59 AST boundary — confirm whether a grace window is wanted).
+
+- **S3 — second lens: plan-adoption.** A Filing ⇄ Plan-adoption **toggle** that swaps the
+  reality bar's metric set AND the exception list in lockstep, reading `weeklyPlans/{agentId}_{weekStart}`
+  via the **locked deterministic-ID get-fan-out** over the roster — **zero rules changes**
+  (#471's manager-GET arm `uplineCanReadPlan` already covers it; no `list`, no index).
+  Reuses S1's bar + S2's nudge — no new primitive.
+
+## Compliance v2 S1 — derived-suggestion chip relabel (LOW, carried from #477 CONTEXT note)
+
+The Weekly-Planner Slice-1 **derived-suggestion chip** on `SuggestedWeekCard.jsx` still
+labels its prospecting metric **"Dials"** (the engine's suggestion state), whereas every
+floor/plan render site was relabeled **"Prospecting calls"** in #477. Out of #477's
+enumerated relabel scope (it's the engine *suggestion*, not a floor/plan actual). Relabel
+the chip to "Prospecting calls" for full cross-surface consistency. Optional / LOW.
+
+---
+
 ## Weekly-activity planner — remaining slices (banked 2026-06-03 from Weekly Planner v2 Slice 1, PR #445)
 
 **Context:** Slice 1 (PR #445) shipped the read-only **"Suggested weekly plan"** card in the Game Plan hub + extracted the goal-decomposition engine to `src/utils/goalDecomposition.js` (a small cleanup-debt reduction — the income→activity chain is now a shared, tested, single-source pure module instead of inline-in-the-Playground-tab). The remaining Path-B slices turn the read-only suggestion into a tracked, committed, rolled-up plan.
