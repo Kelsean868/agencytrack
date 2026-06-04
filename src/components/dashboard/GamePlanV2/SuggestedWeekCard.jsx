@@ -186,7 +186,7 @@ export default function SuggestedWeekCard({
                 <div className="font-display text-lg font-extrabold tracking-tight text-ink-muted">
                   {floors?.[m.key] ?? '—'}
                 </div>
-                <div className="mt-1 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-faint">
+                <div className="mt-1 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-muted">
                   {m.label}
                 </div>
               </div>
@@ -240,13 +240,13 @@ export default function SuggestedWeekCard({
                         <ChevronDown
                           size={14}
                           aria-hidden="true"
-                          className={`text-ink-faint transition-transform ${open ? 'rotate-180' : ''}`}
+                          className={`text-ink-muted transition-transform ${open ? 'rotate-180' : ''}`}
                         />
                       </div>
                       <span className="mt-1.5 font-mono text-[9px] font-bold uppercase tracking-wide text-ink-muted">
                         {c.label}
                       </span>
-                      <span className="mt-1.5 w-full border-t border-dashed border-border pt-1.5 font-mono text-[9px] text-ink-faint">
+                      <span className="mt-1.5 w-full border-t border-dashed border-border pt-1.5 font-mono text-[9px] text-ink-muted">
                         {c.basis}
                       </span>
                     </button>
@@ -275,14 +275,14 @@ export default function SuggestedWeekCard({
                         {node.op}
                       </span>
                     )}
-                    <span className={i > 0 ? `font-bold ${teal.text}` : 'text-ink-faint'} aria-hidden="true">
+                    <span className={i > 0 ? `font-bold ${teal.text}` : 'text-ink-muted'} aria-hidden="true">
                       {i > 0 ? '→' : ''}
                     </span>
                     <span className="flex flex-col">
                       <span className={`font-display text-sm font-extrabold tracking-tight ${node.focus ? teal.text : 'text-ink'}`}>
                         {node.v}
                       </span>
-                      <span className="font-mono text-[8px] font-bold uppercase tracking-wide text-ink-faint">
+                      <span className="font-mono text-[8px] font-bold uppercase tracking-wide text-ink-muted">
                         {node.l}
                       </span>
                     </span>
