@@ -513,7 +513,7 @@ The pattern decision (SmAwardsView vs SM-prop on ManagerAwardsPanel) affects eve
 
 ## Awards primitives dedup — consume `awardPrimitives.jsx` from `AgentAwardsPanel.jsx` (LOW, banked 2026-06-01 from manager-side carve-out PR #412)
 
-**Status:** cleanup; no behavior change.
+**Status: RESOLVED 2026-06-04 (Track J item 17, PR #462 `2df58e6`, prod-verified).** `AgentAwardsPanel.jsx` now imports `{ HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer }` from `awardPrimitives.jsx` (AwardDonut is internal-only); the inline copies were deleted (−224 net lines); `RatioMiniSpark`/`RatioTrendCard` kept inline (agent-only). Adopting canonical also removed standing design-system violations (hex→token, 36→44px touch target, responsive hero, %-unit, testids) — the intended deltas, authorized. The earlier orphan-sweep half (delete dead `AwardMedalCard`/`AwardMedal`/`awardIconMap`) shipped separately as PR #453. The duplicated `formatAwardPct` call sites have collapsed to the single shared one. Original FU text preserved below as drift-trail.
 
 PR #412 (Manager Awards v2 carve-out) extracted the v2 primitives into a shared module `src/components/awards/awardPrimitives.jsx` (AwardDonut, HeroAwardCard, GroupHeader, AwardCard, AwardDrillDrawer) + `src/components/awards/awardGrouping.js` (groupByProgress). `ManagerAwardsPanel.jsx` + `BmAtRiskPanel.jsx` consume from those modules.
 
@@ -4048,7 +4048,19 @@ Banked: Track J morning task (2026-06-04), from the PR #465 Gemini sunset notice
 
 ---
 
+## Track J (V2 Redesign) — GamePlanV2 component test coverage: `PlanAnchorStrip` + `PlanCascade` (LOW, banked 2026-06-04 from item 23 coverage sweep)
+
+**Status:** OPEN. Item 23 (coverage sweep) covered `HeroCard` (PR #461) — the dispatcher's "up to 3" budget reached one. The coverage proxy (no-test-file = zero coverage) flagged three uncovered shipped GamePlanV2/HomeV2 components: `HeroCard` (done #461), **`PlanAnchorStrip`** and **`PlanCascade`** (remain). Both are pure-ish presentational components in `src/components/dashboard/GamePlanV2/` with derivable display logic worth locking.
+
+**Action (when scheduled):** one test-only PR per component (zero src changes; park any that prove untestable without src edits, per the item-23 pattern). `PlanAnchorStrip` — the income/commission anchor chips + the honest "— / Set in your plan" unset-state for `API Commitment` (never the company-floor fallback). `PlanCascade` — the live Money-Needs commission rung + the "Coming" rungs. Other uncovered GamePlanV2/HomeV2 components (`StepRail`, `CommitPreviewCard`, `DeliveryStripCard`, `MiniViz`, `NeedsActionBanner`, `PulseStrip`, `RecentCompact`, `StandardDetail`, `StandardRow`) are lower-value candidates for a broader sweep.
+
+Banked: Track J item 23 (PR #461 / consolidated fill 2026-06-04).
+
+---
+
 ## Track J (V2 Redesign) — `aroundMeLogic` state-label taxonomy: `CLUSTER_3` is mis-named for the 2-row first-place case (LOW, banked 2026-05-31, PR #403)
+
+**Status: RESOLVED 2026-06-04 (Track J item 19, PR #460 `849b828`).** `computeAroundMe`'s state is now derived from `rows.length` (`state: rows.length >= 3 ? 'CLUSTER_3' : 'CLUSTER_2_LAST'`) so `CLUSTER_3` ⟺ exactly 3 rows. Only the `!prev && next` (rank-1-below-set, `visibleMax:0`) case changes — every other case is byte-identical, and no consumer/component edit was needed (the cluster component maps `rows`; the `ProductionLeaderboardSurface.jsx:593` OR-list already includes `CLUSTER_2_LAST`). +3 unit tests (corrected case + solo-row + a CLUSTER_3-⟺-3-rows regression guard); full suite 2141 green. Original FU text preserved below as drift-trail.
 
 When called with `visibleMax: 0` (the `WhereYouRankPanel` always-on cluster pattern), a rank-1 viewer falls through `aroundMeLogic.computeAroundMe` with `prev = null` + `next = safe[1]` → `rows = [viewer, next]` (2 rows), but the ternary `state = next ? 'CLUSTER_3' : 'CLUSTER_2_LAST'` returns `'CLUSTER_3'`. The label implies 3 rows; only 2 are actually present.
 
