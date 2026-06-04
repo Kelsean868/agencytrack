@@ -180,12 +180,21 @@ async function run() {
     await shot(page, `plan-state-${source}-dark`);
     await setTheme(page, 'light');
 
-    // ── Phase B: axe on new elements ────────────────────────────────────────
-    // Scoped to the plan-metric rows + chip (new S3b additions) only.
-    // The StandardRow "Close" (amber) chips are pre-existing on main and
-    // excluded to avoid false-positive NO-NEW test failures.
+    // ── Phase B: axe on new elements only ───────────────────────────────────
+    // Scoped to the plan-metric rows (PlanMetricRow, testid="drawer-plan-row-*")
+    // and the source chip. StandardRow's "Close" (amber) bg-warning/10 chip
+    // is pre-existing on main (StandardRow.jsx unchanged) and excluded to
+    // avoid false-positive NO-NEW failures.
     try {
-      const res = await new AxeBuilder({ page }).include('[data-testid="standard-drawer-rows"]').withTags(['wcag2a', 'wcag2aa']).analyze();
+      // Include the source chip area + only the plan-metric-specific rows.
+      const res = await new AxeBuilder({ page })
+        .include('[data-testid="standard-drawer-source-chip"]')
+        .include('[data-testid="drawer-plan-row-callsMade"]')
+        .include('[data-testid="drawer-plan-row-contactsMade"]')
+        .include('[data-testid="drawer-plan-row-factFindsCompleted"]')
+        .include('[data-testid="drawer-plan-row-closingInterviewsKept"]')
+        .include('[data-testid="drawer-plan-row-applicationsSubmitted"]')
+        .withTags(['wcag2a', 'wcag2aa']).analyze();
       r.axeSC = res.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
         .flatMap((v) => (v.nodes || []).map((n) => ({ id: v.id, target: (n.target ?? []).join(' > ') })));
     } catch (e) { r.axeSC = [{ id: 'axe-error', target: String(e).slice(0, 120) }]; }
