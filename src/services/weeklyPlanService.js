@@ -55,6 +55,9 @@ export async function getWeeklyPlan(tenantId, agentId, weekStart) {
  */
 export async function commitWeeklyPlan(tenantId, agentId, weekStart, plan, floors = null) {
   if (!validateSundayDate(weekStart)) throw new Error('weekStart must be a Sunday');
+  if (!plan || typeof plan !== 'object' || !plan.targets || !plan.provenance) {
+    throw new Error('weeklyPlan: missing plan payload (targets/provenance required)');
+  }
 
   const targets = {};
   const provenance = {};

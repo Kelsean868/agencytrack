@@ -121,6 +121,58 @@ describe('SuggestedWeekCard — Slice 2 planning (gated on onCommit)', () => {
     expect(screen.queryByTestId('suggested-week-derived')).not.toBeInTheDocument();
   });
 
+  it('Cancel discards stepper changes and returns to the read-only suggestion (no write)', () => {
+    const onCommit = vi.fn();
+    render(
+      <SuggestedWeekCard committedAnnualAPI={120000} submissions={sparseSubmissions} floors={FLOORS} onCommit={onCommit} />,
+    );
+    fireEvent.click(screen.getByTestId('plan-this-week'));
+    fireEvent.click(screen.getByTestId('plan-step-callsMade-inc')); // dirty the state → 101
+    expect(screen.getByTestId('plan-step-callsMade-value')).toHaveTextContent('101');
+    fireEvent.click(screen.getByTestId('weekly-plan-cancel'));
+    // Back to the read-only suggestion, no commit attempted.
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('weekly-plan-edit')).not.toBeInTheDocument();
+    expect(screen.getByTestId('suggested-week-floor')).toBeInTheDocument();
+    // Re-opening shows the pristine suggestion (the +1 was discarded).
+    fireEvent.click(screen.getByTestId('plan-this-week'));
+    expect(screen.getByTestId('plan-step-callsMade-value')).toHaveTextContent('100');
+  });
+
+  it('Cancel from a committed-plan edit returns to the committed view unchanged', () => {
+    render(
+      <SuggestedWeekCard
+        committedAnnualAPI={120000}
+        submissions={derivedSubmissions}
+        floors={FLOORS}
+        onCommit={vi.fn()}
+        committedPlan={committedPlan}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('weekly-plan-edit-btn'));
+    fireEvent.click(screen.getByTestId('plan-step-callsMade-inc')); // 120 → 121
+    fireEvent.click(screen.getByTestId('weekly-plan-cancel'));
+    const committed = screen.getByTestId('weekly-plan-committed');
+    // Committed values are untouched (still 120, the +1 was discarded).
+    expect(within(committed).getByTestId('plan-committed-callsMade-value')).toHaveTextContent('120');
+    expect(screen.queryByTestId('weekly-plan-edit')).not.toBeInTheDocument();
+  });
+
+  it('Edit on a malformed committed plan (no targets) falls back to the suggestion', () => {
+    render(
+      <SuggestedWeekCard
+        committedAnnualAPI={120000}
+        submissions={sparseSubmissions}
+        floors={FLOORS}
+        onCommit={vi.fn()}
+        committedPlan={{ id: 'x', agentId: 'a', committedAt: { toDate: () => new Date('2026-06-04') } }}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('weekly-plan-edit-btn'));
+    // Steppers seed from the floor suggestion, not undefined.
+    expect(screen.getByTestId('plan-step-callsMade-value')).toHaveTextContent('100');
+  });
+
   it('Edit on a committed plan seeds steppers from the stored values', () => {
     render(
       <SuggestedWeekCard

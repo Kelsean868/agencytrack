@@ -144,12 +144,24 @@ export default function SuggestedWeekCard({
     setEditing(true);
   };
   const openEditFromCommitted = () => {
-    setEditState({ targets: { ...committedPlan.targets }, provenance: { ...committedPlan.provenance } });
+    // Defensive: a malformed committed doc (missing targets/provenance) falls back
+    // to the freshly-assembled suggestion rather than seeding undefined steppers.
+    if (committedPlan?.targets && committedPlan?.provenance) {
+      setEditState({ targets: { ...committedPlan.targets }, provenance: { ...committedPlan.provenance } });
+    } else {
+      setEditState(assembleSuggestion(resolution, floors));
+    }
     setEditing(true);
   };
   const handleStep = (key, delta) =>
     setEditState((s) => stepTarget(s, key, delta, floors));
   const handleReset = () => setEditState(assembleSuggestion(resolution, floors));
+  // Cancel exits edit mode WITHOUT writing — stepper changes are discarded and the
+  // prior view (committed plan or read-only suggestion) returns (decision-5 amendment).
+  const handleCancel = () => {
+    setEditState(null);
+    setEditing(false);
+  };
   const handleCommit = async () => {
     if (!editState) return;
     try {
@@ -350,6 +362,15 @@ export default function SuggestedWeekCard({
               className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Reset
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={planBusy}
+              data-testid="weekly-plan-cancel"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-4 text-sm font-semibold text-ink-muted transition-colors hover:bg-surface-muted disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Cancel
             </button>
           </div>
         </div>

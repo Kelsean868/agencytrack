@@ -115,6 +115,12 @@ describe('weeklyPlanService — commitWeeklyPlan', () => {
     await commitWeeklyPlan(TENANT, AGENT, SUNDAY, validPlan(), null);
     expect(mocks.setDoc).toHaveBeenCalledTimes(1);
   });
+
+  it('throws on a missing/malformed plan payload (never writes)', async () => {
+    await expect(commitWeeklyPlan(TENANT, AGENT, SUNDAY, null, FLOORS)).rejects.toThrow(/missing plan payload/);
+    await expect(commitWeeklyPlan(TENANT, AGENT, SUNDAY, { provenance: {} }, FLOORS)).rejects.toThrow(/missing plan payload/);
+    expect(mocks.setDoc).not.toHaveBeenCalled();
+  });
 });
 
 describe('weeklyPlanService — getWeeklyPlan', () => {
