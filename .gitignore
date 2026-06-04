@@ -41,9 +41,12 @@ functions/seed-company-minimums.cjs
 # Repomix — generated file, too large for project
 repomix-output.xml
 
-# Verification artifacts — logs, screenshots, seed output (gitignored by design)
-# Leading / anchors to repo root so scripts/verification/ stays tracked.
-/verification/
+# Root-level /verification/ artifacts are handled by the consolidated block below
+# (`verification/*` + explicit re-include negations). The former standalone
+# `/verification/` directory-exclude was removed 2026-06-04 — a directory-exclude
+# blocks re-inclusion of any child, which silently broke the a11y/e4/mobile/atlas
+# negations (atlas baseline needed a force-add). `verification/*` is root-anchored
+# (mid-slash), so scripts/verification/ stays tracked.
 
 # Firebase debug logs
 firebase-debug.log
@@ -86,10 +89,9 @@ verification/*
 !verification/e4/results.json
 !verification/e4/screenshots/
 !verification/e4/screenshots/*.png
-# Track J item 21 — screenshot atlas baseline (committed; future atlases replace, not accumulate)
-!verification/atlas-2026-06-04/
-!verification/atlas-2026-06-04/*.png
-!verification/atlas-2026-06-04/*.md
+# Track J — screenshot atlas baselines (committed; future dated atlases replace, not accumulate)
+!verification/atlas-*/
+!verification/atlas-*/**
 
 # Playwright MCP local state
 .playwright-mcp/
