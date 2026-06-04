@@ -3987,9 +3987,11 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
 
 ## Track J (V2 Redesign) — App-wide `text-gold` + adjacent contrast pass (MEDIUM/DESIGN, banked 2026-05-31, PR #401; expanded 2026-05-31 on PR #403)
 
-**Status:** Scoped as a dedicated future PR — dispatcher disposition 2026-05-31 on PR #401 pre-review was *"ACCEPTED as design-intent — do NOT darken gold in P3 (a one-off darkening would create a divergent second gold vs AgentAwardsPanel). The fix is an app-wide gold-contrast pass in its own PR."* Two adjacent pre-existing AA-fail nodes folded in on PR #403 pre-review (DataSourceBadge "Estimated" + AgentProductionView hero avatar) — same FU because they share the same "scheduled gold-contrast pass" cadence and benefit from the same token-level fix discipline.
+**Status (2026-06-04): text-gold part RESOLVED (item 10 audit → item 20 fix, PR #465 squash `92d558f`); adjacent non-gold items REMAIN OPEN.** The light-mode `--color-gold` was darkened 176,125,26 (#B07D1A) → 138,96,17 (#8a6011) — AA-compliant on white (5.58), cream (5.16), gold-tint (5.06); dark gold unchanged. Token-level, so every `text-gold` consumer is fixed in one go. **axe-delta note (prod awards smoke, item 18 harness):** the awards-surface color-contrast node count was UNCHANGED post-fix (agent light 50 / dark 36 / BM light 22 / dark 18) — because axe never flagged the gold nodes (it applied the large-text 3:1 threshold, which even the old #B07D1A passed). The fix's value is the deterministic small-text AA improvement, not an axe-node reduction. The 50 light-theme nodes are 49× `#a8a39c` text-ink-faint + 1× `#018a91` primary-light — the SEPARATE faint→muted debt + the per-callsite teal items below, NOT gold. **Still open under this FU:** (a) DataSourceBadge `text-warning` on `bg-warning/15` light; (b) AgentProductionView hero avatar `bg-primary text-white` dark; (c) the `text-primary-light` eyebrow on cream (3.84). These are non-gold and untouched by item 20.
 
-### text-gold (PR #401 origin)
+**Status (original):** Scoped as a dedicated future PR — dispatcher disposition 2026-05-31 on PR #401 pre-review was *"ACCEPTED as design-intent — do NOT darken gold in P3 (a one-off darkening would create a divergent second gold vs AgentAwardsPanel). The fix is an app-wide gold-contrast pass in its own PR."* Two adjacent pre-existing AA-fail nodes folded in on PR #403 pre-review (DataSourceBadge "Estimated" + AgentProductionView hero avatar) — same FU because they share the same "scheduled gold-contrast pass" cadence and benefit from the same token-level fix discipline.
+
+### text-gold (PR #401 origin) — ✅ RESOLVED (item 20, PR #465 `92d558f`: light gold → #8a6011, AA-compliant; dark unchanged)
 
 **Surfaces affected (initial inventory — expand on pickup):**
 - `src/components/leaderboard/ProductionLeaderboardSurface.jsx` (PR #401) — header eyebrow `"★ Top of the board · {period}"` + champion-card label `"Champion"` + champion API value, all `text-gold` on `bg-surface` / `bg-card`.
@@ -4028,6 +4030,21 @@ This isn't a token-level fix (the token is correct — lifted teal IS the right 
 **Priority:** MEDIUM. Pre-pilot, all three patterns work visually; this is an AA-cleanup pass that should ride with the pre-pilot a11y audit if there is one, OR ship as its own contrast PR before the pilot lands. The three items (gold token bump, warning-tint legibility, dark-mode primary pair-up) form a coherent contrast-pass PR.
 
 Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31. Expanded with DataSourceBadge "Estimated" + AgentProductionView hero avatar on PR #403 pre-review, 2026-05-31.
+
+---
+
+## External code reviewer — Gemini sunsets 2026-07-17; choose a replacement (MEDIUM, dated, banked 2026-06-04)
+
+**Deadline: 2026-07-17.** Gemini consumer code review (the external automated reviewer wired to PRs) sunsets on 2026-07-17 per its own in-PR notice (surfaced on PR #465 review). Before that date, choose and wire a replacement external reviewer so the §6-style "external review triage" gate keeps a real second opinion:
+
+**Candidates:**
+- **GitHub Copilot code review** — native GitHub PR review, low setup.
+- **CodeRabbit** — dedicated AI PR reviewer, richer inline comments.
+- **Claude Code GitHub Action** — `@claude` PR review via the official action; keeps the reviewer in the same model family as the dispatcher.
+
+**Action:** evaluate the three (setup cost, signal quality, cost), pick one, wire it to PRs against `main`, and update the §6 (amendment-v3) external-reviewer triage references from "Gemini" to the chosen reviewer. Note: external review was a NO-OP for most of the Track J overnight queue (Gemini posted on #465 but was silent on the other batch PRs) — whatever replaces it should be verified to actually post before relying on the §6 gate.
+
+Banked: Track J morning task (2026-06-04), from the PR #465 Gemini sunset notice.
 
 ---
 
