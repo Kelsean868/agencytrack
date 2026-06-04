@@ -86,6 +86,10 @@ verification/*
 !verification/e4/results.json
 !verification/e4/screenshots/
 !verification/e4/screenshots/*.png
+# Track J item 21 — screenshot atlas baseline (committed; future atlases replace, not accumulate)
+!verification/atlas-2026-06-04/
+!verification/atlas-2026-06-04/*.png
+!verification/atlas-2026-06-04/*.md
 
 # Playwright MCP local state
 .playwright-mcp/
