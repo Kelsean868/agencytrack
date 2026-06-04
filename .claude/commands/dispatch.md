@@ -5,6 +5,17 @@ argument-hint: <brief-path>
 
 PR dispatch — execute the kickoff brief at `$ARGUMENTS`.
 
+## Step 0 — brief-on-main guard (MANDATORY, before reading the brief)
+
+`git fetch origin`, then confirm the brief path exists on `origin/main`:
+`git ls-tree origin/main -- docs/briefs/<file>` must be non-empty. If it is empty (the
+brief is not on `origin/main`), **STOP IMMEDIATELY** and report: "brief not on origin/main
+— merge the docs PR first (Rule 10)." Reading the brief from a local or docs branch is no
+longer permitted — the dispatch must run against the merged-to-main brief so the Rule 10
+audit trail (brief authorship/timing in main's history) is intact before any work begins.
+
+Only once the brief is confirmed on `origin/main`:
+
 Read the brief in full before doing anything else. Then execute Phases 0–5 as the brief specifies.
 
 Strike count opens at 0/2.
