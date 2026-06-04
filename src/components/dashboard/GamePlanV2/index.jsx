@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getMoneyNeeds } from '../../../services/moneyNeedsService';
+import { getWeeklyPlan, commitWeeklyPlan } from '../../../services/weeklyPlanService';
+import { getRecentSundays } from '../../../utils/validators';
 import PlanAnchorStrip from './PlanAnchorStrip';
 import StepRail from './StepRail';
 import PlanCascade from './PlanCascade';
@@ -53,10 +55,17 @@ export default function GamePlanScreen({
   // Week-of-year label (mirrors AgentDashboard's topbar crumb math).
   const yearStart = new Date(year, 0, 1);
   const weekNum = Math.ceil(((now - yearStart) / 86400000 + yearStart.getDay() + 1) / 7);
+  // This week's Sunday (YYYY-MM-DD) — the weeklyPlans doc-ID date segment.
+  const weekStart = getRecentSundays(1)[0];
 
   const [worksheet, setWorksheet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Weekly plan (Slice 2) — committed plan for this week + commit lifecycle.
+  const [committedPlan, setCommittedPlan] = useState(null);
+  const [planBusy, setPlanBusy] = useState(false);
+  const [planError, setPlanError] = useState(false);
 
   const load = useCallback(async () => {
     if (!tenantId || !uid) return;
@@ -73,6 +82,36 @@ export default function GamePlanScreen({
   }, [tenantId, uid, year]);
 
   useEffect(() => { load(); }, [load]);
+
+  const loadPlan = useCallback(async () => {
+    if (!tenantId || !uid) return;
+    try {
+      setCommittedPlan(await getWeeklyPlan(tenantId, uid, weekStart));
+    } catch {
+      setCommittedPlan(null);
+    }
+  }, [tenantId, uid, weekStart]);
+
+  useEffect(() => { loadPlan(); }, [loadPlan]);
+
+  const handleCommitPlan = useCallback(async (targets, provenance, anchorAPIAtCommit) => {
+    if (!tenantId || !uid) return;
+    setPlanBusy(true);
+    setPlanError(false);
+    try {
+      await commitWeeklyPlan(
+        tenantId, uid, weekStart,
+        { targets, provenance, anchorAPIAtCommit },
+        weeklyActivityFloors,
+      );
+      setCommittedPlan(await getWeeklyPlan(tenantId, uid, weekStart));
+    } catch (err) {
+      setPlanError(true);
+      throw err; // keep the card in edit mode for retry
+    } finally {
+      setPlanBusy(false);
+    }
+  }, [tenantId, uid, weekStart, weeklyActivityFloors]);
 
   // ── Derived (all from existing moneyNeeds fields — no new data) ──────────
   const afterTaxNeed = worksheet?.totalAnnualAfterTax ?? 0;
@@ -163,6 +202,10 @@ export default function GamePlanScreen({
             onRetry={onRetry}
             onBuildPlan={openGoals}
             weekLabel={`Wk ${weekNum}`}
+            committedPlan={committedPlan}
+            onCommit={handleCommitPlan}
+            planBusy={planBusy}
+            planError={planError}
           />
         </>
       )}
