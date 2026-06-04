@@ -133,10 +133,11 @@ describe('SuggestedWeekCard — Slice 3a pace rows (final / submitted source)', 
     expect(screen.queryByTestId('weekly-plan-pace-readout')).not.toBeInTheDocument();
   });
 
-  it('calls resolves to the 5-component sum once submitted (no longer hatched)', () => {
+  // Consciously evolved: 4-sum prospecting calls (ratified 2026-06-04, serviceCalls excluded).
+  it('calls resolves to the 4-sum prospecting calls once submitted (no serviceCalls)', () => {
     renderFinal();
     expect(screen.queryByTestId('pace-nodaily-callsMade')).not.toBeInTheDocument();
-    expect(screen.getByTestId('pace-actual-callsMade')).toHaveTextContent('24'); // 10+5+3+2+4
+    expect(screen.getByTestId('pace-actual-callsMade')).toHaveTextContent('20'); // 10+5+3+2; serviceCalls(4) excluded
   });
 
   it('final actuals come from the submission via extractFields (apps = newBusiness.apps)', () => {

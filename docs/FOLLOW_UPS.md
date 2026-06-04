@@ -49,18 +49,13 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Dials display semantics — 5-sum vs 4-sum across non-floor/plan surfaces (LOW, banked from S3b dispatcher pre-review)
+## Dials display semantics — 5-sum vs 4-sum across non-floor/plan surfaces (CLOSED — RATIFIED, PR #TBD `{TBD}`)
 
-**Context.** The D1 repoint in S3b makes the Standard drawer and PulseStrip chip use the **5-component sum** (`referralCalls + followUpCalls + coldCalls + seminarTradeshowCalls + serviceCalls`) for `callsMade`-vs-floor comparisons, matching the wizard's Step-2 total. However, the following surfaces still read the **4-sum `totalTelAttempts`** (which excludes `serviceCalls`):
+**RESOLVED 2026-06-04 (operator ratification, Prospecting Calls Flip PR #TBD).** The product decision is made: **service calls do NOT count toward effort/minimum/plan surfaces.** Rationale on record: service-originated production is already fully credited downstream (approaches, FFIs, CIs, apps are call-type-agnostic); counting raw service-call volume credits only the gameable, low-signal part and hides absent prospecting muscle in developing agents. Principle: **separate, not erase** — service calls stay captured and visible as their own line; they are no longer conflated into the prospecting metric.
 
-- **YTD dials accumulation** — `AgentDashboard.jsx:240`: `acc.dials += f.totalTelAttempts`
-- **Kiosk `WeeklyActivityPanel`** — `src/components/kiosk/panels/WeeklyActivityPanel.jsx:49`: prospecting leaderboard labels "calls" as `totalTelAttempts`
-- **Century-dials milestone** — `src/utils/buildActivityEvents.js:65`: `f.totalTelAttempts >= 100`
-- **MasterSheet / MeetingMode / AgentReportDocument / exportService** — all label "Tel Attempts" / "Dials" via `totalTelAttempts`
+**What changed (PR #TBD):** the floor/plan calls comparison surfaces (S3a Game Plan pace row, S3b StandardDetail drawer + PulseStrip chip, S2 stepper) flipped to the **4-sum prospecting calls** (`computeProspectingCallsActual` = referral + followUp + cold + seminarTradeshow; NO serviceCalls) and the metric was relabeled **"Prospecting calls"**. The S3b 5-sum `computeCallsActual` export was deleted (dead-code, zero consumers).
 
-**Product decision needed.** Should "service calls" count as "dials" on these surfaces? They are proactive outbound calls to existing policyholders — different from prospecting dials but tracked in the same wizard step. Options: (a) update these surfaces to also use the 5-sum for full consistency; (b) leave them on the 4-sum (prospecting intent only) and accept the surface divergence (documented); (c) add a UI footnote where divergence is user-visible.
-
-**Why LOW, not MEDIUM.** These surfaces are informational/reporting, not the floor/plan comparison surface D1 was fixing. The divergence is documented here; agents hitting the century-dials milestone won't get it if they log only service calls, but that edge case is narrow. Resolve in a dedicated pass once the product position on "what counts as a dial" is settled.
+**Informational 4-sum surfaces — CONFIRMED CORRECT, no change.** YTD dials (`AgentDashboard.jsx`), kiosk `WeeklyActivityPanel`, century-dials milestone (`buildActivityEvents.js`), MasterSheet/MeetingMode/AgentReportDocument/exportService all read `extractFields.totalTelAttempts` (also a 4-sum excluding serviceCalls). Under the ratified decision these are **working as intended** — prospecting dials only — and are explicitly out of scope. The wizard Step-2 displayed total stays the 5-sum (data-entry sum; unchanged by design).
 
 ---
 

@@ -4,7 +4,7 @@ import {
   PACE_WORKING_DAYS,
   PACE_METRIC_META,
   SOURCE_CHIP,
-  computeCallsActual,
+  computeProspectingCallsActual,
   elapsedWorkingDays,
   computeWeeklyActuals,
   aggregateDailyActuals,
@@ -12,24 +12,25 @@ import {
   buildPaceRows,
 } from '../planVariance';
 
-describe('computeCallsActual — 5-sum incl. serviceCalls (D1 single-source for floor consumers)', () => {
-  it('sums all five call components including serviceCalls', () => {
+// Consciously evolved from the S3b 5-sum block: ratified 2026-06-04, serviceCalls
+// excluded from effort/floor/plan surfaces. The 4-sum is now the single definition.
+describe('computeProspectingCallsActual — 4-sum (no serviceCalls, ratified 2026-06-04)', () => {
+  it('sums the four prospecting call components, excluding serviceCalls', () => {
     const fields = { referralCalls: 10, followUpCalls: 5, coldCalls: 3, seminarTradeshowCalls: 2, serviceCalls: 4 };
-    expect(computeCallsActual(fields)).toBe(24);
+    expect(computeProspectingCallsActual(fields)).toBe(20); // 10+5+3+2; NOT 24
   });
-  it('is DISTINCT from the old 4-sum (totalTelAttempts excludes serviceCalls)', () => {
-    // serviceCalls = 4 makes the 5-sum (24) differ from the 4-sum (20)
+  it('explicitly excludes serviceCalls (the 5-vs-4 discrimination case)', () => {
     const fields = { referralCalls: 10, followUpCalls: 5, coldCalls: 3, seminarTradeshowCalls: 2, serviceCalls: 4 };
-    expect(computeCallsActual(fields)).toBe(24);
-    expect(computeCallsActual(fields)).not.toBe(20);
+    expect(computeProspectingCallsActual(fields)).toBe(20);
+    expect(computeProspectingCallsActual(fields)).not.toBe(24); // 24 would include serviceCalls
   });
   it('treats absent components as 0', () => {
-    expect(computeCallsActual({ referralCalls: 10 })).toBe(10);
-    expect(computeCallsActual({})).toBe(0);
+    expect(computeProspectingCallsActual({ referralCalls: 10 })).toBe(10);
+    expect(computeProspectingCallsActual({})).toBe(0);
   });
   it('handles null/undefined gracefully', () => {
-    expect(computeCallsActual(null)).toBe(0);
-    expect(computeCallsActual(undefined)).toBe(0);
+    expect(computeProspectingCallsActual(null)).toBe(0);
+    expect(computeProspectingCallsActual(undefined)).toBe(0);
   });
 });
 
@@ -105,14 +106,15 @@ describe('elapsedWorkingDays — TT-safe Mon–Sat, Sunday excluded', () => {
   });
 });
 
-describe('computeWeeklyActuals — 5-component calls sum (incl. serviceCalls)', () => {
-  it('sums exactly the five call components, matching the wizard Step-2 total', () => {
+// Consciously evolved: callsMade switches to 4-sum (ratified 2026-06-04).
+describe('computeWeeklyActuals — prospecting calls 4-sum (no serviceCalls)', () => {
+  it('uses the 4-sum for callsMade, excluding serviceCalls', () => {
     const a = computeWeeklyActuals(v2Submission());
-    expect(a.callsMade).toBe(24); // 10+5+3+2+4 — serviceCalls(4) INCLUDED
+    expect(a.callsMade).toBe(20); // 10+5+3+2; serviceCalls(4) EXCLUDED
   });
-  it('still sums when some call components are absent', () => {
+  it('ignores serviceCalls even when present', () => {
     const a = computeWeeklyActuals({ version: 2, referralCalls: 10, serviceCalls: 4 });
-    expect(a.callsMade).toBe(14); // missing components → 0; serviceCalls still counted
+    expect(a.callsMade).toBe(10); // serviceCalls excluded; only referralCalls counted
   });
   it('maps contacts→qualifiedApproaches, FFI→ffiConducted, CI→ciConducted, apps→newBusiness.apps', () => {
     const a = computeWeeklyActuals(v2Submission());
@@ -218,7 +220,7 @@ describe('buildPaceRows — source switch + provenance chip', () => {
     expect(result.chip).toEqual(SOURCE_CHIP.final);
     expect(result.paceFraction).toBe(1);
     const calls = result.rows.find((r) => r.key === 'callsMade');
-    expect(calls.actual).toBe(24);          // 5-component sum resolves once submitted
+    expect(calls.actual).toBe(20);          // 4-sum prospecting calls (serviceCalls excluded)
     expect(calls.noDailySource).toBe(false);
     expect(calls.showPace).toBe(false);     // no live pace marker on a final report
   });

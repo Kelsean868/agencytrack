@@ -12,7 +12,7 @@
  *
  * E3 standard, both themes. SOURCE-AWARE (brief D3): the committed pace rows read
  * from a submitted weekly report when one exists for the week (source "final ·
- * submitted" — calls resolves to the 5-component sum, no live pace marker),
+ * submitted" — calls resolves to the 4-sum prospecting calls, no live pace marker),
  * otherwise from the Daily Capture aggregate (source "mid-week · daily capture" —
  * calls hatched, live pace marker). The walk detects which arm the account is in
  * and asserts the matching behaviour; the Daily Capture write+own-delete path is
@@ -112,6 +112,15 @@ const valOf = (page, id) => page.evaluate((i) => { const el = document.querySele
 const textOf = (page, id) => page.evaluate((i) => { const el = document.querySelector(`[data-testid="${i}"]`); return el ? (el.textContent || '') : ''; }, id);
 const shot = (page, name) => page.screenshot({ path: `${SHOT_DIR}/${name}.png` }).catch(() => {});
 
+// One-retry SDK delete (2026-06-04 hygiene note) — absorbs the transient
+// auth/network-request-failed the Node Firebase SDK can hit after a heavy Playwright session.
+async function deleteWithRetry(ref) {
+  for (let i = 0; i < 2; i++) {
+    try { await deleteDoc(ref); return; }
+    catch (e) { if (i === 1) throw e; await new Promise((r) => setTimeout(r, 2000)); }
+  }
+}
+
 // Ensure a committed plan exists (commit via the S2 path if not already committed).
 async function ensureCommitted(page) {
   if (await has(page, 'weekly-plan-committed')) return;
@@ -157,12 +166,17 @@ async function run() {
       : /mid-week · daily capture/i.test(chip0) ? 'daily' : 'unknown';
     r.source = source;
     r.sourceChipValid = source !== 'unknown';
+    // Ratified 2026-06-04: the calls metric is relabeled "Prospecting calls".
+    r.prospectingLabel = await page.evaluate(
+      () => document.querySelector('[data-testid="weekly-plan-committed"]')?.textContent?.includes('Prospecting calls') ?? false,
+    );
     if (source === 'daily') {
       // mid-week: calls is the hatched no-daily-source state + a live pace readout.
       r.callsHatched = await has(page, 'pace-nodaily-callsMade');
       r.paceReadout = /Day \d of 6/i.test(await textOf(page, 'weekly-plan-pace-readout'));
     } else {
-      // final: the submission drives actuals — calls RESOLVES (5-sum), no live marker.
+      // final: the submission drives actuals — calls RESOLVES (4-sum prospecting,
+      // serviceCalls excluded per the 2026-06-04 ratification), no live marker.
       r.callsResolved = await has(page, 'pace-actual-callsMade');
       r.noLiveReadout = !(await has(page, 'weekly-plan-pace-readout'));
     }
@@ -243,13 +257,15 @@ async function run() {
     const uid = cred.user.uid;
     const tenantId = (await cred.user.getIdTokenResult()).claims.tenantId;
 
+    // One-retry deletes (2026-06-04 hygiene note) — absorb the transient
+    // auth/network-request-failed the Node SDK can hit after a heavy Playwright session.
     const planRef = doc(db, `tenants/${tenantId}/weeklyPlans/${uid}_${mostRecentSunday()}`);
-    await deleteDoc(planRef);
+    await deleteWithRetry(planRef);
     cleanup.planDeleted = true;
     cleanup.planGone = !(await getDoc(planRef)).exists();
 
     const dailyRef = doc(db, `tenants/${tenantId}/users/${uid}/dailyActivity/${todayId()}`);
-    await deleteDoc(dailyRef);
+    await deleteWithRetry(dailyRef);
     cleanup.dailyDeleted = true;
     cleanup.dailyGone = !(await getDoc(dailyRef)).exists();
   } catch (e) {
@@ -263,13 +279,13 @@ async function run() {
     : (r.source === 'final' && r.callsResolved && r.noLiveReadout);
 
   const pass = (
-    r.paceRows && r.sourceChipValid && sourceGate &&
+    r.paceRows && r.sourceChipValid && r.prospectingLabel && sourceGate &&
     r.dailySaved && r.variancePresent && r.actualsResolved &&
     Array.isArray(r.axeSC) && r.axeSC.length === 0 && errors.length === 0 &&
     cleanup.planDeleted && cleanup.planGone && cleanup.dailyDeleted && cleanup.dailyGone && !r.fatal
   );
 
-  console.log(`  source=${r.source} paceRows=${r.paceRows} sourceChipValid=${r.sourceChipValid} sourceGate=${sourceGate}`);
+  console.log(`  source=${r.source} paceRows=${r.paceRows} sourceChipValid=${r.sourceChipValid} prospectingLabel=${r.prospectingLabel} sourceGate=${sourceGate}`);
   if (r.source === 'daily') console.log(`    callsHatched=${r.callsHatched} paceReadout=${r.paceReadout} callsStillHatched=${r.callsStillHatched}`);
   else console.log(`    callsResolved=${r.callsResolved} noLiveReadout=${r.noLiveReadout} callsActual=${r.callsActual}`);
   console.log(`  dailySaved=${r.dailySaved} variancePresent=${r.variancePresent} actualsResolved=${r.actualsResolved}`);

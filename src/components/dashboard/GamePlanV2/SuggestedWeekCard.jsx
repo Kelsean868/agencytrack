@@ -44,7 +44,7 @@ import { getTodayTT } from '../../../utils/dateInputs';
 // five metric concepts (all five render on the floor path; see the asymmetry
 // note above). Order mirrors the build annotation's floor state.
 const FLOOR_METRICS = [
-  { key: 'callsMade',             label: 'Dials' },
+  { key: 'callsMade',             label: 'Prospecting calls' },
   { key: 'contactsMade',          label: 'Contacts' },
   { key: 'factFindsCompleted',    label: 'FFIs' },
   { key: 'closingInterviewsKept', label: 'CIs' },
