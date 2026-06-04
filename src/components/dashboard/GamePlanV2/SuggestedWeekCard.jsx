@@ -263,7 +263,7 @@ export default function SuggestedWeekCard({
                 <div className="mt-1 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-muted">
                   {m.label}
                 </div>
-                <div className="mt-1 font-mono text-[7px] font-bold uppercase tracking-wide text-ink-muted/80">
+                <div className="mt-1 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-muted">
                   {PROVENANCE_CHIP[committedPlan.provenance?.[m.key]] ?? ''}
                 </div>
               </div>
