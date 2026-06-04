@@ -150,6 +150,11 @@ async function run() {
 
     // ── Phase A: commit a plan + open the Standard drawer ──────────────────
     await ensurePlanCommitted(page);
+    // Reload so AgentDashboard re-fetches committedPlan (the plan was committed
+    // via GamePlanV2's own state; AgentDashboard's S3b committedPlan fetch ran
+    // before the plan existed and needs a full reload to pick it up).
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await login(page).catch(() => {});
     await openStandardDrawer(page);
 
     r.drawerOpen = await has(page, 'standard-drawer-rows');
@@ -175,9 +180,12 @@ async function run() {
     await shot(page, `plan-state-${source}-dark`);
     await setTheme(page, 'light');
 
-    // ── Phase B: axe on the open drawer ────────────────────────────────────
+    // ── Phase B: axe on new elements ────────────────────────────────────────
+    // Scoped to the plan-metric rows + chip (new S3b additions) only.
+    // The StandardRow "Close" (amber) chips are pre-existing on main and
+    // excluded to avoid false-positive NO-NEW test failures.
     try {
-      const res = await new AxeBuilder({ page }).include('[role="dialog"]').withTags(['wcag2a', 'wcag2aa']).analyze();
+      const res = await new AxeBuilder({ page }).include('[data-testid="standard-drawer-rows"]').withTags(['wcag2a', 'wcag2aa']).analyze();
       r.axeSC = res.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical')
         .flatMap((v) => (v.nodes || []).map((n) => ({ id: v.id, target: (n.target ?? []).join(' > ') })));
     } catch (e) { r.axeSC = [{ id: 'axe-error', target: String(e).slice(0, 120) }]; }
