@@ -1248,6 +1248,56 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ── Compliance v2 Slice 2: manager-initiated filing nudges ────────────────
+      // /tenants/{tid}/nudges/{audienceUid}_{type}_{weekStart}
+      //   weekStart = YYYY-MM-DD Sunday; type = 'compliance.filing.nudge' (dotted,
+      //   no underscores) — so split('_')[0] is the audienceUid.
+      //
+      // CF-only writes: the sendComplianceNudge Cloud Function is the sole writer
+      // (Admin SDK bypasses these rules). NO client create/update. The nudge doc
+      // is the dedupe/cooldown RECORD (deterministic ID + SET-MERGE re-nudge).
+      // delete: the creating manager only (smoke cleanup + a future retract
+      // affordance; the audit trail survives in auditNudges regardless).
+      // get: the audience (agent) reads own, OR an upline manager — the
+      // deterministic-ID GET powers the manager cooldown chip, index-free,
+      // mirroring uplineCanReadPlan. Both get arms derive audienceUid from the
+      // doc ID, so an ABSENT nudge (resource == null) still authorizes an upline
+      // GET → a clean not-found for the chip rather than permission-denied.
+      // NO list arm (no index; the agent-inbox feature, if ever, adds it later).
+      match /nudges/{nudgeId} {
+
+        function uplineCanReadNudge() {
+          let audienceUid = nudgeId.split('_')[0];
+          return canManage(tenantId) && (
+            getRole() in ['sales_manager','tenant_admin','platform_admin']
+            || (getRole() == 'unit_manager'
+                && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(audienceUid)).data.unitId == callerUnitId(tenantId))
+            || (getRole() == 'branch_manager'
+                && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(audienceUid)).data.branchId == callerBranchId(tenantId))
+          );
+        }
+
+        // CF-only: no client create/update.
+        allow create, update: if false;
+
+        // Creator (the nudging manager) may delete.
+        allow delete: if isSignedIn() && getTenantId() == tenantId
+          && resource.data.createdBy == request.auth.uid;
+
+        // Single-doc get: audience reads own (ID prefix) OR upline.
+        allow get: if isSignedIn() && getTenantId() == tenantId
+          && (nudgeId.split('_')[0] == request.auth.uid || uplineCanReadNudge());
+
+        // No list arm by design (see header).
+      }
+
+      // Compliance v2 Slice 2: nudge audit log — written exclusively by the
+      // sendComplianceNudge Cloud Function via Admin SDK (rules bypass). Clients
+      // never read or write; the audit trail survives nudge-doc deletion.
+      match /auditNudges/{docId} {
+        allow read, write: if false;
+      }
+
     }
 
     // ── I1.2: collectionGroup author arm for jointCalls ───────────────────────
