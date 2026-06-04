@@ -5,6 +5,57 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Compliance v2 — remaining slices (banked 2026-06-04 from Compliance v2 Slice 1, PR #TBD)
+
+**Context:** S1 (PR #TBD) shipped the **read/derive-only filing surface** for the manager
+Compliance panel per `docs/design/compliance-v2-s1.html`: a filing **reality bar**
+(filed % · on-time · late · not-in), an **exception-first "Haven't filed" list**, an
+**on-time roster** (status pill · submitted time · 8-week on-time streak) whose row-click
+opens the shared coaching drawer (`CoachingNotesModal`, reused), and the **CBTT section
+kept** as its own regulatory block. New pure util `src/utils/complianceDerive.js`
+(`isOnTime`/`classifyWeek`/`onTimeStreak`, TT-safe; deadline = Sun 23:59:59 AST following
+the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeeklySubmissions`
++ `getTenantUsers`) — **no new collection / rule / index**.
+
+**Remaining slices (each needs its own kickoff brief):**
+
+- **S2 — the WRITE: notifications collection + Nudge (LOCKED scope).** The app's first
+  general `tenants/{tid}/notifications/{id}` object (`type: 'compliance.filing.nudge'`,
+  `audienceUid`, `payload {weekStart, lens, managerName}`, `createdBy`, `createdAt`,
+  `readAt`) written by a **`sendComplianceNudge` Cloud Function** (fan-out writes N docs).
+  Per-row Nudge + Nudge-all (count+scope confirm, never silent) + cooldown chip. Triggers
+  the **full new-collection checklist**: rules + write + read + composite indexes + smoke.
+  **ALSO re-homes both S1-dropped affordances as row actions** — UNLOCK on submitted rows
+  via the **existing `unlockSubmission` service write (no new write path, no rules change —
+  re-mount only)**, and a read-only **view-report** affordance (`SubmissionViewer`)
+  adjacent. Submitted rows get unlock/view; not-in rows get Nudge — one row-action
+  grammar. **unlock + view-report re-home in Compliance S2 (LOCKED scope) —
+  CompliancePanel was unlock's sole access path; interim gap accepted (test-only prod;
+  Platform Admin console is the emergency fallback).**
+  - **Open product decisions for the S2 brief** (flagged in the annotation, not decided
+    here): nudge rate-limit / dedupe key (per uid+type+week?); Nudge-all blast radius
+    (whole not-in set vs current unit/filter; skip already-nudged?); auto-escalation
+    (to BM / to email after N in-app, or never?); notification transport (in-app doc only
+    · + SendGrid Trigger Email · both — doc written regardless); CBTT placement sign-off
+    (kept section · own tab · relocated); on-time deadline grace period (S1 implemented the
+    exact Sun 23:59:59 AST boundary — confirm whether a grace window is wanted).
+
+- **S3 — second lens: plan-adoption.** A Filing ⇄ Plan-adoption **toggle** that swaps the
+  reality bar's metric set AND the exception list in lockstep, reading `weeklyPlans/{agentId}_{weekStart}`
+  via the **locked deterministic-ID get-fan-out** over the roster — **zero rules changes**
+  (#471's manager-GET arm `uplineCanReadPlan` already covers it; no `list`, no index).
+  Reuses S1's bar + S2's nudge — no new primitive.
+
+## Compliance v2 S1 — derived-suggestion chip relabel (LOW, carried from #477 CONTEXT note)
+
+The Weekly-Planner Slice-1 **derived-suggestion chip** on `SuggestedWeekCard.jsx` still
+labels its prospecting metric **"Dials"** (the engine's suggestion state), whereas every
+floor/plan render site was relabeled **"Prospecting calls"** in #477. Out of #477's
+enumerated relabel scope (it's the engine *suggestion*, not a floor/plan actual). Relabel
+the chip to "Prospecting calls" for full cross-surface consistency. Optional / LOW.
+
+---
+
 ## Weekly-activity planner — remaining slices (banked 2026-06-03 from Weekly Planner v2 Slice 1, PR #445)
 
 **Context:** Slice 1 (PR #445) shipped the read-only **"Suggested weekly plan"** card in the Game Plan hub + extracted the goal-decomposition engine to `src/utils/goalDecomposition.js` (a small cleanup-debt reduction — the income→activity chain is now a shared, tested, single-source pure module instead of inline-in-the-Playground-tab). The remaining Path-B slices turn the read-only suggestion into a tracked, committed, rolled-up plan.
@@ -4025,6 +4076,8 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
 ## Track J (V2 Redesign) — App-wide `text-gold` + adjacent contrast pass (MEDIUM/DESIGN, banked 2026-05-31, PR #401; expanded 2026-05-31 on PR #403)
 
 **Status (2026-06-04): text-gold part RESOLVED (item 10 audit → item 20 fix, PR #465 squash `92d558f`); adjacent non-gold items REMAIN OPEN.** The light-mode `--color-gold` was darkened 176,125,26 (#B07D1A) → 138,96,17 (#8a6011) — AA-compliant on white (5.58), cream (5.16), gold-tint (5.06); dark gold unchanged. Token-level, so every `text-gold` consumer is fixed in one go. **axe-delta note (prod awards smoke, item 18 harness):** the awards-surface color-contrast node count was UNCHANGED post-fix (agent light 50 / dark 36 / BM light 22 / dark 18) — because axe never flagged the gold nodes (it applied the large-text 3:1 threshold, which even the old #B07D1A passed). The fix's value is the deterministic small-text AA improvement, not an axe-node reduction. The 50 light-theme nodes are 49× `#a8a39c` text-ink-faint + 1× `#018a91` primary-light — the SEPARATE faint→muted debt + the per-callsite teal items below, NOT gold. **Still open under this FU:** (a) DataSourceBadge `text-warning` on `bg-warning/15` light; (b) AgentProductionView hero avatar `bg-primary text-white` dark; (c) the `text-primary-light` eyebrow on cream (3.84). These are non-gold and untouched by item 20.
+
+**Extension (2026-06-04, from Compliance v2 S1 PR #481): ALL THREE `StatusPill` text-on-tint variants.** Compliance v2 S1's surface-scoped axe surfaced the same shared-chrome family as #475's warning-on-tint chips: **`bg-*/15 text-*` pills fail AA — danger + warning in dark, and `StatusPill` danger marginal even in light (4.33 vs 4.5), AND `StatusPill` success fails in light too.** Concrete nodes observed: `StatusPill` **danger** `bg-danger/15 text-danger` (light 4.33 · dark 3.91); `StatusPill` **success** `bg-success/15 text-success` (light fail); `StatusPill` **warning** `bg-warning/15 text-warning` (dark, per #475); the exception-header count badge `bg-danger/10 text-danger` (dark 3.92); the dark `--color-danger` foreground (#d96b5d-class) on dark tints generally. Classified **existing-pattern (no S1 code change)** — `StatusPill` is shared chrome, NOT scope-forked per slice. **Fix at TOKEN level (accessible on-tint foreground pairings for danger + warning + success) in this dedicated contrast-debt slice, app-wide in one pass** — alongside the faint→muted (~49-node) + primary-light items above. Do not patch `StatusPill` per-callsite.
 
 **Status (original):** Scoped as a dedicated future PR — dispatcher disposition 2026-05-31 on PR #401 pre-review was *"ACCEPTED as design-intent — do NOT darken gold in P3 (a one-off darkening would create a divergent second gold vs AgentAwardsPanel). The fix is an app-wide gold-contrast pass in its own PR."* Two adjacent pre-existing AA-fail nodes folded in on PR #403 pre-review (DataSourceBadge "Estimated" + AgentProductionView hero avatar) — same FU because they share the same "scheduled gold-contrast pass" cadence and benefit from the same token-level fix discipline.
 
