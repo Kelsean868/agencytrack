@@ -32,9 +32,12 @@
  *   • rank ≤ 3        → VISIBLE_PODIUM (surface adds YOU pill + teal ring on card)
  *   • 4 ≤ rank ≤ max  → VISIBLE_TAIL (surface highlights tail row in-place)
  *   • rank > max,
- *     viewer is last  → CLUSTER_2_LAST (2 rows: prev · You)
+ *     prev AND next   → CLUSTER_3 (exactly 3 rows: prev · You · next)
  *   • rank > max,
- *     viewer has next → CLUSTER_3 (3 rows: prev · You · next)
+ *     otherwise       → CLUSTER_2_LAST (fewer than 3 rows: prev · You when
+ *                        viewer is last; You · next in the rare rank-1-below-set
+ *                        case reachable only at visibleMax 0; or a 1-row solo).
+ *                        State is rows.length-derived so CLUSTER_3 never lies.
  *   • viewer not in
  *     ranking         → CLUSTER_UNRANKED (surface renders 1 empty-state row)
  *
@@ -115,7 +118,15 @@ export function computeAroundMe({ ranking, viewerUid, visibleMax }) {
     : null;
 
   return {
-    state: next ? 'CLUSTER_3' : 'CLUSTER_2_LAST',
+    // State is derived from the ACTUAL row count, not from `next` alone.
+    // CLUSTER_3 ⟺ exactly 3 rows (prev · You · next). Everything else with a
+    // viewer present is CLUSTER_2_LAST: prev · You (viewer is last), OR the rare
+    // rank-1-below-set case You · next (only reachable at visibleMax 0), OR a
+    // 1-row solo cluster. Presentation is driven by `rows` (the surface maps the
+    // array; the cluster component never branches on the 2-vs-3 label), so this
+    // label is a consumer-detection tag — and it must not claim 3 rows when 2 are
+    // present. (Track J item 19: fixes the CLUSTER_3 misapplication for rank-1.)
+    state: rows.length >= 3 ? 'CLUSTER_3' : 'CLUSTER_2_LAST',
     viewerEntry: viewer,
     rows,
     gapToNext,

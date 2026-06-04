@@ -177,6 +177,43 @@ describe('computeAroundMe — CLUSTER_2_LAST', () => {
   });
 });
 
+// ── Item 19: rank-1-below-set state is rows.length-honest (not CLUSTER_3) ────
+// The "first below the visible set" case (no prev, has next) is only reachable
+// at visibleMax 0. It has 2 rows (You · next), so it MUST NOT be labelled
+// CLUSTER_3 (which means exactly 3 rows). Before the item-19 fix the state was
+// derived from `next` alone and mislabelled this case CLUSTER_3.
+
+describe('computeAroundMe — rank-1-below-set (no prev, has next)', () => {
+  it('visibleMax 0, viewer is rank 1 → CLUSTER_2_LAST with 2 rows (You · next), NOT CLUSTER_3', () => {
+    const out = computeAroundMe({ ranking: RANKING_28, viewerUid: 'a1', visibleMax: 0 });
+    expect(out.state).toBe('CLUSTER_2_LAST');
+    expect(out.rows).toHaveLength(2);
+    expect(out.rows[0].rank).toBe(1); // viewer first (no prev)
+    expect(out.rows[1].rank).toBe(2); // next
+    expect(out.viewerEntry.rank).toBe(1);
+    expect(out.prevRank).toBeNull();  // no chase row above
+    expect(out.gapToNext).toBeNull(); // gapToNext requires a prev
+  });
+
+  it('visibleMax 0, single-entry ranking → CLUSTER_2_LAST with 1 solo row', () => {
+    const solo = [mkEntry(1, 'only', 100000)];
+    const out = computeAroundMe({ ranking: solo, viewerUid: 'only', visibleMax: 0 });
+    expect(out.state).toBe('CLUSTER_2_LAST');
+    expect(out.rows).toHaveLength(1);
+    expect(out.rows[0].agentId).toBe('only');
+    expect(out.prevRank).toBeNull();
+  });
+
+  it('regression guard: CLUSTER_3 is returned only when exactly 3 rows are present', () => {
+    // Sweep several below-set viewers that have both a prev and a next.
+    for (const rank of [9, 14, 20, 27]) {
+      const out = computeAroundMe({ ranking: RANKING_28, viewerUid: `a${rank}`, visibleMax: 8 });
+      expect(out.state).toBe('CLUSTER_3');
+      expect(out.rows).toHaveLength(3);
+    }
+  });
+});
+
 // ── CLUSTER_UNRANKED — viewer not in ranking ─────────────────────────────────
 
 describe('computeAroundMe — CLUSTER_UNRANKED', () => {
