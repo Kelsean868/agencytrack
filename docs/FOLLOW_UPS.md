@@ -5,9 +5,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Compliance v2 — remaining slices (banked 2026-06-04 from Compliance v2 Slice 1, PR #TBD)
+## Compliance v2 — remaining slices (banked 2026-06-04 from Compliance v2 Slice 1, PR #481)
 
-**Context:** S1 (PR #TBD) shipped the **read/derive-only filing surface** for the manager
+**Context:** S1 (PR #481) shipped the **read/derive-only filing surface** for the manager
 Compliance panel per `docs/design/compliance-v2-s1.html`: a filing **reality bar**
 (filed % · on-time · late · not-in), an **exception-first "Haven't filed" list**, an
 **on-time roster** (status pill · submitted time · 8-week on-time streak) whose row-click
