@@ -67,6 +67,12 @@ vi.mock('../../../services/campaignService', () => ({
 
 vi.mock('../../../services/dailyActivityService', () => ({
   getDailyEntry: vi.fn().mockResolvedValue(null),
+  getDailyEntriesForWeek: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('../../../services/weeklyPlanService', () => ({
+  getWeeklyPlan: vi.fn().mockResolvedValue(null),
+  commitWeeklyPlan: vi.fn().mockResolvedValue(undefined),
+  deleteWeeklyPlan: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../../services/authService', () => ({
@@ -143,7 +149,7 @@ vi.mock('../../submissions/SubmissionViewer',        () => ({ default: () => nul
 vi.mock('../GoalCarousel',                            () => ({ default: () => null }));
 vi.mock('../KPICard',                                 () => ({ default: () => null }));
 vi.mock('../ActivityFeed',                            () => ({ default: () => null }));
-vi.mock('../WeeklyStandardCard',                      () => ({ default: () => null }));
+// WeeklyStandardCard deleted in S3b (#393 removed mount; this PR removed corpse)
 vi.mock('../../gamification/BadgeGrid',              () => ({ default: () => null, computeEarnedBadges: () => [] }));
 vi.mock('../../onboarding/WelcomeScreen',            () => ({ default: () => null }));
 vi.mock('../../productionReport/ProductionReportTab', () => ({ default: () => null }));

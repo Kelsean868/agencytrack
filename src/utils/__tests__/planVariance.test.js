@@ -4,12 +4,34 @@ import {
   PACE_WORKING_DAYS,
   PACE_METRIC_META,
   SOURCE_CHIP,
+  computeCallsActual,
   elapsedWorkingDays,
   computeWeeklyActuals,
   aggregateDailyActuals,
   varianceState,
   buildPaceRows,
 } from '../planVariance';
+
+describe('computeCallsActual — 5-sum incl. serviceCalls (D1 single-source for floor consumers)', () => {
+  it('sums all five call components including serviceCalls', () => {
+    const fields = { referralCalls: 10, followUpCalls: 5, coldCalls: 3, seminarTradeshowCalls: 2, serviceCalls: 4 };
+    expect(computeCallsActual(fields)).toBe(24);
+  });
+  it('is DISTINCT from the old 4-sum (totalTelAttempts excludes serviceCalls)', () => {
+    // serviceCalls = 4 makes the 5-sum (24) differ from the 4-sum (20)
+    const fields = { referralCalls: 10, followUpCalls: 5, coldCalls: 3, seminarTradeshowCalls: 2, serviceCalls: 4 };
+    expect(computeCallsActual(fields)).toBe(24);
+    expect(computeCallsActual(fields)).not.toBe(20);
+  });
+  it('treats absent components as 0', () => {
+    expect(computeCallsActual({ referralCalls: 10 })).toBe(10);
+    expect(computeCallsActual({})).toBe(0);
+  });
+  it('handles null/undefined gracefully', () => {
+    expect(computeCallsActual(null)).toBe(0);
+    expect(computeCallsActual(undefined)).toBe(0);
+  });
+});
 
 // 2026-06-07 is a Sunday (the weekStart used in the S2 committed-plan fixtures).
 const WEEK_START = '2026-06-07';

@@ -37,7 +37,7 @@ function PulseViz({ viz, color }) {
   return null;
 }
 
-function PulseChip({ Icon, label, status, tone, viz, onClick, ariaLabel, active }) {
+function PulseChip({ Icon, label, status, tone, viz, onClick, ariaLabel, active, chipKey }) {
   const fg = TONE_FG[tone] ?? TONE_FG.teal;
   const bg = TONE_BG[tone] ?? TONE_BG.teal;
   return (
@@ -46,6 +46,7 @@ function PulseChip({ Icon, label, status, tone, viz, onClick, ariaLabel, active 
       onClick={onClick}
       aria-label={ariaLabel}
       aria-pressed={active ? 'true' : undefined}
+      data-testid={chipKey ? `pulse-chip-${chipKey}` : undefined}
       className={`card text-left flex flex-col gap-3 min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${active ? 'border-primary/40' : ''}`}
       style={{ padding: '12px 14px' }}
     >
@@ -87,6 +88,7 @@ export default function PulseStrip({ pulses, activeKey, onChipClick }) {
           viz={p.viz}
           ariaLabel={p.ariaLabel}
           active={activeKey === p.key}
+          chipKey={p.key}
           onClick={() => onChipClick(p.key)}
         />
       ))}

@@ -62,6 +62,12 @@ vi.mock('../../../services/campaignService', () => ({
 }));
 vi.mock('../../../services/dailyActivityService', () => ({
   getDailyEntry: vi.fn().mockResolvedValue(null),
+  getDailyEntriesForWeek: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('../../../services/weeklyPlanService', () => ({
+  getWeeklyPlan: vi.fn().mockResolvedValue(null),
+  commitWeeklyPlan: vi.fn().mockResolvedValue(undefined),
+  deleteWeeklyPlan: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('../../../services/authService',  () => ({ signOut: vi.fn() }));
 vi.mock('../../../utils/formatters', () => ({

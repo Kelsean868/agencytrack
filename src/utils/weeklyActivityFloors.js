@@ -1,5 +1,6 @@
 // Tatil manager workshop 2026-05-19 — Appendix A. Subject to managers' 6-month review.
 // Canonical mapping is documented in docs/briefs/weekly-activity-floors-kickoff.md.
+import { computeCallsActual } from './planVariance';
 export const DEFAULT_WEEKLY_ACTIVITY_FLOORS = Object.freeze({
   callsMade:             60,
   contactsMade:          40,
@@ -64,7 +65,7 @@ export function deriveWeeklyFloorActuals(fields) {
   const ffi = parseFloat(fields.ffiConducted) || 0;
   const ci  = parseFloat(fields.ciConducted)  || 0;
   return {
-    callsMade:             parseFloat(fields.totalTelAttempts) || 0,
+    callsMade:             computeCallsActual(fields),
     contactsMade:          parseFloat(fields.telContacts)      || 0,
     appointmentsScheduled: parseFloat(fields.appointmentsSet)  || 0,
     interviewsKept:        ffi + ci,
