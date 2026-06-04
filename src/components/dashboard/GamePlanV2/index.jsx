@@ -3,6 +3,7 @@ import { Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getMoneyNeeds } from '../../../services/moneyNeedsService';
 import { getWeeklyPlan, commitWeeklyPlan } from '../../../services/weeklyPlanService';
+import { getDailyEntriesForWeek } from '../../../services/dailyActivityService';
 import { getRecentSundays } from '../../../utils/validators';
 import PlanAnchorStrip from './PlanAnchorStrip';
 import StepRail from './StepRail';
@@ -67,6 +68,10 @@ export default function GamePlanScreen({
   const [planBusy, setPlanBusy] = useState(false);
   const [planError, setPlanError] = useState(false);
 
+  // Daily Capture docs for this week (Slice 3a) — the mid-week actuals source.
+  // Errors degrade to an empty week (zero actuals) rather than blocking the card.
+  const [dailyDocs, setDailyDocs] = useState([]);
+
   const load = useCallback(async () => {
     if (!tenantId || !uid) return;
     setLoading(true);
@@ -93,6 +98,23 @@ export default function GamePlanScreen({
   }, [tenantId, uid, weekStart]);
 
   useEffect(() => { loadPlan(); }, [loadPlan]);
+
+  const loadDaily = useCallback(async () => {
+    if (!tenantId || !uid) return;
+    try {
+      setDailyDocs(await getDailyEntriesForWeek(tenantId, uid, weekStart));
+    } catch {
+      setDailyDocs([]);
+    }
+  }, [tenantId, uid, weekStart]);
+
+  useEffect(() => { loadDaily(); }, [loadDaily]);
+
+  // Slice 3a — the week's submitted report (if any) is the FINAL actuals source;
+  // reuse the already-loaded submissions (no refetch). Otherwise the card falls
+  // back to the daily aggregate (mid-week).
+  const weekSubmission =
+    submissions.find((s) => s?.status === 'submitted' && s?.weekStarting === weekStart) ?? null;
 
   const handleCommitPlan = useCallback(async (targets, provenance, anchorAPIAtCommit) => {
     if (!tenantId || !uid) return;
@@ -206,6 +228,9 @@ export default function GamePlanScreen({
             onCommit={handleCommitPlan}
             planBusy={planBusy}
             planError={planError}
+            weekStart={weekStart}
+            weekSubmission={weekSubmission}
+            dailyDocs={dailyDocs}
           />
         </>
       )}
