@@ -95,12 +95,9 @@ const textOf = (page, id) => page.evaluate((i) => { const el = document.querySel
 const shot = (page, name) => page.screenshot({ path: `${SHOT_DIR}/${name}.png` }).catch(() => {});
 
 async function gotoHome(page) {
-  // If not on Home tab already, navigate there via the agent-tab-home nav item.
-  const homeBtn = page.getByTestId('agent-tab-home');
-  if (await homeBtn.count()) {
-    await homeBtn.click();
-    await page.waitForTimeout(800);
-  }
+  // Navigate to the Dashboard/Home tab (testId is 'agent-tab-dashboard').
+  await page.click('[data-testid="agent-tab-dashboard"]');
+  await page.waitForTimeout(800);
 }
 
 async function ensurePlanCommitted(page) {
