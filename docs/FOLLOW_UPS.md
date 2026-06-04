@@ -49,11 +49,11 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Dials display semantics — 5-sum vs 4-sum across non-floor/plan surfaces (CLOSED — RATIFIED, PR #TBD `{TBD}`)
+## Dials display semantics — 5-sum vs 4-sum across non-floor/plan surfaces (CLOSED — RATIFIED, PR #477 `8e544ed`)
 
-**RESOLVED 2026-06-04 (operator ratification, Prospecting Calls Flip PR #TBD).** The product decision is made: **service calls do NOT count toward effort/minimum/plan surfaces.** Rationale on record: service-originated production is already fully credited downstream (approaches, FFIs, CIs, apps are call-type-agnostic); counting raw service-call volume credits only the gameable, low-signal part and hides absent prospecting muscle in developing agents. Principle: **separate, not erase** — service calls stay captured and visible as their own line; they are no longer conflated into the prospecting metric.
+**RESOLVED 2026-06-04 (operator ratification, Prospecting Calls Flip PR #477).** The product decision is made: **service calls do NOT count toward effort/minimum/plan surfaces.** Rationale on record: service-originated production is already fully credited downstream (approaches, FFIs, CIs, apps are call-type-agnostic); counting raw service-call volume credits only the gameable, low-signal part and hides absent prospecting muscle in developing agents. Principle: **separate, not erase** — service calls stay captured and visible as their own line; they are no longer conflated into the prospecting metric.
 
-**What changed (PR #TBD):** the floor/plan calls comparison surfaces (S3a Game Plan pace row, S3b StandardDetail drawer + PulseStrip chip, S2 stepper) flipped to the **4-sum prospecting calls** (`computeProspectingCallsActual` = referral + followUp + cold + seminarTradeshow; NO serviceCalls) and the metric was relabeled **"Prospecting calls"**. The S3b 5-sum `computeCallsActual` export was deleted (dead-code, zero consumers).
+**What changed (PR #477):** the floor/plan calls comparison surfaces (S3a Game Plan pace row, S3b StandardDetail drawer + PulseStrip chip, S2 stepper) flipped to the **4-sum prospecting calls** (`computeProspectingCallsActual` = referral + followUp + cold + seminarTradeshow; NO serviceCalls) and the metric was relabeled **"Prospecting calls"**. The S3b 5-sum `computeCallsActual` export was deleted (dead-code, zero consumers).
 
 **Informational 4-sum surfaces — CONFIRMED CORRECT, no change.** YTD dials (`AgentDashboard.jsx`), kiosk `WeeklyActivityPanel`, century-dials milestone (`buildActivityEvents.js`), MasterSheet/MeetingMode/AgentReportDocument/exportService all read `extractFields.totalTelAttempts` (also a 4-sum excluding serviceCalls). Under the ratified decision these are **working as intended** — prospecting dials only — and are explicitly out of scope. The wizard Step-2 displayed total stays the 5-sum (data-entry sum; unchanged by design).
 
