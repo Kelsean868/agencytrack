@@ -477,6 +477,8 @@ Banked from May 2026 closure cadence (PRs #161/#162, #163/#164, #165/#166 all fo
 
 **Execution.** The docs-PR landing is performed by the `/land-brief <topic-slug>` skill — CC creates the docs branch off `origin/main`, moves the brief (+ optional annotation) into `docs/briefs/` / `docs/design/`, and opens the `docs(briefs)` PR. The dispatcher merges it, then `/dispatch`es the merged brief. The separate-docs-PR requirement above is unchanged; only the executor moves from manual dispatcher terminal to CC. Banked from PR #428.
 
+**Dispatch guard (enforced in `/dispatch`).** Before reading any brief, `/dispatch` MUST `git fetch origin` and confirm the brief path exists on `origin/main` (`git ls-tree origin/main -- docs/briefs/<file>` non-empty); if it is missing, **STOP IMMEDIATELY** ("brief not on origin/main — merge the docs PR first"). Dispatching against a local/docs-branch copy is forbidden — it ships the work while the Rule 10 audit trail (brief on main) is still absent. Banked from the 2026-06-04 #476 near-miss: the Prospecting Calls Flip work (#477) merged while its brief docs PR (#476) was still open, leaving the brief off `origin/main` until caught post-merge.
+
 ### 11. FU body re-audit before first work
 
 When a FU is referenced for first implementation work after any gap (banking-date to dispatch-date), the brief author must verify the FU body's diagnosis claims against current source code BEFORE locking the brief's "Decisions locked" section. Specifically, for any FU body that names:
