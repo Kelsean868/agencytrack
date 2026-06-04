@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { CheckCircle, AlertTriangle, ShieldAlert, ChevronRight, Flame } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { CheckCircle, AlertTriangle, ShieldAlert, ChevronRight, Flame, Bell, Eye, Unlock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
@@ -7,11 +7,28 @@ import { formatDateFriendly } from '../../utils/formatters';
 import { parseDateOnlyTT } from '../../utils/dateInputs';
 import { cbttComplianceFlag } from '../../utils/cbttCompliance';
 import { classifyWeek, onTimeStreak } from '../../utils/complianceDerive';
+import { sendComplianceNudge, getNudgeRecords } from '../../services/nudgeService';
+import { unlockSubmission } from '../../services/unlockService';
+import useToast from '../../hooks/useToast';
 import StatusPill from '../ui/StatusPill';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import CoachingNotesModal from './CoachingNotesModal';
+import SubmissionViewer from '../submissions/SubmissionViewer';
 
 const STREAK_WEEKS = 8;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const COOLDOWN_MS = 24 * 60 * 60 * 1000; // re-nudge re-enables after 24h
+
+// Short relative time for the cooldown chip ("just now" / "2h ago").
+function relativeShort(ms) {
+  const diff = Date.now() - ms;
+  if (diff < 60 * 1000) return 'just now';
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
 
 // 8 covered-week Sundays ending at `weekStart`, most-recent-first. Each entry
 // is TT-midnight (04:00 UTC) of its Sunday, so toISOString().slice(0,10) yields
@@ -50,13 +67,25 @@ const PILL_VARIANT = { 'on-time': 'success', late: 'warning', 'not-in': 'danger'
 const PILL_LABEL   = { 'on-time': 'On-time', late: 'Late', 'not-in': 'Not in' };
 
 export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
-  const { tenantId } = useAuth();
+  const { tenantId, user, userProfile, role } = useAuth();
+  const toast = useToast();
+  const managerUid  = user?.uid ?? null;
+  const managerName = userProfile?.name ?? user?.displayName ?? 'Manager';
   const [weekData, setWeekData]   = useState([]); // [{ weekStart, subs: [] }] most-recent-first
   const [users, setUsers]         = useState([]);
   const [loaded, setLoaded]       = useState(false);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
   const [notesAgent, setNotesAgent] = useState(null);
+  // Nudge (S2)
+  const [nudgeRecords, setNudgeRecords] = useState({});       // uid -> createdAt millis | null
+  const [nudgingUids, setNudgingUids]   = useState(() => new Set());
+  const [nudgeAllOpen, setNudgeAllOpen] = useState(false);
+  const [nudgeAllBusy, setNudgeAllBusy] = useState(false);
+  // Unlock / view re-home (S2)
+  const [unlockTarget, setUnlockTarget] = useState(null);     // { submissionId, agentName }
+  const [unlocking, setUnlocking]       = useState(false);
+  const [viewerSub, setViewerSub]       = useState(null);     // submission object for SubmissionViewer
 
   const sundays = getLastNSundays(8);
 
@@ -110,6 +139,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
           unitId:    u.unitId ?? null,
           status,
           submittedAt: current?.submittedAt ?? null,
+          submission: current,
           streak:    onTimeStreak(perWeek, STREAK_WEEKS),
           perWeek,
           lastFiled,
@@ -130,6 +160,77 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   }, [roster]);
 
   const exceptions = useMemo(() => roster.filter((r) => r.status === 'not-in'), [roster]);
+
+  // ── Nudge (S2) ───────────────────────────────────────────────────────────────
+  const exceptionUids = useMemo(() => exceptions.map((e) => e.id), [exceptions]);
+  const exceptionKey  = exceptionUids.join(',');
+
+  // Cooldown reads: deterministic-ID GET fan-out for the not-in set only (small N).
+  // Never a list query (the nudges rules have no list arm).
+  useEffect(() => {
+    if (!tenantId || exceptionUids.length === 0) { setNudgeRecords({}); return; }
+    let cancelled = false;
+    getNudgeRecords(tenantId, exceptionUids, selectedWeek)
+      .then((rec) => { if (!cancelled) setNudgeRecords(rec); })
+      .catch(() => { if (!cancelled) setNudgeRecords({}); });
+    return () => { cancelled = true; };
+  }, [exceptionKey, selectedWeek, tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const scopeLabel = role === 'unit_manager'
+    ? (userProfile?.unitName || 'your unit')
+    : role === 'branch_manager'
+      ? (userProfile?.branchName || 'your branch')
+      : 'the company';
+
+  const handleNudge = async (uid) => {
+    setNudgingUids((s) => new Set(s).add(uid));
+    try {
+      await sendComplianceNudge([uid], selectedWeek);
+      setNudgeRecords((r) => ({ ...r, [uid]: Date.now() }));
+    } catch (e) {
+      console.error('[CompliancePanel] nudge failed:', e);
+      toast.show({ variant: 'error', message: 'Nudge failed. Please try again.' });
+    } finally {
+      setNudgingUids((s) => { const n = new Set(s); n.delete(uid); return n; });
+    }
+  };
+
+  const handleNudgeAll = async () => {
+    if (exceptionUids.length === 0) return;
+    setNudgeAllBusy(true);
+    try {
+      await sendComplianceNudge(exceptionUids, selectedWeek);
+      const now = Date.now();
+      setNudgeRecords((r) => {
+        const n = { ...r };
+        exceptionUids.forEach((u) => { n[u] = now; });
+        return n;
+      });
+      toast.show({ variant: 'success', message: `${exceptionUids.length} nudge${exceptionUids.length !== 1 ? 's' : ''} sent` });
+      setNudgeAllOpen(false);
+    } catch (e) {
+      console.error('[CompliancePanel] nudge-all failed:', e);
+      toast.show({ variant: 'error', message: 'Nudge all failed. Please try again.' });
+    } finally {
+      setNudgeAllBusy(false);
+    }
+  };
+
+  const handleUnlock = async () => {
+    if (!unlockTarget) return;
+    setUnlocking(true);
+    try {
+      await unlockSubmission(tenantId, unlockTarget.submissionId, managerUid, managerName);
+      toast.show({ variant: 'success', message: 'Report unlocked.' });
+      setUnlockTarget(null);
+      loadData();
+    } catch (e) {
+      console.error('[CompliancePanel] unlock failed:', e);
+      toast.show({ variant: 'error', message: 'Unlock failed. Please try again.' });
+    } finally {
+      setUnlocking(false);
+    }
+  };
 
   const cbttFlags = useMemo(() => {
     return users
@@ -182,6 +283,35 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
           onClose={() => setNotesAgent(null)}
         />
       )}
+
+      {/* Submission viewer — re-homed from S2 (re-mount only, no new logic) */}
+      {viewerSub && (
+        <SubmissionViewer submission={viewerSub} onClose={() => setViewerSub(null)} />
+      )}
+
+      {/* Nudge-all confirm — names count + scope before firing (never a silent blast) */}
+      <ConfirmDialog
+        open={nudgeAllOpen}
+        onConfirm={handleNudgeAll}
+        onCancel={() => setNudgeAllOpen(false)}
+        title={`Nudge ${exceptionUids.length} agent${exceptionUids.length !== 1 ? 's' : ''}?`}
+        message={`Sends a reminder to everyone who hasn't filed for the week of ${formatDateFriendly(selectedWeek)} — ${scopeLabel}. Each agent gets an in-app notification and an email.`}
+        confirmLabel={`Send ${exceptionUids.length} nudge${exceptionUids.length !== 1 ? 's' : ''}`}
+        variant="primary"
+        loading={nudgeAllBusy}
+      />
+
+      {/* Unlock confirm — re-homed unlockSubmission (existing service, confirm retained) */}
+      <ConfirmDialog
+        open={!!unlockTarget}
+        onConfirm={handleUnlock}
+        onCancel={() => setUnlockTarget(null)}
+        title="Unlock report for editing?"
+        message={unlockTarget ? `${unlockTarget.agentName}'s report will return to draft so they can edit and resubmit. They'll be notified.` : ''}
+        confirmLabel="Unlock"
+        variant="warning"
+        loading={unlocking}
+      />
 
       {/* Week selector */}
       <div className="flex flex-wrap items-center gap-3">
@@ -236,6 +366,17 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
           <span className="text-[11px] font-semibold text-danger bg-danger/10 px-2 py-0.5 rounded-full">
             {exceptions.length} agent{exceptions.length !== 1 ? 's' : ''}
           </span>
+          {exceptions.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setNudgeAllOpen(true)}
+              data-testid="compliance-nudge-all"
+              className="ml-auto inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+            >
+              <Bell size={13} aria-hidden="true" />
+              Nudge all {exceptions.length}
+            </button>
+          )}
         </div>
         {counts.total > 0 && exceptions.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center" data-testid="compliance-all-filed">
@@ -254,8 +395,12 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
                   {r.lastFiled ? `last filed ${formatDateFriendly(r.lastFiled)}` : 'never filed'}
                 </p>
               </div>
-              {/* Reserved row-action area — Nudge ships in S2 (no re-layout). */}
-              <div className="w-[96px] shrink-0" aria-hidden="true" />
+              {/* Row-action area — Nudge / cooldown chip (S2). */}
+              <NudgeAction
+                busy={nudgingUids.has(r.id)}
+                nudgedAt={nudgeRecords[r.id] ?? null}
+                onNudge={() => handleNudge(r.id)}
+              />
             </div>
           ))
         )}
@@ -270,34 +415,66 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
         {counts.total === 0 ? (
           <p className="px-4 py-6 text-sm text-ink-muted">No agents in scope.</p>
         ) : (
-          roster.map((r) => (
-            <button
-              key={r.id}
-              type="button"
-              onClick={() => setNotesAgent({ agentId: r.id, agentName: r.name, agentUnitId: r.unitId })}
-              data-testid="compliance-roster-row"
-              data-status={r.status}
-              className="w-full min-h-[44px] grid grid-cols-[1fr_auto] sm:grid-cols-[1.6fr_110px_120px_1fr] gap-3 items-center px-4 py-2.5 border-b border-border last:border-b-0 text-left hover:bg-surface transition-colors focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/40"
-            >
-              <span className="flex items-center gap-3 min-w-0">
-                <Avatar name={r.name} small />
-                <span className="min-w-0">
-                  <span className="block text-sm font-medium text-ink truncate">{r.name}</span>
-                  {r.unit && <span className="block text-[11px] text-ink-muted">{r.unit}</span>}
-                </span>
-              </span>
-              <span className="justify-self-start sm:justify-self-auto">
-                <StatusPill variant={PILL_VARIANT[r.status]} label={PILL_LABEL[r.status]} />
-              </span>
-              <span className="hidden sm:block text-xs text-ink-muted">
-                {r.status === 'not-in' ? '—' : formatSubmittedTime(r.submittedAt)}
-              </span>
-              <span className="hidden sm:flex items-center justify-end gap-2">
-                <StreakChip streak={r.streak} perWeek={r.perWeek} />
-                <ChevronRight size={14} className="text-ink-muted" aria-hidden="true" />
-              </span>
-            </button>
-          ))
+          roster.map((r) => {
+            const submitted = r.status !== 'not-in' && !!r.submission?.id;
+            return (
+              <div
+                key={r.id}
+                data-testid="compliance-roster-row"
+                data-status={r.status}
+                className="flex items-stretch border-b border-border last:border-b-0 hover:bg-surface transition-colors"
+              >
+                {/* Main info → coaching drawer on click (S1 behavior preserved). */}
+                <button
+                  type="button"
+                  onClick={() => setNotesAgent({ agentId: r.id, agentName: r.name, agentUnitId: r.unitId })}
+                  className="flex-1 min-w-0 min-h-[44px] grid grid-cols-[1fr_auto] sm:grid-cols-[1.6fr_110px_120px_1fr] gap-3 items-center px-4 py-2.5 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary/40"
+                >
+                  <span className="flex items-center gap-3 min-w-0">
+                    <Avatar name={r.name} small />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-ink truncate">{r.name}</span>
+                      {r.unit && <span className="block text-[11px] text-ink-muted">{r.unit}</span>}
+                    </span>
+                  </span>
+                  <span className="justify-self-start sm:justify-self-auto">
+                    <StatusPill variant={PILL_VARIANT[r.status]} label={PILL_LABEL[r.status]} />
+                  </span>
+                  <span className="hidden sm:block text-xs text-ink-muted">
+                    {r.status === 'not-in' ? '—' : formatSubmittedTime(r.submittedAt)}
+                  </span>
+                  <span className="hidden sm:flex items-center justify-end gap-2">
+                    <StreakChip streak={r.streak} perWeek={r.perWeek} />
+                    <ChevronRight size={14} className="text-ink-muted" aria-hidden="true" />
+                  </span>
+                </button>
+
+                {/* Submitted rows → compact View + Unlock actions (re-homed). */}
+                {submitted && (
+                  <div className="flex items-center gap-1 pr-2 shrink-0" data-testid="compliance-row-actions">
+                    <button
+                      type="button"
+                      onClick={() => setViewerSub(r.submission)}
+                      aria-label={`View ${r.name}'s report`}
+                      data-testid="compliance-view-btn"
+                      className="w-11 h-11 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-card-raised transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <Eye size={16} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUnlockTarget({ submissionId: r.submission.id, agentName: r.name })}
+                      aria-label={`Unlock ${r.name}'s report`}
+                      data-testid="compliance-unlock-btn"
+                      className="w-11 h-11 flex items-center justify-center rounded-lg text-ink-muted hover:text-warning hover:bg-card-raised transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    >
+                      <Unlock size={16} aria-hidden="true" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -359,6 +536,35 @@ function Stat({ label, value, dotClass, testid }) {
         <span className="text-base font-bold text-ink">{value}</span>
       </span>
     </div>
+  );
+}
+
+function NudgeAction({ busy, nudgedAt, onNudge }) {
+  const onCooldown = nudgedAt != null && (Date.now() - nudgedAt) < COOLDOWN_MS;
+
+  if (onCooldown) {
+    return (
+      <span
+        data-testid="compliance-cooldown-chip"
+        className="shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-lg bg-card-raised border border-border text-[11px] font-semibold text-ink-muted whitespace-nowrap"
+      >
+        <CheckCircle size={13} className="text-success" aria-hidden="true" />
+        Nudged {relativeShort(nudgedAt)}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={onNudge}
+      disabled={busy}
+      data-testid="compliance-nudge-btn"
+      className="shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-lg border border-primary text-primary text-xs font-bold hover:bg-primary/10 transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      <Bell size={13} aria-hidden="true" />
+      {busy ? 'Nudging…' : 'Nudge'}
+    </button>
   );
 }
 
