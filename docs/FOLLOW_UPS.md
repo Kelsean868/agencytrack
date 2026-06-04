@@ -653,7 +653,7 @@ Cross-reference: PR #411 (`40296b6`); `SmLeaderboardView.jsx` default-pick logic
 
 ## Deploy hygiene — banked for CLAUDE.md addition (banked 2026-06-01 for dispatcher review)
 
-**Status:** rule wording proposed; dispatcher reviews before adding to CLAUDE.md (per the unsupervised-window directive that CC must not edit CLAUDE.md).
+**Status: RESOLVED 2026-06-04 (Track J overnight queue, item 16).** The proposed worktree-pre-flight wording below was approved by the 2026-06-04 dispatcher re-scope/extension decision block (item 16 part a2) and added verbatim to `CLAUDE.md` § Workflow as the `firebase deploy` pre-flight bullet. The companion deploy-gating one-liner (item 16 part a1 — "Functions / email-template / index changes take effect only after an explicit `firebase deploy` … never assume deployed because merged") landed in the same bullet group. The dispatcher's explicit item-16 authorization is the review that satisfies the standing "CC must not edit CLAUDE.md unsupervised" directive cited below. The original wording + dispatcher review prompts are preserved unchanged as drift-trail.
 
 Several recent deploy-related near-misses share a common shape: a worktree at the wrong commit, or with stale `node_modules`, runs `firebase deploy` and either ships old code or fails on missing deps mid-deploy. The standing protection ("Order matters when removing key-file workarounds" in CLAUDE.md) covers the credential-rotation case but not the more common everyday-deploy case. The rules-deploy discipline ("§ Workflow — IMPORTANT" bullets) covers the pre-merge-vs-post-merge gating but not the "what state must the worktree be in at deploy time" question.
 
