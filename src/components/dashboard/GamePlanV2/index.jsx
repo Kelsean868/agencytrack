@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getMoneyNeeds } from '../../../services/moneyNeedsService';
-import { getWeeklyPlan, commitWeeklyPlan } from '../../../services/weeklyPlanService';
+import { getWeeklyPlan, commitWeeklyPlan, deleteWeeklyPlan } from '../../../services/weeklyPlanService';
 import { getDailyEntriesForWeek } from '../../../services/dailyActivityService';
 import { getRecentSundays } from '../../../utils/validators';
 import PlanAnchorStrip from './PlanAnchorStrip';
@@ -48,6 +48,9 @@ export default function GamePlanScreen({
   dataLoading = false,
   dataError = false,
   onRetry,
+  // S3b — notify AgentDashboard after a same-session commit/delete so the
+  // Standard drawer stays in sync without a full page reload.
+  onPlanChanged,
 }) {
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
@@ -127,13 +130,29 @@ export default function GamePlanScreen({
         weeklyActivityFloors,
       );
       setCommittedPlan(await getWeeklyPlan(tenantId, uid, weekStart));
+      onPlanChanged?.(); // keep AgentDashboard's committedPlan in sync
     } catch (err) {
       setPlanError(true);
       throw err; // keep the card in edit mode for retry
     } finally {
       setPlanBusy(false);
     }
-  }, [tenantId, uid, weekStart, weeklyActivityFloors]);
+  }, [tenantId, uid, weekStart, weeklyActivityFloors, onPlanChanged]);
+
+  const handleDeletePlan = useCallback(async () => {
+    if (!tenantId || !uid) return;
+    setPlanBusy(true);
+    setPlanError(false);
+    try {
+      await deleteWeeklyPlan(tenantId, uid, weekStart);
+      setCommittedPlan(null);
+      onPlanChanged?.(); // keep AgentDashboard's committedPlan in sync
+    } catch {
+      setPlanError(true);
+    } finally {
+      setPlanBusy(false);
+    }
+  }, [tenantId, uid, weekStart, onPlanChanged]);
 
   // ── Derived (all from existing moneyNeeds fields — no new data) ──────────
   const afterTaxNeed = worksheet?.totalAnnualAfterTax ?? 0;
@@ -226,6 +245,7 @@ export default function GamePlanScreen({
             weekLabel={`Wk ${weekNum}`}
             committedPlan={committedPlan}
             onCommit={handleCommitPlan}
+            onDeletePlan={handleDeletePlan}
             planBusy={planBusy}
             planError={planError}
             weekStart={weekStart}

@@ -192,10 +192,11 @@ export default function AgentDashboard() {
 
   // S3b — fetch committed plan + daily docs for the Standard drawer. Each
   // degrades gracefully (null plan / empty docs) so a fetch error never blocks
-  // the dashboard render.
-  useEffect(() => {
+  // the dashboard render. Exposed as a named callback so GamePlanV2 can trigger
+  // a refetch after a same-session commit or delete (prevents in-session staleness
+  // where the Standard drawer would still show the old state until a full page reload).
+  const loadWeekPlanData = useCallback(() => {
     if (!tenantId || !user?.uid) return;
-    setCommittedPlan(undefined); // reset to loading on week change
     Promise.all([
       getWeeklyPlan(tenantId, user.uid, currentWeek).catch(() => null),
       getDailyEntriesForWeek(tenantId, user.uid, currentWeek).catch(() => []),
@@ -204,6 +205,11 @@ export default function AgentDashboard() {
       setWeekDailyDocs(Array.isArray(docs) ? docs : []);
     });
   }, [tenantId, user?.uid, currentWeek]);
+
+  useEffect(() => {
+    setCommittedPlan(undefined); // reset to loading on week/auth change
+    loadWeekPlanData();
+  }, [loadWeekPlanData]);
 
   // Resolved personal annual API: agent's own commitment if set, else the
   // tenant company-floor minimum, else 200000 (matches getCompanyMinimums
@@ -622,6 +628,7 @@ export default function AgentDashboard() {
           dataLoading={loading}
           dataError={Boolean(submissionsError)}
           onRetry={loadCoreData}
+          onPlanChanged={loadWeekPlanData}
         />
       )}
 

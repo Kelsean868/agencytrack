@@ -49,6 +49,21 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Dials display semantics — 5-sum vs 4-sum across non-floor/plan surfaces (LOW, banked from S3b dispatcher pre-review)
+
+**Context.** The D1 repoint in S3b makes the Standard drawer and PulseStrip chip use the **5-component sum** (`referralCalls + followUpCalls + coldCalls + seminarTradeshowCalls + serviceCalls`) for `callsMade`-vs-floor comparisons, matching the wizard's Step-2 total. However, the following surfaces still read the **4-sum `totalTelAttempts`** (which excludes `serviceCalls`):
+
+- **YTD dials accumulation** — `AgentDashboard.jsx:240`: `acc.dials += f.totalTelAttempts`
+- **Kiosk `WeeklyActivityPanel`** — `src/components/kiosk/panels/WeeklyActivityPanel.jsx:49`: prospecting leaderboard labels "calls" as `totalTelAttempts`
+- **Century-dials milestone** — `src/utils/buildActivityEvents.js:65`: `f.totalTelAttempts >= 100`
+- **MasterSheet / MeetingMode / AgentReportDocument / exportService** — all label "Tel Attempts" / "Dials" via `totalTelAttempts`
+
+**Product decision needed.** Should "service calls" count as "dials" on these surfaces? They are proactive outbound calls to existing policyholders — different from prospecting dials but tracked in the same wizard step. Options: (a) update these surfaces to also use the 5-sum for full consistency; (b) leave them on the 4-sum (prospecting intent only) and accept the surface divergence (documented); (c) add a UI footnote where divergence is user-visible.
+
+**Why LOW, not MEDIUM.** These surfaces are informational/reporting, not the floor/plan comparison surface D1 was fixing. The divergence is documented here; agents hitting the century-dials milestone won't get it if they log only service calls, but that edge case is narrow. Resolve in a dedicated pass once the product position on "what counts as a dial" is settled.
+
+---
+
 ## Over-goal MDRT marker treatment on the HeroCard (LOW, banked 2026-06-03 from HeroCard marker-label fix PR #436)
 
 **Context.** The HeroCard marker-label fix (`src/components/dashboard/HomeV2/HeroCard.jsx`) now **hides** the MDRT marker when it's off-scale (`MDRT_THRESHOLD > goal` — e.g. the default 200,000 goal vs the 500,000 MDRT threshold). This is correct for legibility (it was the clamp-onto-the-goal-label collision source), but it means an agent whose personal goal is below the MDRT threshold sees no MDRT reference on the hero bar at all.
