@@ -10,6 +10,8 @@ import {
   DEFAULT_DECOMPOSITION_INPUTS,
 } from '../../../utils/goalDecomposition';
 import { assembleSuggestion, stepTarget } from '../../../utils/weeklyPlanAssembly';
+import { buildPaceRows, PACE_WORKING_DAYS } from '../../../utils/planVariance';
+import { getTodayTT } from '../../../utils/dateInputs';
 
 /**
  * SuggestedWeekCard — Game Plan v2 Weekly Planner.
@@ -92,6 +94,10 @@ export default function SuggestedWeekCard({
   onCommit,
   planBusy = false,
   planError = false,
+  // ── Slice 3a (committed-view actuals + variance) ──
+  weekStart = null,        // this week's Sunday (YYYY-MM-DD) — pace week membership
+  weekSubmission = null,   // the week's submitted report (final source), or null
+  dailyDocs = [],          // the week's dailyActivity docs (mid-week source)
 }) {
   const [expanded, setExpanded] = useState(null); // which metric's chain is revealed
   const [editing, setEditing] = useState(false);
@@ -134,6 +140,20 @@ export default function SuggestedWeekCard({
   const planningEnabled =
     typeof onCommit === 'function' && (resolution.mode === 'derived' || resolution.mode === 'floor');
   const showCommitted = planningEnabled && committedPlan && !editing;
+
+  // Slice 3a — the committed view's value rows become PACE ROWS: plan cap + floor
+  // tick + variance-coloured actual fill + a live pace marker. The pure
+  // planVariance module owns all derivation (source switch, calls 5-sum, variance,
+  // TT-safe elapsed days); the card is presentation only. Returns null for a
+  // malformed committed doc (no targets) → the footer-only fallback still renders.
+  const paceResult = useMemo(
+    () =>
+      showCommitted
+        ? buildPaceRows({ committedPlan, weekSubmission, dailyDocs, floors, weekStart, todayTT: getTodayTT() })
+        : null,
+    [showCommitted, committedPlan, weekSubmission, dailyDocs, floors, weekStart],
+  );
+  const sourceChip = paceResult ? statusToken(paceResult.chip.role) : null;
 
   // If the committed plan changes underneath us (refetch after commit/delete),
   // leave edit mode so the fresh state shows.
@@ -245,31 +265,38 @@ export default function SuggestedWeekCard({
         </div>
       )}
 
-      {/* ── committed plan view (Slice 2) ── */}
+      {/* ── committed plan view → pace rows (Slice 3a) ── */}
       {!loading && !error && showCommitted && (
-        <div className="mt-4 space-y-3" data-testid="weekly-plan-committed">
-          <div className="grid grid-cols-5 gap-2">
-            {FLOOR_METRICS.map((m) => (
-              <div
-                key={m.key}
-                className="rounded-lg border border-border bg-surface-raised px-1.5 py-2.5 text-center"
-              >
-                <div
-                  className="font-display text-lg font-extrabold tracking-tight text-ink"
-                  data-testid={`plan-committed-${m.key}-value`}
+        <div className="mt-4 space-y-3.5" data-testid="weekly-plan-committed">
+          {paceResult && (
+            <>
+              {/* source / provenance chip + live pace readout */}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[9px] font-bold uppercase tracking-wider ${sourceChip.tint} ${sourceChip.text}`}
+                  data-testid="weekly-plan-source-chip"
                 >
-                  {committedPlan.targets?.[m.key] ?? '—'}
-                </div>
-                <div className="mt-1 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-muted">
-                  {m.label}
-                </div>
-                <div className="mt-1 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-muted">
-                  {PROVENANCE_CHIP[committedPlan.provenance?.[m.key]] ?? ''}
-                </div>
+                  {paceResult.source === 'final' ? '✓' : '◷'} {paceResult.chip.label}
+                </span>
+                {paceResult.source === 'daily' && (
+                  <span className="font-mono text-[9px] text-ink-muted" data-testid="weekly-plan-pace-readout">
+                    Day {paceResult.elapsed} of {PACE_WORKING_DAYS} → you should be at{' '}
+                    {Math.round(paceResult.paceFraction * 100)}% of plan
+                  </span>
+                )}
               </div>
-            ))}
-          </div>
-          <div className="flex items-center justify-between gap-2">
+
+              {/* the five pace rows */}
+              <div className="space-y-3.5" data-testid="weekly-plan-pace-rows">
+                {paceResult.rows.map((r) => (
+                  <PaceRow key={r.key} row={r} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* committed-date + Edit (preserved from Slice 2) */}
+          <div className="flex items-center justify-between gap-2 pt-1">
             <span className="text-[11px] text-ink-muted">
               {formatCommittedDate(committedPlan.committedAt)
                 ? `Committed ${formatCommittedDate(committedPlan.committedAt)}`
@@ -509,6 +536,107 @@ export default function SuggestedWeekCard({
         </div>
       )}
     </section>
+  );
+}
+
+// Variance → Nexus token classes (success = ahead/on-track, warning = behind).
+// On-track is the softer success fill (annotation grammar); all derive from the
+// statusToken families — no raw palette colours.
+const VARIANCE_TONE = {
+  ahead:      { fill: 'bg-success',            text: 'text-success', chip: 'bg-success-tint text-success', icon: '▲', label: 'Ahead' },
+  'on-track': { fill: 'bg-success opacity-60', text: 'text-success', chip: 'bg-success-tint text-success', icon: '●', label: 'On track' },
+  behind:     { fill: 'bg-warning',            text: 'text-warning', chip: 'bg-warning-tint text-warning', icon: '▼', label: 'Behind' },
+};
+
+/**
+ * PaceRow — one committed metric as a plan-vs-actual track:
+ *   floor tick (neutral) · plan cap (teal, right edge = 100% scale) · actual fill
+ *   (variance-coloured) · pace marker (where you should be today).
+ *
+ * The hatched "weekly only · no daily pace" state renders for metrics Daily
+ * Capture can't supply mid-week (calls). All bar geometry is data-driven inline
+ * positioning (the codebase's progress-bar idiom); colours stay tokenised. The
+ * plan value retains the Slice-2 `plan-committed-${key}-value` testid + the
+ * provenance chip so the S2 plan tests stay green.
+ */
+function PaceRow({ row }) {
+  const tone = row.variance ? VARIANCE_TONE[row.variance] : null;
+  const summary = row.noDailySource
+    ? `${row.label}: weekly only, no daily pace. Floor ${row.floor}, plan ${row.plan}.`
+    : `${row.label}: ${row.actual} of ${row.plan}${tone ? `, ${tone.label}` : ''}. Floor ${row.floor}.`;
+
+  return (
+    <div className="grid grid-cols-[84px_1fr_88px] items-center gap-3 sm:grid-cols-[116px_1fr_104px]" data-testid={`pace-row-${row.key}`}>
+      {/* label + floor/plan/provenance meta */}
+      <div className="min-w-0">
+        <div className="truncate text-xs font-bold text-ink">{row.label}</div>
+        {row.clarifier && (
+          <div className="truncate font-mono text-[8px] tracking-wide text-ink-faint">{row.clarifier}</div>
+        )}
+        <div className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-faint">
+          FLOOR {row.floor} · PLAN{' '}
+          <span data-testid={`plan-committed-${row.key}-value`}>{row.plan}</span>
+          {' · '}
+          <span className="text-ink-muted">{PROVENANCE_CHIP[row.provenance] ?? ''}</span>
+        </div>
+      </div>
+
+      {/* track */}
+      <div className="relative h-6 overflow-visible rounded-lg bg-surface-muted" role="img" aria-label={summary}>
+        {row.noDailySource ? (
+          <div
+            className="absolute inset-0 rounded-lg bg-[repeating-linear-gradient(90deg,var(--color-surface-muted),var(--color-surface-muted)_6px,var(--color-border)_6px,var(--color-border)_8px)]"
+            aria-hidden="true"
+          />
+        ) : (
+          <>
+            <div
+              className={`absolute inset-y-0 left-0 rounded-lg ${tone?.fill ?? ''}`}
+              style={{ width: `${row.fillPct}%` }}
+              aria-hidden="true"
+            />
+            {row.showPace && (
+              <div
+                className="absolute -top-1 h-0 w-0 border-l-4 border-r-4 border-t-[7px] border-l-transparent border-r-transparent border-t-ink"
+                style={{ left: `${row.pacePct}%`, transform: 'translateX(-4px)' }}
+                aria-hidden="true"
+              />
+            )}
+          </>
+        )}
+        {/* floor tick (neutral baseline) */}
+        <div
+          className="absolute -bottom-0.5 -top-0.5 w-0.5 bg-ink-faint"
+          style={{ left: `${row.floorPct}%` }}
+          aria-hidden="true"
+        />
+        {/* plan cap (target — right edge of the scale) */}
+        <div className="absolute -bottom-0.5 -top-0.5 right-0 w-0.5 bg-primary" aria-hidden="true" />
+      </div>
+
+      {/* readout */}
+      <div className="text-right">
+        {row.noDailySource ? (
+          <span className="font-mono text-[8.5px] font-bold leading-tight text-ink-faint" data-testid={`pace-nodaily-${row.key}`}>
+            weekly only · no daily pace
+          </span>
+        ) : (
+          <>
+            <div className="leading-none">
+              <span className={`font-display text-base font-extrabold ${tone?.text ?? 'text-ink'}`} data-testid={`pace-actual-${row.key}`}>
+                {row.actual}
+              </span>
+              <span className="font-mono text-[10px] text-ink-faint"> / {row.plan}</span>
+            </div>
+            {tone && (
+              <span className={`mt-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-bold ${tone.chip}`} data-testid={`pace-variance-${row.key}`}>
+                {tone.icon} {tone.label}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
