@@ -14,11 +14,11 @@
  * is a field on user docs with no `units/{id}` document to resolve against.
  * This probe therefore:
  *   • branchId  → HARD check: must resolve to an existing branches/{id} doc.
- *   • unitId    → SOFT check: treated as a unit-manager uid reference; flagged
- *                 if it resolves to no user doc in the tenant. Inventory of
- *                 distinct unitId values + per-unit user counts is reported so
- *                 a human can confirm the intended resolution target. If units
- *                 become a real collection later, promote this to a HARD check.
+ *   • unitId    → HARD check: dispatcher-ratified (Track J 2026-06-04) that
+ *                 `unitId` IS canonically a unit-manager uid — a non-null unitId
+ *                 that resolves to no user doc is a DEFECT. Inventory of distinct
+ *                 unitId values + per-unit user counts is still reported for
+ *                 visibility. (Promoted from SOFT→HARD in item 24.)
  */
 
 import { createRequire } from 'module';
@@ -113,7 +113,7 @@ async function main() {
     branchMissing.forEach((u) => console.log(`      - ${u.name} [${u.role}] uid=${u.id}`));
   }
 
-  console.log('\n── unitId (SOFT: treated as unit-manager uid; units are not a collection) ──');
+  console.log('\n── unitId (HARD: canonically a unit-manager uid; must resolve to a user doc) ──');
   console.log(`  distinct unitId values: ${Object.keys(unitInventory).length}`);
   Object.entries(unitInventory).forEach(([uid, info]) =>
     console.log(
@@ -121,17 +121,20 @@ async function main() {
     ),
   );
   const unitOrphanIds = [...new Set(unitOrphans.map((u) => u.unitId))];
-  console.log(`  ✗ unitId values resolving to NO user doc: ${unitOrphanIds.length}`);
+  console.log(`  ✗ ORPHAN unitId (points at a non-existent user/manager): ${unitOrphanIds.length}`);
   unitOrphanIds.forEach((uid) => console.log(`      - unitId=${uid}`));
 
+  const totalDefects = branchOrphans.length + unitOrphanIds.length;
   console.log('\n── SUMMARY ──');
   console.log(`  branchId orphans : ${branchOrphans.length}`);
-  console.log(`  unitId  orphans  : ${unitOrphanIds.length} (soft — confirm unitId target before treating as a defect)`);
+  console.log(`  unitId  orphans  : ${unitOrphanIds.length}`);
+  console.log(`  TOTAL DEFECTS    : ${totalDefects}`);
   console.log('\n  (Read-only probe — no documents were written.)\n');
+  return totalDefects;
 }
 
 main()
-  .then(() => process.exit(0))
+  .then((defects) => process.exit(defects > 0 ? 1 : 0))
   .catch((err) => {
     console.error('Probe failed:', err.message);
     process.exit(1);

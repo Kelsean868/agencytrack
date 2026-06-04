@@ -103,3 +103,13 @@ extensions/*.env.*
 extensions/*.secret.local
 extensions/secrets/
 scripts/verification/emails-v2-rendered/
+
+# Track J item 24 — verification screenshot outputs + ad-hoc capture noise.
+# Smoke/probe scripts under scripts/verification/ stay tracked; their PNG
+# outputs do not. ui_screenshots/ + ui_capture_script.js were a one-off atlas
+# precursor (superseded by scripts/verification/screenshot-atlas.mjs);
+# batch-report.md is an ephemeral generated report.
+scripts/verification/*.png
+/ui_screenshots/
+/ui_capture_script.js
+/batch-report.md
