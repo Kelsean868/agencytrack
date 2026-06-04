@@ -5,9 +5,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Weekly-activity planner — remaining slices (banked 2026-06-03 from Weekly Planner v2 Slice 1, PR #TBD)
+## Weekly-activity planner — remaining slices (banked 2026-06-03 from Weekly Planner v2 Slice 1, PR #445)
 
-**Context:** Slice 1 (PR #TBD) shipped the read-only **"Suggested weekly plan"** card in the Game Plan hub + extracted the goal-decomposition engine to `src/utils/goalDecomposition.js` (a small cleanup-debt reduction — the income→activity chain is now a shared, tested, single-source pure module instead of inline-in-the-Playground-tab). The remaining Path-B slices turn the read-only suggestion into a tracked, committed, rolled-up plan.
+**Context:** Slice 1 (PR #445) shipped the read-only **"Suggested weekly plan"** card in the Game Plan hub + extracted the goal-decomposition engine to `src/utils/goalDecomposition.js` (a small cleanup-debt reduction — the income→activity chain is now a shared, tested, single-source pure module instead of inline-in-the-Playground-tab). The remaining Path-B slices turn the read-only suggestion into a tracked, committed, rolled-up plan.
 
 **Remaining slices:**
 - **Slice 2 — agent-set plan + store.** Steppers on the weekly line, a `weeklyPlan` doc (per agent/week — new collection + write + rules + likely an index), commit + reset-to-suggested, floored at the company minimum. This is where the **set-plan steppers cover all 5 floor metrics** (Dials·Contacts·FFIs·CIs·Apps) with honest pre-fill provenance: **derived** for Dials/CIs/Apps (from the engine) and **company floor** for Contacts/FFIs (until the contacts/FFI derivation below exists).
