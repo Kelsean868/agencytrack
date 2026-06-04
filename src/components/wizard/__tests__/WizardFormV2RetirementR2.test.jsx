@@ -57,6 +57,13 @@ vi.mock('../../submissions/SubmissionViewer', () => ({ default: () => null }));
 
 import WizardForm from '../WizardForm';
 
+// Parallel full-suite load can starve CPU while WizardForm mounts all 12 v2
+// steps, occasionally exceeding testing-library's default 1000ms waitFor
+// budget. This file's waits time out at openWizard() under contention (passes
+// 2/2 in isolation). Pin the timing by widening the wait budget — assertions
+// are unchanged; this only buys headroom for a slow mount/submit under load.
+const WAIT = { timeout: 5000 };
+
 beforeEach(() => {
   vi.clearAllMocks();
   cleanup();
@@ -64,7 +71,7 @@ beforeEach(() => {
 
 async function openWizard() {
   render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" />);
-  await waitFor(() => expect(screen.getByTestId('wizard-v2-modal')).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByTestId('wizard-v2-modal')).toBeInTheDocument(), WAIT);
 }
 
 function next() {
@@ -113,7 +120,7 @@ describe('R2 retirement — value-level payload identity (real v2 steps 9/10/11)
 
     // Submit from Review.
     fireEvent.click(screen.getByTestId('wizard-v2-next'));
-    await waitFor(() => expect(submitReportMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(submitReportMock).toHaveBeenCalledTimes(1), WAIT);
 
     const formData = submitReportMock.mock.calls[0][4];
 
@@ -142,7 +149,7 @@ describe('R2 retirement — value-level payload identity (real v2 steps 9/10/11)
     await openWizard();
     for (let n = 1; n < 12; n++) next();
     fireEvent.click(screen.getByTestId('wizard-v2-next'));
-    await waitFor(() => expect(submitReportMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(submitReportMock).toHaveBeenCalledTimes(1), WAIT);
 
     const formData = submitReportMock.mock.calls[0][4];
     const keys = [
