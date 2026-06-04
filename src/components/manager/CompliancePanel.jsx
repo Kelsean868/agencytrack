@@ -209,26 +209,14 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
           <p className="text-sm text-ink-muted py-3" data-testid="compliance-empty-roster">No agents in scope for this week.</p>
         ) : (
           <>
+            {/* Decorative segmented bar — numbers live in the stat chips below.
+                role="img" + aria-label carry the meaning; no in-segment text
+                (white-on-tint failed AA in dark; accessibility over decoration). */}
             <div className="flex h-9 rounded-lg overflow-hidden border border-border" role="img"
-                 aria-label={`${counts.onTime} on-time, ${counts.late} late, ${counts.notIn} not in, of ${counts.total}`}>
-              {counts.onTime > 0 && (
-                <div className="flex items-center justify-center bg-success text-white text-[11px] font-semibold whitespace-nowrap overflow-hidden"
-                     style={{ width: `${pct(counts.onTime)}%` }}>
-                  {pct(counts.onTime) >= 14 ? `${Math.round(pct(counts.onTime))}% on-time` : ''}
-                </div>
-              )}
-              {counts.late > 0 && (
-                <div className="flex items-center justify-center bg-warning text-white text-[11px] font-semibold whitespace-nowrap overflow-hidden"
-                     style={{ width: `${pct(counts.late)}%` }}>
-                  {pct(counts.late) >= 14 ? `${Math.round(pct(counts.late))}% late` : ''}
-                </div>
-              )}
-              {counts.notIn > 0 && (
-                <div className="flex items-center justify-center bg-danger text-white text-[11px] font-semibold whitespace-nowrap overflow-hidden"
-                     style={{ width: `${pct(counts.notIn)}%` }}>
-                  {pct(counts.notIn) >= 14 ? `${Math.round(pct(counts.notIn))}% not in` : ''}
-                </div>
-              )}
+                 aria-label={`Filing: ${counts.onTime} on-time, ${counts.late} late, ${counts.notIn} not in, of ${counts.total} agents`}>
+              {counts.onTime > 0 && <div className="bg-success h-full" style={{ width: `${pct(counts.onTime)}%` }} />}
+              {counts.late > 0 && <div className="bg-warning h-full" style={{ width: `${pct(counts.late)}%` }} />}
+              {counts.notIn > 0 && <div className="bg-danger h-full" style={{ width: `${pct(counts.notIn)}%` }} />}
             </div>
 
             <div className="flex flex-wrap gap-x-8 gap-y-3 mt-4">

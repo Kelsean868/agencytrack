@@ -57,6 +57,18 @@ function record(leg, passed, detail) {
   console.log(`  ${passed ? '✓' : '✗'} ${leg}: ${detail}`);
 }
 
+// Enumerate-and-accept (the S3b lesson — never exclude-and-hope). Every serious
+// color-contrast node MUST match one documented signature; any unlisted serious
+// node FAILS the leg. These are the shared-chrome danger/warning text-on-tint
+// family tracked by the contrast-debt FOLLOW_UP (token-level fix, app-wide) +
+// the pre-existing notification-bell badge. NOT new to this surface.
+const SERIOUS_ALLOWLIST = [
+  { name: 'StatusPill danger pill on-tint (contrast-debt FU)',   test: (h) => /bg-danger\/15/.test(h) && /text-danger/.test(h) },
+  { name: 'StatusPill warning pill on-tint (contrast-debt FU)',  test: (h) => /bg-warning\/15/.test(h) && /text-warning/.test(h) },
+  { name: 'exception count badge on-tint (contrast-debt FU)',    test: (h) => /bg-danger\/10/.test(h) && /text-danger/.test(h) },
+  { name: 'pre-existing notification-bell badge',                test: (h) => /\babsolute\b/.test(h) && /bg-danger/.test(h) && /text-white/.test(h) },
+];
+
 async function loginAsManager(page) {
   await page.goto(PREVIEW_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('input[type="email"]', { timeout: 20000 });
@@ -84,7 +96,16 @@ async function runTheme(context, theme) {
   const page = await context.newPage();
 
   const consoleErrors = [];
-  page.on('console', (msg) => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+  page.on('console', (msg) => {
+    if (msg.type() !== 'error') return;
+    // Known-noise filter (matches the .map/.ico precedent in captureConsoleAndNetwork):
+    // the Fontshare CDN (Satoshi/Cabinet Grotesk) CORS-blocks its stylesheet app-wide —
+    // present on main, every page; not introduced by this surface.
+    const text = msg.text() ?? '';
+    const url = (typeof msg.location === 'function' ? msg.location()?.url : '') ?? '';
+    if (/fontshare/i.test(text) || /fontshare/i.test(url)) return;
+    consoleErrors.push(text);
+  });
 
   await loginAsManager(page);
   await navigateToCompliance(page);
@@ -153,14 +174,18 @@ async function runTheme(context, theme) {
     record(`Leg 5 (${theme})`, true, 'no roster rows — drawer click skipped (source-aware)');
   }
 
-  // ── Leg 6: axe serious/critical + console errors ───────────────────────────
+  // ── Leg 6: axe (allowlist-asserted) + console errors ───────────────────────
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   const crit = axe.violations.filter((v) => v.impact === 'critical');
-  const serious = axe.violations.filter((v) => v.impact === 'serious');
-  record(`Leg 6 axe (${theme})`, crit.length === 0,
-    `critical: ${crit.length}${crit.length ? ` [${crit.map((v) => v.id).join(', ')}]` : ''} · serious: ${serious.length}${serious.length ? ` [${serious.map((v) => v.id).join(', ')}]` : ''} (serious → dispatcher NO-NEW-vs-main triage)`);
+  const seriousNodes = axe.violations
+    .filter((v) => v.impact === 'serious')
+    .flatMap((v) => v.nodes.map((n) => ({ id: v.id, html: n.html ?? '', target: n.target })));
+  const unexpected = seriousNodes.filter((n) => !SERIOUS_ALLOWLIST.some((a) => a.test(n.html)));
+  record(`Leg 6 axe (${theme})`, crit.length === 0 && unexpected.length === 0,
+    `critical: ${crit.length}${crit.length ? ` [${crit.map((v) => v.id).join(', ')}]` : ''} · serious: ${seriousNodes.length} (allowlisted ${seriousNodes.length - unexpected.length}, unexpected ${unexpected.length})` +
+    (unexpected.length ? ` → NEW: ${unexpected.map((n) => `${n.id}@${JSON.stringify(n.target)}`).join('; ')}` : ''));
   record(`Leg 6 console (${theme})`, consoleErrors.length === 0,
-    consoleErrors.length === 0 ? '0 console errors' : `${consoleErrors.length} console error(s): ${consoleErrors.slice(0, 3).join(' | ')}`);
+    consoleErrors.length === 0 ? '0 console errors (Fontshare CORS filtered)' : `${consoleErrors.length} console error(s): ${consoleErrors.slice(0, 3).join(' | ')}`);
 
   await page.close();
 }
