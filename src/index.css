@@ -68,8 +68,11 @@
    * Gold = achievement/badge category. Ink = neutral/document category
    * (purple/violet). Tints back the activity-feed icon backgrounds and
    * pill backgrounds. Hex values lifted verbatim from the canonical
-   * mock (mocks/concept-4-complete.html lines 31-35, 64-68). */
-  --gold-channels: 176 125 26;
+   * mock (mocks/concept-4-complete.html lines 31-35, 64-68).
+   * Track J item 20: light gold darkened 176,125,26 (#B07D1A, 3.28:1 on
+   * gold-tint — fails AA) → 138,96,17 (#8a6011) for WCAG AA ≥4.5:1 on white
+   * (5.58), cream (5.16), and gold-tint (5.06). Dark-mode gold UNCHANGED. */
+  --gold-channels: 138 96 17;
   --color-gold: rgb(var(--gold-channels));
   --color-gold-tint: #fdf3dc;
   --ink-channels: 90 63 160;
