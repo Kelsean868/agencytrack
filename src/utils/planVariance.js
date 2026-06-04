@@ -15,11 +15,11 @@
  *     "mid-week · daily capture", pace marker live.
  *
  * Per-metric actual sources (brief D1, verified 2026-06-04):
- *   callsMade            weekly = SUM(referral+followUp+cold+seminarTradeshow+service)
- *                                 — the 5-component sum INCLUDING serviceCalls, matching
- *                                   the wizard's own Step-2 total (StepCallsF2F.jsx).
- *                                   NB: extractFields.totalTelAttempts is a 4-component
- *                                   sum (excludes serviceCalls) — intentionally NOT used.
+ *   callsMade            weekly = computeProspectingCallsActual: 4-sum
+ *                                 (referral+followUp+cold+seminarTradeshow; NO serviceCalls).
+ *                                 Ratified 2026-06-04: serviceCalls excluded from
+ *                                 effort/floor/plan surfaces. Wizard Step-2 displayed
+ *                                 total stays the 5-sum (data-entry, unchanged by design).
  *                        daily  = NONE — Daily Capture has no calls/dials field, so the
  *                                   calls row is the hatched "weekly only · no daily pace"
  *                                   state mid-week and only resolves once submitted.
@@ -58,7 +58,7 @@ export const PACE_ON_TRACK_FRACTION = 0.9;
 // (brief D1: Contacts is qualified-approaches under the hood). `hasDailySource`
 // marks which metrics Daily Capture can supply mid-week.
 export const PACE_METRIC_META = Object.freeze({
-  callsMade:             { label: 'Calls made',    clarifier: null,                  hasDailySource: false },
+  callsMade:             { label: 'Prospecting calls', clarifier: null,               hasDailySource: false },
   contactsMade:          { label: 'Contacts made', clarifier: 'qualified approaches', hasDailySource: true  },
   factFindsCompleted:    { label: 'Fact-finds',    clarifier: null,                  hasDailySource: true  },
   closingInterviewsKept: { label: 'CIs kept',      clarifier: null,                  hasDailySource: true  },
@@ -85,24 +85,28 @@ function clampPct(v) {
 }
 
 /**
- * computeCallsActual — the calls 5-component sum from an extractFields() output.
+ * computeProspectingCallsActual — the 4-sum prospecting calls from an extractFields() output.
  *
- * Includes serviceCalls to match the wizard's displayed Step-2 total
- * (StepCallsF2F.jsx:20-28) — this is intentionally NOT the 4-sum
- * `totalTelAttempts` (which excludes serviceCalls and was the prior floor-card
- * mapping). Single export so every floor-comparison consumer can import this
- * one definition rather than each reimplementing the sum.
+ * Ratified 2026-06-04: service calls do NOT count toward effort/floor/plan surfaces.
+ * Service-originated production is fully credited downstream (approaches, FFIs, CIs, apps
+ * are call-type-agnostic); counting raw service-call volume credits only the gameable,
+ * low-signal part and hides absent prospecting muscle in developing agents.
+ *
+ * Sum: referralCalls + followUpCalls + coldCalls + seminarTradeshowCalls (NO serviceCalls).
+ * The wizard Step-2 displayed total is still the 5-sum (data-entry; unchanged by design).
+ * extractFields.totalTelAttempts (also 4-sum, same components) is unchanged and remains
+ * the source for YTD/kiosk/PDF/CSV/century-milestone surfaces — those are informational.
  *
  * @param {object} extractedFields — output of extractFields(submission)
  * @returns {number}
  */
-export function computeCallsActual(extractedFields) {
+export function computeProspectingCallsActual(extractedFields) {
   return (
     num(extractedFields?.referralCalls) +
     num(extractedFields?.followUpCalls) +
     num(extractedFields?.coldCalls) +
-    num(extractedFields?.seminarTradeshowCalls) +
-    num(extractedFields?.serviceCalls)
+    num(extractedFields?.seminarTradeshowCalls)
+    // serviceCalls intentionally excluded — see rationale above
   );
 }
 
@@ -130,7 +134,8 @@ export function elapsedWorkingDays(weekStart, todayTT) {
 /**
  * computeWeeklyActuals — the five plan-metric actuals from a submitted report.
  * Reads through extractFields (the single sanctioned submission reader); the
- * calls actual is the 5-component sum incl. serviceCalls (brief D1).
+ * calls actual is the 4-sum prospecting calls (ratified 2026-06-04 — serviceCalls
+ * excluded from effort/floor/plan surfaces; see computeProspectingCallsActual).
  *
  * @param {object} submission — a raw submission doc (any schema variant)
  * @returns {Record<string, number>} keyed by PLAN_METRIC_KEYS
@@ -138,12 +143,7 @@ export function elapsedWorkingDays(weekStart, todayTT) {
 export function computeWeeklyActuals(submission) {
   const f = extractFields(submission) ?? {};
   return {
-    callsMade:
-      num(f.referralCalls) +
-      num(f.followUpCalls) +
-      num(f.coldCalls) +
-      num(f.seminarTradeshowCalls) +
-      num(f.serviceCalls),
+    callsMade: computeProspectingCallsActual(f),
     contactsMade:          num(f.qualifiedApproaches),
     factFindsCompleted:    num(f.ffiConducted),
     closingInterviewsKept: num(f.ciConducted),

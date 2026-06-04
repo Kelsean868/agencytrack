@@ -83,12 +83,12 @@ describe('deriveWeeklyFloorActuals', () => {
     });
   });
 
-  it('maps each row to its canonical extractFields key (callsMade = 5-sum incl. serviceCalls per D1)', () => {
+  // Consciously evolved: callsMade switches to 4-sum prospecting-only (ratified 2026-06-04).
+  it('maps each row to its canonical extractFields key (callsMade = 4-sum prospecting, no serviceCalls)', () => {
     const fields = {
-      // D1: callsMade now uses the 5-component sum (incl. serviceCalls) via
-      // computeCallsActual — NOT totalTelAttempts (the 4-sum).
+      // Ratified 2026-06-04: callsMade = computeProspectingCallsActual 4-sum.
+      // serviceCalls(4) is EXCLUDED from the floor/plan comparison.
       referralCalls: 30, followUpCalls: 15, coldCalls: 20, seminarTradeshowCalls: 5, serviceCalls: 4,
-      // totalTelAttempts: 70 (4-sum excluding serviceCalls) — no longer used for callsMade
       telContacts:      45,
       appointmentsSet:  21,
       ffiConducted:     11,
@@ -99,7 +99,7 @@ describe('deriveWeeklyFloorActuals', () => {
       totalNewNames:    110,
     };
     const result = deriveWeeklyFloorActuals(fields);
-    expect(result.callsMade).toBe(74); // 30+15+20+5+4 = 74 (5-sum incl. serviceCalls)
+    expect(result.callsMade).toBe(70); // 30+15+20+5 = 70 (4-sum, serviceCalls excluded)
     expect(result.contactsMade).toBe(45);
     expect(result.appointmentsScheduled).toBe(21);
     expect(result.interviewsKept).toBe(20); // ffi + ci

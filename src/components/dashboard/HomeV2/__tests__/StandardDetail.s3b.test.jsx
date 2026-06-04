@@ -5,7 +5,7 @@
 //   2. Committed/mid-week: plan-metric mini tracks + "mid-week · daily capture"
 //      chip; calls hatched (no daily source) (D4 state 2 / D3 mid-week)
 //   3. Committed/final:  plan-metric mini tracks + "final · submitted" chip;
-//      calls resolved to the 5-sum (D1) (D4 state 3 / D3 final)
+//      calls resolved to the 4-sum prospecting calls (D4 state 3 / D3 final)
 
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
@@ -68,8 +68,8 @@ describe('StandardDetail — loading (committedPlan undefined)', () => {
 describe('StandardDetail — no-plan state (D4 state 1)', () => {
   it('renders the drawer with 10 floor rows and the nudge link', () => {
     render(<StandardDetail {...BASE_PROPS} committedPlan={null} />);
-    // All 10 floor-row labels present
-    expect(screen.getByText('Calls Made')).toBeInTheDocument();
+    // All 10 floor-row labels present (calls relabeled "Prospecting calls" — ratified 2026-06-04)
+    expect(screen.getByText('Prospecting calls')).toBeInTheDocument();
     expect(screen.getByText('Contacts Made')).toBeInTheDocument();
     expect(screen.getByText('Appointments Scheduled')).toBeInTheDocument();
     expect(screen.getByText('Fact Finds Completed')).toBeInTheDocument();
@@ -170,10 +170,11 @@ describe('StandardDetail — final / submitted source (D3 + D4 state 3)', () => 
     expect(screen.getByTestId('standard-drawer-source-chip')).toHaveTextContent(/final · submitted/i);
   });
 
-  it('calls resolves to the 5-sum (D1: incl. serviceCalls) — not the 4-sum totalTelAttempts', () => {
+  // Consciously evolved: 4-sum prospecting calls (ratified 2026-06-04, serviceCalls excluded).
+  it('calls resolves to the 4-sum prospecting calls — serviceCalls excluded', () => {
     renderFinal();
-    // 10+5+3+2+4 = 24 (includes serviceCalls=4)
-    expect(screen.getByTestId('drawer-actual-callsMade')).toHaveTextContent('24');
+    // 10+5+3+2 = 20 (serviceCalls=4 EXCLUDED)
+    expect(screen.getByTestId('drawer-actual-callsMade')).toHaveTextContent('20');
   });
 
   it('contacts resolves from the submission qualifiedApproaches', () => {

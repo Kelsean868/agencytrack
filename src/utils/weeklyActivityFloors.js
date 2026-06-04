@@ -1,6 +1,6 @@
 // Tatil manager workshop 2026-05-19 — Appendix A. Subject to managers' 6-month review.
 // Canonical mapping is documented in docs/briefs/weekly-activity-floors-kickoff.md.
-import { computeCallsActual } from './planVariance';
+import { computeProspectingCallsActual } from './planVariance';
 export const DEFAULT_WEEKLY_ACTIVITY_FLOORS = Object.freeze({
   callsMade:             60,
   contactsMade:          40,
@@ -18,7 +18,7 @@ export const DEFAULT_WEEKLY_ACTIVITY_FLOORS = Object.freeze({
 // telContacts resolves to qualifiedApproaches via the existing extractFields
 // fallback until a true telephone-contacts wizard field exists.
 export const WEEKLY_ACTIVITY_FLOOR_ROWS = Object.freeze([
-  { key: 'callsMade',             label: 'Calls Made',             isCurrency: false },
+  { key: 'callsMade',             label: 'Prospecting calls',      isCurrency: false },
   { key: 'contactsMade',          label: 'Contacts Made',          isCurrency: false, footnote: 'Currently uses qualified approaches as a proxy until a dedicated telephone-contacts field exists.' },
   { key: 'appointmentsScheduled', label: 'Appointments Scheduled', isCurrency: false },
   { key: 'interviewsKept',        label: 'Interviews Kept',        isCurrency: false },
@@ -44,7 +44,8 @@ export function floorStatus(expected, actual) {
 // Derive the 10 weekly-floor actuals from a single submission's extractFields()
 // output. `fields` is the object returned by extractFields(submission).
 // Per the corrected brief mapping:
-//   #1  callsMade            → totalTelAttempts  (excludes serviceCalls by design)
+//   #1  callsMade (Prospecting calls) → computeProspectingCallsActual 4-sum
+//                              (referral+followUp+cold+seminarTradeshow; no serviceCalls)
 //   #2  contactsMade         → telContacts       (resolves to qualifiedApproaches via fallback)
 //   #3  appointmentsScheduled → appointmentsSet
 //   #4  interviewsKept       → ffiConducted + ciConducted
@@ -65,7 +66,7 @@ export function deriveWeeklyFloorActuals(fields) {
   const ffi = parseFloat(fields.ffiConducted) || 0;
   const ci  = parseFloat(fields.ciConducted)  || 0;
   return {
-    callsMade:             computeCallsActual(fields),
+    callsMade:             computeProspectingCallsActual(fields),
     contactsMade:          parseFloat(fields.telContacts)      || 0,
     appointmentsScheduled: parseFloat(fields.appointmentsSet)  || 0,
     interviewsKept:        ffi + ci,

@@ -95,7 +95,8 @@ describe('SuggestedWeekCard — resolution states', () => {
     const floor = screen.getByTestId('suggested-week-floor');
     expect(floor).toBeInTheDocument();
     // All five floor metric concepts render on the floor path.
-    ['Dials', 'Contacts', 'FFIs', 'CIs', 'Apps'].forEach((label) => {
+    // calls relabeled "Prospecting calls" (ratified 2026-06-04, serviceCalls excluded).
+    ['Prospecting calls', 'Contacts', 'FFIs', 'CIs', 'Apps'].forEach((label) => {
       expect(within(floor).getByText(label)).toBeInTheDocument();
     });
     // Floor values come straight from the floors prop.

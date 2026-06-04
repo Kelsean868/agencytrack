@@ -82,6 +82,16 @@ const valOf = (page, id) => page.evaluate((i) => { const el = document.querySele
 const textOf = (page, id) => page.evaluate((i) => { const el = document.querySelector(`[data-testid="${i}"]`); return el ? (el.textContent || '') : ''; }, id);
 const shot = (page, name) => page.screenshot({ path: `${SHOT_DIR}/${name}.png` }).catch(() => {});
 
+// One-retry SDK delete (2026-06-04 hygiene note) — absorbs the transient
+// auth/network-request-failed the Node Firebase SDK can hit right after a heavy
+// Playwright session. deleteDoc → on failure wait 2s → retry once → throw if still failing.
+async function deleteWithRetry(ref) {
+  for (let i = 0; i < 2; i++) {
+    try { await deleteDoc(ref); return; }
+    catch (e) { if (i === 1) throw e; await new Promise((r) => setTimeout(r, 2000)); }
+  }
+}
+
 async function gotoHome(page) {
   await page.click('[data-testid="agent-tab-dashboard"]');
   await page.waitForTimeout(800);
@@ -148,6 +158,10 @@ async function run() {
     r.source = source;
     r.sourceChipValid = source !== 'unknown';
     r.planRowsPresent = await has(page, 'drawer-plan-row-callsMade');
+    // Ratified 2026-06-04: the calls metric is relabeled "Prospecting calls".
+    r.prospectingLabel = await page.evaluate(
+      () => document.querySelector('[role="dialog"]')?.textContent?.includes('Prospecting calls') ?? false,
+    );
 
     if (source === 'final') {
       r.callsResolved = await has(page, 'drawer-actual-callsMade');
@@ -241,7 +255,8 @@ async function run() {
     const tenantId = (await cred.user.getIdTokenResult()).claims.tenantId;
     const week = mostRecentSunday();
 
-    // D1 verify: fetch current-week submission to compute expected 5-sum.
+    // D1 verify: fetch current-week submission to compute the expected 4-sum
+    // prospecting calls (ratified 2026-06-04 — serviceCalls EXCLUDED).
     const snap = await getDocs(query(
       collection(db, `tenants/${tenantId}/submissions`),
       where('agentId', '==', uid),
@@ -249,7 +264,7 @@ async function run() {
     ));
     if (!snap.empty) {
       const d = snap.docs[0].data();
-      expectedCallsSum = (d.referralCalls||0) + (d.followUpCalls||0) + (d.coldCalls||0) + (d.seminarTradeshowCalls||0) + (d.serviceCalls||0);
+      expectedCallsSum = (d.referralCalls||0) + (d.followUpCalls||0) + (d.coldCalls||0) + (d.seminarTradeshowCalls||0); // 4-sum, no serviceCalls
     }
     if (r.callsActual !== undefined && expectedCallsSum !== undefined) {
       r.callsSumCorrect = r.callsActual === expectedCallsSum;
@@ -259,9 +274,10 @@ async function run() {
     const planRef = doc(db, `tenants/${tenantId}/weeklyPlans/${uid}_${week}`);
     cleanup.planGone = !(await getDoc(planRef)).exists();
 
-    // Delete any daily doc the walk created.
+    // Delete any daily doc the walk created (one retry per 2026-06-04 hygiene note —
+    // absorbs the transient auth/network-request-failed after a heavy Playwright session).
     const dailyRef = doc(db, `tenants/${tenantId}/users/${uid}/dailyActivity/${todayId()}`);
-    await deleteDoc(dailyRef).catch(() => {});
+    await deleteWithRetry(dailyRef);
     cleanup.dailyDeleted = true;
     cleanup.dailyGone = !(await getDoc(dailyRef)).exists();
   } catch (e) {
@@ -275,7 +291,7 @@ async function run() {
 
   const pass = (
     r.drawerOpen && r.sourceChipValid && sourceGate &&
-    r.planRowsPresent &&
+    r.planRowsPresent && r.prospectingLabel &&
     (r.callsSumCorrect !== false) &&
     r.noPlanDrawer && r.nudgeVisible && r.nudgeNavWorks &&
     axeSC.length === 0 && errors.length === 0 &&
@@ -283,7 +299,7 @@ async function run() {
   );
 
   console.log(`  source=${r.source} drawerOpen=${r.drawerOpen} sourceChipValid=${r.sourceChipValid} sourceGate=${sourceGate}`);
-  console.log(`  planRowsPresent=${r.planRowsPresent}`);
+  console.log(`  planRowsPresent=${r.planRowsPresent} prospectingLabel=${r.prospectingLabel}`);
   if (r.source === 'final') console.log(`    callsResolved=${r.callsResolved} callsActual=${r.callsActual} expectedCallsSum=${expectedCallsSum} callsSumCorrect=${r.callsSumCorrect}`);
   else console.log(`    callsHatched=${r.callsHatched}`);
   console.log(`  noPlanDrawer=${r.noPlanDrawer} nudgeVisible=${r.nudgeVisible} nudgeNavWorks=${r.nudgeNavWorks}`);
