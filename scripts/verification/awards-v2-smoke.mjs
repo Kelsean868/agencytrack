@@ -14,9 +14,10 @@
  *      that AgentAwardsPanel consumes the canonical awardPrimitives (item 17).
  *   5. 0 console errors.
  *
- * NOTE: overlaps the older ad-hoc award-percent-rounding-smoke.mjs (the pre-
- * dedup duplication-proof). Post-item-17 this is the canonical awards smoke;
- * consolidating/retiring the older script is flagged as a MORNING DECISION.
+ * NOTE: this is the SOLE canonical awards smoke. It superseded and retired the
+ * older ad-hoc award-percent-rounding-smoke.mjs (the pre-dedup duplication-proof)
+ * on 2026-06-04 — that script had no unique assertions (identical RAW_FLOAT +
+ * axe-NO-NEW {color-contrast} + 0-console gate); this one adds the §2 screenshots.
  *
  * Tenant note: goals + policies are seeded, submissions are NOT, so percentages
  * render low/zero — the rounding assertion applies to whatever renders.
