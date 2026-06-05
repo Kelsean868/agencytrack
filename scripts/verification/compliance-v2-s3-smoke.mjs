@@ -25,8 +25,10 @@ import { createRequire } from 'module';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, doc, getDoc, collection, getDocs } from 'firebase/firestore';
-import { setupBypassSession, setTheme, safeLog } from './lib/walk-helpers.mjs';
+import { setupBypassSession, setTheme, safeLog, resolveSmokeBaseUrl, installGlobalTimeout, finishSmoke, stamp } from './lib/walk-helpers.mjs';
 import { loadEnv } from '../lib/loadEnv.mjs';
+
+const GLOBAL_TIMEOUT_MS = 10 * 60 * 1000;
 
 const require = createRequire(import.meta.url);
 
@@ -44,10 +46,9 @@ const TOKEN        = requireEnv('VERCEL_BYPASS_TOKEN');
 const MGR_EMAIL    = requireEnv('A11Y_BRANCH_MANAGER_EMAIL');
 const MGR_PASSWORD = requireEnv('A11Y_BRANCH_MANAGER_PASSWORD');
 
-const PREVIEW_HOST =
-  process.env.PREVIEW_HOST ??
-  'agencytrack-git-feat-compliance-v2-s3-kyron-marchan-s-projects.vercel.app';
-const PREVIEW_URL = `https://${PREVIEW_HOST}`;
+const BASE_URL = resolveSmokeBaseUrl({
+  defaultHost: 'agencytrack-git-feat-compliance-v2-s3-kyron-marchan-s-projects.vercel.app',
+});
 const VIEWPORT = { width: 1280, height: 900 };
 const SS_DIR = resolve('verification', 'compliance-v2-s3-smoke');
 mkdirSync(SS_DIR, { recursive: true });
@@ -57,7 +58,7 @@ const { AxeBuilder } = require('../../node_modules/@axe-core/playwright');
 const results = [];
 function record(leg, passed, detail) {
   results.push({ leg, passed, detail });
-  console.log(`  ${passed ? '✓' : '✗'} ${leg}: ${detail}`);
+  console.log(`[${stamp()}]  ${passed ? '✓' : '✗'} ${leg}: ${detail}`);
 }
 
 const SERIOUS_ALLOWLIST = [
@@ -72,7 +73,7 @@ const PLAN_NUDGE_TYPE = 'compliance.plan.nudge';
 const firstInt = (s) => { const m = String(s ?? '').match(/-?\d+/); return m ? parseInt(m[0], 10) : NaN; };
 
 async function loginAsManager(page) {
-  await page.goto(PREVIEW_URL, { waitUntil: 'domcontentloaded' });
+  await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('input[type="email"]', { timeout: 20000 });
   await page.fill('input[type="email"]', MGR_EMAIL);
   await page.fill('input[type="password"]', MGR_PASSWORD);
@@ -197,8 +198,10 @@ async function runTheme(context, theme, recompute) {
 }
 
 async function main() {
-  console.log('Compliance v2 S3 — read-only smoke (BM, both themes; NO plan nudge fired)');
-  safeLog('Preview host:', PREVIEW_HOST);
+  console.log(`[${stamp()}] Compliance v2 S3 — read-only smoke (BM, both themes; NO plan nudge fired)`);
+  safeLog('Base URL:', BASE_URL);
+  const clearGlobalTimeout = installGlobalTimeout(GLOBAL_TIMEOUT_MS, () =>
+    results.forEach(({ leg, passed, detail }) => console.log(`  ${passed ? '✓' : '✗'} ${leg}: ${detail}`)));
 
   const browser = await chromium.launch({ headless: true });
   let recompute = null;
@@ -206,7 +209,7 @@ async function main() {
     // Throwaway probe context (its own session) to read the panel's default week,
     // then recompute plan adoption once against that week.
     const ctxProbe = await browser.newContext({ viewport: VIEWPORT });
-    await setupBypassSession(ctxProbe, PREVIEW_URL, TOKEN);
+    await setupBypassSession(ctxProbe, BASE_URL, TOKEN);
     const probe = await ctxProbe.newPage();
     await loginAsManager(probe);
     await navigateToCompliance(probe);
@@ -217,25 +220,20 @@ async function main() {
 
     // Fresh (unauthenticated) context per theme.
     const ctxLight = await browser.newContext({ viewport: VIEWPORT });
-    await setupBypassSession(ctxLight, PREVIEW_URL, TOKEN);
+    await setupBypassSession(ctxLight, BASE_URL, TOKEN);
     await runTheme(ctxLight, 'light', recompute);
     await ctxLight.close();
 
     const ctxDark = await browser.newContext({ viewport: VIEWPORT });
-    await setupBypassSession(ctxDark, PREVIEW_URL, TOKEN);
+    await setupBypassSession(ctxDark, BASE_URL, TOKEN);
     await runTheme(ctxDark, 'dark', recompute);
     await ctxDark.close();
   } finally {
     await browser.close();
   }
 
-  console.log('\n── Summary ─────────────────────────────────────────────────');
-  const passed = results.filter((r) => r.passed).length;
-  const failed = results.filter((r) => !r.passed).length;
-  results.forEach(({ leg, passed, detail }) => console.log(`  ${passed ? '✓' : '✗'} ${leg}: ${detail}`));
   console.log(`\nPlan nudge type '${PLAN_NUDGE_TYPE}' NOT fired pre-merge (deferred to /post-merge after the CF deploy).`);
-  console.log(`${passed + failed} checks: ${passed} passed, ${failed} failed`);
-  if (failed > 0) { console.error('Smoke FAILED — see above.'); process.exit(1); }
+  finishSmoke(results, { clearTimeout: clearGlobalTimeout }); // prints summary + process.exit (no idle-stream hang)
 }
 
 main().catch((err) => {
