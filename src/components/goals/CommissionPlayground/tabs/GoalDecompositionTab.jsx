@@ -25,10 +25,11 @@ const PERIODS = [
 ];
 
 function NumField({ label, value, onChange, prefix, step = 1, min = 0, badge }) {
+  const id = `gdt-${label.replace(/\s+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase()}`;
   return (
     <div className="flex flex-col gap-0.5">
       <div className="flex items-center gap-1.5">
-        <label className="text-xs text-ink-muted">{label}</label>
+        <label htmlFor={id} className="text-xs text-ink-muted">{label}</label>
         {badge && (
           <span className="inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary">
             {badge}
@@ -38,6 +39,7 @@ function NumField({ label, value, onChange, prefix, step = 1, min = 0, badge }) 
       <div className="flex items-center h-9 rounded-lg border border-border bg-card overflow-hidden focus-within:ring-2 focus-within:ring-primary/40">
         {prefix && <span className="text-xs text-ink-muted pl-2 pr-1 shrink-0">{prefix}</span>}
         <input
+          id={id}
           type="number"
           min={min}
           step={step}
