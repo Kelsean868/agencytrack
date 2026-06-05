@@ -106,7 +106,7 @@ export default function NotificationDrawer({ open, onClose }) {
                       {n.title}
                     </p>
                     <p className="text-xs text-ink-muted mt-0.5 leading-snug">{n.body}</p>
-                    <p className="text-[10px] text-ink-muted/50 mt-1">{relativeTime(n.createdAt)}</p>
+                    <p className="text-[10px] text-ink-muted mt-1">{relativeTime(n.createdAt)}</p>
                   </div>
 
                   {!n.read && (
