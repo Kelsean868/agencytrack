@@ -5,6 +5,24 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Persistency Mgr v2 — remaining slices (banked 2026-06-05 from Persistency Mgr v2 S1, PR #505)
+
+**Context:** S1 (PR #505) shipped the manager Persistency panel redesign — `PersRealityBar` (aggregate %, 6-month sparkline, stats), `PersAtRiskBook` (exception-first agents below 80%; celebration arm; Coach → existing `CoachingNotesModal`), and `PersRoster` (two-tick band track at 80%/90%, source badge, Edit + Play). Read/derive only — zero writes, rules changes, Cloud Functions, or index changes. `PersistencyAgentRow.jsx` deleted (replaced). `computeBarStats()` + `PERS_FLOOR` / `PERS_GATE` exported from `src/lib/persistency/calculations.js`.
+
+**D3 degradation (banked):** The build annotation stated `lockedByManager` exists on persistency docs. Source inspection: **field is absent** from the schema. Source badge is derived from `enteredByRole` alone (manager-role values → "Manager · locked"; agent role → "Self-entry · date"). If the field is ever added to the write path, `SourceBadge` in `PersRoster.jsx` can upgrade cleanly — the derivation logic is isolated there.
+
+**Remaining slices (each needs its own kickoff brief):**
+
+- **S2 — Entry drawer restyle.** `CoachingNotesModal` + `PersistencyEntryForm` modals restyle to match the v2 visual language (currently reused as-is from the legacy surface). Entry form is the manager's write path for persistency data — S2 is the natural moment to revisit the form layout, field labeling, and inline validation UX.
+
+- **S3 — Playground + nudge write.** `PersistencyPlayground` "coaching" mode is already connected from the Roster's Play button (S1 shipped the wire-up). S3 adds: (a) the what-if nudge write path (e.g. manager-to-agent persistency coaching note or target), (b) share/export from the playground, and (c) any additional playground modes surfaced by the brief annotation.
+
+**Deferred scope item (SM cross-branch):**
+
+- **SM scope toggle.** The brief called for a SM cross-branch scope picker on `PersRealityBar`. The `SmLeaderboardView.jsx` branch-picker is tightly coupled to leaderboard context (`branchIdOverride`, `scopeRoleOverride`) and won't drop in cleanly without a dedicated architecture discussion. Deferred to a named slice or SM-scope standalone brief. In the interim, `sales_manager` falls through to `ROLE_DEFAULT_SCOPE['branch']` (their `branchId` scope), which is safe for the pilot. Revisit when SM cross-branch surfaces become a priority.
+
+---
+
 ## Commission v2 — remaining slices (banked 2026-06-05 from Commission v2 Slice 1, PR #496 `0b79a92`)
 
 **Context:** Slice 1 (PR #496 `0b79a92`) shipped the real-earnings **AnchorStrip** data layer atop the Commission page: new pure utility `src/utils/commissionAnchor.js` (`ytdEarned` · `runRate` · `gapToGoal` · `latestPersistency`) + exhaustive unit tests + `CommissionAnchorStrip.jsx` (3 states: loading · no-goal/error · normal with YTD earned / run-rate window chip / gap-vs-committed-goal / latest-month persistency) + D4 page promotion (CommissionPlayground accordion removed, always-expanded with tab list). READ/DERIVE ONLY — no writes, no new collections, no rules changes. Data from existing own-read policy, goals, and persistency paths.
