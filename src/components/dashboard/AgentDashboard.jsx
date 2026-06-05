@@ -689,6 +689,8 @@ export default function AgentDashboard() {
               submissions={allSubmissions}
               agentId={user?.uid}
               tenantId={tenantId}
+              currentGoal={goals?.personalAnnualAPI ?? null}
+              onGoalSaved={() => getGoals(tenantId, user.uid).then(setGoals)}
             />
           </div>
         </div>

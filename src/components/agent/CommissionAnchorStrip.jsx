@@ -117,7 +117,7 @@ export default function CommissionAnchorStrip({
             onClick={onScrollToPlayground}
             className="shrink-0 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:bg-primary-dark"
           >
-            Go to the ladder
+            Set as my goal →
           </button>
         </div>
         <div className="mt-4 flex flex-wrap gap-3">

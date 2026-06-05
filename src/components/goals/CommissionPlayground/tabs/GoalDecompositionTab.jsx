@@ -161,7 +161,7 @@ function DecompositionLadder({ computed, inputs, freqKey, onFreqChange, hasHisto
   );
 }
 
-export default function GoalDecompositionTab({ submissions = [], agentId, tenantId }) {
+export default function GoalDecompositionTab({ submissions = [], agentId, tenantId, currentGoal = null, onGoalSaved }) {
   const { user, userProfile } = useAuth();
   const [inputs, setInputs]                     = useState(DEFAULT_DECOMPOSITION_INPUTS);
   const [freqKey, setFreqKey]                   = useState('annual');
@@ -169,6 +169,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   const [savedGoals, setSavedGoals]             = useState(false);
   const [savedAssumptions, setSavedAssumptions] = useState(false);
   const [error, setError]                       = useState('');
+  const [showConfirm, setShowConfirm]           = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('agencytrack-playground-income-goal');
@@ -197,7 +198,14 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
 
   const computed = useMemo(() => decomposeFromIncome(inputs), [inputs]);
 
-  const handleSaveGoals = async () => {
+  const handleRequestConfirm = () => {
+    const api = computed.apiToWrite;
+    if (!api || api <= 0 || !isFinite(api)) return;
+    setError('');
+    setShowConfirm(true);
+  };
+
+  const handleConfirmWrite = async () => {
     setSaving(true);
     setError('');
     try {
@@ -206,7 +214,9 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
         personalAnnualAPI:  computed.apiToWrite,
         personalAnnualApps: computed.applications,
       }, user.uid, name);
+      setShowConfirm(false);
       setSavedGoals(true);
+      onGoalSaved?.();
       setTimeout(() => setSavedGoals(false), 2500);
     } catch (e) {
       setError(e.message ?? 'Failed to save goals.');
@@ -314,17 +324,62 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
         <p className="text-xs text-danger-ink bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{error}</p>
       )}
 
+      {showConfirm && (
+        <div
+          className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex flex-col gap-3"
+          data-testid="commission-confirm-dialog"
+        >
+          <p className="text-sm font-semibold text-ink">Confirm — this replaces your current goal</p>
+          <div className="flex gap-6 flex-wrap">
+            <div className="flex flex-col gap-0.5">
+              <span className="font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-ink-muted">Current</span>
+              <span className="font-display text-base font-extrabold text-ink-muted" data-testid="commission-confirm-current">
+                {currentGoal && currentGoal > 0 ? formatCurrency(currentGoal) : '—'}
+              </span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-primary dark:text-primary-dark">New</span>
+              <span className="font-display text-base font-extrabold text-primary dark:text-primary-dark" data-testid="commission-confirm-new">
+                {formatCurrency(Math.round(computed.apiToWrite))}
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleConfirmWrite}
+              disabled={saving}
+              className="h-9 px-4 rounded-lg text-sm font-semibold bg-primary dark:bg-primary-dark text-white hover:bg-primary-dark dark:hover:bg-primary transition-colors disabled:opacity-60"
+              data-testid="commission-confirm-btn"
+            >
+              {saving ? 'Saving…' : 'Set as my goal'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowConfirm(false)}
+              disabled={saving}
+              className="h-9 px-4 rounded-lg text-sm font-semibold border border-border text-ink-muted hover:text-ink transition-colors disabled:opacity-60"
+              data-testid="commission-confirm-cancel"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
         <button
-          onClick={handleSaveGoals}
-          disabled={saving}
+          type="button"
+          onClick={handleRequestConfirm}
+          disabled={saving || showConfirm}
           className={`h-9 px-4 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 ${
             savedGoals
               ? 'bg-success/15 text-success-ink'
               : 'bg-primary dark:bg-primary-dark text-white hover:bg-primary-dark dark:hover:bg-primary'
           }`}
+          data-testid="commission-save-goal-btn"
         >
-          {savedGoals ? <><Check size={13} className="inline mr-1" />Goals Saved</> : 'Save as My Goals'}
+          {savedGoals ? <><Check size={13} className="inline mr-1" />Goal Saved</> : 'Save as My Goals'}
         </button>
         <button
           onClick={handleSaveAssumptions}

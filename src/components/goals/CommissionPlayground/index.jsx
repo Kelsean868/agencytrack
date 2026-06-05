@@ -8,7 +8,7 @@ const TABS = [
   { key: 'modal', label: 'Modal Targeting'     },
 ];
 
-export default function CommissionPlayground({ submissions = [], agentId, tenantId, _agentName, isManagerSelf }) {
+export default function CommissionPlayground({ submissions = [], agentId, tenantId, _agentName, isManagerSelf, currentGoal = null, onGoalSaved }) {
   const { userProfile } = useAuth();
   const [activeTab, setActiveTab] = useState('goal');
 
@@ -51,6 +51,8 @@ export default function CommissionPlayground({ submissions = [], agentId, tenant
           submissions={submissions}
           agentId={agentId}
           tenantId={tenantId}
+          currentGoal={currentGoal}
+          onGoalSaved={onGoalSaved}
         />
       )}
       {activeTab === 'modal' && (

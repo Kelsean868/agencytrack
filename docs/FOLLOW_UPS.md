@@ -12,15 +12,37 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 **Remaining slices:**
 
 - **S2 — Ladder + Modal Targeting restyle — SHIPPED (PR #498 `381ed24`, HUMAN-MERGE).** D2: GoalDecompositionTab 7-stage decomposition ladder (Income goal → 1st-yr comm → API to write → Apps → CIs → Prospecting calls → Prospects; Nexus gold/teal token variants). D3: CashFlowChart stacked 12-month bar chart + cumulative line overlay (Recharts ComposedChart, Nexus tokens, both themes). D4: no-goal AnchorStrip now shows YTD earned + run-rate chips (gap suppressed, CTA kept). D5: React imports + 9 RTL baseline tests (4 GoalDecompositionTab + 5 CommissionAnchorStrip). REDESIGN/VISUAL-ONLY — no writes, no rules, no new data fetches. Suite 2422/2422; lint 0; build clean; smoke 30/30 PASS.
-- **S3 — "Set as my goal" write + manager variant.** Agent-side: the no-committed-goal state's CTA writes the decomposition ladder result as the committed `personalAnnualAPI` to the Goals cascade. Manager variant: strip showing an agent's commission data (manager viewing an agent's Commission tab). Needs a Firestore write path + rules verification. Post-pilot candidate.
+- **S3 — "Set as my goal" write — SHIPPED (PR #TBD `{SHA}`, HUMAN-MERGE, pending merge).** Agent-side write: `GoalDecompositionTab` "Save as My Goals" CTA now opens a CONFIRM affordance (current → new API formatted TTD) before writing; guard rails (zero/NaN blocks confirm); on confirm: `setGoals(personalAnnualAPI + personalAnnualApps)` via the existing goals cascade write path (D1 byte-compatible, same payload as CareerPortal); `onGoalSaved` callback refreshes `goals` state in AgentDashboard → AnchorStrip + GamePlan strip re-derive live. CommissionAnchorStrip no-goal CTA upgraded "Go to the ladder" → "Set as my goal →" (S1 no-goal CTA upgrade per annotation). ZERO rules/schema/engine changes. 4 new RTL tests (confirm-flow: open · current-vs-new · cancel · write payload) + 1 guard-rail test; Test 4 consciously evolved (confirm step now required before write). Suite 2426/2426; lint 0; build clean.
+
+**Commission v2 agent arc COMPLETE (S1+S2+S3) — pending S3 merge (PR #TBD `{SHA}`).** Manager suggest-a-goal routed to manager-program backlog (see § Manager-program backlog below).
 
 **Banked addenda (post-merge, 2026-06-05):**
 
 - **Deferred-verification FU (Rule 13): ✅ CLOSED 2026-06-05.** AnchorStrip data arm proven live in S2 smoke recompute leg (PR #498): Admin SDK read (policies + goal doc + commissionRate from userProfile) → `ytdEarned` / `runRate` / `gapToGoal` recompute → displayed YTD / run-rate / goal / gap matched SDK-recomputed values exactly (zero delta). Evidence: `light-recompute-ytd TTD9450 == 9450.00 · light-recompute-rate TTD21365.22 == 21365.22 · light-recompute-arm-chip: linear-YTD fallback arm · 1 week(s) · DOM chip confirmed · light-recompute-gap goal TTD84000 == 84000.00 / gap TTD-62634.78 == -62634.78`. Rate correct per D1 semantics: span-based arm (1 settled week, span=7 < 8 cal weeks → linear-YTD); divisor = elapsedTTYearWeeks (23), not weekCount. `commissionAnchor.runRate` fully corrected in PR #498 (`2639d65`): arm by history SPAN · trailing = 8-calendar-week zero-filled window · linear = ytdEarned ÷ elapsedTTYearWeeks × 52. 30/30 smoke PASS.
 - **S2 design question:** ~~Empty (no-goal) AnchorStrip suppresses YTD earned + run-rate — consider showing them.~~ **RESOLVED by D4 in S2 (PR #498 `381ed24`)** — no-goal state now shows YTD Earned + On Pace For chips; gap figure suppressed; CTA kept.
 - **Trio certification:** PASSED — Goals + Persistency + Commission all render real data under the agent (E3) credential. The operator's "fully working for agents" intent is now regression-protected by the S1 smoke (`scripts/verification/commission-v2-s1-smoke.mjs`).
+- **Trio intent DELIVERED (S3, 2026-06-05).** Persistency (pre-existing agent-visible data), Goals (by design via CareerPortal/Game Plan; now also via the S3 "Set as my goal" CTA — agents can view AND write their `personalAnnualAPI` from the Commission surface), Commission (S1–S3: YTD earned · run-rate · gap-to-goal read + write goal via CTA). All three surfaces are agent-complete.
 
 **Cross-reference:** `docs/design/commission-v2-build.html` (layout authority for all three slices); § CommissionPlayground tabs lack default `React` import → blocks full RTL baseline (active FU, pre-auth required in S2 brief); `docs/briefs/commission-v2-s1-kickoff.md`.
+
+---
+
+## Manager-program backlog
+
+### Manager suggest-a-goal (deferred from Commission v2 S3 brief, 2026-06-05)
+
+**Context.** Commission v2 S3 ships the **agent-side** write path only. The complementary manager capability — a manager proposing a `personalAnnualAPI` target to an agent from the commission/goals view — was routed to this backlog at the S3 brief-dispatch decision (2026-06-05). This is distinct from the existing `unitGoals` / `branchGoals` manager tiers; it targets the agent's **personalAnnualAPI** (personal commitment layer) as a suggestion the agent confirms.
+
+**Nudges-primitive note.** The `sendComplianceNudge` machinery (Compliance v2 S2, PR #483 `1a4f2d0`) is the ready primitive: deterministic-ID cooldown record + bell `notifications` doc + email + `auditNudges`. A `goals.suggest.api` type can extend the CF's `NUDGE_CONFIG` allowlist (exactly the same extension pattern as `compliance.plan.nudge` in Compliance v2 S3) and carry the suggested API value in the payload; the agent's S3 confirm CTA is already wired to write it.
+
+**Scope when dispatched:**
+1. Manager-surface entry point (e.g. Commission AnchorStrip manager view, or a GoalsPanel agent-row action).
+2. Extend `sendComplianceNudge` CF's `NUDGE_CONFIG`: `goals.suggest.api` type, payload carries `suggestedAPI`, bell copy includes TTD-formatted figure, new email template pair (`goals-suggest-api.txt/.html`).
+3. Agent-side: bell notification surfaces the suggested value; S3's confirm dialog can optionally pre-fill from the suggestion.
+4. Standard nudge infra: deterministic dedupe + 24h cooldown + creator-delete + `auditNudges`.
+5. Phase 3 gates: functions tests + emulator matrix + BM+E3 smoke.
+
+**Cross-reference:** `functions/compliance/sendComplianceNudge.js` (`NUDGE_CONFIG` — the extension point); `src/services/nudgeService.js`; `src/components/goals/CommissionPlayground/tabs/GoalDecompositionTab.jsx` (agent confirm CTA — the receiving end).
 
 ---
 
