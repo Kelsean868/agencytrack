@@ -371,7 +371,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
               type="button"
               onClick={() => setNudgeAllOpen(true)}
               data-testid="compliance-nudge-all"
-              className="ml-auto inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="ml-auto inline-flex items-center gap-1.5 min-h-[44px] px-3.5 rounded-lg bg-primary dark:bg-primary-dark text-white text-xs font-bold hover:bg-primary/90 dark:hover:bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
             >
               <Bell size={13} aria-hidden="true" />
               Nudge all {exceptions.length}

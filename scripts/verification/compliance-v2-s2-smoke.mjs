@@ -188,10 +188,17 @@ async function runLight(context) {
     }
 
     // Leg 2: reload → chip persists (upline GET on the deterministic id).
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('[data-testid="compliance-reality-bar"]', { timeout: 15000 });
-    const persisted = await page.locator(`[data-testid="compliance-exception-row"][data-uid="${nudgedUid}"] [data-testid="compliance-cooldown-chip"]`)
-      .waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false);
+    // A hard reload resets the SPA to its default tab — re-navigate to Compliance.
+    let persisted = false;
+    try {
+      await page.reload({ waitUntil: 'domcontentloaded' });
+      await page.waitForSelector('nav[aria-label="Primary navigation"]', { timeout: 20000 });
+      await navigateToCompliance(page);
+      persisted = await page.locator(`[data-testid="compliance-exception-row"][data-uid="${nudgedUid}"] [data-testid="compliance-cooldown-chip"]`)
+        .waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false);
+    } catch (err) {
+      persisted = false;
+    }
     record('Leg 2 reload-persist (light)', persisted, persisted ? 'cooldown chip persisted across reload (upline GET)' : 'chip did NOT persist');
   }
 
@@ -263,24 +270,28 @@ async function main() {
 
   const browser = await chromium.launch({ headless: true });
   try {
-    const ctxLight = await browser.newContext({ viewport: VIEWPORT });
-    await setupBypassSession(ctxLight, PREVIEW_URL, TOKEN);
-    await runLight(ctxLight);
-    await ctxLight.close();
+    try {
+      const ctxLight = await browser.newContext({ viewport: VIEWPORT });
+      await setupBypassSession(ctxLight, PREVIEW_URL, TOKEN);
+      await runLight(ctxLight);
+      await ctxLight.close();
 
-    const ctxDark = await browser.newContext({ viewport: VIEWPORT });
-    await setupBypassSession(ctxDark, PREVIEW_URL, TOKEN);
-    await runDark(ctxDark);
-    await ctxDark.close();
+      const ctxDark = await browser.newContext({ viewport: VIEWPORT });
+      await setupBypassSession(ctxDark, PREVIEW_URL, TOKEN);
+      await runDark(ctxDark);
+      await ctxDark.close();
+    } catch (err) {
+      record('Walk', false, `walk threw: ${err.message ?? err}`);
+    } finally {
+      await browser.close();
+    }
   } finally {
-    await browser.close();
-  }
-
-  // Cleanup runs regardless (try/finally semantics via its own try).
-  try {
-    await cleanup();
-  } catch (err) {
-    record('Cleanup', false, `cleanup threw: ${err.message ?? err}`);
+    // Cleanup is non-negotiable — runs even if the walk threw (Rule 3).
+    try {
+      await cleanup();
+    } catch (err) {
+      record('Cleanup', false, `cleanup threw: ${err.message ?? err}`);
+    }
   }
 
   console.log('\n── Summary ─────────────────────────────────────────────────');

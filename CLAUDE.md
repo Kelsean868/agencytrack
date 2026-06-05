@@ -122,6 +122,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 - ALL styling via Tailwind classes + CSS variables.
 - Minimum 44px touch targets (mobile agents in field).
 - **No `text-ink-faint` on any new text element — use `text-ink-muted`.** (D5, banked from S3b: four consecutive slices had smoke catch faint-on-new-text AA failures; this bans it at authoring time.)
+- **White-text primary buttons always pair `bg-primary` with `dark:bg-primary-dark`** (dark-mode `--color-primary` is the lifted text teal, not a button background). (D6, banked from compliance-v2-s2: dark-mode smoke axe caught white-on-lifted-teal AA failure on a `bg-primary text-white` button missing the `dark:` variant the rest of the app already uses.)
 - AgentReportDocument.jsx is EXEMPT — react-pdf doesn't support CSS vars, uses HEX only.
 **Phase 7-8 design docs:** [`docs/phase7-8-PRD.md`](docs/phase7-8-PRD.md) (full spec across 5 tracks D–H) + [`docs/phase7-8-implementation.md`](docs/phase7-8-implementation.md) (build sequence, recommended order D → E → G → F → H, ~36–46 PRs total). Tracks D–H detailed in the table below. Pilot remains postponed indefinitely.
 
