@@ -519,7 +519,17 @@ service cloud.firestore {
       }
 
       match /settlements/{docId} {
-        allow read: if isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || getTenantId() == tenantId);
+        // Tightened read (settlements-read-scope, 2026-06-05):
+        //   agents — own only (resource.data.agentId == uid via canAccessOwn).
+        //   managers — tenant-scoped via canManage (all tiers).
+        // NOTE: settlement docs carry no unitId/branchId field. The D1 brief target
+        // of UM-same-unit / BM-same-branch granular scoping cannot be enforced at
+        // the rules layer without schema denorm or a 2-read cross-doc lookup.
+        // Simplified tightening is presented to dispatcher at Phase 1 STOP — the
+        // primary security fix (agent reads peer's settlements) is closed by the
+        // canAccessOwn arm regardless.
+        allow get:  if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
+        allow list: if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
         allow write: if isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin']
           || getRole() == 'branch_manager'
           || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true);

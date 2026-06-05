@@ -4299,3 +4299,22 @@ Banked: Track J P4 around-me cluster (PR #402), 2026-05-31. Expanded on PR #403 
 **Action:** none — already shipped with PR #402. Note retained for the audit trail.
 
 Banked: Track J P4 around-me cluster (PR #402), 2026-05-31.
+
+---
+
+## Settlements manager reads — tenant-scope (no unitId/branchId on docs) (LOW, banked 2026-06-05)
+
+**Context:** PR #494 (`fix/settlements-read-scope`) tightened the settlements `allow read` from "all tenant members" (the agent-reads-peers leak) to `canAccessOwn || canManage`. The original brief D1 target specified UM same-unit / BM same-branch granular scoping (mirroring the submissions pattern). This cannot be implemented because settlement docs carry no `unitId` or `branchId` field — the submissions pattern relies on `resource.data.unitId` denormalized at write time, which never happened for settlements.
+
+**Result of PR #494:** Agents can only read their own settlements. All manager-tier roles (UM, BM, SM, TA, PA) can read all tenant settlements. UM cannot be restricted to same-unit; BM cannot be restricted to same-branch at the rules layer without schema changes.
+
+**Dispatcher ruling (Option A, 2026-06-05):** Accept the simplified tightening. Manager tenant-scope is acceptable for trusted tiers whose surfaces already app-filter by agentId. Settlements are retirement-bound (Policy Ledger supersedes), so schema investment is waste.
+
+**Fix shape (if needed):**
+1. Add `unitId` + `branchId` to the `confirmSettlement()` write payload in `src/services/settlementService.js`.
+2. Update the settlements rules `get` and `list` arms to mirror the submissions pattern: `resource.data.unitId == request.auth.uid` for UM; `resource.data.branchId == callerBranchId(tenantId)` for BM.
+3. Backfill existing settlement docs with `unitId`/`branchId` values (one-off Admin SDK script from agent user docs).
+
+**Priority:** LOW. MOOT if settlement retirement (Policy Ledger supersedes) proceeds before multi-branch expansion. Only revisit if multi-branch operation becomes real and granular settlement privacy is required before Policy Ledger fully replaces the settlements surface.
+
+Banked: settlements-read-scope PR #494 (Phase 1 STOP, dispatcher Option A), 2026-06-05.
