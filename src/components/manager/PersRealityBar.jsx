@@ -141,6 +141,7 @@ export default function PersRealityBar({
         {sparkData.length > 0 && (
           <div
             className="flex items-end gap-0.5 h-7 ml-1"
+            role="img"
             aria-label="6-month trend"
             data-testid="pers-bar-spark"
           >
