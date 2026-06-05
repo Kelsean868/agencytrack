@@ -1,3 +1,4 @@
+import React from 'react';
 import { Lightbulb } from 'lucide-react';
 import { formatCurrency } from '../../../../utils/formatters';
 import { reverseCalc } from '../utils/commissionMath';

@@ -61,6 +61,9 @@ describe('ytdEarned', () => {
 });
 
 // --- runRate ---
+// today = 2026-06-05 (Thursday TT); maxWK = Sun May 31 04:00Z
+// Trailing window: Apr 12 – May 31 (8 calendar weeks, zero-filled)
+// elapsedTTYearWeeks = 23 (Dec 28 2025 wk → May 31 2026 wk, inclusive)
 
 describe('runRate', () => {
   const today = new Date('2026-06-05T14:00:00Z'); // Thursday UTC = still Thursday TT
@@ -69,58 +72,59 @@ describe('runRate', () => {
     return sundayDates.map((d) => policy({ dateIssued: ts(d), earnedCommission: commission }));
   }
 
-  it('returns isLinear:false when exactly 8 distinct settled weeks present', () => {
-    const sundays = [
-      '2026-01-04', '2026-01-11', '2026-01-18', '2026-01-25',
-      '2026-02-01', '2026-02-08', '2026-02-15', '2026-02-22',
+  it('span ≥ 8 calendar weeks → trailing arm (isLinear:false)', () => {
+    // Jan 5 → week Jan 4; span ~21 weeks → trailing arm
+    const policies = [
+      policy({ dateIssued: ts('2026-01-05'), earnedCommission: 1000 }),
+      policy({ dateIssued: ts('2026-04-20'), earnedCommission: 2000 }), // week Apr 19, in window
+      policy({ dateIssued: ts('2026-05-18'), earnedCommission: 3000 }), // week May 17, in window
     ];
-    const policies = makeWeekPolicies(sundays, 1000);
     const result = runRate(policies, today);
     expect(result.isLinear).toBe(false);
-    expect(result.weekCount).toBe(8);
-    expect(result.value).toBeCloseTo((8000 / 8) * 52);
+    expect(result.weekCount).toBe(3);
+    expect(result.window).toBe('trailing-8wk');
+    // Jan 4 wk outside trailing window (Apr 12–May 31) contributes 0; Apr 19 + May 17 = 5000
+    expect(result.value).toBeCloseTo((5000 / 8) * 52);
   });
 
-  it('returns isLinear:true when exactly 7 distinct settled weeks present (fallback trigger)', () => {
-    const sundays = [
-      '2026-01-04', '2026-01-11', '2026-01-18', '2026-01-25',
-      '2026-02-01', '2026-02-08', '2026-02-15',
-    ];
-    const policies = makeWeekPolicies(sundays, 1000);
+  it('span < 8 calendar weeks → linear arm (isLinear:true)', () => {
+    // Apr 19 (Sunday) → week Apr 19; span = (May 31 – Apr 19) / 7 = 6 weeks < 8 → linear arm
+    const policies = makeWeekPolicies(
+      ['2026-04-19', '2026-04-26', '2026-05-03', '2026-05-10', '2026-05-17', '2026-05-24'],
+      1000,
+    );
     const result = runRate(policies, today);
     expect(result.isLinear).toBe(true);
-    expect(result.weekCount).toBe(7);
+    expect(result.weekCount).toBe(6);
   });
 
-  it('uses all available weeks when > 8 (trailing rate uses full history)', () => {
-    const sundays = [
-      '2026-01-04', '2026-01-11', '2026-01-18', '2026-01-25',
-      '2026-02-01', '2026-02-08', '2026-02-15', '2026-02-22',
-      '2026-03-01', '2026-03-08', '2026-03-15',
+  it('trailing arm: data outside 8-calendar-week window contributes 0', () => {
+    // Jan span >> 8 → trailing; Jan data before Apr 12 window start is excluded
+    const policies = [
+      policy({ dateIssued: ts('2026-01-05'), earnedCommission: 9000 }), // week Jan 4, outside window
+      policy({ dateIssued: ts('2026-05-04'), earnedCommission: 2000 }), // week May 3, in window
     ];
-    const policies = makeWeekPolicies(sundays, 1000);
     const result = runRate(policies, today);
     expect(result.isLinear).toBe(false);
-    expect(result.weekCount).toBe(11);
-    expect(result.value).toBeCloseTo((11000 / 11) * 52);
-    expect(result.window).toBe('trailing-11wk');
+    expect(result.weekCount).toBe(2);
+    expect(result.value).toBeCloseTo((2000 / 8) * 52);
+    expect(result.value).not.toBeCloseTo(((9000 + 2000) / 8) * 52);
+    expect(result.window).toBe('trailing-8wk');
   });
 
-  it('groups multiple policies in the same week correctly', () => {
+  it('groups multiple policies in the same calendar week (trailing arm)', () => {
+    // Jan anchor sets span; two policies in week of May 3 get summed
     const policies = [
-      policy({ dateIssued: ts('2026-03-16'), earnedCommission: 2000 }), // Monday in week of Mar 15
-      policy({ dateIssued: ts('2026-03-17'), earnedCommission: 3000 }), // Tuesday same week
+      policy({ dateIssued: ts('2026-01-05'), earnedCommission: 500 }),  // sets span
+      policy({ dateIssued: ts('2026-05-04'), earnedCommission: 2000 }), // Monday → week May 3
+      policy({ dateIssued: ts('2026-05-05'), earnedCommission: 3000 }), // Tuesday → week May 3
+      policy({ dateIssued: ts('2026-05-18'), earnedCommission: 4000 }), // Monday → week May 17
     ];
-    const sundays = [
-      '2026-01-04', '2026-01-11', '2026-01-18', '2026-01-25',
-      '2026-02-01', '2026-02-08', '2026-02-15', '2026-02-22',
-    ];
-    const base = makeWeekPolicies(sundays, 1000);
-    const result = runRate([...base, ...policies], today);
+    const result = runRate(policies, today);
     expect(result.isLinear).toBe(false);
-    expect(result.weekCount).toBe(9);
-    // week of Mar 15 has 2000+3000=5000; 8 weeks × 1000 + 1 week × 5000 = 13000 total
-    expect(result.value).toBeCloseTo((13000 / 9) * 52);
+    expect(result.weekCount).toBe(3); // Jan 4, May 3 (grouped), May 17
+    // trailing: Jan 4 (outside window) = 0; May 3 = 5000; May 17 = 4000 → total 9000
+    expect(result.value).toBeCloseTo((9000 / 8) * 52);
   });
 
   it('returns zero with no-data marker when no settled policies', () => {
@@ -131,14 +135,15 @@ describe('runRate', () => {
     expect(result.window).toBe('no data');
   });
 
-  it('excludes policies with future dateIssued (beyond today\'s week)', () => {
+  it("excludes policies with future dateIssued (beyond today's week)", () => {
     // A policy in week of 2026-06-07 (next Sunday) should be excluded when today is 2026-06-05
     const futurePolicy = policy({ dateIssued: ts('2026-06-08'), earnedCommission: 9999 });
     const result = runRate([futurePolicy], today);
     expect(result.weekCount).toBe(0);
   });
 
-  it('window chip uses "trailing-Nwk" format for >= 8 weeks', () => {
+  it('window chip uses "trailing-8wk" for span ≥ 8 calendar weeks', () => {
+    // Jan/Feb data → span >> 8 → trailing arm → window = 'trailing-8wk'
     const sundays = [
       '2026-01-04', '2026-01-11', '2026-01-18', '2026-01-25',
       '2026-02-01', '2026-02-08', '2026-02-15', '2026-02-22',
@@ -147,9 +152,84 @@ describe('runRate', () => {
     expect(result.window).toBe('trailing-8wk');
   });
 
-  it('window chip uses "based on N weeks" format for < 8 weeks', () => {
-    const result = runRate([policy({ dateIssued: ts('2026-03-01') })], today);
-    expect(result.window).toBe('based on 1 weeks');
+  it('window chip uses "based on N weeks" format for span < 8 weeks', () => {
+    // Apr 13 (Monday) → week Apr 12; span = 7 weeks < 8 → linear arm; elapsedTTYearWeeks = 23
+    const result = runRate([policy({ dateIssued: ts('2026-04-13') })], today);
+    expect(result.window).toBe('based on 23 weeks');
+  });
+
+  // Dispatcher cases — corrected semantics: arm by SPAN, divisor by elapsed TT-year weeks
+
+  it('1 settled week within 8-week span → linear-YTD arm: ytdEarned ÷ elapsedYearWeeks', () => {
+    // Apr 13 → week Apr 12; span = 7 weeks < 8 → linear; elapsedTTYearWeeks = 23
+    const result = runRate([policy({ dateIssued: ts('2026-04-13'), earnedCommission: 9450 })], today);
+    expect(result.isLinear).toBe(true);
+    expect(result.weekCount).toBe(1);
+    expect(result.value).toBeCloseTo((9450 / 23) * 52);
+    expect(result.window).toBe('based on 23 weeks');
+  });
+
+  it('3 settled weeks within span < 8 → linear-YTD arm, divisor = elapsedYearWeeks (23), not weekCount (3)', () => {
+    const policies = [
+      policy({ dateIssued: ts('2026-04-13'), earnedCommission: 1000 }),
+      policy({ dateIssued: ts('2026-04-20'), earnedCommission: 2000 }),
+      policy({ dateIssued: ts('2026-04-27'), earnedCommission: 3000 }),
+    ];
+    const result = runRate(policies, today);
+    expect(result.isLinear).toBe(true);
+    expect(result.weekCount).toBe(3);
+    expect(result.value).toBeCloseTo(((1000 + 2000 + 3000) / 23) * 52);
+    expect(result.value).not.toBeCloseTo(((1000 + 2000 + 3000) / 3) * 52);
+  });
+
+  it('span = 8 calendar weeks (boundary) → trailing arm; data outside window zero-contributed', () => {
+    // Apr 6 (Monday) → week Apr 5 = maxWK − 8wk → span=8 → trailing arm
+    // Apr 5 is NOT in trailing window (which starts Apr 12); Apr 20 → week Apr 19 IS in window
+    const policies = [
+      policy({ dateIssued: ts('2026-04-06'), earnedCommission: 5000 }), // week Apr 5, outside
+      policy({ dateIssued: ts('2026-04-20'), earnedCommission: 2000 }), // week Apr 19, inside
+    ];
+    const result = runRate(policies, today);
+    expect(result.isLinear).toBe(false);
+    expect(result.window).toBe('trailing-8wk');
+    expect(result.value).toBeCloseTo((2000 / 8) * 52);
+    expect(result.value).not.toBeCloseTo(((5000 + 2000) / 8) * 52);
+  });
+
+  it('span > 8 weeks → trailing arm: Σ(trailing-8 calendar weeks) ÷ 8 × 52', () => {
+    const policies = [
+      policy({ dateIssued: ts('2026-01-05'), earnedCommission: 1000 }), // outside window, sets span
+      policy({ dateIssued: ts('2026-05-04'), earnedCommission: 3000 }), // week May 3, in window
+      policy({ dateIssued: ts('2026-05-18'), earnedCommission: 4000 }), // week May 17, in window
+    ];
+    const result = runRate(policies, today);
+    expect(result.isLinear).toBe(false);
+    expect(result.value).toBeCloseTo((7000 / 8) * 52);
+  });
+
+  it('stale producer — all settlements > 8 calendar weeks ago → trailing arm, rate = 0', () => {
+    const policies = [
+      policy({ dateIssued: ts('2026-01-05'), earnedCommission: 10000 }),
+      policy({ dateIssued: ts('2026-02-02'), earnedCommission: 8000 }),
+      policy({ dateIssued: ts('2026-03-02'), earnedCommission: 6000 }),
+    ];
+    const result = runRate(policies, today);
+    expect(result.isLinear).toBe(false);
+    expect(result.value).toBe(0);
+    expect(result.window).toBe('trailing-8wk');
+  });
+
+  it('sparse window — data in 3 of 8 trailing calendar weeks → ÷8 (zero-filled), not ÷3', () => {
+    const policies = [
+      policy({ dateIssued: ts('2026-01-05'), earnedCommission: 999 }),   // old, sets span
+      policy({ dateIssued: ts('2026-04-13'), earnedCommission: 1000 }),  // week Apr 12, i=7 in window
+      policy({ dateIssued: ts('2026-05-11'), earnedCommission: 2000 }),  // week May 10, i=3 in window
+      policy({ dateIssued: ts('2026-06-01'), earnedCommission: 3000 }),  // week May 31, i=0 in window
+    ];
+    const result = runRate(policies, today);
+    expect(result.isLinear).toBe(false);
+    expect(result.value).toBeCloseTo(((1000 + 2000 + 3000) / 8) * 52);
+    expect(result.value).not.toBeCloseTo(((1000 + 2000 + 3000) / 3) * 52);
   });
 });
 

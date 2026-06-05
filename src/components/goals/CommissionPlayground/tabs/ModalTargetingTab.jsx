@@ -1,10 +1,10 @@
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { formatCurrency } from '../../../../utils/formatters';
 import ModeMixSlider from '../components/ModeMixSlider';
 import CommissionBreakdownTable from '../components/CommissionBreakdownTable';
 import CashFlowChart from '../components/CashFlowChart';
 import InsightCard from '../components/InsightCard';
-import { reverseCalc, modeBreakdown, cashFlowForecast } from '../utils/commissionMath';
+import { reverseCalc, modeBreakdown } from '../utils/commissionMath';
 import { DEFAULT_MODE_MIX } from '../utils/modeMixBalancer';
 
 export default function ModalTargetingTab({ defaultCommissionRate = 35 }) {
@@ -19,11 +19,6 @@ export default function ModalTargetingTab({ defaultCommissionRate = 35 }) {
 
   const breakdown = useMemo(
     () => modeBreakdown({ totalApi, modeMix, commissionRate }),
-    [totalApi, modeMix, commissionRate],
-  );
-
-  const forecast = useMemo(
-    () => cashFlowForecast({ totalApi, modeMix, commissionRate }),
     [totalApi, modeMix, commissionRate],
   );
 
@@ -87,7 +82,7 @@ export default function ModalTargetingTab({ defaultCommissionRate = 35 }) {
       {/* Panel 3 — 12-month cash flow + insights */}
       <div className="flex flex-col gap-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">12-Month Cash Flow</p>
-        <CashFlowChart forecast={forecast} />
+        <CashFlowChart totalApi={totalApi} modeMix={modeMix} commissionRate={commissionRate} />
         <InsightCard
           totalApi={totalApi}
           modeMix={modeMix}

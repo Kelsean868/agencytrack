@@ -29,10 +29,12 @@ export function ytdEarned(policies, year) {
 }
 
 // Trailing run-rate annualized from settled policy commissions.
-// Groups by settled week; if >= 8 distinct weeks, uses all of them (isLinear: false).
-// Fewer than 8 → linear-YTD fallback (isLinear: true).
+// Arm selected by history SPAN (first settled week to today's week):
+//   span >= 8 cal weeks → trailing: Σ(8-calendar-week window, zero-filled) ÷ 8 × 52
+//   span <  8 cal weeks → linear-YTD: ytdEarned ÷ elapsedTTYearWeeks × 52
 // Returns { value, window, isLinear, weekCount }.
 export function runRate(policies, today) {
+  const WEEK_MS = 7 * 86400000;
   const maxWK = todayWeekMs(today);
 
   const settled = policies.filter(
@@ -51,13 +53,25 @@ export function runRate(policies, today) {
   }
 
   const weekCount = byWeek.size;
-  const total = [...byWeek.values()].reduce((s, v) => s + v, 0);
-  const annualized = (total / weekCount) * 52;
+  const firstSettledWk = Math.min(...byWeek.keys());
+  const spanWeeks = (maxWK - firstSettledWk) / WEEK_MS;
 
-  if (weekCount >= 8) {
-    return { value: annualized, window: `trailing-${weekCount}wk`, isLinear: false, weekCount };
+  if (spanWeeks >= 8) {
+    let trailing8Total = 0;
+    for (let i = 0; i < 8; i++) {
+      trailing8Total += byWeek.get(maxWK - i * WEEK_MS) || 0;
+    }
+    return { value: (trailing8Total / 8) * 52, window: 'trailing-8wk', isLinear: false, weekCount };
   }
-  return { value: annualized, window: `based on ${weekCount} weeks`, isLinear: true, weekCount };
+
+  // Linear-YTD: ytdEarned ÷ elapsed TT-year weeks × 52
+  const ttDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Port_of_Spain' }).format(today);
+  const year = parseInt(ttDateStr.split('-')[0], 10);
+  const jan1 = new Date(`${year}-01-01T04:00:00Z`);
+  const jan1WkMs = jan1.getTime() - jan1.getUTCDay() * 86400000;
+  const elapsedWeeks = (maxWK - jan1WkMs) / WEEK_MS + 1;
+  const ytd = [...byWeek.values()].reduce((s, v) => s + v, 0);
+  return { value: (ytd / elapsedWeeks) * 52, window: `based on ${elapsedWeeks} weeks`, isLinear: true, weekCount };
 }
 
 // Convert committedAnnualAPI to its first-year commission equivalent using the

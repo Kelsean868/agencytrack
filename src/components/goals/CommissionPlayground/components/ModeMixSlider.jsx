@@ -1,3 +1,4 @@
+import React from 'react';
 import { rebalance } from '../utils/modeMixBalancer';
 
 const MODE_LABELS = {

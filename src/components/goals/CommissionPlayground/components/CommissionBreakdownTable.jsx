@@ -1,3 +1,4 @@
+import React from 'react';
 import { formatCurrency } from '../../../../utils/formatters';
 
 const MODE_LABELS = {
