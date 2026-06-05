@@ -98,7 +98,8 @@ function recomputeYtdEarned(policies, year) {
 }
 
 function recomputeRunRate(policies, today) {
-  const maxWK  = _todayWeekMs(today);
+  const WEEK_MS = 7 * 86400000;
+  const maxWK   = _todayWeekMs(today);
   const settled = policies.filter(
     (p) => p.status === 'settled' && p.dateIssued && p.earnedCommission != null,
   );
@@ -110,13 +111,23 @@ function recomputeRunRate(policies, today) {
   }
   if (byWeek.size === 0) return { value: 0, weekCount: 0, isLinear: true };
   const weekCount = byWeek.size;
-  if (weekCount >= 8) {
-    const sorted = [...byWeek.entries()].sort((a, b) => b[0] - a[0]);
-    const trailing8 = sorted.slice(0, 8).reduce((s, [, v]) => s + v, 0);
-    return { value: (trailing8 / 8) * 52, weekCount, isLinear: false };
+  const firstSettledWk = Math.min(...byWeek.keys());
+  const spanWeeks = (maxWK - firstSettledWk) / WEEK_MS;
+  if (spanWeeks >= 8) {
+    let trailing8Total = 0;
+    for (let i = 0; i < 8; i++) {
+      trailing8Total += byWeek.get(maxWK - i * WEEK_MS) || 0;
+    }
+    return { value: (trailing8Total / 8) * 52, weekCount, isLinear: false };
   }
-  const total = [...byWeek.values()].reduce((s, v) => s + v, 0);
-  return { value: (total / weekCount) * 52, weekCount, isLinear: true };
+  // Linear-YTD: ytdEarned ÷ elapsed TT-year weeks × 52
+  const ttStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Port_of_Spain' }).format(today);
+  const year = parseInt(ttStr.split('-')[0], 10);
+  const jan1 = new Date(`${year}-01-01T04:00:00Z`);
+  const jan1WkMs = jan1.getTime() - jan1.getUTCDay() * 86400000;
+  const elapsedWeeks = (maxWK - jan1WkMs) / WEEK_MS + 1;
+  const ytd = [...byWeek.values()].reduce((s, v) => s + v, 0);
+  return { value: (ytd / elapsedWeeks) * 52, weekCount, isLinear: true };
 }
 
 // gapToGoal uses DEFAULT_MODE_MIX = {annual:1,...} when no modeMix is passed
