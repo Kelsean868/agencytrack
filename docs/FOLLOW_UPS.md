@@ -4156,9 +4156,11 @@ Banked closed: Item 5 (night queue, test-only), 2026-06-05. Resolved: Commission
 
 ---
 
-## `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (**FIX-NOW, GREEN-CHANNEL XS**, promoted 2026-06-05 at third strike)
+## `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (**CLOSED, PR #502 `d936c69`**)
 
 **Scope:** `src/components/manager/__tests__/CompliancePanel.nudge.test.jsx` — 6 tests covering the S2 nudge-send + cooldown-chip interactions.
+
+**CLOSED:** All 7 `fireEvent.click()` sites wrapped in `await act(async () => { ... })` — drains microtask queue from async `handleNudge`/`handleNudgeAll` handlers before assertions proceed. 20× consecutive isolated green + 2426/2426 full suite ×2. Merged via green-channel (test-only). PR #502 `d936c69`, 2026-06-05.
 
 **Observed behavior (three occurrences, all 2026-06-05):**
 1. During the settlements security dispatch full-suite run — 1 failure, isolated re-run clean.
