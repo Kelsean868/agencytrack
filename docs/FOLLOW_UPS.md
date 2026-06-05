@@ -4107,6 +4107,20 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
 
 ---
 
+## CommissionPlayground tabs lack default `React` import → blocks full RTL baseline (NEW, LOW/TEST-ENABLER, banked 2026-06-05, Item 5 PARK)
+
+**Scope:** `src/components/goals/CommissionPlayground/tabs/GoalDecompositionTab.jsx` and `ModalTargetingTab.jsx` import only named hooks (`import { useState, ... } from 'react'`), not the default `React`. Mounting either in a **new** Vitest test throws `ReferenceError: React is not defined` at the JSX return (e.g. `GoalDecompositionTab.jsx:184`) — the banked CLAUDE.md #153 lesson ("All new JSX components must explicitly import React for Vitest compatibility"; Vitest does not apply Vite's automatic JSX transform to newly-mounted files).
+
+**Consequence:** Item 5(b)'s CommissionPlayground RTL baseline could only land the **collapsed-shell** tests (render header, `isManagerSelf` copy — these mount only `index.jsx`, which already has the import). The **expand-dependent** baseline — tablist reveal, tab switch, the `setGoals` write path, and localStorage income-goal persistence — was **PARKED** because exercising it requires mounting the tabs, which requires the src fix. Item 5 was scoped test-only / ZERO src changes (brief: "if untestable without src edits, PARK that part and keep (a)").
+
+**Fix (one line each):** add `import React from 'react';` to both tab files, then land the parked baseline tests (the four removed cases live in this FU's originating test file's git history / the PR #491-adjacent Item-5 PR description). Trivial, lint-clean, also brings the tabs into line with the CLAUDE.md React-import rule.
+
+**Priority:** LOW. The real Commission math safety net shipped in Item 5(a) (commissionMath characterization: `modeBreakdown` + `cashFlowForecast` + `commissionThisMonth` + boundaries; the decomposition chain is pinned in `src/utils/__tests__/goalDecomposition.test.js`). This FU only unblocks the *component-mount* half of the baseline. Best done when the Commission redesign (S1) next touches these files.
+
+Banked: Item 5 (night queue, test-only), 2026-06-05.
+
+---
+
 ## NotificationDrawer — `text-primary` "Mark all read" button fails AA on bg (NEW, MEDIUM/DESIGN-DECISION, banked 2026-06-04, PR #487 successor)
 
 **Scope:** `src/components/ui/NotificationDrawer.jsx:61` — the "Mark all read" action renders as `text-xs font-medium text-primary hover:text-primary-dark` directly on the drawer surface `bg`. Per the PR #487 closure note (verified on `main`), this **primary-on-bg button fails AA in both themes** — a pre-existing failure *surfaced* (not introduced) by the contrast-debt retirement sweep.
