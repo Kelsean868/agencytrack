@@ -189,7 +189,7 @@ async function runTheme(context, theme, recompute) {
   const unexpected = seriousNodes.filter((n) => !SERIOUS_ALLOWLIST.some((a) => a.test(n.html)));
   record(`Leg 6 axe (${theme})`, crit.length === 0 && unexpected.length === 0,
     `critical: ${crit.length} · serious: ${seriousNodes.length} (allowlisted ${seriousNodes.length - unexpected.length}, unexpected ${unexpected.length})` +
-    (unexpected.length ? ` → NEW: ${unexpected.map((n) => n.id).join('; ')}` : ''));
+    (unexpected.length ? ` → NEW: ${unexpected.map((n) => `${n.id} :: ${n.html}`).join(' | ')}` : '')); // html aids triage
   record(`Leg 6 console (${theme})`, consoleErrors.length === 0,
     consoleErrors.length === 0 ? '0 console errors (Fontshare CORS filtered)' : `${consoleErrors.length} error(s): ${consoleErrors.slice(0, 3).join(' | ')}`);
 
@@ -203,18 +203,21 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   let recompute = null;
   try {
-    // First theme establishes the week; recompute once against that week.
-    const ctxLight = await browser.newContext({ viewport: VIEWPORT });
-    await setupBypassSession(ctxLight, PREVIEW_URL, TOKEN);
-    // Derive the current week the panel defaults to, then recompute.
-    const probe = await ctxLight.newPage();
+    // Throwaway probe context (its own session) to read the panel's default week,
+    // then recompute plan adoption once against that week.
+    const ctxProbe = await browser.newContext({ viewport: VIEWPORT });
+    await setupBypassSession(ctxProbe, PREVIEW_URL, TOKEN);
+    const probe = await ctxProbe.newPage();
     await loginAsManager(probe);
     await navigateToCompliance(probe);
     const weekStart = await probe.$eval('select[aria-label="Week"]', (el) => el.value);
-    await probe.close();
+    await ctxProbe.close();
     recompute = await recomputePlanAdoption(weekStart);
     safeLog('Plan-adoption recompute (week ' + weekStart + '):', JSON.stringify(recompute));
 
+    // Fresh (unauthenticated) context per theme.
+    const ctxLight = await browser.newContext({ viewport: VIEWPORT });
+    await setupBypassSession(ctxLight, PREVIEW_URL, TOKEN);
     await runTheme(ctxLight, 'light', recompute);
     await ctxLight.close();
 

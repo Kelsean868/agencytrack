@@ -659,7 +659,7 @@ function LensTab({ active, onClick, label, count, testid }) {
       }`}
     >
       {label}
-      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${active ? 'bg-white/25 text-white' : 'bg-border/60 text-ink-muted'}`}>
+      <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${active ? 'bg-black/20 text-white' : 'bg-border/60 text-ink-muted'}`}>
         {count}
       </span>
     </button>
