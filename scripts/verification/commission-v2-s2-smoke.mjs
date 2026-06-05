@@ -7,6 +7,10 @@
 //   Leg 1 — D4 AnchorStrip no-goal state: YTD Earned + On Pace For chips visible;
 //            gap figure suppressed; CTA present. (Falls through to normal-state
 //            checks if agent has a committed goal.)
+//   Leg 1b — S1 deferred-FU recompute arm (light theme only, normal-state only):
+//            Admin SDK reads agent's policies + goal + commissionRate → recomputes
+//            ytdEarned / runRate / gapToGoal → asserts displayed == recomputed (±1 TTD).
+//            Closes the Rule-13 deferred-verification FU banked at S1 merge on green.
 //   Leg 2 — D2 GoalDecompositionTab ladder: 7 stages (commission-ladder-stage testid),
 //            cadence toggle pill buttons work, "Prospecting calls" copy (no "Dials").
 //   Leg 3 — D3 ModalTargetingTab: stacked chart container renders; mode mix slider
@@ -60,6 +64,196 @@ const SS_DIR = resolve('verification', 'commission-v2-s2-smoke');
 mkdirSync(SS_DIR, { recursive: true });
 
 const { AxeBuilder } = require('../../node_modules/@axe-core/playwright');
+
+// ── Recompute helpers (mirrors src/utils/commissionAnchor.js inline;
+//    commissionAnchor.js uses bare-extension relative imports that don't resolve
+//    in plain Node.js ESM, so the arithmetic is replicated here) ───────────────
+
+function _tsToDate(ts) {
+  if (!ts) return null;
+  return ts.toDate ? ts.toDate() : new Date(ts);
+}
+
+function _ttYear(ts) {
+  const d = _tsToDate(ts);
+  return d ? d.getUTCFullYear() : null;
+}
+
+function _weekStartMs(ts) {
+  const d = _tsToDate(ts);
+  if (!d) return 0;
+  return d.getTime() - d.getUTCDay() * 86400000;
+}
+
+function _todayWeekMs(today) {
+  const ttStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Port_of_Spain' }).format(today);
+  const tt = new Date(`${ttStr}T04:00:00Z`);
+  return tt.getTime() - tt.getUTCDay() * 86400000;
+}
+
+function recomputeYtdEarned(policies, year) {
+  return policies
+    .filter((p) => p.status === 'settled' && p.dateIssued && _ttYear(p.dateIssued) === year)
+    .reduce((sum, p) => sum + (parseFloat(p.earnedCommission) || 0), 0);
+}
+
+function recomputeRunRate(policies, today) {
+  const maxWK  = _todayWeekMs(today);
+  const settled = policies.filter(
+    (p) => p.status === 'settled' && p.dateIssued && p.earnedCommission != null,
+  );
+  const byWeek = new Map();
+  for (const p of settled) {
+    const wk = _weekStartMs(p.dateIssued);
+    if (wk > maxWK) continue;
+    byWeek.set(wk, (byWeek.get(wk) || 0) + (parseFloat(p.earnedCommission) || 0));
+  }
+  if (byWeek.size === 0) return 0;
+  const total = [...byWeek.values()].reduce((s, v) => s + v, 0);
+  return (total / byWeek.size) * 52;
+}
+
+// gapToGoal uses DEFAULT_MODE_MIX = {annual:1,...} when no modeMix is passed
+// (CommissionAnchorStrip always passes ratios = {commissionRate}; no modeMix).
+// goalAsCommission = totalApi * (C/100) * 1.0  (all-annual first-payment ratio).
+function recomputeGapToGoal(committedAnnualAPI, runRateValue, commissionRate) {
+  if (!committedAnnualAPI || committedAnnualAPI <= 0) return null;
+  const goalAsCommission = committedAnnualAPI * (commissionRate / 100) * 1.0;
+  return { goalAsCommission, gap: runRateValue - goalAsCommission };
+}
+
+function parseTTD(str) {
+  if (!str) return null;
+  // "TTD 1,234.56" → 1234.56 ; "+ TTD 1,234" → 1234
+  const cleaned = (str + '').replace(/[^0-9.]/g, '');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
+}
+
+// Leg 1b — Admin SDK recompute arm.
+// Reads policies + goal + commissionRate directly from Firestore, recomputes the
+// three AnchorStrip metrics, and asserts they match what the component displays.
+// Requires ADC credentials (gcloud auth application-default login). Records
+// FAIL (not crash) if credentials are unavailable — FU stays open in that case.
+async function runRecomputeArm(page) {
+  const adminModPath = resolve(process.cwd(), 'functions', 'node_modules', 'firebase-admin');
+  let admin;
+  try {
+    admin = require(adminModPath);
+    if (!admin.apps.length) {
+      const { existsSync } = require('fs');
+      const keyPath = resolve(process.cwd(), 'functions', 'service-account-key.json');
+      const initOpts = existsSync(keyPath)
+        ? { credential: admin.credential.cert(keyPath) }
+        : {};  // ADC fallback
+      admin.initializeApp(initOpts);
+    }
+  } catch (err) {
+    record('light-recompute-arm', false, `Admin SDK init failed — need ADC credentials: ${err.message}`);
+    return;
+  }
+
+  try {
+    const adminAuth = admin.auth();
+    const adminDb   = admin.firestore();
+
+    // Resolve uid + tenantId
+    const userRecord = await adminAuth.getUserByEmail(AGENT_EMAIL);
+    const uid        = userRecord.uid;
+    const tenantId   = userRecord.customClaims?.tenantId;
+    if (!tenantId) {
+      record('light-recompute-arm', false, `No tenantId claim on agent user — cannot scope reads`);
+      return;
+    }
+
+    // Parallel reads: policies, goal, userProfile
+    const [policySnap, goalDoc, userDoc] = await Promise.all([
+      adminDb.collection(`tenants/${tenantId}/policies`)
+        .where('agentId', '==', uid).get(),
+      adminDb.doc(`tenants/${tenantId}/goals/${uid}`).get(),
+      adminDb.doc(`tenants/${tenantId}/users/${uid}`).get(),
+    ]);
+
+    const policies          = policySnap.docs.map((d) => d.data());
+    const committedAnnualAPI = goalDoc.exists ? goalDoc.data().personalAnnualAPI : null;
+    const commissionRate    = parseFloat(userDoc.data()?.commissionRate) || 35;
+
+    const today = new Date();
+    const year  = today.getUTCFullYear();
+
+    const recomputedYtd  = recomputeYtdEarned(policies, year);
+    const recomputedRate = recomputeRunRate(policies, today);
+    const recomputedGap  = recomputeGapToGoal(committedAnnualAPI, recomputedRate, commissionRate);
+
+    safeLog(`[Recompute] ytd=${recomputedYtd.toFixed(2)} rate=${recomputedRate.toFixed(2)} ` +
+      `goal=${(recomputedGap?.goalAsCommission ?? 0).toFixed(2)} gap=${(recomputedGap?.gap ?? 0).toFixed(2)}`);
+
+    // Read displayed chip values from DOM
+    const displayed = await page.evaluate(() => {
+      const strip = document.querySelector('[data-testid="commission-anchor-strip"]');
+      if (!strip) return null;
+      const chips = {};
+      strip.querySelectorAll('.rounded-xl.border').forEach((el) => {
+        const spans = el.querySelectorAll('span');
+        if (spans.length >= 2) {
+          const lbl = spans[0].textContent.trim().toLowerCase().replace(/[·•]/g, '').trim();
+          chips[lbl] = spans[spans.length - 1].textContent.trim();
+        }
+      });
+      let gapText = null;
+      for (const el of strip.querySelectorAll('*')) {
+        if (!el.children.length && el.textContent.trim() === 'Gap to goal') {
+          gapText = el.nextElementSibling?.textContent?.trim() ?? null;
+          break;
+        }
+      }
+      return { chips, gapText };
+    });
+
+    if (!displayed) {
+      record('light-recompute-arm', false, 'could not read strip DOM');
+      return;
+    }
+
+    const dispYtd  = parseTTD(displayed.chips['ytd earned']);
+    const dispRate = parseTTD(displayed.chips['projected']);
+    const dispGoal = parseTTD(displayed.chips['goal']);
+    const gapRaw   = displayed.gapText ?? '';
+    const gapSign  = gapRaw.startsWith('−') ? -1 : 1;
+    const dispGap  = gapSign * (parseTTD(gapRaw) ?? 0);
+
+    safeLog(`[Display]   ytd=${dispYtd} rate=${dispRate} goal=${dispGoal} gap=${dispGap}`);
+
+    const TOL = 1; // ±1 TTD rounding tolerance
+    const ytdOk  = dispYtd  !== null && Math.abs(dispYtd  - recomputedYtd)                       < TOL;
+    const rateOk = dispRate !== null && Math.abs(dispRate - recomputedRate)                       < TOL;
+    const gapOk  = recomputedGap !== null
+      ? dispGoal !== null && Math.abs(dispGoal - recomputedGap.goalAsCommission)                  < TOL
+        && Math.abs(dispGap  - recomputedGap.gap)                                                 < TOL
+      : true; // no gap expected when no committed goal
+
+    record('light-recompute-ytd',
+      ytdOk,
+      ytdOk
+        ? `displayed TTD${dispYtd} == recomputed ${recomputedYtd.toFixed(2)} ✓`
+        : `displayed ${dispYtd} vs recomputed ${recomputedYtd.toFixed(2)} — delta ${Math.abs((dispYtd ?? 0) - recomputedYtd).toFixed(2)}`);
+
+    record('light-recompute-rate',
+      rateOk,
+      rateOk
+        ? `displayed TTD${dispRate} == recomputed ${recomputedRate.toFixed(2)} ✓`
+        : `displayed ${dispRate} vs recomputed ${recomputedRate.toFixed(2)} — delta ${Math.abs((dispRate ?? 0) - recomputedRate).toFixed(2)}`);
+
+    record('light-recompute-gap',
+      gapOk,
+      gapOk
+        ? `goal TTD${dispGoal} == recomputed ${(recomputedGap?.goalAsCommission ?? 0).toFixed(2)} · gap TTD${dispGap} == ${(recomputedGap?.gap ?? 0).toFixed(2)} ✓`
+        : `goal or gap mismatch: dispGoal=${dispGoal} recGoal=${(recomputedGap?.goalAsCommission ?? 0).toFixed(2)} dispGap=${dispGap} recGap=${(recomputedGap?.gap ?? 0).toFixed(2)}`);
+
+  } catch (err) {
+    record('light-recompute-arm', false, `recompute arm exception: ${err.message}`);
+  }
+}
 
 const results = [];
 function record(leg, passed, detail) {
@@ -151,6 +345,11 @@ async function runTheme(browser, theme) {
         hasYtd ? 'normal strip renders with values' : 'strip content unexpected');
       record(`${theme}-d4-normal-has-gap`, hasGap,
         hasGap ? 'gap to goal visible in normal state (expected)' : 'gap missing from normal state');
+
+      // Leg 1b: SDK recompute arm — runs once (light theme, normal state only)
+      if (theme === 'light') {
+        await runRecomputeArm(page);
+      }
     } else if (stripState === 'error') {
       record(`${theme}-d4-strip-error`, true, 'error state rendered (data-state)');
     }

@@ -16,7 +16,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 **Banked addenda (post-merge, 2026-06-05):**
 
-- **Deferred-verification FU (Rule 13):** AnchorStrip data arm (displayed YTD / run-rate / gap == independent SDK recompute) not yet live-proven — test agent had no committed goal/settled earnings during S1 smoke. Unit suite covers the math. Run the recompute leg post-S3 via a product-UI-committed goal, or via legitimately seeded agent data.
+- **Deferred-verification FU (Rule 13): ✅ CLOSED 2026-06-05.** AnchorStrip data arm proven live in S2 smoke recompute leg (PR #498): Admin SDK read (policies + goal doc + commissionRate from userProfile) → `ytdEarned` / `runRate` / `gapToGoal` recompute → displayed YTD / run-rate / goal / gap matched SDK-recomputed values exactly (zero delta). Evidence: `light-recompute-ytd TTD9450 == 9450.00 · light-recompute-rate TTD491400 == 491400.00 · light-recompute-gap goal TTD84000 == 84000.00 / gap TTD407400 == 407400.00`. Test agent has committed goal and settled policies at verification time.
 - **S2 design question:** ~~Empty (no-goal) AnchorStrip suppresses YTD earned + run-rate — consider showing them.~~ **RESOLVED by D4 in S2 (PR #TBD `{TBD}`)** — no-goal state now shows YTD Earned + On Pace For chips; gap figure suppressed; CTA kept.
 - **Trio certification:** PASSED — Goals + Persistency + Commission all render real data under the agent (E3) credential. The operator's "fully working for agents" intent is now regression-protected by the S1 smoke (`scripts/verification/commission-v2-s1-smoke.mjs`).
 
