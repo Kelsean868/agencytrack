@@ -28,7 +28,7 @@ import { createRequire } from 'module';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { getFirestore, doc, deleteDoc, getDoc } from 'firebase/firestore';
-import { setupBypassSession, setTheme, safeLog } from './lib/walk-helpers.mjs';
+import { setupBypassSession, setTheme, safeLog, resolveSmokeBaseUrl, installGlobalTimeout, finishSmoke, stamp } from './lib/walk-helpers.mjs';
 import { loadEnv } from '../lib/loadEnv.mjs';
 
 const require = createRequire(import.meta.url);
@@ -49,10 +49,10 @@ const MGR_EMAIL    = requireEnv('A11Y_BRANCH_MANAGER_EMAIL');
 const MGR_PASSWORD = requireEnv('A11Y_BRANCH_MANAGER_PASSWORD');
 const NUDGE_TYPE   = 'compliance.filing.nudge';
 
-const PREVIEW_HOST =
-  process.env.PREVIEW_HOST ??
-  'agencytrack-git-feat-compliance-v2-s2-kyron-marchan-s-projects.vercel.app';
-const PREVIEW_URL = `https://${PREVIEW_HOST}`;
+const BASE_URL = resolveSmokeBaseUrl({
+  defaultHost: 'agencytrack-git-feat-compliance-v2-s2-kyron-marchan-s-projects.vercel.app',
+});
+const GLOBAL_TIMEOUT_MS = 10 * 60 * 1000;
 const VIEWPORT = { width: 1280, height: 900 };
 const SS_DIR = resolve('verification', 'compliance-v2-s2-smoke');
 mkdirSync(SS_DIR, { recursive: true });
@@ -62,7 +62,7 @@ const { AxeBuilder } = require('../../node_modules/@axe-core/playwright');
 const results = [];
 function record(leg, passed, detail) {
   results.push({ leg, passed, detail });
-  console.log(`  ${passed ? '✓' : '✗'} ${leg}: ${detail}`);
+  console.log(`[${stamp()}]  ${passed ? '✓' : '✗'} ${leg}: ${detail}`);
 }
 
 // Same enumerate-and-accept allowlist as S1 (contrast-debt family + bell badge).
@@ -75,7 +75,7 @@ const SERIOUS_ALLOWLIST = [
 ];
 
 async function loginAsManager(page) {
-  await page.goto(PREVIEW_URL, { waitUntil: 'domcontentloaded' });
+  await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('input[type="email"]', { timeout: 20000 });
   await page.fill('input[type="email"]', MGR_EMAIL);
   await page.fill('input[type="password"]', MGR_PASSWORD);
@@ -265,19 +265,21 @@ async function cleanup() {
 }
 
 async function main() {
-  console.log('Compliance v2 S2 — write smoke (BM credential, both themes)');
-  safeLog('Preview host:', PREVIEW_HOST);
+  console.log(`[${stamp()}] Compliance v2 S2 — write smoke (BM credential, both themes)`);
+  safeLog('Base URL:', BASE_URL);
+  const clearGlobalTimeout = installGlobalTimeout(GLOBAL_TIMEOUT_MS, () =>
+    results.forEach(({ leg, passed, detail }) => console.log(`  ${passed ? '✓' : '✗'} ${leg}: ${detail}`)));
 
   const browser = await chromium.launch({ headless: true });
   try {
     try {
       const ctxLight = await browser.newContext({ viewport: VIEWPORT });
-      await setupBypassSession(ctxLight, PREVIEW_URL, TOKEN);
+      await setupBypassSession(ctxLight, BASE_URL, TOKEN);
       await runLight(ctxLight);
       await ctxLight.close();
 
       const ctxDark = await browser.newContext({ viewport: VIEWPORT });
-      await setupBypassSession(ctxDark, PREVIEW_URL, TOKEN);
+      await setupBypassSession(ctxDark, BASE_URL, TOKEN);
       await runDark(ctxDark);
       await ctxDark.close();
     } catch (err) {
@@ -294,15 +296,7 @@ async function main() {
     }
   }
 
-  console.log('\n── Summary ─────────────────────────────────────────────────');
-  const passed = results.filter((r) => r.passed).length;
-  const failed = results.filter((r) => !r.passed).length;
-  results.forEach(({ leg, passed, detail }) => console.log(`  ${passed ? '✓' : '✗'} ${leg}: ${detail}`));
-  console.log(`\n${passed + failed} checks: ${passed} passed, ${failed} failed`);
-  if (failed > 0) {
-    console.error('Smoke FAILED — see above.');
-    process.exit(1);
-  }
+  finishSmoke(results, { clearTimeout: clearGlobalTimeout }); // prints summary + process.exit (no idle-stream hang)
 }
 
 main().catch((err) => {

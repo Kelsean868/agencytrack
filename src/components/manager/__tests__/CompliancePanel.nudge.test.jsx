@@ -10,6 +10,7 @@ const hoisted = vi.hoisted(() => ({
   getTenantUsers: vi.fn(),
   sendComplianceNudge: vi.fn(),
   getNudgeRecords: vi.fn(),
+  getWeeklyPlan: vi.fn(),
   unlockSubmission: vi.fn(),
   show: vi.fn(),
 }));
@@ -21,9 +22,11 @@ vi.mock('../../../services/managerService', () => ({
 }));
 vi.mock('../../../services/nudgeService', () => ({
   NUDGE_TYPE: 'compliance.filing.nudge',
+  PLAN_NUDGE_TYPE: 'compliance.plan.nudge',
   sendComplianceNudge: hoisted.sendComplianceNudge,
   getNudgeRecords: hoisted.getNudgeRecords,
 }));
+vi.mock('../../../services/weeklyPlanService', () => ({ getWeeklyPlan: hoisted.getWeeklyPlan }));
 vi.mock('../../../services/unlockService', () => ({ unlockSubmission: hoisted.unlockSubmission }));
 vi.mock('../../../hooks/useToast', () => ({ default: () => ({ show: hoisted.show, dismiss: vi.fn() }) }));
 vi.mock('../CoachingNotesModal', () => ({ default: () => null }));
@@ -63,6 +66,7 @@ beforeEach(() => {
     Promise.resolve(week === WEEK ? [SUB_A] : []));
   hoisted.getTenantUsers.mockResolvedValue(USERS);
   hoisted.getNudgeRecords.mockResolvedValue({}); // no prior nudges
+  hoisted.getWeeklyPlan.mockResolvedValue(null);  // filing-lens tests: plan data irrelevant
   hoisted.sendComplianceNudge.mockResolvedValue({ success: true });
   hoisted.unlockSubmission.mockResolvedValue(undefined);
 });
@@ -75,7 +79,7 @@ describe('CompliancePanel — S2 nudge + re-home wiring', () => {
 
     fireEvent.click(nudgeBtns[0]); // Bob (agentB) — exceptions sorted by name
 
-    await waitFor(() => expect(hoisted.sendComplianceNudge).toHaveBeenCalledWith(['agentB'], WEEK));
+    await waitFor(() => expect(hoisted.sendComplianceNudge).toHaveBeenCalledWith(['agentB'], WEEK, 'compliance.filing.nudge'));
     // The nudged row flips to a cooldown chip ("Nudged just now").
     await waitFor(() => expect(screen.getAllByTestId('compliance-cooldown-chip').length).toBeGreaterThan(0));
     expect(screen.getByText(/Nudged just now/)).toBeInTheDocument();
@@ -107,7 +111,7 @@ describe('CompliancePanel — S2 nudge + re-home wiring', () => {
     fireEvent.click(screen.getByTestId('compliance-nudge-all'));
     const dialog2 = await screen.findByRole('dialog');
     fireEvent.click(within(dialog2).getByRole('button', { name: /send 2 nudges/i }));
-    await waitFor(() => expect(hoisted.sendComplianceNudge).toHaveBeenCalledWith(['agentB', 'agentC'], WEEK));
+    await waitFor(() => expect(hoisted.sendComplianceNudge).toHaveBeenCalledWith(['agentB', 'agentC'], WEEK, 'compliance.filing.nudge'));
   });
 
   test('Unlock action calls unlockSubmission with the submission id behind the confirm (waiver wiring proof)', async () => {

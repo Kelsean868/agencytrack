@@ -44,8 +44,30 @@ const NUDGE_ACTOR_ROLES = new Set([
   'tenant_admin',
 ]);
 
-// Allowed nudge types. S3 reuses this CF with 'compliance.plan.nudge'.
-const NUDGE_TYPES = new Set(['compliance.filing.nudge']);
+// Per-type config: drives the payload lens, the bell notification copy, the
+// email subject + template pair. The allowlist is exactly the config keys —
+// S2 shipped 'compliance.filing.nudge'; S3 adds 'compliance.plan.nudge'.
+const NUDGE_CONFIG = {
+  'compliance.filing.nudge': {
+    lens: 'filing',
+    notifTitle: 'Weekly report reminder',
+    notifBody: (managerName, weekStart) =>
+      `${managerName} sent a reminder to submit your weekly report for the week of ${weekStart}.`,
+    emailSubject: 'A reminder to submit your weekly report',
+    txt: 'compliance-nudge.txt',
+    html: 'compliance-nudge.html',
+  },
+  'compliance.plan.nudge': {
+    lens: 'plan',
+    notifTitle: 'Weekly plan reminder',
+    notifBody: (managerName, weekStart) =>
+      `${managerName} sent a reminder to commit your weekly plan for the week of ${weekStart}.`,
+    emailSubject: 'A reminder to commit your weekly plan',
+    txt: 'compliance-plan-nudge.txt',
+    html: 'compliance-plan-nudge.html',
+  },
+};
+const NUDGE_TYPES = new Set(Object.keys(NUDGE_CONFIG));
 
 const MAX_AUDIENCE = 50;
 
@@ -146,6 +168,7 @@ exports.sendComplianceNudge = functions.https.onCall(async (data, context) => {
   }
 
   // ── Write notification artifacts (a + b + d) in one atomic batch ─────────────
+  const cfg = NUDGE_CONFIG[type]; // type already validated against the allowlist
   const ts = admin.firestore.FieldValue.serverTimestamp();
   const batch = db.batch();
   for (const t of targets) {
@@ -153,7 +176,7 @@ exports.sendComplianceNudge = functions.https.onCall(async (data, context) => {
     batch.set(nudgeRef, {
       type,
       audienceUid: t.uid,
-      payload: { weekStart, lens: 'filing', managerName },
+      payload: { weekStart, lens: cfg.lens, managerName },
       createdBy: actorUid,
       createdAt: ts,
       readAt: null,
@@ -164,8 +187,8 @@ exports.sendComplianceNudge = functions.https.onCall(async (data, context) => {
       userId: t.uid,
       tenantId: actorTenant,
       type,
-      title: 'Weekly report reminder',
-      body: `${managerName} sent a reminder to submit your weekly report for the week of ${weekStart}.`,
+      title: cfg.notifTitle,
+      body: cfg.notifBody(managerName, weekStart),
       link: null,
       read: false,
       createdAt: ts,
@@ -196,9 +219,9 @@ exports.sendComplianceNudge = functions.https.onCall(async (data, context) => {
         await db.collection('mail').add(
           buildMailDoc(
             t.email,
-            'A reminder to submit your weekly report',
-            'compliance-nudge.txt',
-            'compliance-nudge.html',
+            cfg.emailSubject,
+            cfg.txt,
+            cfg.html,
             { userName: t.name, managerName, weekStarting: weekStart }
           )
         );

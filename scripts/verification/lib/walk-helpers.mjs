@@ -190,6 +190,61 @@ export function resolvePreviewUrl() {
   return process.env.SMOKE_PREVIEW_URL ?? 'https://agencytrack.vercel.app';
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SMOKE HARNESS HARDENING — the template for all smokes (banked 2026-06-05 after
+// three idle-stream "hangs": a finished smoke never exits because the firebase
+// web SDK holds an open gRPC stream, so the runner waits forever). Three guards:
+//   1. resolveSmokeBaseUrl — resolve the target URL ONCE before launch (no
+//      deploy-resolution polling inside the run). Priority: --prod / SMOKE_PROD
+//      → production; SMOKE_BASE_URL → that; PREVIEW_HOST → https://host; else the
+//      script's defaultHost; else production.
+//   2. installGlobalTimeout — a hard ceiling; on expiry print partial results +
+//      a loud TIMEOUT marker and exit nonzero. No indefinite waits anywhere.
+//   3. finishSmoke — print the summary and process.exit() explicitly (success OR
+//      failure) so a lingering SDK connection can never keep the process alive.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PROD_URL = 'https://agencytrack.vercel.app';
+
+export function resolveSmokeBaseUrl({ defaultHost } = {}) {
+  const argv = process.argv.slice(2);
+  if (argv.includes('--prod') || process.env.SMOKE_PROD === '1') return PROD_URL;
+  if (process.env.SMOKE_BASE_URL) return process.env.SMOKE_BASE_URL.replace(/\/+$/, '');
+  if (process.env.PREVIEW_HOST) return `https://${process.env.PREVIEW_HOST}`;
+  if (defaultHost) return `https://${defaultHost}`;
+  return PROD_URL;
+}
+
+// HH:MM:SS stamp for flushed, ordered progress lines (plain console.log is
+// unbuffered — the buffering culprit was piping through `tail`, never the log).
+export function stamp() {
+  return new Date().toISOString().slice(11, 19);
+}
+
+export function installGlobalTimeout(ms, onTimeout) {
+  const handle = setTimeout(() => {
+    console.error(`\n⏱️  GLOBAL TIMEOUT after ${Math.round(ms / 1000)}s — smoke did not finish.`);
+    try { onTimeout?.(); } catch { /* best-effort partial dump */ }
+    console.error('TIMEOUT');
+    process.exit(2);
+  }, ms);
+  if (typeof handle.unref === 'function') handle.unref(); // don't let the timer itself keep us alive
+  return () => clearTimeout(handle);
+}
+
+// Print the summary and exit explicitly. results = [{ leg, passed, detail }].
+export function finishSmoke(results, { clearTimeout: clear } = {}) {
+  clear?.();
+  console.log('\n── Summary ─────────────────────────────────────────────────');
+  const passed = results.filter((r) => r.passed).length;
+  const failed = results.filter((r) => !r.passed).length;
+  results.forEach(({ leg, passed: p, detail }) => console.log(`  ${p ? '✓' : '✗'} ${leg}: ${detail}`));
+  console.log(`\n${passed + failed} checks: ${passed} passed, ${failed} failed`);
+  if (failed > 0) { console.error('Smoke FAILED — see above.'); process.exit(1); }
+  console.log('Smoke PASSED.');
+  process.exit(0);
+}
+
 /**
  * setTheme — primes a Playwright context to boot the app in light or dark.
  *

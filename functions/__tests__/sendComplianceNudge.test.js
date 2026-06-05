@@ -206,8 +206,31 @@ test('non-string audienceUid → invalid-argument', async () => {
   await expectCode(handler({ audienceUids: [123], type: TYPE, weekStart: WEEK }, ctx('sales_manager', 'sm1')), 'invalid-argument');
 });
 
-test('unsupported type → invalid-argument', async () => {
-  await expectCode(handler({ audienceUids: ['agentA'], type: 'compliance.plan.nudge', weekStart: WEEK }, ctx('sales_manager', 'sm1')), 'invalid-argument');
+test('unknown type → invalid-argument (allowlist is exactly the two known types)', async () => {
+  await expectCode(handler({ audienceUids: ['agentA'], type: 'compliance.bogus.nudge', weekStart: WEEK }, ctx('sales_manager', 'sm1')), 'invalid-argument');
+});
+
+test('plan type accepted — lens=plan, plan notif copy, plan email template (S3 allowlist extension)', async () => {
+  const res = await handler({ audienceUids: ['agentA'], type: 'compliance.plan.nudge', weekStart: WEEK }, ctx('unit_manager', 'um1'));
+  expect(res).toMatchObject({ success: true, count: 1, type: 'compliance.plan.nudge', weekStart: WEEK });
+  const ops = committedBatches[0];
+  const nudge = ops.find((o) => o.path.includes('/nudges/'));
+  expect(nudge.path).toBe(`tenants/${TENANT}/nudges/agentA_compliance.plan.nudge_${WEEK}`);
+  expect(nudge.data.payload.lens).toBe('plan');
+  const notif = ops.find((o) => o.path.includes('/notifications/'));
+  expect(notif.data.type).toBe('compliance.plan.nudge');
+  expect(notif.data.title).toMatch(/plan/i);
+  expect(notif.data.body).toMatch(/plan/i);
+  // Template selection: plan type → compliance-plan-nudge.* (not the filing pair).
+  expect(mailAdds[0].message.txt).toBe('compliance-plan-nudge.txt');
+  expect(mailAdds[0].message.html).toBe('compliance-plan-nudge.html');
+  expect(mailAdds[0].message.subject).toMatch(/plan/i);
+});
+
+test('filing type still selects the filing template (no cross-wiring)', async () => {
+  await handler({ audienceUids: ['agentA'], type: TYPE, weekStart: WEEK }, ctx('unit_manager', 'um1'));
+  expect(mailAdds[0].message.txt).toBe('compliance-nudge.txt');
+  expect(mailAdds[0].message.html).toBe('compliance-nudge.html');
 });
 
 test('non-Sunday weekStart → invalid-argument', async () => {
