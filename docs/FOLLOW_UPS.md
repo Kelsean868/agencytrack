@@ -41,12 +41,15 @@ the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeek
   **filtered exception set + confirm-count**; **no auto-escalation**; on-time = S1's exact
   Sun 23:59:59 AST D2 (no grace). D6 UI rule banked (`bg-primary` + `dark:bg-primary-dark`).
   `readAt` dormant-by-design (`update:false`; bell carries read-state).
-  - **Deferred prod-smoke (Rule 13).** The post-fix live dark-axe re-confirmation of the
-    Nudge-all `dark:bg-primary-dark` button was lost when the PR-483 preview was torn down at
-    merge (the pre-fix smoke caught the regression at 11/12; the fix matches the app-wide
-    convention + lint/RTL green, but the post-fix full smoke did not re-run on a live preview).
-    Re-run `scripts/verification/compliance-v2-s2-smoke.mjs` against prod (or the next preview
-    that renders `CompliancePanel`) and confirm **dark-theme axe is 0-new**.
+  - **Deferred prod-smoke (Rule 13) — ✅ CLOSED 2026-06-04.** Prod-smoke
+    (`PREVIEW_HOST=agencytrack.vercel.app node scripts/verification/compliance-v2-s2-smoke.mjs`,
+    BM credential, both themes) ran **12/12**: live CF fire + cooldown chip + reload-persist
+    (upline GET) + cross-session chip + Nudge-all confirm (4 prod exceptions → the `bg-primary`
+    button rendered) + View→viewer + creator-delete cleanup all PASS, and **dark-theme axe is
+    0-new** on the Nudge-all `bg-primary dark:bg-primary-dark` button — the D6 fix confirmed
+    live on production. One nudge + email sent to the test agent (by design); the `nudges`
+    record self-cleaned (creator-delete); bell `notifications` + `auditNudges` retained as
+    durable records.
   - **Future consumer.** The `nudges` collection (+ the `readAt` per-recipient marker, dormant
     in S2) is the primitive an **agent-side notification inbox** would later read.
 
