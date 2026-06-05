@@ -179,7 +179,7 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
           <span className={`h-2 w-2 shrink-0 rounded-sm ${dot}`} aria-hidden="true" />
           <span className="truncate">{label}</span>
           {localItems.length > 0 && (
-            <span className="font-mono text-[10px] font-medium text-ink-faint tracking-wide shrink-0">
+            <span className="font-mono text-[10px] font-medium text-ink-muted tracking-wide shrink-0">
               {filledCount} of {localItems.length} filled
             </span>
           )}
@@ -273,7 +273,7 @@ function PAYESummary({ worksheet }) {
       {renewals > 0 && (
         <div className="flex justify-between text-xs">
           <span className="text-ink-muted">− Renewal income</span>
-          <span className="text-success tabular-nums">− {formatCurrency(renewals)}</span>
+          <span className="text-success-ink tabular-nums">− {formatCurrency(renewals)}</span>
         </div>
       )}
       <div className="flex justify-between items-baseline border-t border-border pt-2">

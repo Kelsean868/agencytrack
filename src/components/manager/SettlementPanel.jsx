@@ -247,7 +247,7 @@ export default function SettlementPanel() {
               ))}
             </div>
           ) : error ? (
-            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>
           ) : settlements.length === 0 ? (
             <div className="card text-center py-8">
               <p className="text-sm text-ink-muted">No settlements recorded yet.</p>
@@ -401,7 +401,7 @@ export default function SettlementPanel() {
               />
             </div>
 
-            {validationError && <p className="text-xs text-danger">{validationError}</p>}
+            {validationError && <p className="text-xs text-danger-ink">{validationError}</p>}
 
             <SaveButton
               onClick={handleSave}
@@ -459,7 +459,7 @@ export default function SettlementPanel() {
                               placeholder="0"
                               className="h-9 w-16 px-2 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-1 focus:ring-primary/40"
                             />
-                            {row.error && <p className="text-[10px] text-danger mt-0.5">{row.error}</p>}
+                            {row.error && <p className="text-[10px] text-danger-ink mt-0.5">{row.error}</p>}
                           </td>
                         </tr>
                       );
@@ -469,7 +469,7 @@ export default function SettlementPanel() {
               </div>
             )}
 
-            {validationError && <p className="text-xs text-danger">{validationError}</p>}
+            {validationError && <p className="text-xs text-danger-ink">{validationError}</p>}
 
             <SaveButton
               onClick={handleBulkSave}
@@ -491,7 +491,7 @@ export default function SettlementPanel() {
             ))}
           </div>
         ) : error && settlements.length === 0 ? (
-          <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
+          <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>
         ) : settlements.length === 0 ? (
           <div className="card text-center py-8">
             <p className="text-sm text-ink-muted">No settlements recorded yet.</p>
@@ -499,7 +499,7 @@ export default function SettlementPanel() {
         ) : (
           <>
             {error && (
-              <div className="mb-3 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
+              <div className="mb-3 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>
             )}
             <div className="overflow-x-auto rounded-xl border border-border bg-surface-raised">
               <table className="text-sm w-full">
@@ -528,7 +528,7 @@ export default function SettlementPanel() {
                       <td className="px-3 py-2.5 text-center">
                         {deletingId === s.id ? (
                           <div className="flex flex-col items-center gap-1">
-                            <p className="text-[10px] text-danger leading-tight max-w-[100px]">
+                            <p className="text-[10px] text-danger-ink leading-tight max-w-[100px]">
                               Delete {agentName(s.agentId)} — {periodLabel(s.periodKey)}?
                             </p>
                             <div className="flex gap-1">

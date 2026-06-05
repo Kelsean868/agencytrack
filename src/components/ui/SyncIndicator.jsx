@@ -18,7 +18,7 @@ export default function SyncIndicator() {
   if (online) return null;
 
   return (
-    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-warning/15 text-warning text-xs font-semibold">
+    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-warning/15 text-warning-ink text-xs font-semibold">
       <WifiOff size={13} />
       <span>Offline</span>
     </div>

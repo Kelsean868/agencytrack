@@ -26,9 +26,9 @@ function formatPct(decimal) {
 
 function badgeClass(decimal) {
   if (!Number.isFinite(decimal)) return 'bg-border/40 text-ink-muted';
-  if (decimal >= 0.90) return 'bg-success/15 text-success';
-  if (decimal >= 0.80) return 'bg-warning/15 text-warning';
-  return 'bg-danger/15 text-danger';
+  if (decimal >= 0.90) return 'bg-success/15 text-success-ink';
+  if (decimal >= 0.80) return 'bg-warning/15 text-warning-ink';
+  return 'bg-danger/15 text-danger-ink';
 }
 
 function shortfallText(value) {
@@ -105,7 +105,7 @@ export default function PersistencyPlayground({
         </div>
 
         {!currentRecord && (
-          <div className="m-4 p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm text-warning flex items-center gap-2">
+          <div className="m-4 p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm text-warning-ink flex items-center gap-2">
             <AlertCircle size={14} /> No persistency record yet for this agent — Playground uses zero baselines.
           </div>
         )}

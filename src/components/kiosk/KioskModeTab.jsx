@@ -133,7 +133,7 @@ export default function KioskModeTab() {
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-danger-tint text-danger text-sm">
+        <div className="mb-4 px-4 py-3 rounded-lg bg-danger-tint text-danger-ink text-sm">
           {error}
         </div>
       )}
@@ -174,7 +174,7 @@ export default function KioskModeTab() {
                     title={copied ? 'Copied!' : 'Copy URL'}
                     className="h-11 w-11 rounded-lg flex items-center justify-center text-ink-muted hover:text-primary hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    <Copy size={15} className={copied ? 'text-success' : ''} />
+                    <Copy size={15} className={copied ? 'text-success-ink' : ''} />
                   </button>
                   <a
                     aria-label="Open kiosk"

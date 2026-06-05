@@ -63,12 +63,6 @@ function record(leg, passed, detail) {
 // family tracked by the contrast-debt FOLLOW_UP (token-level fix, app-wide) +
 // the pre-existing notification-bell badge. NOT new to this surface.
 const SERIOUS_ALLOWLIST = [
-  // All three shared StatusPill text-on-tint variants (bg-*/15 text-*) — the
-  // contrast-debt family: danger 4.33/3.91, warning (dark), success (light).
-  { name: 'StatusPill danger pill on-tint (contrast-debt FU)',   test: (h) => /bg-danger\/15/.test(h) && /text-danger/.test(h) },
-  { name: 'StatusPill warning pill on-tint (contrast-debt FU)',  test: (h) => /bg-warning\/15/.test(h) && /text-warning/.test(h) },
-  { name: 'StatusPill success pill on-tint (contrast-debt FU)',  test: (h) => /bg-success\/15/.test(h) && /text-success/.test(h) },
-  { name: 'exception count badge on-tint (contrast-debt FU)',    test: (h) => /bg-danger\/10/.test(h) && /text-danger/.test(h) },
   { name: 'pre-existing notification-bell badge',                test: (h) => /\babsolute\b/.test(h) && /bg-danger/.test(h) && /text-white/.test(h) },
 ];
 

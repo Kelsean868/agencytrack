@@ -25,8 +25,8 @@
 import React from 'react';
 
 const PALETTE = {
-  up:   'text-success   bg-success-tint',
-  down: 'text-danger    bg-danger-tint',
+  up:   'text-success-ink   bg-success-tint',
+  down: 'text-danger-ink    bg-danger-tint',
   even: 'text-ink-muted bg-surface-muted',
 };
 

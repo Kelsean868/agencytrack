@@ -11,7 +11,7 @@ export default function KPICard({ label, values = [], isCurrency = false }) {
 
   const deltaClass =
     delta === null || delta === 0 ? 'text-ink-muted' :
-    delta > 0 ? 'text-success' : 'text-danger';
+    delta > 0 ? 'text-success-ink' : 'text-danger-ink';
 
   const chartData = values.map((v, i) => ({ i, v }));
 

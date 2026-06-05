@@ -42,20 +42,20 @@ const ROLE_DISPLAY = {
 function StatusPill({ status }) {
   if (status === 'valid') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/15 text-success text-[10px] font-bold uppercase tracking-wide">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/15 text-success-ink text-[10px] font-bold uppercase tracking-wide">
         <CheckCircle2 size={10} aria-hidden="true" /> Valid
       </span>
     );
   }
   if (status === 'warning') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/15 text-warning text-[10px] font-bold uppercase tracking-wide">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/15 text-warning-ink text-[10px] font-bold uppercase tracking-wide">
         <AlertTriangle size={10} aria-hidden="true" /> Skip
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger/15 text-danger text-[10px] font-bold uppercase tracking-wide">
+    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-danger/15 text-danger-ink text-[10px] font-bold uppercase tracking-wide">
       <XCircle size={10} aria-hidden="true" /> Error
     </span>
   );
@@ -82,7 +82,7 @@ function StepIndicator({ step }) {
                 isCurrent
                   ? 'bg-primary text-white'
                   : isDone
-                    ? 'bg-success/20 text-success'
+                    ? 'bg-success/20 text-success-ink'
                     : 'bg-border/60 text-ink-muted'
               }`}
               aria-hidden="true"
@@ -323,7 +323,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
               )}
 
               {!branchesLoading && branchLoadError && (
-                <div role="alert" aria-live="polite" className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger flex items-start gap-2">
+                <div role="alert" aria-live="polite" className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-start gap-2">
                   <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
                   <span>{branchLoadError}</span>
                 </div>
@@ -331,7 +331,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
 
               {!branchesLoading && !branchLoadError && activeBranchCount === 0 && (
                 <div className="flex flex-col items-center text-center py-6 gap-3">
-                  <div className="p-3 rounded-full bg-warning/15 text-warning">
+                  <div className="p-3 rounded-full bg-warning/15 text-warning-ink">
                     <Building2 size={28} aria-hidden="true" />
                   </div>
                   <h3 className="text-sm font-bold text-ink">
@@ -394,7 +394,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
                   </button>
 
                   {parseError && (
-                    <div role="alert" aria-live="polite" className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger flex items-start gap-2">
+                    <div role="alert" aria-live="polite" className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-start gap-2">
                       <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
                       <span>{parseError}</span>
                     </div>
@@ -425,7 +425,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
             <div className="flex flex-col gap-3">
               {preview.summary.softWarn && (
                 <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-xs text-ink flex items-start gap-2">
-                  <AlertTriangle size={14} className="shrink-0 mt-0.5 text-warning" aria-hidden="true" />
+                  <AlertTriangle size={14} className="shrink-0 mt-0.5 text-warning-ink" aria-hidden="true" />
                   <span>
                     Importing {preview.summary.total} rows. The Cloud Function timeout is
                     9 minutes; large imports may take a while. The maximum per import is {LIMITS.MAX_BULK_ROWS}.
@@ -548,7 +548,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
               )}
               {serverError && (
                 <>
-                  <div role="alert" aria-live="polite" className="p-4 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger flex items-start gap-2 text-left max-w-lg w-full">
+                  <div role="alert" aria-live="polite" className="p-4 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-start gap-2 text-left max-w-lg w-full">
                     <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
                     <span>{serverError}</span>
                   </div>
@@ -617,20 +617,20 @@ function SummaryStats({ results, preview }) {
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
       <div className="card p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Created</p>
-        <p className="text-2xl font-bold text-success">{success}</p>
+        <p className="text-2xl font-bold text-success-ink">{success}</p>
       </div>
       <div className="card p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Skipped</p>
-        <p className="text-2xl font-bold text-warning">{skipped}</p>
+        <p className="text-2xl font-bold text-warning-ink">{skipped}</p>
         <p className="text-[10px] text-ink-muted">duplicate emails</p>
       </div>
       <div className="card p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Failed</p>
-        <p className="text-2xl font-bold text-danger">{failure}</p>
+        <p className="text-2xl font-bold text-danger-ink">{failure}</p>
       </div>
       <div className="card p-3">
         <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Email failed</p>
-        <p className="text-2xl font-bold text-warning">{emailFailed}</p>
+        <p className="text-2xl font-bold text-warning-ink">{emailFailed}</p>
         <p className="text-[10px] text-ink-muted">user created, no email</p>
       </div>
     </div>
@@ -650,7 +650,7 @@ function FailureList({ results }) {
       <ul className="divide-y divide-border max-h-48 overflow-y-auto">
         {failures.map((f) => (
           <li key={`${f.rowIndex}-${f.email}`} className="px-3 py-2 text-xs flex items-start gap-2">
-            <AlertCircle size={14} className="text-danger shrink-0 mt-0.5" aria-hidden="true" />
+            <AlertCircle size={14} className="text-danger-ink shrink-0 mt-0.5" aria-hidden="true" />
             <div className="flex-1 min-w-0">
               <p className="font-semibold text-ink truncate">
                 Row {(f.rowIndex ?? 0) + 1}: {f.email || '(no email)'}

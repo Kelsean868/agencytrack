@@ -438,7 +438,7 @@ export default function WizardForm({ onClose, initialWeek }) {
       {/* Header — eyebrow + title + autosave chip + close */}
       <header className="flex items-start justify-between gap-3 px-4 pt-4 pb-3 bg-bg shrink-0">
         <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-faint">
+          <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-muted">
             {screen === 'step'      && `Step ${step} · ${activeStepEntry.phase[0].toUpperCase()}${activeStepEntry.phase.slice(1)}`}
             {screen === 'date'      && 'Weekly Report'}
             {screen === 'done'      && 'Complete'}
@@ -496,7 +496,7 @@ export default function WizardForm({ onClose, initialWeek }) {
           role="alert"
           className="mx-4 mb-2 px-4 py-3 rounded-xl bg-warning-tint border border-warning/30 flex items-start gap-3 shrink-0"
         >
-          <AlertTriangle size={16} className="text-warning shrink-0 mt-0.5" />
+          <AlertTriangle size={16} className="text-warning-ink shrink-0 mt-0.5" />
           <p className="text-sm text-ink flex-1">
             Couldn&apos;t save your work. Don&apos;t close this window — your typing is safe. Check your connection and try again.
           </p>
@@ -531,7 +531,7 @@ export default function WizardForm({ onClose, initialWeek }) {
                 </option>
               ))}
             </select>
-            {error && <p className="text-xs text-danger mb-3">{error}</p>}
+            {error && <p className="text-xs text-danger-ink mb-3">{error}</p>}
             <button
               type="button"
               onClick={() => handleDateSelect(localWeekChoice)}
@@ -604,7 +604,7 @@ export default function WizardForm({ onClose, initialWeek }) {
         )}
 
         {error && screen === 'step' && (
-          <p className="px-4 pb-4 text-sm text-danger text-center" role="alert">{error}</p>
+          <p className="px-4 pb-4 text-sm text-danger-ink text-center" role="alert">{error}</p>
         )}
       </main>
 
@@ -667,7 +667,7 @@ export default function WizardForm({ onClose, initialWeek }) {
             {prevLabel}
           </button>
           <span
-            className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-faint whitespace-nowrap"
+            className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-muted whitespace-nowrap"
             data-testid="wizard-v2-step-counter"
           >
             Step {step} of {TOTAL_STEPS_DISPLAY}
@@ -743,13 +743,13 @@ function SaveStatusIndicator({ saving, savedAt, stickyError, isOffline, onRetry 
           <span className="text-xs text-ink-muted animate-pulse motion-reduce:animate-none">Saving…</span>
         )}
         {!saving && savedAt && isOffline && !visibleError && (
-          <span className="flex items-center gap-1 text-xs text-warning">
+          <span className="flex items-center gap-1 text-xs text-warning-ink">
             <Check size={13} />
             Saved offline — will sync when reconnected
           </span>
         )}
         {!saving && savedAt && !isOffline && !visibleError && (
-          <span className="flex items-center gap-1 text-xs text-success">
+          <span className="flex items-center gap-1 text-xs text-success-ink">
             <Check size={13} />
             Saved
           </span>
@@ -757,16 +757,16 @@ function SaveStatusIndicator({ saving, savedAt, stickyError, isOffline, onRetry 
       </div>
       <div role="alert" aria-atomic="true">
         {!saving && !savedAt && isOffline && !visibleError && (
-          <span className="text-xs text-warning">Offline — will save when reconnected</span>
+          <span className="text-xs text-warning-ink">Offline — will save when reconnected</span>
         )}
         {visibleError && !saving && !isOffline && (
-          <span className="flex items-center gap-1 text-xs text-danger">
+          <span className="flex items-center gap-1 text-xs text-danger-ink">
             <AlertTriangle size={13} />
             Save failed — tap to retry
             <button
               type="button"
               onClick={handleRetry}
-              className="h-11 px-2 flex items-center gap-1 text-xs font-semibold text-danger border border-danger/30 rounded-lg hover:bg-danger-tint transition-colors ml-1"
+              className="h-11 px-2 flex items-center gap-1 text-xs font-semibold text-danger-ink border border-danger/30 rounded-lg hover:bg-danger-tint transition-colors ml-1"
               aria-label="Retry save"
             >
               <RotateCcw size={12} />

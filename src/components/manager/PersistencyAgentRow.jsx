@@ -10,9 +10,9 @@ function formatPercent(decimal) {
 
 function badgeClass(decimal) {
   if (decimal == null || !Number.isFinite(decimal)) return 'bg-border/40 text-ink-muted';
-  if (decimal >= 0.90) return 'bg-success/15 text-success';
-  if (decimal >= 0.80) return 'bg-warning/15 text-warning';
-  return 'bg-danger/15 text-danger';
+  if (decimal >= 0.90) return 'bg-success/15 text-success-ink';
+  if (decimal >= 0.80) return 'bg-warning/15 text-warning-ink';
+  return 'bg-danger/15 text-danger-ink';
 }
 
 function formatLastEdited(record) {

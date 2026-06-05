@@ -254,7 +254,7 @@ export default function PolicyReconciliationPanel() {
       )}
       {error && (
         <div role="alert" className="card text-center py-10 flex flex-col items-center gap-3" data-testid="reconcil-error">
-          <div className="w-11 h-11 rounded-xl bg-danger-tint text-danger flex items-center justify-center"><AlertCircle size={20} /></div>
+          <div className="w-11 h-11 rounded-xl bg-danger-tint text-danger-ink flex items-center justify-center"><AlertCircle size={20} /></div>
           <p className="font-display font-extrabold text-[15px] text-ink">Couldn&rsquo;t load the worklist</p>
           <p className="text-xs text-ink-muted">{error}</p>
           <button onClick={loadData} className="mt-1 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg border border-border text-sm font-semibold text-ink hover:bg-surface-muted transition-colors">
@@ -268,7 +268,7 @@ export default function PolicyReconciliationPanel() {
         <>
           {periodSettled.length === 0 ? (
             <div className="card text-center py-12 flex flex-col items-center gap-2.5" data-testid="reconcil-empty">
-              <div className="w-11 h-11 rounded-xl bg-success-tint text-success flex items-center justify-center text-xl"><Check size={22} /></div>
+              <div className="w-11 h-11 rounded-xl bg-success-tint text-success-ink flex items-center justify-center text-xl"><Check size={22} /></div>
               <p className="font-display font-extrabold text-[15px] text-ink">No policies to reconcile</p>
               <p className="text-xs text-ink-muted">Settled policies will appear here as agents log them.</p>
             </div>
@@ -359,7 +359,7 @@ export default function PolicyReconciliationPanel() {
                           <div>
                             <p className="font-mono text-[8.5px] font-bold tracking-[0.1em] text-ink-muted">CONFIRMED · FROM CIRCULAR</p>
                             {isConfirmedView ? (
-                              <p className={`font-mono text-[13px] font-bold mt-0.5 ${flagged ? 'text-danger' : 'text-ink'}`}>{formatCurrency(keyed)}</p>
+                              <p className={`font-mono text-[13px] font-bold mt-0.5 ${flagged ? 'text-danger-ink' : 'text-ink'}`}>{formatCurrency(keyed)}</p>
                             ) : (
                               <input
                                 type="number" step="0.01" min="0.01"
@@ -377,7 +377,7 @@ export default function PolicyReconciliationPanel() {
 
                         {/* Delta + pill */}
                         <div className="text-right shrink-0 w-[88px]">
-                          <p className={`font-mono text-[11.5px] font-bold ${keyed == null ? 'text-ink-muted' : flagged ? 'text-danger' : 'text-success'}`}>
+                          <p className={`font-mono text-[11.5px] font-bold ${keyed == null ? 'text-ink-muted' : flagged ? 'text-danger-ink' : 'text-success-ink'}`}>
                             {keyed == null ? '—' : flagged ? `${delta > 0 ? '+' : '−'}${formatCompactTTD(Math.abs(delta)).replace('TTD ', 'TTD ')}` : '✓ match'}
                           </p>
                           <span className={`inline-flex items-center mt-1 px-2 py-0.5 rounded-full font-mono text-[9px] font-bold uppercase tracking-wide ${tok.tint} ${tok.text}`}>
@@ -449,7 +449,7 @@ export default function PolicyReconciliationPanel() {
                     ) : (
                       <button type="button"
                         onClick={() => setLapseState((prev) => ({ ...prev, [policy.id]: { ...(prev[policy.id] ?? { dateLapsed: '', lapseReason: '', submitting: false, done: false }), expanded: !ls.expanded } }))}
-                        className="h-9 px-3 rounded-lg text-xs font-semibold text-danger border border-danger/30 hover:bg-danger/5 transition-colors min-w-[44px]"
+                        className="h-9 px-3 rounded-lg text-xs font-semibold text-danger-ink border border-danger/30 hover:bg-danger/5 transition-colors min-w-[44px]"
                         data-testid={`mark-lapsed-btn-${policy.id}`}>
                         {ls.expanded ? 'Cancel' : 'Mark as Lapsed'}
                       </button>
@@ -459,7 +459,7 @@ export default function PolicyReconciliationPanel() {
                   {!isAlreadyLapsed && ls.expanded && (
                     <div className="mt-3 space-y-3 pt-3 border-t border-border">
                       <div>
-                        <label htmlFor={`date-lapsed-${policy.id}`} className="block text-xs font-medium text-ink-muted mb-1">Date Lapsed <span className="text-danger">*</span></label>
+                        <label htmlFor={`date-lapsed-${policy.id}`} className="block text-xs font-medium text-ink-muted mb-1">Date Lapsed <span className="text-danger-ink">*</span></label>
                         <input id={`date-lapsed-${policy.id}`} type="date" value={ls.dateLapsed}
                           onChange={(e) => setLapseState((prev) => ({ ...prev, [policy.id]: { ...prev[policy.id], dateLapsed: e.target.value } }))}
                           disabled={ls.submitting}

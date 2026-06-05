@@ -12,9 +12,9 @@ import { floorStatus } from '../../../utils/weeklyActivityFloors';
  */
 
 const STATUS_CLASSES = {
-  green: 'bg-success/10 text-success border-success/30',
-  amber: 'bg-warning/10 text-warning border-warning/30',
-  red:   'bg-danger/10 text-danger border-danger/30',
+  green: 'bg-success/10 text-success-ink border-success/30',
+  amber: 'bg-warning/10 text-warning-ink border-warning/30',
+  red:   'bg-danger/10 text-danger-ink border-danger/30',
 };
 const STATUS_LABELS = { green: 'Met', amber: 'Close', red: 'Below' };
 

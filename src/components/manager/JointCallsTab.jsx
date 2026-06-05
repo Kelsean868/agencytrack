@@ -101,7 +101,7 @@ function CallCard({ call, isAuthor, agentId, onEditSaved, onArchived, preps }) {
           <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary">
             {MEETING_LABEL[call.meetingType] ?? call.meetingType}
           </span>
-          <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success">
+          <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success-ink">
             {NEEDS_LABEL[call.needCovered] ?? call.needCovered}
           </span>
           <span className="text-[11px] text-ink-muted">
@@ -269,7 +269,7 @@ function CallCard({ call, isAuthor, agentId, onEditSaved, onArchived, preps }) {
               <ChevronDown size={12} className="pointer-events-none absolute right-2 top-[28px] text-ink-muted" aria-hidden="true" />
             </div>
           )}
-          {err && <p className="text-xs text-danger" role="alert">{err}</p>}
+          {err && <p className="text-xs text-danger-ink" role="alert">{err}</p>}
           <div className="flex gap-2 justify-end">
             <button
               onClick={cancelEdit}
@@ -392,7 +392,7 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
         )}
 
         {!loading && error && (
-          <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger">
+          <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger-ink">
             {error}
           </div>
         )}
@@ -563,7 +563,7 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
         )}
 
         {addError && (
-          <p className="text-xs text-danger" role="alert">{addError}</p>
+          <p className="text-xs text-danger-ink" role="alert">{addError}</p>
         )}
 
         <button

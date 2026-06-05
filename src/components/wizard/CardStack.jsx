@@ -32,7 +32,7 @@ export function NumericField({ label, name, inputId, value, onChange, desc, last
         {showLastWeek && (
           <span
             data-testid={`${name}-last-week`}
-            className="text-[9.5px] font-mono uppercase tracking-widest text-ink-faint shrink-0"
+            className="text-[9.5px] font-mono uppercase tracking-widest text-ink-muted shrink-0"
           >
             LAST WK · {lastWeek}
           </span>
@@ -66,7 +66,7 @@ export function CurrencyField({ label, name, inputId, value, onChange, desc, las
         {showLastWeek && (
           <span
             data-testid={`${name}-last-week`}
-            className="text-[9.5px] font-mono uppercase tracking-widest text-ink-faint shrink-0"
+            className="text-[9.5px] font-mono uppercase tracking-widest text-ink-muted shrink-0"
           >
             LAST WK · TTD {lastWeek}
           </span>

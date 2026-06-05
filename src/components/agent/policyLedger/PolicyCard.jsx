@@ -65,7 +65,7 @@ export default function PolicyCard({ policy, onOpen }) {
       <div className="flex items-start justify-between gap-3 mb-2.5">
         <div className="min-w-0">
           <span className="text-[15px] font-bold tracking-[-0.005em] text-ink">{policy.ownerName}</span>
-          <span className={`font-mono text-[10px] font-bold tracking-[0.06em] ml-2.5 ${noNumber ? 'text-warning' : 'text-ink-muted'}`}>
+          <span className={`font-mono text-[10px] font-bold tracking-[0.06em] ml-2.5 ${noNumber ? 'text-warning-ink' : 'text-ink-muted'}`}>
             {noNumber ? '# PENDING' : `#${policy.policyNumber}`}
           </span>
           {policy.planName && <p className="text-[11px] text-ink-muted mt-0.5 truncate">{policy.planName}</p>}

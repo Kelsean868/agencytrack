@@ -35,11 +35,11 @@ function RatioTrendCard({ label, value4w, value12w, trend, format, sparkValues, 
     return String(v);
   };
   const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
-  const trendCls  = trend === 'up' ? 'text-success' : trend === 'down' ? 'text-danger' : 'text-ink-muted';
+  const trendCls  = trend === 'up' ? 'text-success-ink' : trend === 'down' ? 'text-danger-ink' : 'text-ink-muted';
 
   return (
     <div className="card p-4 flex flex-col gap-2">
-      <p className="text-[10px] font-bold tracking-widest text-ink-faint font-mono uppercase">{label}</p>
+      <p className="text-[10px] font-bold tracking-widest text-ink-muted font-mono uppercase">{label}</p>
       <div className="flex items-baseline gap-1.5">
         <p className="text-2xl font-bold text-ink leading-none" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.018em' }}>
           {fmt(value4w)}
@@ -136,7 +136,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   }
 
   if (error) {
-    return <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>;
+    return <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>;
   }
 
   const totalTracked = Object.keys(awards).length;
@@ -164,7 +164,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
             </button>
           ))}
         </div>
-        <p className="text-xs text-ink-faint font-mono tracking-wide">{totalTracked} awards tracked</p>
+        <p className="text-xs text-ink-muted font-mono tracking-wide">{totalTracked} awards tracked</p>
       </div>
 
       {/* Award groups */}
@@ -188,7 +188,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
 
       {makingProgress.length > 0 && (
         <div>
-          <GroupHeader label="↗ Making progress · 30–70%" count={makingProgress.length} accentStyle={{ color: 'var(--color-primary-light)' }} />
+          <GroupHeader label="↗ Making progress · 30–70%" count={makingProgress.length} accentStyle={{ color: 'var(--color-primary)' }} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {makingProgress.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAward(a)} />)}
           </div>
@@ -213,7 +213,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       {/* Ratio trends */}
       {ratioTrends && (
         <div>
-          <p className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase mb-3">Activity ratio trends · last 12 weeks</p>
+          <p className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase mb-3">Activity ratio trends · last 12 weeks</p>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <RatioTrendCard
               label="CI to Sale"

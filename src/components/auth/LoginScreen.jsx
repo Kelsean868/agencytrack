@@ -227,11 +227,11 @@ export default function LoginScreen() {
           </div>
 
           {error && (
-            <p className="text-sm text-danger" role="alert">{error}</p>
+            <p className="text-sm text-danger-ink" role="alert">{error}</p>
           )}
 
           {resetSent && (
-            <p className="text-sm text-success" role="status">
+            <p className="text-sm text-success-ink" role="status">
               Reset email sent — check your inbox.
             </p>
           )}

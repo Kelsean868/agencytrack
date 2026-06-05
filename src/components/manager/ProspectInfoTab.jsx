@@ -26,7 +26,7 @@ function PrepReadOnlyCard({ prep }) {
         <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary">
           {APPT_TYPE_LABEL[prep.appointmentType] ?? prep.appointmentType}
         </span>
-        <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success">
+        <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success-ink">
           {SOURCE_LABEL[prep.prospectingSource] ?? prep.prospectingSource}
         </span>
         <span className="text-[11px] text-ink-muted">
@@ -51,7 +51,7 @@ function PrepReadOnlyCard({ prep }) {
         {Array.isArray(prep.objections) && prep.objections.length > 0 && (
           <div className="flex flex-wrap gap-1 pt-1">
             {prep.objections.map((o) => (
-              <span key={o} className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-warning/10 text-warning">
+              <span key={o} className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-warning/10 text-warning-ink">
                 {OBJECTION_LABEL[o] ?? o}
               </span>
             ))}
@@ -92,7 +92,7 @@ export default function ProspectInfoTab({ agentId }) {
       )}
 
       {!loading && error && (
-        <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger" role="alert">
+        <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger-ink" role="alert">
           {error}
         </div>
       )}

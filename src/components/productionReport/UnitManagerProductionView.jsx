@@ -109,7 +109,7 @@ export default function UnitManagerProductionView() {
     return <div className="flex items-center justify-center py-12 text-ink-muted text-sm">Loading production data…</div>;
   }
   if (error) {
-    return <div className="py-8 text-center text-danger text-sm">Failed to load production data.</div>;
+    return <div className="py-8 text-center text-danger-ink text-sm">Failed to load production data.</div>;
   }
 
   return (
@@ -149,7 +149,7 @@ export default function UnitManagerProductionView() {
             {compliance.submitted} of {compliance.total}
           </span>
           <span className="text-sm text-ink-muted">agents submitted</span>
-          <span className={`ml-auto text-sm font-semibold ${compliance.percent >= 80 ? 'text-success' : compliance.percent >= 60 ? 'text-warning' : 'text-danger'}`}>
+          <span className={`ml-auto text-sm font-semibold ${compliance.percent >= 80 ? 'text-success-ink' : compliance.percent >= 60 ? 'text-warning-ink' : 'text-danger-ink'}`}>
             {compliance.percent}%
           </span>
         </div>

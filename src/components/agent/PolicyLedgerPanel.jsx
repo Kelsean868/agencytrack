@@ -67,7 +67,7 @@ function FieldGroup({ label, children, required, id }) {
   return (
     <div className="flex flex-col gap-1">
       <label htmlFor={id} className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-        {label}{required && <span className="text-danger ml-0.5">*</span>}
+        {label}{required && <span className="text-danger-ink ml-0.5">*</span>}
       </label>
       {children}
     </div>
@@ -262,7 +262,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
 
         {loadError && (
           <div className="card text-center py-12 flex flex-col items-center gap-3" data-testid="ledger-error">
-            <div className="w-11 h-11 rounded-xl bg-danger-tint text-danger flex items-center justify-center">
+            <div className="w-11 h-11 rounded-xl bg-danger-tint text-danger-ink flex items-center justify-center">
               <AlertCircle size={20} />
             </div>
             <p className="font-display font-extrabold text-[15px] text-ink">Couldn’t load your ledger</p>
@@ -553,7 +553,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
         </div>
 
         {saveError && (
-          <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-danger-tint text-danger text-sm">
+          <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-danger-tint text-danger-ink text-sm">
             <AlertCircle size={16} /> {saveError}
           </div>
         )}

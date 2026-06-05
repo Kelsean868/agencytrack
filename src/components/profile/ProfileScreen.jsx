@@ -248,8 +248,8 @@ export default function ProfileScreen() {
       {/* Error banner */}
       {error && (
         <div className="flex items-start gap-2 p-3 rounded-xl bg-danger/10 border border-danger/20">
-          <AlertCircle size={16} className="text-danger mt-0.5 shrink-0" />
-          <p className="text-sm text-danger">{error}</p>
+          <AlertCircle size={16} className="text-danger-ink mt-0.5 shrink-0" />
+          <p className="text-sm text-danger-ink">{error}</p>
         </div>
       )}
 
@@ -272,7 +272,7 @@ export default function ProfileScreen() {
         {role === 'unit_manager' && (
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium text-ink-muted" htmlFor="profile-unit-name">
-              Unit Name <span className="text-[10px] text-ink-faint">(optional — e.g. "Phoenix Unit")</span>
+              Unit Name <span className="text-[10px] text-ink-muted">(optional — e.g. "Phoenix Unit")</span>
             </label>
             <input
               id="profile-unit-name"
@@ -447,7 +447,7 @@ export default function ProfileScreen() {
           {modeMessage && (
             <p
               role="status"
-              className={`text-xs ${modeMessage.kind === 'error' ? 'text-danger' : 'text-primary'}`}
+              className={`text-xs ${modeMessage.kind === 'error' ? 'text-danger-ink' : 'text-primary'}`}
             >
               {modeMessage.text}
             </p>
@@ -495,7 +495,7 @@ export default function ProfileScreen() {
         <button
           type="button"
           onClick={() => { signOut().catch((err) => console.error(err)); }}
-          className="w-full inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-lg border border-danger/40 text-danger text-sm font-semibold hover:bg-danger/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+          className="w-full inline-flex items-center justify-center gap-2 min-h-[44px] px-4 rounded-lg border border-danger/40 text-danger-ink text-sm font-semibold hover:bg-danger/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
           data-testid="profile-sign-out"
         >
           <LogOut size={16} />

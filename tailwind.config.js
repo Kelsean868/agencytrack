@@ -48,14 +48,17 @@ export default {
         success: {
           DEFAULT: 'rgb(var(--success-channels) / <alpha-value>)',
           tint:    'var(--color-success-tint)',
+          ink:     'rgb(var(--success-ink-channels) / <alpha-value>)',
         },
         warning: {
           DEFAULT: 'rgb(var(--warning-channels) / <alpha-value>)',
           tint:    'var(--color-warning-tint)',
+          ink:     'rgb(var(--warning-ink-channels) / <alpha-value>)',
         },
         danger: {
           DEFAULT: 'rgb(var(--danger-channels) / <alpha-value>)',
           tint:    'var(--color-danger-tint)',
+          ink:     'rgb(var(--danger-ink-channels) / <alpha-value>)',
         },
         // Presentation surface — theme-independent (defined only in :root,
         // not overridden in .dark). For full-screen overlays that should

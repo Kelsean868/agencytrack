@@ -77,10 +77,10 @@ export default function LastWeekRecapPanel({ allSubmissions, allUsers }) {
 
   const pctColor =
     compliance.percent >= 80
-      ? 'text-success'
+      ? 'text-success-ink'
       : compliance.percent >= 50
-      ? 'text-warning'
-      : 'text-danger';
+      ? 'text-warning-ink'
+      : 'text-danger-ink';
 
   return (
     <div className="w-full h-full flex flex-col p-10">

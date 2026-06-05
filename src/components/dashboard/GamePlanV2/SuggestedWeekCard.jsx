@@ -224,7 +224,7 @@ export default function SuggestedWeekCard({
           className="mt-4 flex flex-col items-center justify-center gap-2.5 py-6 text-center"
           data-testid="suggested-week-error"
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-danger/10 text-danger">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-danger/10 text-danger-ink">
             <AlertCircle size={20} aria-hidden="true" />
           </div>
           <p className="font-display text-sm font-extrabold text-ink">Couldn&apos;t load your suggested plan</p>
@@ -310,7 +310,7 @@ export default function SuggestedWeekCard({
                   onClick={onDeletePlan}
                   disabled={planBusy}
                   data-testid="weekly-plan-clear"
-                  className="text-[11px] text-danger hover:underline disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                  className="text-[11px] text-danger-ink hover:underline disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                 >
                   Clear
                 </button>
@@ -379,7 +379,7 @@ export default function SuggestedWeekCard({
           })}
 
           {planError && (
-            <p className="text-xs text-danger" data-testid="weekly-plan-error" role="alert">
+            <p className="text-xs text-danger-ink" data-testid="weekly-plan-error" role="alert">
               Couldn&apos;t save your plan — check your connection and try again.
             </p>
           )}
@@ -557,9 +557,9 @@ export default function SuggestedWeekCard({
 // On-track is the softer success fill (annotation grammar); all derive from the
 // statusToken families — no raw palette colours.
 const VARIANCE_TONE = {
-  ahead:      { fill: 'bg-success',            text: 'text-success', chip: 'bg-success-tint text-success', icon: '▲', label: 'Ahead' },
-  'on-track': { fill: 'bg-success opacity-60', text: 'text-success', chip: 'bg-success-tint text-success', icon: '●', label: 'On track' },
-  behind:     { fill: 'bg-warning',            text: 'text-warning', chip: 'bg-warning-tint text-warning', icon: '▼', label: 'Behind' },
+  ahead:      { fill: 'bg-success',            text: 'text-success-ink', chip: 'bg-success-tint text-success-ink', icon: '▲', label: 'Ahead' },
+  'on-track': { fill: 'bg-success opacity-60', text: 'text-success-ink', chip: 'bg-success-tint text-success-ink', icon: '●', label: 'On track' },
+  behind:     { fill: 'bg-warning',            text: 'text-warning-ink', chip: 'bg-warning-tint text-warning-ink', icon: '▼', label: 'Behind' },
 };
 
 /**

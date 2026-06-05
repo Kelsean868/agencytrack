@@ -296,7 +296,7 @@ export default function DailyEntryModal({ onClose }) {
                     onChange={pppChange}
                   />
                   {pppWarn && (
-                    <p className="text-xs text-warning font-medium" role="status">
+                    <p className="text-xs text-warning-ink font-medium" role="status">
                       Average {formatCurrency(Math.round(pppAvgPerApp))} per application is below
                       the {formatCurrency(MIN_PPP_INCREASE)} minimum — check your figures.
                     </p>
@@ -444,7 +444,7 @@ export default function DailyEntryModal({ onClose }) {
             </Card>
 
             {error && (
-              <p className="text-sm text-danger" role="alert">
+              <p className="text-sm text-danger-ink" role="alert">
                 {error}
               </p>
             )}

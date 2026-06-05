@@ -88,7 +88,7 @@ function ProgressTable({ campaign, submissions, allUsers }) {
               ))}
               <td className="py-2 pl-3 text-right">
                 {row.allAchieved
-                  ? <span className="inline-flex items-center gap-0.5 text-success font-semibold"><CheckCircle2 size={12} /> Complete</span>
+                  ? <span className="inline-flex items-center gap-0.5 text-success-ink font-semibold"><CheckCircle2 size={12} /> Complete</span>
                   : <span className="text-ink-muted">In Progress</span>
                 }
               </td>
@@ -471,7 +471,7 @@ function CampaignForm({ initial, role, _uid, userProfile, allUsers, onSave, onCl
             </div>
           </div>
 
-          {error && <p className="text-sm text-danger">{error}</p>}
+          {error && <p className="text-sm text-danger-ink">{error}</p>}
         </div>
 
         <div className="px-5 pb-5 pt-2 border-t border-border shrink-0">

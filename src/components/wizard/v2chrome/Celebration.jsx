@@ -60,7 +60,7 @@ export default function Celebration({
         } motion-reduce:animate-none`}
         aria-hidden="true"
       >
-        <Check size={40} className="text-success" />
+        <Check size={40} className="text-success-ink" />
       </div>
 
       <h2

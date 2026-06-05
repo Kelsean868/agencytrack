@@ -24,9 +24,9 @@ function formatPct(decimal) {
 
 function badgeClass(decimal) {
   if (!Number.isFinite(decimal)) return 'bg-surface-muted text-ink-muted';
-  if (decimal >= 0.90) return 'bg-success-tint text-success';
-  if (decimal >= 0.80) return 'bg-warning-tint text-warning';
-  return 'bg-danger-tint text-danger';
+  if (decimal >= 0.90) return 'bg-success-tint text-success-ink';
+  if (decimal >= 0.80) return 'bg-warning-tint text-warning-ink';
+  return 'bg-danger-tint text-danger-ink';
 }
 
 export default function PersistencyTab() {
@@ -87,7 +87,7 @@ export default function PersistencyTab() {
   return (
     <div className="flex flex-col gap-4" data-testid="agent-persistency-tab">
       {error && (
-        <div className="card flex items-center gap-2 text-sm text-danger">
+        <div className="card flex items-center gap-2 text-sm text-danger-ink">
           <AlertCircle size={16} /> {error}
         </div>
       )}
@@ -124,7 +124,7 @@ export default function PersistencyTab() {
             {currentRecord ? formatPct(currentDecimal) : '—'}
           </span>
           {currentRecord && meetsGate && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-success-tint text-success text-[9px] font-bold font-mono uppercase tracking-widest">
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-success-tint text-success-ink text-[9px] font-bold font-mono uppercase tracking-widest">
               Award-eligible
             </span>
           )}
@@ -140,7 +140,7 @@ export default function PersistencyTab() {
           className="card flex items-start gap-2 bg-warning-tint border-warning/30"
           data-testid="award-gate-banner"
         >
-          <AlertCircle size={16} className="text-warning shrink-0 mt-0.5" />
+          <AlertCircle size={16} className="text-warning-ink shrink-0 mt-0.5" />
           <div className="text-sm text-ink">
             <p className="font-semibold">
               Your persistency is {formatPct(currentDecimal)}. Awards require 90% minimum.

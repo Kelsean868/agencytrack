@@ -1,11 +1,13 @@
 import React from 'react';
 
 const VARIANT_CLASS = {
-  success: 'bg-success/15 text-success',
-  warning: 'bg-warning/15 text-warning',
+  // On-tint status text uses the deep -ink tokens (AA ≥4.5 both themes; see
+  // src/utils/__tests__/contrast.test.js). Tint backgrounds are unchanged.
+  success: 'bg-success/15 text-success-ink',
+  warning: 'bg-warning/15 text-warning-ink',
   muted:   'bg-border/60 text-ink-muted',
-  danger:  'bg-danger/15 text-danger',
-  primary: 'bg-primary/10 text-primary',
+  danger:  'bg-danger/15 text-danger-ink',
+  primary: 'bg-primary/10 text-primary', // text-primary on primary/10 clears AA (5.57/5.61)
 };
 
 export default function StatusPill({ variant = 'muted', label, icon, className = '' }) {

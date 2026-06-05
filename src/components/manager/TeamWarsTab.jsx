@@ -149,7 +149,7 @@ function WarSummaryRow({ war, missedCount, onSelect }) {
             <p className="text-sm font-semibold text-text">{war.managerName}</p>
             {missedCount > 0 && (
               <span
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/15 text-warning text-[10px] font-bold uppercase tracking-wide"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-warning/15 text-warning-ink text-[10px] font-bold uppercase tracking-wide"
                 aria-label={`${missedCount} standard${missedCount === 1 ? '' : 's'} under target`}
                 data-testid={`team-war-under-badge-${war.managerId}`}
               >

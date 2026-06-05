@@ -21,7 +21,7 @@ export default function ManagerOverviewTab({ role, userProfile, tenantId, onSubm
 
   if (error) {
     return (
-      <div className="card flex items-start gap-3 text-danger">
+      <div className="card flex items-start gap-3 text-danger-ink">
         <AlertTriangle size={18} className="shrink-0 mt-0.5" />
         <div>
           <p className="font-semibold text-sm">Could not load overview</p>

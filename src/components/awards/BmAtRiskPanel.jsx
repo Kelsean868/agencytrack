@@ -53,11 +53,11 @@ function AgentRiskCard({ name, statusList }) {
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {hasAtRisk && (
-            <AlertTriangle size={14} className="text-danger shrink-0" aria-hidden="true" />
+            <AlertTriangle size={14} className="text-danger-ink shrink-0" aria-hidden="true" />
           )}
           <span className="text-sm font-bold text-ink truncate">{name}</span>
         </div>
-        <span className="text-[10px] text-ink-faint font-mono tracking-wide shrink-0">
+        <span className="text-[10px] text-ink-muted font-mono tracking-wide shrink-0">
           {totalTracked} award{totalTracked === 1 ? '' : 's'} tracked
         </span>
       </div>
@@ -179,12 +179,12 @@ export default function BmAtRiskPanel({
           <div className="flex items-center gap-2">
             <p
               id="at-risk-heading"
-              className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase"
+              className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase"
             >
               Agent Award Risk View
             </p>
             <span
-              className="text-[10px] font-mono tracking-wide text-ink-faint"
+              className="text-[10px] font-mono tracking-wide text-ink-muted"
               data-testid="bm-at-risk-total"
             >
               {agentRows.length} agent{agentRows.length === 1 ? '' : 's'}

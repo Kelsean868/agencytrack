@@ -292,7 +292,7 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
               )}
 
               {transitionError && (
-                <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-danger-tint text-danger text-sm">
+                <div role="alert" className="flex items-center gap-2 p-3 rounded-xl bg-danger-tint text-danger-ink text-sm">
                   <AlertCircle size={16} /> {transitionError}
                 </div>
               )}
@@ -326,7 +326,7 @@ function Field({ label, required, children }) {
   return (
     <div className="flex flex-col gap-1">
       <label className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-        {label}{required && <span className="text-danger ml-0.5">*</span>}
+        {label}{required && <span className="text-danger-ink ml-0.5">*</span>}
       </label>
       {children}
     </div>

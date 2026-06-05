@@ -33,10 +33,10 @@ export default function CompliancePanel({ allSubmissions, allUsers }) {
 
   const pctColor =
     stats.percent >= 80
-      ? 'text-success'
+      ? 'text-success-ink'
       : stats.percent >= 50
-      ? 'text-warning'
-      : 'text-danger';
+      ? 'text-warning-ink'
+      : 'text-danger-ink';
 
   return (
     <div className="w-full h-full flex flex-col p-10">
@@ -54,14 +54,14 @@ export default function CompliancePanel({ allSubmissions, allUsers }) {
         <div className="flex flex-col gap-6 overflow-hidden">
           {submittedAgents.length > 0 && (
             <div>
-              <p className="text-success text-xl font-semibold mb-3">
+              <p className="text-success-ink text-xl font-semibold mb-3">
                 Submitted ({submittedAgents.length})
               </p>
               <div className="flex flex-wrap gap-2">
                 {submittedAgents.map((a) => (
                   <span
                     key={a.id}
-                    className="bg-success-tint text-success px-4 py-2 rounded-full text-lg"
+                    className="bg-success-tint text-success-ink px-4 py-2 rounded-full text-lg"
                   >
                     {a.name || a.displayName || 'Agent'}
                   </span>
@@ -71,14 +71,14 @@ export default function CompliancePanel({ allSubmissions, allUsers }) {
           )}
           {pendingAgents.length > 0 && (
             <div>
-              <p className="text-warning text-xl font-semibold mb-3">
+              <p className="text-warning-ink text-xl font-semibold mb-3">
                 Pending ({pendingAgents.length})
               </p>
               <div className="flex flex-wrap gap-2">
                 {pendingAgents.map((a) => (
                   <span
                     key={a.id}
-                    className="bg-warning-tint text-warning px-4 py-2 rounded-full text-lg animate-stagger-in"
+                    className="bg-warning-tint text-warning-ink px-4 py-2 rounded-full text-lg animate-stagger-in"
                     style={{ animationDelay: `${pendingAgents.indexOf(a) * 60}ms`, animationFillMode: 'both' }}
                   >
                     {a.name || a.displayName || 'Agent'}

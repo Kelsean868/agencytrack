@@ -184,7 +184,7 @@ export default function BranchesPanel() {
       {readError && (
         <div
           role="alert"
-          className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger flex items-start gap-2"
+          className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-start gap-2"
         >
           <AlertCircle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
           <span>{readError}</span>
@@ -236,7 +236,7 @@ export default function BranchesPanel() {
                       Inactive
                     </span>
                   ) : (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-success/15 text-success">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-success/15 text-success-ink">
                       Active
                     </span>
                   )}
@@ -256,7 +256,7 @@ export default function BranchesPanel() {
                     className={`text-xs font-semibold px-2.5 h-8 rounded-lg transition-colors min-w-[80px] ${
                       inactive
                         ? 'text-primary bg-primary/10 hover:bg-primary/20'
-                        : 'text-danger bg-danger/10 hover:bg-danger/20'
+                        : 'text-danger-ink bg-danger/10 hover:bg-danger/20'
                     } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40`}
                   >
                     {inactive ? 'Reactivate' : 'Deactivate'}

@@ -484,8 +484,8 @@ export default function AgentDashboard() {
           className="w-full text-left mb-4 flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30"
         >
           <div className="flex-1">
-            <p className="text-sm font-semibold text-warning">Report Unlocked</p>
-            <p className="text-xs text-warning/80 mt-0.5">
+            <p className="text-sm font-semibold text-warning-ink">Report Unlocked</p>
+            <p className="text-xs text-warning-ink/80 mt-0.5">
               Your report for week of {formatDateDisplay(currentWeekSub.weekStarting)} was unlocked by{' '}
               {currentWeekSub.unlockedByName ?? 'your manager'}. Tap to review and resubmit.
             </p>

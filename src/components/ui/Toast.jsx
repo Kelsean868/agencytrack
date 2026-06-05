@@ -37,7 +37,7 @@ const VARIANT_CONFIG = {
   warning: {
     Icon: AlertTriangle,
     className: 'bg-warning/15 border border-warning/40 text-ink shadow-md',
-    iconClassName: 'text-warning',
+    iconClassName: 'text-warning-ink',
     closeClassName: 'text-ink-muted hover:text-ink hover:bg-warning/10',
     role: 'alert',
     ariaLive: 'assertive',

@@ -14,9 +14,9 @@ import ProspectInfoTab from './ProspectInfoTab';
 // Category display config — label + Tailwind badge classes (Nexus-token-safe)
 const CATEGORY_CONFIG = {
   observation: { label: 'Observation', cls: 'bg-primary/10 text-primary' },
-  goal:        { label: 'Goal',        cls: 'bg-success/10 text-success' },
-  concern:     { label: 'Concern',     cls: 'bg-warning/10 text-warning' },
-  win:         { label: 'Win',         cls: 'bg-success/15 text-success font-semibold' },
+  goal:        { label: 'Goal',        cls: 'bg-success/10 text-success-ink' },
+  concern:     { label: 'Concern',     cls: 'bg-warning/10 text-warning-ink' },
+  win:         { label: 'Win',         cls: 'bg-success/15 text-success-ink font-semibold' },
   action_item: { label: 'Action Item', cls: 'bg-ink-muted/10 text-ink-muted' },
 };
 
@@ -136,7 +136,7 @@ function NoteCard({ note, isAuthor, onEditSaved }) {
             className="w-full px-3 py-2 rounded-lg border border-border bg-card text-ink text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
             aria-label="Edit note body"
           />
-          {err && <p className="text-xs text-danger">{err}</p>}
+          {err && <p className="text-xs text-danger-ink">{err}</p>}
           <div className="flex gap-2 justify-end">
             <button
               onClick={cancelEdit}
@@ -362,7 +362,7 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
             )}
 
             {!loading && error && (
-              <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger">
+              <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger-ink">
                 {error}
               </div>
             )}
@@ -420,7 +420,7 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
             />
 
             {addError && (
-              <p className="text-xs text-danger" role="alert">{addError}</p>
+              <p className="text-xs text-danger-ink" role="alert">{addError}</p>
             )}
 
             <button

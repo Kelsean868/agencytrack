@@ -232,7 +232,7 @@ export function AwardCard({ award, onClick }) {
           />
         </div>
         {prim && (
-          <p className="text-[10px] text-ink-faint font-mono text-center mt-1.5 tracking-wide">
+          <p className="text-[10px] text-ink-muted font-mono text-center mt-1.5 tracking-wide">
             {prim.unit === 'TTD' ? formatCurrency(prim.current) : Math.round(prim.current)}
             {' of '}
             {prim.unit === 'TTD' ? formatCurrency(prim.target) : Math.round(prim.target)}
@@ -310,7 +310,7 @@ export function AwardDrillDrawer({ award, onClose }) {
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <p className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase mb-2.5">
+          <p className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase mb-2.5">
             Criteria
           </p>
           <div className="flex flex-col gap-2.5">
@@ -349,7 +349,7 @@ export function AwardDrillDrawer({ award, onClose }) {
                   </div>
                   <div className="flex justify-between mb-1.5">
                     <span className="text-xs font-mono text-ink-muted">{fmtV(c.current)}</span>
-                    <span className="text-xs font-mono text-ink-faint">{fmtV(c.target)}</span>
+                    <span className="text-xs font-mono text-ink-muted">{fmtV(c.target)}</span>
                   </div>
                   <div className="h-1 rounded-full bg-surface-muted overflow-hidden">
                     <div
@@ -367,7 +367,7 @@ export function AwardDrillDrawer({ award, onClose }) {
 
           {award.note && (
             <div className="mt-4 p-3 rounded-xl bg-warning-tint border border-warning/30">
-              <p className="text-xs text-warning leading-relaxed">{award.note}</p>
+              <p className="text-xs text-warning-ink leading-relaxed">{award.note}</p>
             </div>
           )}
         </div>

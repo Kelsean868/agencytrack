@@ -20,7 +20,7 @@ function GapBadge({ gap, target, isCurrency }) {
   if (gap === null) return null;
   if (gap <= 0) {
     return (
-      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-success/15 text-success">
+      <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-success/15 text-success-ink">
         <CheckCircle2 size={10} /> Met
       </span>
     );
@@ -30,7 +30,7 @@ function GapBadge({ gap, target, isCurrency }) {
   const label = isCurrency ? `${formatCurrency(Math.round(gap))} to go` : `${Math.round(gap)} to go`;
   return (
     <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold ${
-      isClose ? 'bg-warning/15 text-warning' : 'bg-border/60 text-ink-muted'
+      isClose ? 'bg-warning/15 text-warning-ink' : 'bg-border/60 text-ink-muted'
     }`}>
       {label}
     </span>
@@ -110,7 +110,7 @@ export default function GapAnalysisPanel({ hierarchy, ytdTotals, loading, error 
     return (
       <div className="card">
         <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2">{title}</p>
-        <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
+        <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>
       </div>
     );
   }

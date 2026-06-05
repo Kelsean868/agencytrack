@@ -347,8 +347,8 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   if (error) {
     return (
       <div className="flex flex-col items-center gap-3 p-8 rounded-xl bg-danger/10 border border-danger/30 text-center">
-        <AlertTriangle size={28} className="text-danger" aria-hidden="true" />
-        <p className="text-sm text-danger font-medium">{error}</p>
+        <AlertTriangle size={28} className="text-danger-ink" aria-hidden="true" />
+        <p className="text-sm text-danger-ink font-medium">{error}</p>
         <button
           onClick={loadData}
           className="min-h-[44px] px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
@@ -443,7 +443,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
         {planBusy ? (
           <p className="text-sm text-ink-muted py-3" data-testid="compliance-plan-loading">Loading plan commitments…</p>
         ) : plansError && lens === 'plan' ? (
-          <p className="text-sm text-danger py-3" data-testid="compliance-plan-error">Couldn't load plan data. Try reloading.</p>
+          <p className="text-sm text-danger-ink py-3" data-testid="compliance-plan-error">Couldn't load plan data. Try reloading.</p>
         ) : realityBar.total === 0 ? (
           <p className="text-sm text-ink-muted py-3" data-testid="compliance-empty-roster">No agents in scope for this week.</p>
         ) : (
@@ -470,7 +470,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       <div className="rounded-2xl border border-danger/30 bg-card overflow-hidden" data-testid="compliance-exception-list">
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-danger/5">
           <span className="text-sm font-bold text-ink">{exHeader}</span>
-          <span className="text-[11px] font-semibold text-danger bg-danger/10 px-2 py-0.5 rounded-full">
+          <span className="text-[11px] font-semibold text-danger-ink bg-danger/10 px-2 py-0.5 rounded-full">
             {activeExceptions.length} agent{activeExceptions.length !== 1 ? 's' : ''}
           </span>
           {activeExceptions.length > 0 && (
@@ -489,7 +489,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
           <p className="px-4 py-6 text-sm text-ink-muted">Loading plan commitments…</p>
         ) : realityBar.total > 0 && activeExceptions.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-8 text-center" data-testid="compliance-all-clear">
-            <CheckCircle size={28} className="text-success" aria-hidden="true" />
+            <CheckCircle size={28} className="text-success-ink" aria-hidden="true" />
             <p className="text-sm font-semibold text-ink">{lens === 'plan' ? "Everyone's committed" : "Everyone's in"}</p>
             <p className="text-xs text-ink-muted">
               {lens === 'plan'
@@ -599,7 +599,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       {/* ── CBTT License Compliance (regulatory — kept as its own section) ───── */}
       <div className="rounded-2xl border border-warning/30 bg-card p-4 sm:p-5" data-testid="compliance-cbtt-section">
         <div className="flex items-center gap-2 mb-3">
-          <ShieldAlert size={16} className="text-warning" aria-hidden="true" />
+          <ShieldAlert size={16} className="text-warning-ink" aria-hidden="true" />
           <h3 className="text-sm font-bold text-ink">CBTT License Compliance</h3>
           {cbttFlags.length > 0 && (
             <span className="ml-auto text-xs text-ink-muted">
@@ -618,8 +618,8 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
                 ? 'border-danger/40 bg-danger/5'
                 : flag.atRisk ? 'border-warning/40 bg-warning/5' : 'border-border';
               const badgeCls = flag.daysRemaining <= 0
-                ? 'text-danger font-semibold'
-                : flag.atRisk ? 'text-warning font-semibold' : 'text-ink-muted';
+                ? 'text-danger-ink font-semibold'
+                : flag.atRisk ? 'text-warning-ink font-semibold' : 'text-ink-muted';
               const daysLabel = flag.daysRemaining <= 0
                 ? 'Overdue'
                 : `${flag.daysRemaining} day${flag.daysRemaining !== 1 ? 's' : ''} remaining`;
@@ -687,7 +687,7 @@ function NudgeAction({ busy, nudgedAt, onNudge }) {
         data-testid="compliance-cooldown-chip"
         className="shrink-0 inline-flex items-center gap-1.5 min-h-[44px] px-3 rounded-lg bg-card-raised border border-border text-[11px] font-semibold text-ink-muted whitespace-nowrap"
       >
-        <CheckCircle size={13} className="text-success" aria-hidden="true" />
+        <CheckCircle size={13} className="text-success-ink" aria-hidden="true" />
         Nudged {relativeShort(nudgedAt)}
       </span>
     );
@@ -729,7 +729,7 @@ function StreakChip({ streak, perWeek }) {
   });
   return (
     <span className="flex items-center gap-1.5 text-xs font-semibold text-ink" title={`${streak}-week on-time streak`}>
-      {streak > 0 && <Flame size={12} className="text-warning" aria-hidden="true" />}
+      {streak > 0 && <Flame size={12} className="text-warning-ink" aria-hidden="true" />}
       <span>{streak} wk</span>
       <span className="flex gap-0.5" aria-hidden="true">{dots}</span>
     </span>
