@@ -4193,9 +4193,11 @@ Banked: PR #498 post-merge fill, 2026-06-05.
 
 ---
 
-## NotificationDrawer — `text-primary` "Mark all read" button fails AA on bg (NEW, MEDIUM/DESIGN-DECISION, banked 2026-06-04, PR #487 successor)
+## NotificationDrawer — `text-primary` "Mark all read" button fails AA on bg (**CLOSED, PR #503 `8cfa5b5`**)
 
-**Scope:** `src/components/ui/NotificationDrawer.jsx:61` — the "Mark all read" action renders as `text-xs font-medium text-primary hover:text-primary-dark` directly on the drawer surface `bg`. Per the PR #487 closure note (verified on `main`), this **primary-on-bg button fails AA in both themes** — a pre-existing failure *surfaced* (not introduced) by the contrast-debt retirement sweep.
+**CLOSED 2026-06-05 (PR #503 `8cfa5b5`):** Fix: added `dark:hover:text-primary-light` to `NotificationDrawer.jsx:61`. Measured matrix — default state already passed both themes (light 6.46:1 · dark 6.61:1); dark hover was `text-primary-dark` = `rgb(1,105,111)` on dark surface = **2.50:1 (FAIL)** → now `dark:hover:text-primary-light` = `rgb(109,200,203)` on dark surface = **8.29:1 (PASS)**. 3 deterministic contrast unit tests in `src/utils/__tests__/contrast.test.js` (describe `'NotificationDrawer Mark-all-read…'`). Targeted axe 4/4 PASS (preview light/dark + prod light/dark). Bell badge is now the **lone intended residual axe node app-wide** (white-on-solid-danger dark; kept as the lone allowlist entry).
+
+**Scope (historical):** `src/components/ui/NotificationDrawer.jsx:61` — the "Mark all read" action renders as `text-xs font-medium text-primary hover:text-primary-dark` directly on the drawer surface `bg`. Per the PR #487 closure note (verified on `main`), this **primary-on-bg button fails AA in both themes** — a pre-existing failure *surfaced* (not introduced) by the contrast-debt retirement sweep.
 
 **Why this is a separate FU (not folded into #487):** this is a **primary-contrast** family, distinct from the now-retired status-ink / `text-ink-faint` debt. It cannot be resolved by the mechanical token swap #487 used: the new `--color-{status}-ink` deep tokens and the neutral `text-ink-muted` are not applicable to a *brand-primary interactive* label. **It needs a primary-text-on-surface decision — outside the `-ink` set** (e.g. a new accessible on-surface primary pairing, or a button restyle to a filled / underlined affordance). That product/design call is why this is banked rather than auto-fixed.
 
