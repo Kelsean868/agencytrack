@@ -58,7 +58,7 @@ export default function NotificationDrawer({ open, onClose }) {
             {unreadCount > 0 && (
               <button
                 onClick={markAllRead}
-                className="text-xs font-medium text-primary hover:text-primary-dark transition-colors"
+                className="text-xs font-medium text-primary hover:text-primary-dark dark:hover:text-primary-light transition-colors"
               >
                 Mark all read
               </button>
