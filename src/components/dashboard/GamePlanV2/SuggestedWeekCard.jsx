@@ -460,7 +460,7 @@ export default function SuggestedWeekCard({
 
           {(() => {
             const chips = [
-              { key: 'dials', label: 'Dials', value: resolution.weekly.dials, basis: `${resolution.dialsToCIRatio}× per CI` },
+              { key: 'dials', label: 'Prospecting calls', value: resolution.weekly.dials, basis: `${resolution.dialsToCIRatio}× per CI` },
               { key: 'ci', label: 'CIs', value: resolution.weekly.ci, basis: `${resolution.ciToSaleRatio}× per app` },
               { key: 'apps', label: 'Apps', value: resolution.weekly.applications, basis: `÷ ${formatCurrency(resolution.avg)} avg policy` },
             ];
