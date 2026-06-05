@@ -7,6 +7,9 @@ import {
   aggregatePersistency,
   projectPersistency,
   calculateShortfall,
+  computeBarStats,
+  PERS_FLOOR,
+  PERS_GATE,
 } from '../calculations';
 
 // Real data from Tatil's February 2026 monthly persistency report,
@@ -190,6 +193,77 @@ describe('aggregatePersistency', () => {
     // The two MUST produce a meaningfully different number, otherwise this
     // test isn't actually catching the wrong approach.
     expect(Math.abs(correct - wrongAverage)).toBeGreaterThan(0.10);
+  });
+});
+
+describe('PERS_FLOOR / PERS_GATE constants', () => {
+  it('PERS_FLOOR is 0.80', () => expect(PERS_FLOOR).toBe(0.80));
+  it('PERS_GATE is 0.90',  () => expect(PERS_GATE).toBe(0.90));
+  it('PERS_FLOOR < PERS_GATE', () => expect(PERS_FLOOR).toBeLessThan(PERS_GATE));
+});
+
+describe('computeBarStats', () => {
+  const makeRec = (persistency, lapses = 0) => ({
+    persistency,
+    lapses,
+    grossSettled: 1000,
+    netSettled:   persistency * 1000,
+  });
+
+  it('counts below-floor (< 0.80) and award-eligible (>= 0.90) correctly', () => {
+    const records = [
+      makeRec(0.72), // below floor
+      makeRec(0.80), // exactly at floor — NOT below
+      makeRec(0.85), // watch band
+      makeRec(0.90), // exactly at gate — eligible
+      makeRec(0.95), // eligible
+    ];
+    const stats = computeBarStats(records);
+    expect(stats.belowFloor).toBe(1);
+    expect(stats.awardEligible).toBe(2);
+    expect(stats.resolvedCount).toBe(5);
+  });
+
+  it('excludes partial-resolution records (non-finite persistency) from all counts', () => {
+    const records = [
+      makeRec(0.70),        // below floor, resolved
+      { persistency: null, lapses: 9999, grossSettled: 0, netSettled: 0 }, // no-data
+      { persistency: NaN,  lapses: 9999, grossSettled: 0, netSettled: 0 }, // failed read
+      makeRec(0.95),        // eligible, resolved
+    ];
+    const stats = computeBarStats(records);
+    expect(stats.resolvedCount).toBe(2);
+    expect(stats.belowFloor).toBe(1);
+    expect(stats.awardEligible).toBe(1);
+    // lapsed TTD must not include the no-data rows' lapses
+    expect(stats.sumLapses).toBe(0);
+  });
+
+  it('sums lapses only from resolved records', () => {
+    const records = [
+      makeRec(0.72, 10000),
+      makeRec(0.90, 5000),
+      { persistency: null, lapses: 99999 }, // excluded
+    ];
+    expect(computeBarStats(records).sumLapses).toBe(15000);
+  });
+
+  it('returns all zeros for empty array (no NaN)', () => {
+    const stats = computeBarStats([]);
+    expect(stats.resolvedCount).toBe(0);
+    expect(stats.belowFloor).toBe(0);
+    expect(stats.awardEligible).toBe(0);
+    expect(stats.sumLapses).toBe(0);
+  });
+
+  it('returns all zeros for null/undefined input (no crash)', () => {
+    expect(() => computeBarStats(null)).not.toThrow();
+    expect(computeBarStats(undefined).resolvedCount).toBe(0);
+  });
+
+  it('all above floor — belowFloor is 0 (celebration arm)', () => {
+    const records = [makeRec(0.85), makeRec(0.92), makeRec(0.88)];
+    expect(computeBarStats(records).belowFloor).toBe(0);
   });
 });
 
