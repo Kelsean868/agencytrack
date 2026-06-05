@@ -12,9 +12,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 **Remaining slices:**
 
 - **S2 — Ladder + Modal Targeting restyle — SHIPPED (PR #498 `381ed24`, HUMAN-MERGE).** D2: GoalDecompositionTab 7-stage decomposition ladder (Income goal → 1st-yr comm → API to write → Apps → CIs → Prospecting calls → Prospects; Nexus gold/teal token variants). D3: CashFlowChart stacked 12-month bar chart + cumulative line overlay (Recharts ComposedChart, Nexus tokens, both themes). D4: no-goal AnchorStrip now shows YTD earned + run-rate chips (gap suppressed, CTA kept). D5: React imports + 9 RTL baseline tests (4 GoalDecompositionTab + 5 CommissionAnchorStrip). REDESIGN/VISUAL-ONLY — no writes, no rules, no new data fetches. Suite 2422/2422; lint 0; build clean; smoke 30/30 PASS.
-- **S3 — "Set as my goal" write — SHIPPED (PR #TBD `{SHA}`, HUMAN-MERGE, pending merge).** Agent-side write: `GoalDecompositionTab` "Save as My Goals" CTA now opens a CONFIRM affordance (current → new API formatted TTD) before writing; guard rails (zero/NaN blocks confirm); on confirm: `setGoals(personalAnnualAPI + personalAnnualApps)` via the existing goals cascade write path (D1 byte-compatible, same payload as CareerPortal); `onGoalSaved` callback refreshes `goals` state in AgentDashboard → AnchorStrip + GamePlan strip re-derive live. CommissionAnchorStrip no-goal CTA upgraded "Go to the ladder" → "Set as my goal →" (S1 no-goal CTA upgrade per annotation). ZERO rules/schema/engine changes. 4 new RTL tests (confirm-flow: open · current-vs-new · cancel · write payload) + 1 guard-rail test; Test 4 consciously evolved (confirm step now required before write). Suite 2426/2426; lint 0; build clean.
+- **S3 — "Set as my goal" write — SHIPPED (PR #500 `8d7c5e6`, HUMAN-MERGE).** Agent-side write: `GoalDecompositionTab` "Save as My Goals" CTA now opens a CONFIRM affordance (current → new API formatted TTD) before writing; guard rails (zero/NaN blocks confirm); on confirm: `setGoals(personalAnnualAPI + personalAnnualApps)` via the existing goals cascade write path (D1 byte-compatible, same payload as CareerPortal); `onGoalSaved` callback refreshes `goals` state in AgentDashboard → AnchorStrip + GamePlan strip re-derive live. CommissionAnchorStrip no-goal CTA upgraded "Go to the ladder" → "Set as my goal →" (S1 no-goal CTA upgrade per annotation). ZERO rules/schema/engine changes. 4 new RTL tests (confirm-flow: open · current-vs-new · cancel · write payload) + 1 guard-rail test; Test 4 consciously evolved (confirm step now required before write). Suite 2426/2426; lint 0; build clean.
 
-**Commission v2 agent arc COMPLETE (S1+S2+S3) — pending S3 merge (PR #TBD `{SHA}`).** Manager suggest-a-goal routed to manager-program backlog (see § Manager-program backlog below).
+**Commission v2 agent arc COMPLETE (S1+S2+S3) — shipped (PR #500 `8d7c5e6`).** Manager suggest-a-goal routed to manager-program backlog (see § Manager-program backlog below).
 
 **Banked addenda (post-merge, 2026-06-05):**
 
@@ -22,6 +22,8 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 - **S2 design question:** ~~Empty (no-goal) AnchorStrip suppresses YTD earned + run-rate — consider showing them.~~ **RESOLVED by D4 in S2 (PR #498 `381ed24`)** — no-goal state now shows YTD Earned + On Pace For chips; gap figure suppressed; CTA kept.
 - **Trio certification:** PASSED — Goals + Persistency + Commission all render real data under the agent (E3) credential. The operator's "fully working for agents" intent is now regression-protected by the S1 smoke (`scripts/verification/commission-v2-s1-smoke.mjs`).
 - **Trio intent DELIVERED (S3, 2026-06-05).** Persistency (pre-existing agent-visible data), Goals (by design via CareerPortal/Game Plan; now also via the S3 "Set as my goal" CTA — agents can view AND write their `personalAnnualAPI` from the Commission surface), Commission (S1–S3: YTD earned · run-rate · gap-to-goal read + write goal via CTA). All three surfaces are agent-complete.
+- **Product finding (banked, 2026-06-05, PR #500 smoke).** Test agent's committed goal (`personalAnnualAPI = 240K`, `personalAnnualApps = 20`) is below the 42-app company minimum. The `setGoals` write guard correctly blocked re-committing that value via the UI confirm flow (threw apps-minimum error). **Confirm with dispatcher:** is write-time floor enforcement at the confirm CTA the intended behavior, or should below-floor commitments from the legacy path (pre-floor era) be grandfathered? GapAnalysis banding may already surface the gap visually (the `gapToGoal` arm reads `personalAnnualAPI` directly). **Assess whether existing below-floor commitments need active surfacing** — a manager or admin console view of agents with `personalAnnualAPI < annualFloor` might be warranted, especially before the Tatil pilot.
+- **Smoke deviation (recorded, PR #500).** S3 smoke restore leg used **Admin SDK** (`sdkRestoreGoal` helper) rather than the UI path. Rationale: test agent's original `personalAnnualAPI = 240K` / `avgPolicyAPI = 12000` yields `applications = 20 < 42 minimum` — any UI-driven restore attempt via the confirm CTA would itself throw the apps-minimum write guard. UI restore is structurally impossible for below-minimum originals. **Dispatcher-ratified** (Admin SDK restore authorized at dispatch).
 
 **Cross-reference:** `docs/design/commission-v2-build.html` (layout authority for all three slices); § CommissionPlayground tabs lack default `React` import → blocks full RTL baseline (active FU, pre-auth required in S2 brief); `docs/briefs/commission-v2-s1-kickoff.md`.
 
@@ -4154,17 +4156,22 @@ Banked closed: Item 5 (night queue, test-only), 2026-06-05. Resolved: Commission
 
 ---
 
-## `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (NEW, LOW/TEST-STABILITY, banked 2026-06-05)
+## `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (**FIX-NOW, GREEN-CHANNEL XS**, promoted 2026-06-05 at third strike)
 
 **Scope:** `src/components/manager/__tests__/CompliancePanel.nudge.test.jsx` — 6 tests covering the S2 nudge-send + cooldown-chip interactions.
 
-**Observed behavior:** the suite flapped twice on 2026-06-05 in separate full-suite runs (once during the settlements security dispatch, once during the commission-v2-s2 dispatch). Both times, isolated re-runs resolved cleanly (6/6). Consistent pattern: fails in a parallel full-suite `npx vitest run` context, passes in isolation. Likely cause: timer-sensitive `waitFor` or `act` boundaries around asynchronous state updates (nudge-send promise resolution, cooldown chip state update) that rely on implicit timing rather than explicit React `waitFor` — parallel environment has higher contention, exposing the gap.
+**Observed behavior (three occurrences, all 2026-06-05):**
+1. During the settlements security dispatch full-suite run — 1 failure, isolated re-run clean.
+2. During the commission-v2-s2 dispatch full-suite run — 1 failure, isolated re-run clean.
+3. During the commission-v2-s3 dispatch full-suite run — 1 failure (2425/2426), isolated re-run and second full-suite re-run both clean (2426/2426).
+
+All three: fails in a parallel full-suite `npx vitest run` context, passes in isolation. Consistent pattern: timer-sensitive `waitFor` or `act` boundaries around asynchronous state updates (nudge-send promise resolution, cooldown chip state update) rely on implicit timing rather than explicit React `waitFor` — parallel environment has higher contention, exposing the gap.
 
 **Fix shape:** audit each `userEvent.*` call in the test file for missing `await act(async () => {...})` or `await waitFor(() => ...)` wrapping around state-changing interactions. Add explicit `waitFor` assertions to each test that queries for UI state after an async event (nudge button click → cooldown chip). No changes to source code required.
 
-**Priority:** LOW/GREEN-CHANNEL-CANDIDATE. Pre-existing test code path, not introduced by this PR. Impact = CI investigation time (two ~5-min investigations on 2026-06-05). Fix is test-only, low risk, lint/build/suite trivial. Qualifies as green-channel XS candidate.
+**Priority: FIX-NOW / GREEN-CHANNEL XS.** Three-strike threshold crossed. Fix is test-only, low risk, zero source change. Qualifies as a green-channel XS auto-merge candidate once dispatched. Dispatch immediately — every full-suite run now has a non-zero CI investigation cost.
 
-Banked: commission-v2-s2 dispatch, 2026-06-05.
+Banked: commission-v2-s2 dispatch, 2026-06-05. Promoted: commission-v2-s3 post-merge fill, 2026-06-05 (third strike).
 
 ---
 
