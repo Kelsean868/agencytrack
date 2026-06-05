@@ -19,26 +19,36 @@ the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeek
 
 **Remaining slices (each needs its own kickoff brief):**
 
-- **S2 — the WRITE: notifications collection + Nudge (LOCKED scope).** The app's first
-  general `tenants/{tid}/notifications/{id}` object (`type: 'compliance.filing.nudge'`,
-  `audienceUid`, `payload {weekStart, lens, managerName}`, `createdBy`, `createdAt`,
-  `readAt`) written by a **`sendComplianceNudge` Cloud Function** (fan-out writes N docs).
-  Per-row Nudge + Nudge-all (count+scope confirm, never silent) + cooldown chip. Triggers
-  the **full new-collection checklist**: rules + write + read + composite indexes + smoke.
-  **ALSO re-homes both S1-dropped affordances as row actions** — UNLOCK on submitted rows
-  via the **existing `unlockSubmission` service write (no new write path, no rules change —
-  re-mount only)**, and a read-only **view-report** affordance (`SubmissionViewer`)
-  adjacent. Submitted rows get unlock/view; not-in rows get Nudge — one row-action
-  grammar. **unlock + view-report re-home in Compliance S2 (LOCKED scope) —
-  CompliancePanel was unlock's sole access path; interim gap accepted (test-only prod;
-  Platform Admin console is the emergency fallback).**
-  - **Open product decisions for the S2 brief** (flagged in the annotation, not decided
-    here): nudge rate-limit / dedupe key (per uid+type+week?); Nudge-all blast radius
-    (whole not-in set vs current unit/filter; skip already-nudged?); auto-escalation
-    (to BM / to email after N in-app, or never?); notification transport (in-app doc only
-    · + SendGrid Trigger Email · both — doc written regardless); CBTT placement sign-off
-    (kept section · own tab · relocated); on-time deadline grace period (S1 implemented the
-    exact Sun 23:59:59 AST boundary — confirm whether a grace window is wanted).
+- **S2 — the WRITE: Nudge CF + notifications. ✅ SHIPPED (PR #483, `1a4f2d0`).**
+  `sendComplianceNudge` callable CF (`functions/compliance/sendComplianceNudge.js`):
+  UM/BM/SM/TA role gate, all-or-nothing scope validation (UM→unit · BM→branch · SM/TA→tenant),
+  four-artifact per-target write — deterministic `nudges/{audienceUid}_{type}_{weekStart}`
+  SET-MERGE cooldown record · standard-schema bell `notifications` doc · `mail/` email via
+  `buildMailDoc` (+ new `compliance-nudge.txt/.html`) · tenant-scoped `auditNudges` — first
+  three in one atomic batch, email NON-FATAL. **Premise correction (dispatcher Option A+):**
+  the brief targeted `notifications` as the *new* collection, but it pre-existed (`userId`
+  schema + 4 live client writers) — nudges live in a **new `nudges` collection**; the legacy
+  `notifications` rules block is **UNTOUCHED** (additive diff 50 ins / 0 del); the CF still
+  writes a standard bell `notifications` doc so the agent sees the nudge today. Rules:
+  `nudges` (CF-only writes · creator-delete · audience-or-upline `get` via `uplineCanReadNudge`
+  mirroring #471 · **NO list / no index**) + `auditNudges` (Admin-only) — **22-case emulator
+  matrix** incl. legacy no-drift + absent-nudge clean-not-found. UI (`CompliancePanel`):
+  not-in rows Nudge → cooldown chip (deterministic-ID GET reads, persists reload, re-enables
+  24h); Nudge-all count+scope confirm; **unlock + view-report re-homed** as submitted-row
+  actions (existing `unlockSubmission` re-mounted unchanged + `SubmissionViewer`). New
+  `src/services/nudgeService.js`. **Open product decisions resolved at brief time:** transport
+  = **both** (doc + email); dedupe = **deterministic ID + 24h UI cooldown**; Nudge-all =
+  **filtered exception set + confirm-count**; **no auto-escalation**; on-time = S1's exact
+  Sun 23:59:59 AST D2 (no grace). D6 UI rule banked (`bg-primary` + `dark:bg-primary-dark`).
+  `readAt` dormant-by-design (`update:false`; bell carries read-state).
+  - **Deferred prod-smoke (Rule 13).** The post-fix live dark-axe re-confirmation of the
+    Nudge-all `dark:bg-primary-dark` button was lost when the PR-483 preview was torn down at
+    merge (the pre-fix smoke caught the regression at 11/12; the fix matches the app-wide
+    convention + lint/RTL green, but the post-fix full smoke did not re-run on a live preview).
+    Re-run `scripts/verification/compliance-v2-s2-smoke.mjs` against prod (or the next preview
+    that renders `CompliancePanel`) and confirm **dark-theme axe is 0-new**.
+  - **Future consumer.** The `nudges` collection (+ the `readAt` per-recipient marker, dormant
+    in S2) is the primitive an **agent-side notification inbox** would later read.
 
 - **S3 — second lens: plan-adoption.** A Filing ⇄ Plan-adoption **toggle** that swaps the
   reality bar's metric set AND the exception list in lockstep, reading `weeklyPlans/{agentId}_{weekStart}`
