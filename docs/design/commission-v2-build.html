@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Commission v2 — Build Annotation (Agent view)</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:760px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:34px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .keylegend .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.exist{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.flag{background:var(--dangerTint);color:var(--danger)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)}
+
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.exist{background:var(--tealTint);color:var(--tealDark)}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.flag{background:var(--dangerTint);color:var(--danger)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:150px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+
+  /* ANCHOR strip */
+  .anchor{background:var(--surface);border:1px solid color-mix(in srgb,var(--gold) 40%,transparent);border-radius:14px;padding:18px 22px;position:relative;overflow:hidden;box-shadow:0 6px 18px rgba(176,125,26,.08)}
+  .anchor .glow{position:absolute;top:-70px;right:-70px;width:240px;height:240px;border-radius:50%;background:radial-gradient(circle,var(--goldTint),transparent 65%);pointer-events:none}
+  .anchor .row{position:relative;display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .anchor .ey{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  .anchor .big{font-family:var(--display);font-weight:800;font-size:27px;letter-spacing:-.022em;line-height:1.1;margin-top:6px;max-width:520px}
+  .anchor .big .t{color:var(--teal)}
+  .anchor .sl{font-size:11.5px;color:var(--inkMute);margin-top:5px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .prov{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em;color:var(--tealDark);background:var(--tealTint);padding:2px 8px;border-radius:99px}
+  .anchor .gap{text-align:right}
+  .anchor .gap .gl{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--warning)}
+  .anchor .gap .gv{font-family:var(--display);font-weight:800;font-size:27px;letter-spacing:-.022em;line-height:1;margin-top:6px;color:var(--warning);white-space:nowrap}
+  .anchor .chips{position:relative;display:flex;gap:14px;margin-top:15px;flex-wrap:wrap}
+  .achip{display:flex;flex-direction:column;gap:2px;padding:9px 13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px;min-width:108px}
+  .achip .cl{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkMute);text-transform:uppercase}
+  .achip .cv{font-family:var(--display);font-weight:800;font-size:16px;letter-spacing:-.015em;white-space:nowrap}
+  .achip.persist .cv{color:var(--success)}
+
+  /* tabs */
+  .tabs{display:flex;gap:4px;padding:4px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:11px;align-self:flex-start}
+  .tab{padding:8px 14px;border-radius:8px;display:flex;flex-direction:column;gap:1px}
+  .tab.on{background:var(--surface);border:1px solid var(--rule);box-shadow:0 1px 2px rgba(40,37,29,.05)}
+  .tab .tl{font-size:12.5px;font-weight:700;color:var(--inkMute)}
+  .tab.on .tl{color:var(--ink)}
+  .tab .ts{font-family:var(--mono);font-size:9px;color:var(--inkFaint);letter-spacing:.06em}
+
+  /* ladder */
+  .ladderhead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .cadence{display:flex;gap:4px;padding:3px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px}
+  .cadence .c{padding:6px 12px;border-radius:6px;font-size:11px;font-weight:700;color:var(--inkMute);white-space:nowrap}
+  .cadence .c.on{background:var(--surface);border:1px solid color-mix(in srgb,var(--teal) 33%,transparent);color:var(--teal)}
+  .ladder{display:flex;flex-direction:column;gap:0;margin-top:4px}
+  .lstage{display:grid;grid-template-columns:172px 1fr;gap:16px;align-items:center}
+  .lcard{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:12px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .lcard.head{border-color:color-mix(in srgb,var(--gold) 38%,transparent);background:var(--goldTint)}
+  .lcard.act{border-color:color-mix(in srgb,var(--teal) 33%,transparent);background:var(--tealTint)}
+  .lcard .ll{min-width:0}
+  .lcard .ln{font-size:12.5px;font-weight:700;white-space:nowrap}
+  .lcard .ld{font-family:var(--mono);font-size:8.5px;color:var(--inkMute);letter-spacing:.04em;margin-top:2px}
+  .lcard .lv{font-family:var(--display);font-weight:800;font-size:19px;letter-spacing:-.018em;white-space:nowrap}
+  .lcard.head .lv{color:var(--goldInk)} .lcard.act .lv{color:var(--teal)}
+  .lconn{display:flex;align-items:center;gap:9px;padding:5px 0 5px 18px}
+  .lconn .line{width:2px;height:22px;background:var(--ruleStrong);margin-left:14px;border-radius:2px}
+  .lconn .op{font-family:var(--mono);font-size:9.5px;color:var(--inkMute);background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:3px 9px;white-space:nowrap}
+  .lconn .opx{color:var(--teal);font-weight:700}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.exist{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.exist .ad b{color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.flagc{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .anno.flagc .ad b{color:var(--danger)}
+
+  /* modal targeting */
+  .modal{display:grid;grid-template-columns:1fr 1.2fr;gap:16px;align-items:start}
+  .mcard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:16px 18px}
+  .mcard .ch{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--inkMute);margin-bottom:12px}
+  .mixrow{display:flex;flex-direction:column;gap:11px}
+  .mix{display:flex;flex-direction:column;gap:5px}
+  .mix .top{display:flex;align-items:baseline;justify-content:space-between}
+  .mix .ml{font-size:12px;font-weight:700}
+  .mix .mp{font-family:var(--mono);font-size:11px;color:var(--inkMute)}
+  .mixbar{height:8px;border-radius:5px;background:var(--surfaceMute);overflow:hidden}
+  .mixbar i{display:block;height:100%;border-radius:5px;background:var(--teal)}
+  .resultrow{display:flex;align-items:baseline;justify-content:space-between;padding-top:12px;margin-top:6px;border-top:1px solid var(--rule)}
+  .resultrow .rl{font-size:12px;color:var(--inkMute)}
+  .resultrow .rv{font-family:var(--display);font-weight:800;font-size:22px;color:var(--teal);letter-spacing:-.02em;white-space:nowrap}
+  /* cashflow chart */
+  .chart{display:flex;align-items:flex-end;gap:5px;height:130px;padding:10px 0 0}
+  .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;gap:2px;height:100%}
+  .bar .seg{border-radius:2px 2px 0 0}
+  .bar .s1{background:var(--teal)} .bar .s2{background:var(--tealLight)} .bar .s3{background:var(--gold)} .bar .s4{background:color-mix(in srgb,var(--gold) 55%,var(--surface))}
+  .bar .mo{font-family:var(--mono);font-size:7.5px;color:var(--inkFaint);text-align:center;margin-top:4px}
+  .chleg{display:flex;gap:14px;flex-wrap:wrap;margin-top:12px;font-family:var(--mono);font-size:9.5px;color:var(--inkMute)}
+  .chleg span{display:inline-flex;align-items:center;gap:6px}
+  .chleg i{width:10px;height:10px;border-radius:3px}
+
+  /* CTA */
+  .ctarow{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:16px 18px;margin-top:4px}
+  .ctarow .cc{flex:1;min-width:0}
+  .ctarow .ct{font-family:var(--display);font-weight:800;font-size:15px;letter-spacing:-.01em}
+  .ctarow .cd{font-size:12px;color:var(--inkMute);margin-top:3px}
+  .btn{padding:13px 22px;border-radius:10px;background:var(--teal);color:#fff;font-size:13.5px;font-weight:700;white-space:nowrap;min-height:44px;display:flex;align-items:center;gap:8px}
+
+  /* states */
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:160px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:6px}
+  .msg .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .msg.empty .ic{background:var(--tealTint);color:var(--teal)} .msg.fallback .ic{background:var(--warningTint);color:var(--warning)} .msg.err .ic{background:var(--dangerTint);color:var(--danger)}
+  .msg .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .msg .d{font-size:11px;color:var(--inkMute);line-height:1.45;max-width:280px}
+  .msg .cta2{margin-top:3px;padding:9px 16px;background:var(--teal);color:#fff;border-radius:9px;font-size:12px;font-weight:700;min-height:38px;display:flex;align-items:center}
+  .msg .eb{margin-top:3px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .flagnote{display:flex;gap:13px;background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:13px;padding:15px 18px;margin-top:14px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--danger)}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:200px 1fr 96px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+
+  @media(max-width:1040px){
+    .annos,.modal,.states{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}.dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+    .lstage{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Commission v2 · Build annotation · AGENT VIEW</div>
+      <h1>The playground, anchored to your real gap.</h1>
+      <p class="subt">Promotes the collapsed Commission Playground to a top-level page that opens on <b>your reality</b> (YTD earned, run-rate, gap), then lets you work the <b>7-stage decomposition ladder</b> and <b>Modal Targeting</b> back from a goal — and <b>set the result as your Goal</b>. Manager suggest-a-goal variant is <b>deferred — not annotated here.</b></p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />COMMISSION v2 · AGENT<br />MANAGER VARIANT DEFERRED<br />REV 2026-06-05</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Data canon</span>
+    <p><b>Matches the overnight probe.</b> YTD earned reads <code style="font-family:var(--mono);font-size:11.5px">policies.earnedCommission</code> (settled, own) — <b>not settlements</b>. Run-rate = trailing-8-week annualized, &lt;8 settled weeks → linear-YTD fallback w/ provenance chip. Gap reference = committed <code style="font-family:var(--mono);font-size:11.5px">Goals.personalAnnualAPI</code>; no goal → empty state. Ladder's dials stage = <b>"Prospecting calls"</b> (ratified). 4-wk persistency chip = the agent's own persistency docs.</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip exist">EXISTING</span> shipped engine / data (<code style="font-family:var(--mono);font-size:11px">commissionMath.js</code>, policies, goals cascade)</span>
+    <span class="it"><span class="pchip new">NEW CHROME</span> net-new UI · no new data</span>
+    <span class="it"><span class="pchip flag">FLAG</span> needs data / a product decision — not invented</span>
+  </div>
+
+  <!-- ANCHOR + LADDER -->
+  <div class="secttl">Surface · AnchorStrip → Goal-decomposition ladder</div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">PLANNING</div>
+      <div class="nav"><span class="ic"></span>Game Plan</div>
+      <div class="nav"><span class="ic"></span>Goals</div>
+      <div class="nav on"><span class="ic"></span>Commission</div>
+      <div class="nav"><span class="ic"></span>Persistency</div>
+    </div>
+    <div class="canvas">
+      <div class="topbar"><span class="pt">Commission</span><span class="ps">· MARSHA SINGH · WK 48 · 4 WEEKS LEFT IN 2026</span></div>
+
+      <!-- ANCHOR -->
+      <div class="anchor">
+        <div class="glow"></div>
+        <div class="row">
+          <div>
+            <div class="ey">Your reality · 4 weeks left in 2026 <span class="mk e" style="width:16px;height:16px;font-size:8px">1</span></div>
+            <div class="big">On pace for <span class="t">TTD 245K</span> in commission this year</div>
+            <div class="sl">TTD 175K earned YTD <span class="prov">← policies.earnedCommission · settled</span> · projected from <b>11-wk trailing run-rate</b> <span class="prov">RUN-RATE · 11 WKS</span></div>
+          </div>
+          <div class="gap">
+            <div class="gl">GAP TO GOAL</div>
+            <div class="gv">− TTD 55K</div>
+          </div>
+        </div>
+        <div class="chips">
+          <div class="achip"><span class="cl">YTD Earned</span><span class="cv">TTD 175K</span></div>
+          <div class="achip"><span class="cl">Projected</span><span class="cv">TTD 245K</span></div>
+          <div class="achip"><span class="cl">Goal</span><span class="cv">TTD 300K</span></div>
+          <div class="achip persist"><span class="cl">Persistency · 4wk</span><span class="cv">92%</span></div>
+        </div>
+      </div>
+
+      <!-- tabs -->
+      <div class="tabs">
+        <div class="tab on"><span class="tl">Goal decomposition</span><span class="ts">INCOME → ACTIVITY</span></div>
+        <div class="tab"><span class="tl">Modal targeting</span><span class="ts">MONTHLY $ → API + MIX</span></div>
+      </div>
+
+      <!-- ladder head -->
+      <div class="ladderhead">
+        <div style="font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--inkMute)">What it takes — working back from your goal</div>
+        <div class="cadence"><span class="c">Annual</span><span class="c">Semi</span><span class="c">Quarter</span><span class="c on">Month</span><span class="c">Week</span></div>
+      </div>
+
+      <!-- ladder -->
+      <div class="ladder">
+        <div class="lstage"><div class="lcard head"><div class="ll"><div class="ln">Income goal</div><div class="ld">PRE-TAX TARGET</div></div><div class="lv">TTD 300K</div></div></div>
+        <div class="lconn"><div class="line"></div><div class="op">− 25% tax · − TTD 50K renewals</div></div>
+        <div class="lstage"><div class="lcard"><div class="ll"><div class="ln">1st-year commission</div><div class="ld">NET NEW NEEDED</div></div><div class="lv">TTD 175K</div></div></div>
+        <div class="lconn"><div class="line"></div><div class="op">÷ 35% comm rate · <span class="opx">× 90% settle</span></div></div>
+        <div class="lstage"><div class="lcard"><div class="ll"><div class="ln">API to write</div><div class="ld">ANNUAL PREMIUM</div></div><div class="lv">TTD 556K</div></div></div>
+        <div class="lconn"><div class="line"></div><div class="op">÷ TTD 12K avg policy API</div></div>
+        <div class="lstage"><div class="lcard act"><div class="ll"><div class="ln">Apps</div><div class="ld">/ MONTH</div></div><div class="lv">~5</div></div></div>
+        <div class="lconn"><div class="line"></div><div class="op opx">× 2.0 CI→sale</div></div>
+        <div class="lstage"><div class="lcard act"><div class="ll"><div class="ln">Closing interviews</div><div class="ld">/ MONTH</div></div><div class="lv">~9</div></div></div>
+        <div class="lconn"><div class="line"></div><div class="op opx">× 2.5 calls→CI</div></div>
+        <div class="lstage"><div class="lcard act"><div class="ll"><div class="ln">Prospecting calls <span class="mk e" style="width:14px;height:14px;font-size:7px">2</span></div><div class="ld">/ MONTH · 4-COMPONENT SUM</div></div><div class="lv">~23</div></div></div>
+        <div class="lconn"><div class="line"></div><div class="op">× 2.0 prospect ratio</div></div>
+        <div class="lstage"><div class="lcard act"><div class="ll"><div class="ln">Prospects</div><div class="ld">/ MONTH</div></div><div class="lv">~46</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="annos">
+    <div class="anno exist"><span class="mk e">1</span><div><div class="at">AnchorStrip — YTD from policies, run-rate trailing-8wk</div><div class="ad"><b>YTD earned = Σ <code>policies.earnedCommission</code></b> on the agent's own settled policies (settlement docs carry no earned-commission field). Run-rate = <b>trailing-8-week annualized</b>; the chip states the window (11 wks here).</div></div></div>
+    <div class="anno newc"><span class="mk n">F</span><div><div class="at">&lt;8 settled weeks → linear-YTD fallback</div><div class="ad">If the agent has fewer than 8 settled weeks, run-rate falls back to <b>linear YTD extrapolation</b> with a provenance chip "based on N weeks" — never a silent projection. (State shown below.)</div></div></div>
+    <div class="anno exist"><span class="mk e">2</span><div><div class="at">"Prospecting calls" — ratified semantics</div><div class="ad">The dials stage is labeled <b>"Prospecting calls"</b> = the <b>4-component prospecting sum</b> (not raw dials), consistent with the plan/floor surfaces. Engine = <code>commissionMath.js</code> ratios, auto-filled from 8+ wks history.</div></div></div>
+    <div class="anno exist"><span class="mk e">P</span><div><div class="at">Persistency chip — own docs</div><div class="ad">The 4-wk persistency chip reads the <b>agent's own persistency docs</b>; it feeds the settlement-rate assumption in the ladder (× 90% settle here).</div></div></div>
+  </div>
+
+  <!-- MODAL TARGETING -->
+  <div class="secttl">Modal Targeting tab — monthly $ → API + 12-month cash flow</div>
+  <div class="modal">
+    <div class="mcard">
+      <div class="ch">Target & mode mix</div>
+      <div class="mixrow">
+        <div class="resultrow" style="border-top:none;padding-top:0;margin-top:0"><div class="rl">Target commission / month</div><div class="rv" style="font-size:18px;color:var(--ink)">TTD 25K</div></div>
+        <div class="mix"><div class="top"><span class="ml">Annual-pay</span><span class="mp">40%</span></div><div class="mixbar"><i style="width:40%"></i></div></div>
+        <div class="mix"><div class="top"><span class="ml">Semi-annual</span><span class="mp">25%</span></div><div class="mixbar"><i style="width:25%"></i></div></div>
+        <div class="mix"><div class="top"><span class="ml">Quarterly</span><span class="mp">20%</span></div><div class="mixbar"><i style="width:20%"></i></div></div>
+        <div class="mix"><div class="top"><span class="ml">Monthly</span><span class="mp">15%</span></div><div class="mixbar"><i style="width:15%"></i></div></div>
+      </div>
+      <div class="resultrow"><div class="rl">API required <span style="font-family:var(--mono);font-size:9px;color:var(--inkFaint)">@ 35% rate</span></div><div class="rv">TTD 857K</div></div>
+    </div>
+    <div class="mcard">
+      <div class="ch">Projected 12-month cash flow · stacked by mode + cumulative</div>
+      <div class="chart">
+        <div class="bar"><div class="seg s1" style="height:38%"></div><div class="seg s2" style="height:14%"></div><div class="seg s3" style="height:9%"></div><div class="mo">J</div></div>
+        <div class="bar"><div class="seg s1" style="height:20%"></div><div class="seg s2" style="height:10%"></div><div class="seg s4" style="height:7%"></div><div class="mo">F</div></div>
+        <div class="bar"><div class="seg s1" style="height:24%"></div><div class="seg s3" style="height:16%"></div><div class="seg s4" style="height:8%"></div><div class="mo">M</div></div>
+        <div class="bar"><div class="seg s1" style="height:30%"></div><div class="seg s2" style="height:18%"></div><div class="seg s4" style="height:7%"></div><div class="mo">A</div></div>
+        <div class="bar"><div class="seg s1" style="height:22%"></div><div class="seg s2" style="height:11%"></div><div class="seg s3" style="height:9%"></div><div class="mo">M</div></div>
+        <div class="bar"><div class="seg s1" style="height:40%"></div><div class="seg s2" style="height:16%"></div><div class="seg s4" style="height:10%"></div><div class="mo">J</div></div>
+        <div class="bar"><div class="seg s1" style="height:26%"></div><div class="seg s3" style="height:14%"></div><div class="seg s4" style="height:8%"></div><div class="mo">J</div></div>
+        <div class="bar"><div class="seg s1" style="height:30%"></div><div class="seg s2" style="height:12%"></div><div class="seg s4" style="height:9%"></div><div class="mo">A</div></div>
+        <div class="bar"><div class="seg s1" style="height:24%"></div><div class="seg s2" style="height:15%"></div><div class="seg s3" style="height:10%"></div><div class="mo">S</div></div>
+        <div class="bar"><div class="seg s1" style="height:34%"></div><div class="seg s2" style="height:14%"></div><div class="seg s4" style="height:8%"></div><div class="mo">O</div></div>
+        <div class="bar"><div class="seg s1" style="height:28%"></div><div class="seg s3" style="height:13%"></div><div class="seg s4" style="height:9%"></div><div class="mo">N</div></div>
+        <div class="bar"><div class="seg s1" style="height:44%"></div><div class="seg s2" style="height:18%"></div><div class="seg s4" style="height:11%"></div><div class="mo">D</div></div>
+      </div>
+      <div class="chleg"><span><i style="background:var(--teal)"></i>Annual</span><span><i style="background:var(--tealLight)"></i>Semi</span><span><i style="background:var(--gold)"></i>Quarter</span><span><i style="background:color-mix(in srgb,var(--gold) 55%,var(--surface))"></i>Monthly</span></div>
+    </div>
+  </div>
+  <div class="annos" style="grid-template-columns:1fr 1fr">
+    <div class="anno exist"><span class="mk e">M</span><div><div class="at">Math is shipped — client-side, no write</div><div class="ad">Mode-mix → API and the stacked cash-flow are <b><code>commCashFlow</code> / <code>commModeBreakdown</code></b> from the existing engine. Pure calculator: <b>no data read or written</b> until "Set as my goal."</div></div></div>
+    <div class="anno newc"><span class="mk n">C</span><div><div class="at">Chart = new chrome over existing math</div><div class="ad">12-month stacked bars + cumulative overlay are <b>new presentation</b>; use Nexus tokens (teal/gold families) — <b>no gradients</b>. recharts with <code>isAnimationActive={false}</code>, both themes.</div></div></div>
+  </div>
+
+  <!-- CTA -->
+  <div class="secttl">"Set as my goal" — the one write</div>
+  <div class="ctarow">
+    <div class="cc"><div class="ct">Set this as my 2026 goal</div><div class="cd">Writes the decomposed <b>API + apps</b> into your Goals cascade as your personal commitment. <span style="color:var(--inkMute)">Single write · confirm dialog · reuses the goals write path.</span></div></div>
+    <div class="btn">Set as my goal →</div>
+  </div>
+  <div class="annos" style="grid-template-columns:1fr">
+    <div class="anno newc"><span class="mk n">W</span><div><div class="at">The only write on the agent surface</div><div class="ad">Writes <code>personalAnnualAPI</code> (+ derived apps) to the <b>existing goals cascade</b> — same write path the wizard's Step 9 uses. Button: <code>bg-primary dark:bg-primary-dark</code>, white text, ≥44px. <b>Isolate in its own slice</b> (read/derive everything else first).</div></div></div>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">N</span>No committed goal · empty</div>
+      <div class="sc-b"><div class="msg empty"><div class="ic">◎</div><div class="t">No goal set yet</div><div class="d">The gap needs a goal to measure against. Work the ladder, then set it as your 2026 goal — that becomes your anchor.</div><div class="cta2">Set as my goal</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">F</span>&lt; 8 settled weeks · fallback</div>
+      <div class="sc-b">
+        <div style="display:flex;align-items:baseline;justify-content:space-between"><span style="font-family:var(--display);font-weight:800;font-size:20px">TTD 198K</span><span class="prov" style="background:var(--warningTint);color:var(--warning)">LINEAR YTD · 5 WKS</span></div>
+        <div class="msg fallback" style="min-height:auto;padding-top:4px"><div class="d" style="max-width:none">Too few settled weeks for a trailing run-rate, so this projects <b>linearly from YTD</b> — flagged "based on 5 weeks." Firms up at 8 settled weeks.</div></div>
+      </div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error</div>
+      <div class="sc-b"><div class="msg err"><div class="ic">!</div><div class="t" style="font-size:13.5px">Couldn't load your commission</div><div class="d" style="font-size:11px">The ladder still works as a calculator; retry to reload your YTD + run-rate.</div><div class="eb">↻ Retry</div></div></div>
+    </div>
+  </div>
+
+  <div class="flagnote">
+    <span class="tag">⚑ Flags</span>
+    <p><b>Two items still need source-verification before the brief locks.</b> (1) The ladder's assumption inputs — <code>avgPolicyAPI</code>, the CI→sale / calls→CI / prospect ratios — are stated to auto-fill from 8+ wks of history; <b>confirm the history-derivation function exists</b> (else they're agent-entered defaults). (2) <b>"Prospecting calls" 4-component sum</b> must map to the same components used on the plan/floor surfaces — confirm the component list matches so the ladder and the Weekly Planner agree. <b>Nothing was invented to fill either.</b></p>
+  </div>
+
+  <!-- COMPONENTS -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · agent scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">CommissionAnchorStrip</div><div class="cd">YTD earned (policies) · trailing-8wk run-rate (+linear fallback) · gap to Goals goal · 4-wk persistency chip.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">DecompositionLadder</div><div class="cd">7 stages + per-connector transforms + cadence toggle (÷1/2/4/10/43). "Prospecting calls" semantics.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">commissionMath.js</div><div class="cd">The decomposition + cash-flow engine. Reused, not rebuilt.</div><div class="co"><span class="ptag exist">EXISTING</span></div></div>
+    <div class="crow"><div class="cn">ModalTargeting</div><div class="cd">Mode-mix sliders → API required + stacked 12-mo cash-flow (recharts, no-anim, no gradient).</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">SetAsGoal (write)</div><div class="cd">Writes personalAnnualAPI/apps → goals cascade. Confirm dialog. Own slice.</div><div class="co"><span class="ptag exist">WRITE PATH</span></div></div>
+    <div class="crow"><div class="cn">runRateResolver</div><div class="cd">Reads settled policies by week → trailing-8wk annualized; &lt;8 → linear YTD + provenance.</div><div class="co"><span class="ptag exist">READ/DERIVE</span></div></div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>
