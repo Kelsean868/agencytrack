@@ -29,8 +29,8 @@ export function ytdEarned(policies, year) {
 }
 
 // Trailing run-rate annualized from settled policy commissions.
-// Groups by settled week; if >= 8 distinct weeks, uses all of them (isLinear: false).
-// Fewer than 8 → linear-YTD fallback (isLinear: true).
+// Groups by settled week. >= 8 distinct weeks → fixed trailing-8 window: 8 most recent
+// weeks summed ÷ 8 × 52 (isLinear: false). Fewer than 8 → linear-YTD fallback (isLinear: true).
 // Returns { value, window, isLinear, weekCount }.
 export function runRate(policies, today) {
   const maxWK = todayWeekMs(today);
@@ -51,13 +51,15 @@ export function runRate(policies, today) {
   }
 
   const weekCount = byWeek.size;
-  const total = [...byWeek.values()].reduce((s, v) => s + v, 0);
-  const annualized = (total / weekCount) * 52;
 
   if (weekCount >= 8) {
-    return { value: annualized, window: `trailing-${weekCount}wk`, isLinear: false, weekCount };
+    const sorted = [...byWeek.entries()].sort((a, b) => b[0] - a[0]);
+    const trailing8Total = sorted.slice(0, 8).reduce((s, [, v]) => s + v, 0);
+    return { value: (trailing8Total / 8) * 52, window: 'trailing-8wk', isLinear: false, weekCount };
   }
-  return { value: annualized, window: `based on ${weekCount} weeks`, isLinear: true, weekCount };
+
+  const total = [...byWeek.values()].reduce((s, v) => s + v, 0);
+  return { value: (total / weekCount) * 52, window: `based on ${weekCount} weeks`, isLinear: true, weekCount };
 }
 
 // Convert committedAnnualAPI to its first-year commission equivalent using the

@@ -92,7 +92,7 @@ describe('runRate', () => {
     expect(result.weekCount).toBe(7);
   });
 
-  it('uses all available weeks when > 8 (trailing rate uses full history)', () => {
+  it('> 8 settled weeks — uses fixed trailing-8 window (8 most recent; oldest excluded)', () => {
     const sundays = [
       '2026-01-04', '2026-01-11', '2026-01-18', '2026-01-25',
       '2026-02-01', '2026-02-08', '2026-02-15', '2026-02-22',
@@ -102,8 +102,9 @@ describe('runRate', () => {
     const result = runRate(policies, today);
     expect(result.isLinear).toBe(false);
     expect(result.weekCount).toBe(11);
-    expect(result.value).toBeCloseTo((11000 / 11) * 52);
-    expect(result.window).toBe('trailing-11wk');
+    // trailing-8 sum: 8 most recent × 1000 = 8000 (Jan 04 + Jan 11 + Jan 18 excluded)
+    expect(result.value).toBeCloseTo((8000 / 8) * 52);
+    expect(result.window).toBe('trailing-8wk');
   });
 
   it('groups multiple policies in the same week correctly', () => {
@@ -119,8 +120,8 @@ describe('runRate', () => {
     const result = runRate([...base, ...policies], today);
     expect(result.isLinear).toBe(false);
     expect(result.weekCount).toBe(9);
-    // week of Mar 15 has 2000+3000=5000; 8 weeks × 1000 + 1 week × 5000 = 13000 total
-    expect(result.value).toBeCloseTo((13000 / 9) * 52);
+    // trailing-8: week of Mar 15 (5000) + 7 most-recent base weeks (7000) = 12000; Jan 04 excluded
+    expect(result.value).toBeCloseTo((12000 / 8) * 52);
   });
 
   it('returns zero with no-data marker when no settled policies', () => {
@@ -150,6 +151,60 @@ describe('runRate', () => {
   it('window chip uses "based on N weeks" format for < 8 weeks', () => {
     const result = runRate([policy({ dateIssued: ts('2026-03-01') })], today);
     expect(result.window).toBe('based on 1 weeks');
+  });
+
+  // Dispatcher cases — arm and divisor assertions
+  it('1 settled week — linear-YTD fallback arm, divisor = 1', () => {
+    const result = runRate([policy({ dateIssued: ts('2026-03-02'), earnedCommission: 9450 })], today);
+    expect(result.isLinear).toBe(true);
+    expect(result.weekCount).toBe(1);
+    expect(result.value).toBeCloseTo((9450 / 1) * 52);
+    expect(result.window).toBe('based on 1 weeks');
+  });
+
+  it('3 settled weeks — linear-YTD fallback arm, divisor = 3', () => {
+    const policies = [
+      policy({ dateIssued: ts('2026-01-04'), earnedCommission: 1000 }),
+      policy({ dateIssued: ts('2026-01-11'), earnedCommission: 2000 }),
+      policy({ dateIssued: ts('2026-01-18'), earnedCommission: 3000 }),
+    ];
+    const result = runRate(policies, today);
+    expect(result.isLinear).toBe(true);
+    expect(result.weekCount).toBe(3);
+    expect(result.value).toBeCloseTo(((1000 + 2000 + 3000) / 3) * 52);
+  });
+
+  it('exactly 8 settled weeks — trailing-8 arm, divisor = 8, window = "trailing-8wk"', () => {
+    const commissions = [1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500];
+    const sundays = [
+      '2026-01-04', '2026-01-11', '2026-01-18', '2026-01-25',
+      '2026-02-01', '2026-02-08', '2026-02-15', '2026-02-22',
+    ];
+    const policies = sundays.map((d, i) => policy({ dateIssued: ts(d), earnedCommission: commissions[i] }));
+    const result = runRate(policies, today);
+    expect(result.isLinear).toBe(false);
+    expect(result.weekCount).toBe(8);
+    expect(result.value).toBeCloseTo((commissions.reduce((s, v) => s + v, 0) / 8) * 52);
+    expect(result.window).toBe('trailing-8wk');
+  });
+
+  it('9+ settled weeks — trailing-8 arm excludes oldest week (sum uses 8 most recent only)', () => {
+    const oldest  = '2026-01-04'; // will be excluded from trailing-8 sum
+    const recent8 = [
+      '2026-01-11', '2026-01-18', '2026-01-25', '2026-02-01',
+      '2026-02-08', '2026-02-15', '2026-02-22', '2026-03-01',
+    ];
+    const policies = [
+      policy({ dateIssued: ts(oldest), earnedCommission: 10000 }), // large value — exclusion is detectable
+      ...recent8.map((d) => policy({ dateIssued: ts(d), earnedCommission: 1000 })),
+    ];
+    const result = runRate(policies, today);
+    expect(result.isLinear).toBe(false);
+    expect(result.weekCount).toBe(9);
+    // trailing-8 = 8 recent × 1000 = 8000 (oldest 10000 excluded)
+    expect(result.value).toBeCloseTo((8000 / 8) * 52); // 52000
+    // if oldest were included: (18000/9)*52 = 104000 — confirms exclusion
+    expect(result.value).not.toBeCloseTo((18000 / 9) * 52);
   });
 });
 

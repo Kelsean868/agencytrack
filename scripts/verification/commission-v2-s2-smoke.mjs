@@ -108,9 +108,15 @@ function recomputeRunRate(policies, today) {
     if (wk > maxWK) continue;
     byWeek.set(wk, (byWeek.get(wk) || 0) + (parseFloat(p.earnedCommission) || 0));
   }
-  if (byWeek.size === 0) return 0;
+  if (byWeek.size === 0) return { value: 0, weekCount: 0, isLinear: true };
+  const weekCount = byWeek.size;
+  if (weekCount >= 8) {
+    const sorted = [...byWeek.entries()].sort((a, b) => b[0] - a[0]);
+    const trailing8 = sorted.slice(0, 8).reduce((s, [, v]) => s + v, 0);
+    return { value: (trailing8 / 8) * 52, weekCount, isLinear: false };
+  }
   const total = [...byWeek.values()].reduce((s, v) => s + v, 0);
-  return (total / byWeek.size) * 52;
+  return { value: (total / weekCount) * 52, weekCount, isLinear: true };
 }
 
 // gapToGoal uses DEFAULT_MODE_MIX = {annual:1,...} when no modeMix is passed
@@ -182,10 +188,12 @@ async function runRecomputeArm(page) {
     const year  = today.getUTCFullYear();
 
     const recomputedYtd  = recomputeYtdEarned(policies, year);
-    const recomputedRate = recomputeRunRate(policies, today);
+    const rateResult     = recomputeRunRate(policies, today);
+    const recomputedRate = rateResult.value;
     const recomputedGap  = recomputeGapToGoal(committedAnnualAPI, recomputedRate, commissionRate);
 
     safeLog(`[Recompute] ytd=${recomputedYtd.toFixed(2)} rate=${recomputedRate.toFixed(2)} ` +
+      `isLinear=${rateResult.isLinear} wkCount=${rateResult.weekCount} ` +
       `goal=${(recomputedGap?.goalAsCommission ?? 0).toFixed(2)} gap=${(recomputedGap?.gap ?? 0).toFixed(2)}`);
 
     // Read displayed chip values from DOM
@@ -207,7 +215,10 @@ async function runRecomputeArm(page) {
           break;
         }
       }
-      return { chips, gapText };
+      const txt = strip.textContent || '';
+      const hasLinearLabel   = /linear ytd/i.test(txt);
+      const hasTrailingLabel = /trailing run-rate/i.test(txt);
+      return { chips, gapText, hasLinearLabel, hasTrailingLabel };
     });
 
     if (!displayed) {
@@ -249,6 +260,13 @@ async function runRecomputeArm(page) {
       gapOk
         ? `goal TTD${dispGoal} == recomputed ${(recomputedGap?.goalAsCommission ?? 0).toFixed(2)} · gap TTD${dispGap} == ${(recomputedGap?.gap ?? 0).toFixed(2)} ✓`
         : `goal or gap mismatch: dispGoal=${dispGoal} recGoal=${(recomputedGap?.goalAsCommission ?? 0).toFixed(2)} dispGap=${dispGap} recGap=${(recomputedGap?.gap ?? 0).toFixed(2)}`);
+
+    const armOk = rateResult.isLinear ? displayed.hasLinearLabel : displayed.hasTrailingLabel;
+    record('light-recompute-arm-chip',
+      armOk,
+      armOk
+        ? `${rateResult.isLinear ? 'linear-YTD fallback' : 'trailing-8wk'} arm · ${rateResult.weekCount} week(s) · DOM chip confirmed ✓`
+        : `arm mismatch: isLinear=${rateResult.isLinear} weekCount=${rateResult.weekCount} hasLinear=${displayed.hasLinearLabel} hasTrailing=${displayed.hasTrailingLabel}`);
 
   } catch (err) {
     record('light-recompute-arm', false, `recompute arm exception: ${err.message}`);
