@@ -96,30 +96,34 @@ export default function CommissionAnchorStrip({
   const ratios = { commissionRate: commissionRate || 35 };
   const gapResult = gapToGoal(committedAnnualAPI, rate.value, ratios);
 
-  // State 2 — no committed goal
+  // State 2 — no committed goal (shows YTD + run-rate; suppresses gap)
   if (!committedAnnualAPI) {
     return (
       <div
-        className="flex flex-col items-center gap-3 rounded-2xl border border-border bg-card px-5 py-8 text-center"
+        className="rounded-2xl border border-border bg-card p-5"
         data-testid="commission-anchor-strip-no-goal"
       >
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 font-display text-lg font-extrabold text-primary dark:text-primary-dark">
-          ◎
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-ink-muted">
+              Your reality · no goal set yet
+            </p>
+            <p className="mt-1.5 max-w-xs text-xs text-ink-muted">
+              Set a goal to unlock the gap tracker. Your activity data is already live.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onScrollToPlayground}
+            className="shrink-0 inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:bg-primary-dark"
+          >
+            Go to the ladder
+          </button>
         </div>
-        <div>
-          <p className="font-semibold text-ink">No goal set yet</p>
-          <p className="mt-1 max-w-xs text-xs text-ink-muted">
-            The gap needs a goal to measure against. Work the ladder below, then set it as your{' '}
-            {year} goal — that becomes your anchor.
-          </p>
+        <div className="mt-4 flex flex-wrap gap-3">
+          <Chip label="YTD Earned"  value={earned > 0 ? formatCurrency(earned)      : '—'} />
+          <Chip label="On Pace For" value={rate.value > 0 ? formatCurrency(rate.value) : '—'} />
         </div>
-        <button
-          type="button"
-          onClick={onScrollToPlayground}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-white transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:bg-primary-dark"
-        >
-          Go to the ladder
-        </button>
       </div>
     );
   }

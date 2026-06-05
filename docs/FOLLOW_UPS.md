@@ -11,13 +11,13 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 **Remaining slices:**
 
-- **S2 — Ladder + Modal Targeting restyle.** Per `docs/design/commission-v2-build.html` (the annotation authority), the GoalDecompositionTab and ModalTargetingTab get a visual restyle. **Pre-requisite: the S2 brief MUST pre-authorize the one-line `import React from 'react'` fix for both tab files** — currently only named hooks are imported (`import { useState, ... } from 'react'`), which causes `ReferenceError: React is not defined` when Vitest mounts them (the Item-5 PARK, banked FU: "CommissionPlayground tabs lack default `React` import → blocks full RTL baseline"). Once the fix lands, the parked expand-dependent baseline tests (tab-switch · setGoals write path · localStorage income-goal persistence) can also be added. Ladder "Dials" terminology is already resolved: copy must use "Prospecting calls" throughout (per #477 ratification).
+- **S2 — Ladder + Modal Targeting restyle — IN-FLIGHT (PR #TBD `{TBD}`, HUMAN-MERGE pending).** D2: GoalDecompositionTab 7-stage decomposition ladder (Income goal → 1st-yr comm → API to write → Apps → CIs → Prospecting calls → Prospects; Nexus gold/teal token variants). D3: CashFlowChart stacked 12-month bar chart + cumulative line overlay (Recharts ComposedChart, Nexus tokens, both themes). D4: no-goal AnchorStrip now shows YTD earned + run-rate chips (gap suppressed, CTA kept). D5: React imports + 9 RTL baseline tests (4 GoalDecompositionTab + 5 CommissionAnchorStrip). REDESIGN/VISUAL-ONLY — no writes, no rules, no new data fetches. Suite 2399/2399; lint 0; build clean; smoke pending.
 - **S3 — "Set as my goal" write + manager variant.** Agent-side: the no-committed-goal state's CTA writes the decomposition ladder result as the committed `personalAnnualAPI` to the Goals cascade. Manager variant: strip showing an agent's commission data (manager viewing an agent's Commission tab). Needs a Firestore write path + rules verification. Post-pilot candidate.
 
 **Banked addenda (post-merge, 2026-06-05):**
 
 - **Deferred-verification FU (Rule 13):** AnchorStrip data arm (displayed YTD / run-rate / gap == independent SDK recompute) not yet live-proven — test agent had no committed goal/settled earnings during S1 smoke. Unit suite covers the math. Run the recompute leg post-S3 via a product-UI-committed goal, or via legitimately seeded agent data.
-- **S2 design question:** Empty (no-goal) AnchorStrip suppresses YTD earned + run-rate, which are goal-independent. Consider showing them in the no-goal state (e.g. show YTD/run-rate even without a committed goal, only suppress gap). Confirm with CD at S2 brief time.
+- **S2 design question:** ~~Empty (no-goal) AnchorStrip suppresses YTD earned + run-rate — consider showing them.~~ **RESOLVED by D4 in S2 (PR #TBD `{TBD}`)** — no-goal state now shows YTD Earned + On Pace For chips; gap figure suppressed; CTA kept.
 - **Trio certification:** PASSED — Goals + Persistency + Commission all render real data under the agent (E3) credential. The operator's "fully working for agents" intent is now regression-protected by the S1 smoke (`scripts/verification/commission-v2-s1-smoke.mjs`).
 
 **Cross-reference:** `docs/design/commission-v2-build.html` (layout authority for all three slices); § CommissionPlayground tabs lack default `React` import → blocks full RTL baseline (active FU, pre-auth required in S2 brief); `docs/briefs/commission-v2-s1-kickoff.md`.
@@ -4124,17 +4124,11 @@ Banked: Track J P3 production leaderboard surface (PR #401), 2026-05-31.
 
 ---
 
-## CommissionPlayground tabs lack default `React` import → blocks full RTL baseline (NEW, LOW/TEST-ENABLER, banked 2026-06-05, Item 5 PARK)
+## ~~CommissionPlayground tabs lack default `React` import → blocks full RTL baseline~~ CLOSED
 
-**Scope:** `src/components/goals/CommissionPlayground/tabs/GoalDecompositionTab.jsx` and `ModalTargetingTab.jsx` import only named hooks (`import { useState, ... } from 'react'`), not the default `React`. Mounting either in a **new** Vitest test throws `ReferenceError: React is not defined` at the JSX return (e.g. `GoalDecompositionTab.jsx:184`) — the banked CLAUDE.md #153 lesson ("All new JSX components must explicitly import React for Vitest compatibility"; Vitest does not apply Vite's automatic JSX transform to newly-mounted files).
+**CLOSED by D5 in Commission v2 S2 (PR #TBD `{TBD}`).** `import React from 'react'` added to `GoalDecompositionTab.jsx`, `ModalTargetingTab.jsx`, `ModeMixSlider.jsx`, `CommissionBreakdownTable.jsx`, and `InsightCard.jsx`. All 4 parked expand-dependent baseline tests now land (7-stage ladder render · localStorage persistence · tab-switch · `setGoals` write path) + 5 D4 AnchorStrip no-goal tests. Suite 2399/2399.
 
-**Consequence:** Item 5(b)'s CommissionPlayground RTL baseline could only land the **collapsed-shell** tests (render header, `isManagerSelf` copy — these mount only `index.jsx`, which already has the import). The **expand-dependent** baseline — tablist reveal, tab switch, the `setGoals` write path, and localStorage income-goal persistence — was **PARKED** because exercising it requires mounting the tabs, which requires the src fix. Item 5 was scoped test-only / ZERO src changes (brief: "if untestable without src edits, PARK that part and keep (a)").
-
-**Fix (one line each):** add `import React from 'react';` to both tab files, then land the parked baseline tests (the four removed cases live in this FU's originating test file's git history / the PR #491-adjacent Item-5 PR description). Trivial, lint-clean, also brings the tabs into line with the CLAUDE.md React-import rule.
-
-**Priority:** LOW. The real Commission math safety net shipped in Item 5(a) (commissionMath characterization: `modeBreakdown` + `cashFlowForecast` + `commissionThisMonth` + boundaries; the decomposition chain is pinned in `src/utils/__tests__/goalDecomposition.test.js`). This FU only unblocks the *component-mount* half of the baseline. Best done when the Commission redesign (S1) next touches these files.
-
-Banked: Item 5 (night queue, test-only), 2026-06-05.
+Banked closed: Item 5 (night queue, test-only), 2026-06-05. Resolved: Commission v2 S2, 2026-06-05.
 
 ---
 
