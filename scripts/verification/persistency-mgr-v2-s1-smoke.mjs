@@ -153,16 +153,32 @@ async function runTheme(theme) {
       consoleErrors.push(t);
     });
 
-    // Capture Firebase bearer token from outgoing Firestore requests.
-    // page.on('request') is non-intercepting; Authorization header is set by
-    // the Firebase SDK's fetch() calls and is visible in request.headers().
-    let capturedToken = null;
-    page.on('request', (req) => {
-      if (!req.url().includes('googleapis.com')) return;
-      try {
-        const auth = req.headers()['authorization'];
-        if (auth?.startsWith('Bearer ') && !capturedToken) capturedToken = auth.slice(7);
-      } catch { /* headers() may throw on aborted requests */ }
+    // Capture Firebase bearer token by patching window.fetch BEFORE the Firebase SDK
+    // initialises. page.on('request') cannot intercept gRPC-web framed requests that
+    // the Firestore SDK sends; addInitScript() runs at the JS layer before any page
+    // script, so the patch is in place when the SDK first makes auth'd fetch calls.
+    await page.addInitScript(() => {
+      const _orig = window.fetch;
+      window.__bearerToken = null;
+      window.fetch = function (input, init) {
+        try {
+          let auth = '';
+          if (input && typeof input === 'object' && typeof input.headers?.get === 'function') {
+            auth = input.headers.get('authorization') || input.headers.get('Authorization') || '';
+          }
+          const h = init?.headers;
+          if (h) {
+            const fromH = typeof h.get === 'function'
+              ? (h.get('authorization') || h.get('Authorization') || '')
+              : (h.authorization || h.Authorization || '');
+            if (fromH) auth = fromH;
+          }
+          if (!window.__bearerToken && auth && String(auth).startsWith('Bearer ')) {
+            window.__bearerToken = String(auth).slice(7);
+          }
+        } catch {}
+        return _orig.apply(this, arguments);
+      };
     });
 
     await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
@@ -229,8 +245,36 @@ async function runTheme(theme) {
       return Array.from(rows).map((el) => el.dataset.testid.replace('pers-roster-row-', ''));
     });
 
+    // Primary: fetch patch; fallback: Firebase Auth IndexedDB storage.
+    let capturedToken = await page.evaluate(() => window.__bearerToken ?? null);
     if (!capturedToken) {
-      recompute = { pass: false, skipped: true, reason: 'bearer token not captured from googleapis.com requests' };
+      capturedToken = await page.evaluate(() => new Promise((resolve) => {
+        try {
+          const req = indexedDB.open('firebaseLocalStorageDb');
+          req.onerror = () => resolve(null);
+          req.onsuccess = (e) => {
+            try {
+              const db = e.target.result;
+              if (!db.objectStoreNames.contains('firebaseLocalStorage')) { resolve(null); return; }
+              const tx = db.transaction('firebaseLocalStorage', 'readonly');
+              const store = tx.objectStore('firebaseLocalStorage');
+              const getAll = store.getAll();
+              getAll.onsuccess = () => {
+                for (const item of (getAll.result ?? [])) {
+                  const tok = item?.value?.stsTokenManager?.accessToken;
+                  if (tok) { resolve(tok); return; }
+                }
+                resolve(null);
+              };
+              getAll.onerror = () => resolve(null);
+            } catch { resolve(null); }
+          };
+        } catch { resolve(null); }
+      }));
+    }
+
+    if (!capturedToken) {
+      recompute = { pass: false, skipped: true, reason: 'bearer token not captured (fetch patch + IndexedDB both empty)' };
     } else if (!selectedMonthKey) {
       recompute = { pass: false, skipped: true, reason: 'could not read selectedMonthKey from DOM selector' };
     } else {
