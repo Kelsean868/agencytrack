@@ -122,7 +122,7 @@ describe('SuggestedWeekCard — resolution states', () => {
     render(<SuggestedWeekCard committedAnnualAPI={120000} submissions={derivedSubmissions} />);
     const derived = screen.getByTestId('suggested-week-derived');
     expect(derived).toBeInTheDocument();
-    ['Dials', 'CIs', 'Apps'].forEach((label) => {
+    ['Prospecting calls', 'CIs', 'Apps'].forEach((label) => {
       expect(within(derived).getByText(label)).toBeInTheDocument();
     });
     // The reveal chain is collapsed until a chip is tapped.
@@ -131,7 +131,7 @@ describe('SuggestedWeekCard — resolution states', () => {
 
   it('tapping a derived chip expands the derivation chain incl. prospects', () => {
     render(<SuggestedWeekCard committedAnnualAPI={120000} submissions={derivedSubmissions} />);
-    const dialsChip = screen.getByRole('button', { name: /dials:.*per week/i });
+    const dialsChip = screen.getByRole('button', { name: /prospecting calls:.*per week/i });
     expect(dialsChip).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(dialsChip);
     expect(dialsChip).toHaveAttribute('aria-expanded', 'true');
