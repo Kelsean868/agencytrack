@@ -69,6 +69,45 @@ describe('status-ink tokens clear AA against every background (both themes)', ()
   }
 });
 
+// ── AA-straggler fixes (cleanup-duo) ──────────────────────────────────────────
+// Proven deterministically: channel values must match src/index.css.
+
+describe('activity-time text-muted: passes AA on card surface (both themes)', () => {
+  // text-faint was 2.50:1 light / 4.17:1 dark — both fail; text-muted fixes both.
+  const light = { textMuted: [107, 101, 96],  surface: [255, 255, 255] };
+  const dark  = { textMuted: [184, 174, 160], surface: [37, 32, 25] };
+  test('light: text-muted on surface ≥ 4.5', () => {
+    expect(contrastRatio(light.textMuted, light.surface)).toBeGreaterThanOrEqual(4.5);
+  });
+  test('dark: text-muted on surface ≥ 4.5', () => {
+    expect(contrastRatio(dark.textMuted, dark.surface)).toBeGreaterThanOrEqual(4.5);
+  });
+  test('old text-faint on light surface was < AA', () => {
+    expect(contrastRatio([168, 163, 156], [255, 255, 255])).toBeLessThan(4.5);
+  });
+  test('old text-faint on dark surface was < AA', () => {
+    expect(contrastRatio([138, 128, 116], [37, 32, 25])).toBeLessThan(4.5);
+  });
+});
+
+describe('NotificationDrawer Mark-all-read: dark hover primary-light passes AA', () => {
+  // dark hover was text-primary-dark = #01696f on dark surface = 2.50:1 (fail).
+  // Fix: dark:hover:text-primary-light = #6DC8CB = 8.29:1 (pass).
+  const darkSurface   = [37, 32, 25];
+  const primaryDark   = [74, 181, 184];   // text-primary dark (default)
+  const primaryLight  = [109, 200, 203];  // text-primary-light dark (hover fix)
+  const primaryDrkDrk = [1, 105, 111];    // text-primary-dark in dark mode (the failing hover)
+  test('dark default text-primary on dark surface ≥ 4.5', () => {
+    expect(contrastRatio(primaryDark, darkSurface)).toBeGreaterThanOrEqual(4.5);
+  });
+  test('dark hover text-primary-light on dark surface ≥ 4.5', () => {
+    expect(contrastRatio(primaryLight, darkSurface)).toBeGreaterThanOrEqual(4.5);
+  });
+  test('old dark hover text-primary-dark on dark surface was < AA', () => {
+    expect(contrastRatio(primaryDrkDrk, darkSurface)).toBeLessThan(4.5);
+  });
+});
+
 describe('the base (pre-ink) status text was genuinely below AA where fixed', () => {
   // Confirms the -ink tokens were necessary, not cosmetic — the documented debt.
   test('light danger base on its /15 tint was < AA', () => {
