@@ -247,7 +247,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
       </div>
 
       {error && (
-        <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{error}</p>
+        <p className="text-xs text-danger-ink bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{error}</p>
       )}
 
       <div className="flex flex-wrap gap-2 pt-1 border-t border-border">
@@ -256,7 +256,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
           disabled={saving}
           className={`h-9 px-4 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60 ${
             savedGoals
-              ? 'bg-success/15 text-success'
+              ? 'bg-success/15 text-success-ink'
               : 'bg-primary dark:bg-primary-dark text-white hover:bg-primary-dark dark:hover:bg-primary'
           }`}
         >
@@ -267,7 +267,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
           disabled={saving}
           className={`h-9 px-4 rounded-lg text-sm font-semibold border transition-colors disabled:opacity-60 ${
             savedAssumptions
-              ? 'border-success/40 text-success bg-success/10'
+              ? 'border-success/40 text-success-ink bg-success/10'
               : 'border-border text-ink-muted hover:text-ink'
           }`}
         >

@@ -149,7 +149,7 @@ function CategoryTabs({ tabs, activeId, onChange, totalCount }) {
         ))}
       </div>
       {totalCount > 0 && (
-        <p className="text-xs text-ink-faint font-mono tracking-wide">
+        <p className="text-xs text-ink-muted font-mono tracking-wide">
           {totalCount} award{totalCount === 1 ? '' : 's'} tracked
         </p>
       )}
@@ -231,7 +231,7 @@ export default function ManagerAwardsPanel({
   }
 
   if (error) {
-    return <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>;
+    return <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>;
   }
 
   if (!agentIds?.length) {
@@ -294,7 +294,7 @@ export default function ManagerAwardsPanel({
           <GroupHeader
             label="↗ Making progress · 30–70%"
             count={groups.makingProgress.length}
-            accentStyle={{ color: 'var(--color-primary-light)' }}
+            accentStyle={{ color: 'var(--color-primary)' }}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {groups.makingProgress.map((a) => (

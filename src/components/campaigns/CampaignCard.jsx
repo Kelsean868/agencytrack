@@ -5,8 +5,8 @@ import { formatCurrency, formatDateFriendly } from '../../utils/formatters';
 
 function DaysPill({ days }) {
   if (days > 7)  return <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary">{days} days left</span>;
-  if (days >= 1) return <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-warning/15 text-warning">{days} day{days !== 1 ? 's' : ''} left</span>;
-  if (days === 0) return <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-danger/15 text-danger">Last day!</span>;
+  if (days >= 1) return <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-warning/15 text-warning-ink">{days} day{days !== 1 ? 's' : ''} left</span>;
+  if (days === 0) return <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-danger/15 text-danger-ink">Last day!</span>;
   return <span className="inline-flex px-2.5 py-1 rounded-full text-xs font-semibold bg-border/60 text-ink-muted">Ended</span>;
 }
 
@@ -22,7 +22,7 @@ function MetricBar({ label, metric, current, threshold, pct, achieved }) {
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-ink">{currentFmt} / {threshFmt}</span>
           {achieved && (
-            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-success bg-success/10 px-1.5 py-0.5 rounded-full">
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-success-ink bg-success/10 px-1.5 py-0.5 rounded-full">
               <CheckCircle2 size={10} /> Achieved
             </span>
           )}
@@ -95,7 +95,7 @@ export default function CampaignCard({ campaign, submissions, agentId }) {
 
       {/* All-achieved banner */}
       {allAchieved && (
-        <div className="rounded-lg bg-success/10 border border-success/20 px-3 py-2 text-xs font-semibold text-success flex items-center justify-center gap-1.5">
+        <div className="rounded-lg bg-success/10 border border-success/20 px-3 py-2 text-xs font-semibold text-success-ink flex items-center justify-center gap-1.5">
           <CheckCircle2 size={14} /> All targets achieved!
         </div>
       )}

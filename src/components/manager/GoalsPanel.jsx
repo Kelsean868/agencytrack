@@ -79,7 +79,7 @@ function NumInput({ label, value, onChange, currency }) {
 function BelowFloorWarning({ label }) {
   return (
     <span
-      className="inline-flex items-center gap-1 text-[11px] text-warning"
+      className="inline-flex items-center gap-1 text-[11px] text-warning-ink"
       title={`This target is below the Tatil Life minimum. Consider revising.`}
     >
       <AlertTriangle size={12} />
@@ -105,20 +105,20 @@ function getAgentStatus(goalsDoc, mins, annualAPIFloor) {
 function StatusChip({ status }) {
   if (status === 'above') {
     return (
-      <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/15 text-success">
+      <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/15 text-success-ink">
         Above floor
       </span>
     );
   }
   if (status === 'below') {
     return (
-      <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-warning/15 text-warning">
+      <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-warning/15 text-warning-ink">
         Below floor
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger/15 text-danger">
+    <span className="inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full bg-danger/15 text-danger-ink">
       Not set
     </span>
   );
@@ -243,7 +243,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
       ) : loadingGoals ? (
         <div className="h-24 rounded-xl bg-border/30 animate-pulse" />
       ) : loadError ? (
-        <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{loadError}</div>
+        <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{loadError}</div>
       ) : (
         <div className="card flex flex-col gap-4">
           {existing?.setByName && (
@@ -254,7 +254,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
           )}
           <GoalLevelForm value={form} onChange={setForm} />
           {saveError && (
-            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">
               {saveError}
             </div>
           )}
@@ -326,7 +326,7 @@ function BranchGoalsTab({ userProfile }) {
       {loading ? (
         <div className="h-24 rounded-xl bg-border/30 animate-pulse" />
       ) : loadError ? (
-        <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{loadError}</div>
+        <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{loadError}</div>
       ) : (
         <div className="card flex flex-col gap-4">
           {existing?.setByName && (
@@ -337,7 +337,7 @@ function BranchGoalsTab({ userProfile }) {
           )}
           <GoalLevelForm value={form} onChange={setForm} />
           {saveError && (
-            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">
               {saveError}
             </div>
           )}
@@ -419,7 +419,7 @@ function SalesManagerGoalsTab({ userProfile }) {
       {loading ? (
         <div className="h-24 rounded-xl bg-border/30 animate-pulse" />
       ) : loadError ? (
-        <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{loadError}</div>
+        <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{loadError}</div>
       ) : !smUid ? (
         <div className="p-4 rounded-xl bg-border/20 text-sm text-ink-muted">No sales manager found for this tenant.</div>
       ) : (
@@ -432,7 +432,7 @@ function SalesManagerGoalsTab({ userProfile }) {
           )}
           <GoalLevelForm value={form} onChange={setForm} />
           {saveError && (
-            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">
               {saveError}
             </div>
           )}
@@ -569,7 +569,7 @@ function AgentGoalRow({
           )}
 
           {hasSaveError && (
-            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">
+            <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">
               Failed to save goals for {agentLabel}. Please try again.
             </div>
           )}
@@ -779,7 +779,7 @@ function AgentGoalsTab() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
+      <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>
     );
   }
 
@@ -803,7 +803,7 @@ function AgentGoalsTab() {
       </div>
 
       {partialLoadWarning && (
-        <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm text-warning">
+        <div className="p-3 rounded-lg bg-warning/10 border border-warning/30 text-sm text-warning-ink">
           Some agents&rsquo; goals couldn&rsquo;t be loaded. They will appear blank.
         </div>
       )}

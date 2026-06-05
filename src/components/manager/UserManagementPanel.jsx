@@ -165,13 +165,13 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
           {/* Sensitive-role warning banners */}
           {effectiveRole === 'tenant_admin' && (
             <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-warning/10 border border-warning/30">
-              <AlertTriangle size={15} className="text-warning mt-0.5 shrink-0" />
+              <AlertTriangle size={15} className="text-warning-ink mt-0.5 shrink-0" />
               <p className="text-xs text-ink">Tenant admin has full power within this company. Assign carefully.</p>
             </div>
           )}
           {effectiveRole === 'platform_admin' && (
             <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-danger/10 border border-danger/30">
-              <AlertTriangle size={15} className="text-danger mt-0.5 shrink-0" />
+              <AlertTriangle size={15} className="text-danger-ink mt-0.5 shrink-0" />
               <p className="text-xs text-ink">Platform admin has cross-tenant access. This role is rare — confirm intent.</p>
             </div>
           )}
@@ -260,7 +260,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
             <>
               <div className="flex flex-col gap-1.5">
                 <label htmlFor="create-user-unit-name" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-                  Unit Name <span className="font-normal normal-case text-ink-faint">(optional)</span>
+                  Unit Name <span className="font-normal normal-case text-ink-muted">(optional)</span>
                 </label>
                 <input
                   id="create-user-unit-name"
@@ -324,7 +324,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
           )}
 
           {error && (
-            <p className="text-xs text-danger bg-danger/10 rounded-lg px-3 py-2">{error}</p>
+            <p className="text-xs text-danger-ink bg-danger/10 rounded-lg px-3 py-2">{error}</p>
           )}
         </div>
 
@@ -551,7 +551,7 @@ export default function UserManagementPanel() {
                   <div className="min-w-0">
                     <span className="text-sm font-semibold text-ink truncate block">{u.name ?? '—'}</span>
                     {isInactive && (
-                      <span className="text-[10px] font-bold text-danger uppercase tracking-wide">Inactive</span>
+                      <span className="text-[10px] font-bold text-danger-ink uppercase tracking-wide">Inactive</span>
                     )}
                   </div>
                 </div>
@@ -590,7 +590,7 @@ export default function UserManagementPanel() {
                       className={`text-xs font-semibold px-2.5 min-h-[44px] rounded-lg transition-colors min-w-[80px] ${
                         isInactive
                           ? 'text-primary bg-primary/10 hover:bg-primary/20'
-                          : 'text-danger bg-danger/10 hover:bg-danger/20'
+                          : 'text-danger-ink bg-danger/10 hover:bg-danger/20'
                       }`}
                     >
                       {isInactive ? 'Reactivate' : 'Deactivate'}

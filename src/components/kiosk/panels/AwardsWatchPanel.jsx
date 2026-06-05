@@ -87,7 +87,7 @@ export default function AwardsWatchPanel({ allSubmissions, allUsers }) {
 
       {achieved.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-success text-xl font-semibold mb-3">Achieved</h2>
+          <h2 className="text-success-ink text-xl font-semibold mb-3">Achieved</h2>
           <div className="flex flex-wrap gap-3">
             {achieved.map(({ agentId, agentName, totals }) => (
               <div

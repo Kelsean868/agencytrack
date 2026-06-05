@@ -62,10 +62,6 @@ function record(leg, passed, detail) {
 }
 
 const SERIOUS_ALLOWLIST = [
-  { name: 'StatusPill danger pill on-tint (contrast-debt FU)',   test: (h) => /bg-danger\/15/.test(h) && /text-danger/.test(h) },
-  { name: 'StatusPill warning pill on-tint (contrast-debt FU)',  test: (h) => /bg-warning\/15/.test(h) && /text-warning/.test(h) },
-  { name: 'StatusPill success pill on-tint (contrast-debt FU)',  test: (h) => /bg-success\/15/.test(h) && /text-success/.test(h) },
-  { name: 'exception count badge on-tint (contrast-debt FU)',    test: (h) => /bg-danger\/10/.test(h) && /text-danger/.test(h) },
   { name: 'pre-existing notification-bell badge',                test: (h) => /\babsolute\b/.test(h) && /bg-danger/.test(h) && /text-white/.test(h) },
 ];
 

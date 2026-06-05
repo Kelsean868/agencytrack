@@ -175,7 +175,7 @@ export default function StepNewBusiness({ data, onChange }) {
               desc="Combined annual premium increase across all PPP transactions."
             />
             {pppWarn && (
-              <p className="text-xs text-warning font-medium">
+              <p className="text-xs text-warning-ink font-medium">
                 Average {formatCurrency(Math.round(pppAvgPerApp))} per application is below the{' '}
                 {formatCurrency(MIN_PPP_INCREASE)} minimum — check your figures.
               </p>

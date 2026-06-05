@@ -46,7 +46,7 @@ export default function PlanAnchorStrip({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-warning">
+            <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-warning-ink">
               Your {year} Plan
             </span>
             <span

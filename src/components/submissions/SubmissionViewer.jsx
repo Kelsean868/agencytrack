@@ -47,7 +47,7 @@ function StatusBadge({ status }) {
   const submitted = status === 'submitted';
   return (
     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
-      submitted ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'
+      submitted ? 'bg-success/15 text-success-ink' : 'bg-warning/15 text-warning-ink'
     }`}>
       {submitted ? 'Submitted' : 'Draft'}
     </span>
@@ -106,8 +106,8 @@ export default function SubmissionViewer({ submission: s, onClose }) {
           {/* Unlock banner */}
           {s.unlockedBy && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30 mb-4">
-              <Unlock size={14} className="text-warning mt-0.5 shrink-0" />
-              <p className="text-xs text-warning leading-snug">
+              <Unlock size={14} className="text-warning-ink mt-0.5 shrink-0" />
+              <p className="text-xs text-warning-ink leading-snug">
                 Unlocked by <span className="font-semibold">{s.unlockedByName ?? 'a manager'}</span>
                 {s.unlockedAt ? ` on ${formatTs(s.unlockedAt)}` : ''}
               </p>

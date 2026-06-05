@@ -60,10 +60,10 @@ export function policyRole(policy) {
  */
 const ROLE_TOKENS = {
   'in-flight': { text: 'text-primary',   tint: 'bg-primary-tint', solid: 'bg-primary'   },
-  settled:     { text: 'text-success',   tint: 'bg-success-tint', solid: 'bg-success'   },
+  settled:     { text: 'text-success-ink',   tint: 'bg-success-tint', solid: 'bg-success'   },
   confirmed:   { text: 'text-gold',      tint: 'bg-gold-tint',    solid: 'bg-gold'      },
-  soft:        { text: 'text-warning',   tint: 'bg-warning-tint', solid: 'bg-warning'   },
-  hard:        { text: 'text-danger',    tint: 'bg-danger-tint',  solid: 'bg-danger'    },
+  soft:        { text: 'text-warning-ink',   tint: 'bg-warning-tint', solid: 'bg-warning'   },
+  hard:        { text: 'text-danger-ink',    tint: 'bg-danger-tint',  solid: 'bg-danger'    },
   closed:      { text: 'text-ink-muted', tint: 'bg-surface-muted', solid: 'bg-ink-faint' },
 };
 

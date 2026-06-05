@@ -155,14 +155,14 @@ export default function AgentOfMonthTab() {
       </div>
 
       {isLocked && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-warning-tint text-warning flex items-center gap-2 text-sm">
+        <div className="mb-4 px-4 py-3 rounded-lg bg-warning-tint text-warning-ink flex items-center gap-2 text-sm">
           <Lock size={15} aria-hidden="true" />
           This month is locked. Winners can no longer be changed.
         </div>
       )}
 
       {error && (
-        <div className="mb-4 px-4 py-3 rounded-lg bg-danger-tint text-danger text-sm flex items-center gap-2">
+        <div className="mb-4 px-4 py-3 rounded-lg bg-danger-tint text-danger-ink text-sm flex items-center gap-2">
           <AlertCircle size={15} aria-hidden="true" />
           {error}
         </div>

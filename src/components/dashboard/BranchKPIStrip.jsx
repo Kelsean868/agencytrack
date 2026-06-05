@@ -49,8 +49,8 @@ export default function BranchKPIStrip({ kpiData, loading }) {
             const prev  = vals[vals.length - 2] ?? 0;
             const delta = cur - prev;
             const colorClass =
-              delta > 0 ? 'bg-success/10 text-success border-success/20' :
-              delta < 0 ? 'bg-danger/10 text-danger border-danger/20' :
+              delta > 0 ? 'bg-success/10 text-success-ink border-success/20' :
+              delta < 0 ? 'bg-danger/10 text-danger-ink border-danger/20' :
                           'bg-surface text-ink-muted border-border';
             const arrow = delta > 0 ? '▲' : delta < 0 ? '▼' : '—';
             return (

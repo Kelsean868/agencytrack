@@ -193,7 +193,7 @@ export default function GamePlanScreen({
 
       {!loading && error && (
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border bg-card px-4 py-12 text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger/10 text-danger">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger/10 text-danger-ink">
             <AlertCircle size={24} aria-hidden="true" />
           </div>
           <div>

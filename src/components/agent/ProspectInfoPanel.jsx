@@ -120,7 +120,7 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
           <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary">
             {APPT_TYPE_LABEL[prep.appointmentType] ?? prep.appointmentType}
           </span>
-          <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success">
+          <span className="inline-flex px-2 py-0.5 rounded-full text-[11px] font-medium bg-success/10 text-success-ink">
             {SOURCE_LABEL[prep.prospectingSource] ?? prep.prospectingSource}
           </span>
           <span className="text-[11px] text-ink-muted">
@@ -157,7 +157,7 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
           {Array.isArray(prep.objections) && prep.objections.length > 0 && (
             <div className="flex flex-wrap gap-1 pt-1">
               {prep.objections.map((o) => (
-                <span key={o} className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-warning/10 text-warning">
+                <span key={o} className="inline-flex px-2 py-0.5 rounded-full text-[10px] font-medium bg-warning/10 text-warning-ink">
                   {OBJECTION_LABEL[o] ?? o}
                 </span>
               ))}
@@ -279,7 +279,7 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
               ))}
             </div>
           </div>
-          {err && <p className="text-xs text-danger" role="alert">{err}</p>}
+          {err && <p className="text-xs text-danger-ink" role="alert">{err}</p>}
           <div className="flex gap-2 justify-end">
             <button
               onClick={cancelEdit}
@@ -499,7 +499,7 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
           </div>
           <div>
             <label htmlFor="prospect-appt-date" className="block text-xs text-ink-muted mb-1">
-              Intended appointment date <span className="text-danger">*</span>
+              Intended appointment date <span className="text-danger-ink">*</span>
             </label>
             <input
               id="prospect-appt-date"
@@ -526,7 +526,7 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
               ))}
             </div>
           </div>
-          {addError && <p className="text-xs text-danger" role="alert">{addError}</p>}
+          {addError && <p className="text-xs text-danger-ink" role="alert">{addError}</p>}
           <div className="flex gap-2 justify-end">
             <button
               type="button"
@@ -557,7 +557,7 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
       )}
 
       {!loading && error && (
-        <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger" role="alert">
+        <div className="p-3 rounded-xl border border-danger/30 bg-danger/10 text-sm text-danger-ink" role="alert">
           {error}
         </div>
       )}

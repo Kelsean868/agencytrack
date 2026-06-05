@@ -34,7 +34,7 @@ export default function SaveButton({
           'inline-flex items-center justify-center gap-2 font-medium px-5 rounded-lg transition-colors',
           'min-h-[44px] focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50',
           isSaved
-            ? 'bg-success/15 text-success hover:bg-success/20'
+            ? 'bg-success/15 text-success-ink hover:bg-success/20'
             : 'bg-primary dark:bg-primary-dark text-white hover:bg-primary-dark',
         ].join(' ')}
       >
@@ -44,7 +44,7 @@ export default function SaveButton({
             ? <><Check size={16} />{savedLabel}</>
             : <>{icon}{label}</>}
       </button>
-      {error && <p className="text-[11px] text-danger">{error}</p>}
+      {error && <p className="text-[11px] text-danger-ink">{error}</p>}
     </div>
   );
 }

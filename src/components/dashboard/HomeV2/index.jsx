@@ -201,7 +201,7 @@ export default function AgentDashboardHomeV2({
       {submissionsError && (
         <div
           role="alert"
-          className="flex items-start gap-3 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger"
+          className="flex items-start gap-3 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger-ink"
         >
           <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
           <p className="text-sm font-medium">

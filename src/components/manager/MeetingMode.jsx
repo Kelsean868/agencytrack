@@ -56,8 +56,8 @@ function resolveName(sub) {
 
 function StatusBadge({ status }) {
   const cls = status === 'submitted'
-    ? 'bg-success/25 text-success'
-    : 'bg-warning/25 text-warning';
+    ? 'bg-success/25 text-success-ink'
+    : 'bg-warning/25 text-warning-ink';
   return (
     <span className={`inline-flex px-3 py-1 rounded-full text-sm font-semibold ${cls}`}>
       {status === 'submitted' ? 'Submitted' : 'Draft'}
@@ -302,7 +302,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
                   {isOutlier(agent) && (
                     <AlertTriangle
                       size={22}
-                      className="text-warning shrink-0"
+                      className="text-warning-ink shrink-0"
                       title="One or more stats significantly above team average"
                     />
                   )}

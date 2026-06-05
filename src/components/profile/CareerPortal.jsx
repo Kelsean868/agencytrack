@@ -277,8 +277,8 @@ function CareerLadder({ currentLevel, onLevelClick }) {
   return (
     <div className="card p-5">
       <div className="flex items-baseline justify-between mb-5">
-        <p className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase">Your career ladder</p>
-        <p className="text-xs text-ink-faint font-mono">{currentLevel} of {CAREER_LEVELS.length} levels</p>
+        <p className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase">Your career ladder</p>
+        <p className="text-xs text-ink-muted font-mono">{currentLevel} of {CAREER_LEVELS.length} levels</p>
       </div>
       <div>
         {CAREER_LEVELS.map((lvl, i) => (
@@ -308,7 +308,7 @@ function TimeToNextCard({ currentLevel, estimate, weeklyPace }) {
         pointerEvents: 'none',
       }} />
       <div style={{ position: 'relative' }}>
-        <p className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase mb-1.5">Next milestone</p>
+        <p className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase mb-1.5">Next milestone</p>
         <p className="text-base font-bold text-ink" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' }}>
           Level {nextLevel.level} — {nextLevel.title}
         </p>
@@ -340,9 +340,9 @@ function TrajectoryCard({ submissions }) {
   return (
     <div className="card p-5">
       <div className="flex items-baseline justify-between">
-        <p className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase">Trajectory · 8 quarters</p>
+        <p className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase">Trajectory · 8 quarters</p>
         {hasData && (
-          <p className="text-xs font-mono text-success font-bold">↗ Growth trend</p>
+          <p className="text-xs font-mono text-success-ink font-bold">↗ Growth trend</p>
         )}
       </div>
       {hasData ? (
@@ -370,7 +370,7 @@ function TrajectoryCard({ submissions }) {
               );
             })}
           </div>
-          <p className="text-xs text-ink-faint font-mono mt-2 tracking-wide">Quarterly API · TTD thousands</p>
+          <p className="text-xs text-ink-muted font-mono mt-2 tracking-wide">Quarterly API · TTD thousands</p>
         </>
       ) : (
         <p className="text-xs text-ink-muted mt-4 text-center py-4">Submit reports to see your trajectory.</p>
@@ -384,7 +384,7 @@ function CommitmentScorecard({ label, mine, managerTarget, floor, formatVal }) {
   if (!mine && mine !== 0) {
     return (
       <div className="card p-4 flex flex-col gap-2">
-        <p className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase">{label}</p>
+        <p className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase">{label}</p>
         <p className="text-sm text-ink-muted">—</p>
       </div>
     );
@@ -403,7 +403,7 @@ function CommitmentScorecard({ label, mine, managerTarget, floor, formatVal }) {
 
   return (
     <div className="card p-4 flex flex-col gap-2">
-      <p className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase">{label}</p>
+      <p className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase">{label}</p>
       <div className="flex items-baseline justify-between gap-2">
         <span style={{
           fontSize: 22, fontWeight: 700, color: fillColor,
@@ -411,7 +411,7 @@ function CommitmentScorecard({ label, mine, managerTarget, floor, formatVal }) {
         }}>
           {formatVal(mine)}
         </span>
-        <span className="text-xs text-ink-faint font-mono uppercase tracking-wide">My commitment</span>
+        <span className="text-xs text-ink-muted font-mono uppercase tracking-wide">My commitment</span>
       </div>
 
       {/* Step bar with floor + target markers */}
@@ -443,7 +443,7 @@ function CommitmentScorecard({ label, mine, managerTarget, floor, formatVal }) {
         )}
       </div>
 
-      <div className="flex justify-between text-[9.5px] text-ink-faint font-mono tracking-wide">
+      <div className="flex justify-between text-[9.5px] text-ink-muted font-mono tracking-wide">
         {floor > 0 && <span>FLOOR · {formatVal(floor)}</span>}
         {managerTarget > 0 && <span>TARGET · {formatVal(managerTarget)}</span>}
       </div>
@@ -531,7 +531,7 @@ function LevelDrillDrawer({ level, currentLevel, ytdAPI, ytdApps, avgPersistency
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 py-4">
-          <p className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase mb-2.5">
+          <p className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase mb-2.5">
             Criteria · {criteria.length} to clear
           </p>
           <div className="flex flex-col gap-2.5">
@@ -558,7 +558,7 @@ function LevelDrillDrawer({ level, currentLevel, ytdAPI, ytdApps, avgPersistency
                   </div>
                   <div className="flex justify-between mb-1.5">
                     <span className="text-xs font-mono text-ink-muted">{fmtV(c.current, c.fmt)}</span>
-                    <span className="text-xs font-mono text-ink-faint">{fmtV(c.target, c.fmt)}</span>
+                    <span className="text-xs font-mono text-ink-muted">{fmtV(c.target, c.fmt)}</span>
                   </div>
                   <div className="h-1 rounded-full" style={{ background: 'var(--color-surface-muted)' }}>
                     <div style={{
@@ -681,7 +681,7 @@ function GoalsSection() {
     <div className="flex flex-col gap-4">
       {/* Section header + edit toggle */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold tracking-widest text-ink-faint font-mono uppercase">Your annual commitment</p>
+        <p className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase">Your annual commitment</p>
         {!editing ? (
           <button
             onClick={() => setEditing(true)}
@@ -731,7 +731,7 @@ function GoalsSection() {
             </div>
           ))}
           {saveError && (
-            <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{saveError}</p>
+            <p className="text-xs text-danger-ink bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{saveError}</p>
           )}
         </div>
       ) : (

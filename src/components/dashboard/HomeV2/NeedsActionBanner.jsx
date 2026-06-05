@@ -25,7 +25,7 @@ export default function NeedsActionBanner({ onLog, title = "You haven't logged t
           borderColor: 'rgb(var(--warning-channels) / 0.33)',
         }}
       >
-        <AlertTriangle size={16} className="text-warning" />
+        <AlertTriangle size={16} className="text-warning-ink" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-bold text-ink">{title}</p>

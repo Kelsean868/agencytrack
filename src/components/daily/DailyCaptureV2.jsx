@@ -484,7 +484,7 @@ export default function DailyCaptureV2({ onClose }) {
                 dayProductionCredit > 0 ? (
                   <span
                     data-testid="dcv2-day-credit"
-                    className="text-xs font-semibold text-warning"
+                    className="text-xs font-semibold text-warning-ink"
                   >
                     {formatCurrency(dayProductionCredit)} credit
                   </span>
@@ -539,7 +539,7 @@ export default function DailyCaptureV2({ onClose }) {
                       onChange={lmpsChange}
                     />
                     {pppWarn && (
-                      <p className="text-xs text-warning font-medium py-2" role="status">
+                      <p className="text-xs text-warning-ink font-medium py-2" role="status">
                         Average {formatCurrency(Math.round(pppAvgPerApp))} per app is below the {formatCurrency(MIN_PPP_INCREASE)} minimum.
                       </p>
                     )}
@@ -635,7 +635,7 @@ export default function DailyCaptureV2({ onClose }) {
             </div>
 
             {error && (
-              <p className="text-sm text-danger" role="alert">
+              <p className="text-sm text-danger-ink" role="alert">
                 {error}
               </p>
             )}

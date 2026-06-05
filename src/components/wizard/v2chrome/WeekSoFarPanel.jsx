@@ -89,7 +89,7 @@ export default function WeekSoFarPanel({
         >
           Your week so far
         </p>
-        <span className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-faint">
+        <span className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-muted">
           Live
         </span>
       </div>
@@ -120,7 +120,7 @@ export default function WeekSoFarPanel({
             height={36}
           />
           <div className="text-right">
-            <p className="text-[10px] font-mono uppercase tracking-widest text-ink-faint">
+            <p className="text-[10px] font-mono uppercase tracking-widest text-ink-muted">
               Est. Comm
             </p>
             <p
@@ -130,7 +130,7 @@ export default function WeekSoFarPanel({
             >
               {formatCurrency(liveComm)}
             </p>
-            <p className="text-[10px] font-mono text-ink-faint mt-1">
+            <p className="text-[10px] font-mono text-ink-muted mt-1">
               {commissionRate}% rate
             </p>
           </div>
@@ -213,12 +213,12 @@ function DeltaRow({ live, last, currency = false }) {
     <div className="inline-flex items-center gap-1 mt-2">
       <span
         className={`px-2 py-0.5 rounded-full text-[10px] font-bold font-mono uppercase tracking-wide ${
-          positive ? 'bg-success-tint text-success' : 'bg-warning-tint text-warning'
+          positive ? 'bg-success-tint text-success-ink' : 'bg-warning-tint text-warning-ink'
         }`}
       >
         {arrow} {currency ? formatCurrency(abs) : abs}
       </span>
-      <span className="text-[10px] font-mono uppercase tracking-wide text-ink-faint">
+      <span className="text-[10px] font-mono uppercase tracking-wide text-ink-muted">
         vs last wk
       </span>
     </div>
@@ -245,9 +245,9 @@ function Scorecard({ eyebrow, tone, value, sub, delta, deltaSuffix = '', testid 
           <span
             className={`px-1.5 py-0.5 rounded-full text-[8.5px] font-bold font-mono uppercase tracking-wide ${
               positive
-                ? 'bg-success-tint text-success'
+                ? 'bg-success-tint text-success-ink'
                 : negative
-                  ? 'bg-warning-tint text-warning'
+                  ? 'bg-warning-tint text-warning-ink'
                   : 'bg-surface-raised text-ink-muted'
             }`}
             data-testid={`${testid}-delta`}
@@ -301,7 +301,7 @@ function MobileStrip({
             <span
               data-testid="wizard-v2-week-so-far-mobile-delta"
               className={`text-[9.5px] font-bold font-mono uppercase tracking-wide px-1.5 py-0.5 rounded-full shrink-0 ${
-                delta > 0 ? 'bg-success-tint text-success' : 'bg-warning-tint text-warning'
+                delta > 0 ? 'bg-success-tint text-success-ink' : 'bg-warning-tint text-warning-ink'
               }`}
             >
               {delta > 0 ? '▲' : '▼'} {formatCurrency(Math.abs(delta))}

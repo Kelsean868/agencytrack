@@ -116,7 +116,7 @@ export default function BranchManagerProductionView() {
     return <div className="flex items-center justify-center py-12 text-ink-muted text-sm">Loading production data…</div>;
   }
   if (error) {
-    return <div className="py-8 text-center text-danger text-sm">Failed to load production data.</div>;
+    return <div className="py-8 text-center text-danger-ink text-sm">Failed to load production data.</div>;
   }
 
   const visibleAgentCount = showAllAgents ? undefined : TOP_N_DEFAULT;

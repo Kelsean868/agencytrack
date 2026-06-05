@@ -47,8 +47,8 @@ export default function PhaseProgress({ currentStep, totalSteps = 12, onDotClick
           const labelClass = isActive
             ? 'text-primary'
             : isPast
-            ? 'text-success'
-            : 'text-ink-faint';
+            ? 'text-success-ink'
+            : 'text-ink-muted';
           return (
             <div
               key={ph.key}

@@ -89,14 +89,14 @@ export default function AutosaveChip({ saving, savedAt, stickyError, isOffline, 
         data-testid="wizard-v2-autosave-chip"
         data-state="failed"
       >
-        <AlertTriangle size={13} className="text-danger shrink-0" />
-        <span className="text-xs font-semibold text-danger">
+        <AlertTriangle size={13} className="text-danger-ink shrink-0" />
+        <span className="text-xs font-semibold text-danger-ink">
           Save failed — tap to retry
         </span>
         <button
           type="button"
           onClick={handleRetry}
-          className="inline-flex items-center gap-1 min-h-[44px] px-2 text-xs font-semibold text-danger hover:bg-danger/10 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
+          className="inline-flex items-center gap-1 min-h-[44px] px-2 text-xs font-semibold text-danger-ink hover:bg-danger/10 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-danger"
           aria-label="Retry save"
           data-testid="wizard-v2-autosave-retry"
         >
@@ -137,8 +137,8 @@ export default function AutosaveChip({ saving, savedAt, stickyError, isOffline, 
         data-testid="wizard-v2-autosave-chip"
         data-state={isOffline ? 'saved-offline' : 'saved'}
       >
-        <Check size={13} className={isOffline ? 'text-warning shrink-0' : 'text-success shrink-0'} />
-        <span className={`text-xs font-semibold ${isOffline ? 'text-warning' : 'text-success'}`}>
+        <Check size={13} className={isOffline ? 'text-warning-ink shrink-0' : 'text-success-ink shrink-0'} />
+        <span className={`text-xs font-semibold ${isOffline ? 'text-warning-ink' : 'text-success-ink'}`}>
           {isOffline ? 'Saved offline — will sync when reconnected' : 'Saved'}
         </span>
       </div>
@@ -154,8 +154,8 @@ export default function AutosaveChip({ saving, savedAt, stickyError, isOffline, 
         data-testid="wizard-v2-autosave-chip"
         data-state="offline"
       >
-        <AlertTriangle size={13} className="text-warning shrink-0" />
-        <span className="text-xs text-warning">Offline — will save when reconnected</span>
+        <AlertTriangle size={13} className="text-warning-ink shrink-0" />
+        <span className="text-xs text-warning-ink">Offline — will save when reconnected</span>
       </div>
     );
   }

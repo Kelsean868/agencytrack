@@ -58,7 +58,7 @@ export default function DeactivateBranchConfirmDialog({ branch, onConfirm, onCan
       <div className="w-full max-w-sm bg-card rounded-2xl shadow-2xl p-6 flex flex-col gap-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <AlertTriangle size={16} className="text-danger shrink-0" />
+            <AlertTriangle size={16} className="text-danger-ink shrink-0" />
             <p className="text-sm font-bold text-ink">Deactivate branch?</p>
           </div>
           <button

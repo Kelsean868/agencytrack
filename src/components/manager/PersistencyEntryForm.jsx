@@ -161,12 +161,12 @@ export default function PersistencyEntryForm({
             </div>
           </div>
           {derived.persistency >= 0.90 && (
-            <p className="text-xs text-success font-semibold">Meets 90% award gate</p>
+            <p className="text-xs text-success-ink font-semibold">Meets 90% award gate</p>
           )}
         </div>
 
         {error && (
-          <div className="mx-4 mb-3 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger flex items-center gap-2">
+          <div className="mx-4 mb-3 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-center gap-2">
             <AlertCircle size={14} /> {error}
           </div>
         )}

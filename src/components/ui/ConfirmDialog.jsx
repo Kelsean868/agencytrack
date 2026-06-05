@@ -76,7 +76,7 @@ export default function ConfirmDialog({
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {variant === 'danger' && <AlertTriangle size={16} className="text-danger shrink-0" />}
+            {variant === 'danger' && <AlertTriangle size={16} className="text-danger-ink shrink-0" />}
             <p id="confirm-dialog-title" className="text-sm font-bold text-ink">{title}</p>
           </div>
           <button

@@ -665,12 +665,12 @@ export default function EditUserDrawer({
                 ))}
               </select>
               {form.unitId !== (user.unitId ?? '') && user?.role === 'agent' && !demotingToAgent && (
-                <p className="text-[10px] text-warning leading-snug">
+                <p className="text-[10px] text-warning-ink leading-snug">
                   Reassigning will require confirmation. Submission history stays with the old unit.
                 </p>
               )}
               {demotingToAgent && (
-                <p className="text-[10px] text-warning leading-snug">
+                <p className="text-[10px] text-warning-ink leading-snug">
                   Required when demoting to agent. The user will sign in to the selected unit.
                 </p>
               )}
@@ -681,7 +681,7 @@ export default function EditUserDrawer({
           {editable.has('unitName') && (
             <div className="flex flex-col gap-1.5">
               <label htmlFor="edit-user-unit-name" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
-                Unit Name <span className="font-normal normal-case text-ink-faint">(optional)</span>
+                Unit Name <span className="font-normal normal-case text-ink-muted">(optional)</span>
               </label>
               <input
                 id="edit-user-unit-name"
@@ -739,13 +739,13 @@ export default function EditUserDrawer({
                     ))}
                   </select>
                   {roleChanged && (
-                    <p className="text-[10px] text-warning leading-snug">
+                    <p className="text-[10px] text-warning-ink leading-snug">
                       Changing role will sign the user out. They&rsquo;ll need to sign in again with the new permissions.
                     </p>
                   )}
                   {promotingToTenantAdmin && (
                     <div className="flex items-start gap-2 px-3 py-2.5 rounded-lg bg-danger/10 border border-danger/30">
-                      <AlertTriangle size={14} className="text-danger mt-0.5 shrink-0" />
+                      <AlertTriangle size={14} className="text-danger-ink mt-0.5 shrink-0" />
                       <p className="text-[11px] text-ink leading-snug">
                         Tenant Admin has full power within this company including
                         creating/editing other admins. Typed confirmation required.
@@ -772,7 +772,7 @@ export default function EditUserDrawer({
                     ))}
                   </select>
                   {branchChanged && (
-                    <p className="text-[10px] text-warning leading-snug">
+                    <p className="text-[10px] text-warning-ink leading-snug">
                       Reassigning will sign the user out. Submission history stays attached to the original branch.
                     </p>
                   )}
@@ -796,7 +796,7 @@ export default function EditUserDrawer({
             <p
               role="alert"
               aria-live="assertive"
-              className="text-xs text-danger bg-danger/10 rounded-lg px-3 py-2"
+              className="text-xs text-danger-ink bg-danger/10 rounded-lg px-3 py-2"
             >
               {error}
             </p>

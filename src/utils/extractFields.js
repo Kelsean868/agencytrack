@@ -248,9 +248,9 @@ export function ratioColorClass(key, value) {
   if (value === null) return 'text-white/40';
   const t = RATIO_THRESHOLDS[key];
   if (!t) return 'text-white';
-  if (value >= t.green) return 'text-success';
-  if (value >= t.amber) return 'text-warning';
-  return 'text-danger';
+  if (value >= t.green) return 'text-success-ink';
+  if (value >= t.amber) return 'text-warning-ink';
+  return 'text-danger-ink';
 }
 
 export function formatRatioValue(key, value) {

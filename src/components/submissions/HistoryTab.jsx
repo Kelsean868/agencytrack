@@ -101,7 +101,7 @@ function HistoryAnchorStrip({ anchor, year, weeklyTarget }) {
           <span className="text-4xl font-bold text-ink" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.028em', lineHeight: 1 }}>
             {fmtTtdFull(anchor.ytdAPI)}
           </span>
-          <span className="text-xs text-ink-faint font-mono tracking-wide">
+          <span className="text-xs text-ink-muted font-mono tracking-wide">
             YTD API · AVG {fmtTtdFull(anchor.avgApi)}/WK
           </span>
         </div>
@@ -141,14 +141,14 @@ function HistoryAnchorStrip({ anchor, year, weeklyTarget }) {
                 <span className="text-base font-bold text-ink" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.018em', lineHeight: 1 }}>
                   {anchor.currentStreak}
                 </span>
-                <span className="text-[9px] text-ink-faint font-mono">wks now</span>
+                <span className="text-[9px] text-ink-muted font-mono">wks now</span>
                 {anchor.longestStreak > anchor.currentStreak && (
                   <>
-                    <span className="text-[9px] text-ink-faint font-mono">·</span>
+                    <span className="text-[9px] text-ink-muted font-mono">·</span>
                     <span className="text-sm font-bold" style={{ color: 'var(--color-gold)', fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' }}>
                       {anchor.longestStreak}
                     </span>
-                    <span className="text-[9px] text-ink-faint font-mono">best</span>
+                    <span className="text-[9px] text-ink-muted font-mono">best</span>
                   </>
                 )}
               </div>
@@ -159,7 +159,7 @@ function HistoryAnchorStrip({ anchor, year, weeklyTarget }) {
             <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface">
               <div className="w-1.5 h-1.5 rounded-sm flex-shrink-0" style={{ background: 'var(--color-gold)' }} />
               <div>
-                <p className="text-[9px] font-bold tracking-widest font-mono uppercase text-ink-faint">Best week</p>
+                <p className="text-[9px] font-bold tracking-widest font-mono uppercase text-ink-muted">Best week</p>
                 <p className="text-xs font-bold text-ink mt-0.5" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' }}>
                   {fmtTtdFull(getSubmissionAPI(anchor.bestWeek))}
                 </p>
@@ -175,7 +175,7 @@ function HistoryAnchorStrip({ anchor, year, weeklyTarget }) {
             <div key={c.label} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface">
               <div className="w-1.5 h-1.5 rounded-sm flex-shrink-0" style={{ background: c.warn ? 'var(--color-warning)' : 'var(--color-gold)' }} />
               <div>
-                <p className="text-[9px] font-bold tracking-widest font-mono uppercase text-ink-faint">{c.label}</p>
+                <p className="text-[9px] font-bold tracking-widest font-mono uppercase text-ink-muted">{c.label}</p>
                 <p className="text-xs font-bold text-ink mt-0.5" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' }}>
                   {c.val}
                 </p>
@@ -225,14 +225,14 @@ function YearHeatmap({ submissions, year, weeklyTarget }) {
   return (
     <div className="card p-4">
       <div className="flex items-baseline justify-between mb-2">
-        <p className="text-xs font-bold tracking-widest font-mono uppercase text-ink-faint">Year at a glance · {year}</p>
-        <p className="text-[10px] text-ink-faint font-mono">Target {fmtTtdFull(weeklyTarget)}/wk</p>
+        <p className="text-xs font-bold tracking-widest font-mono uppercase text-ink-muted">Year at a glance · {year}</p>
+        <p className="text-[10px] text-ink-muted font-mono">Target {fmtTtdFull(weeklyTarget)}/wk</p>
       </div>
 
       {/* Month labels */}
       <div className="relative h-4 mb-1">
         {monthLabels.map(({ i, label }) => (
-          <span key={label} className="absolute text-[9px] font-bold text-ink-faint font-mono tracking-widest" style={{ left: i * 20 }}>
+          <span key={label} className="absolute text-[9px] font-bold text-ink-muted font-mono tracking-widest" style={{ left: i * 20 }}>
             {label}
           </span>
         ))}
@@ -263,16 +263,16 @@ function YearHeatmap({ submissions, year, weeklyTarget }) {
         ].map(l => (
           <div key={l.label} className="flex items-center gap-1.5">
             <div className={`w-2 h-2 rounded-sm ${l.bg}`} />
-            <span className="text-[9px] text-ink-faint font-mono tracking-wide">{l.label}</span>
+            <span className="text-[9px] text-ink-muted font-mono tracking-wide">{l.label}</span>
           </div>
         ))}
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-sm bg-surface-muted border border-dashed border-border" />
-          <span className="text-[9px] text-ink-faint font-mono tracking-wide">DRAFT</span>
+          <span className="text-[9px] text-ink-muted font-mono tracking-wide">DRAFT</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-sm bg-warning/25 border border-warning" />
-          <span className="text-[9px] text-ink-faint font-mono tracking-wide">UNLOCKED</span>
+          <span className="text-[9px] text-ink-muted font-mono tracking-wide">UNLOCKED</span>
         </div>
       </div>
     </div>
@@ -301,7 +301,7 @@ function HistoryFilterRow({ activeFilter, setFilter, counts }) {
         >
           {t.label}
           {t.count > 0 && (
-            <span className={`text-[10px] font-bold px-1.5 rounded-full font-mono ${activeFilter === t.key ? 'bg-primary/15 text-primary' : 'text-ink-faint'}`}>
+            <span className={`text-[10px] font-bold px-1.5 rounded-full font-mono ${activeFilter === t.key ? 'bg-primary/15 text-primary' : 'text-ink-muted'}`}>
               {t.count}
             </span>
           )}
@@ -350,7 +350,7 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
   const appsDelta= prevApps !== null ? apps - prevApps : null;
   const overall  = parseInt(s.overallRating || s.ratingOverall) || 0;
 
-  const statusBg = isUnlocked ? 'bg-warning/15 text-warning' : isDraft ? 'bg-warning/15 text-warning' : 'bg-success/15 text-success';
+  const statusBg = isUnlocked ? 'bg-warning/15 text-warning-ink' : isDraft ? 'bg-warning/15 text-warning-ink' : 'bg-success/15 text-success-ink';
   const statusLabel = isUnlocked ? 'Unlocked' : isDraft ? 'Draft' : 'Submitted';
 
   const borderColor = isUnlocked ? 'border-warning/30' : isDraft ? 'border-border' : 'border-border';
@@ -369,11 +369,11 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
               {weekLabel(s)}
             </span>
             {s.weekStarting && (
-              <span className="text-xs text-ink-faint font-mono">{s.weekStarting}</span>
+              <span className="text-xs text-ink-muted font-mono">{s.weekStarting}</span>
             )}
           </div>
           {isUnlocked && s.unlockedByName && (
-            <p className="text-xs text-warning mt-0.5 font-mono tracking-wide">
+            <p className="text-xs text-warning-ink mt-0.5 font-mono tracking-wide">
               UNLOCKED BY {s.unlockedByName.toUpperCase()} · NEEDS RESUBMIT
             </p>
           )}
@@ -393,9 +393,9 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
         ].map((k, i) => (
           <div key={i} className="p-2 rounded-lg bg-surface-muted border border-border/60">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[9px] font-bold text-ink-faint font-mono tracking-widest">{k.label}</span>
+              <span className="text-[9px] font-bold text-ink-muted font-mono tracking-widest">{k.label}</span>
               {k.delta !== null && k.delta !== 0 && (
-                <span className={`text-[8px] font-bold font-mono px-1 rounded-sm ${k.delta > 0 ? 'bg-success/15 text-success' : 'bg-warning/15 text-warning'}`}>
+                <span className={`text-[8px] font-bold font-mono px-1 rounded-sm ${k.delta > 0 ? 'bg-success/15 text-success-ink' : 'bg-warning/15 text-warning-ink'}`}>
                   {k.delta > 0 ? '▲' : '▼'}
                 </span>
               )}
@@ -411,13 +411,13 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
       <div className="flex items-center gap-3 flex-wrap">
         {sparkValues && sparkValues.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-[9px] font-bold text-ink-faint font-mono tracking-widest">5-WK API</span>
+            <span className="text-[9px] font-bold text-ink-muted font-mono tracking-widest">5-WK API</span>
             <MiniSpark values={sparkValues} current={api} />
           </div>
         )}
         {overall > 0 && (
           <div className="flex items-center gap-1.5">
-            <span className="text-[9px] font-bold text-ink-faint font-mono tracking-widest">RATING</span>
+            <span className="text-[9px] font-bold text-ink-muted font-mono tracking-widest">RATING</span>
             <div className="flex gap-0.5">
               {Array.from({ length: 10 }).map((_, i) => (
                 <div key={i} style={{

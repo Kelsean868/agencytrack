@@ -24,7 +24,7 @@ import StandardRow from './StandardRow';
  *      live pace marker; calls resolves to the 5-sum.
  *
  * Semantics (D2/D3) come from planVariance.js AS-IS — no fork. D5: no
- * text-ink-faint on any text element.
+ * text-ink-muted on any text element.
  */
 
 const PLAN_METRIC_KEY_SET = new Set(PLAN_METRIC_KEYS);
@@ -36,9 +36,9 @@ const VARIANCE_FILL = {
   behind:     'bg-warning',
 };
 const VARIANCE_TEXT = {
-  ahead:      'text-success',
-  'on-track': 'text-success',
-  behind:     'text-warning',
+  ahead:      'text-success-ink',
+  'on-track': 'text-success-ink',
+  behind:     'text-warning-ink',
 };
 
 // ─── Compact plan-metric mini-track row ──────────────────────────────────────
@@ -196,7 +196,7 @@ export default function StandardDetail({
 
         {/* Header */}
         <div className="px-6 pt-6 pb-4 border-b border-border shrink-0">
-          <p className="text-xs font-bold tracking-widest uppercase text-warning font-mono">
+          <p className="text-xs font-bold tracking-widest uppercase text-warning-ink font-mono">
             Week in progress
           </p>
           <h2

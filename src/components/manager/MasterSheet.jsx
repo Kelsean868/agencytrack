@@ -50,9 +50,9 @@ function resolveName(sub, userNameMap) {
 function apiColorClass(apiSold, targetAPI) {
   if (!targetAPI) return '';
   const pct = (apiSold / targetAPI) * 100;
-  if (pct >= 80) return 'text-success font-semibold';
-  if (pct >= 50) return 'text-warning font-semibold';
-  return 'text-danger font-semibold';
+  if (pct >= 80) return 'text-success-ink font-semibold';
+  if (pct >= 50) return 'text-warning-ink font-semibold';
+  return 'text-danger-ink font-semibold';
 }
 
 function SkeletonRow() {
@@ -273,7 +273,7 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger">
+        <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">
           {error}
         </div>
       )}

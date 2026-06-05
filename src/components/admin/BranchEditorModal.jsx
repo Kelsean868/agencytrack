@@ -245,7 +245,7 @@ export default function BranchEditorModal({
               id={errorId}
               role="alert"
               aria-live="polite"
-              className="mt-2 text-sm text-danger flex items-center gap-1.5"
+              className="mt-2 text-sm text-danger-ink flex items-center gap-1.5"
             >
               <AlertTriangle size={14} aria-hidden="true" />
               <span>{validationError}</span>
@@ -285,7 +285,7 @@ export default function BranchEditorModal({
           <div
             role="alert"
             aria-live="polite"
-            className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger flex items-start gap-2"
+            className="mb-4 p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink flex items-start gap-2"
           >
             <AlertTriangle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
             <span>{submitError}</span>

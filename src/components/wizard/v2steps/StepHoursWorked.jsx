@@ -53,7 +53,7 @@ export default function StepHoursWorked({ data, onChange }) {
                 style={{ width: `${fieldPct}%` }}
               >
                 {fieldPct >= 15 && (
-                  <span className="text-xs font-bold text-success">Field {fieldPct}%</span>
+                  <span className="text-xs font-bold text-success-ink">Field {fieldPct}%</span>
                 )}
               </div>
             </div>

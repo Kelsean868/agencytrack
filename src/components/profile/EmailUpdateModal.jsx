@@ -109,8 +109,8 @@ export default function EmailUpdateModal({ onClose }) {
 
             {error && (
               <div className="flex items-start gap-2 p-3 mb-4 rounded-xl bg-danger/10 border border-danger/20" role="alert">
-                <AlertCircle size={16} className="text-danger mt-0.5 shrink-0" />
-                <p className="text-sm text-danger">{error}</p>
+                <AlertCircle size={16} className="text-danger-ink mt-0.5 shrink-0" />
+                <p className="text-sm text-danger-ink">{error}</p>
               </div>
             )}
 

@@ -22,7 +22,7 @@ function LeaderRow({ entry, rank, isCurrentUser, photoURL }) {
     >
       <div className="w-6 flex items-center justify-center shrink-0">
         {rank === 1
-          ? <Trophy size={16} className="text-warning" />
+          ? <Trophy size={16} className="text-warning-ink" />
           : <span className={`text-sm font-bold ${rank <= 3 ? 'text-primary' : 'text-ink-muted'}`}>{rank}</span>
         }
       </div>
@@ -36,12 +36,12 @@ function LeaderRow({ entry, rank, isCurrentUser, photoURL }) {
           </p>
           <StatusPill variant={LEVEL_VARIANT[entry.levelTitle] ?? 'muted'} label={entry.levelTitle ?? 'Rookie'} />
           {(entry.weeklyStreak ?? 0) >= 4 && (
-            <Flame size={13} className="text-warning shrink-0" title={`${entry.weeklyStreak}-week streak`} />
+            <Flame size={13} className="text-warning-ink shrink-0" title={`${entry.weeklyStreak}-week streak`} />
           )}
         </div>
         {badgeCount > 0 && (
           <div className="flex items-center gap-1 mt-0.5">
-            <Trophy size={10} className="text-warning" />
+            <Trophy size={10} className="text-warning-ink" />
             <p className="text-[10px] text-ink-muted">{badgeCount} badge{badgeCount !== 1 ? 's' : ''}</p>
           </div>
         )}
@@ -151,7 +151,7 @@ export default function Leaderboard() {
 
   if (error) {
     return (
-      <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger">{error}</div>
+      <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-sm text-danger-ink">{error}</div>
     );
   }
 

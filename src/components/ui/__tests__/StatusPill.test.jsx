@@ -19,13 +19,13 @@ describe('StatusPill — rendering', () => {
 describe('StatusPill — variants', () => {
   it('success → success color classes', () => {
     const { container } = render(<StatusPill variant="success" label="OK" />);
-    expect(container.firstChild).toHaveClass('text-success');
+    expect(container.firstChild).toHaveClass('text-success-ink');
     expect(container.firstChild).toHaveClass('bg-success/15');
   });
 
   it('warning → warning color classes', () => {
     const { container } = render(<StatusPill variant="warning" label="Warn" />);
-    expect(container.firstChild).toHaveClass('text-warning');
+    expect(container.firstChild).toHaveClass('text-warning-ink');
     expect(container.firstChild).toHaveClass('bg-warning/15');
   });
 
@@ -37,7 +37,7 @@ describe('StatusPill — variants', () => {
 
   it('danger → danger color classes', () => {
     const { container } = render(<StatusPill variant="danger" label="Error" />);
-    expect(container.firstChild).toHaveClass('text-danger');
+    expect(container.firstChild).toHaveClass('text-danger-ink');
     expect(container.firstChild).toHaveClass('bg-danger/15');
   });
 

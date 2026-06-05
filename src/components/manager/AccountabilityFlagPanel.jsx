@@ -18,11 +18,11 @@ export default function AccountabilityFlagPanel({ missed }) {
       <div className="flex items-start gap-3">
         <AlertTriangle
           size={18}
-          className="text-warning shrink-0 mt-0.5"
+          className="text-warning-ink shrink-0 mt-0.5"
           aria-hidden="true"
         />
         <div className="flex-1 min-w-0 space-y-2">
-          <p className="text-sm font-semibold text-warning">
+          <p className="text-sm font-semibold text-warning-ink">
             {missed.length} standard{missed.length === 1 ? '' : 's'} under target
           </p>
           <ul className="space-y-1 text-sm text-text">

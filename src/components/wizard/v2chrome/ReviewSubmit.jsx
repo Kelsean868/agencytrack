@@ -169,7 +169,7 @@ export default function ReviewSubmit({
             >
               <p
                 className={`text-[8.5px] font-bold font-mono uppercase tracking-widest ${
-                  r.hero ? 'text-primary' : 'text-ink-faint'
+                  r.hero ? 'text-primary' : 'text-ink-muted'
                 }`}
               >
                 {r.lbl.toUpperCase()}
@@ -181,7 +181,7 @@ export default function ReviewSubmit({
                 style={{ letterSpacing: '-0.018em' }}
               >
                 {r.val}
-                <span className="text-[10px] font-mono font-semibold text-ink-faint ml-px">
+                <span className="text-[10px] font-mono font-semibold text-ink-muted ml-px">
                   /10
                 </span>
               </p>
@@ -284,7 +284,7 @@ function Tile({ eyebrow, value, sub, testid, tight = false }) {
       className={`rounded-lg bg-surface-raised border border-border/60 ${tight ? 'px-2.5 py-2 text-center' : 'px-3 py-2.5'}`}
     >
       <p
-        className={`text-[9px] font-bold font-mono uppercase tracking-widest text-ink-faint ${tight ? '' : ''}`}
+        className={`text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted ${tight ? '' : ''}`}
       >
         {eyebrow}
       </p>

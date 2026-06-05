@@ -133,7 +133,7 @@ export default function AgentProductionView() {
     return <div className="flex items-center justify-center py-12 text-ink-muted text-sm">Loading production data…</div>;
   }
   if (error) {
-    return <div className="py-8 text-center text-danger text-sm">Failed to load production data.</div>;
+    return <div className="py-8 text-center text-danger-ink text-sm">Failed to load production data.</div>;
   }
 
   const ytdApi = periodTotals.ytd.totalApi;
@@ -246,7 +246,7 @@ export default function AgentProductionView() {
             style={{ width: `${floorPct}%` }}
           />
         </div>
-        <p className={`text-xs font-semibold mt-2 ${aboveFloor ? 'text-success' : 'text-warning'}`}>
+        <p className={`text-xs font-semibold mt-2 ${aboveFloor ? 'text-success-ink' : 'text-warning-ink'}`}>
           {aboveFloor
             ? `✓ ${floorPct}% — above floor`
             : `${floorPct}% — keep pushing to clear floor`}
