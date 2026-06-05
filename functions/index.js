@@ -33,6 +33,9 @@ exports.getAgentOfMonthCandidates = require('./agentOfMonth/getCandidates').getA
 exports.recomputeLeaderboardScheduled = require('./leaderboard/leaderboardAggregate').recomputeLeaderboardScheduled;
 exports.recomputeLeaderboardOnDemand  = require('./leaderboard/leaderboardAggregate').recomputeLeaderboardOnDemand;
 
+// Compliance v2 Slice 2: manager-initiated filing nudge (notification + email)
+exports.sendComplianceNudge = require('./compliance/sendComplianceNudge').sendComplianceNudge;
+
 const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
 
 // CSV bulk-import allow-list. tenant_admin and platform_admin are explicitly
