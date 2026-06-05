@@ -11,16 +11,18 @@ import { db } from '../firebase';
 // have no list arm by design).
 
 export const NUDGE_TYPE = 'compliance.filing.nudge';
+export const PLAN_NUDGE_TYPE = 'compliance.plan.nudge'; // S3 plan-adoption lens
 
 /**
  * Fire a nudge at one or more agents for a given week.
  * @param {string[]} audienceUids  1..50 agent uids (the filtered exception set)
  * @param {string}   weekStart     YYYY-MM-DD Sunday
+ * @param {string}   type          nudge type (filing | plan); defaults to filing
  * @returns CF result { success, type, weekStart, count, results }
  */
-export async function sendComplianceNudge(audienceUids, weekStart) {
+export async function sendComplianceNudge(audienceUids, weekStart, type = NUDGE_TYPE) {
   const fn = httpsCallable(getFunctions(), 'sendComplianceNudge');
-  const result = await fn({ audienceUids, type: NUDGE_TYPE, weekStart });
+  const result = await fn({ audienceUids, type, weekStart });
   return result.data;
 }
 
@@ -35,14 +37,15 @@ function tsToMillis(ts) {
 
 /**
  * Deterministic-ID GET fan-out for the cooldown chip. Reads
- * nudges/{uid}_{NUDGE_TYPE}_{weekStart} for each uid in the (small) not-in set.
+ * nudges/{uid}_{type}_{weekStart} for each uid in the (small) exception set.
  * A denied/absent GET resolves to null (treated as "not nudged"). No list query.
+ * @param {string} type  nudge type (filing | plan); defaults to filing
  * @returns {Promise<Object>} map of uid -> createdAt epoch millis | null
  */
-export async function getNudgeRecords(tenantId, audienceUids, weekStart) {
+export async function getNudgeRecords(tenantId, audienceUids, weekStart, type = NUDGE_TYPE) {
   const out = {};
   await Promise.all((audienceUids ?? []).map(async (uid) => {
-    const id = `${uid}_${NUDGE_TYPE}_${weekStart}`;
+    const id = `${uid}_${type}_${weekStart}`;
     try {
       const snap = await getDoc(doc(db, `tenants/${tenantId}/nudges/${id}`));
       out[uid] = snap.exists() ? tsToMillis(snap.data().createdAt) : null;
