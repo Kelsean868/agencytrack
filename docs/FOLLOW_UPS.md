@@ -4132,6 +4132,20 @@ Banked closed: Item 5 (night queue, test-only), 2026-06-05. Resolved: Commission
 
 ---
 
+## `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (NEW, LOW/TEST-STABILITY, banked 2026-06-05)
+
+**Scope:** `src/components/manager/__tests__/CompliancePanel.nudge.test.jsx` — 6 tests covering the S2 nudge-send + cooldown-chip interactions.
+
+**Observed behavior:** the suite flapped twice on 2026-06-05 in separate full-suite runs (once during the settlements security dispatch, once during the commission-v2-s2 dispatch). Both times, isolated re-runs resolved cleanly (6/6). Consistent pattern: fails in a parallel full-suite `npx vitest run` context, passes in isolation. Likely cause: timer-sensitive `waitFor` or `act` boundaries around asynchronous state updates (nudge-send promise resolution, cooldown chip state update) that rely on implicit timing rather than explicit React `waitFor` — parallel environment has higher contention, exposing the gap.
+
+**Fix shape:** audit each `userEvent.*` call in the test file for missing `await act(async () => {...})` or `await waitFor(() => ...)` wrapping around state-changing interactions. Add explicit `waitFor` assertions to each test that queries for UI state after an async event (nudge button click → cooldown chip). No changes to source code required.
+
+**Priority:** LOW/GREEN-CHANNEL-CANDIDATE. Pre-existing test code path, not introduced by this PR. Impact = CI investigation time (two ~5-min investigations on 2026-06-05). Fix is test-only, low risk, lint/build/suite trivial. Qualifies as green-channel XS candidate.
+
+Banked: commission-v2-s2 dispatch, 2026-06-05.
+
+---
+
 ## NotificationDrawer — `text-primary` "Mark all read" button fails AA on bg (NEW, MEDIUM/DESIGN-DECISION, banked 2026-06-04, PR #487 successor)
 
 **Scope:** `src/components/ui/NotificationDrawer.jsx:61` — the "Mark all read" action renders as `text-xs font-medium text-primary hover:text-primary-dark` directly on the drawer surface `bg`. Per the PR #487 closure note (verified on `main`), this **primary-on-bg button fails AA in both themes** — a pre-existing failure *surfaced* (not introduced) by the contrast-debt retirement sweep.
