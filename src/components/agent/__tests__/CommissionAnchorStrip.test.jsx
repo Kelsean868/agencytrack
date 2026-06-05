@@ -75,6 +75,7 @@ describe('CommissionAnchorStrip — D4 no-goal state', () => {
         onScrollToPlayground={NOOP}
       />
     );
-    expect(screen.getByRole('button', { name: /go to the ladder/i })).toBeInTheDocument();
+    // S3: copy upgraded from "Go to the ladder" to "Set as my goal →"
+    expect(screen.getByRole('button', { name: /set as my goal/i })).toBeInTheDocument();
   });
 });
