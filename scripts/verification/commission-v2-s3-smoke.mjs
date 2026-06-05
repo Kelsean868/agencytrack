@@ -3,7 +3,7 @@
 //
 // E3 credential (AGENT). Write-read-verify with MANDATORY RESTORATION.
 //
-// Leg CAPTURE (Admin SDK)  : read agent's current personalAnnualAPI before any UI change.
+// Leg CAPTURE (Admin SDK)  : read agent's current personalAnnualAPI + company minimums.
 // Leg WRITE (light UI)     : Goal Decomposition → set sentinel income → click "Save as My Goals"
 //                            → verify confirm dialog (current / new values) → click "Set as my goal"
 //                            → success state appears.
@@ -12,10 +12,9 @@
 //                            (displayed == independent SDK recompute ±1 TTD).
 // Leg AXE                  : NO-NEW vs bell-badge baseline (both themes).
 // Leg SS                   : §2 screenshots (light: confirm dialog open; dark: strip re-derived).
-// Leg RESTORE (light UI)   : Goal Decomposition → set restore income → confirm dialog shows
-//                            sentinel (current) and originalAPI (new) → click "Set as my goal"
-//                            → success state.
-// Leg RESTORE-VERIFY (SDK) : SDK read confirms originalAPI restored to doc.
+// Leg RESTORE (Admin SDK)  : write back originalAPI + originalApps directly via Admin SDK.
+//                            UI restore is not feasible: originalAPI maps to fewer apps than the
+//                            company minimum when using default avgPolicyAPI (12000).
 //                            *** RESTORE IS A PASS/FAIL LEG ***
 //
 //   node scripts/verification/commission-v2-s3-smoke.mjs [--url=<preview-url>]
@@ -159,10 +158,24 @@ async function captureGoal(admin) {
   const uid        = userRecord.uid;
   const tenantId   = userRecord.customClaims?.tenantId;
   if (!tenantId) throw new Error(`No tenantId claim on agent user — cannot scope reads`);
-  const goalDoc = await adminDb.doc(`tenants/${tenantId}/goals/${uid}`).get();
-  const personalAnnualAPI = goalDoc.exists ? goalDoc.data().personalAnnualAPI : null;
+  const [goalDoc, minimsDoc] = await Promise.all([
+    adminDb.doc(`tenants/${tenantId}/goals/${uid}`).get(),
+    adminDb.doc(`tenants/${tenantId}/config/companyMinimums`).get(),
+  ]);
+  const personalAnnualAPI  = goalDoc.exists ? goalDoc.data().personalAnnualAPI  : null;
   const personalAnnualApps = goalDoc.exists ? goalDoc.data().personalAnnualApps : null;
-  return { uid, tenantId, personalAnnualAPI, personalAnnualApps };
+  const annualApps = minimsDoc.exists ? (minimsDoc.data().annualApps ?? 42) : 42;
+  return { uid, tenantId, personalAnnualAPI, personalAnnualApps, annualApps };
+}
+
+async function sdkRestoreGoal(admin, tenantId, uid, api, apps) {
+  await admin.firestore().doc(`tenants/${tenantId}/goals/${uid}`).set({
+    personalAnnualAPI:  api,
+    personalAnnualApps: apps ?? 0,
+    setBy:     uid,
+    setByName: 'smoke-restore',
+    updatedAt: admin.firestore.Timestamp.now(),
+  }, { merge: true });
 }
 
 async function sdkReadGoal(admin, tenantId, uid) {
@@ -329,31 +342,41 @@ async function runSmoke() {
   let capturedUID;
   let capturedTenantId;
   let originalAPI;
+  let capturedOriginalApps;
+  let capturedMinimums;
 
   try {
     admin = await initAdmin();
     const captured = await captureGoal(admin);
-    capturedUID      = captured.uid;
-    capturedTenantId = captured.tenantId;
-    originalAPI      = captured.personalAnnualAPI;
+    capturedUID          = captured.uid;
+    capturedTenantId     = captured.tenantId;
+    originalAPI          = captured.personalAnnualAPI;
+    capturedOriginalApps = captured.personalAnnualApps;
+    capturedMinimums     = { annualApps: captured.annualApps };
     record('sdk-capture',
       originalAPI !== null,
       originalAPI !== null
-        ? `personalAnnualAPI = ${originalAPI} (personalAnnualApps = ${captured.personalAnnualApps})`
-        : 'no committed goal on doc — write sentinel then restore; strip re-derive will skip goal assertion');
+        ? `personalAnnualAPI = ${originalAPI} (personalAnnualApps = ${capturedOriginalApps}, annualAppsMin = ${capturedMinimums.annualApps})`
+        : `no committed goal on doc (annualAppsMin = ${capturedMinimums?.annualApps ?? 42})`);
   } catch (err) {
     record('sdk-capture', false, `Admin SDK init/capture failed: ${err.message}`);
     safeLog('[WARN] SDK capture failed — verify/restore legs will be skipped; UI legs continue');
   }
 
-  // Sentinel: incomeGoal = 25000 → apiToWrite = 25000 / (0.35 * 0.80) ≈ 89285.71
-  const SENTINEL_INCOME = 25000;
-  const SENTINEL_API_APPROX = SENTINEL_INCOME / (0.35 * 0.80); // ~89285.71
+  // Decomposition defaults (src/utils/goalDecomposition.js DEFAULT_DECOMPOSITION_INPUTS):
+  //   taxRate=25, persistencyRate=90, commissionRate=35, avgPolicyAPI=12000
+  // apiToWrite = incomeGoal / ((1-taxRate/100) * (persistencyRate/100) * (commissionRate/100))
+  //            = incomeGoal / (0.75 * 0.90 * 0.35) = incomeGoal / 0.23625
+  const DECOMP_FACTOR = 0.75 * 0.90 * 0.35; // 0.23625
+  const DEFAULT_AVG_POLICY_API = 12000;
 
-  // Restore: incomeGoal = originalAPI * 0.35 * 0.80 (assuming default commission/settlement rates)
-  const RESTORE_INCOME = originalAPI != null
-    ? Math.round(originalAPI * 0.35 * 0.80)
-    : null;
+  // Sentinel must exceed both the API floor (200k fallback) and the apps minimum.
+  // apps = apiToWrite / DEFAULT_AVG_POLICY_API → need apiToWrite ≥ minAnnualApps * 12000
+  const minAnnualApps = capturedMinimums?.annualApps ?? 42;
+  const SENTINEL_API_TARGET = Math.max(200000, minAnnualApps * DEFAULT_AVG_POLICY_API) * 1.25;
+  const SENTINEL_INCOME = Math.ceil(SENTINEL_API_TARGET * DECOMP_FACTOR / 5000) * 5000;
+  const SENTINEL_API_APPROX = SENTINEL_INCOME / DECOMP_FACTOR;
+  safeLog(`[Sentinel] income=${SENTINEL_INCOME} → apiToWrite≈${Math.round(SENTINEL_API_APPROX)} (apps≈${(SENTINEL_API_APPROX/DEFAULT_AVG_POLICY_API).toFixed(1)} vs min=${minAnnualApps})`);
 
   // ── Phase B: Light context — write sentinel ────────────────────────────
   console.log('\n=== LIGHT MODE — WRITE CYCLE ===');
@@ -395,13 +418,14 @@ async function runSmoke() {
         safeLog(`[Confirm dialog] current="${confirmCurrentText}" new="${confirmNewText}"`);
 
         const sentinelInDialog = parseTTD(confirmNewText);
+        // Dialog shows formatCurrency(Math.round(apiToWrite)) — compare to nearest integer
         const sentinelOk = sentinelInDialog !== null
-          && Math.abs(sentinelInDialog - SENTINEL_API_APPROX) < 10; // ±10 for rounding tolerance
+          && Math.abs(sentinelInDialog - Math.round(SENTINEL_API_APPROX)) < 2;
         record('light-confirm-new-value',
           sentinelOk,
           sentinelOk
-            ? `confirm-new shows ~TTD ${sentinelInDialog} ≈ expected ~${Math.round(SENTINEL_API_APPROX)} ✓`
-            : `confirm-new "${confirmNewText}" (parsed=${sentinelInDialog}) vs expected ~${Math.round(SENTINEL_API_APPROX)}`);
+            ? `confirm-new TTD${sentinelInDialog} == rounded sentinel ${Math.round(SENTINEL_API_APPROX)} ✓`
+            : `confirm-new "${confirmNewText}" (parsed=${sentinelInDialog}) vs expected ${Math.round(SENTINEL_API_APPROX)}`);
 
         // Verify current shows original goal (if captured)
         if (originalAPI !== null) {
@@ -438,12 +462,12 @@ async function runSmoke() {
     // Wait for onGoalSaved → goals state refresh → strip re-render
     await lightPage.waitForTimeout(2500);
 
-    // SDK verify sentinel was written
+    // SDK verify sentinel was written (tolerance 2 — float arithmetic on repeating decimals)
     if (admin && capturedUID) {
       try {
         const written = await sdkReadGoal(admin, capturedTenantId, capturedUID);
         const writtenOk = written !== null
-          && Math.abs(written - SENTINEL_API_APPROX) < 10;
+          && Math.abs(written - SENTINEL_API_APPROX) < 2;
         record('sdk-verify-write',
           writtenOk,
           writtenOk
@@ -479,77 +503,33 @@ async function runSmoke() {
         ? 'axe: 0 new serious violations vs bell-badge baseline ✓'
         : `${newSeriousLight.length} new serious: ${newSeriousLight.map((v) => v.id).join(', ')}`);
 
-    // RESTORE — light theme
-    if (RESTORE_INCOME !== null) {
-      console.log('\n=== RESTORE ===');
-      await navigateToGoalDecomp(lightPage);
-      await fillIncomeGoal(lightPage, RESTORE_INCOME);
+    // RESTORE — Admin SDK (UI restore not feasible: originalAPI maps to fewer apps than the
+    // company minimum with the playground's default avgPolicyAPI=12000)
+    if (originalAPI !== null && capturedUID && capturedTenantId) {
+      console.log('\n=== SDK RESTORE ===');
+      try {
+        await sdkRestoreGoal(admin, capturedTenantId, capturedUID, originalAPI, capturedOriginalApps);
+        record('sdk-restore-write', true, `Admin SDK restore submitted: personalAnnualAPI=${originalAPI}, personalAnnualApps=${capturedOriginalApps}`);
 
-      await openConfirmDialog(lightPage);
-      const restoreDialogVisible = await lightPage.isVisible('[data-testid="commission-confirm-dialog"]');
-      record('light-restore-confirm-opens', restoreDialogVisible,
-        restoreDialogVisible ? 'restore confirm dialog opened' : 'restore confirm dialog NOT visible');
+        await lightPage.waitForTimeout(1000); // let Firestore propagate
 
-      if (restoreDialogVisible) {
-        // Verify current shows sentinel, new shows originalAPI
-        try {
-          const restoreCurrent = await lightPage.textContent('[data-testid="commission-confirm-current"]');
-          const restoreNew     = await lightPage.textContent('[data-testid="commission-confirm-new"]');
-          safeLog(`[Restore dialog] current="${restoreCurrent}" new="${restoreNew}"`);
-
-          const dispSentinelCurrent = parseTTD(restoreCurrent);
-          const dispRestoreNew      = parseTTD(restoreNew);
-          const currentOk = dispSentinelCurrent !== null
-            && Math.abs(dispSentinelCurrent - SENTINEL_API_APPROX) < 10;
-          const newOk = dispRestoreNew !== null
-            && Math.abs(dispRestoreNew - (originalAPI ?? 0)) < 10;
-          record('light-restore-confirm-current',
-            currentOk,
-            currentOk
-              ? `restore current TTD${dispSentinelCurrent} ≈ sentinel ${SENTINEL_API_APPROX.toFixed(2)} ✓`
-              : `restore current "${restoreCurrent}" vs sentinel ~${Math.round(SENTINEL_API_APPROX)}`);
-          record('light-restore-confirm-new',
-            newOk,
-            newOk
-              ? `restore new TTD${dispRestoreNew} ≈ originalAPI ${originalAPI} ✓`
-              : `restore new "${restoreNew}" vs originalAPI ${originalAPI}`);
-        } catch (e) {
-          record('light-restore-dialog-values', false, `error reading restore dialog: ${e.message}`);
+        const restored = await sdkReadGoal(admin, capturedTenantId, capturedUID);
+        const restoreOk = restored !== null && Math.abs(restored - originalAPI) < 1;
+        record('sdk-verify-restore',
+          restoreOk,
+          restoreOk
+            ? `*** RESTORE VERIFIED — Firestore personalAnnualAPI = ${restored} == original ${originalAPI} ✓ ***`
+            : `*** RESTORE FAILED — Firestore personalAnnualAPI = ${restored}; expected ${originalAPI} ***`);
+        if (!restoreOk) {
+          safeLog('[CRITICAL] RESTORE LEG FAILED — MANUAL INTERVENTION REQUIRED');
+          safeLog(`[CRITICAL] Run: firebase firestore update tenants/${capturedTenantId}/goals/${capturedUID} personalAnnualAPI=${originalAPI}`);
         }
-
-        await confirmWrite(lightPage);
-      }
-
-      const restoreSuccess = await lightPage.evaluate(() => {
-        const btn = document.querySelector('[data-testid="commission-save-goal-btn"]');
-        return btn ? /goal saved/i.test(btn.textContent || '') : false;
-      });
-      record('light-restore-success-state',
-        restoreSuccess,
-        restoreSuccess ? '"Goal Saved" success state after restore ✓' : 'success state not detected after restore');
-
-      await lightPage.waitForTimeout(2500);
-
-      // SDK verify restore — PASS/FAIL
-      if (admin && capturedUID) {
-        try {
-          const restored = await sdkReadGoal(admin, capturedTenantId, capturedUID);
-          const restoreOk = restored !== null && originalAPI !== null
-            && Math.abs(restored - originalAPI) < 1;
-          record('sdk-verify-restore',
-            restoreOk,
-            restoreOk
-              ? `*** RESTORE VERIFIED — Firestore personalAnnualAPI = ${restored} ≈ original ${originalAPI} ✓ ***`
-              : `*** RESTORE FAILED — Firestore personalAnnualAPI = ${restored}; expected ${originalAPI} ***`);
-          if (!restoreOk) {
-            safeLog('[CRITICAL] RESTORE LEG FAILED — S2 recompute smoke and future goal-dependent smokes at risk');
-          }
-        } catch (e) {
-          record('sdk-verify-restore', false, `*** RESTORE VERIFY EXCEPTION: ${e.message} ***`);
-        }
+      } catch (e) {
+        record('sdk-verify-restore', false, `*** RESTORE EXCEPTION: ${e.message} ***`);
+        safeLog('[CRITICAL] RESTORE EXCEPTION — MANUAL INTERVENTION REQUIRED');
       }
     } else {
-      record('restore-skipped', true, 'RESTORE skipped — originalAPI was null (no pre-existing goal to restore)');
+      record('restore-skipped', true, 'RESTORE skipped — no pre-existing goal to restore');
     }
 
     console.log(formatCaptureReport(lightCapture));
@@ -616,10 +596,11 @@ async function runSmoke() {
   const restoreResult = results.find((r) => r.leg === 'sdk-verify-restore');
   if (restoreResult && !restoreResult.passed) {
     console.log('\n*** CRITICAL: RESTORE LEG FAILED — MANUAL INTERVENTION REQUIRED ***');
-    console.log(`    Set agent personalAnnualAPI = ${originalAPI} via Firebase Console or a recovery script.`);
+    console.log(`    Agent ${AGENT_EMAIL}: set personalAnnualAPI=${originalAPI} personalAnnualApps=${capturedOriginalApps}`);
+    console.log(`    Firestore path: tenants/${capturedTenantId}/goals/${capturedUID}`);
   }
 
-  finishSmoke(passed, total);
+  finishSmoke(results);
 }
 
 runSmoke().catch((err) => {
