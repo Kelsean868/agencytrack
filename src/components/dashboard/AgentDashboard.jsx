@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   X, Download, Loader2,
   ClipboardList, FileText, Home, NotebookPen, Wallet, Target, Zap, Repeat, Search, Medal, Shield,
@@ -38,6 +38,8 @@ import ProductionReportTab from '../productionReport/ProductionReportTab';
 import AgentPersistencyTab from '../agent/PersistencyTab';
 import ProspectInfoPanel from '../agent/ProspectInfoPanel';
 import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
+import CommissionAnchorStrip from '../agent/CommissionAnchorStrip';
+import { getOwnPolicies } from '../../services/policiesService';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import GamePlanScreen from './GamePlanV2';
 import CommissionPlayground from '../goals/CommissionPlayground';
@@ -125,6 +127,12 @@ export default function AgentDashboard() {
   const [committedPlan, setCommittedPlan]     = useState(undefined);
   const [weekDailyDocs, setWeekDailyDocs]     = useState([]);
 
+  // Commission AnchorStrip — loaded lazily on first Commission tab visit.
+  const [policies, setPolicies]               = useState(null);
+  const [policiesLoading, setPoliciesLoading] = useState(false);
+  const [policiesError, setPoliciesError]     = useState(false);
+  const playgroundRef = useRef(null);
+
   const currentWeek  = useMemo(() => getMostRecentSunday(), []);
   const thisYear     = new Date().getFullYear();
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Agent';
@@ -210,6 +218,24 @@ export default function AgentDashboard() {
     setCommittedPlan(undefined); // reset to loading on week/auth change
     loadWeekPlanData();
   }, [loadWeekPlanData]);
+
+  // Load own policies lazily when the Commission tab is first visited.
+  const loadPolicies = useCallback(async () => {
+    if (!tenantId || !user?.uid) return;
+    setPoliciesLoading(true);
+    setPoliciesError(false);
+    try {
+      setPolicies(await getOwnPolicies(tenantId, user.uid));
+    } catch {
+      setPoliciesError(true);
+    } finally {
+      setPoliciesLoading(false);
+    }
+  }, [tenantId, user?.uid]);
+
+  useEffect(() => {
+    if (activeTab === 'commission' && policies === null) loadPolicies();
+  }, [activeTab, loadPolicies, policies]);
 
   // Resolved personal annual API: agent's own commitment if set, else the
   // tenant company-floor minimum, else 200000 (matches getCompanyMinimums
@@ -647,11 +673,25 @@ export default function AgentDashboard() {
 
       {/* ── COMMISSION TAB ── */}
       {activeTab === 'commission' && (
-        <CommissionPlayground
-          submissions={allSubmissions}
-          agentId={user?.uid}
-          tenantId={tenantId}
-        />
+        <div className="flex flex-col gap-4">
+          <CommissionAnchorStrip
+            policies={policies || []}
+            loading={policiesLoading}
+            error={policiesError}
+            onRetry={() => { setPolicies(null); setPoliciesError(false); }}
+            persistencyHistory={persistency}
+            committedAnnualAPI={goals?.personalAnnualAPI ?? null}
+            commissionRate={parseFloat(userProfile?.commissionRate) || 35}
+            onScrollToPlayground={() => playgroundRef.current?.scrollIntoView({ behavior: 'smooth' })}
+          />
+          <div ref={playgroundRef}>
+            <CommissionPlayground
+              submissions={allSubmissions}
+              agentId={user?.uid}
+              tenantId={tenantId}
+            />
+          </div>
+        </div>
       )}
 
       {/* ── PERSISTENCY TAB ── */}
