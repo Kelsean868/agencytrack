@@ -80,13 +80,11 @@ the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeek
     multi-branch tenants arrive (a BM's tenant-wide roster includes out-of-branch rows whose
     plan GETs deny → would misreport as not-committed).
 
-## Compliance v2 S1 — derived-suggestion chip relabel (LOW, carried from #477 CONTEXT note)
+## ~~Compliance v2 S1 — derived-suggestion chip relabel~~ ✅ CLOSED (PR #491 `2c55d07`, Item 6, 2026-06-05)
 
-The Weekly-Planner Slice-1 **derived-suggestion chip** on `SuggestedWeekCard.jsx` still
-labels its prospecting metric **"Dials"** (the engine's suggestion state), whereas every
-floor/plan render site was relabeled **"Prospecting calls"** in #477. Out of #477's
-enumerated relabel scope (it's the engine *suggestion*, not a floor/plan actual). Relabel
-the chip to "Prospecting calls" for full cross-surface consistency. Optional / LOW.
+**RESOLVED.** The Weekly-Planner derived-suggestion chip on `SuggestedWeekCard.jsx:463` was relabeled **"Dials" → "Prospecting calls"** (label constant + its two test assertions — visible-text + aria-label button query). Value unchanged (the decomposition engine's per-week dials target). Diff-locked one-liner; full cross-surface consistency with the #477 floor/plan relabel achieved. The `'dials / wk'` expansion-breakdown unit + the prose ratio reference are deliberately left (engine-derivation terms, not user-facing metric labels).
+
+<sub>Original (for trail): the derived-suggestion chip still labeled its prospecting metric "Dials" (engine suggestion state) whereas every floor/plan render site was relabeled "Prospecting calls" in #477; out of #477's enumerated scope (suggestion, not floor/plan actual).</sub>
 
 ---
 
