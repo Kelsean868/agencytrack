@@ -1,6 +1,6 @@
 import React from 'react';
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import CompliancePanel from '../CompliancePanel';
 
 // ── Mocks ─────────────────────────────────────────────────────────────────────
@@ -77,7 +77,7 @@ describe('CompliancePanel — S2 nudge + re-home wiring', () => {
     const nudgeBtns = await screen.findAllByTestId('compliance-nudge-btn'); // agentB + agentC
     expect(nudgeBtns).toHaveLength(2);
 
-    fireEvent.click(nudgeBtns[0]); // Bob (agentB) — exceptions sorted by name
+    await act(async () => { fireEvent.click(nudgeBtns[0]); }); // Bob (agentB) — exceptions sorted by name
 
     await waitFor(() => expect(hoisted.sendComplianceNudge).toHaveBeenCalledWith(['agentB'], WEEK, 'compliance.filing.nudge'));
     // The nudged row flips to a cooldown chip ("Nudged just now").
@@ -98,30 +98,30 @@ describe('CompliancePanel — S2 nudge + re-home wiring', () => {
     const nudgeAll = await screen.findByTestId('compliance-nudge-all');
     expect(nudgeAll).toHaveTextContent('Nudge all 2');
 
-    fireEvent.click(nudgeAll);
+    await act(async () => { fireEvent.click(nudgeAll); });
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText(/Nudge 2 agents\?/)).toBeInTheDocument();
     expect(within(dialog).getByText(/South Branch/)).toBeInTheDocument();
 
     // Cancel → no CF call.
-    fireEvent.click(within(dialog).getByRole('button', { name: /cancel/i }));
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: /cancel/i })); });
     expect(hoisted.sendComplianceNudge).not.toHaveBeenCalled();
 
     // Reopen → confirm → CF fires with both not-in uids.
-    fireEvent.click(screen.getByTestId('compliance-nudge-all'));
+    await act(async () => { fireEvent.click(screen.getByTestId('compliance-nudge-all')); });
     const dialog2 = await screen.findByRole('dialog');
-    fireEvent.click(within(dialog2).getByRole('button', { name: /send 2 nudges/i }));
+    await act(async () => { fireEvent.click(within(dialog2).getByRole('button', { name: /send 2 nudges/i })); });
     await waitFor(() => expect(hoisted.sendComplianceNudge).toHaveBeenCalledWith(['agentB', 'agentC'], WEEK, 'compliance.filing.nudge'));
   });
 
   test('Unlock action calls unlockSubmission with the submission id behind the confirm (waiver wiring proof)', async () => {
     renderPanel();
     const unlockBtn = await screen.findByTestId('compliance-unlock-btn'); // only agentA submitted
-    fireEvent.click(unlockBtn);
+    await act(async () => { fireEvent.click(unlockBtn); });
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText(/Unlock report for editing\?/)).toBeInTheDocument();
 
-    fireEvent.click(within(dialog).getByRole('button', { name: /^unlock$/i }));
+    await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: /^unlock$/i })); });
     await waitFor(() =>
       expect(hoisted.unlockSubmission).toHaveBeenCalledWith('T', 'subA', 'mgr1', 'Mgr One'));
   });
@@ -129,7 +129,7 @@ describe('CompliancePanel — S2 nudge + re-home wiring', () => {
   test('View action opens the SubmissionViewer with the submission', async () => {
     renderPanel();
     const viewBtn = await screen.findByTestId('compliance-view-btn');
-    fireEvent.click(viewBtn);
+    await act(async () => { fireEvent.click(viewBtn); });
     const viewer = await screen.findByTestId('submission-viewer');
     expect(viewer).toHaveTextContent('viewing:subA');
   });
