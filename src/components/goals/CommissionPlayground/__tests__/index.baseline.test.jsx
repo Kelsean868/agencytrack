@@ -1,26 +1,17 @@
 // @vitest-environment jsdom
 //
-// Item 5(b) — minimal CommissionPlayground RTL baseline (night queue).
-// The audit found a one-test floor (index.tapTargets.test.jsx). This adds the
-// zero-src-change part of the baseline: the collapsed accordion shell.
+// Item 5(b) — CommissionPlayground RTL baseline (commission-v2-s1 evolution).
 //
-// ── PARKED (brief Item 5(b): "ZERO src changes — if untestable without src
-//    edits, PARK that part and keep (a)") ──────────────────────────────────────
-// The expand-dependent baseline (tablist reveal, tab switch, setGoals write path,
-// localStorage income-goal persistence) CANNOT be tested without a src edit:
-// mounting the tabs throws `ReferenceError: React is not defined` at
-// GoalDecompositionTab.jsx:184 — the tab files (GoalDecompositionTab.jsx,
-// ModalTargetingTab.jsx) import only named hooks, not the default `React`, so
-// Vitest's transform fails on their JSX (the banked CLAUDE.md #153 lesson: "All
-// new JSX components must explicitly import React for Vitest compatibility").
-// Unblocking it is a one-line `import React from 'react'` in each tab file —
-// banked as a follow-up so the full RTL baseline (tab switch, setGoals, storage)
-// can land alongside that trivial src fix, outside this test-only item's scope.
+// Original (night queue): tested the collapsed accordion shell.
+// D4 (commission-v2-s1): the accordion is REMOVED — CommissionPlayground is
+// now always-expanded, rendering the tab list at mount. These tests are a
+// conscious evolution of the prior baseline: the accordion-toggle behavior
+// goes away; the title, subtitle copy, and tab list render unconditionally.
 //
-// The real Commission safety net lands in this item's (a): the commissionMath
-// characterization suite (modeBreakdown + cashFlowForecast + commissionThisMonth
-// + boundaries). The decomposition chain is already pinned in
-// src/utils/__tests__/goalDecomposition.test.js.
+// The expand-dependent tab-content tests (GoalDecompositionTab, ModalTargetingTab,
+// setGoals write path, localStorage income-goal persistence) remain parked for S2
+// — those tab files still need the one-line `import React from 'react'` fix
+// (banked CLAUDE.md lesson from #153) before they can be mounted in Vitest.
 
 import React from 'react';
 import { describe, it, expect, vi } from 'vitest';
@@ -30,17 +21,23 @@ vi.mock('../../../../context/AuthContext', () => ({
   useAuth: () => ({ userProfile: { commissionRate: 35 } }),
 }));
 vi.mock('../../../../services/goalsService', () => ({ setGoals: vi.fn(() => Promise.resolve()) }));
+vi.mock('../tabs/GoalDecompositionTab', () => ({ default: () => null }));
+vi.mock('../tabs/ModalTargetingTab', () => ({ default: () => null }));
 
 import CommissionPlayground from '../index';
 
-describe('CommissionPlayground — RTL baseline (Item 5b, collapsed shell only)', () => {
-  it('renders the accordion header collapsed (no tablist until expanded)', () => {
+describe('CommissionPlayground — RTL baseline (commission-v2-s1, always expanded)', () => {
+  it('renders the header title', () => {
     render(<CommissionPlayground submissions={[]} agentId="a" tenantId="t" />);
     expect(screen.getByText('Commission Playground')).toBeInTheDocument();
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
   });
 
-  it('default copy reverse-engineers the agent income goal', () => {
+  it('renders the tab list unconditionally at mount (no accordion)', () => {
+    render(<CommissionPlayground submissions={[]} agentId="a" tenantId="t" />);
+    expect(screen.getByRole('tablist')).toBeInTheDocument();
+  });
+
+  it('default subtitle is the income-goal reverse-engineer copy', () => {
     render(<CommissionPlayground submissions={[]} agentId="a" tenantId="t" />);
     expect(screen.getByText(/reverse-engineer the activity needed/i)).toBeInTheDocument();
   });
@@ -48,5 +45,16 @@ describe('CommissionPlayground — RTL baseline (Item 5b, collapsed shell only)'
   it('isManagerSelf swaps the subtitle to the personal-goal copy', () => {
     render(<CommissionPlayground submissions={[]} agentId="a" tenantId="t" isManagerSelf />);
     expect(screen.getByText(/hit your personal income goal/i)).toBeInTheDocument();
+  });
+
+  it('renders Goal Decomposition and Modal Targeting tabs', () => {
+    render(<CommissionPlayground submissions={[]} agentId="a" tenantId="t" />);
+    expect(screen.getByRole('tab', { name: /goal decomposition/i })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /modal targeting/i })).toBeInTheDocument();
+  });
+
+  it('Goal Decomposition tab is selected by default', () => {
+    render(<CommissionPlayground submissions={[]} agentId="a" tenantId="t" />);
+    expect(screen.getByRole('tab', { name: /goal decomposition/i })).toHaveAttribute('aria-selected', 'true');
   });
 });

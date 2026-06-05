@@ -5,6 +5,19 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Commission v2 — remaining slices (banked 2026-06-05 from Commission v2 Slice 1, PR #TBD)
+
+**Context:** Slice 1 (PR #TBD) shipped the real-earnings **AnchorStrip** data layer atop the Commission page: new pure utility `src/utils/commissionAnchor.js` (`ytdEarned` · `runRate` · `gapToGoal` · `latestPersistency`) + exhaustive unit tests + `CommissionAnchorStrip.jsx` (3 states: loading · no-goal/error · normal with YTD earned / run-rate window chip / gap-vs-committed-goal / latest-month persistency) + D4 page promotion (CommissionPlayground accordion removed, always-expanded with tab list). READ/DERIVE ONLY — no writes, no new collections, no rules changes. Data from existing own-read policy, goals, and persistency paths.
+
+**Remaining slices:**
+
+- **S2 — Ladder + Modal Targeting restyle.** Per `docs/design/commission-v2-build.html` (the annotation authority), the GoalDecompositionTab and ModalTargetingTab get a visual restyle. **Pre-requisite: the S2 brief MUST pre-authorize the one-line `import React from 'react'` fix for both tab files** — currently only named hooks are imported (`import { useState, ... } from 'react'`), which causes `ReferenceError: React is not defined` when Vitest mounts them (the Item-5 PARK, banked FU: "CommissionPlayground tabs lack default `React` import → blocks full RTL baseline"). Once the fix lands, the parked expand-dependent baseline tests (tab-switch · setGoals write path · localStorage income-goal persistence) can also be added. Ladder "Dials" terminology is already resolved: copy must use "Prospecting calls" throughout (per #477 ratification).
+- **S3 — "Set as my goal" write + manager variant.** Agent-side: the no-committed-goal state's CTA writes the decomposition ladder result as the committed `personalAnnualAPI` to the Goals cascade. Manager variant: strip showing an agent's commission data (manager viewing an agent's Commission tab). Needs a Firestore write path + rules verification. Post-pilot candidate.
+
+**Cross-reference:** `docs/design/commission-v2-build.html` (layout authority for all three slices); § CommissionPlayground tabs lack default `React` import → blocks full RTL baseline (active FU, pre-auth required in S2 brief); `docs/briefs/commission-v2-s1-kickoff.md`.
+
+---
+
 ## Compliance v2 — remaining slices (banked 2026-06-04 from Compliance v2 Slice 1, PR #481)
 
 **Context:** S1 (PR #481) shipped the **read/derive-only filing surface** for the manager
