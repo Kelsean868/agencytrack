@@ -53,11 +53,28 @@ the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeek
   - **Future consumer.** The `nudges` collection (+ the `readAt` per-recipient marker, dormant
     in S2) is the primitive an **agent-side notification inbox** would later read.
 
-- **S3 — second lens: plan-adoption.** A Filing ⇄ Plan-adoption **toggle** that swaps the
-  reality bar's metric set AND the exception list in lockstep, reading `weeklyPlans/{agentId}_{weekStart}`
-  via the **locked deterministic-ID get-fan-out** over the roster — **zero rules changes**
-  (#471's manager-GET arm `uplineCanReadPlan` already covers it; no `list`, no index).
-  Reuses S1's bar + S2's nudge — no new primitive.
+- **S3 — second lens: plan-adoption. ✅ SHIPPED (PR #485, `f2515c7`) — Compliance v2 surface COMPLETE.**
+  A segmented **Filing ⇄ Plan-adoption** toggle (`CompliancePanel`) swaps the reality bar
+  metric set AND the exception list in lockstep (filing = S1/S2 unchanged; plan =
+  committed%/committed/not-committed bar + "Haven't committed a plan" list + plan Nudge);
+  streak roster + CBTT are filing-lens-only. Plan data via the **locked `getWeeklyPlan`
+  get-fan-out** (no list/index; #471 `uplineCanReadPlan`-authorized; absent/denied = not
+  committed). Plan nudge reuses S2's machinery with `type='compliance.plan.nudge'`
+  (independent dedupe); the CF's only change is a `NUDGE_CONFIG` allowlist-of-two map
+  (lens/copy/template per type) + new `compliance-plan-nudge.txt/.html` — **post-merge
+  `firebase deploy --only functions:sendComplianceNudge`** (it EDITS an existing export).
+  **ZERO rules changes.** Pre-merge smoke 14/14 (toggle lockstep + plan bar == independent
+  web-SDK recompute + plan-Nudge renders-not-fired + axe 0-new both themes); active lens-tab
+  chip AA fix mid-review (`bg-white/25→bg-black/20`). Smoke harness hardened (`finishSmoke`
+  explicit-exit + global timeout + `--prod` resolver + flushed progress). Delivers **planner
+  S4a** (manager-visibility); S4b pace roll-up rides WARs v2.
+  - **Deferred live plan-nudge leg (/post-merge, Rule 13).** Runs AFTER the operator's CF
+    deploy: fire one BM plan nudge on prod → CF success → cooldown chip → creator-delete the
+    `nudges` record → getDoc-confirm gone. _[result slot — fill when the /post-merge leg runs]_
+  - **Banked LOW FU (Phase-0).** The plan fan-out treats denied GETs as not-committed —
+    correct for the single-branch pilot where the roster and branch coincide; revisit if
+    multi-branch tenants arrive (a BM's tenant-wide roster includes out-of-branch rows whose
+    plan GETs deny → would misreport as not-committed).
 
 ## Compliance v2 S1 — derived-suggestion chip relabel (LOW, carried from #477 CONTEXT note)
 
