@@ -68,9 +68,13 @@ the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeek
   chip AA fix mid-review (`bg-white/25→bg-black/20`). Smoke harness hardened (`finishSmoke`
   explicit-exit + global timeout + `--prod` resolver + flushed progress). Delivers **planner
   S4a** (manager-visibility); S4b pace roll-up rides WARs v2.
-  - **Deferred live plan-nudge leg (/post-merge, Rule 13).** Runs AFTER the operator's CF
-    deploy: fire one BM plan nudge on prod → CF success → cooldown chip → creator-delete the
-    `nudges` record → getDoc-confirm gone. _[result slot — fill when the /post-merge leg runs]_
+  - **Deferred live plan-nudge leg (/post-merge, Rule 13) — ✅ CLOSED 2026-06-04.** After the
+    operator's `firebase deploy --only functions:sendComplianceNudge`, ran
+    `scripts/verification/compliance-v2-s3-plannudge-prod-leg.mjs --prod` (BM, production): **2/2** —
+    the LIVE plan CF fired (`compliance.plan.nudge` now accepted), cooldown chip rendered
+    "Nudged just now", then the plan `nudges/{uid}_compliance.plan.nudge_2026-05-31` record was
+    creator-deleted and getDoc-confirmed gone (cooldown reset). One plan email sent to the test
+    agent (by design); bell `notifications` + `auditNudges` retained as durable records.
   - **Banked LOW FU (Phase-0).** The plan fan-out treats denied GETs as not-committed —
     correct for the single-branch pilot where the roster and branch coincide; revisit if
     multi-branch tenants arrive (a BM's tenant-wide roster includes out-of-branch rows whose
