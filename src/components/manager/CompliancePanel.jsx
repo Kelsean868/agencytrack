@@ -386,7 +386,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
           </div>
         ) : (
           exceptions.map((r) => (
-            <div key={r.id} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0" data-testid="compliance-exception-row">
+            <div key={r.id} className="flex items-center gap-3 px-4 py-3 border-b border-border last:border-b-0" data-testid="compliance-exception-row" data-uid={r.id}>
               <Avatar name={r.name} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-ink truncate">{r.name}</p>
