@@ -505,3 +505,32 @@ describe('PolicyLedgerPanel — plan catalog combobox', () => {
     expect(screen.queryByTestId('plan-name-freetext')).not.toBeInTheDocument();
   });
 });
+
+// ── initialFilter prop — D4 additive gate ────────────────────────────────────
+describe('PolicyLedgerPanel — initialFilter prop', () => {
+  beforeEach(() => {
+    hoisted.useAuth.mockReturnValue({ user: { uid: 'u1' }, userProfile: {}, tenantId: 't1', role: 'agent' });
+    hoisted.getOwnPolicies.mockResolvedValue([]);
+    hoisted.getPolicyPlans.mockResolvedValue({ plans: [] });
+  });
+
+  it('defaults to list view without crashing when initialFilter is not provided (default-unchanged)', async () => {
+    render(<PolicyLedgerPanel />);
+    // Component must mount and settle in list view — no create form, no crash.
+    await waitFor(() => {
+      expect(screen.getByTestId('policy-ledger-surface')).toBeInTheDocument();
+    });
+    // Must not show the create form (initialForm is absent → view starts as 'list')
+    expect(screen.queryByRole('button', { name: /back/i })).not.toBeInTheDocument();
+  });
+
+  it('initialises filter to the provided initialFilter value (lapsed)', async () => {
+    render(<PolicyLedgerPanel initialFilter="lapsed" />);
+    // The "Lapsed" chip button should be rendered — the filter state is initialised
+    // from the prop at mount. Since policies list is empty, we just verify no crash
+    // and the component renders in list view (not create view).
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+  });
+});

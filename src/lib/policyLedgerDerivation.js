@@ -114,6 +114,7 @@ export const LEDGER_FILTERS = [
   { key: 'action',   label: 'Action needed' },
   { key: 'confirmed', label: 'Confirmed' },
   { key: 'closed',   label: 'Closed' },
+  { key: 'lapsed',   label: 'Lapsed' },
 ];
 
 function matchesFilter(policy, filter) {
@@ -132,6 +133,9 @@ function matchesFilter(policy, filter) {
       return confirmed;
     case 'closed':
       return !confirmed && ['lapsed', 'ntu', 'denied'].includes(s);
+    case 'lapsed':
+      // Lapsed only — excludes NTU and denied (used by persistency playground D4 link).
+      return !confirmed && s === 'lapsed';
     default:
       return true;
   }

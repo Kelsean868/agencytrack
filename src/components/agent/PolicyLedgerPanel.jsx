@@ -77,7 +77,7 @@ function FieldGroup({ label, children, required, id }) {
 const inputCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm text-ink w-full focus:outline-none focus:ring-2 focus:ring-primary/40';
 const selectCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm text-ink w-full focus:outline-none focus:ring-2 focus:ring-primary/40';
 
-export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
+export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter }) {
   const { user, userProfile, tenantId } = useAuth();
 
   const [view, setView] = useState(initialForm ? 'create' : 'list');
@@ -96,7 +96,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
   );
 
   // ── Tier 2 filter / search ──
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(initialFilter ?? 'all');
   const [search, setSearch] = useState('');
 
   // ── Tier 3 drawer ──
