@@ -363,7 +363,7 @@ export default function MeetingMode({ submissions, selectedWeek, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-presentation">
+    <div className="fixed inset-0 z-50 flex flex-col bg-presentation" data-meeting-mode="true">
 
       {/* Top bar — 3-col grid */}
       <header className="grid grid-cols-3 items-center px-6 py-4 shrink-0">

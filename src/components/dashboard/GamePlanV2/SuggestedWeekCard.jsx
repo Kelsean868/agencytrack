@@ -211,7 +211,7 @@ export default function SuggestedWeekCard({
   // ── shell ──────────────────────────────────────────────────────────────────
   return (
     <section
-      className="rounded-2xl border border-primary/30 bg-card p-5 shadow-sm"
+      className="rounded-2xl p-5 glass teal"
       data-testid="suggested-week-card"
       aria-label="Suggested weekly plan"
     >

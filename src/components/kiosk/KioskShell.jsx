@@ -100,6 +100,7 @@ export default function KioskShell({ tenantId, branchId }) {
   return (
     <div
       className="fixed inset-0 overflow-hidden"
+      data-kiosk="true"
       style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
     >
       {/* Crossfade: key forces remount + CSS fade-in on each panel change */}

@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { contrastRatio, relativeLuminance, composite, toRgb, passesAA } from '../contrast';
+import { contrastRatio, relativeLuminance, composite, toRgb, passesAA, glassPair } from '../contrast';
 
 // Channel values MUST match src/index.css. The status-ink tokens are proven here:
 // every (ink, background) pair ≥ 4.5:1 against the raw surfaces AND the /10 and
@@ -106,6 +106,111 @@ describe('NotificationDrawer Mark-all-read: dark hover primary-light passes AA',
   test('old dark hover text-primary-dark on dark surface was < AA', () => {
     expect(contrastRatio(primaryDrkDrk, darkSurface)).toBeLessThan(4.5);
   });
+});
+
+// ── Nexus Glass — glassPair ink × tint × theme matrix ─────────────────────────
+//
+// NOTE ON RECIPE DIVERGENCE (banked):
+//   The nexus-glass-recipe.html AA table states warning #B45309 at 4.7:1. Our
+//   glassPair() module computes 4.33:1 (teal) / 4.38:1 (gold) in light mode.
+//   Investigation showed the recipe's 4.7:1 was computed against raw --color-bg
+//   (#F7F6F2, lum≈0.921), not against the glass-composited effective background.
+//   glassPair() is the authoritative floor: tint → base@0.62 → darkest named
+//   surface. The composited effective bg is cooler than the warm surface alone,
+//   which lowers warm-ink contrast. The module is correct; the recipe doc's table
+//   is a shortcut. FU: regenerate the recipe HTML AA table from glassPair outputs
+//   at the next design-doc touch.
+//
+// TEXT MATRIX — inks the app ACTUALLY uses as text on the flagship three cards:
+//   CommissionAnchorStrip (gold): text-ink · text-ink-muted · warning-ink · danger-ink
+//   PersRealityBar         (teal): text-ink · text-ink-muted · warning-ink · danger-ink · success-ink
+//   SuggestedWeekCard      (teal): text-ink · text-ink-muted · teal(primary) · warning-ink · danger-ink · success-ink
+//   Union → all six inks tested against both tints × both themes.
+//   Raw status base colors (warning, danger, success) are NOT text inks — they
+//   appear only as graphical fills (sparklines, PaceRow bars). See GRAPHICAL block.
+const GLASS_INKS = {
+  light: {
+    'text-ink':      [40,  37,  29],                       // --text-channels (all three cards)
+    'text-ink-muted':[107, 101, 96],                       // --text-muted-channels (all three)
+    teal:            [1,   105, 111],                      // --primary-channels (SuggestedWeekCard teal.text)
+    'warning-ink':   THEMES.light.status.warning.ink,      // [162, 65, 0] — gap-to-goal, behind-pace, unresolved
+    'danger-ink':    THEMES.light.status.danger.ink,       // [178, 43, 29] — below-floor, error states
+    'success-ink':   THEMES.light.status.success.ink,      // [31, 108, 65] — award-eligible, ahead/on-track
+  },
+  dark: {
+    'text-ink':      [240, 235, 224],
+    'text-ink-muted':[184, 174, 160],
+    teal:            [74,  181, 184],
+    'warning-ink':   THEMES.dark.status.warning.ink,       // [232, 181, 62]
+    'danger-ink':    THEMES.dark.status.danger.ink,        // [246, 136, 122]
+    'success-ink':   THEMES.dark.status.success.ink,       // [100, 191, 125]
+  },
+};
+
+// GRAPHICAL fills — raw status base colors used as non-text graphical elements:
+//   PersRealityBar:    bg-warning/70 · bg-danger/70 · bg-success/70  (sparkline bars)
+//   SuggestedWeekCard: bg-warning (behind) · bg-success (ahead/on-track)  (PaceRow fills)
+// WCAG SC 1.4.11 Non-Text Contrast threshold = 3:1 (not 4.5:1).
+const GLASS_GRAPHICAL = {
+  light: {
+    warning: THEMES.light.status.warning.base,             // [180, 83, 9]
+    danger:  THEMES.light.status.danger.base,              // [192, 57, 43]
+    success: THEMES.light.status.success.base,             // [45, 122, 79]
+  },
+  dark: {
+    warning: THEMES.dark.status.warning.base,              // [232, 181, 62]
+    danger:  THEMES.dark.status.danger.base,               // [217, 107, 93]
+    success: THEMES.dark.status.success.base,              // [93, 184, 118]
+  },
+};
+
+const GLASS_FAINT = {
+  light: [168, 163, 156],  // --text-faint-channels (light)
+  dark:  [107, 101, 96],   // --text-faint-channels dark context — fails by design
+};
+
+describe('glassPair — text inks clear AA (4.5:1) on glass effective bg (both tints × both themes)', () => {
+  for (const theme of ['light', 'dark']) {
+    for (const tint of ['teal', 'gold']) {
+      const bg = glassPair(tint, theme);
+      for (const [inkName, inkRgb] of Object.entries(GLASS_INKS[theme])) {
+        test(`${theme}/${tint}: ${inkName} ≥ 4.5:1 on glass`, () => {
+          expect(contrastRatio(inkRgb, bg)).toBeGreaterThanOrEqual(4.5);
+        });
+      }
+    }
+  }
+});
+
+describe('glassPair — graphical fills clear non-text contrast (3:1) on glass effective bg (both tints × both themes)', () => {
+  // WCAG SC 1.4.11: graphical elements need 3:1, not 4.5:1.
+  // Raw base channels are tested (full-opacity floor); actual renders at /70 are
+  // lighter-over-glass but the base floor is the conservative bound.
+  for (const theme of ['light', 'dark']) {
+    for (const tint of ['teal', 'gold']) {
+      const bg = glassPair(tint, theme);
+      for (const [colorName, colorRgb] of Object.entries(GLASS_GRAPHICAL[theme])) {
+        test(`${theme}/${tint}: ${colorName} (graphical) ≥ 3:1 on glass`, () => {
+          expect(contrastRatio(colorRgb, bg)).toBeGreaterThanOrEqual(3.0);
+        });
+      }
+    }
+  }
+});
+
+describe('glassPair — text-ink-faint FAILS on glass (design intent guard)', () => {
+  // The recipe designs faint to fail; this test makes putting faint on glass
+  // a permanent red suite. If this test ever goes GREEN, a tint has been
+  // inadvertently lightened to the point where faint becomes legible —
+  // which means the tint is too washed-out (fix: deepen the tint, not the ink).
+  for (const theme of ['light', 'dark']) {
+    for (const tint of ['teal', 'gold']) {
+      const bg = glassPair(tint, theme);
+      test(`${theme}/${tint}: text-ink-faint FAILS on glass (< 4.5:1)`, () => {
+        expect(contrastRatio(GLASS_FAINT[theme], bg)).toBeLessThan(4.5);
+      });
+    }
+  }
 });
 
 describe('the base (pre-ink) status text was genuinely below AA where fixed', () => {

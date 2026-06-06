@@ -5,6 +5,20 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Nexus Glass recipe HTML — AA table needs regeneration from glassPair() (banked 2026-06-06, PR #513)
+
+**Context:** The Nexus Glass recipe doc (`docs/design/nexus-glass-recipe.html`) AA table states `#B45309` at 4.7:1 PASS on glass. `#B45309` is the raw warning **base** color (`[180, 83, 9]`), not the text ink. Two errors compound in that figure:
+
+1. **Wrong color for text context.** The text-readable token on the flagship cards is `warning-ink` (`[162, 65, 0]`), not the raw base. `glassPair()` confirms warning-ink on light glass is **5.50:1 (teal tint) / 5.56:1 (gold tint)** — both comfortably above AA 4.5. The raw base used graphically (sparkline/PaceRow fills) at 4.33:1 (teal) / 4.38:1 (gold) passes only the 3:1 graphical threshold (SC 1.4.11), not text AA.
+
+2. **Wrong background.** Even the raw base figure of 4.7:1 from the recipe was computed against `--color-bg` (#F7F6F2) directly, not the glass-composited effective background. `glassPair()` composites tint → base@62% alpha → darkest named surface, yielding a cooler effective bg that lowers contrast for warm colors. The correct raw-base-on-glass numbers are 4.33/4.38:1.
+
+**Action at next design-doc touch:** Regenerate the AA table in `nexus-glass-recipe.html` from `glassPair()` outputs. Use warning-ink (`[162, 65, 0]`) for the text-AA column; raw warning base (`[180, 83, 9]`) for the graphical-3:1 column. The code's contrast.test.js matrix is the corrected truth in the interim.
+
+**No production or rule changes — docs-only, no urgency.**
+
+---
+
 ## Persistency Mgr v2 — remaining slices (banked 2026-06-05 from Persistency Mgr v2 S1, PR #505)
 
 **Context:** S1 (PR #505) shipped the manager Persistency panel redesign — `PersRealityBar` (aggregate %, 6-month sparkline, stats), `PersAtRiskBook` (exception-first agents below 80%; celebration arm; Coach → existing `CoachingNotesModal`), and `PersRoster` (two-tick band track at 80%/90%, source badge, Edit + Play). Read/derive only — zero writes, rules changes, Cloud Functions, or index changes. `PersistencyAgentRow.jsx` deleted (replaced). `computeBarStats()` + `PERS_FLOOR` / `PERS_GATE` exported from `src/lib/persistency/calculations.js`.
