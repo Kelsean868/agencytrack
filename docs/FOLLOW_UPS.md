@@ -51,6 +51,8 @@ No standalone hero recipe HTML was produced (analogous to `docs/design/nexus-gla
 
 **No urgency** — all tokens and tests are in code. This is documentation catch-up only.
 
+**Operator legibility doctrine (banked 2026-06-06, PR #517):** "AA ratios are the floor; operator legibility judgment is the gate — light-mode deep-gold panes failed the gate at 4.7+." `CommissionAnchorStrip` was swapped from `glass hero gold` → `glass hero teal` post-solve on this verdict. Gold tokens, CSS classes, and tests remain defined in the system (reserved, unused by design); this doctrine records why the card moved despite passing the AA floor.
+
 ---
 
 ## Persistency Mgr v2 — remaining slices (banked 2026-06-05 from Persistency Mgr v2 S1, PR #505)
