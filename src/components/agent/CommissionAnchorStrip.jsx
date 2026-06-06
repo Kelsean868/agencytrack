@@ -5,13 +5,8 @@ import { ytdEarned, runRate, gapToGoal, latestPersistency } from '../../utils/co
 
 function ProvChip({ children, warning }) {
   return (
-    <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.04em] ${
-        warning
-          ? 'bg-warning/10 text-warning-ink'
-          : 'bg-primary/10 text-primary dark:text-primary-dark'
-      }`}
-    >
+    <span className="inline-flex items-center gap-1 rounded-full border border-[--hero-chip-border] bg-[--hero-chip-island] px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-[--hero-ink-muted-gold]">
+      {warning && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[--hero-dot-warning]" />}
       {children}
     </span>
   );
@@ -19,11 +14,11 @@ function ProvChip({ children, warning }) {
 
 function Chip({ label, value, valueClass }) {
   return (
-    <div className="flex min-w-[108px] flex-col gap-0.5 rounded-xl border border-border bg-surface-raised px-3.5 py-2.5">
-      <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.1em] text-ink-muted">
+    <div className="flex min-w-[108px] flex-col gap-0.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3.5 py-2.5">
+      <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.1em] text-[--hero-ink-muted-gold]">
         {label}
       </span>
-      <span className={`font-display text-base font-extrabold tracking-tight whitespace-nowrap ${valueClass || 'text-ink'}`}>
+      <span className={`font-display text-base font-extrabold tracking-tight whitespace-nowrap ${valueClass || 'text-[--hero-ink]'}`}>
         {value}
       </span>
     </div>
@@ -143,23 +138,23 @@ export default function CommissionAnchorStrip({
 
   return (
     <section
-      className="relative overflow-hidden rounded-2xl p-5 glass gold"
+      className="relative overflow-hidden rounded-2xl p-5 glass hero gold"
       data-testid="commission-anchor-strip"
       aria-label="Commission summary"
     >
       <div className="relative flex flex-wrap items-baseline justify-between gap-4">
         <div className="min-w-0">
-          <div className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-gold">
+          <div className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-[--hero-ink-muted-gold]">
             Your reality · {weeksLeft} {weeksLeft === 1 ? 'week' : 'weeks'} left in {year}
           </div>
 
-          <h2 className="mt-1.5 max-w-lg font-display text-2xl font-extrabold leading-tight tracking-tight text-ink">
+          <h2 className="mt-1.5 max-w-lg font-display text-2xl font-extrabold leading-tight tracking-tight text-[--hero-ink]">
             On pace for{' '}
-            <span className="text-primary dark:text-primary-dark">{formatCurrency(projected)}</span>{' '}
+            <span className="text-[--hero-accent]">{formatCurrency(projected)}</span>{' '}
             in commission this year
           </h2>
 
-          <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-ink-muted">
+          <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[--hero-ink-muted-gold]">
             <span>{formatCurrency(earned)} earned YTD</span>
             <ProvChip>← policies.earnedCommission · settled</ProvChip>
             {rate.weekCount > 0 && (
@@ -167,12 +162,12 @@ export default function CommissionAnchorStrip({
                 <span>· projected from</span>
                 {rate.isLinear ? (
                   <>
-                    <strong className="text-ink">linear YTD</strong>
+                    <strong className="text-[--hero-ink]">linear YTD</strong>
                     <ProvChip warning>{rate.window.toUpperCase()}</ProvChip>
                   </>
                 ) : (
                   <>
-                    <strong className="text-ink">{rate.weekCount}-wk trailing run-rate</strong>
+                    <strong className="text-[--hero-ink]">{rate.weekCount}-wk trailing run-rate</strong>
                     <ProvChip>{rate.window.toUpperCase()}</ProvChip>
                   </>
                 )}
@@ -188,14 +183,14 @@ export default function CommissionAnchorStrip({
           )}
         </div>
 
-        <div className="shrink-0 text-right">
-          <div className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-warning-ink">
+        <div className="shrink-0 inline-flex flex-col items-end gap-0.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3 py-2.5 text-right">
+          <div className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[--hero-ink-muted-gold]">
             Gap to goal
           </div>
-          <div className="mt-1 font-display text-2xl font-extrabold leading-none tracking-tight text-warning-ink">
+          <div className="font-display text-2xl font-extrabold leading-none tracking-tight text-[--hero-ink]">
             {behind ? '−' : '+'} {formatCurrency(Math.abs(gap))}
           </div>
-          <div className="mt-0.5 font-mono text-[9px] text-ink-muted">
+          <div className="font-mono text-[9px] text-[--hero-ink-muted-gold]">
             vs your committed goal
           </div>
         </div>

@@ -197,7 +197,7 @@ export default function SuggestedWeekCard({
 
   const eyebrow = (
     <div className="flex items-center gap-2">
-      <span className={`font-mono text-[10px] font-bold uppercase tracking-[0.16em] ${teal.text}`}>
+      <span className="font-mono text-[10px] font-bold uppercase tracking-[0.16em] text-[--hero-ink-muted-teal]">
         {showCommitted ? 'Your weekly plan' : 'Suggested weekly plan'}{weekLabel ? ` · ${weekLabel}` : ''}
       </span>
       {!planningEnabled && (
@@ -211,7 +211,7 @@ export default function SuggestedWeekCard({
   // ── shell ──────────────────────────────────────────────────────────────────
   return (
     <section
-      className="rounded-2xl p-5 glass teal"
+      className="rounded-2xl p-5 glass hero teal"
       data-testid="suggested-week-card"
       aria-label="Suggested weekly plan"
     >
@@ -227,8 +227,8 @@ export default function SuggestedWeekCard({
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-danger/10 text-danger-ink">
             <AlertCircle size={20} aria-hidden="true" />
           </div>
-          <p className="font-display text-sm font-extrabold text-ink">Couldn&apos;t load your suggested plan</p>
-          <p className="text-xs text-ink-muted">The rest of the hub stays usable.</p>
+          <p className="font-display text-sm font-extrabold text-[--hero-ink]">Couldn&apos;t load your suggested plan</p>
+          <p className="text-xs text-[--hero-ink-muted-teal]">The rest of the hub stays usable.</p>
           {onRetry && (
             <button
               type="button"
@@ -250,8 +250,8 @@ export default function SuggestedWeekCard({
           <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${teal.tint} ${teal.text}`}>
             <Clock size={20} aria-hidden="true" />
           </div>
-          <p className="font-display text-sm font-extrabold text-ink">Set a plan to see your week</p>
-          <p className="max-w-xs text-xs leading-relaxed text-ink-muted">
+          <p className="font-display text-sm font-extrabold text-[--hero-ink]">Set a plan to see your week</p>
+          <p className="max-w-xs text-xs leading-relaxed text-[--hero-ink-muted-teal]">
             You haven&apos;t committed an annual target yet, so there&apos;s nothing to derive a weekly plan from.
           </p>
           {onBuildPlan && (
@@ -280,7 +280,7 @@ export default function SuggestedWeekCard({
                   {paceResult.source === 'final' ? '✓' : '◷'} {paceResult.chip.label}
                 </span>
                 {paceResult.source === 'daily' && (
-                  <span className="font-mono text-[9px] text-ink-muted" data-testid="weekly-plan-pace-readout">
+                  <span className="font-mono text-[9px] text-[--hero-ink-muted-teal]" data-testid="weekly-plan-pace-readout">
                     Day {paceResult.elapsed} of {PACE_WORKING_DAYS} → you should be at{' '}
                     {Math.round(paceResult.paceFraction * 100)}% of plan
                   </span>
@@ -299,7 +299,7 @@ export default function SuggestedWeekCard({
           {/* committed-date + Clear + Edit (preserved from Slice 2) */}
           <div className="flex items-center justify-between gap-2 pt-1">
             <div className="flex items-center gap-3">
-              <span className="text-[11px] text-ink-muted">
+              <span className="text-[11px] text-[--hero-ink-muted-teal]">
                 {formatCommittedDate(committedPlan.committedAt)
                   ? `Committed ${formatCommittedDate(committedPlan.committedAt)}`
                   : 'Committed'}
@@ -310,7 +310,7 @@ export default function SuggestedWeekCard({
                   onClick={onDeletePlan}
                   disabled={planBusy}
                   data-testid="weekly-plan-clear"
-                  className="text-[11px] text-danger-ink hover:underline disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                  className="text-[11px] text-[--hero-ink-muted-teal] hover:underline disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
                 >
                   Clear
                 </button>
@@ -454,8 +454,8 @@ export default function SuggestedWeekCard({
       {/* ── derived (read-only suggestion) ── */}
       {!loading && !error && !showCommitted && !editing && resolution.mode === 'derived' && (
         <div className="mt-3" data-testid="suggested-week-derived">
-          <p className="font-display text-base font-extrabold leading-snug tracking-tight text-ink">
-            To stay on your <span className={teal.text}>{formatCurrency(resolution.anchor)}</span> plan, your week looks like:
+          <p className="font-display text-base font-extrabold leading-snug tracking-tight text-[--hero-ink]">
+            To stay on your <span className="text-[--hero-accent]">{formatCurrency(resolution.anchor)}</span> plan, your week looks like:
           </p>
 
           {(() => {
@@ -583,15 +583,15 @@ function PaceRow({ row }) {
     <div className="grid grid-cols-[84px_1fr_88px] items-center gap-3 sm:grid-cols-[116px_1fr_104px]" data-testid={`pace-row-${row.key}`}>
       {/* label + floor/plan/provenance meta */}
       <div className="min-w-0">
-        <div className="truncate text-xs font-bold text-ink">{row.label}</div>
+        <div className="truncate text-xs font-bold text-[--hero-ink]">{row.label}</div>
         {row.clarifier && (
-          <div className="truncate font-mono text-[8px] tracking-wide text-ink-muted">{row.clarifier}</div>
+          <div className="truncate font-mono text-[8px] tracking-wide text-[--hero-ink-muted-teal]">{row.clarifier}</div>
         )}
-        <div className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wide text-ink-muted">
+        <div className="mt-0.5 font-mono text-[8px] font-bold uppercase tracking-wide text-[--hero-ink-muted-teal]">
           FLOOR {row.floor} · PLAN{' '}
           <span data-testid={`plan-committed-${row.key}-value`}>{row.plan}</span>
           {' · '}
-          <span className="text-ink-muted">{PROVENANCE_CHIP[row.provenance] ?? ''}</span>
+          <span>{PROVENANCE_CHIP[row.provenance] ?? ''}</span>
         </div>
       </div>
 
@@ -620,27 +620,27 @@ function PaceRow({ row }) {
         )}
         {/* floor tick (neutral baseline) */}
         <div
-          className="absolute -bottom-0.5 -top-0.5 w-0.5 bg-ink-faint"
+          className="absolute -bottom-0.5 -top-0.5 w-0.5 bg-[--hero-chip-border]"
           style={{ left: `${row.floorPct}%` }}
           aria-hidden="true"
         />
         {/* plan cap (target — right edge of the scale) */}
-        <div className="absolute -bottom-0.5 -top-0.5 right-0 w-0.5 bg-primary" aria-hidden="true" />
+        <div className="absolute -bottom-0.5 -top-0.5 right-0 w-0.5 bg-[--hero-ink]" aria-hidden="true" />
       </div>
 
       {/* readout */}
       <div className="text-right">
         {row.noDailySource ? (
-          <span className="font-mono text-[8.5px] font-bold leading-tight text-ink-muted" data-testid={`pace-nodaily-${row.key}`}>
+          <span className="font-mono text-[8.5px] font-bold leading-tight text-[--hero-ink-muted-teal]" data-testid={`pace-nodaily-${row.key}`}>
             weekly only · no daily pace
           </span>
         ) : (
           <>
             <div className="leading-none">
-              <span className={`font-display text-base font-extrabold ${tone?.text ?? 'text-ink'}`} data-testid={`pace-actual-${row.key}`}>
+              <span className="font-display text-base font-extrabold text-[--hero-ink]" data-testid={`pace-actual-${row.key}`}>
                 {row.actual}
               </span>
-              <span className="font-mono text-[10px] text-ink-muted"> / {row.plan}</span>
+              <span className="font-mono text-[10px] text-[--hero-ink-muted-teal]"> / {row.plan}</span>
             </div>
             {tone && (
               <span className={`mt-1 inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 font-mono text-[9px] font-bold ${tone.chip}`} data-testid={`pace-variance-${row.key}`}>

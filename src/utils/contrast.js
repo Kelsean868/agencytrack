@@ -91,3 +91,74 @@ export function glassPair(tintToken, theme) {
   const baseOverSurface = composite(base.rgb, base.alpha, surface);
   return composite(tint.rgb, tint.alpha, baseOverSurface);
 }
+
+/**
+ * Compute the effective S2 hero-glass background as an opaque [r,g,b] triple.
+ *
+ * Uses the "a"-stop (lighter, more transparent) composited over
+ * --color-surface-muted — the worst-case (lightest) floor that white hero-ink
+ * text must clear. All values mirror the --glass-hero-*-a token definitions
+ * in index.css; if a token changes, update both here and there.
+ *
+ * Light surfaceMute: [240, 239, 233]  (--surface-muted-channels :root)
+ * Dark  surfaceMute: [31, 27, 22]     (--surface-muted-channels .dark)
+ *
+ * @param {'teal'|'gold'} tintToken
+ * @param {'light'|'dark'} theme
+ * @returns {[number, number, number]} opaque effective background (worst-case floor)
+ */
+export function heroPair(tintToken, theme) {
+  const PARAMS = {
+    light: {
+      surfaceMute: [240, 239, 233],
+      aStops: {
+        teal: { rgb: [1, 105, 111], alpha: 0.93 },   // --glass-hero-l-teal-a
+        gold: { rgb: [111, 74, 4],  alpha: 0.93 },   // --glass-hero-l-gold-a (deepened)
+      },
+    },
+    dark: {
+      surfaceMute: [31, 27, 22],
+      aStops: {
+        teal: { rgb: [1, 92, 97],   alpha: 0.86 },   // --glass-hero-d-teal-a
+        gold: { rgb: [120, 82, 12], alpha: 0.88 },   // --glass-hero-d-gold-a
+      },
+    },
+  };
+  const { surfaceMute, aStops } = PARAMS[theme];
+  const { rgb, alpha } = aStops[tintToken];
+  return composite(rgb, alpha, surfaceMute);
+}
+
+/**
+ * Compute the effective hero chip-island background for graphical dot 3:1 tests.
+ *
+ * Chip islands (--hero-chip-island: rgba(255,255,255,0.15)) sit in the
+ * saturated "b"-stop territory. Floor for dot tests:
+ *   white@15% over ("b"-stop over surfaceMute).
+ *
+ * @param {'teal'|'gold'} tintToken
+ * @param {'light'|'dark'} theme
+ * @returns {[number, number, number]} opaque chip-island effective background
+ */
+export function heroPairDeep(tintToken, theme) {
+  const PARAMS = {
+    light: {
+      surfaceMute: [240, 239, 233],
+      bStops: {
+        teal: { rgb: [1, 78, 82],  alpha: 0.96 },    // --glass-hero-l-teal-b
+        gold: { rgb: [85, 57, 3],  alpha: 0.96 },    // --glass-hero-l-gold-b (deepened)
+      },
+    },
+    dark: {
+      surfaceMute: [31, 27, 22],
+      bStops: {
+        teal: { rgb: [1, 58, 61],  alpha: 0.93 },    // --glass-hero-d-teal-b
+        gold: { rgb: [92, 62, 8],  alpha: 0.94 },    // --glass-hero-d-gold-b
+      },
+    },
+  };
+  const { surfaceMute, bStops } = PARAMS[theme];
+  const { rgb, alpha } = bStops[tintToken];
+  const bStopOverSurface = composite(rgb, alpha, surfaceMute);
+  return composite([255, 255, 255], 0.15, bStopOverSurface);  // --hero-chip-island
+}

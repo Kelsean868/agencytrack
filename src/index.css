@@ -132,6 +132,45 @@
   --glass-d-solid-teal: #15201F;
   --glass-d-solid-gold: #221C12;
 
+  /* ── Nexus Glass — S2 Hero tier: light pane tokens ───────────────────────
+   * Deep saturated panes; inverted (light-on-dark) ink world. Gold pane
+   * DEEPENED from rgba(138,96,16) to rgba(111,74,4) so all hero inks clear
+   * ≥4.7:1 against both pane floors. See PR body for constraint-solve matrix.
+   */
+  --glass-hero-l-teal-a:     rgba(1, 105, 111, 0.93);
+  --glass-hero-l-teal-b:     rgba(1, 78, 82, 0.96);
+  --glass-hero-l-teal-solid: #0A5E62;
+  --glass-hero-l-gold-a:     rgba(111, 74, 4, 0.93);
+  --glass-hero-l-gold-b:     rgba(85, 57, 3, 0.96);
+  --glass-hero-l-gold-solid: #6F4A04;
+  --glass-hero-l-blur:       16px;
+  --glass-hero-l-sat:        145%;
+  --glass-hero-l-border:     rgba(255, 255, 255, 0.22);
+  --glass-hero-l-hi:         rgba(255, 255, 255, 0.26);
+  --glass-hero-l-shadow:     0 8px 28px rgba(0, 0, 0, 0.28);
+  /* ── Nexus Glass — S2 Hero tier: dark pane tokens (unchanged from recipe) */
+  --glass-hero-d-teal-a:     rgba(1, 92, 97, 0.86);
+  --glass-hero-d-teal-b:     rgba(1, 58, 61, 0.93);
+  --glass-hero-d-teal-solid: #0A4446;
+  --glass-hero-d-gold-a:     rgba(120, 82, 12, 0.88);
+  --glass-hero-d-gold-b:     rgba(92, 62, 8, 0.94);
+  --glass-hero-d-gold-solid: #5C3E08;
+  --glass-hero-d-blur:       20px;
+  --glass-hero-d-sat:        130%;
+  --glass-hero-d-border:     rgba(255, 255, 255, 0.14);
+  --glass-hero-d-hi:         rgba(255, 255, 255, 0.10);
+  --glass-hero-d-shadow:     0 8px 28px rgba(0, 0, 0, 0.55);
+  /* ── Hero ink set — invariant (always light-on-dark pane, both themes) ─── */
+  --hero-ink:            #FFFFFF;
+  --hero-ink-muted-teal: #DCEEEE;  /* was #CFE3E3; solved 4.73:1 on light teal floor */
+  --hero-ink-muted-gold: #F5EACA;  /* was #F3E7CC; solved 4.73:1 on light teal floor */
+  --hero-accent:         #F4ECC8;  /* was #F0D89A; solved 4.79:1 on light teal floor */
+  --hero-dot-success:    #7FE0A5;  /* 3.64:1 on teal chip island */
+  --hero-dot-warning:    #F4C06A;  /* 3.49:1 on teal chip island */
+  --hero-dot-danger:     #FBADA8;  /* was #F59A8E; solved 3.24:1 on teal chip island */
+  --hero-chip-island:    rgba(255, 255, 255, 0.15);
+  --hero-chip-border:    rgba(255, 255, 255, 0.28);
+
   /* ── Presentation tokens ──────────────────────────────────────────────
    * Always-dark surface for full-screen overlays (e.g. MeetingMode).
    * NOT overridden in .dark — these tokens are intentionally
@@ -375,6 +414,38 @@ h1, h2, h3, h4 {
   .dark .glass.teal { --glass-tile-tint: var(--glass-d-tint-teal); }
   .dark .glass.gold { --glass-tile-tint: var(--glass-d-tint-gold); }
 
+  /* S2 Hero tier — deep saturated pane, inverted ink world. Three-class
+   * specificity (.glass.hero.teal = 0,3,0) ensures these always override the
+   * S1 .glass base (0,1,0) and .glass.teal (0,2,0) for all overridden props. */
+  .glass.hero.teal {
+    background: linear-gradient(135deg, var(--glass-hero-l-teal-a) 0%, var(--glass-hero-l-teal-b) 90%);
+    -webkit-backdrop-filter: blur(var(--glass-hero-l-blur)) saturate(var(--glass-hero-l-sat));
+    backdrop-filter: blur(var(--glass-hero-l-blur)) saturate(var(--glass-hero-l-sat));
+    border: 1px solid var(--glass-hero-l-border);
+    box-shadow: var(--glass-hero-l-shadow), inset 0 1px 0 var(--glass-hero-l-hi);
+  }
+  .glass.hero.gold {
+    background: linear-gradient(135deg, var(--glass-hero-l-gold-a) 0%, var(--glass-hero-l-gold-b) 90%);
+    -webkit-backdrop-filter: blur(var(--glass-hero-l-blur)) saturate(var(--glass-hero-l-sat));
+    backdrop-filter: blur(var(--glass-hero-l-blur)) saturate(var(--glass-hero-l-sat));
+    border: 1px solid var(--glass-hero-l-border);
+    box-shadow: var(--glass-hero-l-shadow), inset 0 1px 0 var(--glass-hero-l-hi);
+  }
+  .dark .glass.hero.teal {
+    background: linear-gradient(135deg, var(--glass-hero-d-teal-a) 0%, var(--glass-hero-d-teal-b) 90%);
+    -webkit-backdrop-filter: blur(var(--glass-hero-d-blur)) saturate(var(--glass-hero-d-sat));
+    backdrop-filter: blur(var(--glass-hero-d-blur)) saturate(var(--glass-hero-d-sat));
+    border: 1px solid var(--glass-hero-d-border);
+    box-shadow: var(--glass-hero-d-shadow), inset 0 1px 0 var(--glass-hero-d-hi);
+  }
+  .dark .glass.hero.gold {
+    background: linear-gradient(135deg, var(--glass-hero-d-gold-a) 0%, var(--glass-hero-d-gold-b) 90%);
+    -webkit-backdrop-filter: blur(var(--glass-hero-d-blur)) saturate(var(--glass-hero-d-sat));
+    backdrop-filter: blur(var(--glass-hero-d-blur)) saturate(var(--glass-hero-d-sat));
+    border: 1px solid var(--glass-hero-d-border);
+    box-shadow: var(--glass-hero-d-shadow), inset 0 1px 0 var(--glass-hero-d-hi);
+  }
+
   /* Kiosk: no backdrop-filter (TV/smart-display GPU budget). Resolves to
    * the precomputed solid; border + shadow retained for structural legibility. */
   [data-kiosk] .glass {
@@ -399,9 +470,28 @@ h1, h2, h3, h4 {
       linear-gradient(135deg, var(--glass-tile-tint, transparent), transparent 70%),
       var(--glass-d-solid-gold);
   }
+  /* Hero kiosk: solid fallback, specificity (0,4,0) beats .glass.hero.teal (0,3,0) */
+  [data-kiosk] .glass.hero.teal {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--glass-hero-l-teal-solid);
+  }
+  [data-kiosk] .glass.hero.gold {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: var(--glass-hero-l-gold-solid);
+  }
+  .dark [data-kiosk] .glass.hero.teal { background: var(--glass-hero-d-teal-solid); }
+  .dark [data-kiosk] .glass.hero.gold { background: var(--glass-hero-d-gold-solid); }
 
   /* Meeting Mode: reduced glass — blur ≤ 8px, saturation 100% (projector cost). */
   [data-meeting-mode] .glass {
+    -webkit-backdrop-filter: blur(8px) saturate(100%);
+    backdrop-filter: blur(8px) saturate(100%);
+  }
+  /* Hero meeting-mode: same reduction — specificity (0,4,0) beats .glass.hero.* (0,3,0) */
+  [data-meeting-mode] .glass.hero.teal,
+  [data-meeting-mode] .glass.hero.gold {
     -webkit-backdrop-filter: blur(8px) saturate(100%);
     backdrop-filter: blur(8px) saturate(100%);
   }
@@ -417,6 +507,14 @@ h1, h2, h3, h4 {
   .glass.gold  { background: var(--glass-l-solid-gold); }
   .dark .glass      { background: var(--glass-d-solid-teal); }
   .dark .glass.gold { background: var(--glass-d-solid-gold); }
+  /* Hero: higher specificity (0,3,0) overrides S1 rules; must explicitly set
+   * backdrop-filter: none since .glass.hero.teal also sets it. */
+  .glass.hero.teal { backdrop-filter: none; -webkit-backdrop-filter: none;
+                     background: var(--glass-hero-l-teal-solid); }
+  .glass.hero.gold { backdrop-filter: none; -webkit-backdrop-filter: none;
+                     background: var(--glass-hero-l-gold-solid); }
+  .dark .glass.hero.teal { background: var(--glass-hero-d-teal-solid); }
+  .dark .glass.hero.gold { background: var(--glass-hero-d-gold-solid); }
 }
 
 /* ── Achievement badges (Medal v2 — glossy coin) ─────────────────────────
