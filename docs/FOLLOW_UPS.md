@@ -5,6 +5,16 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Nexus Glass recipe HTML — AA table needs regeneration from glassPair() (banked 2026-06-06, PR #513)
+
+**Context:** The Nexus Glass recipe doc (`docs/design/nexus-glass-recipe.html`) AA table states warning #B45309 at 4.7:1 PASS on glass. Investigation during PR #513 contrast.test.js authoring showed that figure was computed against raw `--color-bg` (#F7F6F2), not the glass-composited effective background. `glassPair()` composites correctly (tint → base@floor alpha → darkest named surface) and yields 4.33:1 (teal) / 4.38:1 (gold) for light/warning-ink — not 4.7:1. The module is authoritative; the recipe doc's table is a shortcut that understates the tint's cooling effect on warm-ink contrast.
+
+**Action at next design-doc touch:** Rerun `glassPair('teal', 'light')` and `glassPair('gold', 'light')` (and dark variants), extract the composited effective bg RGB, and regenerate the AA table in `nexus-glass-recipe.html` from those values. The code's contrast.test.js matrix is the corrected truth in the interim.
+
+**No production or rule changes — docs-only, no urgency.**
+
+---
+
 ## Persistency Mgr v2 — remaining slices (banked 2026-06-05 from Persistency Mgr v2 S1, PR #505)
 
 **Context:** S1 (PR #505) shipped the manager Persistency panel redesign — `PersRealityBar` (aggregate %, 6-month sparkline, stats), `PersAtRiskBook` (exception-first agents below 80%; celebration arm; Coach → existing `CoachingNotesModal`), and `PersRoster` (two-tick band track at 80%/90%, source badge, Edit + Play). Read/derive only — zero writes, rules changes, Cloud Functions, or index changes. `PersistencyAgentRow.jsx` deleted (replaced). `computeBarStats()` + `PERS_FLOOR` / `PERS_GATE` exported from `src/lib/persistency/calculations.js`.
