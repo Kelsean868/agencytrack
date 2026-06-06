@@ -23,9 +23,11 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 **Banked addenda (post-merge, 2026-06-05):**
 
-- **Coach-drawer deferred leg (n/a in preview env).** The Coach action in `PersAtRiskBook` opens `CoachingNotesModal` — live smoke assertion is n/a in the preview env (no at-risk rows in test data; brief policy: never force test data). Closes free when at-risk data exists in a live environment (pilot data or S3 playground work).
+- ~~**Coach-drawer deferred leg (n/a in preview env).**~~ **CLOSED — PR #509 (`aa5ad63`) sentinel window, 2026-06-06.** Smoke legs 3 (AT-RISK + ORDERING) and 4 (COACH) proved live: sentinel at ~70.0% below-floor appeared in `PersAtRiskBook` exception-first; Coach action opened `CoachingNotesModal` with the correct agent props. Restore PASS (both agents). No at-risk-data gap remaining.
 
-- **Micro-FU — promote bearer-token capture into `walk-helpers`.** The `addInitScript` fetch-patch + IndexedDB fallback pattern in `scripts/verification/persistency-mgr-v2-s1-smoke.mjs` (captures Firebase auth token for Firestore REST recompute legs) should be extracted into `scripts/verification/lib/walk-helpers.mjs` as a reusable helper (e.g. `captureOrFetchBearerToken(page)`). Needed for every future smoke that independently reads Firestore docs to verify UI aggregate values. The S1 smoke is the reference implementation; extracting it prevents re-inventing the fetch-patch + IDB fallback dance per smoke.
+- **n≥2 sum-vs-mean live proof — RECORDED, PR #509 sentinel window.** Two sentinel entries (agent A and agent B, distinct values: A→~70.0%, B→~65.0%) verified branch aggregate = `netSettled_sum / grossSettled_sum` → **DOM 67.1%** — diverges from the mean of (70.0%, 65.0%) = 67.5%. This live proof under production Firestore conditions validates the D1 unit anti-mean fixtures. The `computeBarStats()` formula is confirmed sum-not-mean both in unit tests and live.
+
+- ~~**Micro-FU — promote bearer-token capture into `walk-helpers`.**~~ **CLOSED — PR #508 (`e729fec`), GREEN-CHANNEL, 2026-06-06.** `captureOrFetchBearerToken`, `captureConsoleAndNetwork`, `formatCaptureReport` promoted to `scripts/verification/lib/walk-helpers.mjs`. S1 smoke refactored to consume it (behavior-identical). Auto-merged per brief pre-authorization (scripts-only class).
 
 ---
 
@@ -4180,24 +4182,29 @@ Banked closed: Item 5 (night queue, test-only), 2026-06-05. Resolved: Commission
 
 ---
 
-## `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (**CLOSED, PR #502 `d936c69`**)
+## `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (**RE-OPENED — stabilization INCOMPLETE**)
 
 **Scope:** `src/components/manager/__tests__/CompliancePanel.nudge.test.jsx` — 6 tests covering the S2 nudge-send + cooldown-chip interactions.
 
-**CLOSED:** All 7 `fireEvent.click()` sites wrapped in `await act(async () => { ... })` — drains microtask queue from async `handleNudge`/`handleNudgeAll` handlers before assertions proceed. 20× consecutive isolated green + 2426/2426 full suite ×2. Merged via green-channel (test-only). PR #502 `d936c69`, 2026-06-05.
+**History:**
+- PR #502 (`d936c69`, 2026-06-05): wrapped all 7 `fireEvent.click()` sites in `await act(async () => { ... })`. 20× consecutive isolated green + 2426/2426 full suite ×2. Merged GREEN-CHANNEL as test-only stabilization.
+- **4th occurrence — 2026-06-06 (CI run on PR #510 / run `27063421668`).** `Unable to find [data-testid="compliance-cooldown-chip"]`. Local 20× consecutive: clean. CI-environment timing differs — the `await act()` wrap is insufficient under constrained CI workers.
 
-**Observed behavior (three occurrences, all 2026-06-05):**
+**Status: INCOMPLETE — RE-OPENED.** Local 20× green but CI-environment timing differs; next attempt must reproduce under CI conditions (`CI=true`, constrained workers) before fixing.
+
+**Observed behavior (four occurrences):**
 1. During the settlements security dispatch full-suite run — 1 failure, isolated re-run clean.
 2. During the commission-v2-s2 dispatch full-suite run — 1 failure, isolated re-run clean.
 3. During the commission-v2-s3 dispatch full-suite run — 1 failure (2425/2426), isolated re-run and second full-suite re-run both clean (2426/2426).
+4. **CI run `27063421668` (post-#510 push, 2026-06-06).** First run fail; re-run (`gh run rerun --failed`) passed. Pattern: flapped on CI after PR #502 supposedly fixed it.
 
-All three: fails in a parallel full-suite `npx vitest run` context, passes in isolation. Consistent pattern: timer-sensitive `waitFor` or `act` boundaries around asynchronous state updates (nudge-send promise resolution, cooldown chip state update) rely on implicit timing rather than explicit React `waitFor` — parallel environment has higher contention, exposing the gap.
+All four: fails in a parallel full-suite context (`npx vitest run` or CI constrained workers), passes in isolation. The `await act()` boundary is insufficient — test still races CI environment's higher contention.
 
-**Fix shape:** audit each `userEvent.*` call in the test file for missing `await act(async () => {...})` or `await waitFor(() => ...)` wrapping around state-changing interactions. Add explicit `waitFor` assertions to each test that queries for UI state after an async event (nudge button click → cooldown chip). No changes to source code required.
+**Fix shape (revised):** The previous fix (act-wrapping clicks) was insufficient. Next attempt must run the full suite under `CI=true` + constrained workers locally to reproduce the failure, then apply explicit `waitFor(() => expect(screen.getByTestId(...)).toBeInTheDocument())` assertions after every async state change. Reproducing under CI conditions first is mandatory — blind act-wrapping already failed once.
 
-**Priority: FIX-NOW / GREEN-CHANNEL XS.** Three-strike threshold crossed. Fix is test-only, low risk, zero source change. Qualifies as a green-channel XS auto-merge candidate once dispatched. Dispatch immediately — every full-suite run now has a non-zero CI investigation cost.
+**Priority: MEDIUM.** Four occurrences; passes on re-run so it's an intermittent investigation cost, not a hard blocker. Dispatch when reproduction path under CI conditions is clear.
 
-Banked: commission-v2-s2 dispatch, 2026-06-05. Promoted: commission-v2-s3 post-merge fill, 2026-06-05 (third strike).
+Banked: commission-v2-s2 dispatch, 2026-06-05. Re-opened: post-merge fill for PR #509 + PR #510, 2026-06-06 (4th CI occurrence).
 
 ---
 
