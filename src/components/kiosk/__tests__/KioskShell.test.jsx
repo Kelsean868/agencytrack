@@ -20,13 +20,10 @@ vi.mock('../panels/AwardsWatchPanel',      () => ({ default: () => <div data-pan
 vi.mock('../panels/CompliancePanel',       () => ({ default: () => <div data-panel="compliance" /> }));
 vi.mock('../FullscreenButton',             () => ({ default: () => <button data-testid="fullscreen-btn" /> }));
 
-vi.mock('../../../services/managerService', () => ({
-  getAllYTDSubmissions: vi.fn().mockResolvedValue([]),
-  getTenantUsers: vi.fn().mockResolvedValue([]),
-}));
-
-vi.mock('../../../services/agentOfMonthService', () => ({
-  getAgentOfMonthForKiosk: vi.fn().mockResolvedValue(null),
+vi.mock('../../../lib/kiosk/kioskServices', () => ({
+  getKioskYTDSubmissions: vi.fn().mockResolvedValue([]),
+  getKioskTenantUsers: vi.fn().mockResolvedValue([]),
+  getKioskAgentOfMonth: vi.fn().mockResolvedValue(null),
 }));
 
 describe('KioskShell', () => {

@@ -1,7 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { PANEL_DURATIONS, PANEL_ORDER, POLL_INTERVAL_MS } from '../../lib/kiosk/kioskConfig';
-import { getAllYTDSubmissions, getTenantUsers } from '../../services/managerService';
-import { getAgentOfMonthForKiosk } from '../../services/agentOfMonthService';
+import {
+  getKioskYTDSubmissions,
+  getKioskTenantUsers,
+  getKioskAgentOfMonth,
+} from '../../lib/kiosk/kioskServices';
 
 import AgentOfMonthPanel        from './panels/AgentOfMonthPanel';
 import BranchOverviewPanel      from './panels/BranchOverviewPanel';
@@ -44,9 +47,9 @@ export default function KioskShell({ tenantId, branchId }) {
   const fetchData = useCallback(async () => {
     try {
       const [subs, users, aom] = await Promise.all([
-        getAllYTDSubmissions(tenantId),
-        getTenantUsers(tenantId),
-        getAgentOfMonthForKiosk(tenantId).catch(() => null),
+        getKioskYTDSubmissions(tenantId),
+        getKioskTenantUsers(tenantId),
+        getKioskAgentOfMonth(tenantId).catch(() => null),
       ]);
       setAllSubmissions(subs);
       setAllUsers(users);

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { signInWithCustomToken } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { kioskAuth } from '../../lib/kiosk/kioskFirebase';
 import { VALIDATE_TOKEN_URL } from '../../lib/kiosk/kioskConfig';
 import KioskShell from './KioskShell';
 
@@ -31,8 +31,9 @@ export default function KioskRoute() {
           setState('invalid');
           return;
         }
-        // Sign into Firebase Auth with the custom token so Firestore reads work.
-        await signInWithCustomToken(auth, data.customToken);
+        // Sign into the secondary in-memory auth instance so the default auth
+        // (shared per-origin) is not clobbered and the manager's tab is unaffected.
+        await signInWithCustomToken(kioskAuth, data.customToken);
         setKioskMeta({ tenantId: data.tenantId, branchId: data.branchId });
         setState('valid');
       })
