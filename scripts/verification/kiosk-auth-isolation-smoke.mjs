@@ -56,12 +56,11 @@ try {
   await page1.fill('input[type="email"]', BM_EMAIL);
   await page1.fill('input[type="password"]', BM_PASS);
   await page1.click('button[type="submit"]');
-  await page1.waitForSelector('[data-testid="manager-dashboard"]', { timeout: 20_000 });
+  // Sidebar nav confirms manager dashboard is rendered (Sidebar.jsx:39)
+  await page1.waitForSelector('nav[aria-label="Primary navigation"]', { timeout: 20_000 });
 
   // Capture BM uid before kiosk opens
   const bmUid = await page1.evaluate(() => {
-    // The firebase auth object is not directly accessible from the page unless exposed.
-    // Instead, read from localStorage (Firebase persists auth under firebase:authUser:*)
     const key = Object.keys(localStorage).find(k => k.startsWith('firebase:authUser:'));
     if (!key) return null;
     try { return JSON.parse(localStorage[key]).uid; } catch { return null; }
@@ -156,11 +155,11 @@ try {
   });
   mark('No provisioning screen on page 1', !provisioningVisible);
 
-  // Manager dashboard must still be present
+  // Manager sidebar nav must still be present (Sidebar.jsx:39)
   const dashboardPresent = await page1.evaluate(() => {
-    return document.querySelector('[data-testid="manager-dashboard"]') !== null;
+    return document.querySelector('nav[aria-label="Primary navigation"]') !== null;
   });
-  mark('ManagerDashboard still rendered on page 1', dashboardPresent);
+  mark('Manager sidebar nav still rendered on page 1', dashboardPresent);
 
   // Auth uid must match the captured uid (if we could capture it)
   if (bmUid) {
