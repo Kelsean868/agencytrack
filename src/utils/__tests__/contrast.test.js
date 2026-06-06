@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { contrastRatio, relativeLuminance, composite, toRgb, passesAA, glassPair } from '../contrast';
+import { contrastRatio, relativeLuminance, composite, toRgb, passesAA, glassPair, heroPair, heroPairDeep } from '../contrast';
 
 // Channel values MUST match src/index.css. The status-ink tokens are proven here:
 // every (ink, background) pair ≥ 4.5:1 against the raw surfaces AND the /10 and
@@ -211,6 +211,79 @@ describe('glassPair — text-ink-faint FAILS on glass (design intent guard)', ()
       });
     }
   }
+});
+
+// ── Nexus Glass — S2 Hero tier: heroPair + heroPairDeep matrix ───────────────
+//
+// NOTE ON RECIPE DIVERGENCES (banked — same root cause as glassPair note above):
+//   (1) muted-teal #CFE3E3 claimed 4.6:1 vs teal floor; module gives 4.258:1 (fail).
+//   (2) muted-gold #F3E7CC claimed 4.8:1; module gives 3.994:1 (fail).
+//   (3) hero-accent #F0D89A claimed 4.9:1 vs teal; module gives 4.054:1 (fail).
+//   (4) gold floor hex wrong: recipe stated #8A6212, actual heroPair floor is ~#785614.
+//   All four errors share the glassPair root cause: ratios computed against raw
+//   --color-bg instead of the composited heroPair floor.  heroPair() is authoritative.
+//   Solved inks (this PR): muted-teal → #DCEEEE, muted-gold → #F5EACA,
+//   accent → #F4ECC8, gold pane deepened to rgba(111,74,4). Danger dot lightened
+//   from #F59A8E → #FBADA8. FU: regenerate both recipe HTML tables from module outputs.
+//
+// HERO TEXT INKS — invariant across themes (always light-on-dark pane)
+const HERO_INKS = {
+  'hero-ink':            [255, 255, 255],  // --hero-ink
+  'hero-ink-muted-teal': [220, 238, 238],  // --hero-ink-muted-teal: #DCEEEE
+  'hero-ink-muted-gold': [245, 234, 202],  // --hero-ink-muted-gold: #F5EACA
+  'hero-accent':         [244, 236, 200],  // --hero-accent:         #F4ECC8
+};
+
+// HERO DOTS — graphical elements ≥3:1 on chip-island background (heroPairDeep)
+const HERO_DOTS = {
+  'hero-dot-success': [127, 224, 165],     // --hero-dot-success: #7FE0A5
+  'hero-dot-warning': [244, 192, 106],     // --hero-dot-warning: #F4C06A
+  'hero-dot-danger':  [251, 173, 168],     // --hero-dot-danger:  #FBADA8
+};
+
+const HERO_AA_FLOOR = 4.7;
+
+describe('heroPair — hero text inks clear 4.7:1 on hero effective bg (both tints × both themes)', () => {
+  for (const theme of ['light', 'dark']) {
+    for (const tint of ['teal', 'gold']) {
+      const bg = heroPair(tint, theme);
+      for (const [inkName, inkRgb] of Object.entries(HERO_INKS)) {
+        test(`${theme}/${tint}: ${inkName} ≥ ${HERO_AA_FLOOR}:1 on hero glass`, () => {
+          expect(contrastRatio(inkRgb, bg)).toBeGreaterThanOrEqual(HERO_AA_FLOOR);
+        });
+      }
+    }
+  }
+});
+
+describe('heroPairDeep — hero dot tokens clear 3:1 on chip-island bg (both tints × both themes)', () => {
+  for (const theme of ['light', 'dark']) {
+    for (const tint of ['teal', 'gold']) {
+      const chipBg = heroPairDeep(tint, theme);
+      for (const [dotName, dotRgb] of Object.entries(HERO_DOTS)) {
+        test(`${theme}/${tint}: ${dotName} ≥ 3:1 on hero chip island`, () => {
+          expect(contrastRatio(dotRgb, chipBg)).toBeGreaterThanOrEqual(3.0);
+        });
+      }
+    }
+  }
+});
+
+describe('heroPair — pre-solve inks FAIL 4.7:1 on teal light floor (solve-necessity guard)', () => {
+  // These three values were the original recipe inks. They fail ≥4.7 on the
+  // light teal heroPair floor — proving the constraint-solve was necessary.
+  // If this test ever goes green, the teal pane was inadvertently lightened
+  // and the solve headroom is gone (fix: deepen the teal a-stop, not the ink).
+  const tealFloor = heroPair('teal', 'light');
+  test('pre-solve muted-teal #CFE3E3 FAILS 4.7:1 on teal floor', () => {
+    expect(contrastRatio([207, 227, 227], tealFloor)).toBeLessThan(HERO_AA_FLOOR);
+  });
+  test('pre-solve muted-gold #F3E7CC FAILS 4.7:1 on teal floor', () => {
+    expect(contrastRatio([243, 231, 204], tealFloor)).toBeLessThan(HERO_AA_FLOOR);
+  });
+  test('pre-solve accent #F0D89A FAILS 4.7:1 on teal floor', () => {
+    expect(contrastRatio([240, 216, 154], tealFloor)).toBeLessThan(HERO_AA_FLOOR);
+  });
 });
 
 describe('the base (pre-ink) status text was genuinely below AA where fixed', () => {

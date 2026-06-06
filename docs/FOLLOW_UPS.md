@@ -17,17 +17,39 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Nexus Glass recipe HTML — AA table needs regeneration from glassPair() (banked 2026-06-06, PR #513)
+## Nexus Glass recipe HTMLs — AA tables need regeneration from module outputs (banked 2026-06-06, PRs #513 + #517)
 
-**Context:** The Nexus Glass recipe doc (`docs/design/nexus-glass-recipe.html`) AA table states `#B45309` at 4.7:1 PASS on glass. `#B45309` is the raw warning **base** color (`[180, 83, 9]`), not the text ink. Two errors compound in that figure:
+**Doctrine (banked 2026-06-06, PR #517):** CD-stated contrast ratios are provisional. The authoritative source is the `glassPair()` / `heroPair()` module output. Recipe AA tables must regenerate from those function outputs, not be authored by hand. Applies to **both** the S1 recipe (`nexus-glass-recipe.html`) and the S2 hero recipe (currently in the CD build annotation for PR #517).
 
-1. **Wrong color for text context.** The text-readable token on the flagship cards is `warning-ink` (`[162, 65, 0]`), not the raw base. `glassPair()` confirms warning-ink on light glass is **5.50:1 (teal tint) / 5.56:1 (gold tint)** — both comfortably above AA 4.5. The raw base used graphically (sparkline/PaceRow fills) at 4.33:1 (teal) / 4.38:1 (gold) passes only the 3:1 graphical threshold (SC 1.4.11), not text AA.
+**S1 recipe divergences (banked 2026-06-06, PR #513):** The recipe doc's AA table states `#B45309` at 4.7:1. Two errors compound:
 
-2. **Wrong background.** Even the raw base figure of 4.7:1 from the recipe was computed against `--color-bg` (#F7F6F2) directly, not the glass-composited effective background. `glassPair()` composites tint → base@62% alpha → darkest named surface, yielding a cooler effective bg that lowers contrast for warm colors. The correct raw-base-on-glass numbers are 4.33/4.38:1.
+1. **Wrong color for text context.** The text token is `warning-ink` (`[162, 65, 0]`), not the raw base `#B45309`. `glassPair()` confirms warning-ink on light glass is **5.50:1 (teal) / 5.56:1 (gold)** — comfortably above AA 4.5. The raw base at 4.33/4.38:1 passes only the 3:1 graphical threshold.
 
-**Action at next design-doc touch:** Regenerate the AA table in `nexus-glass-recipe.html` from `glassPair()` outputs. Use warning-ink (`[162, 65, 0]`) for the text-AA column; raw warning base (`[180, 83, 9]`) for the graphical-3:1 column. The code's contrast.test.js matrix is the corrected truth in the interim.
+2. **Wrong background.** The 4.7:1 figure was computed against `--color-bg` (#F7F6F2) directly, not the glass-composited effective background. `glassPair()` composites tint → base@62% alpha → darkest named surface, yielding a cooler effective bg.
 
-**No production or rule changes — docs-only, no urgency.**
+**S2 hero recipe divergences (banked 2026-06-06, PR #517):** The CD build annotation had four provisional/incorrect values resolved by `heroPair()`:
+- `--hero-ink-muted-teal`: CD claimed 4.6:1 → `heroPair()` yields **4.83:1** (pre-solve #CFE3E3 would have been 4.258:1 — fails)
+- `--hero-ink-muted-gold`: CD claimed 4.8:1 → `heroPair()` yields **5.04:1**
+- `--hero-accent`: CD claimed 4.9:1 → `heroPair()` yields **4.88:1** (still ≥4.7 floor — passes)
+- Gold floor hex: CD had stale value; deepened pane shifts to [111,74,4]@0.93 (light) / [120,82,12]@0.88 (dark)
+
+**Action at next design-doc touch:** Regenerate both recipe AA tables from module outputs:
+- S1: `nexus-glass-recipe.html` — from `glassPair()`, `warning-ink` for text column, raw base for graphical-3:1 column
+- S2: hero recipe annotation — from `heroPair()` / `heroPairDeep()`, hero-ink tokens for text column, hero-dot tokens for graphical-3:1 column
+
+The `contrast.test.js` matrices are the corrected truth in the interim. **No production or rule changes — docs-only, no urgency.**
+
+---
+
+## Nexus Glass S2 hero — hero recipe annotation doc (banked 2026-06-06, PR #517)
+
+**Context:** PR #517 shipped the hero glass tier (`glass hero teal / gold`) across the three flagship cards (CommissionAnchorStrip, SuggestedWeekCard, PersRealityBar). The token definitions and contrast ratios live in `src/index.css` tokens + `src/utils/contrast.js` (`heroPair()` / `heroPairDeep()`), with the authoritative ratios in `src/utils/__tests__/contrast.test.js`.
+
+No standalone hero recipe HTML was produced (analogous to `docs/design/nexus-glass-recipe.html` for S1). The CD build annotation from PR #517 is the only prose description; it contains the provisional ratio values documented under the recipe-regen FU above.
+
+**Action:** At next design-doc touch, author `docs/design/nexus-glass-hero-recipe.html` from `heroPair()` / `heroPairDeep()` outputs. Include: SOLVED constraint-solve matrix (both themes); chip-island graphical floor (heroPairDeep); token inventory; specificity ordering (0,3,0 hierarchy). The test matrix is the corrected truth in the interim.
+
+**No urgency** — all tokens and tests are in code. This is documentation catch-up only.
 
 ---
 

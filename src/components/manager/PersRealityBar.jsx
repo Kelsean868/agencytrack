@@ -12,11 +12,11 @@ function formatPercent(decimal) {
   return `${(decimal * 100).toFixed(1)}%`;
 }
 
-function aggregateColor(p) {
-  if (p == null || !Number.isFinite(p)) return 'text-ink-muted';
-  if (p >= 0.90) return 'text-success-ink';
-  if (p >= 0.80) return 'text-warning-ink';
-  return 'text-danger-ink';
+function aggregateDotClass(p) {
+  if (p == null || !Number.isFinite(p)) return 'bg-[--hero-dot-warning]';
+  if (p >= 0.90) return 'bg-[--hero-dot-success]';
+  if (p >= 0.80) return 'bg-[--hero-dot-warning]';
+  return 'bg-[--hero-dot-danger]';
 }
 
 function SparkBar({ value, isCurrent }) {
@@ -72,7 +72,7 @@ export default function PersRealityBar({
 
   return (
     <div
-      className="glass teal rounded-xl flex flex-wrap items-center gap-x-4 gap-y-3 py-3 px-4"
+      className="glass hero teal rounded-xl flex flex-wrap items-center gap-x-4 gap-y-3 py-3 px-4"
       data-testid="pers-reality-bar"
     >
       {/* Month picker */}
@@ -120,18 +120,22 @@ export default function PersRealityBar({
 
       {/* Aggregate + spark */}
       <div className="flex items-center gap-3" data-testid="pers-bar-aggregate">
-        <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-ink-muted leading-tight">
+        <div className="flex flex-col gap-1.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3.5 py-2.5">
+          <p className="text-[9px] font-bold uppercase tracking-widest text-[--hero-ink-muted-teal] leading-tight">
             {scopeLabel} persistency
           </p>
-          <p className={`font-display font-extrabold text-3xl leading-none tracking-tight ${aggregateColor(ap)}`}>
-            {barStats?.resolvedCount === 0 ? '—' : formatPercent(ap)}
-          </p>
+          <div className="flex items-baseline gap-2">
+            <div className={`h-2 w-2 shrink-0 rounded-full ${aggregateDotClass(ap)}`} aria-hidden="true" />
+            <p className="font-display font-extrabold text-3xl leading-none tracking-tight text-[--hero-ink]">
+              {barStats?.resolvedCount === 0 ? '—' : formatPercent(ap)}
+            </p>
+          </div>
           {unresolvedCount > 0 && (
             <p
-              className="text-[10px] text-warning-ink font-semibold mt-0.5"
+              className="flex items-center gap-1 text-[10px] text-[--hero-ink-muted-teal] font-semibold"
               data-testid="pers-bar-unresolved-chip"
             >
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[--hero-dot-warning]" aria-hidden="true" />
               {unresolvedCount} unresolved
             </p>
           )}
@@ -157,38 +161,44 @@ export default function PersRealityBar({
       </div>
 
       {/* Stats (push to right) */}
-      <div className="ml-auto flex gap-5 sm:gap-7" data-testid="pers-bar-stats">
-        <div className="text-right">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-ink-muted">Below floor</p>
-          <p
-            className="font-display font-extrabold text-xl text-danger-ink leading-none mt-0.5"
-            data-testid="pers-bar-below-floor"
-          >
-            {barStats?.belowFloor ?? '—'}
-          </p>
-          <p className="text-[9px] text-ink-muted mt-0.5">&lt; 80%</p>
+      <div className="ml-auto flex gap-2 sm:gap-3" data-testid="pers-bar-stats">
+        <div className="flex flex-col gap-0.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3 py-2 text-right">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[--hero-ink-muted-teal]">Below floor</p>
+          <div className="flex items-baseline justify-end gap-1.5">
+            <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[--hero-dot-danger]" aria-hidden="true" />
+            <p
+              className="font-display font-extrabold text-xl text-[--hero-ink] leading-none"
+              data-testid="pers-bar-below-floor"
+            >
+              {barStats?.belowFloor ?? '—'}
+            </p>
+          </div>
+          <p className="text-[9px] text-[--hero-ink-muted-teal]">&lt; 80%</p>
         </div>
-        <div className="text-right">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-ink-muted">Award-eligible</p>
-          <p
-            className="font-display font-extrabold text-xl text-success-ink leading-none mt-0.5"
-            data-testid="pers-bar-eligible"
-          >
-            {barStats?.awardEligible ?? '—'}
-          </p>
-          <p className="text-[9px] text-ink-muted mt-0.5">≥ 90%</p>
+        <div className="flex flex-col gap-0.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3 py-2 text-right">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[--hero-ink-muted-teal]">Award-eligible</p>
+          <div className="flex items-baseline justify-end gap-1.5">
+            <div className="h-1.5 w-1.5 shrink-0 rounded-full bg-[--hero-dot-success]" aria-hidden="true" />
+            <p
+              className="font-display font-extrabold text-xl text-[--hero-ink] leading-none"
+              data-testid="pers-bar-eligible"
+            >
+              {barStats?.awardEligible ?? '—'}
+            </p>
+          </div>
+          <p className="text-[9px] text-[--hero-ink-muted-teal]">≥ 90%</p>
         </div>
-        <div className="text-right">
-          <p className="text-[9px] font-bold uppercase tracking-wider text-ink-muted">Lapses · mth</p>
+        <div className="flex flex-col gap-0.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3 py-2 text-right">
+          <p className="text-[9px] font-bold uppercase tracking-wider text-[--hero-ink-muted-teal]">Lapses · mth</p>
           <p
-            className="font-display font-extrabold text-xl text-ink leading-none mt-0.5"
+            className="font-display font-extrabold text-xl text-[--hero-ink] leading-none mt-0.5"
             data-testid="pers-bar-lapses"
           >
             {barStats?.resolvedCount > 0
               ? formatCurrencyCompact(barStats.sumLapses)
               : '—'}
           </p>
-          <p className="text-[9px] text-ink-muted mt-0.5">TTD</p>
+          <p className="text-[9px] text-[--hero-ink-muted-teal]">TTD</p>
         </div>
       </div>
     </div>
