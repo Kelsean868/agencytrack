@@ -529,6 +529,85 @@ export function captureConsoleAndNetwork(page) {
 }
 
 /**
+ * installBearerTokenCapture — installs a window.fetch patch that captures the
+ * Firebase Auth bearer token the moment the SDK first makes an authenticated
+ * request. Must be called before the first page.goto() (it uses addInitScript).
+ *
+ * After calling this, use captureBearerToken(page) to read the captured token.
+ *
+ * WHY addInitScript: page.on('request') cannot intercept gRPC-web framed
+ * requests that the Firestore SDK sends. addInitScript() runs at the JS layer
+ * before any page script, so the patch is in place when the SDK first makes
+ * auth'd fetch calls.
+ *
+ * @param {import('playwright').Page} page
+ */
+export async function installBearerTokenCapture(page) {
+  await page.addInitScript(() => {
+    const _orig = window.fetch;
+    window.__bearerToken = null;
+    window.fetch = function (input, init) {
+      try {
+        let auth = '';
+        if (input && typeof input === 'object' && typeof input.headers?.get === 'function') {
+          auth = input.headers.get('authorization') || input.headers.get('Authorization') || '';
+        }
+        const h = init?.headers;
+        if (h) {
+          const fromH = typeof h.get === 'function'
+            ? (h.get('authorization') || h.get('Authorization') || '')
+            : (h.authorization || h.Authorization || '');
+          if (fromH) auth = fromH;
+        }
+        if (!window.__bearerToken && auth && String(auth).startsWith('Bearer ')) {
+          window.__bearerToken = String(auth).slice(7);
+        }
+      } catch {}
+      return _orig.apply(this, arguments);
+    };
+  });
+}
+
+/**
+ * captureBearerToken — reads the Firebase Auth bearer token captured by
+ * installBearerTokenCapture. Falls back to the Firebase Auth IndexedDB store
+ * if the fetch-patch window hasn't seen an authenticated request yet.
+ *
+ * Returns null if neither source yields a token.
+ *
+ * @param {import('playwright').Page} page
+ * @returns {Promise<string|null>}
+ */
+export async function captureBearerToken(page) {
+  const fromFetch = await page.evaluate(() => window.__bearerToken ?? null);
+  if (fromFetch) return fromFetch;
+
+  return page.evaluate(() => new Promise((resolve) => {
+    try {
+      const req = indexedDB.open('firebaseLocalStorageDb');
+      req.onerror = () => resolve(null);
+      req.onsuccess = (e) => {
+        try {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('firebaseLocalStorage')) { resolve(null); return; }
+          const tx = db.transaction('firebaseLocalStorage', 'readonly');
+          const store = tx.objectStore('firebaseLocalStorage');
+          const getAll = store.getAll();
+          getAll.onsuccess = () => {
+            for (const item of (getAll.result ?? [])) {
+              const tok = item?.value?.stsTokenManager?.accessToken;
+              if (tok) { resolve(tok); return; }
+            }
+            resolve(null);
+          };
+          getAll.onerror = () => resolve(null);
+        } catch { resolve(null); }
+      };
+    } catch { resolve(null); }
+  }));
+}
+
+/**
  * formatCaptureReport — prints a console/network capture summary block.
  *
  * Canonical usage at smoke exit:
