@@ -4,7 +4,7 @@
  * Evolved from nexus-glass-s1-smoke.mjs. Asserts the three flagship cards carry
  * .glass.hero.{teal|gold} classes and that hero CSS tokens are defined in both themes.
  *
- *   1. CommissionAnchorStrip (agent/commission tab)  — .glass.hero.gold
+ *   1. CommissionAnchorStrip (agent/commission tab)  — .glass.hero.teal (swapped from gold 2026-06-06, operator legibility verdict)
  *   2. SuggestedWeekCard (agent/game-plan tab)       — .glass.hero.teal
  *   3. PersRealityBar (manager/persistency tab)      — .glass.hero.teal
  *
@@ -149,16 +149,16 @@ for (const theme of ['light', 'dark']) {
     await page.click('[data-testid="agent-tab-commission"]');
     await page.waitForTimeout(1500);
 
-    const anchorHasHeroGold = await page.evaluate(() => {
+    const anchorHasHeroTeal = await page.evaluate(() => {
       const el = document.querySelector('[data-testid="commission-anchor-strip"]');
-      return el ? (el.classList.contains('glass') && el.classList.contains('hero') && el.classList.contains('gold')) : false;
+      return el ? (el.classList.contains('glass') && el.classList.contains('hero') && el.classList.contains('teal')) : false;
     });
     recordResult(
       `agent-${theme}/commission-anchor-strip class`,
-      anchorHasHeroGold,
-      anchorHasHeroGold
-        ? '.glass.hero.gold on [data-testid="commission-anchor-strip"]'
-        : '.glass.hero.gold NOT FOUND — check D3 swap landed',
+      anchorHasHeroTeal,
+      anchorHasHeroTeal
+        ? '.glass.hero.teal on [data-testid="commission-anchor-strip"]'
+        : '.glass.hero.teal NOT FOUND — check gold→teal swap landed',
     );
 
     // Chip-island presence inside CommissionAnchorStrip
