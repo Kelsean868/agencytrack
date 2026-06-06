@@ -245,7 +245,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
           <h2 className="text-lg font-bold text-ink">Policy Ledger</h2>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 h-11 px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors min-w-[44px]"
+            className="flex items-center gap-2 h-11 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors min-w-[44px]"
           >
             <Plus size={16} /> New Policy
           </button>

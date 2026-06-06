@@ -5,6 +5,16 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## D6 census — bg-primary+text-white buttons missing dark:bg-primary-dark (banked 2026-06-06, PR #515 axe)
+
+**Context:** S3a's axe scan of the agent-dark/ledger-lapsed surface found the Policy Ledger "New Policy" button (`bg-primary text-white` without `dark:bg-primary-dark`) at 2.44:1 in dark mode (expected 4.5:1). The button pre-dated S3a; it was fixed as a Rule-9 in-PR extension per dispatcher authorization. The D6 doctrine (CLAUDE.md UI rules) requires that every `bg-primary text-white` button pair `dark:bg-primary-dark`. This was the first find — siblings from Track H era and earlier are suspects.
+
+**Action:** Grep every `bg-primary` + `text-white` combination app-wide, check for `dark:bg-primary-dark` pairing. Any missing → one-line fix. Mechanical XS sweep candidate — same pattern as the #487 `text-{status}` → `text-{status}-ink` sweep in miniature.
+
+**No urgency** — the axe node is fixed at the found site. This tracks the systematic sweep of the remaining population.
+
+---
+
 ## Nexus Glass recipe HTML — AA table needs regeneration from glassPair() (banked 2026-06-06, PR #513)
 
 **Context:** The Nexus Glass recipe doc (`docs/design/nexus-glass-recipe.html`) AA table states `#B45309` at 4.7:1 PASS on glass. `#B45309` is the raw warning **base** color (`[180, 83, 9]`), not the text ink. Two errors compound in that figure:
