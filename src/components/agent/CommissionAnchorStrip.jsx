@@ -143,7 +143,7 @@ export default function CommissionAnchorStrip({
 
   return (
     <section
-      className="relative overflow-hidden rounded-2xl border border-gold/40 bg-card p-5 shadow-sm"
+      className="relative overflow-hidden rounded-2xl p-5 glass gold"
       data-testid="commission-anchor-strip"
       aria-label="Commission summary"
     >

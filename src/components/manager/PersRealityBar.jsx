@@ -72,7 +72,7 @@ export default function PersRealityBar({
 
   return (
     <div
-      className="card flex flex-wrap items-center gap-x-4 gap-y-3 py-3 px-4"
+      className="glass teal rounded-xl flex flex-wrap items-center gap-x-4 gap-y-3 py-3 px-4"
       data-testid="pers-reality-bar"
     >
       {/* Month picker */}

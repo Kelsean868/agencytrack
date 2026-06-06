@@ -51,3 +51,43 @@ export function toRgb(value) {
 export function passesAA(fg, bg) {
   return contrastRatio(fg, bg) >= 4.5;
 }
+
+/**
+ * Compute the effective glass background as an opaque [r,g,b] triple.
+ *
+ * The recipe models effective bg as: tint (at its alpha) composited over
+ * base (at its floor alpha) composited over the darkest named app surface.
+ * All channel values mirror the index.css glass token definitions — if a
+ * token changes, update both here and there to keep the test suite green.
+ *
+ * Light floor: base ≥ 0.62 over --color-bg [247,246,242].
+ * Dark  floor: base ≥ 0.55 over --color-surface dark [37,32,25].
+ *
+ * @param {'teal'|'gold'} tintToken
+ * @param {'light'|'dark'} theme
+ * @returns {[number, number, number]} opaque effective background
+ */
+export function glassPair(tintToken, theme) {
+  const PARAMS = {
+    light: {
+      base:    { rgb: [255, 255, 255], alpha: 0.62 },
+      surface: [247, 246, 242],                        // --color-bg (light)
+      tints: {
+        teal: { rgb: [1,   138, 145], alpha: 0.10 },   // --glass-l-tint-teal
+        gold: { rgb: [176, 125, 26],  alpha: 0.10 },   // --glass-l-tint-gold
+      },
+    },
+    dark: {
+      base:    { rgb: [28, 25, 20], alpha: 0.55 },
+      surface: [37, 32, 25],                           // --color-surface (dark)
+      tints: {
+        teal: { rgb: [74,  181, 184], alpha: 0.14 },   // --glass-d-tint-teal
+        gold: { rgb: [232, 183, 62],  alpha: 0.12 },   // --glass-d-tint-gold
+      },
+    },
+  };
+  const { base, surface, tints } = PARAMS[theme];
+  const tint = tints[tintToken];
+  const baseOverSurface = composite(base.rgb, base.alpha, surface);
+  return composite(tint.rgb, tint.alpha, baseOverSurface);
+}

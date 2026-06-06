@@ -100,6 +100,38 @@
   --shadow-md: 0 2px 8px rgba(40, 37, 29, 0.08);
   --shadow-lg: 0 8px 24px rgba(40, 37, 29, 0.12);
 
+  /* ── Nexus Glass — Light recipe (tokens) ──────────────────────────────
+   * Hero-card tier only. Opacity floors are law: light base ≥ 0.62
+   * (effective bg #EAF3F3 teal / #F6EEDD gold). HEX values appear in token
+   * DEFINITIONS only — never in component CSS (see D1 in the brief).
+   */
+  --glass-l-base:       rgba(255, 255, 255, 0.62);
+  --glass-l-tint-teal:  rgba(1, 138, 145, 0.10);
+  --glass-l-tint-gold:  rgba(176, 125, 26, 0.10);
+  --glass-l-blur:       18px;
+  --glass-l-sat:        135%;
+  --glass-l-border:     rgba(1, 105, 111, 0.16);
+  --glass-l-hi:         rgba(255, 255, 255, 0.65);
+  --glass-l-shadow:     0 8px 28px rgba(38, 35, 28, 0.10);
+  /* precomputed OPAQUE fallback — kiosk / prefers-reduced-transparency */
+  --glass-l-solid-teal: #EAF3F3;
+  --glass-l-solid-gold: #F6EEDD;
+
+  /* ── Nexus Glass — Dark recipe (different physics) ──────────────────────
+   * Dark floor: base ≥ 0.55. Light hairline border (white @12%),
+   * lifted teal tint (#4ab5b8). Effective bg: #15201F teal / #221C12 gold.
+   */
+  --glass-d-base:       rgba(28, 25, 20, 0.55);
+  --glass-d-tint-teal:  rgba(74, 181, 184, 0.14);
+  --glass-d-tint-gold:  rgba(232, 183, 62, 0.12);
+  --glass-d-blur:       20px;
+  --glass-d-sat:        120%;
+  --glass-d-border:     rgba(255, 255, 255, 0.12);
+  --glass-d-hi:         rgba(255, 255, 255, 0.08);
+  --glass-d-shadow:     0 8px 28px rgba(0, 0, 0, 0.45);
+  --glass-d-solid-teal: #15201F;
+  --glass-d-solid-gold: #221C12;
+
   /* ── Presentation tokens ──────────────────────────────────────────────
    * Always-dark surface for full-screen overlays (e.g. MeetingMode).
    * NOT overridden in .dark — these tokens are intentionally
@@ -309,6 +341,82 @@ h1, h2, h3, h4 {
   .label {
     @apply block text-sm font-medium text-ink-muted mb-1.5;
   }
+
+  /* ── Nexus Glass — hero-card tier ──────────────────────────────────────
+   * Surface treatment for one hero card per screen. DO NOT apply to tables,
+   * kiosk rows, entry forms, worklists, or error/empty states (see recipe
+   * census). Tint modifier (.teal / .gold) sets --glass-tile-tint; without
+   * it the gradient degrades gracefully to transparent.
+   */
+  .glass {
+    position: relative;
+    background:
+      linear-gradient(135deg, var(--glass-tile-tint, transparent), transparent 70%),
+      var(--glass-l-base);
+    -webkit-backdrop-filter: blur(var(--glass-l-blur)) saturate(var(--glass-l-sat));
+    backdrop-filter: blur(var(--glass-l-blur)) saturate(var(--glass-l-sat));
+    border: 1px solid var(--glass-l-border);
+    box-shadow: var(--glass-l-shadow), inset 0 1px 0 var(--glass-l-hi);
+  }
+  .glass.teal { --glass-tile-tint: var(--glass-l-tint-teal); }
+  .glass.gold { --glass-tile-tint: var(--glass-l-tint-gold); }
+
+  /* Dark physics differ on purpose: lower base opacity, lifted teal tint,
+   * light hairline border — reads as lit translucent glass, not muddy film. */
+  .dark .glass {
+    background:
+      linear-gradient(135deg, var(--glass-tile-tint, transparent), transparent 70%),
+      var(--glass-d-base);
+    -webkit-backdrop-filter: blur(var(--glass-d-blur)) saturate(var(--glass-d-sat));
+    backdrop-filter: blur(var(--glass-d-blur)) saturate(var(--glass-d-sat));
+    border: 1px solid var(--glass-d-border);
+    box-shadow: var(--glass-d-shadow), inset 0 1px 0 var(--glass-d-hi);
+  }
+  .dark .glass.teal { --glass-tile-tint: var(--glass-d-tint-teal); }
+  .dark .glass.gold { --glass-tile-tint: var(--glass-d-tint-gold); }
+
+  /* Kiosk: no backdrop-filter (TV/smart-display GPU budget). Resolves to
+   * the precomputed solid; border + shadow retained for structural legibility. */
+  [data-kiosk] .glass {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background:
+      linear-gradient(135deg, var(--glass-tile-tint, transparent), transparent 70%),
+      var(--glass-l-solid-teal);
+  }
+  [data-kiosk] .glass.gold {
+    background:
+      linear-gradient(135deg, var(--glass-tile-tint, transparent), transparent 70%),
+      var(--glass-l-solid-gold);
+  }
+  .dark [data-kiosk] .glass {
+    background:
+      linear-gradient(135deg, var(--glass-tile-tint, transparent), transparent 70%),
+      var(--glass-d-solid-teal);
+  }
+  .dark [data-kiosk] .glass.gold {
+    background:
+      linear-gradient(135deg, var(--glass-tile-tint, transparent), transparent 70%),
+      var(--glass-d-solid-gold);
+  }
+
+  /* Meeting Mode: reduced glass — blur ≤ 8px, saturation 100% (projector cost). */
+  [data-meeting-mode] .glass {
+    -webkit-backdrop-filter: blur(8px) saturate(100%);
+    backdrop-filter: blur(8px) saturate(100%);
+  }
+}
+
+/* ── Nexus Glass — prefers-reduced-transparency: opaque solid fallback ─────
+ * Users who opt out of transparency get the precomputed solid with border +
+ * shadow retained. The .dark variants use their own solid palette.
+ */
+@media (prefers-reduced-transparency: reduce) {
+  .glass       { backdrop-filter: none; -webkit-backdrop-filter: none;
+                 background: var(--glass-l-solid-teal); }
+  .glass.gold  { background: var(--glass-l-solid-gold); }
+  .dark .glass      { background: var(--glass-d-solid-teal); }
+  .dark .glass.gold { background: var(--glass-d-solid-gold); }
 }
 
 /* ── Achievement badges (Medal v2 — glossy coin) ─────────────────────────
