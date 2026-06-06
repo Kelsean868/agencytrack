@@ -10,6 +10,9 @@
 // All monetary amounts are TTD. Persistency is a decimal in [0, 1+] — never
 // a percentage. Multiply by 100 for display.
 
+export const PERS_FLOOR = 0.80; // below-floor threshold (danger band)
+export const PERS_GATE  = 0.90; // award-eligible threshold (success band)
+
 const LUMPSUMS_FACTOR = 0.10;
 
 const num = (v) => {
@@ -74,6 +77,20 @@ export function aggregatePersistency(records) {
     : totals.sumNetSettled / totals.sumGrossSettled;
 
   return { ...totals, aggregatedPersistency };
+}
+
+// Computes reality-bar stats from a set of resolved persistency records.
+// Records with non-finite persistency (partial fan-out / no-data rows) are
+// excluded from all counts — they do not contribute to the aggregate or the
+// floor/gate tallies.
+export function computeBarStats(records) {
+  const resolved = (records ?? []).filter((r) => r && Number.isFinite(r.persistency));
+  return {
+    resolvedCount: resolved.length,
+    belowFloor:    resolved.filter((r) => r.persistency < PERS_FLOOR).length,
+    awardEligible: resolved.filter((r) => r.persistency >= PERS_GATE).length,
+    sumLapses:     resolved.reduce((s, r) => s + (Number.isFinite(r.lapses) ? r.lapses : 0), 0),
+  };
 }
 
 // Projects a future persistency given current state plus a set of forward-

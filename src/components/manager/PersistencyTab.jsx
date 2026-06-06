@@ -1,61 +1,36 @@
-// E3 — Manager-side persistency tab.
-//
-// Replaces the legacy PersistencyPanel (deleted in this PR). Manager enters
-// the six business inputs per agent; persistency is derived. Both branch
-// managers AND agents can write; manager wins on collision via the audit-trail
-// precedence in persistencyService.savePersistency.
-//
-// Phase 5 adds the entry form + layout polish + CSV export. Current scope is
-// data loading + branch summary + agent list with edit affordance.
+// Persistency Manager v2 — S1: Reality Bar + At-Risk Book + Banded Roster.
+// Entry-drawer restyle → S2. What-if playground + share → S3.
+// Read/derive only — no writes or rules changes in this slice.
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { TrendingUp, AlertCircle, Calculator, Edit3, Download, Printer } from 'lucide-react';
+import { Download, Printer, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
 import {
   getPersistencyForBranch,
   getPersistencyForUnit,
-  getPersistencyForTenant,
   getAvailableMonths,
-  monthKeyFromYearMonth,
 } from '../../services/persistencyService';
-import { aggregatePersistency } from '../../lib/persistency/calculations';
+import {
+  aggregatePersistency,
+  computeBarStats,
+} from '../../lib/persistency/calculations';
 import { getTenantUsers } from '../../services/managerService';
-import { formatCurrency } from '../../utils/formatters';
+import PersRealityBar from './PersRealityBar';
+import PersAtRiskBook from './PersAtRiskBook';
+import PersRoster from './PersRoster';
+import CoachingNotesModal from './CoachingNotesModal';
 import PersistencyEntryForm from './PersistencyEntryForm';
-import PersistencyAgentRow from './PersistencyAgentRow';
 import PersistencyPlayground from '../persistency/PersistencyPlayground';
 
-const SCOPE_BY_ROLE = {
+// BM starts at 'branch'; UM is fixed at 'unit'.
+const ROLE_DEFAULT_SCOPE = {
   unit_manager:   'unit',
   branch_manager: 'branch',
-  sales_manager:  'tenant',
-  tenant_admin:   'tenant',
-  platform_admin: 'tenant',
+  sales_manager:  'branch',
+  tenant_admin:   'branch',
+  platform_admin: 'branch',
 };
-
-function formatPercent(decimal) {
-  if (decimal == null || !Number.isFinite(decimal)) return '—';
-  return `${(decimal * 100).toFixed(1)}%`;
-}
-
-function badgeClass(decimal) {
-  if (decimal == null || !Number.isFinite(decimal)) return 'bg-border/40 text-ink-muted';
-  if (decimal >= 0.90) return 'bg-success/15 text-success-ink';
-  if (decimal >= 0.80) return 'bg-warning/15 text-warning-ink';
-  return 'bg-danger/15 text-danger-ink';
-}
-
-function nextMonthKey(monthKey) {
-  if (!monthKey) {
-    const now = new Date();
-    return monthKeyFromYearMonth(now.getFullYear(), now.getMonth() + 1);
-  }
-  const [y, m] = monthKey.split('-').map(Number);
-  const ny = m === 12 ? y + 1 : y;
-  const nm = m === 12 ? 1     : m + 1;
-  return monthKeyFromYearMonth(ny, nm);
-}
 
 function buildCSV(rows) {
   const escape = (val) => {
@@ -70,28 +45,41 @@ function buildCSV(rows) {
 export default function PersistencyTab() {
   const { user, userProfile, role, tenantId } = useAuth();
   const toast = useToast();
-  const scopeType = SCOPE_BY_ROLE[role] ?? 'tenant';
-  const scopeId = scopeType === 'unit'   ? userProfile?.unitId
-                : scopeType === 'branch' ? userProfile?.branchId
-                : userProfile?.tenantId ?? null;
 
-  const [monthKeys, setMonthKeys] = useState([]);
-  const [monthKey, setMonthKey] = useState(null);
-  const [records, setRecords]   = useState([]);
-  const [users, setUsers]       = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [error, setError]       = useState('');
-  const [editingAgentUid, setEditingAgentUid] = useState(null);
+  // Scope: BM can toggle unit↔branch; other roles are fixed.
+  const defaultScope = ROLE_DEFAULT_SCOPE[role] ?? 'branch';
+  const [scope, setScope] = useState(defaultScope);
+  const showScopeToggle = role === 'branch_manager';
+
+  const scopeId = useMemo(() => {
+    if (scope === 'unit')   return userProfile?.unitId   ?? null;
+    if (scope === 'branch') return userProfile?.branchId ?? null;
+    return userProfile?.tenantId ?? null;
+  }, [scope, userProfile]);
+
+  const scopeLabel = scope === 'unit' ? 'Unit'
+    : scope === 'branch' ? 'Branch' : 'Tenant';
+
+  const [monthKeys, setMonthKeys]   = useState([]);
+  const [monthKey, setMonthKey]     = useState(null);
+  const [records, setRecords]       = useState([]);
+  const [users, setUsers]           = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [error, setError]           = useState('');
+  const [sparkData, setSparkData]   = useState([]);
+
+  // Modal states
+  const [coachingAgent, setCoachingAgent]         = useState(null); // { agentId, agentName, agentUnitId }
+  const [editingAgentUid, setEditingAgentUid]     = useState(null);
   const [playgroundAgentUid, setPlaygroundAgentUid] = useState(null);
-  const [sortBy, setSortBy]     = useState('persistency');
 
-  // Load available months once we know the scope.
+  // Load available months.
   useEffect(() => {
     if (!scopeId) return;
     let cancelled = false;
     (async () => {
       try {
-        const months = await getAvailableMonths(tenantId, scopeType, scopeId);
+        const months = await getAvailableMonths(tenantId, scope, scopeId);
         if (cancelled) return;
         setMonthKeys(months);
         setMonthKey((prev) => prev ?? months[0] ?? null);
@@ -100,8 +88,9 @@ export default function PersistencyTab() {
       }
     })();
     return () => { cancelled = true; };
-  }, [scopeType, scopeId, tenantId]);
+  }, [scope, scopeId, tenantId]);
 
+  // Load roster + records for selected month.
   const loadRecords = useCallback(async () => {
     if (!monthKey || !scopeId) return;
     setLoading(true);
@@ -109,15 +98,13 @@ export default function PersistencyTab() {
     try {
       const [allUsers, recs] = await Promise.all([
         getTenantUsers(tenantId),
-        scopeType === 'unit'   ? getPersistencyForUnit(tenantId, monthKey, scopeId) :
-        scopeType === 'branch' ? getPersistencyForBranch(tenantId, monthKey, scopeId) :
-                                  getPersistencyForTenant(tenantId, monthKey),
+        scope === 'unit'
+          ? getPersistencyForUnit(tenantId, monthKey, scopeId)
+          : getPersistencyForBranch(tenantId, monthKey, scopeId),
       ]);
-      const filtered = scopeType === 'unit'
+      const filtered = scope === 'unit'
         ? allUsers.filter((u) => u.unitId === scopeId && u.role === 'agent')
-        : scopeType === 'branch'
-          ? allUsers.filter((u) => u.branchId === scopeId && u.role === 'agent')
-          : allUsers.filter((u) => u.role === 'agent');
+        : allUsers.filter((u) => u.branchId === scopeId && u.role === 'agent');
       setUsers(filtered);
       setRecords(recs);
     } catch (e) {
@@ -125,46 +112,79 @@ export default function PersistencyTab() {
     } finally {
       setLoading(false);
     }
-  }, [monthKey, scopeId, scopeType, tenantId]);
+  }, [monthKey, scopeId, scope, tenantId]);
 
   useEffect(() => { loadRecords(); }, [loadRecords]);
 
-  // Aggregate for the summary card.
-  const aggregate = useMemo(() => aggregatePersistency(records), [records]);
+  // Load sparkline data: last 6 available months' branch/unit aggregate.
+  useEffect(() => {
+    if (!scopeId || monthKeys.length === 0) return;
+    let aborted = false;
+    const window = monthKeys.slice(0, 6).reverse(); // oldest-first
+    (async () => {
+      const results = await Promise.all(
+        window.map(async (mk) => {
+          try {
+            const recs = scope === 'unit'
+              ? await getPersistencyForUnit(tenantId, mk, scopeId)
+              : await getPersistencyForBranch(tenantId, mk, scopeId);
+            const agg = aggregatePersistency(recs);
+            return {
+              monthKey: mk,
+              aggregatedPersistency: recs.length > 0 ? agg.aggregatedPersistency : null,
+            };
+          } catch {
+            return { monthKey: mk, aggregatedPersistency: null };
+          }
+        }),
+      );
+      if (!aborted) setSparkData(results);
+    })();
+    return () => { aborted = true; };
+  }, [monthKeys, scopeId, scope, tenantId]);
 
-  // Fold records onto users so missing rows show as "no entry yet."
+  // Derived data.
+  const aggregate = useMemo(() => aggregatePersistency(records), [records]);
+  const barStats  = useMemo(() => computeBarStats(records), [records]);
+
   const recordByAgent = useMemo(() => {
     const m = {};
     records.forEach((r) => { m[r.agentId] = r; });
     return m;
   }, [records]);
 
+  // Roster rows sorted by persistency desc, missing records last.
   const sortedRows = useMemo(() => {
     const rows = users.map((u) => ({ user: u, record: recordByAgent[u.id] ?? null }));
     rows.sort((a, b) => {
-      if (sortBy === 'name') return (a.user.name ?? '').localeCompare(b.user.name ?? '');
-      if (sortBy === 'gross') {
-        return (b.record?.grossSettled ?? 0) - (a.record?.grossSettled ?? 0);
-      }
-      // default: persistency desc, missing rows last
       const pa = a.record?.persistency ?? -1;
       const pb = b.record?.persistency ?? -1;
       return pb - pa;
     });
     return rows;
-  }, [users, recordByAgent, sortBy]);
+  }, [users, recordByAgent]);
 
-  const handleAddNewMonth = () => {
-    const newest = monthKeys[0];
-    const nk = nextMonthKey(newest);
-    setMonthKey(nk);
-    if (!monthKeys.includes(nk)) setMonthKeys([nk, ...monthKeys]);
-  };
+  // At-risk book: resolved agents below floor, sorted worst-first.
+  const atRiskRows = useMemo(
+    () => sortedRows
+      .filter(({ record: r }) => r && Number.isFinite(r.persistency) && r.persistency < 0.80)
+      .sort((a, b) => (a.record?.persistency ?? 1) - (b.record?.persistency ?? 1)),
+    [sortedRows],
+  );
+
+  const editingRecord = editingAgentUid ? recordByAgent[editingAgentUid] : null;
+  const editingUser   = editingAgentUid ? users.find((u) => u.id === editingAgentUid) : null;
+  const playgroundRec  = playgroundAgentUid ? recordByAgent[playgroundAgentUid] : null;
+  const playgroundUser = playgroundAgentUid ? users.find((u) => u.id === playgroundAgentUid) : null;
+
+  const handleCoach = useCallback(({ user: u }) => {
+    setCoachingAgent({ agentId: u.id, agentName: u.name ?? u.email ?? u.id, agentUnitId: u.unitId });
+  }, []);
 
   const handleDownloadCSV = () => {
     const header = [
       'Agent', 'Persistency %', 'Gross Settled (TTD)', 'Net Settled (TTD)',
-      'Lapses (TTD)', 'Reinstatements (TTD)', 'Last Edited',
+      'Lapses (TTD)', 'Reinstatements (TTD)', 'Source', 'Last Edited',
     ];
     const body = sortedRows.map(({ user: u, record: r }) => [
       u.name ?? u.email ?? u.id,
@@ -173,6 +193,7 @@ export default function PersistencyTab() {
       r ? Math.round(r.netSettled) : '',
       r ? Math.round(r.lapses) : '',
       r ? Math.round(r.reinstatements) : '',
+      r?.enteredByRole ?? '',
       r?.lastEditedAt?.toDate ? r.lastEditedAt.toDate().toISOString().slice(0, 10) : '',
     ]);
     const csv = buildCSV([header, ...body]);
@@ -187,74 +208,32 @@ export default function PersistencyTab() {
     URL.revokeObjectURL(url);
   };
 
-  const editingRecord = editingAgentUid ? recordByAgent[editingAgentUid] : null;
-  const editingUser   = editingAgentUid ? users.find((u) => u.id === editingAgentUid) : null;
-  const playgroundRec = playgroundAgentUid ? recordByAgent[playgroundAgentUid] : null;
-  const playgroundUser = playgroundAgentUid ? users.find((u) => u.id === playgroundAgentUid) : null;
-
   if (!scopeId) {
     return (
       <div className="card flex items-center gap-3 text-sm text-ink-muted">
         <AlertCircle size={16} />
-        Contact your branch manager to be assigned to a unit so you can view your unit&apos;s persistency data.
+        Contact your branch manager to be assigned to a unit so you can view persistency data.
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-4" data-testid="persistency-tab">
-      {/* Controls */}
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          aria-label="Month"
-          data-testid="persistency-month-selector"
-          value={monthKey ?? ''}
-          onChange={(e) => setMonthKey(e.target.value)}
-          className="h-10 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-        >
-          {monthKeys.length === 0 && <option value="">—</option>}
-          {monthKeys.map((mk) => (
-            <option key={mk} value={mk}>{mk}</option>
-          ))}
-        </select>
-
-        <select
-          aria-label="Sort by"
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
-          className="h-10 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40"
-        >
-          <option value="persistency">Sort: Persistency</option>
-          <option value="name">Sort: Name</option>
-          <option value="gross">Sort: Gross Settled</option>
-        </select>
-
-        <button
-          type="button"
-          onClick={handleAddNewMonth}
-          className="h-11 px-3 rounded-lg border border-border text-sm font-medium text-ink hover:bg-card-raised transition-colors"
-        >
-          + Add new month
-        </button>
-
-        <div className="ml-auto flex gap-2">
-          <button
-            type="button"
-            onClick={handleDownloadCSV}
-            disabled={records.length === 0}
-            className="h-11 px-3 rounded-lg border border-border text-sm font-medium text-ink flex items-center gap-1.5 hover:bg-card-raised transition-colors disabled:opacity-50"
-          >
-            <Download size={14} /> CSV
-          </button>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="h-11 px-3 rounded-lg border border-border text-sm font-medium text-ink flex items-center gap-1.5 hover:bg-card-raised transition-colors"
-          >
-            <Printer size={14} /> Print
-          </button>
-        </div>
-      </div>
+      {/* Reality bar */}
+      <PersRealityBar
+        monthKey={monthKey}
+        monthKeys={monthKeys}
+        onMonthChange={setMonthKey}
+        scope={scope}
+        showScopeToggle={showScopeToggle}
+        onScopeChange={setScope}
+        scopeLabel={scopeLabel}
+        aggregate={aggregate}
+        barStats={barStats}
+        totalAgents={users.length}
+        sparkData={sparkData}
+        loading={loading}
+      />
 
       {error && (
         <div className="card flex items-center gap-2 text-sm text-danger-ink">
@@ -262,87 +241,65 @@ export default function PersistencyTab() {
         </div>
       )}
 
-      {/* Branch / unit / tenant summary */}
-      <div className="card flex flex-col gap-2" data-testid="persistency-branch-summary">
-        <div className="flex items-center gap-2">
-          <TrendingUp size={16} className="text-primary" />
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
-            {scopeType === 'unit'   ? 'Unit'
-            : scopeType === 'branch' ? 'Branch'
-                                     : 'Tenant'}{' '}
-            persistency · {monthKey ?? '—'}
-          </p>
-        </div>
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <span
-            className={`px-3 py-1.5 rounded-lg text-2xl font-bold ${badgeClass(aggregate.aggregatedPersistency)}`}
-            data-testid="persistency-aggregate-value"
+      {/* Export toolbar (compact) */}
+      {!loading && records.length > 0 && (
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={handleDownloadCSV}
+            className="h-9 px-3 rounded-lg border border-border text-xs font-medium text-ink flex items-center gap-1.5 hover:bg-card-raised transition-colors"
+            data-testid="pers-csv-btn"
           >
-            {records.length === 0 ? '—' : formatPercent(aggregate.aggregatedPersistency)}
-          </span>
-          <span className="text-xs text-ink-muted">
-            {records.length} agent{records.length === 1 ? '' : 's'} reporting
-          </span>
+            <Download size={12} /> CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="h-9 px-3 rounded-lg border border-border text-xs font-medium text-ink flex items-center gap-1.5 hover:bg-card-raised transition-colors"
+            data-testid="pers-print-btn"
+          >
+            <Printer size={12} /> Print
+          </button>
         </div>
-        {records.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-1 text-xs">
-            <div>
-              <p className="text-ink-muted uppercase tracking-wide">Gross settled</p>
-              <p className="font-semibold text-ink">{formatCurrency(aggregate.sumGrossSettled)}</p>
-            </div>
-            <div>
-              <p className="text-ink-muted uppercase tracking-wide">Net settled</p>
-              <p className="font-semibold text-ink">{formatCurrency(aggregate.sumNetSettled)}</p>
-            </div>
-            <div>
-              <p className="text-ink-muted uppercase tracking-wide">Lapses</p>
-              <p className="font-semibold text-ink">{formatCurrency(aggregate.sumLapses)}</p>
-            </div>
-            <div>
-              <p className="text-ink-muted uppercase tracking-wide">Reinstatements</p>
-              <p className="font-semibold text-ink">{formatCurrency(aggregate.sumReinstatements)}</p>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
-      {/* 90% threshold legend */}
-      <div className="text-xs text-ink-muted flex items-center gap-2" data-testid="persistency-threshold-legend">
-        <span className="inline-block w-3 h-3 rounded-full bg-success" />
-        <span>≥ 90% (award-eligible)</span>
-        <span className="inline-block w-3 h-3 rounded-full bg-warning ml-3" />
-        <span>80–89%</span>
-        <span className="inline-block w-3 h-3 rounded-full bg-danger ml-3" />
-        <span>&lt; 80%</span>
-      </div>
+      {/* At-risk book (celebration arm when empty; hidden during load) */}
+      {!loading && (
+        <PersAtRiskBook
+          rows={atRiskRows}
+          onCoach={handleCoach}
+        />
+      )}
 
-      {/* Agent list */}
-      {loading ? (
+      {/* Banded roster */}
+      {!loading && (
+        <PersRoster
+          rows={sortedRows}
+          onEdit={setEditingAgentUid}
+          onOpenPlayground={setPlaygroundAgentUid}
+        />
+      )}
+
+      {/* Roster skeleton */}
+      {loading && (
         <div className="flex flex-col gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-14 bg-border/40 rounded-xl animate-pulse" />
           ))}
         </div>
-      ) : sortedRows.length === 0 ? (
-        <div className="card text-sm text-ink-muted">
-          No agents in this {scopeType === 'unit' ? 'unit' : scopeType === 'branch' ? 'branch' : 'tenant'} yet.
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2">
-          {sortedRows.map(({ user: u, record: r }) => (
-            <PersistencyAgentRow
-              key={u.id}
-              user={u}
-              record={r}
-              monthKey={monthKey}
-              onEdit={() => setEditingAgentUid(u.id)}
-              onOpenPlayground={() => setPlaygroundAgentUid(u.id)}
-            />
-          ))}
-        </div>
       )}
 
-      {/* Entry form modal */}
+      {/* Coaching modal */}
+      {coachingAgent && (
+        <CoachingNotesModal
+          agentId={coachingAgent.agentId}
+          agentName={coachingAgent.agentName}
+          agentUnitId={coachingAgent.agentUnitId}
+          onClose={() => setCoachingAgent(null)}
+        />
+      )}
+
+      {/* Entry form modal (S2 will restyle this) */}
       {editingAgentUid && (
         <PersistencyEntryForm
           tenantId={tenantId}
@@ -356,16 +313,13 @@ export default function PersistencyTab() {
           onSaved={() => {
             const savedName = editingUser?.name ?? editingUser?.email ?? 'agent';
             setEditingAgentUid(null);
-            toast.show({
-              variant: 'success',
-              message: `Persistency saved for ${savedName}`,
-            });
+            toast.show({ variant: 'success', message: `Persistency saved for ${savedName}` });
             loadRecords();
           }}
         />
       )}
 
-      {/* Playground modal */}
+      {/* Playground modal (S3 will enhance; visible from roster only) */}
       {playgroundAgentUid && (
         <PersistencyPlayground
           mode="coaching"
@@ -374,11 +328,6 @@ export default function PersistencyTab() {
           onClose={() => setPlaygroundAgentUid(null)}
         />
       )}
-
-      {/* Visible CTAs/icons unused on this surface — referenced for lint cleanliness */}
-      <span className="hidden">
-        <Calculator size={1} /><Edit3 size={1} />
-      </span>
     </div>
   );
 }
