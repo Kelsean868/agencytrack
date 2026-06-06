@@ -79,12 +79,15 @@ describe('policyLedgerDerivation', () => {
   });
 
   describe('applyLedgerFilter + filterCounts', () => {
+    // Includes ntu + denied alongside lapsed to prove closed != lapsed.
     const policies = [
       P({ id: 'a', status: 'submitted', ownerName: 'Anjali Persaud' }),
       P({ id: 'b', status: 'rated', ownerName: 'Kareem Mohammed', planName: 'Platinum Edge' }),
       P({ id: 'c', status: 'settled', ownerName: 'Sara' }),
       P({ id: 'd', status: 'settled', confirmedAt: {}, ownerName: 'Naomi' }),
       P({ id: 'e', status: 'lapsed', ownerName: 'Old One' }),
+      P({ id: 'f', status: 'ntu',    ownerName: 'NTU Case' }),
+      P({ id: 'g', status: 'denied', ownerName: 'Denied Case' }),
     ];
 
     it('inflight excludes confirmed + closed', () => {
@@ -94,21 +97,27 @@ describe('policyLedgerDerivation', () => {
     it('action needed = settled & unconfirmed', () => {
       expect(applyLedgerFilter(policies, { filter: 'action' }).map((p) => p.id)).toEqual(['c']);
     });
-    it('confirmed + closed buckets', () => {
+    it('confirmed bucket is byte-unchanged', () => {
       expect(applyLedgerFilter(policies, { filter: 'confirmed' }).map((p) => p.id)).toEqual(['d']);
-      expect(applyLedgerFilter(policies, { filter: 'closed' }).map((p) => p.id)).toEqual(['e']);
+    });
+    it('closed = lapsed + ntu + denied (byte-unchanged)', () => {
+      expect(applyLedgerFilter(policies, { filter: 'closed' }).map((p) => p.id)).toEqual(['e', 'f', 'g']);
+    });
+    it('lapsed = lapsed only, excludes ntu and denied', () => {
+      expect(applyLedgerFilter(policies, { filter: 'lapsed' }).map((p) => p.id)).toEqual(['e']);
     });
     it('search matches owner / plan, case-insensitive', () => {
       expect(applyLedgerFilter(policies, { search: 'platinum' }).map((p) => p.id)).toEqual(['b']);
       expect(applyLedgerFilter(policies, { search: 'naomi' }).map((p) => p.id)).toEqual(['d']);
     });
-    it('filterCounts tallies each chip', () => {
+    it('filterCounts tallies each chip including lapsed', () => {
       const c = filterCounts(policies);
-      expect(c.all).toBe(5);
+      expect(c.all).toBe(7);
       expect(c.inflight).toBe(3);
       expect(c.action).toBe(1);
       expect(c.confirmed).toBe(1);
-      expect(c.closed).toBe(1);
+      expect(c.closed).toBe(3);
+      expect(c.lapsed).toBe(1);
     });
   });
 

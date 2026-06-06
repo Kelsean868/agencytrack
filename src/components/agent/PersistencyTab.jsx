@@ -29,7 +29,7 @@ function badgeClass(decimal) {
   return 'bg-danger-tint text-danger-ink';
 }
 
-export default function PersistencyTab() {
+export default function PersistencyTab({ onViewLapsedPolicies }) {
   const { user, role, tenantId } = useAuth();
 
   const [history, setHistory] = useState([]);
@@ -256,6 +256,7 @@ export default function PersistencyTab() {
           agentName="You"
           currentRecord={currentRecord}
           onClose={() => setPlaygroundOpen(false)}
+          onViewLapsedPolicies={onViewLapsedPolicies}
         />
       )}
     </div>

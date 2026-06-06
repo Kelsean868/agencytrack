@@ -97,6 +97,7 @@ export default function AgentDashboard() {
 
   const [activeTab, setActiveTab]             = useState('dashboard');
   const [prefillPolicy, setPrefillPolicy]     = useState(null);
+  const [policyLedgerFilter, setPolicyLedgerFilter] = useState(null);
   const [showWizard, setShowWizard]           = useState(false);
   const [wizardWeek, setWizardWeek]           = useState(null);
   const [showDailyModal, setShowDailyModal]   = useState(false);
@@ -156,10 +157,18 @@ export default function AgentDashboard() {
     }
   }, [userProfile, role]);
 
-  // Clear prefill if agent navigates away from policy-ledger without saving.
+  // Clear prefill + filter if agent navigates away from policy-ledger.
   useEffect(() => {
-    if (activeTab !== 'policy-ledger') setPrefillPolicy(null);
+    if (activeTab !== 'policy-ledger') {
+      setPrefillPolicy(null);
+      setPolicyLedgerFilter(null);
+    }
   }, [activeTab]);
+
+  function handleOpenLapsedPolicies() {
+    setPolicyLedgerFilter('lapsed');
+    setActiveTab('policy-ledger');
+  }
 
   function handleCreatePolicyFromPrep(prep) {
     setPrefillPolicy({
@@ -639,6 +648,7 @@ export default function AgentDashboard() {
         <PolicyLedgerPanel
           initialForm={prefillPolicy}
           onPrefillConsumed={() => setPrefillPolicy(null)}
+          initialFilter={policyLedgerFilter}
         />
       )}
 
@@ -697,7 +707,7 @@ export default function AgentDashboard() {
       )}
 
       {/* ── PERSISTENCY TAB ── */}
-      {activeTab === 'persistency' && <AgentPersistencyTab />}
+      {activeTab === 'persistency' && <AgentPersistencyTab onViewLapsedPolicies={handleOpenLapsedPolicies} />}
 
       {/* ── PRODUCTION REPORT TAB ── */}
       {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}

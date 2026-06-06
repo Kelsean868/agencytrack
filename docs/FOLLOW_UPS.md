@@ -5,6 +5,16 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## D6 census — bg-primary+text-white buttons missing dark:bg-primary-dark (banked 2026-06-06, PR #515 axe)
+
+**Context:** S3a's axe scan of the agent-dark/ledger-lapsed surface found the Policy Ledger "New Policy" button (`bg-primary text-white` without `dark:bg-primary-dark`) at 2.44:1 in dark mode (expected 4.5:1). The button pre-dated S3a; it was fixed as a Rule-9 in-PR extension per dispatcher authorization. The D6 doctrine (CLAUDE.md UI rules) requires that every `bg-primary text-white` button pair `dark:bg-primary-dark`. This was the first find — siblings from Track H era and earlier are suspects.
+
+**Action:** Grep every `bg-primary` + `text-white` combination app-wide, check for `dark:bg-primary-dark` pairing. Any missing → one-line fix. Mechanical XS sweep candidate — same pattern as the #487 `text-{status}` → `text-{status}-ink` sweep in miniature.
+
+**No urgency** — the axe node is fixed at the found site. This tracks the systematic sweep of the remaining population.
+
+---
+
 ## Nexus Glass recipe HTML — AA table needs regeneration from glassPair() (banked 2026-06-06, PR #513)
 
 **Context:** The Nexus Glass recipe doc (`docs/design/nexus-glass-recipe.html`) AA table states `#B45309` at 4.7:1 PASS on glass. `#B45309` is the raw warning **base** color (`[180, 83, 9]`), not the text ink. Two errors compound in that figure:
@@ -29,7 +39,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 - **S2 — Entry drawer restyle.** `CoachingNotesModal` + `PersistencyEntryForm` modals restyle to match the v2 visual language (currently reused as-is from the legacy surface). Entry form is the manager's write path for persistency data — S2 is the natural moment to revisit the form layout, field labeling, and inline validation UX.
 
-- **S3 — Playground + nudge write.** `PersistencyPlayground` "coaching" mode is already connected from the Roster's Play button (S1 shipped the wire-up). S3 adds: (a) the what-if nudge write path (e.g. manager-to-agent persistency coaching note or target), (b) share/export from the playground, and (c) any additional playground modes surfaced by the brief annotation.
+- ~~**S3a — What-If Playground.**~~ **SHIPPED — PR #515 (`{TBD}`, HUMAN-MERGE, 2026-06-06).** Client-side-only UI over the existing `projectPersistency()` / `calculateShortfall()` engine. Two levers (New Business Planned + Reinstatements Planned). Two-tick band visualization (80% floor / 90% gate). Reset affordance. Shortfall cards for NB + NR targets. D4 lapsed-link for agent self-mode → navigates to Policy Ledger with 'lapsed' chip pre-selected. Play button unconditional on `PersRoster` (was guarded by `hasRecord`). `policyLedgerDerivation.js` gains 'lapsed' filter key (purely additive; lapsed-only, excludes NTU/denied). CLIENT-SIDE ONLY — zero writes, zero rules/CF/index changes. Suite 2505/2505; lint 0; build clean; smoke 22/22 PASS (both themes, BM + agent legs). Smoke locator fix: chip textContent includes count badge (e.g. "Lapsed0") — use `data-testid="ledger-filter-lapsed"` not text equality.
+
+- **S3b — Nudge write.** `PersistencyPlayground` "coaching" mode already connected (S1 wired; S3a ships the playground UI). S3b adds: (a) the what-if nudge write path (manager-to-agent persistency coaching note or target via the `sendComplianceNudge`-style nudge primitive), (b) share/export from the playground. Each needs its own kickoff brief. Manager suggest-a-goal also in manager-program backlog (see § Manager-program backlog below).
 
 **Deferred scope item (SM cross-branch):**
 

@@ -77,7 +77,7 @@ function FieldGroup({ label, children, required, id }) {
 const inputCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm text-ink w-full focus:outline-none focus:ring-2 focus:ring-primary/40';
 const selectCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm text-ink w-full focus:outline-none focus:ring-2 focus:ring-primary/40';
 
-export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
+export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter }) {
   const { user, userProfile, tenantId } = useAuth();
 
   const [view, setView] = useState(initialForm ? 'create' : 'list');
@@ -96,7 +96,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
   );
 
   // ── Tier 2 filter / search ──
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(initialFilter ?? 'all');
   const [search, setSearch] = useState('');
 
   // ── Tier 3 drawer ──
@@ -245,7 +245,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed }) {
           <h2 className="text-lg font-bold text-ink">Policy Ledger</h2>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 h-11 px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors min-w-[44px]"
+            className="flex items-center gap-2 h-11 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors min-w-[44px]"
           >
             <Plus size={16} /> New Policy
           </button>

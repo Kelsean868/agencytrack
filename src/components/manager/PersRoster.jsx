@@ -207,18 +207,16 @@ export default function PersRoster({ rows, onEdit, onOpenPlayground }) {
                   <Edit3 size={11} />
                   <span className="hidden sm:inline">Edit</span>
                 </button>
-                {hasRecord && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenPlayground(user.id)}
-                    className="h-9 min-w-[2.75rem] px-2.5 rounded-lg border border-border bg-card-raised text-xs font-bold text-primary hover:bg-border/30 transition-colors flex items-center gap-1"
-                    data-testid={`pers-roster-play-${user.id}`}
-                    aria-label={`Open playground for ${user.name ?? user.id}`}
-                  >
-                    <Calculator size={11} />
-                    <span className="hidden sm:inline">Play</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => onOpenPlayground(user.id)}
+                  className="h-9 min-w-[2.75rem] px-2.5 rounded-lg border border-border bg-card-raised text-xs font-bold text-primary hover:bg-border/30 transition-colors flex items-center gap-1"
+                  data-testid={`pers-roster-play-${user.id}`}
+                  aria-label={`Open playground for ${user.name ?? user.id}`}
+                >
+                  <Calculator size={11} />
+                  <span className="hidden sm:inline">Play</span>
+                </button>
               </div>
             </div>
           );
