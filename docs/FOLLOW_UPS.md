@@ -21,6 +21,12 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 - **SM scope toggle.** The brief called for a SM cross-branch scope picker on `PersRealityBar`. The `SmLeaderboardView.jsx` branch-picker is tightly coupled to leaderboard context (`branchIdOverride`, `scopeRoleOverride`) and won't drop in cleanly without a dedicated architecture discussion. Deferred to a named slice or SM-scope standalone brief. In the interim, `sales_manager` falls through to `ROLE_DEFAULT_SCOPE['branch']` (their `branchId` scope), which is safe for the pilot. Revisit when SM cross-branch surfaces become a priority.
 
+**Banked addenda (post-merge, 2026-06-05):**
+
+- **Coach-drawer deferred leg (n/a in preview env).** The Coach action in `PersAtRiskBook` opens `CoachingNotesModal` — live smoke assertion is n/a in the preview env (no at-risk rows in test data; brief policy: never force test data). Closes free when at-risk data exists in a live environment (pilot data or S3 playground work).
+
+- **Micro-FU — promote bearer-token capture into `walk-helpers`.** The `addInitScript` fetch-patch + IndexedDB fallback pattern in `scripts/verification/persistency-mgr-v2-s1-smoke.mjs` (captures Firebase auth token for Firestore REST recompute legs) should be extracted into `scripts/verification/lib/walk-helpers.mjs` as a reusable helper (e.g. `captureOrFetchBearerToken(page)`). Needed for every future smoke that independently reads Firestore docs to verify UI aggregate values. The S1 smoke is the reference implementation; extracting it prevents re-inventing the fetch-patch + IDB fallback dance per smoke.
+
 ---
 
 ## Commission v2 — remaining slices (banked 2026-06-05 from Commission v2 Slice 1, PR #496 `0b79a92`)
