@@ -13,6 +13,8 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 **No urgency** — the axe node is fixed at the found site. This tracks the systematic sweep of the remaining population.
 
+**Fortress lesson (banked 2026-06-06, PR #515):** "Bell-badge-only holds for WALKED surfaces; the D6 census extends the walked set to pre-doctrine rooms." The bell-badge baseline covers only surfaces that have been axe-scanned since PR #503 (cleanup-duo). Pre-doctrine surfaces (Track H era and earlier) may carry the same `bg-primary text-white` D6 pattern without dark pairing — they have never been axe-walked. Each new PR that routes navigation to a previously unwalled surface must axe-scan it, not assume the bell-badge baseline covers it.
+
 ---
 
 ## Nexus Glass recipe HTML — AA table needs regeneration from glassPair() (banked 2026-06-06, PR #513)
@@ -39,7 +41,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 - **S2 — Entry drawer restyle.** `CoachingNotesModal` + `PersistencyEntryForm` modals restyle to match the v2 visual language (currently reused as-is from the legacy surface). Entry form is the manager's write path for persistency data — S2 is the natural moment to revisit the form layout, field labeling, and inline validation UX.
 
-- ~~**S3a — What-If Playground.**~~ **SHIPPED — PR #515 (`{TBD}`, HUMAN-MERGE, 2026-06-06).** Client-side-only UI over the existing `projectPersistency()` / `calculateShortfall()` engine. Two levers (New Business Planned + Reinstatements Planned). Two-tick band visualization (80% floor / 90% gate). Reset affordance. Shortfall cards for NB + NR targets. D4 lapsed-link for agent self-mode → navigates to Policy Ledger with 'lapsed' chip pre-selected. Play button unconditional on `PersRoster` (was guarded by `hasRecord`). `policyLedgerDerivation.js` gains 'lapsed' filter key (purely additive; lapsed-only, excludes NTU/denied). CLIENT-SIDE ONLY — zero writes, zero rules/CF/index changes. Suite 2505/2505; lint 0; build clean; smoke 22/22 PASS (both themes, BM + agent legs). Smoke locator fix: chip textContent includes count badge (e.g. "Lapsed0") — use `data-testid="ledger-filter-lapsed"` not text equality.
+- ~~**S3a — What-If Playground.**~~ **SHIPPED — PR #515 (`f3300f8`, HUMAN-MERGE, 2026-06-06).** Client-side-only UI over the existing `projectPersistency()` / `calculateShortfall()` engine. Two levers (New Business Planned + Reinstatements Planned). Two-tick band visualization (80% floor / 90% gate). Reset affordance. Shortfall cards for NB + NR targets. D4 lapsed-link for agent self-mode → navigates to Policy Ledger with 'lapsed' chip pre-selected. Play button unconditional on `PersRoster` (was guarded by `hasRecord`). `policyLedgerDerivation.js` gains 'lapsed' filter key (purely additive; lapsed-only, excludes NTU/denied). CLIENT-SIDE ONLY — zero writes, zero rules/CF/index changes. Suite 2505/2505; lint 0; build clean; smoke 22/22 PASS (both themes, BM + agent legs). Smoke locator fix: chip textContent includes count badge (e.g. "Lapsed0") — use `data-testid="ledger-filter-lapsed"` not text equality.
 
 - **S3b — Nudge write.** `PersistencyPlayground` "coaching" mode already connected (S1 wired; S3a ships the playground UI). S3b adds: (a) the what-if nudge write path (manager-to-agent persistency coaching note or target via the `sendComplianceNudge`-style nudge primitive), (b) share/export from the playground. Each needs its own kickoff brief. Manager suggest-a-goal also in manager-program backlog (see § Manager-program backlog below).
 
