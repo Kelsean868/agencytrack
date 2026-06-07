@@ -30,31 +30,77 @@ Screenshots: `tmp/pilot-smoke-screenshots/` (62 files)
 
 ## §2 Test-Data Census (Priority 1B)
 
-⚠ **OPERATOR — census script requires ADC credentials (blocked).**
+**Census executed: 2026-06-07 19:36 UTC — READ ONLY, no writes.**  
+Script: `scripts/census-tatillife-south-client.mjs` (Firebase client SDK, no ADC required)  
+Full output: `tmp/census-output-2026-06-07.txt`
 
-The census script at `scripts/census-tatillife-south.cjs` is ready but requires:
+### Users — 13 total
+
+| Classification | Count |
+|---|---|
+| test-artifact (auto-detected) | 7 |
+| real-account (auto-detected) | 6 |
+| ambiguous-⚠OPERATOR (see below) | 0 auto-flagged; **4 require operator review** |
+
+**test-artifact (safe to delete — matched by pattern):**
 ```
-gcloud auth application-default login
-# or: set GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account-key.json
-node scripts/census-tatillife-south.cjs
+tenants/tatillife_south/users/0nqP5LgzuybyZxXilVQsbUYl5tG3
+  email=kelsean+pr-d-smoke-3@gmail.com  role=agent  name=PR-D Smoke Agent 3
+tenants/tatillife_south/users/1wEJ1mdfcgNnHaqBG7fKsqsYPsi2
+  email=kelsean+pr-d-smoke-4@gmail.com  role=agent  name=PR-D Smoke Agent 4
+tenants/tatillife_south/users/41QngAdnslddnvSsa3dzydJLoU33
+  email=kelsean+pr-d-smoke-1@gmail.com  role=agent  name=PR-D Smoke User
+tenants/tatillife_south/users/J0j4uBqzTPcfm1IlGCPyDzo27RP2
+  email=kelsean@gmail.com  role=agent  name=Kelsean Agent
+tenants/tatillife_south/users/lesePAPzdKNmMHIHuNHzEVtRyaD2
+  email=kelsean+pr-d-smoke-2@gmail.com  role=agent  name=PR-D Smoke Agent 2
+tenants/tatillife_south/users/da0XaHhB4wTYlXDnQmAJ6TRIPTn1
+  email=kyronmarchan@gmail.com  role=sales_manager  name=Test Sales Manager
+tenants/tatillife_south/users/4GeeZbhZBwdtGOLoJoggf4MQo142
+  email=kelsean+tenantadmin@gmail.com  role=tenant_admin  name=Kyron Marchan
 ```
 
-**Known test accounts** (from directive + common patterns):
-- `kelsean@gmail.com` — agent account, should be deleted
-- Any `kelsean+*` variants (e.g. `kelsean+tenantadmin@gmail.com`)
-- Any `kyronmarchan@gmail.com` accounts
-- Any `*@agencytrack.test` smoke accounts from shakedown/test sessions
+**⚠OPERATOR — 4 accounts need your call (script classified as real-account but names suggest fixtures):**
 
-**Cleanup script** (DRAFT, dry-run default): `scripts/cleanup-tatillife-south.cjs`
+| Doc path | Email | Role | Name | Likely disposition |
+|---|---|---|---|---|
+| `tenants/tatillife_south/users/5P00quqxhrPbvfjV2wMBNr1hURJ3` | kelsean6+pr4b-prod-spot-check@gmail.com | agent | PR4b Test Agent | **test-artifact** — name is explicit |
+| `tenants/tatillife_south/users/C94hjdd6GXfdim9EfgPYAAIbDOJ2` | testagent@tatillife.com | agent | Test Agent | **test-artifact** — "Test" prefix |
+| `tenants/tatillife_south/users/x8Zfg2TI1yf8JOljqxCsJszxnx93` | branch.manager@tatillife.com | branch_manager | Test Branch Manager | **test-artifact** — "Test" prefix |
+| `tenants/tatillife_south/users/XQhG6awVgaYkCFX7gnd1OYTr9zt2` | unit.manager@tatillife.com | unit_manager | Test Unit Manager | **test-artifact** — "Test" prefix |
+
+**⚠OPERATOR — 2 accounts that may be real (leave unless you recognise them as test):**
+
+| Doc path | Email | Role | Name |
+|---|---|---|---|
+| `tenants/tatillife_south/users/6AUDnVBcdmM9pj8g6ZyIi1j1i0r2` | letitiaagent@gmail.com | agent | Letitia Agent |
+| `tenants/tatillife_south/users/SIdMIRqVTYbOIE8zuCnIXliywU93` | kelsean6@gmail.com | agent | Kegan And Peele |
+
+### Other collections — test-artifact counts
+
+| Collection | Total | test-artifact | Notes |
+|---|---|---|---|
+| submissions | 21 | 16 | All owned by kelsean@gmail.com or kelsean+tenantadmin UIDs |
+| leaderboard | 7 | 2 | |
+| notifications | 197 | 49 | 148 real notifications remain |
+| goals | 9 | 5 | |
+| unitGoals | 0 | 0 | |
+| branchGoals | 1 | 0 | Real config |
+| settlements | 0 | 0 | |
+| persistency | 2 | 1 | |
+| campaigns | 9 | 0 | All real campaigns |
+| config | 3 docs | 0 | companyMinimums + managerActivityStandards + policyPlans — all real |
+
+### Morning cleanup path (no ADC needed)
+
+⚠ OPERATOR: Review the 4 ambiguous accounts and 2 possible-real accounts above, then authorize cleanup. The `kelsean6+tenantadmin` account (`4GeeZbhZBwdtGOLoJoggf4MQo142`) holds 10 test submissions and 10 notifications — these cascade-delete when the user is removed.
+
+Census script (re-run anytime, read-only):
+```bash
+node scripts/census-tatillife-south-client.mjs
 ```
-# Step 1: Review what will be deleted
-node scripts/cleanup-tatillife-south.cjs
 
-# Step 2: Operator authorizes, then execute
-node scripts/cleanup-tatillife-south.cjs --execute
-```
-
-⚠ OPERATOR: Run census, review output, authorize cleanup before morning provisioning begins.
+Cleanup is a **separate** operator step — no automated cleanup script exists yet. Delete test accounts via Firebase Console → Authentication → find by email → delete, OR via tenant_admin UI (All Users → deactivate/delete). Firestore orphan docs (submissions, notifications, goals, persistency) under deleted UIDs may need manual purge from Firebase Console → Firestore → find docs by agentId/userId field.
 
 ---
 
@@ -235,11 +281,7 @@ Key thresholds (sample — full ruleset in source):
 - Changing the cooldown requires a code PR.
 
 ### Company Config (Firestore)
-⚠ OPERATOR: After ADC credentials are available, run:
-```
-node scripts/census-tatillife-south.cjs
-```
-The census output will confirm whether `config/companyMinimums` has any stored overrides or is using all defaults.
+Census run 2026-06-07 found `config/companyMinimums` has **8 fields** (keys: updatedAt, tenureApiFloors, updatedBy, annualApps, weeklyActivityFloors, persistency, tenureApiFloorsProvisional, annualAPI). Stored overrides exist — verify values match §4 tables above via tenant_admin → Company Config in the app.
 
 ---
 
@@ -332,24 +374,19 @@ gcloud firestore operations list --project=agencytrack-2a610 --filter="done=fals
 
 Verification: export operation appears in output. Do NOT wait for it to complete — it runs async. Proceed.
 
-### T+15: Census + Cleanup (15 min)
+### T+15: Census review + Cleanup (15 min)
+
+**Census already executed 2026-06-07** — see §2 above. Re-run to confirm current state:
 
 ```bash
-# Step 1: See what's there
-node scripts/census-tatillife-south.cjs 2>&1 | Tee-Object census-output.txt
-
-# Step 2: Review census-output.txt carefully
-# Confirm: only test/smoke accounts listed under "CLEANUP SUMMARY"
-# Confirm: no real Tatil agent names appear
-
-# Step 3: Dry-run cleanup
-node scripts/cleanup-tatillife-south.cjs
-
-# Step 4: OPERATOR authorizes — then execute
-node scripts/cleanup-tatillife-south.cjs --execute
+node scripts/census-tatillife-south-client.mjs
 ```
 
-Verification: re-run census → test UIDs should return 0 results. ⚠ OPERATOR: If any real account appears in test list, abort cleanup, adjust `TEST_PATTERNS` in `cleanup-tatillife-south.cjs`, re-dry-run.
+Review the 4 ambiguous + 2 possible-real accounts in §2 and make a call on each. Then delete confirmed test accounts:
+- Firebase Console → Authentication → search by email → Delete user
+- Firebase Console → Firestore → find orphan docs by agentId/userId → Delete
+
+Verification: re-run census → test-artifact count should be 0 (or close to 0 with only operator-approved exceptions).
 
 **Rollback:** Firebase Console → Firestore → Import → select the backup from T+10. For Auth deletions, re-run provisioning.
 
