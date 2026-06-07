@@ -53,6 +53,76 @@ No standalone hero recipe HTML was produced (analogous to `docs/design/nexus-gla
 
 ---
 
+## SettlementPanel — TT-year derivation and display (C-001 / C-002) (banked 2026-06-06, Gemini harvest)
+
+**Severity:** MEDIUM. Money-adjacent — affects which year's settlement data is shown and selected. Not money-math itself (no settlement amounts change; year display/selection is client-side only).
+
+**C-001 — Year selector default uses UTC clock.** `SettlementPanel` derives the current year via `new Date().getFullYear()` (UTC). At TT year-end (Dec 31 TT time = Jan 1 UTC), the panel defaults to next year, showing an empty settlement list instead of current-year data. Fix: replace with `getTodayTT().getFullYear()` (same `dateHelpers` TT-safe pattern as R1-A / R1-C).
+
+**C-002 — Settlement doc `year` field may use UTC date.** Settlement documents written by the manager entry path may derive `year` from `new Date()` rather than TT-safe date logic. A settlement entered on Dec 31 TT time (= Jan 1 UTC) would be stored under the wrong year. Fix: audit `settlementService.js` — wherever `year` is derived, use `getTodayTT().getFullYear()`.
+
+**C-005 rides with this PR (same dateInputs family).** `EditUserDrawer.jsx` renders a date field (join date or similar) using `new Date(dateString)`, which parses an ISO date string as UTC midnight. On TT machines (UTC-4), UTC midnight resolves to the previous calendar day (e.g., `"2026-01-01"` → displayed as "Dec 31 2025"). Fix: use `parseDateOnlyTT()` from `src/utils/dateInputs.js`. XS one-liner.
+
+**Action:** One XS PR — grep `new Date()` in `SettlementPanel.jsx`, `settlementService.js`, and `EditUserDrawer.jsx`. Each UTC-sourced year or date derivation → TT-safe equivalent. **Hard-line reminder:** if the C-002 fix would require back-correcting `year` on existing settlement docs, surface to dispatcher before proceeding — that is data-migration territory, not a client-side fix.
+
+---
+
+## Functions day — leaderboardAggregate hardening + S3b nudge CF (banked 2026-06-06, Gemini harvest)
+
+**Context:** Three function-layer items identified during the Gemini harvest (2026-06-06). Per hard-line policy and Rule 19, `functions/**` items are report-only until a dispatcher-authorized functions deploy day. These should ship together in one deploy to minimize deploy count.
+
+**Item 1 — S3b persistency nudge CF (MEDIUM, planned).** Extension of `sendComplianceNudge` for the persistency coaching nudge type. Architecture locked: mirrors the Compliance v2 S3 `compliance.plan.nudge` extension pattern (`NUDGE_CONFIG` map entry + new email template pair). Requires its own kickoff brief (S3b brief). Dispatch when brief is on `origin/main`.
+
+**Item 2 — leaderboardAggregate: empty-WriteBatch crash (MEDIUM, hard-line report-only).** The scheduled `leaderboardAggregate` Cloud Function performs a `batch.commit()` at the end of its run. When a period has zero agent submissions, the batch is empty. Some Firebase Admin SDK versions throw on `commit()` of a zero-ops batch — the function crashes silently (no leaderboard update; no user-visible error). Fix pattern: guard `if (batch._ops?.length > 0)` or equivalent before commit. **Hard-line: `functions/**` — report only until dispatcher authorizes.**
+
+**Item 3 — leaderboardAggregate: early-January year boundary (MEDIUM, hard-line report-only).** The function's year derivation for the aggregation window uses `new Date().getFullYear()` (UTC). At TT year-end, the function computes against next year's aggregates before TT midnight, producing a spurious empty leaderboard for ~4 hours on Jan 1 TT. Fix: TT-safe year derivation (R1-A/R1-C pattern). **Hard-line: `functions/**` — report only until dispatcher authorizes.**
+
+**Dispatch sequence:** draft S3b brief → dispatcher authorizes functions day → one deploy covers items 1 + 2 + 3.
+
+---
+
+## GoalDecompositionTab — sort-stability + NaN guard (banked 2026-06-06, Gemini harvest)
+
+**Severity:** MEDIUM-LOW. Money-math adjacent — the tab feeds the "Save as my goal" write path (Commission v2 S3). A NaN in a stage value would display as "NaN" in the TTD chip and could corrupt the CTA confirm dialog's displayed figure. Requires dispatcher authorization before touching (money-math engine adjacent).
+
+**Sort-stability.** The 7-stage ladder is built from a stages array sorted by `stageIndex`. If two stages have equal sort keys (schema migration, future stage added without an explicit index), order is non-deterministic across JS engines. Fix: stable sort with a secondary tiebreak on a stable field (e.g., `stageId.localeCompare(stageId2)`).
+
+**NaN guard.** Stage value computations divide by user-controlled inputs (`commissionRate`, `avgPolicyAPI`). If either denominator is 0 or missing, the division produces `NaN` or `Infinity`, which renders as `"NaN"` in the TTD-formatted chip and in the confirm dialog's "new API" display. Fix: guard each division — display `—` fallback label when denominator is zero.
+
+**Action (when authorized):** Targeted edits in `GoalDecompositionTab.jsx` / `commissionAnchor.js`. No rules, no writes, no schema changes. Phase 1 must confirm the denominator guard does not alter the "Save as my goal" write behavior for valid (non-zero) inputs.
+
+---
+
+## LoginScreen — responsive backdrop on narrow viewports (banked 2026-06-06, Gemini harvest)
+
+**Severity:** LOW. Cosmetic only — operator judgment required before any fix.
+
+**Context:** The SVG pattern background in `LoginScreen.jsx` (`src/components/auth/LoginScreen.jsx`) is sized as a fixed-dimension SVG. On narrow-viewport phones (< 375px width), the decorative geometric pattern may clip or leave raw `bg-color` bands at screen edges rather than filling the full viewport.
+
+**Action:** Operator reviews on 320px and 375px viewports (Chrome DevTools responsive mode, or physical device). If the gap is visually significant: clip or scale the SVG `viewBox` to `100vw × 100vh`. If negligible at pilot-target devices (iPhone SE upward, ~375px+), mark no-fix and close this FU. No urgency — login page is fully functional.
+
+---
+
+## Track J resume — PR #398 must merge before subsequent redesign slices (banked 2026-06-06, morning ruling)
+
+**Context:** PR #398 (`redesign/production-ranking-hook`) introduces `useProductionRanking` + `rankForLeaderboard` — the client-side production-ranked data hook every Track J redesign screen depends on. The morning audit (2026-06-06) confirmed `src/hooks/useProductionRanking.js` and `src/utils/rankForLeaderboard.js` do NOT exist on current `main`; they exist only on `redesign/production-ranking-hook`. The PR is OPEN and NOT superseded — shipped leaderboard work (points-based hook) and PR #398 (new production-ranked hook) are distinct; Track J redesign slices require the latter.
+
+**Ruling (2026-06-06):** HOLD OPEN — merge PR #398 before dispatching any Track J redesign slice that depends on production-ranked data. No CC work required; the branch is clean.
+
+---
+
+## #519 Gemini G-1 — CSS var scope claim (disposed DISAGREE, banked 2026-06-06)
+
+**Context:** PR #519 (`fix/nexus-glass-s2-ink-guard`) received a Gemini Code Assist review. Finding G-1 claimed that `Chip` component instances in `CommissionAnchorStrip`, `SuggestedWeekCard`, and `PersRealityBar` were "used in contexts lacking the required `--hero-*` CSS variables," proposing a `hero` boolean prop on `Chip` to apply the vars conditionally.
+
+**Disposition: DISAGREE.** CSS custom properties defined on `:root` and `.dark` are part of the document cascade and resolve for any element in the DOM tree — there is no "lacking context." The `--hero-*` vars are always available. Gemini conflated CSS cascade scope (global) with component prop scope (local). The `hero` prop suggestion adds complexity without fixing a real CSS resolution failure.
+
+**Underlying design-system question (out-of-scope for #519, banked for future):** In the no-goal state, `CommissionAnchorStrip` renders a `Chip` using `hero-ink` tokens against a `bg-card` surface (no glass pane active). The hero tokens are tuned for the deep-tinted glass surface; `hero-ink` on `card` background is a different contrast pair that has not been explicitly axe-scanned. Predates S2; not a production bug at pilot scale. Flag for an axe scan when the no-goal state is redesigned.
+
+**No action required on the CSS var scope claim.** G-1 resolved DISAGREE; no follow-up PR needed for this finding.
+
+---
+
 ## Persistency Mgr v2 — remaining slices (banked 2026-06-05 from Persistency Mgr v2 S1, PR #505)
 
 **Context:** S1 (PR #505) shipped the manager Persistency panel redesign — `PersRealityBar` (aggregate %, 6-month sparkline, stats), `PersAtRiskBook` (exception-first agents below 80%; celebration arm; Coach → existing `CoachingNotesModal`), and `PersRoster` (two-tick band track at 80%/90%, source badge, Edit + Play). Read/derive only — zero writes, rules changes, Cloud Functions, or index changes. `PersistencyAgentRow.jsx` deleted (replaced). `computeBarStats()` + `PERS_FLOOR` / `PERS_GATE` exported from `src/lib/persistency/calculations.js`.
