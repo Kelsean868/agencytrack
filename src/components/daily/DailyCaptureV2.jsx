@@ -7,6 +7,7 @@ import {
   getDailyEntriesForWeek,
 } from '../../services/dailyActivityService';
 import { createEmptyDailyEntry, getSundayOf } from '../../lib/schema/dailyActivity';
+import { getTodayTT } from '../../utils/dateInputs';
 import {
   computeLumpsumCredit,
   computeLumpsumCommission,
@@ -18,14 +19,6 @@ import { formatCurrency } from '../../utils/formatters';
 import { deriveCountStripChips } from './DailyCaptureV2.helpers';
 
 // ── Local helpers ──────────────────────────────────────────────────────────
-
-function getTodayLocalDate() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
 
 function weekdayLong(dateStr) {
   const d = new Date(dateStr + 'T12:00:00Z');
@@ -212,7 +205,7 @@ function CountStrip({ chips, loading }) {
 export default function DailyCaptureV2({ onClose }) {
   const { user, userProfile, tenantId } = useAuth();
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
-  const today = useMemo(() => getTodayLocalDate(), []);
+  const today = useMemo(() => getTodayTT(), []);
   const weekStarting = useMemo(() => getSundayOf(today), [today]);
 
   const [data, setData] = useState(() =>

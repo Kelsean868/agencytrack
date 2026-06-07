@@ -11,14 +11,7 @@ import {
 } from '../../lib/schema/weeklyReport.computations';
 import { MIN_PPP_INCREASE } from '../../lib/schema/weeklyReport';
 import { formatCurrency } from '../../utils/formatters';
-
-function getTodayLocalDate() {
-  const d = new Date();
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}`;
-}
+import { getTodayTT } from '../../utils/dateInputs';
 
 function formatDateLong(dateStr) {
   const d = new Date(dateStr + 'T12:00:00Z');
@@ -33,7 +26,7 @@ function formatDateLong(dateStr) {
 export default function DailyEntryModal({ onClose }) {
   const { user, userProfile, tenantId } = useAuth();
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
-  const today = useMemo(() => getTodayLocalDate(), []);
+  const today = useMemo(() => getTodayTT(), []);
 
   const [data, setData] = useState(() =>
     createEmptyDailyEntry(today, user?.uid ?? '', agentName)
