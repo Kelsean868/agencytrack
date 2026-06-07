@@ -93,7 +93,7 @@ When multi-section components are refactored to extract hero sub-sections into s
 
 ## Graphify integration — shipped PR #536 (banked 2026-06-07)
 
-**Source:** graphify repo integration brief execution (PR #536, `a5582e1`). Graph built: 13,125 nodes / 17,369 edges / 1,026 communities (AST code graph only — semantic extraction of docs/images not run; `graphify query` / `graphify path` / `graphify explain` are usable, but doc concepts from `.md` / `.html` / PDFs are absent).
+**Source:** graphify repo integration brief execution (PR #536, `a5582e1`). Graph built: 13,125 nodes / 17,369 edges / 1,026 communities at initial commit. **Amended PR #TBD (`{TBD}`):** `.graphifyignore` added excluding `verification/a11y/` (axe archive key-nodes) + `tmp/`; graph refreshed to 13,223 nodes / 17,371 edges / 994 communities. AST code graph + cached semantic extraction of docs/images — `graphify query` / `graphify path` / `graphify explain` are usable.
 
 ### setupBypassSession SPOF (LOW, informational)
 
