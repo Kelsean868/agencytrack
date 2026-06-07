@@ -4414,19 +4414,20 @@ Banked closed: Item 5 (night queue, test-only), 2026-06-05. Resolved: Commission
 
 **Status: INCOMPLETE — RE-OPENED.** Local 20× green but CI-environment timing differs; next attempt must reproduce under CI conditions (`CI=true`, constrained workers) before fixing.
 
-**Observed behavior (four occurrences):**
+**Observed behavior (five occurrences):**
 1. During the settlements security dispatch full-suite run — 1 failure, isolated re-run clean.
 2. During the commission-v2-s2 dispatch full-suite run — 1 failure, isolated re-run clean.
 3. During the commission-v2-s3 dispatch full-suite run — 1 failure (2425/2426), isolated re-run and second full-suite re-run both clean (2426/2426).
 4. **CI run `27063421668` (post-#510 push, 2026-06-06).** First run fail; re-run (`gh run rerun --failed`) passed. Pattern: flapped on CI after PR #502 supposedly fixed it.
+5. **CI run `27094401256` (PR #538, 2026-06-07).** Config-only diff (`.graphifyignore` + `graphify-out/` only — zero `src/` changes). Confirms the flake is fully environmental, not triggered by any source edit.
 
-All four: fails in a parallel full-suite context (`npx vitest run` or CI constrained workers), passes in isolation. The `await act()` boundary is insufficient — test still races CI environment's higher contention.
+All five: fails in a parallel full-suite context (`npx vitest run` or CI constrained workers), passes in isolation. The `await act()` boundary is insufficient — test still races CI environment's higher contention.
 
 **Fix shape (revised):** The previous fix (act-wrapping clicks) was insufficient. Next attempt must run the full suite under `CI=true` + constrained workers locally to reproduce the failure, then apply explicit `waitFor(() => expect(screen.getByTestId(...)).toBeInTheDocument())` assertions after every async state change. Reproducing under CI conditions first is mandatory — blind act-wrapping already failed once.
 
-**Priority: MEDIUM.** Four occurrences; passes on re-run so it's an intermittent investigation cost, not a hard blocker. Dispatch when reproduction path under CI conditions is clear.
+**Priority: MEDIUM.** Five occurrences; passes on re-run so it's an intermittent investigation cost, not a hard blocker. Dispatch when reproduction path under CI conditions is clear.
 
-Banked: commission-v2-s2 dispatch, 2026-06-05. Re-opened: post-merge fill for PR #509 + PR #510, 2026-06-06 (4th CI occurrence).
+Banked: commission-v2-s2 dispatch, 2026-06-05. Re-opened: post-merge fill for PR #509 + PR #510, 2026-06-06 (4th CI occurrence). 5th occurrence: PR #538, 2026-06-07 (config-only diff, unrelated).
 
 ---
 

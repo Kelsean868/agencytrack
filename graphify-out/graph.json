@@ -23731,7 +23731,7 @@
       "source_file": "scripts/verification/lib/walk-helpers.mjs",
       "source_location": "L314",
       "id": "lib_walk_helpers_runboththemes",
-      "community": 85,
+      "community": 236,
       "norm_label": "runboththemes()"
     },
     {
@@ -33736,7 +33736,7 @@
       "source_file": "src/components/admin/AwardsRulesetPanel.jsx",
       "source_location": "L1",
       "id": "admin_awardsrulesetpanel",
-      "community": 315,
+      "community": 263,
       "norm_label": "awardsrulesetpanel.jsx"
     },
     {
@@ -33745,7 +33745,7 @@
       "source_file": "src/components/admin/AwardsRulesetPanel.jsx",
       "source_location": "L7",
       "id": "admin_awardsrulesetpanel_scalar_groups",
-      "community": 315,
+      "community": 263,
       "norm_label": "scalar_groups"
     },
     {
@@ -33754,7 +33754,7 @@
       "source_file": "src/components/admin/AwardsRulesetPanel.jsx",
       "source_location": "L178",
       "id": "admin_awardsrulesetpanel_array_group_schemas",
-      "community": 315,
+      "community": 263,
       "norm_label": "array_group_schemas"
     },
     {
@@ -33763,7 +33763,7 @@
       "source_file": "src/components/admin/AwardsRulesetPanel.jsx",
       "source_location": "L240",
       "id": "admin_awardsrulesetpanel_getat",
-      "community": 315,
+      "community": 263,
       "norm_label": "getat()"
     },
     {
@@ -33772,7 +33772,7 @@
       "source_file": "src/components/admin/AwardsRulesetPanel.jsx",
       "source_location": "L244",
       "id": "admin_awardsrulesetpanel_setat",
-      "community": 315,
+      "community": 263,
       "norm_label": "setat()"
     },
     {
@@ -33781,7 +33781,7 @@
       "source_file": "src/components/admin/AwardsRulesetPanel.jsx",
       "source_location": "L254",
       "id": "admin_awardsrulesetpanel_initformstate",
-      "community": 315,
+      "community": 263,
       "norm_label": "initformstate()"
     },
     {
@@ -33790,7 +33790,7 @@
       "source_file": "src/components/admin/AwardsRulesetPanel.jsx",
       "source_location": "L269",
       "id": "admin_awardsrulesetpanel_initarraystate",
-      "community": 315,
+      "community": 263,
       "norm_label": "initarraystate()"
     },
     {
@@ -33799,7 +33799,7 @@
       "source_file": "src/components/admin/AwardsRulesetPanel.jsx",
       "source_location": "L285",
       "id": "admin_awardsrulesetpanel_buildpayload",
-      "community": 315,
+      "community": 263,
       "norm_label": "buildpayload()"
     },
     {
@@ -33808,7 +33808,7 @@
       "source_file": "src/components/admin/AwardsRulesetPanel.jsx",
       "source_location": "L328",
       "id": "admin_awardsrulesetpanel_fieldrow",
-      "community": 315,
+      "community": 263,
       "norm_label": "fieldrow()"
     },
     {
@@ -33817,7 +33817,7 @@
       "source_file": "src/components/admin/AwardsRulesetPanel.jsx",
       "source_location": "L381",
       "id": "admin_awardsrulesetpanel_awardsrulesetpanel",
-      "community": 315,
+      "community": 263,
       "norm_label": "awardsrulesetpanel()"
     },
     {
@@ -33826,7 +33826,7 @@
       "source_file": "src/components/admin/BranchEditorModal.jsx",
       "source_location": "L1",
       "id": "admin_brancheditormodal",
-      "community": 336,
+      "community": 50,
       "norm_label": "brancheditormodal.jsx"
     },
     {
@@ -33835,7 +33835,7 @@
       "source_file": "src/components/admin/BranchEditorModal.jsx",
       "source_location": "L38",
       "id": "admin_brancheditormodal_focusablewithin",
-      "community": 336,
+      "community": 50,
       "norm_label": "focusablewithin()"
     },
     {
@@ -33844,7 +33844,7 @@
       "source_file": "src/components/admin/BranchEditorModal.jsx",
       "source_location": "L50",
       "id": "admin_brancheditormodal_brancheditormodal",
-      "community": 336,
+      "community": 50,
       "norm_label": "brancheditormodal()"
     },
     {
@@ -33889,7 +33889,7 @@
       "source_file": "src/components/admin/BranchesPanel.jsx",
       "source_location": "L1",
       "id": "admin_branchespanel",
-      "community": 336,
+      "community": 50,
       "norm_label": "branchespanel.jsx"
     },
     {
@@ -33907,7 +33907,7 @@
       "source_file": "src/components/admin/BulkImportGoalsModal.jsx",
       "source_location": "L1",
       "id": "admin_bulkimportgoalsmodal",
-      "community": 50,
+      "community": 315,
       "norm_label": "bulkimportgoalsmodal.jsx"
     },
     {
@@ -33916,7 +33916,7 @@
       "source_file": "src/components/admin/BulkImportGoalsModal.jsx",
       "source_location": "L40",
       "id": "admin_bulkimportgoalsmodal_statuspill",
-      "community": 50,
+      "community": 315,
       "norm_label": "statuspill()"
     },
     {
@@ -33925,7 +33925,7 @@
       "source_file": "src/components/admin/BulkImportGoalsModal.jsx",
       "source_location": "L62",
       "id": "admin_bulkimportgoalsmodal_stepindicator",
-      "community": 50,
+      "community": 315,
       "norm_label": "stepindicator()"
     },
     {
@@ -33934,7 +33934,7 @@
       "source_file": "src/components/admin/BulkImportGoalsModal.jsx",
       "source_location": "L99",
       "id": "admin_bulkimportgoalsmodal_bulkimportgoalsmodal",
-      "community": 50,
+      "community": 315,
       "norm_label": "bulkimportgoalsmodal()"
     },
     {
@@ -33943,7 +33943,7 @@
       "source_file": "src/components/admin/BulkImportGoalsModal.jsx",
       "source_location": "L627",
       "id": "admin_bulkimportgoalsmodal_summarystats",
-      "community": 50,
+      "community": 315,
       "norm_label": "summarystats()"
     },
     {
@@ -33952,7 +33952,7 @@
       "source_file": "src/components/admin/BulkImportGoalsModal.jsx",
       "source_location": "L651",
       "id": "admin_bulkimportgoalsmodal_failurelist",
-      "community": 50,
+      "community": 315,
       "norm_label": "failurelist()"
     },
     {
@@ -34195,7 +34195,7 @@
       "source_file": "src/components/admin/RoleDistributionCard.jsx",
       "source_location": "L1",
       "id": "admin_roledistributioncard",
-      "community": 336,
+      "community": 263,
       "norm_label": "roledistributioncard.jsx"
     },
     {
@@ -34204,7 +34204,7 @@
       "source_file": "src/components/admin/RoleDistributionCard.jsx",
       "source_location": "L19",
       "id": "admin_roledistributioncard_roles",
-      "community": 336,
+      "community": 263,
       "norm_label": "roles"
     },
     {
@@ -34213,7 +34213,7 @@
       "source_file": "src/components/admin/RoleDistributionCard.jsx",
       "source_location": "L27",
       "id": "admin_roledistributioncard_roledistributioncard",
-      "community": 336,
+      "community": 263,
       "norm_label": "roledistributioncard()"
     },
     {
@@ -34276,7 +34276,7 @@
       "source_file": "src/components/admin/__tests__/BranchesPanel.test.jsx",
       "source_location": "L1",
       "id": "tests_branchespanel_test",
-      "community": 336,
+      "community": 50,
       "norm_label": "branchespanel.test.jsx"
     },
     {
@@ -34285,7 +34285,7 @@
       "source_file": "src/components/admin/__tests__/BranchesPanel.test.jsx",
       "source_location": "L6",
       "id": "tests_branchespanel_test_hoisted",
-      "community": 336,
+      "community": 50,
       "norm_label": "hoisted"
     },
     {
@@ -34294,7 +34294,7 @@
       "source_file": "src/components/admin/__tests__/BranchesPanel.test.jsx",
       "source_location": "L55",
       "id": "tests_branchespanel_test_branch_active",
-      "community": 336,
+      "community": 50,
       "norm_label": "branch_active"
     },
     {
@@ -34303,7 +34303,7 @@
       "source_file": "src/components/admin/__tests__/BranchesPanel.test.jsx",
       "source_location": "L59",
       "id": "tests_branchespanel_test_branch_inactive",
-      "community": 336,
+      "community": 50,
       "norm_label": "branch_inactive"
     },
     {
@@ -34312,7 +34312,7 @@
       "source_file": "src/components/admin/__tests__/BranchesPanel.test.jsx",
       "source_location": "L63",
       "id": "tests_branchespanel_test_managers",
-      "community": 336,
+      "community": 50,
       "norm_label": "managers"
     },
     {
@@ -34321,7 +34321,7 @@
       "source_file": "src/components/admin/__tests__/BranchesPanel.test.jsx",
       "source_location": "L64",
       "id": "tests_branchespanel_test_users",
-      "community": 336,
+      "community": 50,
       "norm_label": "users"
     },
     {
@@ -34330,7 +34330,7 @@
       "source_file": "src/components/admin/__tests__/BranchesPanel.test.jsx",
       "source_location": "L70",
       "id": "tests_branchespanel_test_setup",
-      "community": 336,
+      "community": 50,
       "norm_label": "setup()"
     },
     {
@@ -34402,7 +34402,7 @@
       "source_file": "src/components/admin/__tests__/RoleDistributionCard.test.jsx",
       "source_location": "L1",
       "id": "tests_roledistributioncard_test",
-      "community": 336,
+      "community": 263,
       "norm_label": "roledistributioncard.test.jsx"
     },
     {
@@ -34411,7 +34411,7 @@
       "source_file": "src/components/admin/__tests__/RoleDistributionCard.test.jsx",
       "source_location": "L7",
       "id": "tests_roledistributioncard_test_users",
-      "community": 336,
+      "community": 263,
       "norm_label": "users"
     },
     {
@@ -37030,7 +37030,7 @@
       "source_file": "src/components/dashboard/TenantAdminDashboard.jsx",
       "source_location": "L1",
       "id": "dashboard_tenantadmindashboard",
-      "community": 336,
+      "community": 263,
       "norm_label": "tenantadmindashboard.jsx"
     },
     {
@@ -37039,7 +37039,7 @@
       "source_file": "src/components/dashboard/TenantAdminDashboard.jsx",
       "source_location": "L43",
       "id": "dashboard_tenantadmindashboard_nav_items",
-      "community": 336,
+      "community": 263,
       "norm_label": "nav_items"
     },
     {
@@ -37048,7 +37048,7 @@
       "source_file": "src/components/dashboard/TenantAdminDashboard.jsx",
       "source_location": "L54",
       "id": "dashboard_tenantadmindashboard_bottom_nav",
-      "community": 336,
+      "community": 263,
       "norm_label": "bottom_nav"
     },
     {
@@ -37057,7 +37057,7 @@
       "source_file": "src/components/dashboard/TenantAdminDashboard.jsx",
       "source_location": "L62",
       "id": "dashboard_tenantadmindashboard_statcard",
-      "community": 336,
+      "community": 263,
       "norm_label": "statcard()"
     },
     {
@@ -37228,7 +37228,7 @@
       "source_file": "src/components/dashboard/__tests__/TenantAdminDashboard.test.jsx",
       "source_location": "L1",
       "id": "tests_tenantadmindashboard_test",
-      "community": 336,
+      "community": 263,
       "norm_label": "tenantadmindashboard.test.jsx"
     },
     {
@@ -40135,7 +40135,7 @@
       "source_file": "src/components/manager/ManagerWarTab.jsx",
       "source_location": "L1",
       "id": "manager_managerwartab",
-      "community": 910,
+      "community": 39,
       "norm_label": "managerwartab.jsx"
     },
     {
@@ -40144,7 +40144,7 @@
       "source_file": "src/components/manager/ManagerWarTab.jsx",
       "source_location": "L12",
       "id": "manager_managerwartab_default_form",
-      "community": 910,
+      "community": 39,
       "norm_label": "default_form"
     },
     {
@@ -40162,7 +40162,7 @@
       "source_file": "src/components/manager/ManagerWarTab.jsx",
       "source_location": "L380",
       "id": "manager_managerwartab_actualtarget",
-      "community": 910,
+      "community": 39,
       "norm_label": "actualtarget()"
     },
     {
@@ -40171,7 +40171,7 @@
       "source_file": "src/components/manager/ManagerWarTab.jsx",
       "source_location": "L400",
       "id": "manager_managerwartab_boolstandardbadge",
-      "community": 910,
+      "community": 39,
       "norm_label": "boolstandardbadge()"
     },
     {
@@ -40180,7 +40180,7 @@
       "source_file": "src/components/manager/ManagerWarTab.jsx",
       "source_location": "L415",
       "id": "manager_managerwartab_numericfield",
-      "community": 910,
+      "community": 39,
       "norm_label": "numericfield()"
     },
     {
@@ -40189,7 +40189,7 @@
       "source_file": "src/components/manager/ManagerWarTab.jsx",
       "source_location": "L445",
       "id": "manager_managerwartab_togglefield",
-      "community": 910,
+      "community": 39,
       "norm_label": "togglefield()"
     },
     {
@@ -42709,7 +42709,7 @@
       "source_file": "src/components/shell/MobileNavDrawer.jsx",
       "source_location": "L1",
       "id": "shell_mobilenavdrawer",
-      "community": 50,
+      "community": 82,
       "norm_label": "mobilenavdrawer.jsx"
     },
     {
@@ -42718,7 +42718,7 @@
       "source_file": "src/components/shell/MobileNavDrawer.jsx",
       "source_location": "L9",
       "id": "shell_mobilenavdrawer_mobilenavdrawer",
-      "community": 50,
+      "community": 82,
       "norm_label": "mobilenavdrawer()"
     },
     {
@@ -43861,7 +43861,7 @@
       "source_file": "src/components/wizard/__tests__/WizardFormV2RetirementR1.test.jsx",
       "source_location": "L1",
       "id": "tests_wizardformv2retirementr1_test",
-      "community": 530,
+      "community": 9,
       "norm_label": "wizardformv2retirementr1.test.jsx"
     },
     {
@@ -43870,7 +43870,7 @@
       "source_file": "src/components/wizard/__tests__/WizardFormV2RetirementR1.test.jsx",
       "source_location": "L21",
       "id": "tests_wizardformv2retirementr1_test_hoisted",
-      "community": 530,
+      "community": 9,
       "norm_label": "hoisted"
     },
     {
@@ -43879,7 +43879,7 @@
       "source_file": "src/components/wizard/__tests__/WizardFormV2RetirementR1.test.jsx",
       "source_location": "L65",
       "id": "tests_wizardformv2retirementr1_test_openwizard",
-      "community": 530,
+      "community": 9,
       "norm_label": "openwizard()"
     },
     {
@@ -43888,7 +43888,7 @@
       "source_file": "src/components/wizard/__tests__/WizardFormV2RetirementR1.test.jsx",
       "source_location": "L70",
       "id": "tests_wizardformv2retirementr1_test_next",
-      "community": 530,
+      "community": 9,
       "norm_label": "next()"
     },
     {
@@ -44878,7 +44878,7 @@
       "source_file": "src/firebase.js",
       "source_location": "L22",
       "id": "src_firebase_auth",
-      "community": 3,
+      "community": 20,
       "norm_label": "auth"
     },
     {
@@ -47344,7 +47344,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L1",
       "id": "services_branchservice",
-      "community": 336,
+      "community": 50,
       "norm_label": "branchservice.js"
     },
     {
@@ -47353,7 +47353,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L35",
       "id": "services_branchservice_branchescollection",
-      "community": 336,
+      "community": 50,
       "norm_label": "branchescollection()"
     },
     {
@@ -47362,7 +47362,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L39",
       "id": "services_branchservice_branchdoc",
-      "community": 336,
+      "community": 50,
       "norm_label": "branchdoc()"
     },
     {
@@ -47371,7 +47371,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L43",
       "id": "services_branchservice_normalisename",
-      "community": 336,
+      "community": 50,
       "norm_label": "normalisename()"
     },
     {
@@ -47380,7 +47380,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L47",
       "id": "services_branchservice_validatename",
-      "community": 336,
+      "community": 50,
       "norm_label": "validatename()"
     },
     {
@@ -47389,7 +47389,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L58",
       "id": "services_branchservice_namekey",
-      "community": 336,
+      "community": 50,
       "norm_label": "namekey()"
     },
     {
@@ -47398,7 +47398,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L62",
       "id": "services_branchservice_findactivebyname",
-      "community": 336,
+      "community": 50,
       "norm_label": "findactivebyname()"
     },
     {
@@ -47407,7 +47407,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L77",
       "id": "services_branchservice_listbranches",
-      "community": 336,
+      "community": 50,
       "norm_label": "listbranches()"
     },
     {
@@ -47416,7 +47416,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L88",
       "id": "services_branchservice_getbranch",
-      "community": 336,
+      "community": 50,
       "norm_label": "getbranch()"
     },
     {
@@ -47425,7 +47425,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L99",
       "id": "services_branchservice_createbranch",
-      "community": 336,
+      "community": 50,
       "norm_label": "createbranch()"
     },
     {
@@ -47434,7 +47434,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L127",
       "id": "services_branchservice_updatebranch",
-      "community": 336,
+      "community": 50,
       "norm_label": "updatebranch()"
     },
     {
@@ -47443,7 +47443,7 @@
       "source_file": "src/services/branchService.js",
       "source_location": "L156",
       "id": "services_branchservice_setbranchactive",
-      "community": 336,
+      "community": 50,
       "norm_label": "setbranchactive()"
     },
     {
@@ -47695,7 +47695,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L1",
       "id": "services_goalsimportservice",
-      "community": 50,
+      "community": 315,
       "norm_label": "goalsimportservice.js"
     },
     {
@@ -47704,7 +47704,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L47",
       "id": "services_goalsimportservice_required_headers",
-      "community": 50,
+      "community": 315,
       "norm_label": "required_headers"
     },
     {
@@ -47713,7 +47713,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L48",
       "id": "services_goalsimportservice_known_headers",
-      "community": 50,
+      "community": 315,
       "norm_label": "known_headers"
     },
     {
@@ -47722,7 +47722,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L59",
       "id": "services_goalsimportservice_parsecsv",
-      "community": 50,
+      "community": 315,
       "norm_label": "parsecsv()"
     },
     {
@@ -47731,7 +47731,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L77",
       "id": "services_goalsimportservice_trim",
-      "community": 50,
+      "community": 315,
       "norm_label": "trim()"
     },
     {
@@ -47740,7 +47740,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L81",
       "id": "services_goalsimportservice_ispositivenumber",
-      "community": 50,
+      "community": 315,
       "norm_label": "ispositivenumber()"
     },
     {
@@ -47749,7 +47749,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L99",
       "id": "services_goalsimportservice_validaterow",
-      "community": 50,
+      "community": 315,
       "norm_label": "validaterow()"
     },
     {
@@ -47758,7 +47758,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L163",
       "id": "services_goalsimportservice_prepareimport",
-      "community": 50,
+      "community": 315,
       "norm_label": "prepareimport()"
     },
     {
@@ -47767,7 +47767,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L241",
       "id": "services_goalsimportservice_runimport",
-      "community": 50,
+      "community": 315,
       "norm_label": "runimport()"
     },
     {
@@ -47776,7 +47776,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L302",
       "id": "services_goalsimportservice_builderrorcsv",
-      "community": 50,
+      "community": 315,
       "norm_label": "builderrorcsv()"
     },
     {
@@ -47785,7 +47785,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L349",
       "id": "services_goalsimportservice_buildtemplatecsv",
-      "community": 50,
+      "community": 315,
       "norm_label": "buildtemplatecsv()"
     },
     {
@@ -47794,7 +47794,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L369",
       "id": "services_goalsimportservice_downloadcsv",
-      "community": 50,
+      "community": 315,
       "norm_label": "downloadcsv()"
     },
     {
@@ -47803,7 +47803,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L390",
       "id": "services_goalsimportservice_generatebatchid",
-      "community": 50,
+      "community": 315,
       "norm_label": "generatebatchid()"
     },
     {
@@ -47812,7 +47812,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L409",
       "id": "services_goalsimportservice_usingdefaultminimums",
-      "community": 50,
+      "community": 315,
       "norm_label": "usingdefaultminimums()"
     },
     {
@@ -47821,7 +47821,7 @@
       "source_file": "src/services/goalsImportService.js",
       "source_location": "L414",
       "id": "services_goalsimportservice_limits",
-      "community": 50,
+      "community": 315,
       "norm_label": "limits"
     },
     {
@@ -51385,7 +51385,7 @@
       "source_file": "src/utils/validators.js",
       "source_location": "L1",
       "id": "src_utils_validators_js_utils_validators",
-      "community": 910,
+      "community": 39,
       "norm_label": "validators.js"
     },
     {
@@ -51394,7 +51394,7 @@
       "source_file": "src/utils/validators.js",
       "source_location": "L7",
       "id": "src_utils_validators_js_utils_validators_isvalidemail",
-      "community": 910,
+      "community": 39,
       "norm_label": "isvalidemail()"
     },
     {
@@ -51412,7 +51412,7 @@
       "source_file": "src/utils/validators.js",
       "source_location": "L18",
       "id": "utils_validators_getrecentsundays",
-      "community": 910,
+      "community": 39,
       "norm_label": "getrecentsundays()"
     },
     {
@@ -51421,7 +51421,7 @@
       "source_file": "src/utils/validators.js",
       "source_location": "L35",
       "id": "utils_validators_formatdatelabel",
-      "community": 910,
+      "community": 39,
       "norm_label": "formatdatelabel()"
     },
     {
@@ -54121,7 +54121,7 @@
       "source_file": "verification/e3-persistency/results.json",
       "source_location": "L5",
       "id": "e3_persistency_results_checks",
-      "community": 469,
+      "community": 508,
       "norm_label": "checks"
     },
     {
@@ -58378,7 +58378,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L18",
       "id": "pr_d_email_smoke_results_results_s1_b_no_client_reset_email",
-      "community": 266,
+      "community": 553,
       "norm_label": "s1-b-no-client-reset-email"
     },
     {
@@ -58387,7 +58387,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L19",
       "id": "pr_d_email_smoke_results_s1_b_no_client_reset_email_label",
-      "community": 266,
+      "community": 553,
       "norm_label": "label"
     },
     {
@@ -58396,7 +58396,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L20",
       "id": "pr_d_email_smoke_results_s1_b_no_client_reset_email_pass",
-      "community": 266,
+      "community": 553,
       "norm_label": "pass"
     },
     {
@@ -58495,7 +58495,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L34",
       "id": "pr_d_email_smoke_results_results_s2_b_step3_queued_copy",
-      "community": 553,
+      "community": 266,
       "norm_label": "s2-b-step3-queued-copy"
     },
     {
@@ -58504,7 +58504,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L35",
       "id": "pr_d_email_smoke_results_s2_b_step3_queued_copy_label",
-      "community": 553,
+      "community": 266,
       "norm_label": "label"
     },
     {
@@ -58513,7 +58513,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L36",
       "id": "pr_d_email_smoke_results_s2_b_step3_queued_copy_pass",
-      "community": 553,
+      "community": 266,
       "norm_label": "pass"
     },
     {
@@ -58522,7 +58522,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L38",
       "id": "pr_d_email_smoke_results_results_s2_c_step4_created_3",
-      "community": 555,
+      "community": 266,
       "norm_label": "s2-c-step4-created-3"
     },
     {
@@ -58531,7 +58531,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L39",
       "id": "pr_d_email_smoke_results_s2_c_step4_created_3_label",
-      "community": 555,
+      "community": 266,
       "norm_label": "label"
     },
     {
@@ -58540,7 +58540,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L40",
       "id": "pr_d_email_smoke_results_s2_c_step4_created_3_pass",
-      "community": 555,
+      "community": 266,
       "norm_label": "pass"
     },
     {
@@ -58549,7 +58549,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L42",
       "id": "pr_d_email_smoke_results_results_s2_d_no_failure_list",
-      "community": 556,
+      "community": 266,
       "norm_label": "s2-d-no-failure-list"
     },
     {
@@ -58558,7 +58558,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L43",
       "id": "pr_d_email_smoke_results_s2_d_no_failure_list_label",
-      "community": 556,
+      "community": 266,
       "norm_label": "label"
     },
     {
@@ -58567,7 +58567,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L44",
       "id": "pr_d_email_smoke_results_s2_d_no_failure_list_pass",
-      "community": 556,
+      "community": 266,
       "norm_label": "pass"
     },
     {
@@ -58846,7 +58846,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L81",
       "id": "pr_d_email_smoke_results_results_s3_c_subject_valid",
-      "community": 266,
+      "community": 530,
       "norm_label": "s3-c-subject-valid"
     },
     {
@@ -58855,7 +58855,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L82",
       "id": "pr_d_email_smoke_results_s3_c_subject_valid_label",
-      "community": 266,
+      "community": 530,
       "norm_label": "label"
     },
     {
@@ -58864,7 +58864,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L83",
       "id": "pr_d_email_smoke_results_s3_c_subject_valid_pass",
-      "community": 266,
+      "community": 530,
       "norm_label": "pass"
     },
     {
@@ -58873,7 +58873,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L84",
       "id": "pr_d_email_smoke_results_s3_c_subject_valid_subject",
-      "community": 266,
+      "community": 530,
       "norm_label": "subject"
     },
     {
@@ -58936,7 +58936,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L93",
       "id": "pr_d_email_smoke_results_results_s4_deactivate_pr_d_smoke_1",
-      "community": 266,
+      "community": 555,
       "norm_label": "s4-deactivate-pr-d-smoke-1"
     },
     {
@@ -58945,7 +58945,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L94",
       "id": "pr_d_email_smoke_results_s4_deactivate_pr_d_smoke_1_label",
-      "community": 266,
+      "community": 555,
       "norm_label": "label"
     },
     {
@@ -58954,7 +58954,7 @@
       "source_file": "verification/pr-d-email-smoke/results.json",
       "source_location": "L95",
       "id": "pr_d_email_smoke_results_s4_deactivate_pr_d_smoke_1_pass",
-      "community": 266,
+      "community": 555,
       "norm_label": "pass"
     },
     {
@@ -65495,7 +65495,7 @@
       "label": "Phase 7-8 Planned Tracks",
       "file_type": "document",
       "source_file": "docs/CONTEXT.md",
-      "source_location": "L257",
+      "source_location": "L258",
       "id": "docs_context_phase_7_8_planned_tracks",
       "community": 722,
       "norm_label": "phase 7-8 planned tracks"
@@ -65504,7 +65504,7 @@
       "label": "Workshop-Driven Roadmap Revision (2026-05-20)",
       "file_type": "document",
       "source_file": "docs/CONTEXT.md",
-      "source_location": "L273",
+      "source_location": "L274",
       "id": "docs_context_workshop_driven_roadmap_revision_2026_05_20",
       "community": 722,
       "norm_label": "workshop-driven roadmap revision (2026-05-20)"
@@ -65513,7 +65513,7 @@
       "label": "Pending operational state",
       "file_type": "document",
       "source_file": "docs/CONTEXT.md",
-      "source_location": "L293",
+      "source_location": "L294",
       "id": "docs_context_pending_operational_state",
       "community": 722,
       "norm_label": "pending operational state"
@@ -65522,7 +65522,7 @@
       "label": "Where we left off",
       "file_type": "document",
       "source_file": "docs/CONTEXT.md",
-      "source_location": "L303",
+      "source_location": "L304",
       "id": "docs_context_where_we_left_off",
       "community": 722,
       "norm_label": "where we left off"
@@ -65531,7 +65531,7 @@
       "label": "Prior session \u2014 Round displayed award progress percentage \u2014 PR #440 MERGED `5d0cb71` Demo-surfaced cleanup / bug-fix; **frontend-only, display-formatting**. The agent Awards tab rendered the awards engine's `progressPercent` as raw floats (`13.333333333333334%`, `9.538461538461538%`); the manager Awards tab shared the same latent bug (only `0%` read clean because 0 is round). Root cause (Phase 0): `awardsEngine.js:33` computes `progressPercent` as a clamped raw float (`Math.min(100, Math.max(0, (value/threshold)*100))`) and the render sites displayed it verbatim. **Fix:** a single shared `formatAwardPct(pct) = Math.round(Number(pct)||0)` in `src/utils/formatters.js`, applied at every raw-float display site: `awardPrimitives.jsx` (`AwardDonut` `{percent}%` label \u00b7 `AwardCard` state pill `${progressPercent}%` \u00b7 `AwardCard` big percent) and the **inline-duplicated copies** in `AgentAwardsPanel.jsx` (same three). Both the shared module and the inline dupes were fixed because of the known `awardPrimitives` \u2194 `AgentAwardsPanel` duplication (a one-site fix leaves the agent panel broken) \u2014 that dedup FU stays **open and untouched**, with a cross-reference note added. **Phase-0 enumeration** also confirmed the sites that were already rounded and needed no change: `MonthlyBonusHero.fillPercent`, `AwardDrillDrawer` criteria `pct`, kiosk `AwardsWatchPanel` (own `Math.round` + `PctDisplay`), PDF `AwardRow`, `AwardMedalCard.primaryCriterionLine` (renders criterion current/target, `.toFixed(0)` for `%`; also now an orphan), and HomeV2 `MiniDonut` (SVG arc only, no numeric label). Manager award cards render through the shared `AwardCard`/`AwardDrillDrawer`, so the `awardPrimitives` edit fixes them too.",
       "file_type": "document",
       "source_file": "docs/CONTEXT.md",
-      "source_location": "L315",
+      "source_location": "L316",
       "id": "docs_context_prior_session_round_displayed_award_progress_percentage_pr_440_merged_5d0cb71_demo_surfaced_cleanup_bug_fix_frontend_only_display_formatting_the_agent_awards_tab_rendered_the_awards_engine_s_progresspercent_as_raw_floats_13_333333333333334_9_538461538461538_the_manager_awards_tab_shared_the_same_latent_bug_only_0_read_clean_because_0_is_round_root_cause_phase_0_awardsengine_js_33_computes_progresspercent_as_a_clamped_raw_float_math_min_100_math_max_0_value_threshold_100_and_the_render_sites_displayed_it_verbatim_fix_a_single_shared_formatawardpct_pct_math_round_number_pct_0_in_src_utils_formatters_js_applied_at_every_raw_float_display_site_awardprimitives_jsx_awarddonut_percent_label_awardcard_state_pill_progresspercent_awardcard_big_percent_and_the_inline_duplicated_copies_in_agentawardspanel_jsx_same_three_both_the_shared_module_and_the_inline_dupes_were_fixed_because_of_the_known_awardprimitives_agentawardspanel_duplication_a_one_site_fix_leaves_the_agent_panel_broken_that_dedup_fu_stays_open_and_untouched_with_a_cross_reference_note_added_phase_0_enumeration_also_confirmed_the_sites_that_were_already_rounded_and_needed_no_change_monthlybonushero_fillpercent_awarddrilldrawer_criteria_pct_kiosk_awardswatchpanel_own_math_round_pctdisplay_pdf_awardrow_awardmedalcard_primarycriterionline_renders_criterion_current_target_tofixed_0_for_also_now_an_orphan_and_homev2_minidonut_svg_arc_only_no_numeric_label_manager_award_cards_render_through_the_shared_awardcard_awarddrilldrawer_so_the_awardprimitives_edit_fixes_them_too",
       "community": 722,
       "norm_label": "prior session \u2014 round displayed award progress percentage \u2014 pr #440 merged `5d0cb71` demo-surfaced cleanup / bug-fix; **frontend-only, display-formatting**. the agent awards tab rendered the awards engine's `progresspercent` as raw floats (`13.333333333333334%`, `9.538461538461538%`); the manager awards tab shared the same latent bug (only `0%` read clean because 0 is round). root cause (phase 0): `awardsengine.js:33` computes `progresspercent` as a clamped raw float (`math.min(100, math.max(0, (value/threshold)*100))`) and the render sites displayed it verbatim. **fix:** a single shared `formatawardpct(pct) = math.round(number(pct)||0)` in `src/utils/formatters.js`, applied at every raw-float display site: `awardprimitives.jsx` (`awarddonut` `{percent}%` label \u00b7 `awardcard` state pill `${progresspercent}%` \u00b7 `awardcard` big percent) and the **inline-duplicated copies** in `agentawardspanel.jsx` (same three). both the shared module and the inline dupes were fixed because of the known `awardprimitives` \u2194 `agentawardspanel` duplication (a one-site fix leaves the agent panel broken) \u2014 that dedup fu stays **open and untouched**, with a cross-reference note added. **phase-0 enumeration** also confirmed the sites that were already rounded and needed no change: `monthlybonushero.fillpercent`, `awarddrilldrawer` criteria `pct`, kiosk `awardswatchpanel` (own `math.round` + `pctdisplay`), pdf `awardrow`, `awardmedalcard.primarycriterionline` (renders criterion current/target, `.tofixed(0)` for `%`; also now an orphan), and homev2 `minidonut` (svg arc only, no numeric label). manager award cards render through the shared `awardcard`/`awarddrilldrawer`, so the `awardprimitives` edit fixes them too."
@@ -65540,7 +65540,7 @@
       "label": "Prior session \u2014 Game Plan v2 \u2014 Slice 1 (shell + Money Needs re-home) \u2014 PR #438 MERGED `33889a9`. Track J. Game Plan becomes the v2 **PLANNING parent** (Path A: the annual\u2192monthly commission/API planner \u2014 the renamed LIMRA \"Looking Ahead\" worksheet). **Composition-first, pure frontend \u2014 NO new collection, write, Firestore rule, or index.** The `game-plan` hub reads only the EXISTING `moneyNeeds` worksheet + the already-loaded `goals` doc. **Nav re-nest** (`AgentDashboard` NAV_ITEMS): Game Plan added before `money-needs` (NEW badge), `money-needs` converted to a child (still its own tabId/route, reachable as nav child + the hub rail card), **Goals stays a sibling** (only Money Needs nests \u2014 Game Plan *feeds* Goals on commit, which is deferred). New `src/components/dashboard/GamePlanV2/` folder (mirrors `HomeV2/`): `PlanAnchorStrip` (need framing + derived completeness % + static \"Draft\" pill; API Commitment chip reads raw `goals.personalAnnualAPI`, honest \"Set in your plan\" when unset \u2014 **never fabricated**), `StepRail` (Money Needs live/clickable; forward steps honest \"next/coming\", non-interactive), `PlanCascade` (live Money-Needs rung + \"Coming\" rungs), `CommitPreviewCard` (disabled preview + live Goals link). **Money Needs** (`agent/MoneyNeedsPanel.jsx`) re-homed + checklist-restyled (group dots + filled-count + summary cascade + \u226544px inputs) with **data flow + the existing visibility toggle fully preserved** (the annotation's \"share toggle disabled\" refers to a NEW manager affordance, deferred \u2014 per brief \u00a72.2 + decision 6).",
       "file_type": "document",
       "source_file": "docs/CONTEXT.md",
-      "source_location": "L325",
+      "source_location": "L326",
       "id": "docs_context_prior_session_game_plan_v2_slice_1_shell_money_needs_re_home_pr_438_merged_33889a9_track_j_game_plan_becomes_the_v2_planning_parent_path_a_the_annual_monthly_commission_api_planner_the_renamed_limra_looking_ahead_worksheet_composition_first_pure_frontend_no_new_collection_write_firestore_rule_or_index_the_game_plan_hub_reads_only_the_existing_moneyneeds_worksheet_the_already_loaded_goals_doc_nav_re_nest_agentdashboard_nav_items_game_plan_added_before_money_needs_new_badge_money_needs_converted_to_a_child_still_its_own_tabid_route_reachable_as_nav_child_the_hub_rail_card_goals_stays_a_sibling_only_money_needs_nests_game_plan_feeds_goals_on_commit_which_is_deferred_new_src_components_dashboard_gameplanv2_folder_mirrors_homev2_plananchorstrip_need_framing_derived_completeness_static_draft_pill_api_commitment_chip_reads_raw_goals_personalannualapi_honest_set_in_your_plan_when_unset_never_fabricated_steprail_money_needs_live_clickable_forward_steps_honest_next_coming_non_interactive_plancascade_live_money_needs_rung_coming_rungs_commitpreviewcard_disabled_preview_live_goals_link_money_needs_agent_moneyneedspanel_jsx_re_homed_checklist_restyled_group_dots_filled_count_summary_cascade_44px_inputs_with_data_flow_the_existing_visibility_toggle_fully_preserved_the_annotation_s_share_toggle_disabled_refers_to_a_new_manager_affordance_deferred_per_brief_2_2_decision_6",
       "community": 722,
       "norm_label": "prior session \u2014 game plan v2 \u2014 slice 1 (shell + money needs re-home) \u2014 pr #438 merged `33889a9`. track j. game plan becomes the v2 **planning parent** (path a: the annual\u2192monthly commission/api planner \u2014 the renamed limra \"looking ahead\" worksheet). **composition-first, pure frontend \u2014 no new collection, write, firestore rule, or index.** the `game-plan` hub reads only the existing `moneyneeds` worksheet + the already-loaded `goals` doc. **nav re-nest** (`agentdashboard` nav_items): game plan added before `money-needs` (new badge), `money-needs` converted to a child (still its own tabid/route, reachable as nav child + the hub rail card), **goals stays a sibling** (only money needs nests \u2014 game plan *feeds* goals on commit, which is deferred). new `src/components/dashboard/gameplanv2/` folder (mirrors `homev2/`): `plananchorstrip` (need framing + derived completeness % + static \"draft\" pill; api commitment chip reads raw `goals.personalannualapi`, honest \"set in your plan\" when unset \u2014 **never fabricated**), `steprail` (money needs live/clickable; forward steps honest \"next/coming\", non-interactive), `plancascade` (live money-needs rung + \"coming\" rungs), `commitpreviewcard` (disabled preview + live goals link). **money needs** (`agent/moneyneedspanel.jsx`) re-homed + checklist-restyled (group dots + filled-count + summary cascade + \u226544px inputs) with **data flow + the existing visibility toggle fully preserved** (the annotation's \"share toggle disabled\" refers to a new manager affordance, deferred \u2014 per brief \u00a72.2 + decision 6)."
@@ -65549,7 +65549,7 @@
       "label": "How to update this file",
       "file_type": "document",
       "source_file": "docs/CONTEXT.md",
-      "source_location": "L335",
+      "source_location": "L336",
       "id": "docs_context_how_to_update_this_file",
       "community": 722,
       "norm_label": "how to update this file"
@@ -67925,7 +67925,7 @@
       "label": "`DailyEntryModal.test.jsx` timer flap \u2014 first strike, watch (LOW/TEST-STABILITY, banked 2026-06-05)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4433",
+      "source_location": "L4434",
       "id": "docs_follow_ups_dailyentrymodal_test_jsx_timer_flap_first_strike_watch_low_test_stability_banked_2026_06_05",
       "community": 63,
       "norm_label": "`dailyentrymodal.test.jsx` timer flap \u2014 first strike, watch (low/test-stability, banked 2026-06-05)"
@@ -67934,7 +67934,7 @@
       "label": "NotificationDrawer \u2014 `text-primary` \"Mark all read\" button fails AA on bg (**CLOSED, PR #503 `8cfa5b5`**)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4449",
+      "source_location": "L4450",
       "id": "docs_follow_ups_notificationdrawer_text_primary_mark_all_read_button_fails_aa_on_bg_closed_pr_503_8cfa5b5",
       "community": 63,
       "norm_label": "notificationdrawer \u2014 `text-primary` \"mark all read\" button fails aa on bg (**closed, pr #503 `8cfa5b5`**)"
@@ -67943,7 +67943,7 @@
       "label": "Track J (V2 Redesign) \u2014 App-wide `text-gold` + adjacent contrast pass (MEDIUM/DESIGN, banked 2026-05-31, PR #401; expanded 2026-05-31 on PR #403)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4465",
+      "source_location": "L4466",
       "id": "docs_follow_ups_track_j_v2_redesign_app_wide_text_gold_adjacent_contrast_pass_medium_design_banked_2026_05_31_pr_401_expanded_2026_05_31_on_pr_403",
       "community": 964,
       "norm_label": "track j (v2 redesign) \u2014 app-wide `text-gold` + adjacent contrast pass (medium/design, banked 2026-05-31, pr #401; expanded 2026-05-31 on pr #403)"
@@ -67952,7 +67952,7 @@
       "label": "text-gold (PR #401 origin) \u2014 \u2705 RESOLVED (item 20, PR #465 `92d558f`: light gold \u2192 #8a6011, AA-compliant; dark unchanged)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4475",
+      "source_location": "L4476",
       "id": "docs_follow_ups_text_gold_pr_401_origin_resolved_item_20_pr_465_92d558f_light_gold_8a6011_aa_compliant_dark_unchanged",
       "community": 964,
       "norm_label": "text-gold (pr #401 origin) \u2014 \u2705 resolved (item 20, pr #465 `92d558f`: light gold \u2192 #8a6011, aa-compliant; dark unchanged)"
@@ -67961,7 +67961,7 @@
       "label": "DataSourceBadge \"Estimated\" \u2014 `bg-warning/15 text-warning` light-mode contrast (added PR #403)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4489",
+      "source_location": "L4490",
       "id": "docs_follow_ups_datasourcebadge_estimated_bg_warning_15_text_warning_light_mode_contrast_added_pr_403",
       "community": 964,
       "norm_label": "datasourcebadge \"estimated\" \u2014 `bg-warning/15 text-warning` light-mode contrast (added pr #403)"
@@ -67970,7 +67970,7 @@
       "label": "AgentProductionView hero avatar \u2014 `bg-primary text-white` dark-mode contrast (added PR #403)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4497",
+      "source_location": "L4498",
       "id": "docs_follow_ups_agentproductionview_hero_avatar_bg_primary_text_white_dark_mode_contrast_added_pr_403",
       "community": 964,
       "norm_label": "agentproductionview hero avatar \u2014 `bg-primary text-white` dark-mode contrast (added pr #403)"
@@ -67979,7 +67979,7 @@
       "label": "Priority + cadence",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4509",
+      "source_location": "L4510",
       "id": "docs_follow_ups_priority_cadence",
       "community": 964,
       "norm_label": "priority + cadence"
@@ -67988,7 +67988,7 @@
       "label": "External code reviewer \u2014 Gemini sunsets 2026-07-17; choose a replacement (MEDIUM, dated, banked 2026-06-04)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4517",
+      "source_location": "L4518",
       "id": "docs_follow_ups_external_code_reviewer_gemini_sunsets_2026_07_17_choose_a_replacement_medium_dated_banked_2026_06_04",
       "community": 63,
       "norm_label": "external code reviewer \u2014 gemini sunsets 2026-07-17; choose a replacement (medium, dated, banked 2026-06-04)"
@@ -67997,7 +67997,7 @@
       "label": "Track J (V2 Redesign) \u2014 GamePlanV2 component test coverage: `PlanAnchorStrip` + `PlanCascade` (LOW, banked 2026-06-04 from item 23 coverage sweep)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4532",
+      "source_location": "L4533",
       "id": "docs_follow_ups_track_j_v2_redesign_gameplanv2_component_test_coverage_plananchorstrip_plancascade_low_banked_2026_06_04_from_item_23_coverage_sweep",
       "community": 63,
       "norm_label": "track j (v2 redesign) \u2014 gameplanv2 component test coverage: `plananchorstrip` + `plancascade` (low, banked 2026-06-04 from item 23 coverage sweep)"
@@ -68006,7 +68006,7 @@
       "label": "Track J (V2 Redesign) \u2014 `aroundMeLogic` state-label taxonomy: `CLUSTER_3` is mis-named for the 2-row first-place case (LOW, banked 2026-05-31, PR #403)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4542",
+      "source_location": "L4543",
       "id": "docs_follow_ups_track_j_v2_redesign_aroundmelogic_state_label_taxonomy_cluster_3_is_mis_named_for_the_2_row_first_place_case_low_banked_2026_05_31_pr_403",
       "community": 63,
       "norm_label": "track j (v2 redesign) \u2014 `aroundmelogic` state-label taxonomy: `cluster_3` is mis-named for the 2-row first-place case (low, banked 2026-05-31, pr #403)"
@@ -68015,7 +68015,7 @@
       "label": "Track J (V2 Redesign) \u2014 P5-prep aggregate-enrichment CF: `previousRank` + `unitId` + last-week champions + P5b SM all-branches picker (MEDIUM, banked 2026-05-31 from PR #402; expanded 2026-05-31 on PR #403/audit + PR #404 \u2014 **RESOLVED by PR #405; P5b SM picker RESOLVED by PR #411**)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4560",
+      "source_location": "L4561",
       "id": "docs_follow_ups_track_j_v2_redesign_p5_prep_aggregate_enrichment_cf_previousrank_unitid_last_week_champions_p5b_sm_all_branches_picker_medium_banked_2026_05_31_from_pr_402_expanded_2026_05_31_on_pr_403_audit_pr_404_resolved_by_pr_405_p5b_sm_picker_resolved_by_pr_411",
       "community": 63,
       "norm_label": "track j (v2 redesign) \u2014 p5-prep aggregate-enrichment cf: `previousrank` + `unitid` + last-week champions + p5b sm all-branches picker (medium, banked 2026-05-31 from pr #402; expanded 2026-05-31 on pr #403/audit + pr #404 \u2014 **resolved by pr #405; p5b sm picker resolved by pr #411**)"
@@ -68024,7 +68024,7 @@
       "label": "Track J (V2 Redesign) \u2014 P4: optional design reference HTML added to fold-in (banked 2026-05-31, PR #402)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4624",
+      "source_location": "L4625",
       "id": "docs_follow_ups_track_j_v2_redesign_p4_optional_design_reference_html_added_to_fold_in_banked_2026_05_31_pr_402",
       "community": 63,
       "norm_label": "track j (v2 redesign) \u2014 p4: optional design reference html added to fold-in (banked 2026-05-31, pr #402)"
@@ -68033,7 +68033,7 @@
       "label": "Settlements manager reads \u2014 tenant-scope (no unitId/branchId on docs) (LOW, banked 2026-06-05)",
       "file_type": "document",
       "source_file": "docs/FOLLOW_UPS.md",
-      "source_location": "L4634",
+      "source_location": "L4635",
       "id": "docs_follow_ups_settlements_manager_reads_tenant_scope_no_unitid_branchid_on_docs_low_banked_2026_06_05",
       "community": 63,
       "norm_label": "settlements manager reads \u2014 tenant-scope (no unitid/branchid on docs) (low, banked 2026-06-05)"
@@ -300844,5 +300844,5 @@
       "source_file": "scripts/verification/screenshots/"
     }
   ],
-  "built_at_commit": "82323efacfb4dfda1e752dad5f8bebe1cf501463"
+  "built_at_commit": "77a6e5d7df6dc3a7640ce78e5cf554f011105f12"
 }
