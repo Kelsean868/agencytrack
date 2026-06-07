@@ -102,13 +102,13 @@ describe('BranchesPanel — error state', () => {
 
   it('renders an alert when branches fetch fails', async () => {
     render(<BranchesPanel />);
-    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    await screen.findByRole('alert');
     expect(screen.getByText(/Firestore unavailable/i)).toBeInTheDocument();
   });
 
   it('disables the Add branch button on error', async () => {
     render(<BranchesPanel />);
-    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    await screen.findByRole('alert');
     expect(screen.getByRole('button', { name: /add branch/i })).toBeDisabled();
   });
 });

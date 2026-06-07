@@ -111,7 +111,7 @@ describe('PolicyReconciliationPanel', () => {
   it('shows empty state when no unconfirmed settled policies', async () => {
     setupBM();
     render(<PolicyReconciliationPanel />);
-    await waitFor(() => expect(screen.getByTestId('reconcil-empty')).toBeInTheDocument());
+    await screen.findByTestId('reconcil-empty');
   });
 
   it('worklist renders a row per unconfirmed policy (flat, not agent-grouped)', async () => {

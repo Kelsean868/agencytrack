@@ -55,7 +55,7 @@ describe('DailyEntryModal', () => {
 
   it('renders "Log today" in the title', async () => {
     render(<DailyEntryModal onClose={vi.fn()} />);
-    await waitFor(() => expect(screen.getByText(/Log today —/)).toBeInTheDocument());
+    await screen.findByText(/Log today —/);
   });
 
   it('close button (×) calls onClose', async () => {
@@ -104,9 +104,7 @@ describe('DailyEntryModal', () => {
     });
     render(<DailyEntryModal onClose={vi.fn()} />);
     // PPP section auto-expands because pppIncreases.apps > 0
-    await waitFor(
-      () => expect(screen.getByText(/below/i)).toBeInTheDocument()
-    );
+    await screen.findByText(/below/i);
   });
 
   it('save button calls saveDailyEntry with correct args', async () => {
@@ -147,17 +145,14 @@ describe('DailyEntryModal', () => {
     });
     render(<DailyEntryModal onClose={vi.fn()} />);
     // PPP auto-expands — "Add PPP details" should be gone; "Number of PPP increases" should appear
-    await waitFor(
-      () => expect(screen.getByText('Number of PPP increases')).toBeInTheDocument()
-    );
+    await screen.findByText('Number of PPP increases');
     expect(screen.queryByText('Add PPP details')).not.toBeInTheDocument();
   });
 
   it('load error shown with role="alert" when getDailyEntry rejects', async () => {
     hoisted.getDailyEntry.mockRejectedValue(new Error('fetch failed'));
     render(<DailyEntryModal onClose={vi.fn()} />);
-    await waitFor(
-      () => expect(screen.getByRole('alert')).toHaveTextContent(/could not load/i)
-    );
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/could not load/i);
   });
 });

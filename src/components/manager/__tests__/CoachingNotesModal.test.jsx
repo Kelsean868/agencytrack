@@ -161,7 +161,7 @@ describe('CoachingNotesModal — note list', () => {
   it('renders note bodies and author names', async () => {
     mockGetCoachingNotes.mockResolvedValue(notes);
     render(<CoachingNotesModal {...defaultProps} />);
-    await waitFor(() => expect(screen.getByText('Close 20 apps this quarter.')).toBeInTheDocument());
+    await screen.findByText('Close 20 apps this quarter.');
     expect(screen.getByText('Good prospect pipeline.')).toBeInTheDocument();
     expect(screen.getByText(/Branch Manager 1/)).toBeInTheDocument();
     expect(screen.getByText(/Unit Manager 1/)).toBeInTheDocument();
@@ -170,7 +170,7 @@ describe('CoachingNotesModal — note list', () => {
   it('shows edit button only on notes the current user authored', async () => {
     mockGetCoachingNotes.mockResolvedValue(notes);
     render(<CoachingNotesModal {...defaultProps} />);
-    await waitFor(() => expect(screen.getByText('Close 20 apps this quarter.')).toBeInTheDocument());
+    await screen.findByText('Close 20 apps this quarter.');
     const editBtns = screen.getAllByLabelText('Edit note');
     expect(editBtns).toHaveLength(1); // only n1 belongs to bm1
   });

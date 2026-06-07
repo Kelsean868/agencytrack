@@ -26,8 +26,13 @@ vi.mock('../../../services/policiesService', () => ({
 // ── Mock awardsEngine ────────────────────────────────────────────────────────
 vi.mock('../../../utils/awardsEngine', () => ({
   computeAgentAwards: vi.fn(() => ({})),
-  computeRatioTrends: vi.fn(() => ({})),
-  computeAtRiskStatus: vi.fn(() => ({ status: 'on_track', inContention: true })),
+  computeRatioTrends: vi.fn(() => ({
+    ciToSaleRatio:  { trailing4w: 0, trailing12w: 0, trend: 'flat' },
+    dialsToCIRatio: { trailing4w: 0, trailing12w: 0, trend: 'flat' },
+    avgPolicySize:  { trailing4w: 0, trailing12w: 0, trend: 'flat' },
+    ffiToDialRatio: { trailing4w: 0, trailing12w: 0, trend: 'flat' },
+  })),
+  computeAtRiskStatus: vi.fn(() => 'on_track'),
   getPeriodCtx: vi.fn(() => ({ weeksElapsed: 1, periodWeeks: 4 })),
   nextTierDistance: vi.fn(() => null),
   isPersistencyOnlyBlock: vi.fn(() => false),

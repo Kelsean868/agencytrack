@@ -71,7 +71,7 @@ beforeEach(() => {
 
 async function openWizard() {
   render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" />);
-  await waitFor(() => expect(screen.getByTestId('wizard-v2-modal')).toBeInTheDocument(), WAIT);
+  await screen.findByTestId('wizard-v2-modal', undefined, WAIT);
 }
 
 function next() {

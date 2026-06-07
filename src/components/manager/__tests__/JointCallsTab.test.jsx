@@ -122,7 +122,7 @@ describe('JointCallsTab — call list', () => {
   it('renders comments and author names', async () => {
     mockGetJointCalls.mockResolvedValue(calls);
     render(<JointCallsTab {...defaultProps} />);
-    await waitFor(() => expect(screen.getByText('Clean presentation, strong close.')).toBeInTheDocument());
+    await screen.findByText('Clean presentation, strong close.');
     expect(screen.getByText('Client rescheduled.')).toBeInTheDocument();
     expect(screen.getByText(/Branch Manager 1/)).toBeInTheDocument();
     expect(screen.getByText(/Unit Manager 1/)).toBeInTheDocument();
@@ -131,7 +131,7 @@ describe('JointCallsTab — call list', () => {
   it('shows edit button only on calls the current user authored', async () => {
     mockGetJointCalls.mockResolvedValue(calls);
     render(<JointCallsTab {...defaultProps} />);
-    await waitFor(() => expect(screen.getByText('Clean presentation, strong close.')).toBeInTheDocument());
+    await screen.findByText('Clean presentation, strong close.');
     const editBtns = screen.getAllByLabelText('Edit joint call');
     expect(editBtns).toHaveLength(1);
   });
