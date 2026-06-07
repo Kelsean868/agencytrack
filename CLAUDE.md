@@ -638,6 +638,10 @@ Why: PR #418 surfaced this. CC posted the PR-ready report; the dispatcher merged
 
 Banked from PR #418 post-merge fill (2026-06-01).
 
+### 21. Gemini disposition gate
+
+After opening any PR, poll for the gemini-code-assist[bot] review (up to 10 min; if absent, note it and proceed). Every bot comment gets a disposition in the Phase 5 report: IMPLEMENT (agreed, in-family with the PR's scope — apply in-PR before the report) · ALREADY-RESOLVED · OBSOLETE · DISAGREE (one-line technical rationale; recorded doctrine and dispatcher rulings outrank Gemini) · OUT-OF-SCOPE (valid but expands the PR — banked as an FU, never silently implemented). The disposition table is a mandatory report section; a PR is not pre-review-ready without it. On auto-merge green-channel PRs, CC self-dispositions under the same taxonomy and the report records it; DISAGREE and OUT-OF-SCOPE items on auto-merged PRs roll up to the dispatcher in the next report.
+
 ---
 
 ## Dispatcher tooling
