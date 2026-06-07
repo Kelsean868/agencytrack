@@ -1,0 +1,9 @@
+# graphify's own output (defense-in-depth; CLI already self-excludes)
+graphify-out/
+# axe scan archives — structured key-noise, grows per scan
+verification/a11y/
+# gitignored scratch dir — ephemeral scripts not part of the codebase
+tmp/
+# build/test output — gitignored dirs are still indexed (proven by tmp/ incident)
+dist/
+coverage/
