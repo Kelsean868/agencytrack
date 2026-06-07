@@ -5,6 +5,92 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Pre-existing axe debt — surfaced by S3 axe sweep (banked 2026-06-07, PR #534)
+
+**Source:** S3 sweep axe walk (both themes, agent + manager legs). All 32 violations confirmed pre-existing; none introduced by S3. S3 result: **NO-NEW**. Per brief: "walking new rooms finds old debt — enumerate pre-existing finds for separate FUs."
+
+**Glass-incomplete counts are expected** — axe cannot compute contrast through CSS glass compositing on `.glass.hero.teal` panes (doctrine banked PR #518). Glass-incomplete ranged from 5–29 per leg.
+
+**Fontshare CDN failures in console** — pre-existing; Fontshare blocks headless browser requests in Playwright. Not a bug. Falls back to system fonts in test env; production font-loading is browser-native.
+
+### Find A — NotificationBell badge dark mode (HIGH, cosmetic)
+**Node:** `span.absolute.top-1\.5.right-1\.5 bg-danger text-white text-[10px] font-bold` (10px bold, in `src/components/ui/NotificationBell.jsx:19`)  
+**Contrast:** white on `#d96b5d` (dark mode danger) = **3.38:1** (requires 4.5:1 for small text)  
+**Surfaces:** every dark-mode page that has the bell badge (all agent + manager routes with unread notifications)  
+**Light mode:** passes — light danger is darker, meets threshold  
+**Fix:** The dark danger token (`--color-danger` dark = `#d96b5d`) is too light for white text. Options: (a) use `text-[--color-bg]` (near-black) instead of `text-white` in dark mode, or (b) deepen `--color-danger` dark token. Standalone XS PR.
+
+### Find B — NeedsActionBanner CTA button dark mode (MEDIUM)
+**Node:** `button.bg-warning.text-white.gap-1\.5` in `src/components/dashboard/HomeV2/NeedsActionBanner.jsx:37`  
+**Contrast:** white on `#e8b53e` (dark warning) = **1.89:1** (requires 4.5:1)  
+**Surface:** agent dashboard dark mode when needs-action state is active  
+**Light mode:** passes  
+**Fix:** Pair with `dark:bg-warning-dark` if a deeper token exists, or use `dark:text-[--color-text]` + `dark:bg-warning/30` pattern. Same root as D6 (`bg-primary text-white` missing dark). Standalone XS PR.
+
+### Find C — Award card tier chips (MEDIUM, both themes)
+**Node:** `button[data-testid="award-card-*"] .text-[9px].shrink-0.py-1` — tier/status label chips on award cards. `text-ink-muted` (#a8a39c light / #8a8074 dark) on `bg-surface-raised` (`#f0efe9` light / `#1f1b16` dark).  
+**Contrast:** 2.17:1 (light) / 4.41:1 (dark, barely below 4.5) for 9px bold text  
+**Surface:** Manager Awards panel (award card grid below MonthlyBonusHero) — not touched by S3  
+**Fix:** Bump chip label to `text-ink` (darker); 9px bold is below AA small-text requirement regardless of measured ratio. Or increase font-size to 11px+ which upgrades to "large text" (3:1 required). Audit `ManagerAwardsPanel.jsx` award card chip labels. Standalone XS PR.
+
+### Find D — BM at-risk agent cards text (MEDIUM, both themes)
+**Node:** `bm-at-risk-agent-card` `.flex-wrap.gap-2.items-center` — `text-ink-muted` (similar tokens) at 10px bold on `bg-surface-raised`. 2.17:1 (light) / 4.41:1 (dark).  
+**Surface:** Manager Awards panel → PersRealityBar at-risk section — not in S3 scope  
+**Fix:** Same pattern as Find C — bump to `text-ink` or increase font-size. Standalone XS PR (can combine with Find C).
+
+### Find E — `text-ink-muted/60` in BranchManagerProductionView (LOW)
+**Node:** `.text-ink-muted\/60` — 60%-opacity muted text in the production table rows (not the hero section)  
+**Contrast:** 2.5:1 (light) / 3.55:1 (dark) — both fail 4.5:1  
+**Surface:** Manager Production Report table rows — not touched by S3  
+**Fix:** Remove `/60` opacity modifier; `text-ink-muted` without opacity modifier passes. Verify visual intent. Standalone 1-liner.
+
+---
+
+## Nexus Glass S3 sweep — hero census canon (banked 2026-06-07, PR #534)
+
+**Source:** Phase 0 census confirmed by dispatcher before any conversion (PR #534, `feat/nexus-glass-s3-sweep`). Three #517 cards (CommissionAnchorStrip, SuggestedWeekCard, PersRealityBar) are DONE — not repeated here.
+
+### Census table (Phase 0 rulings — binding)
+
+| Screen | Top-summary card | Component | Verdict |
+|--------|-----------------|-----------|---------|
+| Agent — Dashboard | YTD/settled API hero | `HomeV2/HeroCard.jsx` | HERO — converted PR #534 |
+| Agent — History | "Your Year" anchor strip | `HistoryTab` (HistoryAnchorStrip) | HERO — converted PR #534 |
+| Agent — Policy Ledger | Pipeline strip | `policyLedger/PipelineStrip.jsx` | HERO — converted PR #534 |
+| Agent — Production Report | Name/rank/metrics card | `AgentProductionView.jsx` (top card only) | HERO — converted PR #534 |
+| Agent — Persistency | Summary + value card | `PersistencyTab.jsx` (summary card) | HERO — converted PR #534 |
+| Agent — Awards | Grid of medal/badge cards | `AgentAwardsPanel.jsx` | NO-GLASS — awards grid is a worklist of sibling equal-rank items; no single top card |
+| Agent — Career Portal | Career level + progress | `CareerPortal.jsx` | NO-GLASS — dense data section + ladder; no dominant summary card |
+| Agent — Leaderboard | Rank table | `Leaderboard.jsx` | NO-GLASS — rank table is the UI; no summary above it |
+| Agent — Commission | (Done) | `CommissionAnchorStrip.jsx` | DONE — PR #517 |
+| Agent — Goals | Gap analysis panel | `GapAnalysisPanel.jsx` | NO-GLASS — inline panel inside dashboard tab, not a top screen card |
+| Agent — Profile | Profile photo/name | `ProfileScreen.jsx` | NO-GLASS — profile card is a form surface, not summary data |
+| Mgr — Overview (Dashboard) | Team goal hero | `ManagerHeroSection.jsx` | HERO — converted PR #534 |
+| Mgr — Production Report | Branch aggregate card | `BranchManagerProductionView.jsx` (top card) | HERO — converted PR #534 |
+| Mgr — Awards | Monthly bonus hero | `ManagerAwardsPanel.jsx` (MonthlyBonusHero) | HERO — converted PR #534 |
+| Mgr — Policy Reconciliation | Pending count hero | `PolicyReconciliationPanel.jsx` (pending hero) | HERO — converted PR #534; data-gated (renders only when pending > 0) |
+| Mgr — Compliance | Reality bar + stats | `CompliancePanel.jsx` (reality bar) | HERO — converted PR #534 |
+| Mgr — Persistency (Mgr) | PersRealityBar | `PersRealityBar.jsx` | DONE — PR #517 |
+| Mgr — Game Plan | Suggested week | `SuggestedWeekCard.jsx` | DONE — PR #517 |
+| Mgr — Master Sheet | Dense submission table | `MasterSheet.jsx` | NO-GLASS — dense data table; no top summary card |
+| Mgr — Team (User Mgmt) | Member list | `UserManagementPanel.jsx` | NO-GLASS — worklist/table |
+| Mgr — Goals | Goals panel hierarchy | `GoalsPanel.jsx` | NO-GLASS — hierarchy form, not a headline-data card |
+| Mgr — Settlements | Settlement list | `SettlementPanel.jsx` | NO-GLASS — dense data table |
+| Mgr — Campaigns | Campaign cards | `CampaignPanel.jsx` | NO-GLASS — sibling card grid |
+| Mgr — Leaderboard | Rank table | Leaderboard surfaces | NO-GLASS — rank table is the UI |
+| Kiosk / Meeting Mode | Opaque fallback governs | Various | NO-GLASS — opaque-fallback surfaces per recipe |
+
+### Per-card notes (PR #534)
+- **Mgr Awards MonthlyBonusHero:** `AwardDonut` gains `strokeOverride` prop (backward-compatible null-coalesce). Contention ring → `var(--hero-ink)`; qualified ring → `var(--hero-accent)`. Both certified ≥3:1 graphical via `heroPair` test matrix.
+- **Mgr Overview ManagerHeroSection:** `role-hero` (cascades `color:white`) replaced by `glass hero teal`; all `.goal-*` elements given explicit `text-[--hero-ink]` / `text-[--hero-ink-muted-teal]`. GoalDonut / `.bar` / `.bar-fill` CSS classes use literal `white` — work unchanged on glass.
+- **Multi-section files excluded from hero-ink guard:** HistoryTab, AgentProductionView, PersistencyTab, BranchManagerProductionView, ManagerAwardsPanel, PolicyReconciliationPanel, CompliancePanel have hero sections inside larger multi-section files. The whole-file scan would false-positive on non-hero buttons/pills/charts. Hero pane correctness for these is verified by Phase 3 smoke (both themes). Future: extract hero sub-sections into dedicated components to re-enable the guard.
+- **Mgr Recon pending hero:** only rendered when `pendingCount > 0`; smoke reports data-gate skip — not a defect.
+
+### Future: hero-ink guard extension path
+When multi-section components are refactored to extract hero sub-sections into standalone components (e.g. `HistoryHeroCard.jsx`, `ComplianceHeroBar.jsx`), add them to `HERO_COMPONENTS` in `hero-pane-foreign-ink-guard.test.js`. The `@@card-context-start/end` marker mechanism (already used in `CommissionAnchorStrip`) is an alternative for dual-state components.
+
+---
+
 ## D6 census — bg-primary+text-white buttons missing dark:bg-primary-dark (banked 2026-06-06, PR #515 axe)
 
 **Context:** S3a's axe scan of the agent-dark/ledger-lapsed surface found the Policy Ledger "New Policy" button (`bg-primary text-white` without `dark:bg-primary-dark`) at 2.44:1 in dark mode (expected 4.5:1). The button pre-dated S3a; it was fixed as a Rule-9 in-PR extension per dispatcher authorization. The D6 doctrine (CLAUDE.md UI rules) requires that every `bg-primary text-white` button pair `dark:bg-primary-dark`. This was the first find — siblings from Track H era and earlier are suspects.

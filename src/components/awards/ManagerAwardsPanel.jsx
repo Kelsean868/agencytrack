@@ -51,73 +51,63 @@ function MonthlyBonusHero({ bonus }) {
   const state = hasNextTier ? 'contention' : 'qualified';
   const eyebrow = hasNextTier ? '★ Next tier in reach' : '✓ Top tier achieved';
 
+  // Certified stroke colors for AwardDonut on glass.hero.teal.
+  // contention → hero-ink (white, trivially 3:1+).
+  // qualified  → hero-accent (#F4ECC8), certified at 4.7:1 via heroPair tests.
+  const donutStroke = hasNextTier ? 'var(--hero-ink)' : 'var(--hero-accent)';
+
+  // @@hero-pane-start
   return (
     <div
-      className="card p-6 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6"
+      className="glass hero teal p-6 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6"
       data-testid="monthly-bonus-hero"
-      style={{
-        border: `1px solid var(--color-${hasNextTier ? 'primary' : 'gold'})`,
-        boxShadow: 'var(--shadow-md)',
-      }}
     >
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute', top: -60, right: -100, width: 320, height: 320,
-          background: `radial-gradient(circle, var(--color-${hasNextTier ? 'primary' : 'gold'}-tint) 0%, transparent 65%)`,
-          pointerEvents: 'none',
-        }}
-      />
-
       <div style={{ position: 'relative', flexShrink: 0 }}>
-        <AwardDonut state={state} percent={fillPercent} size={140} strokeWidth={12} />
+        <AwardDonut state={state} percent={fillPercent} size={140} strokeWidth={12} strokeOverride={donutStroke} />
       </div>
 
       <div className="flex-1 min-w-0 relative">
-        <p
-          className={`text-xs font-bold tracking-widest font-mono uppercase mb-1 ${
-            hasNextTier ? 'text-primary' : 'text-gold'
-          }`}
-        >
+        <p className="text-xs font-bold tracking-widest font-mono uppercase mb-1 text-[--hero-ink-muted-teal]">
           {eyebrow}
         </p>
         <p
-          className="text-3xl font-bold text-ink leading-none"
+          className="text-3xl font-bold text-[--hero-ink] leading-none"
           style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.022em', marginBottom: 6 }}
         >
           Monthly Production Bonus
         </p>
-        <p className="text-sm text-ink-muted">
+        <p className="text-sm text-[--hero-ink-muted-teal]">
           {formatCurrency(bonus.bonusAmount)}
           {' · '}
           {bonus.bonusPct > 0 ? `Tier ${bonus.bonusPct}% unlocked` : 'No tier unlocked yet'}
         </p>
 
-        <div className="inline-flex items-baseline gap-2 mt-3.5 px-3 py-2 rounded-xl bg-surface-muted border border-border flex-wrap">
+        <div className="inline-flex items-baseline gap-2 mt-3.5 px-3 py-2 rounded-xl bg-[--hero-chip-island] border border-[--hero-chip-border] flex-wrap">
           {hasNextTier ? (
             <>
-              <span className="text-xs text-ink-muted font-mono tracking-wide">Avg / advisor</span>
+              <span className="text-xs text-[--hero-ink-muted-teal] font-mono tracking-wide">Avg / advisor</span>
               <span
-                className="text-lg font-bold text-ink"
+                className="text-lg font-bold text-[--hero-ink]"
                 style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.018em' }}
               >
                 {formatCurrency(bonus.avgMonthlyAPI)}
               </span>
-              <span className="text-sm text-ink-muted">
+              <span className="text-sm text-[--hero-ink-muted-teal]">
                 {' · Tier '}{bonus.nextTier.pct}{'% at '}{formatCurrency(bonus.nextTier.threshold)}
               </span>
             </>
           ) : (
-            <span className="text-sm text-ink-muted">Top tier achieved · no further threshold</span>
+            <span className="text-sm text-[--hero-ink-muted-teal]">Top tier achieved · no further threshold</span>
           )}
         </div>
 
         {bonus.note && (
-          <p className="text-[11px] text-ink-muted mt-2 leading-relaxed">{bonus.note}</p>
+          <p className="text-[11px] text-[--hero-ink-muted-teal] mt-2 leading-relaxed">{bonus.note}</p>
         )}
       </div>
     </div>
   );
+  // @@hero-pane-end
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
