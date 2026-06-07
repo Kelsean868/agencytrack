@@ -409,7 +409,7 @@ export default function SuggestedWeekCard({
               onClick={handleCancel}
               disabled={planBusy}
               data-testid="weekly-plan-cancel"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-4 text-sm font-semibold text-ink-muted transition-colors hover:bg-surface-muted disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg px-4 text-sm font-semibold text-[--hero-ink-muted-teal] transition-colors hover:bg-surface-muted disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               Cancel
             </button>

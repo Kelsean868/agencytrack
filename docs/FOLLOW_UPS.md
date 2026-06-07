@@ -51,6 +51,8 @@ No standalone hero recipe HTML was produced (analogous to `docs/design/nexus-gla
 
 **No urgency** — all tokens and tests are in code. This is documentation catch-up only.
 
+**Doctrine (banked 2026-06-06, PR #518 fix-branch):** "axe cannot compute contrast over glass composites (incomplete bucket, not violations) — on glass surfaces the contrast module + the foreign-ink guard are the certifiers; axe legs on glass must ALSO report the color-contrast incomplete count." The hero-pane-foreign-ink-guard Vitest suite (`src/utils/__tests__/hero-pane-foreign-ink-guard.test.js`) is the recurrence killer: it enforces that all text-[--{var}] classes are certified hero tokens and that no raw status-color class (`text-success`, `text-danger`, `text-warning`, `text-primary`) appears in any hero component. Any axe run that includes a glass hero surface must surface the `color-contrast: N incomplete` count so the coverage gap is visible.
+
 ---
 
 ## SettlementPanel — TT-year derivation and display (C-001 / C-002) (banked 2026-06-06, Gemini harvest)

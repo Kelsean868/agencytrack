@@ -6,20 +6,30 @@ import { getTodayTT } from '../../utils/dateInputs';
 
 function ProvChip({ children, warning }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-[--hero-chip-border] bg-[--hero-chip-island] px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-[--hero-ink-muted-gold]">
+    <span className="inline-flex items-center gap-1 rounded-full border border-[--hero-chip-border] bg-[--hero-chip-island] px-2 py-0.5 font-mono text-[9px] font-bold uppercase tracking-[0.04em] text-[--hero-ink-muted-teal]">
       {warning && <span aria-hidden="true" className="h-1.5 w-1.5 shrink-0 rounded-full bg-[--hero-dot-warning]" />}
       {children}
     </span>
   );
 }
 
-function Chip({ label, value, valueClass }) {
+// card=true  → card-tier tokens (bg-surface-raised, border-border, text-ink / text-ink-muted)
+//              Use when the chip renders outside a .glass.hero container (no-goal state).
+// card=false  → hero-tier tokens (hero-chip bg, hero-ink text)
+//              Only use inside a .glass.hero.teal wrapper (normal state).
+function Chip({ label, value, valueClass, dotClass, card }) {
+  const containerCls = card
+    ? 'flex min-w-[108px] flex-col gap-0.5 rounded-xl border border-border bg-surface-raised px-3.5 py-2.5'
+    : 'flex min-w-[108px] flex-col gap-0.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3.5 py-2.5';
+  const labelCls = card ? 'text-ink-muted' : 'text-[--hero-ink-muted-teal]';
+  const defaultValueCls = card ? 'text-ink' : 'text-[--hero-ink]';
   return (
-    <div className="flex min-w-[108px] flex-col gap-0.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3.5 py-2.5">
-      <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.1em] text-[--hero-ink-muted-gold]">
+    <div className={containerCls}>
+      <span className={`font-mono text-[8.5px] font-bold uppercase tracking-[0.1em] ${labelCls}`}>
         {label}
       </span>
-      <span className={`font-display text-base font-extrabold tracking-tight whitespace-nowrap ${valueClass || 'text-[--hero-ink]'}`}>
+      <span className={`flex items-center gap-1.5 font-display text-base font-extrabold tracking-tight whitespace-nowrap ${valueClass || defaultValueCls}`}>
+        {dotClass && <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} />}
         {value}
       </span>
     </div>
@@ -94,6 +104,7 @@ export default function CommissionAnchorStrip({
   const gapResult = gapToGoal(committedAnnualAPI, rate.value, ratios);
 
   // State 2 — no committed goal (shows YTD + run-rate; suppresses gap)
+  // @@card-context-start — renders on bg-card, NOT inside .glass.hero; Chips must use card=true
   if (!committedAnnualAPI) {
     return (
       <div
@@ -118,12 +129,13 @@ export default function CommissionAnchorStrip({
           </button>
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Chip label="YTD Earned"  value={earned > 0 ? formatCurrency(earned)      : '—'} />
-          <Chip label="On Pace For" value={rate.value > 0 ? formatCurrency(rate.value) : '—'} />
+          <Chip label="YTD Earned"  value={earned > 0 ? formatCurrency(earned)      : '—'} card />
+          <Chip label="On Pace For" value={rate.value > 0 ? formatCurrency(rate.value) : '—'} card />
         </div>
       </div>
     );
   }
+  // @@card-context-end
 
   // State 1 — normal (with run-rate or fallback)
   const projected = rate.value;
@@ -140,13 +152,13 @@ export default function CommissionAnchorStrip({
 
   return (
     <section
-      className="relative overflow-hidden rounded-2xl p-5 glass hero gold"
+      className="relative overflow-hidden rounded-2xl p-5 glass hero teal"
       data-testid="commission-anchor-strip"
       aria-label="Commission summary"
     >
       <div className="relative flex flex-wrap items-baseline justify-between gap-4">
         <div className="min-w-0">
-          <div className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-[--hero-ink-muted-gold]">
+          <div className="font-mono text-[9.5px] font-bold uppercase tracking-[0.16em] text-[--hero-ink-muted-teal]">
             Your reality · {weeksLeft} {weeksLeft === 1 ? 'week' : 'weeks'} left in {year}
           </div>
 
@@ -156,7 +168,7 @@ export default function CommissionAnchorStrip({
             in commission this year
           </h2>
 
-          <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[--hero-ink-muted-gold]">
+          <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[--hero-ink-muted-teal]">
             <span>{formatCurrency(earned)} earned YTD</span>
             <ProvChip>← policies.earnedCommission · settled</ProvChip>
             {rate.weekCount > 0 && (
@@ -178,7 +190,7 @@ export default function CommissionAnchorStrip({
           </p>
 
           {rate.isLinear && rate.weekCount > 0 && rate.weekCount < 8 && (
-            <p className="mt-2 max-w-sm text-[11px] text-ink-muted">
+            <p className="mt-2 max-w-sm text-[11px] text-[--hero-ink-muted-teal]">
               Too few settled weeks for a trailing run-rate — projecting linearly from YTD.
               Firms up at 8 settled weeks.
             </p>
@@ -186,13 +198,13 @@ export default function CommissionAnchorStrip({
         </div>
 
         <div className="shrink-0 inline-flex flex-col items-end gap-0.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3 py-2.5 text-right">
-          <div className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[--hero-ink-muted-gold]">
+          <div className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-[--hero-ink-muted-teal]">
             Gap to goal
           </div>
           <div className="font-display text-2xl font-extrabold leading-none tracking-tight text-[--hero-ink]">
             {behind ? '−' : '+'} {formatCurrency(Math.abs(gap))}
           </div>
-          <div className="font-mono text-[9px] text-[--hero-ink-muted-gold]">
+          <div className="font-mono text-[9px] text-[--hero-ink-muted-teal]">
             vs your committed goal
           </div>
         </div>
@@ -206,7 +218,7 @@ export default function CommissionAnchorStrip({
           <Chip
             label="Persistency · latest month"
             value={`${Math.round(persResult.pct * 100)}%`}
-            valueClass="text-success"
+            dotClass="bg-[--hero-dot-success]"
           />
         )}
       </div>
