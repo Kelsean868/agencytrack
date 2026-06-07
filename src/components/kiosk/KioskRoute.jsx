@@ -31,6 +31,11 @@ export default function KioskRoute() {
           setState('invalid');
           return;
         }
+        if (!data.customToken) {
+          // Malformed response: valid:true but no token — degrade gracefully.
+          setState('invalid');
+          return;
+        }
         // Sign into the secondary in-memory auth instance so the default auth
         // (shared per-origin) is not clobbered and the manager's tab is unaffected.
         await signInWithCustomToken(kioskAuth, data.customToken);
