@@ -3,7 +3,7 @@
 **Tenant:** `tatillife_south`  
 **Date:** 2026-06-07  
 **Status:** HOLD — awaiting operator morning review  
-**Consolidated status:** All Priority 1 sections complete. ⚠ OPERATOR items require morning action. Priority 1b (coming-soon gating) and Priority 2 (flake matrix) are in progress.
+**Consolidated status:** All Priority 1 sections complete. ⚠ OPERATOR items require morning action. Priority 1b (coming-soon gating) complete — PR [#541](https://github.com/Kelsean868/agencytrack/pull/541) (brief) + PR [#542](https://github.com/Kelsean868/agencytrack/pull/542) (impl), both HOLD. Priority 2 (flake matrix) in progress — PR TBD (branch `fix/nudge-flake-stabilization`; number assigned after matrix gates pass or cliff executes).
 
 ---
 
@@ -363,7 +363,10 @@ Merge any PRs that must land before provisioning. Per freeze rules: only PRs alr
 
 **Currently open PRs as of this runbook:**
 - PR #398 (`redesign/production-ranking-hook`) — Track J hook, HOLD OPEN (needed for redesign slices, not provisioning)
-- `fix/nudge-flake-stabilization` — test-only, matrix pending, HOLD
+- PR [#540](https://github.com/Kelsean868/agencytrack/pull/540) (`docs/pilot-readiness-runbook`) — this runbook, HOLD
+- PR [#541](https://github.com/Kelsean868/agencytrack/pull/541) (`docs/coming-soon-gating-brief`) — coming-soon gating brief, HOLD
+- PR [#542](https://github.com/Kelsean868/agencytrack/pull/542) (`feat/coming-soon-gating`) — coming-soon gating impl, HOLD
+- PR **TBD** (`fix/nudge-flake-stabilization`) — test-only flake fix; number assigned after matrix gates pass or cliff executes
 
 ### T+35: Create Branches + Units (10 min)
 
