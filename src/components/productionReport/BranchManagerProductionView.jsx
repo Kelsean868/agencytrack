@@ -131,6 +131,7 @@ export default function BranchManagerProductionView() {
         </div>
       </div>
 
+      {/* @@hero-pane-start */}
       {/* Branch aggregate */}
       <div className="glass hero teal">
         <p className="text-xs font-semibold uppercase tracking-wide text-[--hero-ink-muted-teal] mb-4">Branch Aggregate</p>
@@ -153,6 +154,7 @@ export default function BranchManagerProductionView() {
           </div>
         </div>
       </div>
+      {/* @@hero-pane-end */}
 
       {/* Unit leaderboard (by avg API per agent) */}
       {unitLeaderboardEntries.length > 0 && (

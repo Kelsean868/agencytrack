@@ -52,7 +52,13 @@ const FORBIDDEN_PATTERNS = [
   { label: 'text-ink-faint (banned globally — D5)',           re: /\btext-ink-faint\b/ },
 ];
 
+// Optional startMarker/endMarker fields: when set, the guard extracts only the
+// bracketed hero-pane block from the source file before running checks. This lets
+// mixed files (hero pane + non-hero sections) participate in the guard without
+// false-positives from non-hero code that legitimately uses text-primary, etc.
+// Markers must be present in the source file — guard tests will fail if missing.
 const HERO_COMPONENTS = [
+  // ── S1/S2 originals — whole-file scan (entire component is the hero pane) ──
   {
     name: 'CommissionAnchorStrip',
     path: 'src/components/agent/CommissionAnchorStrip.jsx',
@@ -65,8 +71,7 @@ const HERO_COMPONENTS = [
     name: 'PersRealityBar',
     path: 'src/components/manager/PersRealityBar.jsx',
   },
-  // ── S3 sweep — PR #535 ────────────────────────────────────────────────────
-  // Files where the ENTIRE component is the hero pane: guard scans apply cleanly.
+  // ── S3 sweep — PR #534: whole-component files ──────────────────────────────
   {
     name: 'HeroCard (Agent Dashboard YTD)',
     path: 'src/components/dashboard/HomeV2/HeroCard.jsx',
@@ -79,26 +84,54 @@ const HERO_COMPONENTS = [
     name: 'ManagerHeroSection',
     path: 'src/components/dashboard/ManagerHeroSection.jsx',
   },
-  // NOTE: The following S3 files contain a hero pane as ONE section inside a
-  // larger multi-section file. The whole-file scan cannot reliably distinguish
-  // hero-pane ink from non-hero ink in those files (e.g. buttons, status pills,
-  // and chart tooltips outside the glass container legitimately use text-primary,
-  // text-warning-ink, etc.). These files are excluded from the guard scan;
-  // their hero-pane correctness is verified via Phase 5 smoke (both themes, real
-  // backdrop) rather than static AST. Future work: extract hero sub-sections into
-  // dedicated component files to re-enable the guard.
-  //
-  //   HistoryTab (HistoryAnchorStrip)
-  //   AgentProductionView
-  //   PersistencyTab (Agent)
-  //   BranchManagerProductionView
-  //   ManagerAwardsPanel (MonthlyBonusHero)
-  //   PolicyReconciliationPanel (pending hero)
-  //   CompliancePanel (reality bar)
+  // ── S3 sweep — PR #534: mixed files with @@hero-pane-start/end markers ─────
+  // Guard scans only the extracted hero block; non-hero sections are not scanned.
+  {
+    name: 'HistoryAnchorStrip (HistoryTab)',
+    path: 'src/components/submissions/HistoryTab.jsx',
+    startMarker: '// @@hero-pane-start',
+    endMarker:   '// @@hero-pane-end',
+  },
+  {
+    name: 'AgentProductionView hero section',
+    path: 'src/components/productionReport/AgentProductionView.jsx',
+    startMarker: '{/* @@hero-pane-start */}',
+    endMarker:   '{/* @@hero-pane-end */}',
+  },
+  {
+    name: 'PersistencyTab hero section',
+    path: 'src/components/agent/PersistencyTab.jsx',
+    startMarker: '{/* @@hero-pane-start */}',
+    endMarker:   '{/* @@hero-pane-end */}',
+  },
+  {
+    name: 'BranchManagerProductionView hero section',
+    path: 'src/components/productionReport/BranchManagerProductionView.jsx',
+    startMarker: '{/* @@hero-pane-start */}',
+    endMarker:   '{/* @@hero-pane-end */}',
+  },
+  {
+    name: 'MonthlyBonusHero (ManagerAwardsPanel)',
+    path: 'src/components/awards/ManagerAwardsPanel.jsx',
+    startMarker: '// @@hero-pane-start',
+    endMarker:   '// @@hero-pane-end',
+  },
+  {
+    name: 'PolicyReconciliationPanel pending hero',
+    path: 'src/components/manager/PolicyReconciliationPanel.jsx',
+    startMarker: '{/* @@hero-pane-start */}',
+    endMarker:   '{/* @@hero-pane-end */}',
+  },
+  {
+    name: 'CompliancePanel reality bar',
+    path: 'src/components/manager/CompliancePanel.jsx',
+    startMarker: '{/* @@hero-pane-start */}',
+    endMarker:   '{/* @@hero-pane-end */}',
+  },
 ];
 
 describe('Hero pane foreign-ink guard', () => {
-  for (const { name, path } of HERO_COMPONENTS) {
+  for (const { name, path, startMarker, endMarker } of HERO_COMPONENTS) {
     const fullPath = resolve(ROOT, path);
     let src;
     try {
@@ -107,13 +140,43 @@ describe('Hero pane foreign-ink guard', () => {
       throw new Error(`Cannot read hero component: ${path}`);
     }
 
+    // When markers are provided, extract only the hero-pane block for scanning.
+    // This prevents false-positives from non-hero code in mixed files.
+    let block = src;
+    if (startMarker && endMarker) {
+      const startIdx = src.indexOf(startMarker);
+      const endIdx   = src.indexOf(endMarker);
+      if (startIdx >= 0 && endIdx > startIdx) {
+        block = src.slice(startIdx, endIdx + endMarker.length);
+      }
+    }
+
+    if (startMarker) {
+      it(`${name}: @@hero-pane-start marker present`, () => {
+        expect(
+          src.indexOf(startMarker),
+          `${name}: missing @@hero-pane-start marker ("${startMarker}") in ${path}`,
+        ).toBeGreaterThanOrEqual(0);
+      });
+    }
+    if (endMarker) {
+      it(`${name}: @@hero-pane-end marker present and after start`, () => {
+        const si = startMarker ? src.indexOf(startMarker) : -1;
+        const ei = src.indexOf(endMarker);
+        expect(
+          ei,
+          `${name}: missing or misplaced @@hero-pane-end marker ("${endMarker}") in ${path}`,
+        ).toBeGreaterThan(si);
+      });
+    }
+
     it(`${name} renders a .glass.hero pane`, () => {
-      expect(src).toMatch(/\bglass\s+hero\s+(teal|gold)\b/);
+      expect(block).toMatch(/\bglass\s+hero\s+(teal|gold)\b/);
     });
 
     it(`${name}: every text-[--var] class uses a certified hero ink variable`, () => {
       // Match text-[--{varName}] — captures the varName after `--`
-      const matches = [...src.matchAll(/\btext-\[--([^\]]+)\]/g)];
+      const matches = [...block.matchAll(/\btext-\[--([^\]]+)\]/g)];
       const foreignVars = matches
         .map((m) => m[1])
         .filter((varName) => !HERO_INK_VARS.has(varName));
@@ -126,7 +189,7 @@ describe('Hero pane foreign-ink guard', () => {
     });
 
     it(`${name}: no forbidden raw status-color text class`, () => {
-      const violations = FORBIDDEN_PATTERNS.filter(({ re }) => re.test(src)).map(
+      const violations = FORBIDDEN_PATTERNS.filter(({ re }) => re.test(block)).map(
         ({ label }) => label,
       );
 

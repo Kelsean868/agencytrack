@@ -434,6 +434,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
         />
       </div>
 
+      {/* @@hero-pane-start */}
       {/* ── Reality bar (lens-driven) ───────────────────────────────────────── */}
       <div className="glass hero teal p-4 sm:p-5" data-testid="compliance-reality-bar">
         <div className="flex items-center gap-2 mb-3">
@@ -473,6 +474,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
           </>
         )}
       </div>
+      {/* @@hero-pane-end */}
 
       {/* ── Exception-first list (lens-driven) ──────────────────────────────── */}
       <div className="rounded-2xl border border-danger/30 bg-card overflow-hidden" data-testid="compliance-exception-list">

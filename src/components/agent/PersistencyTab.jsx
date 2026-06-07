@@ -103,6 +103,7 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
       </div>
 
       {/* Big number */}
+      {/* @@hero-pane-start */}
       <div className="glass hero teal flex flex-col gap-2" data-testid="agent-persistency-summary">
         <div className="flex items-center gap-2">
           <TrendingUp size={16} className="text-[--hero-ink-muted-teal]" />
@@ -137,6 +138,7 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
           <p className="text-xs text-[--hero-ink-muted-teal]">No record entered for this month yet.</p>
         )}
       </div>
+      {/* @@hero-pane-end */}
 
       {/* Award gate banner — only when a record exists and persistency < 90% */}
       {currentRecord && !meetsGate && (

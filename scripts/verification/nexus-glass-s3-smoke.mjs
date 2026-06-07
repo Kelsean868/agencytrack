@@ -18,11 +18,15 @@
 import { chromium } from 'playwright';
 import { readFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { spawn } from 'child_process';
+import { createRequire } from 'module';
 import {
   setupBypassSession,
   captureConsoleAndNetwork,
   formatCaptureReport,
 } from './lib/walk-helpers.mjs';
+
+const _require = createRequire(import.meta.url);
 
 // ── env loading ──────────────────────────────────────────────────────────────
 function loadEnv() {
@@ -290,6 +294,113 @@ async function runManagerTheme(browser, theme) {
   }
 }
 
+// ── Admin SDK helper client ──────────────────────────────────────────────────
+// Wraps the CJS helper process with a simple request/response protocol.
+// The helper spawns once, handles multiple ops, and exits when stdin closes.
+
+function spawnAdminHelper() {
+  const helperPath = _require.resolve('./nexus-glass-c8-admin-helper.cjs');
+  const child = spawn('node', [helperPath], { stdio: ['pipe', 'pipe', 'inherit'] });
+  let _buf = '';
+  const pending = [];
+  child.stdout.setEncoding('utf8');
+  child.stdout.on('data', (chunk) => {
+    _buf += chunk;
+    const lines = _buf.split('\n');
+    _buf = lines.pop();
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const cb = pending.shift();
+      if (cb) cb(JSON.parse(line));
+    }
+  });
+  const send = (op) => new Promise((resolve) => {
+    pending.push(resolve);
+    child.stdin.write(JSON.stringify(op) + '\n');
+  });
+  const close = () => child.stdin.end();
+  return { send, close };
+}
+
+// ── Seeded C8 leg ─────────────────────────────────────────────────────────────
+// Creates one settled policy via Admin SDK → navigates to Policy Reconciliation
+// in both themes → screenshots and asserts pending-hero.glass → deletes the doc.
+
+async function runSeededC8Leg(browser) {
+  console.log('\n══ Seeded C8 — Policy Reconciliation pending-hero ══');
+  const admin = spawnAdminHelper();
+  let docPath = null;
+
+  try {
+    // 1. Seed the policy.
+    console.log('  Seeding settled policy via Admin SDK…');
+    const seedRes = await admin.send({ op: 'seedPolicy', mgrEmail: MGR_EMAIL });
+    if (!seedRes.ok) {
+      skip('C8-seed', `Admin SDK seed failed: ${seedRes.error}`);
+      return;
+    }
+    docPath = seedRes.docPath;
+    console.log(`  Seeded: ${docPath}`);
+    pass('C8-seed', `Policy seeded at ${docPath}`);
+
+    // 2. Run both-theme legs.
+    for (const theme of ['light', 'dark']) {
+      const T = theme;
+      const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+      await setupBypassSession(context, PREVIEW, BYPASS_TOKEN);
+      const page = await context.newPage();
+      const capture = captureConsoleAndNetwork(page);
+
+      try {
+        await page.goto(PREVIEW, { waitUntil: 'domcontentloaded' });
+        await loginAndWait(page, MGR_EMAIL, MGR_PASS);
+        await setDarkMode(page, T === 'dark');
+        await page.waitForTimeout(1000);
+
+        const reconBtn = page.locator('[data-testid="nav-policy-reconciliation"]');
+        if (await reconBtn.count()) {
+          await reconBtn.click();
+          await page.waitForTimeout(2500); // allow Firestore read to complete
+
+          const heroEl = await page.locator('[data-testid="pending-hero"].glass').count();
+          if (heroEl > 0) {
+            pass(`C8-${T}`, 'pending-hero.glass present (seeded data visible)');
+          } else {
+            // Check if the page loaded at all
+            const surface = await page.locator('[data-testid="policy-reconciliation-surface"]').count();
+            if (surface > 0) {
+              fail(`C8-${T}`, 'Policy Reconciliation loaded but pending-hero.glass absent — seeded policy not visible');
+            } else {
+              fail(`C8-${T}`, 'policy-reconciliation-surface not found — navigation failed');
+            }
+          }
+          await screenshot(page, `C8-recon-seeded-${T}`);
+        } else {
+          skip(`C8-${T}`, 'nav-policy-reconciliation not found');
+        }
+      } catch (e) {
+        fail(`C8-${T}-seeded`, e.message);
+      } finally {
+        formatCaptureReport(capture);
+        await context.close();
+      }
+    }
+  } finally {
+    // 3. Creator-cleanup: always delete the seeded doc.
+    if (docPath) {
+      const delRes = await admin.send({ op: 'deletePolicy', docPath });
+      if (delRes.ok) {
+        console.log(`  Deleted seeded policy: ${docPath}`);
+        pass('C8-cleanup', `Seeded policy deleted — ${docPath}`);
+      } else {
+        console.warn(`  ⚠️  Delete failed: ${delRes.error} — manual cleanup needed at ${docPath}`);
+        fail('C8-cleanup', `Delete failed: ${delRes.error}`);
+      }
+    }
+    admin.close();
+  }
+}
+
 // ── main ─────────────────────────────────────────────────────────────────────
 
 async function main() {
@@ -306,6 +417,7 @@ async function main() {
     await runAgentTheme(browser, 'dark');
     await runManagerTheme(browser, 'light');
     await runManagerTheme(browser, 'dark');
+    await runSeededC8Leg(browser);
   } finally {
     await browser.close();
   }

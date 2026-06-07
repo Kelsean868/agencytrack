@@ -274,6 +274,7 @@ export default function PolicyReconciliationPanel() {
             </div>
           ) : (
             <>
+              {/* @@hero-pane-start */}
               {/* Pending-reconciliation hero + tiles */}
               <div className="glass hero teal p-5 flex items-center gap-6 flex-wrap" data-testid="pending-hero">
                 <div className="shrink-0">
@@ -303,6 +304,7 @@ export default function PolicyReconciliationPanel() {
                   })}
                 </div>
               </div>
+              {/* @@hero-pane-end */}
 
               {/* Filter chips — per-policy confirm only (no bulk; see Slice-2 FU) */}
               <div className="flex items-center gap-3 flex-wrap">

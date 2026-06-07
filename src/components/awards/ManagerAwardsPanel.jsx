@@ -56,6 +56,7 @@ function MonthlyBonusHero({ bonus }) {
   // qualified  → hero-accent (#F4ECC8), certified at 4.7:1 via heroPair tests.
   const donutStroke = hasNextTier ? 'var(--hero-ink)' : 'var(--hero-accent)';
 
+  // @@hero-pane-start
   return (
     <div
       className="glass hero teal p-6 relative overflow-hidden flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6"
@@ -106,6 +107,7 @@ function MonthlyBonusHero({ bonus }) {
       </div>
     </div>
   );
+  // @@hero-pane-end
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

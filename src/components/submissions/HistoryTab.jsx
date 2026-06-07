@@ -86,6 +86,7 @@ function HistoryAnchorStrip({ anchor, year, weeklyTarget }) {
   const pct = goalApi > 0 ? Math.min(100, Math.round((anchor.ytdAPI / goalApi) * 100)) : 0;
   const yearEnd = Math.round((anchor.ytdAPI / Math.max(anchor.weeksSubmitted, 1)) * 52);
 
+  // @@hero-pane-start
   return (
     <div className="glass hero teal p-5 relative overflow-hidden">
       <div className="relative">
@@ -181,6 +182,7 @@ function HistoryAnchorStrip({ anchor, year, weeklyTarget }) {
       </div>
     </div>
   );
+  // @@hero-pane-end
 }
 
 // ── YearHeatmap ───────────────────────────────────────────────────────────────

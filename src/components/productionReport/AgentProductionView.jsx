@@ -149,6 +149,7 @@ export default function AgentProductionView() {
         <TimePeriodToggle selected={period} onChange={setPeriod} />
       </div>
 
+      {/* @@hero-pane-start */}
       {/* Hero card */}
       <div className="glass hero teal">
         <div className="flex items-center gap-3">
@@ -201,6 +202,7 @@ export default function AgentProductionView() {
           ))}
         </div>
       </div>
+      {/* @@hero-pane-end */}
 
       {/* 4-window period grid */}
       <div>
