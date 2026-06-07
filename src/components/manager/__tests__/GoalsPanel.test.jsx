@@ -157,9 +157,7 @@ describe('GoalsPanel', () => {
     it('does NOT show SM Target sub-tab for branch_manager', async () => {
       setRole('branch_manager');
       render(<GoalsPanel />);
-      await waitFor(() => {
-        expect(screen.getByRole('tab', { name: 'Branch' })).toBeInTheDocument();
-      });
+      await screen.findByRole('tab', { name: 'Branch' });
       expect(screen.queryByRole('tab', { name: 'SM Target' })).not.toBeInTheDocument();
     });
 

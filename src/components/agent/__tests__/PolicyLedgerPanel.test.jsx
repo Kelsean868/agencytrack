@@ -526,11 +526,9 @@ describe('PolicyLedgerPanel — initialFilter prop', () => {
 
   it('initialises filter to the provided initialFilter value (lapsed)', async () => {
     render(<PolicyLedgerPanel initialFilter="lapsed" />);
-    // The "Lapsed" chip button should be rendered — the filter state is initialised
-    // from the prop at mount. Since policies list is empty, we just verify no crash
-    // and the component renders in list view (not create view).
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    });
+    // The surface renders without crashing; filter chips only show when policies
+    // are present (policies.length > 0 gate). Verify list view (not create form).
+    await screen.findByTestId('policy-ledger-surface');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 });

@@ -84,6 +84,11 @@ describe('SuggestedWeekCard — resolution states', () => {
     expect(screen.getByTestId('suggested-week-no-anchor')).toBeInTheDocument();
   });
 
+  it('treats a negative committed API as no-anchor', () => {
+    render(<SuggestedWeekCard committedAnnualAPI={-50} submissions={derivedSubmissions} />);
+    expect(screen.getByTestId('suggested-week-no-anchor')).toBeInTheDocument();
+  });
+
   it('anchor but < 8 weeks history → floor fallback (5 metrics + company-floor label)', () => {
     render(
       <SuggestedWeekCard
@@ -99,9 +104,12 @@ describe('SuggestedWeekCard — resolution states', () => {
     ['Prospecting calls', 'Contacts', 'FFIs', 'CIs', 'Apps'].forEach((label) => {
       expect(within(floor).getByText(label)).toBeInTheDocument();
     });
-    // Floor values come straight from the floors prop.
+    // Floor values come straight from the floors prop (all 5 metrics).
     expect(within(floor).getByText('100')).toBeInTheDocument();
     expect(within(floor).getByText('40')).toBeInTheDocument();
+    expect(within(floor).getByText('8')).toBeInTheDocument();
+    expect(within(floor).getByText('5')).toBeInTheDocument();
+    expect(within(floor).getByText('3')).toBeInTheDocument();
     // Capital-C label ("⎯ Company floor") — case-sensitive to avoid matching the
     // lowercase "…based on the company floor…" explanatory sentence below it.
     expect(within(floor).getByText(/Company floor/)).toBeInTheDocument();

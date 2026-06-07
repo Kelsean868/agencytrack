@@ -15,11 +15,14 @@ import { render, screen, fireEvent } from '@testing-library/react';
 
 import HeroCard from '../HeroCard';
 import { MDRT_THRESHOLD } from '../../../../constants/mdrt';
+import { formatCurrency } from '../../../../utils/formatters';
 
 describe('HeroCard — progress + MDRT marker logic', () => {
   it('renders the YTD figure and a progressbar with the computed pct', () => {
     const goal = MDRT_THRESHOLD * 2; // on-scale goal
-    render(<HeroCard ytdApi={goal / 2} personalAnnualAPI={goal} onSubmit={() => {}} />);
+    const ytdApi = goal / 2;
+    render(<HeroCard ytdApi={ytdApi} personalAnnualAPI={goal} onSubmit={() => {}} />);
+    expect(screen.getByText(formatCurrency(ytdApi))).toBeInTheDocument();
     const bar = screen.getByRole('progressbar');
     expect(bar).toHaveAttribute('aria-valuenow', '50');
     expect(bar).toHaveAttribute('aria-valuemin', '0');

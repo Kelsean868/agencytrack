@@ -65,7 +65,7 @@ describe('ProspectInfoPanel — empty state', () => {
   it('shows empty prompt + New Prep button when no preps exist', async () => {
     mockGetProspectInfo.mockResolvedValue([]);
     render(<ProspectInfoPanel />);
-    await waitFor(() => expect(screen.getByTestId('prospect-info-empty')).toBeInTheDocument());
+    await screen.findByTestId('prospect-info-empty');
     expect(screen.getByText(/No joint-call prep yet/i)).toBeInTheDocument();
     expect(screen.getByTestId('prospect-info-add-btn')).toBeInTheDocument();
   });
@@ -91,7 +91,7 @@ describe('ProspectInfoPanel — list of own preps (inclusion)', () => {
   it('agent SEES their OWN prep records (inclusion semantics)', async () => {
     mockGetProspectInfo.mockResolvedValue(preps);
     render(<ProspectInfoPanel />);
-    await waitFor(() => expect(screen.getByText('Jane Smith')).toBeInTheDocument());
+    await screen.findByText('Jane Smith');
     expect(screen.getByText('Whole Life', { exact: false })).toBeInTheDocument();
   });
 
