@@ -90,7 +90,11 @@ export async function promotePendingPlan(tenantId, pendingName, { policyClass, p
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('Plan catalog not initialized.');
-    const { plans = [], pendingReview = [] } = snap.data();
+    // Use ?? instead of destructuring defaults: Firestore can store explicit null
+    // for missing arrays, which destructuring `= []` won't catch (only undefined triggers it).
+    const data = snap.data();
+    const plans         = data.plans         ?? [];
+    const pendingReview = data.pendingReview ?? [];
     const entry = pendingReview.find(
       (p) => p.name.trim().toLowerCase() === normalized
     );
@@ -120,7 +124,7 @@ export async function dismissPendingPlan(tenantId, pendingName) {
   await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error('Plan catalog not initialized.');
-    const { pendingReview = [] } = snap.data();
+    const pendingReview = snap.data().pendingReview ?? [];
     tx.update(ref, {
       pendingReview: pendingReview.filter(
         (p) => p.name.trim().toLowerCase() !== normalized

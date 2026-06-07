@@ -12,6 +12,8 @@ import { db } from '../firebase';
 
 export const NUDGE_TYPE = 'compliance.filing.nudge';
 export const PLAN_NUDGE_TYPE = 'compliance.plan.nudge'; // S3 plan-adoption lens
+/** Maximum audience size enforced by the sendComplianceNudge CF. */
+export const MAX_NUDGE_AUDIENCE = 50;
 
 /**
  * Fire a nudge at one or more agents for a given week.
@@ -21,6 +23,12 @@ export const PLAN_NUDGE_TYPE = 'compliance.plan.nudge'; // S3 plan-adoption lens
  * @returns CF result { success, type, weekStart, count, results }
  */
 export async function sendComplianceNudge(audienceUids, weekStart, type = NUDGE_TYPE) {
+  if (!Array.isArray(audienceUids) || audienceUids.length === 0) {
+    throw new Error('audienceUids must be a non-empty array');
+  }
+  if (audienceUids.length > MAX_NUDGE_AUDIENCE) {
+    throw new Error(`audienceUids exceeds limit of ${MAX_NUDGE_AUDIENCE} (got ${audienceUids.length})`);
+  }
   const fn = httpsCallable(getFunctions(), 'sendComplianceNudge');
   const result = await fn({ audienceUids, type, weekStart });
   return result.data;

@@ -107,8 +107,13 @@ export async function addProspectInfo({
   policyType,
   intendedAppointmentDate,
 }) {
-  if (prospectingSource === 'social-media' && !socialPlatform) {
-    throw new Error('socialPlatform is required when source is social-media');
+  if (prospectingSource === 'social-media') {
+    if (!socialPlatform) {
+      throw new Error('socialPlatform is required when source is social-media');
+    }
+    if (!SOCIAL_PLATFORM_VALUES.includes(socialPlatform)) {
+      throw new Error(`socialPlatform must be one of: ${SOCIAL_PLATFORM_VALUES.join(', ')}`);
+    }
   }
   await addDoc(prospectRef(tenantId, agentId), {
     agentId,
@@ -148,8 +153,13 @@ export async function updateProspectInfo({
   policyType,
   intendedAppointmentDate,
 }) {
-  if (prospectingSource === 'social-media' && !socialPlatform) {
-    throw new Error('socialPlatform is required when source is social-media');
+  if (prospectingSource === 'social-media') {
+    if (!socialPlatform) {
+      throw new Error('socialPlatform is required when source is social-media');
+    }
+    if (!SOCIAL_PLATFORM_VALUES.includes(socialPlatform)) {
+      throw new Error(`socialPlatform must be one of: ${SOCIAL_PLATFORM_VALUES.join(', ')}`);
+    }
   }
   await updateDoc(
     doc(db, `tenants/${tenantId}/users/${agentId}/prospectInfo/${prospectId}`),

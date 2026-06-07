@@ -26,12 +26,16 @@
  * @returns {Array<{periodKey: string, settledAPI: number, settledApps: number, persistency: number}>}
  */
 export function settlementShapeFromPolicies(policies) {
+  // Guard: caller may pass null/undefined when the policies query hasn't resolved.
+  if (!Array.isArray(policies)) return [];
   const map = {};
   for (const policy of policies) {
     if (policy.status !== 'settled') continue;
     const dateIssued = policy.dateIssued;
     if (!dateIssued) continue;
     const d = dateIssued.toDate ? dateIssued.toDate() : new Date(dateIssued);
+    // Guard invalid dates — NaN.toISOString() throws RangeError.
+    if (isNaN(d.getTime())) continue;
     const periodKey = d.toISOString().substring(0, 7);
     if (!map[periodKey]) map[periodKey] = { periodKey, settledAPI: 0, settledApps: 0, persistency: 0 };
     map[periodKey].settledAPI += parseFloat(policy.settledAPI) || 0;

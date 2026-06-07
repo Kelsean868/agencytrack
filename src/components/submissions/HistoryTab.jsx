@@ -343,7 +343,13 @@ function WeekCard({ s, prevS, sparkValues, onClick }) {
   const fields   = extractFields(s);
   const apps     = fields.applicationsSold ?? 0;
   const cis      = parseInt(s.ciConducted) || 0;
-  const dials    = (parseInt(s.referralCalls) || 0) + (parseInt(s.followUpCalls) || 0) + (parseInt(s.coldCalls) || 0);
+  // Use the canonical 5-category sum: referral + follow-up + cold + seminar/tradeshow + service.
+  // Gemini PR #390: previously missing seminarTradeshowCalls + serviceCalls.
+  const dials    = (parseInt(s.referralCalls)          || 0)
+                 + (parseInt(s.followUpCalls)           || 0)
+                 + (parseInt(s.coldCalls)               || 0)
+                 + (parseInt(s.seminarTradeshowCalls)   || 0)
+                 + (parseInt(s.serviceCalls)            || 0);
   const prevApi  = prevS ? getSubmissionAPI(prevS) : null;
   const apiDelta = prevApi !== null ? api - prevApi : null;
   const prevApps = prevS ? (extractFields(prevS).applicationsSold ?? 0) : null;
