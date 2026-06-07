@@ -49,4 +49,6 @@ Surface the PR URL in your summary. Do NOT run Phase 6 post-merge sequence until
 
 ## Phase 5 smoke enforcement
 
+Phase 5 includes the Rule 21 Gemini disposition table — poll for the bot review after PR open (up to 10 min; if absent, note it and proceed) and disposition every comment before reporting.
+
 **Phase 5 is not complete until the smoke has RUN green against the preview; smokes are never authorization-gated.** A smoke that is created but not run does not satisfy Phase 5. Run the full leg set (both themes, all credential tiers per the brief), fix-and-rerun anything surfaced, then report with itemized gate table + final HEAD SHA (Rule 20) before declaring pre-review hold. (Banked 2026-06-06, PR #515 — two consecutive created-not-run smokes prompted this hardening.)
