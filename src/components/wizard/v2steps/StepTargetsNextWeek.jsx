@@ -94,7 +94,7 @@ export default function StepTargetsNextWeek({ data, onChange }) {
             Any commitments, focus areas, or things you want to hold yourself accountable to.
           </p>
           <textarea
-            value={data.goalNotes}
+            value={data.goalNotes ?? ''}
             onChange={(e) => {
               if (e.target.value.length <= 500) onChange('goalNotes', e.target.value);
             }}

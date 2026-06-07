@@ -29,6 +29,8 @@ function RatingCard({ badge, label, name, value, onChange, desc, variant = 'defa
               key={n}
               type="button"
               onClick={() => onChange(name, n)}
+              aria-label={`Rate ${n} out of 10`}
+              aria-pressed={value === n}
               className={`w-10 h-11 rounded-lg border font-semibold text-sm transition-colors ${
                 value === n
                   ? 'border-primary bg-primary dark:bg-primary-dark text-white'
@@ -102,7 +104,7 @@ export default function StepRateYourWeek({ data, onChange }) {
             Wins, challenges, things to discuss with your manager, or goals for next week.
           </p>
           <textarea
-            value={data.notes}
+            value={data.notes ?? ''}
             onChange={(e) => onChange('notes', e.target.value)}
             rows={4}
             placeholder="Add any notes here…"

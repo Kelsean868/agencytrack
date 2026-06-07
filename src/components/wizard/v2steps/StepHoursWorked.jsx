@@ -9,8 +9,9 @@ import { Card, NumericField } from '../CardStack';
  * direct on-change, same display-only office/field time-split bar.
  */
 export default function StepHoursWorked({ data, onChange }) {
-  const office = data.officeHours ?? 0;
-  const field = data.fieldHours ?? 0;
+  // Number() coercion prevents string concatenation when values come in as strings.
+  const office = Number(data.officeHours) || 0;
+  const field  = Number(data.fieldHours)  || 0;
   const total = office + field;
   const officePct = total > 0 ? Math.round((office / total) * 100) : 0;
   const fieldPct = total > 0 ? 100 - officePct : 0;
