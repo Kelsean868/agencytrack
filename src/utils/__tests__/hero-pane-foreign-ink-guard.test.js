@@ -107,3 +107,57 @@ describe('Hero pane foreign-ink guard', () => {
     });
   }
 });
+
+// ── Inverse guard: card-context branches must not leak hero-ink tokens ─────────
+//
+// Hero components that render dual-state (glass.hero state + card state) mark their
+// card-only branches with @@card-context-start / @@card-context-end comments.
+// This scan extracts those blocks and asserts that no hero-tier token (hero-chip bg,
+// hero-chip border, hero-ink text) appears inside — ensuring card-context render
+// paths use card-tier inks only.
+//
+// Banked 2026-06-06 (G-1 trace: CommissionAnchorStrip no-goal state rendered hero-ink
+// Chips outside .glass.hero; fix + this inverse guard together close the gap).
+// ──────────────────────────────────────────────────────────────────────────────────
+
+const CARD_CONTEXT_COMPONENTS = [
+  {
+    name: 'CommissionAnchorStrip (no-goal card state)',
+    path: 'src/components/agent/CommissionAnchorStrip.jsx',
+    startMarker: '// @@card-context-start',
+    endMarker:   '// @@card-context-end',
+  },
+];
+
+// Hero-tier token patterns that must NOT appear inside a card-context block.
+const HERO_TOKEN_PATTERNS = [
+  { label: 'bg-[--hero-chip-island] (use bg-surface-raised in card context)',   re: /\bbg-\[--hero-chip-island\]/ },
+  { label: 'border-[--hero-chip-border] (use border-border in card context)',   re: /\bborder-\[--hero-chip-border\]/ },
+  { label: 'text-[--hero-ink*] (use text-ink / text-ink-muted in card context)', re: /\btext-\[--hero-ink/ },
+];
+
+describe('Hero-ink inverse guard — card-context branches', () => {
+  for (const { name, path, startMarker, endMarker } of CARD_CONTEXT_COMPONENTS) {
+    it(`${name}: no hero-ink tokens in @@card-context block`, () => {
+      const fullPath = resolve(ROOT, path);
+      const src = readFileSync(fullPath, 'utf-8');
+
+      const startIdx = src.indexOf(startMarker);
+      const endIdx   = src.indexOf(endMarker);
+
+      expect(startIdx, `${name}: missing @@card-context-start marker`).toBeGreaterThanOrEqual(0);
+      expect(endIdx,   `${name}: missing @@card-context-end marker`).toBeGreaterThan(startIdx);
+
+      const block = src.slice(startIdx, endIdx + endMarker.length);
+      const violations = HERO_TOKEN_PATTERNS
+        .filter(({ re }) => re.test(block))
+        .map(({ label }) => label);
+
+      expect(
+        violations,
+        `${name} @@card-context block leaks hero-tier token(s):\n` +
+          violations.map((l) => `  ❌ ${l}`).join('\n'),
+      ).toEqual([]);
+    });
+  }
+});

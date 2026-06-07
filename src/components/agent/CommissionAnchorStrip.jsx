@@ -13,13 +13,22 @@ function ProvChip({ children, warning }) {
   );
 }
 
-function Chip({ label, value, valueClass, dotClass }) {
+// card=true  → card-tier tokens (bg-surface-raised, border-border, text-ink / text-ink-muted)
+//              Use when the chip renders outside a .glass.hero container (no-goal state).
+// card=false  → hero-tier tokens (hero-chip bg, hero-ink text)
+//              Only use inside a .glass.hero.teal wrapper (normal state).
+function Chip({ label, value, valueClass, dotClass, card }) {
+  const containerCls = card
+    ? 'flex min-w-[108px] flex-col gap-0.5 rounded-xl border border-border bg-surface-raised px-3.5 py-2.5'
+    : 'flex min-w-[108px] flex-col gap-0.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3.5 py-2.5';
+  const labelCls = card ? 'text-ink-muted' : 'text-[--hero-ink-muted-teal]';
+  const defaultValueCls = card ? 'text-ink' : 'text-[--hero-ink]';
   return (
-    <div className="flex min-w-[108px] flex-col gap-0.5 rounded-xl border border-[--hero-chip-border] bg-[--hero-chip-island] px-3.5 py-2.5">
-      <span className="font-mono text-[8.5px] font-bold uppercase tracking-[0.1em] text-[--hero-ink-muted-teal]">
+    <div className={containerCls}>
+      <span className={`font-mono text-[8.5px] font-bold uppercase tracking-[0.1em] ${labelCls}`}>
         {label}
       </span>
-      <span className={`flex items-center gap-1.5 font-display text-base font-extrabold tracking-tight whitespace-nowrap ${valueClass || 'text-[--hero-ink]'}`}>
+      <span className={`flex items-center gap-1.5 font-display text-base font-extrabold tracking-tight whitespace-nowrap ${valueClass || defaultValueCls}`}>
         {dotClass && <span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${dotClass}`} />}
         {value}
       </span>
@@ -95,6 +104,7 @@ export default function CommissionAnchorStrip({
   const gapResult = gapToGoal(committedAnnualAPI, rate.value, ratios);
 
   // State 2 — no committed goal (shows YTD + run-rate; suppresses gap)
+  // @@card-context-start — renders on bg-card, NOT inside .glass.hero; Chips must use card=true
   if (!committedAnnualAPI) {
     return (
       <div
@@ -119,12 +129,13 @@ export default function CommissionAnchorStrip({
           </button>
         </div>
         <div className="mt-4 flex flex-wrap gap-3">
-          <Chip label="YTD Earned"  value={earned > 0 ? formatCurrency(earned)      : '—'} />
-          <Chip label="On Pace For" value={rate.value > 0 ? formatCurrency(rate.value) : '—'} />
+          <Chip label="YTD Earned"  value={earned > 0 ? formatCurrency(earned)      : '—'} card />
+          <Chip label="On Pace For" value={rate.value > 0 ? formatCurrency(rate.value) : '—'} card />
         </div>
       </div>
     );
   }
+  // @@card-context-end
 
   // State 1 — normal (with run-rate or fallback)
   const projected = rate.value;
