@@ -743,3 +743,13 @@ Banked: PR #217 (d84a752).
 - **`hasOnly` enforcement relies on `diff().affectedKeys()`, so unchanged field values are invisible to the rule.** Firestore's `request.resource.data.diff(resource.data).affectedKeys()` only includes keys whose values *change* in the write. If an emulator deny-test writes `{ agentId: 'agent-a' }` and the document already has `agentId: 'agent-a'`, `agentId` does NOT appear in `affectedKeys()`, `hasOnly` never evaluates it, and the write is allowed. **Emulator deny-tests for `hasOnly` violations must write a value that differs from the existing document** (e.g. `agentId: 'tampered-id'`) so the key appears in the diff and triggers the rule. Same caveat applies to `hasAll`, `hasAny`, and any rule expression that reads from `diff().affectedKeys()`. Banked from PR #365 (`359149b`, 2026-05-27).
 
 - **`FieldValue.serverTimestamp()` is rejected by Firestore inside array elements during `tx.update()` — use `Timestamp.now()` instead.** Firestore's Admin SDK enforces this at runtime, not at type-check time: `Update() requires either a single JavaScript object… FieldValue.serverTimestamp() cannot be used inside of an array (found in field "pendingReview.\`0\`.firstLoggedAt")`. Replace with `admin.firestore.Timestamp.now()` (a real value, not a sentinel) anywhere a timestamp is stored inside an array field. CF unit tests that mock `admin.firestore.FieldValue` to return a plain string do NOT catch this — the mock is a valid Firestore value but the sentinel validation only fires against real Firestore. Always verify CF writes that use `FieldValue` methods inside arrays via post-deploy smoke or CF emulator integration tests. Banked from PR #373 (`df161fe`, 2026-05-28) — H4 `aggregatePendingPlan` CF.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).

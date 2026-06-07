@@ -91,6 +91,20 @@ When multi-section components are refactored to extract hero sub-sections into s
 
 ---
 
+## Graphify integration — shipped PR ##TBD (banked 2026-06-07)
+
+**Source:** graphify repo integration brief execution (PR ##TBD, `feat/graphify-integration`). Graph built: 13,125 nodes / 17,369 edges / 1,026 communities (AST code graph only — semantic extraction of docs/images not run; `graphify query` / `graphify path` / `graphify explain` are usable, but doc concepts from `.md` / `.html` / PDFs are absent).
+
+### setupBypassSession SPOF (LOW, informational)
+
+**Context:** `graphify query "setupBypassSession"` surfaced it as the top god node (208 edges) — every smoke script under `scripts/verification/` (62+ files) calls it as the single Vercel bypass-cookie handshake. Error sanitization strips the token from any failure message, making root-cause diagnosis harder.
+
+**Risk:** A rotated `VERCEL_BYPASS_TOKEN` silently kills all 62 smokes at once. Rotation is manual and rare; token propagation guidance is already in CLAUDE.md. No code defect — sanitization is intentional security behaviour.
+
+**Action:** No PR required. If a smoke batch fails mysteriously, check token rotation first (`node -e "require('dotenv').config(); console.log({VERCEL_BYPASS_TOKEN: !!process.env.VERCEL_BYPASS_TOKEN})"`). Remove this entry once a token-rotation incident has been documented and the runbook is updated.
+
+---
+
 ## D6 census — bg-primary+text-white buttons missing dark:bg-primary-dark (banked 2026-06-06, PR #515 axe)
 
 **Context:** S3a's axe scan of the agent-dark/ledger-lapsed surface found the Policy Ledger "New Policy" button (`bg-primary text-white` without `dark:bg-primary-dark`) at 2.44:1 in dark mode (expected 4.5:1). The button pre-dated S3a; it was fixed as a Rule-9 in-PR extension per dispatcher authorization. The D6 doctrine (CLAUDE.md UI rules) requires that every `bg-primary text-white` button pair `dark:bg-primary-dark`. This was the first find — siblings from Track H era and earlier are suspects.
