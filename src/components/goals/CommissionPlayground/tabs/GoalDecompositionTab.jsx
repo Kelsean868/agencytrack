@@ -206,6 +206,10 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   };
 
   const handleConfirmWrite = async () => {
+    // Defensive guard — handleRequestConfirm already validates, but protect
+    // against any state race between the confirm dialog opening and submission.
+    const api = computed.apiToWrite;
+    if (!api || api <= 0 || !isFinite(api)) { setShowConfirm(false); return; }
     setSaving(true);
     setError('');
     try {

@@ -183,11 +183,12 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
     let cancelled = false;
     setPlansLoaded(false);
     setPlansError(false);
+    // Each inner promise catches its own error ([uid, null] on failure), so
+    // Promise.all always resolves — the outer .catch() was unreachable.
     Promise.all(rosterUids.map((uid) =>
       getWeeklyPlan(tenantId, uid, selectedWeek).then((p) => [uid, p]).catch(() => [uid, null]),
     ))
-      .then((entries) => { if (!cancelled) { setPlans(Object.fromEntries(entries)); setPlansLoaded(true); } })
-      .catch(() => { if (!cancelled) { setPlansError(true); setPlansLoaded(true); } });
+      .then((entries) => { if (!cancelled) { setPlans(Object.fromEntries(entries)); setPlansLoaded(true); } });
     return () => { cancelled = true; };
   }, [rosterKey, selectedWeek, tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
