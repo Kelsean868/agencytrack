@@ -22,7 +22,6 @@ import WizardForm from '../wizard/WizardForm';
 import DailyCaptureV2 from '../daily/DailyCaptureV2';
 import { getDailyEntry, getDailyEntriesForWeek } from '../../services/dailyActivityService';
 import { getWeeklyPlan } from '../../services/weeklyPlanService';
-import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import CareerPortal from '../profile/CareerPortal';
 import ProfileScreen from '../profile/ProfileScreen';
 import ReportRangeModal from '../ui/ReportRangeModal';
@@ -36,15 +35,15 @@ import WelcomeScreen from '../onboarding/WelcomeScreen';
 import Shell from '../shell/Shell';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import AgentPersistencyTab from '../agent/PersistencyTab';
-import ProspectInfoPanel from '../agent/ProspectInfoPanel';
 import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
 import CommissionAnchorStrip from '../agent/CommissionAnchorStrip';
 import { getOwnPolicies } from '../../services/policiesService';
-import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import GamePlanScreen from './GamePlanV2';
 import CommissionPlayground from '../goals/CommissionPlayground';
 import DailyFAB from '../daily/DailyFAB';
 import AgentDashboardHomeV2 from './HomeV2';
+import { COMING_SOON_TABS } from '../../config/comingSoonTabs';
+import ComingSoonPanel from '../ui/ComingSoonPanel';
 
 // Sidebar nav items for the agent role. Mirrors the live dashboard tabs
 // 1:1 — no fabricated items (per kickoff Decisions: "mirrors the existing
@@ -79,7 +78,7 @@ const NAV_ITEMS = [
   // nav atomically with this change. ManagerDashboard retains the points-board
   // nav entry (deferred to P5 alongside role-scope + branch picker).
   { id: 'leaderboard',       label: 'Leaderboard',       tabId: 'production-leaderboard', Icon: Star, testId: 'agent-tab-leaderboard' },
-];
+].map(item => item.tabId && COMING_SOON_TABS.has(item.tabId) ? { ...item, disabled: true } : item);
 
 // Mobile bottom-nav per mock (lines 2227-2232). The "Submit" item is an
 // action, not a tab — it triggers the wizard via the onAction callback.
@@ -167,15 +166,6 @@ export default function AgentDashboard() {
 
   function handleOpenLapsedPolicies() {
     setPolicyLedgerFilter('lapsed');
-    setActiveTab('policy-ledger');
-  }
-
-  function handleCreatePolicyFromPrep(prep) {
-    setPrefillPolicy({
-      ownerName:        prep.clientName,
-      sourceOfProspect: prep.prospectingSource,
-      socialPlatform:   prep.prospectingSource === 'social-media' ? (prep.socialPlatform ?? null) : null,
-    });
     setActiveTab('policy-ledger');
   }
 
@@ -639,9 +629,7 @@ export default function AgentDashboard() {
       )}
 
       {/* ── PROSPECT INFO (Joint-Call Prep) TAB ── */}
-      {activeTab === 'prospect-info' && (
-        <ProspectInfoPanel onCreatePolicyFromPrep={handleCreatePolicyFromPrep} />
-      )}
+      {activeTab === 'prospect-info' && <ComingSoonPanel label="Prospect Prep" />}
 
       {/* ── POLICY LEDGER TAB ── */}
       {activeTab === 'policy-ledger' && (
@@ -668,18 +656,10 @@ export default function AgentDashboard() {
         />
       )}
 
-      {activeTab === 'money-needs' && <MoneyNeedsPanel />}
+      {activeTab === 'money-needs' && <ComingSoonPanel label="Money Needs" />}
 
       {/* ── GOALS TAB ── */}
-      {activeTab === 'goals' && (
-        <GapAnalysisPanel
-          hierarchy={hierarchy}
-          ytdTotals={ytdTotals}
-          loading={hierarchyLoading}
-          error={hierarchyError}
-          title="Goals"
-        />
-      )}
+      {activeTab === 'goals' && <ComingSoonPanel label="Goals" />}
 
       {/* ── COMMISSION TAB ── */}
       {activeTab === 'commission' && (

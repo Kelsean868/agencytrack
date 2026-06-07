@@ -19,7 +19,6 @@ import WizardForm from '../wizard/WizardForm';
 import MasterSheet from '../manager/MasterSheet';
 import CompliancePanel from '../manager/CompliancePanel';
 import PersistencyTab from '../manager/PersistencyTab';
-import GoalsPanel from '../manager/GoalsPanel';
 import SettlementPanel from '../manager/SettlementPanel';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
@@ -38,6 +37,8 @@ import ManagerWarTab from '../manager/ManagerWarTab';
 import TeamWarsTab from '../manager/TeamWarsTab';
 import MonthlyRecruitingTab from '../manager/MonthlyRecruitingTab';
 import PolicyReconciliationPanel from '../manager/PolicyReconciliationPanel';
+import { MANAGER_COMING_SOON_TABS } from '../../config/comingSoonTabs';
+import ComingSoonPanel from '../ui/ComingSoonPanel';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -74,7 +75,7 @@ const NAV_ITEMS = [
   // E5: kiosk tab — branch_manager+ only (unit_manager excluded)
   { id: 'kiosk',       label: 'Kiosk',        tabId: 'kiosk',       Icon: Tv,            roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
   { id: 'profile',     label: 'Profile',      tabId: 'profile',     Icon: UserCircle },
-];
+].map(item => item.tabId && MANAGER_COMING_SOON_TABS.has(item.tabId) ? { ...item, disabled: true } : item);
 
 // Mobile bottom-nav — 5 items chosen as the most-used manager surfaces.
 // Master Sheet stands in for the mock's "Reports" item (no Reports tab
@@ -270,7 +271,7 @@ export default function ManagerDashboard() {
 
         {activeTab === 'persistency' && <PersistencyTab />}
 
-        {activeTab === 'goals' && <GoalsPanel />}
+        {activeTab === 'goals' && <ComingSoonPanel label="Goals" />}
 
         {activeTab === 'settlements' && <SettlementPanel />}
 
