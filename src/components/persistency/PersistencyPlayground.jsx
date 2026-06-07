@@ -163,7 +163,7 @@ export default function PersistencyPlayground({
                   {Number.isFinite(proj) && (
                     <div
                       className="absolute inset-y-0 w-1 rounded-full bg-ink"
-                      style={{ left: `${Math.min(proj, 1) * 100}%`, transform: 'translateX(-50%)' }}
+                      style={{ left: `${Math.max(0, Math.min(proj, 1)) * 100}%`, transform: 'translateX(-50%)' }}
                     />
                   )}
                 </div>

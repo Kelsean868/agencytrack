@@ -38,8 +38,9 @@ const POLICY_CLASSES = [
   { value: 'annuity',        label: 'Annuity' },
 ];
 
-const today = getTodayTT();
-
+// EMPTY_FORM carries no date defaults — dates are filled dynamically at
+// component-init and on form-reset via getTodayTT() so overnight sessions
+// never show a stale "today" from the initial module load.
 const EMPTY_FORM = {
   ownerName: '',
   insuredName: '',
@@ -53,8 +54,8 @@ const EMPTY_FORM = {
   proposedFrequency: 'M',
   proposedAPI: '',
   proposedCoverage: '',
-  dateWritten: today,
-  dateSubmitted: today,
+  dateWritten: '',
+  dateSubmitted: '',
   notes: '',
   isSelfOrFamily: false,
   replacedPolicyAPI: '',
@@ -79,12 +80,18 @@ const selectCls = 'h-11 px-3 rounded-lg bg-surface border border-border text-sm 
 
 export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, initialFilter }) {
   const { user, userProfile, tenantId } = useAuth();
+  // Computed fresh per render so overnight-open sessions always show the real today.
+  const today = getTodayTT();
 
   const [view, setView] = useState(initialForm ? 'create' : 'list');
   const [policies, setPolicies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [form, setForm] = useState(initialForm ? { ...EMPTY_FORM, ...initialForm } : EMPTY_FORM);
+  const [form, setForm] = useState(
+    initialForm
+      ? { ...EMPTY_FORM, dateWritten: getTodayTT(), dateSubmitted: getTodayTT(), ...initialForm }
+      : { ...EMPTY_FORM, dateWritten: getTodayTT(), dateSubmitted: getTodayTT() },
+  );
   const [sameAsOwner, setSameAsOwner] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
@@ -180,7 +187,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
       await createPolicy(tenantId, agentRef, form);
       const fresh = await getOwnPolicies(tenantId, user.uid);
       setPolicies(fresh);
-      setForm(EMPTY_FORM);
+      setForm({ ...EMPTY_FORM, dateWritten: today, dateSubmitted: today });
       setSameAsOwner(false);
       setView('list');
     } catch (err) {
@@ -218,7 +225,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
   }
 
   function openCreate() {
-    const merged = { ...EMPTY_FORM, ...(initialForm ?? {}) };
+    const merged = { ...EMPTY_FORM, dateWritten: today, dateSubmitted: today, ...(initialForm ?? {}) };
     setForm(merged);
     setSameAsOwner(false);
     setSaveError(null);
