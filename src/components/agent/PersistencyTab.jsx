@@ -104,7 +104,7 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
 
       {/* Big number */}
       {/* @@hero-pane-start */}
-      <div className="glass hero teal flex flex-col gap-2" data-testid="agent-persistency-summary">
+      <div className="glass hero teal p-6 flex flex-col gap-2" data-testid="agent-persistency-summary">
         <div className="flex items-center gap-2">
           <TrendingUp size={16} className="text-[--hero-ink-muted-teal]" />
           <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">

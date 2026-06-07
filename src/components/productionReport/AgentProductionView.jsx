@@ -151,7 +151,7 @@ export default function AgentProductionView() {
 
       {/* @@hero-pane-start */}
       {/* Hero card */}
-      <div className="glass hero teal">
+      <div className="glass hero teal p-6">
         <div className="flex items-center gap-3">
           <div
             className="w-11 h-11 rounded-full bg-[--hero-chip-island] border border-[--hero-chip-border] text-[--hero-ink] flex items-center justify-center font-bold text-base font-display shrink-0"

@@ -389,6 +389,12 @@ h1, h2, h3, h4 {
    */
   .glass {
     position: relative;
+    /* Recipe divergence note: .card provides rounded-xl via @apply; .glass is a
+     * CSS-only primitive that cannot use @apply outside a Tailwind layer. The
+     * explicit value (1rem = rounded-xl) is the structural backstop — a bare
+     * .glass.hero.teal pane can never render square. Per-pane Tailwind utilities
+     * (rounded-2xl etc.) override this via the cascade as intended. */
+    border-radius: 1rem;
     background:
       linear-gradient(135deg, var(--glass-tile-tint, transparent), transparent 70%),
       var(--glass-l-base);

@@ -133,7 +133,7 @@ export default function BranchManagerProductionView() {
 
       {/* @@hero-pane-start */}
       {/* Branch aggregate */}
-      <div className="glass hero teal">
+      <div className="glass hero teal p-6">
         <p className="text-xs font-semibold uppercase tracking-wide text-[--hero-ink-muted-teal] mb-4">Branch Aggregate</p>
         <div className="flex flex-wrap gap-4">
           <div className="flex-1 min-w-[130px]">
