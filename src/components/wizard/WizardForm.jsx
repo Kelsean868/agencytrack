@@ -374,10 +374,12 @@ export default function WizardForm({ onClose, initialWeek }) {
     // intentionally separate from `handleDotClick`'s visited-set gate.
     if (returnToReview && step < FINAL_STEP) {
       setReturnToReview(false);
+      setError('');
       setStep(FINAL_STEP);
       return;
     }
     if (step < FINAL_STEP) {
+      setError('');
       setStep((s) => s + 1);
     } else {
       // step === FINAL_STEP (12) — Review screen → Submit
@@ -386,8 +388,14 @@ export default function WizardForm({ onClose, initialWeek }) {
   };
 
   const handleBack = () => {
-    if (step > 1) setStep((s) => s - 1);
-    else setScreen('date');
+    if (step > 1) {
+      setError('');
+      setStep((s) => s - 1);
+    } else {
+      setReturnToReview(false);
+      setError('');
+      setScreen('date');
+    }
   };
 
   const handleDotClick = useCallback((stepN) => {
@@ -621,6 +629,7 @@ export default function WizardForm({ onClose, initialWeek }) {
             recentSubmissions={recentSubmissions}
             currentStep={step}
             totalSteps={TOTAL_STEPS_DISPLAY}
+            weekStarting={weekStarting}
             variant="desktop"
           />
         </aside>
@@ -637,6 +646,7 @@ export default function WizardForm({ onClose, initialWeek }) {
             recentSubmissions={recentSubmissions}
             currentStep={step}
             totalSteps={TOTAL_STEPS_DISPLAY}
+            weekStarting={weekStarting}
             variant="mobile"
           />
         </div>

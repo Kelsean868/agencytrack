@@ -80,7 +80,7 @@ function next() {
 
 function clickRating(label, value) {
   const card = screen.getByText(label).closest('.rounded-xl');
-  fireEvent.click(within(card).getByRole('button', { name: String(value) }));
+  fireEvent.click(within(card).getByRole('button', { name: new RegExp(`^rate ${value} out of 10$`, 'i') }));
 }
 
 describe('R2 retirement — value-level payload identity (real v2 steps 9/10/11)', () => {

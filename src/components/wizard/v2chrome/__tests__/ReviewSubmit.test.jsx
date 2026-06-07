@@ -184,6 +184,20 @@ describe('ReviewSubmit — Review ↔ panel parity (same compute lib)', () => {
     render(<ReviewSubmit data={SAMPLE} commissionRate={7.5} lastWeekData={LAST_WEEK} onEditStep={vi.fn()} />);
     expect(screen.getByText(/vs last wk/)).toBeInTheDocument();
   });
+
+  it('shows vs-last-wk delta when prior week API was exactly 0 (falsy-zero bug)', () => {
+    // Regression: `lastWeek?.api ? ... : null` treats api=0 as "no prior data",
+    // hiding a valid improvement delta (0 → positive). Should use != null check.
+    const lastWeekZero = {
+      ...SAMPLE,
+      newBusiness:  { apps: 0, api: 0 },
+      pppIncreases: { apps: 0, apiIncrease: 0 },
+      lumpsums:     { grossAmount: 0 },
+    };
+    render(<ReviewSubmit data={SAMPLE} commissionRate={7.5} lastWeekData={lastWeekZero} onEditStep={vi.fn()} />);
+    // SAMPLE has api > 0; lastWeekZero has api = 0 → delta is positive → should show
+    expect(screen.getByText(/vs last wk/)).toBeInTheDocument();
+  });
 });
 
 describe('ReviewSubmit — empty / first-time-agent state', () => {

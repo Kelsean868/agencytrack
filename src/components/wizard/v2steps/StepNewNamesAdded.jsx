@@ -13,7 +13,7 @@ import { Card, NumericField, ReadOnlyField, SuggestedField } from '../CardStack'
  * Consumes `lastWeekData` exactly as the legacy step did (wizard passes it via
  * the `needsLastWeekData` flag).
  */
-export default function StepNewNamesAdded({ data, onChange, lastWeekData }) {
+export default function StepNewNamesAdded({ data = {}, onChange, lastWeekData }) {
   const totalFromEvents = useMemo(
     () =>
       (data.namesFromSeminarsConducted ?? 0) +

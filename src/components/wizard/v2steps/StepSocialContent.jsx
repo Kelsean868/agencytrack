@@ -21,7 +21,7 @@ const PLATFORM_LABELS = {
   linkedin:  'LinkedIn',
 };
 
-export default function StepSocialContent({ data, onChange }) {
+export default function StepSocialContent({ data = {}, onChange }) {
   const [showBreakdown, setShowBreakdown] = useState(false);
 
   const breakdown = data.socialPlatformBreakdown ?? {};

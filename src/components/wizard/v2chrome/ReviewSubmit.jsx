@@ -42,7 +42,8 @@ export default function ReviewSubmit({
   const lumpsumCredit = computeLumpsumCredit(data?.lumpsums?.grossAmount ?? 0);
 
   const lastWeek = deriveLastWeek(lastWeekData);
-  const apiDelta = lastWeek?.api ? liveAPI - lastWeek.api : null;
+  // Use `lastWeek != null` (not `lastWeek?.api`) — api=0 is falsy but valid.
+  const apiDelta = lastWeek != null ? liveAPI - lastWeek.api : null;
 
   return (
     <div
@@ -188,7 +189,7 @@ export default function ReviewSubmit({
             </div>
           ))}
         </div>
-        {data?.notes && data.notes.trim().length > 0 && (
+        {data?.notes?.trim()?.length > 0 && (
           <p
             data-testid="wizard-v2-review-notes"
             className="text-[11px] text-ink-muted mt-2 px-2.5 py-2 italic leading-snug rounded-lg bg-surface-raised"
@@ -211,7 +212,7 @@ export default function ReviewSubmit({
           <Tile eyebrow="CI"    value={data?.targetCI ?? 0}          sub={null} testid="wizard-v2-review-goal-ci" tight />
           <Tile eyebrow="API"   value={formatCurrency(data?.targetAPI ?? 0)} sub={null} testid="wizard-v2-review-goal-api" tight />
         </div>
-        {data?.goalNotes && data.goalNotes.trim().length > 0 && (
+        {data?.goalNotes?.trim()?.length > 0 && (
           <p
             data-testid="wizard-v2-review-goal-notes"
             className="text-[11px] text-ink-muted mt-2 px-2.5 py-2 italic leading-snug rounded-lg bg-surface-raised"

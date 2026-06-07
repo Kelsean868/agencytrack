@@ -34,7 +34,7 @@ describe('StepRateYourWeek — 5 rating cards + notes', () => {
       // Scope to the card containing this label, click the "8" button.
       const labelEl = screen.getByText(label);
       const card = labelEl.closest('.rounded-xl');
-      const btn8 = within(card).getByRole('button', { name: '8' });
+      const btn8 = within(card).getByRole('button', { name: /^rate 8 out of 10$/i });
       fireEvent.click(btn8);
       expect(onChange).toHaveBeenCalledWith(key, 8);
       unmount();
