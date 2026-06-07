@@ -2,7 +2,7 @@ import { doc, getDoc, setDoc, deleteDoc, serverTimestamp, Timestamp } from 'fire
 import { db } from '../firebase';
 import { validateSundayDate } from '../utils/validators';
 import { parseDateOnlyTT } from '../utils/dateInputs';
-import { PLAN_METRIC_KEYS } from '../utils/weeklyPlanAssembly';
+import { PLAN_METRIC_KEYS, PROVENANCE_VALUES } from '../utils/weeklyPlanAssembly';
 
 /**
  * weeklyPlanService — Weekly Planner v2 Slice 2 persistence.
@@ -18,8 +18,6 @@ import { PLAN_METRIC_KEYS } from '../utils/weeklyPlanAssembly';
  * floor values are JS-side (the firestore.rules layer enforces shape/ownership/
  * int/enum only — it cannot compute tenure).
  */
-
-const PROVENANCE_VALUES = ['derived', 'floor', 'agent'];
 
 export function weeklyPlanDocId(agentId, weekStart) {
   return `${agentId}_${weekStart}`;

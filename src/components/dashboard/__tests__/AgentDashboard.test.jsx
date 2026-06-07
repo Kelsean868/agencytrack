@@ -98,10 +98,6 @@ vi.mock('../../../utils/buildActivityEvents', () => ({
   buildActivityEvents: () => [],
 }));
 
-vi.mock('../../../utils/aggregateAPI', () => ({
-  aggregateAPI: () => 0,
-}));
-
 // ── Component mocks ───────────────────────────────────────────────────────────
 
 // Shell — renders children and exposes a button to switch to the prospect-info tab

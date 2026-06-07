@@ -16,7 +16,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
-import { deriveAll, aggregatePersistency } from '../lib/persistency/calculations';
+import { deriveAll } from '../lib/persistency/calculations';
 import { getTenantUsers } from './managerService';
 
 // The six business-input fields that mark a doc as E3-shaped. A doc lacking
@@ -280,16 +280,3 @@ export async function savePersistency(tenantId, monthKey, agentUid, inputs, role
   return { ...sharedFields, id: docRef.id };
 }
 
-// Computes a branch aggregate from current docs. Phase 1 computes on read; a
-// future Cloud Function may persist these to a `persistencyAggregates` collection
-// for cheaper kiosk/leaderboard reads (out of scope for E3 PR).
-export async function calculateAndCacheBranchAggregate(tenantId, monthKey, branchId) {
-  const records = await getPersistencyForBranch(tenantId, monthKey, branchId);
-  const agg = aggregatePersistency(records);
-  return {
-    monthKey,
-    branchId,
-    recordCount: records.length,
-    ...agg,
-  };
-}
