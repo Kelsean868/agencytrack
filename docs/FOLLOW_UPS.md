@@ -5,6 +5,51 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Nexus Glass S3 sweep — hero census canon (banked 2026-06-07, PR #534)
+
+**Source:** Phase 0 census confirmed by dispatcher before any conversion (PR #534, `feat/nexus-glass-s3-sweep`). Three #517 cards (CommissionAnchorStrip, SuggestedWeekCard, PersRealityBar) are DONE — not repeated here.
+
+### Census table (Phase 0 rulings — binding)
+
+| Screen | Top-summary card | Component | Verdict |
+|--------|-----------------|-----------|---------|
+| Agent — Dashboard | YTD/settled API hero | `HomeV2/HeroCard.jsx` | HERO — converted PR #534 |
+| Agent — History | "Your Year" anchor strip | `HistoryTab` (HistoryAnchorStrip) | HERO — converted PR #534 |
+| Agent — Policy Ledger | Pipeline strip | `policyLedger/PipelineStrip.jsx` | HERO — converted PR #534 |
+| Agent — Production Report | Name/rank/metrics card | `AgentProductionView.jsx` (top card only) | HERO — converted PR #534 |
+| Agent — Persistency | Summary + value card | `PersistencyTab.jsx` (summary card) | HERO — converted PR #534 |
+| Agent — Awards | Grid of medal/badge cards | `AgentAwardsPanel.jsx` | NO-GLASS — awards grid is a worklist of sibling equal-rank items; no single top card |
+| Agent — Career Portal | Career level + progress | `CareerPortal.jsx` | NO-GLASS — dense data section + ladder; no dominant summary card |
+| Agent — Leaderboard | Rank table | `Leaderboard.jsx` | NO-GLASS — rank table is the UI; no summary above it |
+| Agent — Commission | (Done) | `CommissionAnchorStrip.jsx` | DONE — PR #517 |
+| Agent — Goals | Gap analysis panel | `GapAnalysisPanel.jsx` | NO-GLASS — inline panel inside dashboard tab, not a top screen card |
+| Agent — Profile | Profile photo/name | `ProfileScreen.jsx` | NO-GLASS — profile card is a form surface, not summary data |
+| Mgr — Overview (Dashboard) | Team goal hero | `ManagerHeroSection.jsx` | HERO — converted PR #534 |
+| Mgr — Production Report | Branch aggregate card | `BranchManagerProductionView.jsx` (top card) | HERO — converted PR #534 |
+| Mgr — Awards | Monthly bonus hero | `ManagerAwardsPanel.jsx` (MonthlyBonusHero) | HERO — converted PR #534 |
+| Mgr — Policy Reconciliation | Pending count hero | `PolicyReconciliationPanel.jsx` (pending hero) | HERO — converted PR #534; data-gated (renders only when pending > 0) |
+| Mgr — Compliance | Reality bar + stats | `CompliancePanel.jsx` (reality bar) | HERO — converted PR #534 |
+| Mgr — Persistency (Mgr) | PersRealityBar | `PersRealityBar.jsx` | DONE — PR #517 |
+| Mgr — Game Plan | Suggested week | `SuggestedWeekCard.jsx` | DONE — PR #517 |
+| Mgr — Master Sheet | Dense submission table | `MasterSheet.jsx` | NO-GLASS — dense data table; no top summary card |
+| Mgr — Team (User Mgmt) | Member list | `UserManagementPanel.jsx` | NO-GLASS — worklist/table |
+| Mgr — Goals | Goals panel hierarchy | `GoalsPanel.jsx` | NO-GLASS — hierarchy form, not a headline-data card |
+| Mgr — Settlements | Settlement list | `SettlementPanel.jsx` | NO-GLASS — dense data table |
+| Mgr — Campaigns | Campaign cards | `CampaignPanel.jsx` | NO-GLASS — sibling card grid |
+| Mgr — Leaderboard | Rank table | Leaderboard surfaces | NO-GLASS — rank table is the UI |
+| Kiosk / Meeting Mode | Opaque fallback governs | Various | NO-GLASS — opaque-fallback surfaces per recipe |
+
+### Per-card notes (PR #534)
+- **Mgr Awards MonthlyBonusHero:** `AwardDonut` gains `strokeOverride` prop (backward-compatible null-coalesce). Contention ring → `var(--hero-ink)`; qualified ring → `var(--hero-accent)`. Both certified ≥3:1 graphical via `heroPair` test matrix.
+- **Mgr Overview ManagerHeroSection:** `role-hero` (cascades `color:white`) replaced by `glass hero teal`; all `.goal-*` elements given explicit `text-[--hero-ink]` / `text-[--hero-ink-muted-teal]`. GoalDonut / `.bar` / `.bar-fill` CSS classes use literal `white` — work unchanged on glass.
+- **Multi-section files excluded from hero-ink guard:** HistoryTab, AgentProductionView, PersistencyTab, BranchManagerProductionView, ManagerAwardsPanel, PolicyReconciliationPanel, CompliancePanel have hero sections inside larger multi-section files. The whole-file scan would false-positive on non-hero buttons/pills/charts. Hero pane correctness for these is verified by Phase 3 smoke (both themes). Future: extract hero sub-sections into dedicated components to re-enable the guard.
+- **Mgr Recon pending hero:** only rendered when `pendingCount > 0`; smoke reports data-gate skip — not a defect.
+
+### Future: hero-ink guard extension path
+When multi-section components are refactored to extract hero sub-sections into standalone components (e.g. `HistoryHeroCard.jsx`, `ComplianceHeroBar.jsx`), add them to `HERO_COMPONENTS` in `hero-pane-foreign-ink-guard.test.js`. The `@@card-context-start/end` marker mechanism (already used in `CommissionAnchorStrip`) is an alternative for dual-state components.
+
+---
+
 ## D6 census — bg-primary+text-white buttons missing dark:bg-primary-dark (banked 2026-06-06, PR #515 axe)
 
 **Context:** S3a's axe scan of the agent-dark/ledger-lapsed surface found the Policy Ledger "New Policy" button (`bg-primary text-white` without `dark:bg-primary-dark`) at 2.44:1 in dark mode (expected 4.5:1). The button pre-dated S3a; it was fixed as a Rule-9 in-PR extension per dispatcher authorization. The D6 doctrine (CLAUDE.md UI rules) requires that every `bg-primary text-white` button pair `dark:bg-primary-dark`. This was the first find — siblings from Track H era and earlier are suspects.
