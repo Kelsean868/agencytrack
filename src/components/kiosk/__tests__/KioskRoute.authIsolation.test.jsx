@@ -109,4 +109,24 @@ describe('KioskRoute — auth isolation', () => {
 
     expect(mockSignInWithCustomToken).not.toHaveBeenCalled();
   });
+
+  // GUARD-001 — failing test: if the Cloud Function returns valid:true but omits
+  // customToken (malformed/partial response), the component must show invalid and
+  // NOT call signInWithCustomToken(kioskAuth, undefined) — which would throw a
+  // real Firebase error in production (unhandled before the outer catch).
+  it('GUARD-001: shows invalid state without calling signIn when customToken is missing', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      json: () => Promise.resolve({ valid: true, tenantId: 'tatillife_south' }), // no customToken
+    });
+
+    render(<KioskRoute />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Display unavailable/i)).toBeInTheDocument();
+    });
+
+    // Without fix: signInWithCustomToken is called with undefined → resolves to {} →
+    // shows kiosk-shell (wrong). With fix: null-check exits early, signIn never called.
+    expect(mockSignInWithCustomToken).not.toHaveBeenCalled();
+  });
 });
