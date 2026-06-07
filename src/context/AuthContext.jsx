@@ -44,9 +44,6 @@ export function AuthProvider({ children }) {
             : Promise.resolve(null),
         ]);
 
-        console.log('[AgencyTrack] Auth claims:', tokenResult.claims);
-        console.log('[AgencyTrack] UID:', firebaseUser.uid);
-
         const claimTenantId = tokenResult.claims.tenantId ?? null;
         const claimRole     = tokenResult.claims.role     ?? null;
 
