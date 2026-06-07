@@ -29,7 +29,7 @@ import { formatCurrency, formatAwardPct } from '../../utils/formatters';
 // ─────────────────────────────────────────────────────────────────────────────
 // AwardDonut — SVG progress ring
 // ─────────────────────────────────────────────────────────────────────────────
-export function AwardDonut({ percent, state, size = 100, strokeWidth = 10 }) {
+export function AwardDonut({ percent = 0, state, size = 100, strokeWidth = 10 }) {
   const r = (size - strokeWidth) / 2;
   const c = 2 * Math.PI * r;
   const dash = Math.max(0, Math.min(1, percent / 100)) * c;
@@ -138,7 +138,7 @@ export function HeroAwardCard({ award, eyebrow = '★ Almost there' }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // GroupHeader — eyebrow label + count pill + horizontal divider
 // ─────────────────────────────────────────────────────────────────────────────
-export function GroupHeader({ label, count, accentStyle }) {
+export function GroupHeader({ label, count, accentStyle = {} }) {
   return (
     <div className="flex items-center gap-2 mb-3">
       <p className="text-xs font-bold tracking-widest font-mono uppercase" style={accentStyle}>
@@ -159,6 +159,7 @@ export function GroupHeader({ label, count, accentStyle }) {
 // AwardCard — Tier 2 compact grid card
 // ─────────────────────────────────────────────────────────────────────────────
 export function AwardCard({ award, onClick }) {
+  if (!award) return null;
   const isQualified  = award.eligible;
   const isContention = !award.eligible && award.inContention;
   const accentColor =
@@ -249,9 +250,10 @@ export function AwardCard({ award, onClick }) {
 export function AwardDrillDrawer({ award, onClose }) {
   const handleKey = useCallback((e) => { if (e.key === 'Escape') onClose(); }, [onClose]);
   useEffect(() => {
+    if (!award) return;
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [handleKey]);
+  }, [handleKey, award]);
 
   if (!award) return null;
 

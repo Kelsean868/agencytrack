@@ -190,7 +190,6 @@ export default function SmLeaderboardView() {
           <select
             data-testid="sm-leaderboard-branch-picker"
             data-value={pickedId ?? ''}
-            aria-label="Pick a branch"
             value={pickedId ?? ''}
             onChange={(e) => selectBranch(e.target.value)}
             className="text-xs font-bold font-mono uppercase tracking-widest bg-card border border-border rounded-lg px-2 py-1.5 text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"

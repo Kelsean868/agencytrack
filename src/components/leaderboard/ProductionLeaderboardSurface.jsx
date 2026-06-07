@@ -505,12 +505,10 @@ export default function ProductionLeaderboardSurface({
           />
           {/* Vertical 1px divider — only when the scope control is visible
               AND we're on sm+ (mobile stacks them with no divider). */}
-          {(() => {
-            const r = scopeRoleOverride ?? role;
-            return (r === 'unit_manager' || r === 'branch_manager') && (
-              <div aria-hidden="true" className="hidden sm:block w-px h-7 bg-border" />
-            );
-          })()}
+          {((scopeRoleOverride ?? role) === 'unit_manager' ||
+            (scopeRoleOverride ?? role) === 'branch_manager') && (
+            <div aria-hidden="true" className="hidden sm:block w-px h-7 bg-border" />
+          )}
           <PeriodChips value={period} onChange={setPeriod} />
         </div>
       </div>

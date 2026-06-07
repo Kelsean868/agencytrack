@@ -35,7 +35,11 @@ export default function useWeeklyChampions() {
   const [champions, setChampions] = useState(null);
 
   useEffect(() => {
-    if (!tenantId) return;
+    if (!tenantId) {
+      setLoading(false);
+      setChampions(null);
+      return;
+    }
     let cancelled = false;
     setLoading(true);
     setError(null);

@@ -42,8 +42,9 @@ export default function useLeaderboard(branchIdOverride) {
 
   useEffect(() => {
     if (!tenantId || !branchId) {
-      // Still resolving auth/profile — keep loading=true; downstream surface
-      // shows a loading state and switches to empty if branchId never lands.
+      // branchId is null/undefined — resolve to empty rather than spin forever.
+      setLoading(false);
+      setDocData(null);
       return;
     }
     let cancelled = false;
