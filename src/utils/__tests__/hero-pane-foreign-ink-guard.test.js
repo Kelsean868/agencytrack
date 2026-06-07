@@ -65,6 +65,36 @@ const HERO_COMPONENTS = [
     name: 'PersRealityBar',
     path: 'src/components/manager/PersRealityBar.jsx',
   },
+  // ── S3 sweep — PR #535 ────────────────────────────────────────────────────
+  // Files where the ENTIRE component is the hero pane: guard scans apply cleanly.
+  {
+    name: 'HeroCard (Agent Dashboard YTD)',
+    path: 'src/components/dashboard/HomeV2/HeroCard.jsx',
+  },
+  {
+    name: 'PipelineStrip (Policy Ledger)',
+    path: 'src/components/agent/policyLedger/PipelineStrip.jsx',
+  },
+  {
+    name: 'ManagerHeroSection',
+    path: 'src/components/dashboard/ManagerHeroSection.jsx',
+  },
+  // NOTE: The following S3 files contain a hero pane as ONE section inside a
+  // larger multi-section file. The whole-file scan cannot reliably distinguish
+  // hero-pane ink from non-hero ink in those files (e.g. buttons, status pills,
+  // and chart tooltips outside the glass container legitimately use text-primary,
+  // text-warning-ink, etc.). These files are excluded from the guard scan;
+  // their hero-pane correctness is verified via Phase 5 smoke (both themes, real
+  // backdrop) rather than static AST. Future work: extract hero sub-sections into
+  // dedicated component files to re-enable the guard.
+  //
+  //   HistoryTab (HistoryAnchorStrip)
+  //   AgentProductionView
+  //   PersistencyTab (Agent)
+  //   BranchManagerProductionView
+  //   ManagerAwardsPanel (MonthlyBonusHero)
+  //   PolicyReconciliationPanel (pending hero)
+  //   CompliancePanel (reality bar)
 ];
 
 describe('Hero pane foreign-ink guard', () => {

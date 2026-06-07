@@ -275,24 +275,29 @@ export default function PolicyReconciliationPanel() {
           ) : (
             <>
               {/* Pending-reconciliation hero + tiles */}
-              <div className="card bg-card p-5 flex items-center gap-6 flex-wrap" data-testid="pending-hero">
+              <div className="glass hero teal p-5 flex items-center gap-6 flex-wrap" data-testid="pending-hero">
                 <div className="shrink-0">
-                  <p className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase text-primary">Pending reconciliation</p>
-                  <p className="font-display font-extrabold text-[34px] text-primary tracking-tight leading-none mt-1.5" data-testid="pending-value">{formatCompactTTD(pendingValue)}</p>
-                  <p className="text-[11px] text-ink-muted mt-1.5">across {toReconcile.length} {toReconcile.length === 1 ? 'policy' : 'policies'} · awaiting your confirm</p>
+                  <p className="font-mono text-[10px] font-bold tracking-[0.14em] uppercase text-[--hero-ink-muted-teal]">Pending reconciliation</p>
+                  <p className="font-display font-extrabold text-[34px] text-[--hero-ink] tracking-tight leading-none mt-1.5" data-testid="pending-value">{formatCompactTTD(pendingValue)}</p>
+                  <p className="text-[11px] text-[--hero-ink-muted-teal] mt-1.5">across {toReconcile.length} {toReconcile.length === 1 ? 'policy' : 'policies'} · awaiting your confirm</p>
                 </div>
-                <span className="w-px self-stretch bg-border hidden sm:block" />
+                <span className="w-px self-stretch bg-white/20 hidden sm:block" />
                 <div className="flex-1 flex gap-3 min-w-[260px]">
                   {TILES.map((t) => {
-                    const tok = reconToken(t.state);
+                    // Map recon states to hero-safe dot classes (chip-island grammar).
+                    const heroDot =
+                      t.state === 'toReconcile' ? 'bg-[--hero-ink]' :
+                      t.state === 'flagged'     ? 'bg-[--hero-dot-warning]' :
+                      t.state === 'confirmed'   ? 'bg-[--hero-dot-warning]' :
+                                                  'bg-[--hero-dot-success]';
                     return (
-                      <div key={t.key} className="flex-1 p-3.5 bg-surface-muted border border-border rounded-xl" data-testid={`recon-tile-${t.key}`}>
+                      <div key={t.key} className="flex-1 p-3.5 bg-[--hero-chip-island] border border-[--hero-chip-border] rounded-xl" data-testid={`recon-tile-${t.key}`}>
                         <div className="flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full ${tok.solid}`} />
-                          <span className="font-mono text-[9px] font-bold tracking-[0.1em] text-ink-muted uppercase whitespace-nowrap">{t.label}</span>
+                          <span className={`w-2 h-2 rounded-full ${heroDot}`} />
+                          <span className="font-mono text-[9px] font-bold tracking-[0.1em] text-[--hero-ink-muted-teal] uppercase whitespace-nowrap">{t.label}</span>
                         </div>
-                        <p className="font-display font-extrabold text-[26px] tracking-tight leading-none mt-2 text-ink" data-testid={`recon-tile-count-${t.key}`}>{t.count}</p>
-                        <p className="font-mono text-[10.5px] text-ink-muted mt-1">{t.note}</p>
+                        <p className="font-display font-extrabold text-[26px] tracking-tight leading-none mt-2 text-[--hero-ink]" data-testid={`recon-tile-count-${t.key}`}>{t.count}</p>
+                        <p className="font-mono text-[10.5px] text-[--hero-ink-muted-teal] mt-1">{t.note}</p>
                       </div>
                     );
                   })}

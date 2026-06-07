@@ -87,68 +87,63 @@ function HistoryAnchorStrip({ anchor, year, weeklyTarget }) {
   const yearEnd = Math.round((anchor.ytdAPI / Math.max(anchor.weeksSubmitted, 1)) * 52);
 
   return (
-    <div className="card p-5 relative overflow-hidden" style={{ border: '1px solid rgba(1,105,111,0.25)' }}>
-      <div style={{
-        position: 'absolute', top: -70, right: -70, width: 240, height: 240,
-        background: 'radial-gradient(circle, var(--color-primary-tint) 0%, transparent 65%)',
-        pointerEvents: 'none',
-      }} />
+    <div className="glass hero teal p-5 relative overflow-hidden">
       <div className="relative">
-        <p className="text-xs font-bold tracking-widest font-mono uppercase text-primary mb-1">
+        <p className="text-xs font-bold tracking-widest font-mono uppercase text-[--hero-ink-muted-teal] mb-1">
           Your year · {year} · {anchor.weeksSubmitted} of 52 weeks submitted
         </p>
         <div className="flex items-baseline gap-3 flex-wrap mt-1">
-          <span className="text-4xl font-bold text-ink" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.028em', lineHeight: 1 }}>
+          <span className="text-4xl font-bold text-[--hero-ink]" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.028em', lineHeight: 1 }}>
             {fmtTtdFull(anchor.ytdAPI)}
           </span>
-          <span className="text-xs text-ink-muted font-mono tracking-wide">
+          <span className="text-xs text-[--hero-ink-muted-teal] font-mono tracking-wide">
             YTD API · AVG {fmtTtdFull(anchor.avgApi)}/WK
           </span>
         </div>
         {anchor.weeksSubmitted > 0 && (
-          <p className="text-xs text-ink-muted mt-1.5">
-            On track for <strong className="text-ink">{fmtTtdFull(yearEnd)}</strong> if pace holds through year-end.
+          <p className="text-xs text-[--hero-ink-muted-teal] mt-1.5">
+            On track for <strong className="text-[--hero-ink]">{fmtTtdFull(yearEnd)}</strong> if pace holds through year-end.
           </p>
         )}
 
         {/* Progress bar */}
-        <div className="relative h-2 bg-surface-muted rounded-full overflow-hidden mt-3">
+        <div className="relative h-2 bg-white/20 rounded-full overflow-hidden mt-3">
           <div style={{
             position: 'absolute', left: 0, top: 0, bottom: 0,
             width: `${pct}%`,
-            background: 'linear-gradient(90deg, var(--color-primary-dark), var(--color-primary))',
+            background: 'var(--hero-ink)',
           }} />
         </div>
 
         {/* Chip row */}
         <div className="flex flex-wrap gap-2 mt-3">
           {/* Streak chip */}
-          <div className={`flex items-center gap-2.5 px-3 py-2 rounded-xl border ${anchor.atPersonalBest ? 'bg-gold/5 border-gold/30' : 'bg-surface border-border'}`}>
+          <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[--hero-chip-island] border border-[--hero-chip-border]">
             <div style={{
               width: 26, height: 26, borderRadius: 7, flexShrink: 0,
               background: anchor.currentStreak > 0
-                ? 'linear-gradient(180deg, var(--color-gold), var(--color-warning))'
-                : 'var(--color-surface-muted)',
+                ? 'var(--hero-dot-warning)'
+                : 'rgba(255,255,255,0.15)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <Flame size={13} style={{ color: anchor.currentStreak > 0 ? 'white' : 'var(--color-text-faint)' }} />
+              <Flame size={13} style={{ color: anchor.currentStreak > 0 ? 'white' : 'rgba(255,255,255,0.5)' }} />
             </div>
             <div>
-              <p className="text-[9px] font-bold tracking-widest font-mono uppercase" style={{ color: anchor.atPersonalBest ? 'var(--color-gold)' : 'var(--color-text-faint)' }}>
+              <p className="text-[9px] font-bold tracking-widest font-mono uppercase" style={{ color: anchor.atPersonalBest ? 'var(--hero-accent)' : 'var(--hero-ink-muted-teal)' }}>
                 {anchor.atPersonalBest ? 'Personal best · live' : 'Streak'}
               </p>
               <div className="flex items-baseline gap-1 mt-0.5">
-                <span className="text-base font-bold text-ink" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.018em', lineHeight: 1 }}>
+                <span className="text-base font-bold text-[--hero-ink]" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.018em', lineHeight: 1 }}>
                   {anchor.currentStreak}
                 </span>
-                <span className="text-[9px] text-ink-muted font-mono">wks now</span>
+                <span className="text-[9px] text-[--hero-ink-muted-teal] font-mono">wks now</span>
                 {anchor.longestStreak > anchor.currentStreak && (
                   <>
-                    <span className="text-[9px] text-ink-muted font-mono">·</span>
-                    <span className="text-sm font-bold" style={{ color: 'var(--color-gold)', fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' }}>
+                    <span className="text-[9px] text-[--hero-ink-muted-teal] font-mono">·</span>
+                    <span className="text-sm font-bold text-[--hero-accent]" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' }}>
                       {anchor.longestStreak}
                     </span>
-                    <span className="text-[9px] text-ink-muted font-mono">best</span>
+                    <span className="text-[9px] text-[--hero-ink-muted-teal] font-mono">best</span>
                   </>
                 )}
               </div>
@@ -156,11 +151,11 @@ function HistoryAnchorStrip({ anchor, year, weeklyTarget }) {
           </div>
 
           {anchor.bestWeek && (
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface">
-              <div className="w-1.5 h-1.5 rounded-sm flex-shrink-0" style={{ background: 'var(--color-gold)' }} />
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[--hero-chip-island] border border-[--hero-chip-border]">
+              <div className="w-1.5 h-1.5 rounded-sm flex-shrink-0 bg-[--hero-dot-warning]" />
               <div>
-                <p className="text-[9px] font-bold tracking-widest font-mono uppercase text-ink-muted">Best week</p>
-                <p className="text-xs font-bold text-ink mt-0.5" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' }}>
+                <p className="text-[9px] font-bold tracking-widest font-mono uppercase text-[--hero-ink-muted-teal]">Best week</p>
+                <p className="text-xs font-bold text-[--hero-ink] mt-0.5" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' }}>
                   {fmtTtdFull(getSubmissionAPI(anchor.bestWeek))}
                 </p>
               </div>
@@ -172,11 +167,11 @@ function HistoryAnchorStrip({ anchor, year, weeklyTarget }) {
             { label: 'Drafts',      val: anchor.drafts,        warn: anchor.drafts > 0 },
             { label: 'Unlocked',    val: anchor.unlocked,      warn: anchor.unlocked > 0 },
           ].map(c => (
-            <div key={c.label} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-border bg-surface">
-              <div className="w-1.5 h-1.5 rounded-sm flex-shrink-0" style={{ background: c.warn ? 'var(--color-warning)' : 'var(--color-gold)' }} />
+            <div key={c.label} className="flex items-center gap-2 px-3 py-2 rounded-xl bg-[--hero-chip-island] border border-[--hero-chip-border]">
+              <div className={`w-1.5 h-1.5 rounded-sm flex-shrink-0 ${c.warn ? 'bg-[--hero-dot-warning]' : 'bg-[--hero-dot-success]'}`} />
               <div>
-                <p className="text-[9px] font-bold tracking-widest font-mono uppercase text-ink-muted">{c.label}</p>
-                <p className="text-xs font-bold text-ink mt-0.5" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' }}>
+                <p className="text-[9px] font-bold tracking-widest font-mono uppercase text-[--hero-ink-muted-teal]">{c.label}</p>
+                <p className="text-xs font-bold text-[--hero-ink] mt-0.5" style={{ fontFamily: '"Cabinet Grotesk", system-ui', letterSpacing: '-0.012em' }}>
                   {c.val}
                 </p>
               </div>

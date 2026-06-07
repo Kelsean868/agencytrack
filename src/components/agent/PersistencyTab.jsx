@@ -22,12 +22,6 @@ function formatPct(decimal) {
   return `${(decimal * 100).toFixed(1)}%`;
 }
 
-function badgeClass(decimal) {
-  if (!Number.isFinite(decimal)) return 'bg-surface-muted text-ink-muted';
-  if (decimal >= 0.90) return 'bg-success-tint text-success-ink';
-  if (decimal >= 0.80) return 'bg-warning-tint text-warning-ink';
-  return 'bg-danger-tint text-danger-ink';
-}
 
 export default function PersistencyTab({ onViewLapsedPolicies }) {
   const { user, role, tenantId } = useAuth();
@@ -109,28 +103,38 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
       </div>
 
       {/* Big number */}
-      <div className="card flex flex-col gap-2" data-testid="agent-persistency-summary">
+      <div className="glass hero teal flex flex-col gap-2" data-testid="agent-persistency-summary">
         <div className="flex items-center gap-2">
-          <TrendingUp size={16} className="text-primary" />
-          <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
+          <TrendingUp size={16} className="text-[--hero-ink-muted-teal]" />
+          <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">
             Your persistency · {activeMonthKey ?? '—'}
           </p>
         </div>
         <div className="flex items-baseline gap-3 flex-wrap">
           <span
-            className={`px-3 py-1.5 rounded-lg text-3xl font-bold ${badgeClass(currentDecimal)}`}
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[--hero-chip-island] border border-[--hero-chip-border]"
             data-testid="agent-persistency-value"
           >
-            {currentRecord ? formatPct(currentDecimal) : '—'}
+            {Number.isFinite(currentDecimal) && (
+              <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${
+                currentDecimal >= 0.90 ? 'bg-[--hero-dot-success]'
+                  : currentDecimal >= 0.80 ? 'bg-[--hero-dot-warning]'
+                  : 'bg-[--hero-dot-danger]'
+              }`} />
+            )}
+            <span className="text-3xl font-bold text-[--hero-ink]">
+              {currentRecord ? formatPct(currentDecimal) : '—'}
+            </span>
           </span>
           {currentRecord && meetsGate && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-success-tint text-success-ink text-[9px] font-bold font-mono uppercase tracking-widest">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[--hero-chip-island] border border-[--hero-chip-border] text-[--hero-ink] text-[9px] font-bold font-mono uppercase tracking-widest">
+              <span className="w-1.5 h-1.5 rounded-full bg-[--hero-dot-success]" />
               Award-eligible
             </span>
           )}
         </div>
         {!currentRecord && !loading && (
-          <p className="text-xs text-ink-muted">No record entered for this month yet.</p>
+          <p className="text-xs text-[--hero-ink-muted-teal]">No record entered for this month yet.</p>
         )}
       </div>
 

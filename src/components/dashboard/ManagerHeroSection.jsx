@@ -23,15 +23,15 @@ export default function ManagerHeroSection({
   );
 
   return (
-    <div className="role-hero mb-6">
+    <div className="glass hero teal mb-6" style={{ padding: 22 }}>
       <div className="goal-slide" style={{ alignItems: 'center' }}>
         <div className="goal-content">
-          <div className="goal-period">Team YTD — {new Date().getFullYear()}</div>
-          <div className="goal-value">{formatCurrency(teamYTDAPI)}</div>
+          <div className="goal-period text-[--hero-ink-muted-teal]">Team YTD — {new Date().getFullYear()}</div>
+          <div className="goal-value text-[--hero-ink]">{formatCurrency(teamYTDAPI)}</div>
 
           {teamAnnualGoal > 0 ? (
             <>
-              <div className="goal-target">
+              <div className="goal-target text-[--hero-ink-muted-teal]">
                 of {formatCurrency(teamAnnualGoal)} annual goal
               </div>
               <div className="goal-bar-wrap">
@@ -41,10 +41,10 @@ export default function ManagerHeroSection({
               </div>
             </>
           ) : (
-            <div className="goal-target">No annual goal set</div>
+            <div className="goal-target text-[--hero-ink-muted-teal]">No annual goal set</div>
           )}
 
-          <div className="goal-status" style={{ marginTop: 10 }}>
+          <div className="goal-status text-[--hero-ink-muted-teal]" style={{ marginTop: 10 }}>
             <span>
               {inScopeAgentCount} advisor{inScopeAgentCount !== 1 ? 's' : ''}
               {teamAnnualGoal > 0 && remaining > 0 && (
@@ -55,7 +55,7 @@ export default function ManagerHeroSection({
           </div>
 
           {!goalSet && teamAnnualGoal > 0 && (
-            <p className="text-[11px] mt-2" style={{ opacity: 0.75 }}>
+            <p className="text-[11px] text-[--hero-ink-muted-teal] mt-2" style={{ opacity: 0.75 }}>
               Using company floor estimate — set a branch goal in the Goals tab
             </p>
           )}

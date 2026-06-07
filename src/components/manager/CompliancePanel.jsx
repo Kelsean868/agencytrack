@@ -435,32 +435,39 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       </div>
 
       {/* ── Reality bar (lens-driven) ───────────────────────────────────────── */}
-      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5" data-testid="compliance-reality-bar">
+      <div className="glass hero teal p-4 sm:p-5" data-testid="compliance-reality-bar">
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">{realityBar.headerLabel}</span>
-          <span className="ml-auto text-[11px] text-ink-muted">{realityBar.headerRight}</span>
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[--hero-ink-muted-teal]">{realityBar.headerLabel}</span>
+          <span className="ml-auto text-[11px] text-[--hero-ink-muted-teal]">{realityBar.headerRight}</span>
         </div>
 
         {planBusy ? (
-          <p className="text-sm text-ink-muted py-3" data-testid="compliance-plan-loading">Loading plan commitments…</p>
+          <p className="text-sm text-[--hero-ink-muted-teal] py-3" data-testid="compliance-plan-loading">Loading plan commitments…</p>
         ) : plansError && lens === 'plan' ? (
-          <p className="text-sm text-danger-ink py-3" data-testid="compliance-plan-error">Couldn't load plan data. Try reloading.</p>
+          <p className="text-sm text-[--hero-ink] py-3" data-testid="compliance-plan-error">Couldn't load plan data. Try reloading.</p>
         ) : realityBar.total === 0 ? (
-          <p className="text-sm text-ink-muted py-3" data-testid="compliance-empty-roster">No agents in scope for this week.</p>
+          <p className="text-sm text-[--hero-ink-muted-teal] py-3" data-testid="compliance-empty-roster">No agents in scope for this week.</p>
         ) : (
           <>
             {/* Decorative segmented bar — numbers live in the stat chips below.
                 role="img" + aria-label carry the meaning; no in-segment text
                 (white-on-tint failed AA in dark; accessibility over decoration). */}
-            <div className="flex h-9 rounded-lg overflow-hidden border border-border" role="img" aria-label={realityBar.ariaLabel}>
+            <div className="flex h-9 rounded-lg overflow-hidden border border-white/20" role="img" aria-label={realityBar.ariaLabel}>
               {realityBar.segments.map((s, i) => (
-                s.n > 0 && <div key={i} className={`${s.cls} h-full`} style={{ width: `${(s.n / realityBar.total) * 100}%` }} />
+                s.n > 0 && <div key={i} className={`${HERO_SEG_CLS[s.cls] ?? s.cls} h-full`} style={{ width: `${(s.n / realityBar.total) * 100}%` }} />
               ))}
             </div>
 
             <div className="flex flex-wrap gap-x-8 gap-y-3 mt-4">
               {realityBar.stats.map((st) => (
-                <Stat key={st.testid} label={st.label} testid={st.testid} value={st.value} dotClass={st.dotClass} />
+                <Stat
+                  key={st.testid}
+                  label={st.label}
+                  testid={st.testid}
+                  value={st.value}
+                  dotClass={HERO_DOT_CLS[st.dotClass] ?? st.dotClass}
+                  glass
+                />
               ))}
             </div>
           </>
@@ -667,17 +674,32 @@ function LensTab({ active, onClick, label, count, testid }) {
   );
 }
 
-function Stat({ label, value, dotClass, testid }) {
+function Stat({ label, value, dotClass, testid, glass }) {
   return (
     <div className="flex items-center gap-2.5" data-testid={testid} data-value={value}>
       <span className={`w-2.5 h-2.5 rounded-sm shrink-0 ${dotClass}`} aria-hidden="true" />
       <span className="flex flex-col leading-tight">
-        <span className="text-[9px] font-semibold uppercase tracking-wider text-ink-muted">{label}</span>
-        <span className="text-base font-bold text-ink">{value}</span>
+        <span className={`text-[9px] font-semibold uppercase tracking-wider ${glass ? 'text-[--hero-ink-muted-teal]' : 'text-ink-muted'}`}>{label}</span>
+        <span className={`text-base font-bold ${glass ? 'text-[--hero-ink]' : 'text-ink'}`}>{value}</span>
       </span>
     </div>
   );
 }
+
+// Hero-safe class maps for the reality bar on glass.hero.teal.
+// Segment fills and stat dots use hero-dot tokens (3:1 certified via heroPairDeep);
+// bg-ink (filed total) maps to hero-ink (white).
+const HERO_SEG_CLS = {
+  'bg-success': 'bg-[--hero-dot-success]',
+  'bg-warning':  'bg-[--hero-dot-warning]',
+  'bg-danger':   'bg-[--hero-dot-danger]',
+};
+const HERO_DOT_CLS = {
+  'bg-success': 'bg-[--hero-dot-success]',
+  'bg-warning':  'bg-[--hero-dot-warning]',
+  'bg-danger':   'bg-[--hero-dot-danger]',
+  'bg-ink':      'bg-[--hero-ink]',
+};
 
 function NudgeAction({ busy, nudgedAt, onNudge }) {
   const onCooldown = nudgedAt != null && (Date.now() - nudgedAt) < COOLDOWN_MS;

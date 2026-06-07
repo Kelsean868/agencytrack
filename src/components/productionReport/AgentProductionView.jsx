@@ -150,19 +150,19 @@ export default function AgentProductionView() {
       </div>
 
       {/* Hero card */}
-      <div className="card">
+      <div className="glass hero teal">
         <div className="flex items-center gap-3">
           <div
-            className="w-11 h-11 rounded-full bg-primary text-white flex items-center justify-center font-bold text-base font-display shrink-0"
+            className="w-11 h-11 rounded-full bg-[--hero-chip-island] border border-[--hero-chip-border] text-[--hero-ink] flex items-center justify-center font-bold text-base font-display shrink-0"
             aria-hidden="true"
           >
             {initials}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-lg font-bold font-display text-ink leading-tight truncate">
+            <p className="text-lg font-bold font-display text-[--hero-ink] leading-tight truncate">
               {userProfile?.name ?? 'You'}
             </p>
-            <p className="text-xs text-ink-muted mt-0.5">
+            <p className="text-xs text-[--hero-ink-muted-teal] mt-0.5">
               {unitLabel ?? 'Agent'} · {PERIOD_LABEL[period]}
             </p>
           </div>
@@ -176,12 +176,12 @@ export default function AgentProductionView() {
             data-total={branchTotal}
             className="shrink-0 text-right"
           >
-            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">
+            <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">
               Branch rank
             </p>
-            <p className="text-2xl font-bold font-display text-primary tabular-nums leading-none mt-0.5">
+            <p className="text-2xl font-bold font-display text-[--hero-ink] tabular-nums leading-none mt-0.5">
               {viewerRank ?? '—'}
-              <span className="text-sm text-ink-muted font-normal">
+              <span className="text-sm text-[--hero-ink-muted-teal] font-normal">
                 {' / '}{branchTotal || '—'}
               </span>
             </p>
@@ -195,8 +195,8 @@ export default function AgentProductionView() {
             { k: 'Persistency',  v: persDisplay },
           ].map(({ k, v }) => (
             <div key={k}>
-              <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-ink-muted">{k}</p>
-              <p className="text-3xl font-bold font-display text-ink tracking-tight mt-1 leading-none">{v}</p>
+              <p className="text-[9px] font-bold font-mono uppercase tracking-widest text-[--hero-ink-muted-teal]">{k}</p>
+              <p className="text-3xl font-bold font-display text-[--hero-ink] tracking-tight mt-1 leading-none">{v}</p>
             </div>
           ))}
         </div>

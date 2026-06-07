@@ -301,3 +301,24 @@ describe('the base (pre-ink) status text was genuinely below AA where fixed', ()
     expect(contrastRatio(base, composite(base, 0.15, THEMES.dark.surfaces.surface))).toBeLessThan(AA);
   });
 });
+
+// ── S3 sweep — AwardDonut strokeOverride graphical certification ──────────────
+//
+// MonthlyBonusHero (ManagerAwardsPanel) uses AwardDonut with strokeOverride:
+//   contention state → var(--hero-ink)  = white  [255, 255, 255]
+//   qualified  state → var(--hero-accent) = #F4ECC8 [244, 236, 200]
+//
+// Both are already certified as TEXT inks (≥4.7:1) via the heroPair matrix above.
+// As graphical strokes (WCAG SC 1.4.11 = 3:1), they trivially pass.
+// These tests document and guard the pairing for the teal hero pane specifically.
+describe('heroPair — S3 AwardDonut strokeOverride graphical strokes ≥3:1 on hero glass (teal, both themes)', () => {
+  for (const theme of ['light', 'dark']) {
+    const bg = heroPair('teal', theme);
+    test(`${theme}: hero-ink (contention stroke) ≥ 3:1 on teal hero glass`, () => {
+      expect(contrastRatio(HERO_INKS['hero-ink'], bg)).toBeGreaterThanOrEqual(3.0);
+    });
+    test(`${theme}: hero-accent (qualified stroke) ≥ 3:1 on teal hero glass`, () => {
+      expect(contrastRatio(HERO_INKS['hero-accent'], bg)).toBeGreaterThanOrEqual(3.0);
+    });
+  }
+});

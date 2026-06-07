@@ -29,14 +29,15 @@ import { formatCurrency, formatAwardPct } from '../../utils/formatters';
 // ─────────────────────────────────────────────────────────────────────────────
 // AwardDonut — SVG progress ring
 // ─────────────────────────────────────────────────────────────────────────────
-export function AwardDonut({ percent = 0, state, size = 100, strokeWidth = 10 }) {
+export function AwardDonut({ percent = 0, state, size = 100, strokeWidth = 10, strokeOverride }) {
   const r = (size - strokeWidth) / 2;
   const c = 2 * Math.PI * r;
   const dash = Math.max(0, Math.min(1, percent / 100)) * c;
-  const accentColor =
+  const accentColor = strokeOverride ?? (
     state === 'qualified'  ? 'var(--color-gold)' :
     state === 'contention' ? 'var(--color-primary)' :
-                             'var(--color-text-faint)';
+                             'var(--color-text-faint)'
+  );
   return (
     <div
       style={{

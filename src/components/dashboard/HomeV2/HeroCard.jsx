@@ -30,26 +30,16 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
 
   return (
     <div
-      className="card relative overflow-hidden flex items-center gap-6 flex-wrap"
+      className="glass hero teal relative overflow-hidden flex items-center gap-6 flex-wrap"
       style={{ padding: '22px 26px' }}
     >
-      {/* Backdrop glow */}
-      <div
-        aria-hidden="true"
-        style={{
-          position: 'absolute', top: -80, right: -80, width: 360, height: 360,
-          background: 'radial-gradient(circle, var(--color-primary-tint) 0%, transparent 65%)',
-          pointerEvents: 'none',
-        }}
-      />
-
       {/* Left — content */}
       <div className="flex-1 min-w-0 relative">
-        <p className="text-xs font-bold tracking-widest uppercase text-primary font-mono">
+        <p className="text-xs font-bold tracking-widest uppercase text-[--hero-ink-muted-teal] font-mono">
           YTD · Settled API
         </p>
         <p
-          className="text-ink mt-2"
+          className="text-[--hero-ink] mt-2"
           style={{
             fontSize: 48, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1,
             fontFamily: '"Cabinet Grotesk", system-ui, sans-serif',
@@ -57,14 +47,14 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
         >
           {formatCurrency(ytdApi)}
         </p>
-        <p className="text-sm text-ink-muted mt-2">
+        <p className="text-sm text-[--hero-ink-muted-teal] mt-2">
           {pct}% of {formatCurrency(goal)} goal · {weeksLeft} {weeksLeft === 1 ? 'week' : 'weeks'} to year-end
         </p>
 
         {/* Progress bar with MDRT marker */}
         <div className="mt-4 w-full" style={{ maxWidth: 520 }}>
           <div
-            className="relative rounded-full overflow-hidden bg-surface-muted"
+            className="relative rounded-full overflow-hidden bg-white/20"
             style={{ height: 8 }}
             role="progressbar"
             aria-valuenow={pct}
@@ -73,11 +63,8 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
             aria-label={`YTD progress: ${pct}% of ${formatCurrency(goal)} goal`}
           >
             <div
-              className="h-full rounded-full"
-              style={{
-                width: `${pct}%`,
-                background: 'linear-gradient(90deg, var(--color-primary-dark), var(--color-primary))',
-              }}
+              className="h-full rounded-full bg-[--hero-ink]"
+              style={{ width: `${pct}%` }}
             />
           </div>
           {/* MDRT marker — only when on-scale; staggered into its own band above
@@ -86,7 +73,7 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
             <div className="relative mt-2 text-[10px] font-mono tracking-wider uppercase" style={{ height: 14 }}>
               <span
                 className="absolute top-0 whitespace-nowrap"
-                style={{ left: `${mdrtPct}%`, transform: 'translateX(-50%)', color: 'var(--color-warning)' }}
+                style={{ left: `${mdrtPct}%`, transform: 'translateX(-50%)', color: 'var(--hero-dot-warning)' }}
               >
                 MDRT · {formatCurrency(MDRT_THRESHOLD)}
               </span>
@@ -94,7 +81,7 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
           )}
           {/* Axis endpoints — goal amount lives in the subtitle above, so the
               end label is a bare "Goal" tick (no duplicated amount). */}
-          <div className="flex justify-between items-center mt-2 text-[10px] font-mono tracking-wider uppercase text-ink-muted">
+          <div className="flex justify-between items-center mt-2 text-[10px] font-mono tracking-wider uppercase text-[--hero-ink-muted-teal]">
             <span>{formatCurrency(0)}</span>
             <span>Goal</span>
           </div>
@@ -103,17 +90,16 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
 
       {/* Right — CTA */}
       <div className="relative shrink-0 text-right" style={{ minWidth: 220 }}>
-        <p className="text-xs font-bold tracking-widest uppercase text-ink-muted font-mono">
+        <p className="text-xs font-bold tracking-widest uppercase text-[--hero-ink-muted-teal] font-mono">
           Next step
         </p>
-        <p className="text-sm font-semibold text-ink mt-1.5" style={{ maxWidth: 220 }}>
+        <p className="text-sm font-semibold text-[--hero-ink] mt-1.5" style={{ maxWidth: 220 }}>
           Keep your streak going — submit this week's report.
         </p>
         <button
           type="button"
           onClick={onSubmit}
-          className="mt-3.5 inline-flex items-center gap-2 px-5 rounded-lg bg-primary dark:bg-primary-dark text-white font-bold text-sm min-h-[44px] hover:bg-primary-dark dark:hover:bg-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          style={{ boxShadow: 'var(--shadow-md)' }}
+          className="mt-3.5 inline-flex items-center gap-2 px-5 rounded-lg border-2 border-white/70 text-[--hero-ink] font-bold text-sm min-h-[44px] hover:bg-white/15 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
         >
           Submit weekly report
           <ArrowRight size={14} aria-hidden="true" />
