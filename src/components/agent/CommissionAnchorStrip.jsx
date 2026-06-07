@@ -2,6 +2,7 @@ import React from 'react';
 import { RotateCw } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { ytdEarned, runRate, gapToGoal, latestPersistency } from '../../utils/commissionAnchor';
+import { getTodayTT } from '../../utils/dateInputs';
 
 function ProvChip({ children, warning }) {
   return (
@@ -35,7 +36,8 @@ export default function CommissionAnchorStrip({
   commissionRate,
   onScrollToPlayground,
 }) {
-  const year = new Date().getFullYear();
+  const todayTT = getTodayTT(); // 'YYYY-MM-DD' in TT timezone — correct at year boundary
+  const year = parseInt(todayTT.split('-')[0], 10);
 
   if (loading) {
     return (
