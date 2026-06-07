@@ -42,7 +42,6 @@ import {
   getAvailableMonths,
   getAgentHistory,
   savePersistency,
-  calculateAndCacheBranchAggregate,
 } from '../persistencyService';
 import { getTenantUsers } from '../managerService';
 
@@ -422,51 +421,3 @@ describe('getPersistencyMapForYear', () => {
   });
 });
 
-describe('calculateAndCacheBranchAggregate', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
-
-  it('returns sum-then-divide aggregate from branch records', async () => {
-    getTenantUsers.mockResolvedValueOnce([
-      { id: 'a1', role: 'agent', branchId: 'b1' },
-      { id: 'a2', role: 'agent', branchId: 'b1' },
-    ]);
-    mockGetDoc
-      .mockResolvedValueOnce({
-        exists: () => true,
-        id: 'a1_2026_02',
-        data: () => ({
-          ...E3_INPUTS,
-          grossSettled: 100,
-          netSettled: 90,
-          lapses: 10,
-          reinstatements: 0,
-        }),
-      })
-      .mockResolvedValueOnce({
-        exists: () => true,
-        id: 'a2_2026_02',
-        data: () => ({
-          ...E3_INPUTS,
-          grossSettled: 1000,
-          netSettled: 500,
-          lapses: 500,
-          reinstatements: 0,
-        }),
-      });
-
-    const out = await calculateAndCacheBranchAggregate('tenant1', '2026-02', 'b1');
-    expect(out.recordCount).toBe(2);
-    expect(out.sumGrossSettled).toBe(1100);
-    expect(out.sumNetSettled).toBe(590);
-    expect(out.aggregatedPersistency).toBeCloseTo(0.5364, 3);
-  });
-
-  it('returns zeroes (not NaN) when branch has no E3 records', async () => {
-    getTenantUsers.mockResolvedValueOnce([{ id: 'a1', role: 'agent', branchId: 'b1' }]);
-    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
-
-    const out = await calculateAndCacheBranchAggregate('tenant1', '2026-02', 'b1');
-    expect(out.recordCount).toBe(0);
-    expect(out.aggregatedPersistency).toBe(0);
-  });
-});

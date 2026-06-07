@@ -83,8 +83,6 @@ vi.mock('../../../utils/extractFields', () => ({
   extractTotalProductionCredit: () => 0,
 }));
 vi.mock('../../../utils/buildActivityEvents', () => ({ buildActivityEvents: () => [] }));
-vi.mock('../../../utils/aggregateAPI',        () => ({ aggregateAPI: () => 0 }));
-
 // ── Shell mock — captures nav props for assertion ────────────────────────────
 
 vi.mock('../../shell/Shell', () => ({
