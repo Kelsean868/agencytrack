@@ -91,9 +91,9 @@ When multi-section components are refactored to extract hero sub-sections into s
 
 ---
 
-## Graphify integration — shipped PR ##TBD (banked 2026-06-07)
+## Graphify integration — shipped PR #536 (banked 2026-06-07)
 
-**Source:** graphify repo integration brief execution (PR ##TBD, `feat/graphify-integration`). Graph built: 13,125 nodes / 17,369 edges / 1,026 communities (AST code graph only — semantic extraction of docs/images not run; `graphify query` / `graphify path` / `graphify explain` are usable, but doc concepts from `.md` / `.html` / PDFs are absent).
+**Source:** graphify repo integration brief execution (PR #536, `a5582e1`). Graph built: 13,125 nodes / 17,369 edges / 1,026 communities (AST code graph only — semantic extraction of docs/images not run; `graphify query` / `graphify path` / `graphify explain` are usable, but doc concepts from `.md` / `.html` / PDFs are absent).
 
 ### setupBypassSession SPOF (LOW, informational)
 
