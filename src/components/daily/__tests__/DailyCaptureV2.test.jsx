@@ -203,4 +203,20 @@ describe('DailyCaptureV2', () => {
     // formatCurrency wraps with TTD prefix — assert the numeric body appears.
     expect(slot.textContent).toMatch(/13[,.]500/);
   });
+
+  // TZ-001 — failing test: daily components must use the TT timezone date
+  // (America/Port_of_Spain, UTC-4), not the browser's local date.
+  // Between 20:00–23:59 TT (00:00–03:59 UTC next day), getTodayLocalDate()
+  // returns the UTC date (tomorrow in TT), misfiling the Firestore doc key.
+  it('TZ-001: getDailyEntry called with TT-timezone date, not UTC date', async () => {
+    // 2025-06-02T00:30:00Z = 2025-06-01T20:30:00 TT — UTC is June 2, TT is June 1.
+    // Only fake Date — leave setTimeout/Promise timers real so waitFor works.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2025-06-02T00:30:00Z') });
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    await waitFor(() => expect(hoisted.getDailyEntry).toHaveBeenCalled());
+    // Third argument is the date string used as the Firestore doc key.
+    const dateArg = hoisted.getDailyEntry.mock.calls[0][2];
+    expect(dateArg).toBe('2025-06-01'); // TT date — not '2025-06-02' (UTC)
+    vi.useRealTimers();
+  });
 });
