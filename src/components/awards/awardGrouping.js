@@ -6,7 +6,7 @@
  * JSX modules to export components only.
  */
 
-export function groupByProgress(awards) {
+export function groupByProgress(awards = []) {
   const qualified    = awards.filter((a) => a.eligible);
   const inContention = awards.filter((a) => !a.eligible && a.inContention);
   const notYet       = awards.filter((a) => !a.eligible && !a.inContention);

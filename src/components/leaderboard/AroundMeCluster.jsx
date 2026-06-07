@@ -159,11 +159,7 @@ function DesktopClusterRow({ entry, isViewer, leaderApi, viewerName }) {
       </div>
 
       {/* Period API */}
-      <div
-        className={`text-sm text-right font-display tabular-nums ${
-          isViewer || isUnrankedRow ? 'font-bold text-primary' : 'font-bold text-primary'
-        }`}
-      >
+      <div className="text-sm font-bold text-primary text-right font-display tabular-nums">
         {isUnrankedRow ? 'TTD 0' : formatCurrency(periodApi)}
       </div>
     </div>
@@ -295,11 +291,7 @@ function MobileExpandedRow({ entry, isViewer, viewerName }) {
           <div className="text-[10px] text-ink-muted mt-0.5 font-mono">{entry.unitName}</div>
         ) : null}
       </div>
-      <div
-        className={`text-sm font-bold font-display tabular-nums ${
-          isViewer || isUnrankedRow ? 'text-primary' : 'text-primary'
-        }`}
-      >
+      <div className="text-sm font-bold text-primary font-display tabular-nums">
         {isUnrankedRow ? 'TTD 0' : formatCurrency(entry.periodApi ?? 0)}
       </div>
     </div>

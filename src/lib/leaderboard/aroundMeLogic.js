@@ -126,7 +126,7 @@ export function computeAroundMe({ ranking, viewerUid, visibleMax }) {
     // array; the cluster component never branches on the 2-vs-3 label), so this
     // label is a consumer-detection tag — and it must not claim 3 rows when 2 are
     // present. (Track J item 19: fixes the CLUSTER_3 misapplication for rank-1.)
-    state: rows.length >= 3 ? 'CLUSTER_3' : 'CLUSTER_2_LAST',
+    state: rows.length === 3 ? 'CLUSTER_3' : 'CLUSTER_2_LAST',
     viewerEntry: viewer,
     rows,
     gapToNext,

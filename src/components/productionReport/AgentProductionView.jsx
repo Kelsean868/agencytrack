@@ -76,6 +76,7 @@ export default function AgentProductionView() {
 
   useEffect(() => {
     if (!user?.uid || !tenantId) return;
+    setPersHistory([]);
     getAgentHistory(tenantId, user.uid, 1)
       .then(setPersHistory)
       .catch(() => {});

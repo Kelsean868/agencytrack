@@ -10,7 +10,7 @@ const CATEGORY_TABS = ['All', 'Monthly', 'Quarterly', 'Annual', 'Club'];
 
 // ── RatioMiniSpark — SVG polyline sparkline ──────────────────────────────────
 function RatioMiniSpark({ values, color, width = 120, height = 24 }) {
-  if (!values?.length) return null;
+  if (!values?.length || values.length < 2) return null;
   const max = Math.max(...values, 1);
   const min = Math.min(...values, 0);
   const range = max - min || 1;
@@ -54,8 +54,8 @@ function RatioTrendCard({ label, value4w, value12w, trend, format, sparkValues, 
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function AgentAwardsPanel({ submissions, confirmedSettlements, agentProfile, currentDate, ruleset }) {
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [drawerAward, setDrawerAward]        = useState(null);
+  const [activeCategory, setActiveCategory]  = useState('All');
+  const [drawerAwardId, setDrawerAwardId]    = useState(null);
   const { tenantId } = useAuth();
   const [ledgerPolicies, setLedgerPolicies] = useState(null);
   const usesPolicyLedger = Boolean(agentProfile?.usesPolicyLedger);
@@ -102,6 +102,9 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   }, [activeConfirmedData, submissions, agentProfile, now, ruleset]);
 
   const { awards, ratioTrends, error } = computation;
+
+  // Derive drawer award from ID so it always reflects current computation state.
+  const drawerAward = drawerAwardId ? (awards[drawerAwardId] ?? null) : null;
 
   // Filter by active category tab
   const filteredAwards = useMemo(() => {
@@ -172,7 +175,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
         <div>
           <GroupHeader label="✓ Qualified" count={qualified.length} accentStyle={{ color: 'var(--color-gold)' }} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {qualified.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAward(a)} />)}
+            {qualified.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAwardId(a.id)} />)}
           </div>
         </div>
       )}
@@ -181,7 +184,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
         <div>
           <GroupHeader label="★ Almost there · 70%+" count={almostThere.length} accentStyle={{ color: 'var(--color-primary)' }} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {almostThere.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAward(a)} />)}
+            {almostThere.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAwardId(a.id)} />)}
           </div>
         </div>
       )}
@@ -190,7 +193,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
         <div>
           <GroupHeader label="↗ Making progress · 30–70%" count={makingProgress.length} accentStyle={{ color: 'var(--color-primary)' }} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {makingProgress.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAward(a)} />)}
+            {makingProgress.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAwardId(a.id)} />)}
           </div>
         </div>
       )}
@@ -199,7 +202,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
         <div>
           <GroupHeader label="◯ Just starting · under 30%" count={justStarting.length} accentStyle={{ color: 'var(--color-text-faint)' }} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {justStarting.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAward(a)} />)}
+            {justStarting.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAwardId(a.id)} />)}
           </div>
         </div>
       )}
@@ -253,7 +256,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       )}
 
       {/* Drill drawer */}
-      {drawerAward && <AwardDrillDrawer award={drawerAward} onClose={() => setDrawerAward(null)} />}
+      {drawerAward && <AwardDrillDrawer award={drawerAward} onClose={() => setDrawerAwardId(null)} />}
     </div>
   );
 }

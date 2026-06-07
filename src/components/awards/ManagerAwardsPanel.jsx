@@ -176,7 +176,10 @@ export default function ManagerAwardsPanel({
   const [activeTab, setActiveTab]     = useState('annual');
   const [drawerAward, setDrawerAward] = useState(null);
 
-  const now = useMemo(() => currentDate ?? new Date(), [currentDate]);
+  const now = useMemo(() => {
+    if (!currentDate) return new Date();
+    return currentDate instanceof Date ? currentDate : new Date(currentDate);
+  }, [currentDate]);
   const year = now.getFullYear();
 
   useEffect(() => {
