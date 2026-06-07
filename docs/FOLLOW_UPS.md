@@ -5,6 +5,47 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Pre-existing axe debt — surfaced by S3 axe sweep (banked 2026-06-07, PR #534)
+
+**Source:** S3 sweep axe walk (both themes, agent + manager legs). All 32 violations confirmed pre-existing; none introduced by S3. S3 result: **NO-NEW**. Per brief: "walking new rooms finds old debt — enumerate pre-existing finds for separate FUs."
+
+**Glass-incomplete counts are expected** — axe cannot compute contrast through CSS glass compositing on `.glass.hero.teal` panes (doctrine banked PR #518). Glass-incomplete ranged from 5–29 per leg.
+
+**Fontshare CDN failures in console** — pre-existing; Fontshare blocks headless browser requests in Playwright. Not a bug. Falls back to system fonts in test env; production font-loading is browser-native.
+
+### Find A — NotificationBell badge dark mode (HIGH, cosmetic)
+**Node:** `span.absolute.top-1\.5.right-1\.5 bg-danger text-white text-[10px] font-bold` (10px bold, in `src/components/ui/NotificationBell.jsx:19`)  
+**Contrast:** white on `#d96b5d` (dark mode danger) = **3.38:1** (requires 4.5:1 for small text)  
+**Surfaces:** every dark-mode page that has the bell badge (all agent + manager routes with unread notifications)  
+**Light mode:** passes — light danger is darker, meets threshold  
+**Fix:** The dark danger token (`--color-danger` dark = `#d96b5d`) is too light for white text. Options: (a) use `text-[--color-bg]` (near-black) instead of `text-white` in dark mode, or (b) deepen `--color-danger` dark token. Standalone XS PR.
+
+### Find B — NeedsActionBanner CTA button dark mode (MEDIUM)
+**Node:** `button.bg-warning.text-white.gap-1\.5` in `src/components/dashboard/HomeV2/NeedsActionBanner.jsx:37`  
+**Contrast:** white on `#e8b53e` (dark warning) = **1.89:1** (requires 4.5:1)  
+**Surface:** agent dashboard dark mode when needs-action state is active  
+**Light mode:** passes  
+**Fix:** Pair with `dark:bg-warning-dark` if a deeper token exists, or use `dark:text-[--color-text]` + `dark:bg-warning/30` pattern. Same root as D6 (`bg-primary text-white` missing dark). Standalone XS PR.
+
+### Find C — Award card tier chips (MEDIUM, both themes)
+**Node:** `button[data-testid="award-card-*"] .text-[9px].shrink-0.py-1` — tier/status label chips on award cards. `text-ink-muted` (#a8a39c light / #8a8074 dark) on `bg-surface-raised` (`#f0efe9` light / `#1f1b16` dark).  
+**Contrast:** 2.17:1 (light) / 4.41:1 (dark, barely below 4.5) for 9px bold text  
+**Surface:** Manager Awards panel (award card grid below MonthlyBonusHero) — not touched by S3  
+**Fix:** Bump chip label to `text-ink` (darker); 9px bold is below AA small-text requirement regardless of measured ratio. Or increase font-size to 11px+ which upgrades to "large text" (3:1 required). Audit `ManagerAwardsPanel.jsx` award card chip labels. Standalone XS PR.
+
+### Find D — BM at-risk agent cards text (MEDIUM, both themes)
+**Node:** `bm-at-risk-agent-card` `.flex-wrap.gap-2.items-center` — `text-ink-muted` (similar tokens) at 10px bold on `bg-surface-raised`. 2.17:1 (light) / 4.41:1 (dark).  
+**Surface:** Manager Awards panel → PersRealityBar at-risk section — not in S3 scope  
+**Fix:** Same pattern as Find C — bump to `text-ink` or increase font-size. Standalone XS PR (can combine with Find C).
+
+### Find E — `text-ink-muted/60` in BranchManagerProductionView (LOW)
+**Node:** `.text-ink-muted\/60` — 60%-opacity muted text in the production table rows (not the hero section)  
+**Contrast:** 2.5:1 (light) / 3.55:1 (dark) — both fail 4.5:1  
+**Surface:** Manager Production Report table rows — not touched by S3  
+**Fix:** Remove `/60` opacity modifier; `text-ink-muted` without opacity modifier passes. Verify visual intent. Standalone 1-liner.
+
+---
+
 ## Nexus Glass S3 sweep — hero census canon (banked 2026-06-07, PR #534)
 
 **Source:** Phase 0 census confirmed by dispatcher before any conversion (PR #534, `feat/nexus-glass-s3-sweep`). Three #517 cards (CommissionAnchorStrip, SuggestedWeekCard, PersRealityBar) are DONE — not repeated here.
