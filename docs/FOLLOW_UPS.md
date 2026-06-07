@@ -213,6 +213,29 @@ No standalone hero recipe HTML was produced (analogous to `docs/design/nexus-gla
 
 ---
 
+## RTL/userEvent — delay:null + async-handler setState = lost updates (findings-only, banked 2026-06-07)
+
+**Category:** Upstream candidate — findings-only. No action item in this repo; no source change required. Archived for reference if the failure mode recurs in another async-handler test.
+
+**Finding:** Under React 19 + @testing-library/react (RTL) + @testing-library/user-event v14.6.1, calling `userEvent.setup({ delay: null })` causes `user.click()` to resolve its Promise BEFORE the clicked handler's async continuation drains from the microtask queue. When the handler does `await someAsyncCall()` then calls a `setState` in the continuation, the `setState` is never reached — it does not appear in the microtask queue before `user.click()` resolves. `waitFor` and `act()` polling do NOT recover the missed `setState`: the component genuinely never re-renders with the new state.
+
+**Observed:** 57% chip-missing solo failure rate in `CompliancePanel.nudge.test.jsx` test 1 with `delay: null`. `findByTestId('compliance-cooldown-chip', undefined, { timeout: 3000 })` waited the full 3000ms and the chip never appeared. Default `delay: 0` keeps per-step `await Promise.resolve()` yields that preserve microtask interleaving and the setState fires correctly.
+
+**Evidence:** Burn logs in `tmp/burn-logs-isolated/` — specifically `run-9-CHIP-MISSING.log` and `run-10-CHIP-MISSING.log` from the 200× solo instrumented burn. Both show `TestingLibraryElementError: Unable to find an element by: [data-testid="compliance-cooldown-chip"]` after the full 3000ms timeout, confirming the chip was never rendered (not just slow).
+
+**Root cause chain:**
+1. `delay: null` = zero per-event scheduling yield; `user.click()` resolves synchronously after dispatching events.
+2. React 19 batches the click handler's synchronous work, but the `await` inside `handleNudge` yields to the microtask queue.
+3. `user.click()`'s promise resolves from a microtask that runs BEFORE `handleNudge`'s continuation microtask.
+4. `waitFor` picks up the resolved `user.click()` Promise and begins polling, but the `setNudgeRecords` call is still queued behind it.
+5. RTL's `act()` flushes do not drain the specific continuation microtask because it is not yet enqueued at flush time.
+
+**Fix (applied in `fix/nudge-flake-stabilization` branch):** `userEvent.setup()` (no options) — default `delay: 0` keeps per-step yields. Three-prohibition tripwire comments in the test file prevent future reversion to `delay: null`.
+
+**Upstream candidate:** This behavior may be a specification gap in userEvent v14 re: async React handlers — `delay: null` is documented as "no scheduling delay" but the interaction with React 19's microtask batching is not. Candidate for an upstream issue report against `@testing-library/user-event` with the burn-log evidence.
+
+---
+
 ## #519 Gemini G-1 — CSS var scope claim (disposed DISAGREE, banked 2026-06-06)
 
 **Context:** PR #519 (`fix/nexus-glass-s2-ink-guard`) received a Gemini Code Assist review. Finding G-1 claimed that `Chip` component instances in `CommissionAnchorStrip`, `SuggestedWeekCard`, and `PersRealityBar` were "used in contexts lacking the required `--hero-*` CSS variables," proposing a `hero` boolean prop on `Chip` to apply the vars conditionally.
@@ -4404,30 +4427,51 @@ Banked closed: Item 5 (night queue, test-only), 2026-06-05. Resolved: Commission
 
 ---
 
-## `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (**RE-OPENED — stabilization INCOMPLETE**)
+## `CompliancePanel.nudge.test.jsx` timing flap — stabilize with proper async waits (**STABILIZED, attempt 2 — PROBATION**)
 
 **Scope:** `src/components/manager/__tests__/CompliancePanel.nudge.test.jsx` — 6 tests covering the S2 nudge-send + cooldown-chip interactions.
 
 **History:**
 - PR #502 (`d936c69`, 2026-06-05): wrapped all 7 `fireEvent.click()` sites in `await act(async () => { ... })`. 20× consecutive isolated green + 2426/2426 full suite ×2. Merged GREEN-CHANNEL as test-only stabilization.
 - **4th occurrence — 2026-06-06 (CI run on PR #510 / run `27063421668`).** `Unable to find [data-testid="compliance-cooldown-chip"]`. Local 20× consecutive: clean. CI-environment timing differs — the `await act()` wrap is insufficient under constrained CI workers.
+- **5th occurrence — 2026-06-07 (CI run `27094401256`, PR #538 config-only diff).** Root cause diagnosed (Phase 1): PR #520's batch-a commit `28968bb` ("RTL anti-patterns") removed all `act()` wrappers added by `d936c69`, returning the TIMING-RACE. `handleNudge` is async; `fireEvent.click` without `act()` / `userEvent.click` does not drain the microtask queue before `waitFor` polls. Under CI parallel-suite load the re-render lands after `waitFor`'s real-time timeout.
+- **PR #TBD (2026-06-07):** Attempt 2 fix. Replaced all 8 `fireEvent.click()` sites with `await user.click()` via `userEvent.setup()` (RTL v14 idiomatic — internally drains microtask/event queue before returning). Tripwire comments added at import and each click site to resist future automated sweeps. `@testing-library/user-event` v14.6.1 added. UTC clustering hypothesis REFUTED (failures at 13:48, 02:08, 23:03, 21:04 UTC — no clustering). VERDICT: TIMING-RACE (CI worker-pool CPU starvation delays re-render/poll cycle past `waitFor` real-time timeout).
 
-**Status: INCOMPLETE — RE-OPENED.** Local 20× green but CI-environment timing differs; next attempt must reproduce under CI conditions (`CI=true`, constrained workers) before fixing.
+**Status: STABILIZED (attempt 2, PR #TBD) — PROBATION.** Close this FU after 14 days without a CI failure OR the next 10 CI runs all green — whichever comes first.
+
+**Note on local burn-in power:** local burn-in (even 50× full-suite) has limited power for a CI-load race. Empirical CI green is the probation gate, not local burn-in alone.
 
 **Observed behavior (five occurrences):**
 1. During the settlements security dispatch full-suite run — 1 failure, isolated re-run clean.
 2. During the commission-v2-s2 dispatch full-suite run — 1 failure, isolated re-run clean.
 3. During the commission-v2-s3 dispatch full-suite run — 1 failure (2425/2426), isolated re-run and second full-suite re-run both clean (2426/2426).
 4. **CI run `27063421668` (post-#510 push, 2026-06-06).** First run fail; re-run (`gh run rerun --failed`) passed. Pattern: flapped on CI after PR #502 supposedly fixed it.
-5. **CI run `27094401256` (PR #538, 2026-06-07).** Config-only diff (`.graphifyignore` + `graphify-out/` only — zero `src/` changes). Confirms the flake is fully environmental, not triggered by any source edit.
+5. **CI run `27094401256` (PR #538, 2026-06-07).** Config-only diff (`.graphifyignore` + `graphify-out/` only — zero `src/` changes). Confirms the flake is fully environmental, not triggered by any source edit. Root cause: `28968bb` had reversed `d936c69`'s act-wrappers.
 
-All five: fails in a parallel full-suite context (`npx vitest run` or CI constrained workers), passes in isolation. The `await act()` boundary is insufficient — test still races CI environment's higher contention.
+All five: fails in a parallel full-suite context (`npx vitest run` or CI constrained workers), passes in isolation.
 
-**Fix shape (revised):** The previous fix (act-wrapping clicks) was insufficient. Next attempt must run the full suite under `CI=true` + constrained workers locally to reproduce the failure, then apply explicit `waitFor(() => expect(screen.getByTestId(...)).toBeInTheDocument())` assertions after every async state change. Reproducing under CI conditions first is mandatory — blind act-wrapping already failed once.
+**Priority: MEDIUM → PROBATION.** Close after 14-day window (2026-06-21) or 10 CI runs green — whichever comes first.
 
-**Priority: MEDIUM.** Five occurrences; passes on re-run so it's an intermittent investigation cost, not a hard blocker. Dispatch when reproduction path under CI conditions is clear.
+Banked: commission-v2-s2 dispatch, 2026-06-05. Re-opened: post-merge fill for PR #509 + PR #510, 2026-06-06 (4th CI occurrence). 5th occurrence: PR #538, 2026-06-07 (config-only diff, unrelated). Attempt 2 stabilization: PR #TBD, 2026-06-07.
 
-Banked: commission-v2-s2 dispatch, 2026-06-05. Re-opened: post-merge fill for PR #509 + PR #510, 2026-06-06 (4th CI occurrence). 5th occurrence: PR #538, 2026-06-07 (config-only diff, unrelated).
+---
+
+## Automated anti-pattern sweeps must check tripwire comments before stripping (LOW/PROCESS, banked 2026-06-07)
+
+**Scope:** `28968bb` ("fix(gemini-batch-a): RTL anti-patterns in 13 test files", PR #520, 2026-06-06) removed all `act()` wrappers from `CompliancePanel.nudge.test.jsx` — wrappers that `d936c69` (PR #502) had added as a documented stability fix. The sweep treated them as standard RTL anti-patterns without checking for brief/FU references or tripwire comments.
+
+**Collateral audit result (attempt 2 Phase 2, 2026-06-07):** Only `CompliancePanel.nudge.test.jsx` was a casualty. The other 12 files changed by `28968bb` had legitimate RTL improvements (`waitFor(expect(getBy*))` → `findBy*`) or mock shape updates — none originated from stability-fix commits. No additional FU entries required.
+
+**Process rule:** Any automated sweep that removes or rewrites async patterns in test files MUST:
+1. Check for two-line tripwire comment blocks at import sites (format: `// do not strip: ...`)
+2. Check for inline `// do not strip:` comments at individual call sites
+3. If either is found, STOP and surface to the dispatcher rather than removing
+
+Attempt 2's fix (PR #TBD) adds tripwire comments at the `userEvent` import and each `user.click()` site to make this resistance explicit and machine-readable for future sweep authors.
+
+**Priority: LOW/PROCESS.** Tripwires are now in place. No further code change needed — this FU is the process doctrine.
+
+Banked: attempt 2 Phase 2 collateral audit, 2026-06-07 (PR #TBD).
 
 ---
 
