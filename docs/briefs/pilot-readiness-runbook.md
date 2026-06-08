@@ -403,7 +403,7 @@ Merge any PRs that must land before provisioning. Per freeze rules: only PRs alr
 - PR [#540](https://github.com/Kelsean868/agencytrack/pull/540) (`docs/pilot-readiness-runbook`) — this runbook, HOLD
 - PR [#541](https://github.com/Kelsean868/agencytrack/pull/541) (`docs/coming-soon-gating-brief`) — coming-soon gating brief, HOLD
 - PR [#542](https://github.com/Kelsean868/agencytrack/pull/542) (`feat/coming-soon-gating`) — coming-soon gating impl, HOLD
-- PR **TBD** (`fix/nudge-flake-stabilization`) — test-only flake fix; number assigned after matrix gates pass or cliff executes
+- PR [#543](https://github.com/Kelsean868/agencytrack/pull/543) (`fix/nudge-flake-stabilization`) — test-only flake fix; CI probation gate (next 10 CI runs / 14 days), HOLD
 
 ### T+35: Create Branches + Units (10 min)
 
