@@ -288,22 +288,38 @@ Census run 2026-06-07 found `config/companyMinimums` has **8 fields** (keys: upd
 ## §5 Firestore Region + Backup (Priority 1E)
 
 ### Region
-⚠ OPERATOR: Firestore region was not specified in `firebase.json` or `functions/index.js`. Confirm in Firebase Console:
-> Firebase Console → agencytrack-2a610 → Firestore Database → top bar shows region
+✅ **CONFIRMED: `us-central1`** — `gcloud firestore databases describe` returned `LOCATION_ID: us-central1`, `TYPE: FIRESTORE_NATIVE` (2026-06-08). No data-residency concern for the Tatil demo.
 
-Typical Firebase default for Trinidad-targeted apps: `us-central1` (nam5 multi-region). If region is `asia-*` or `europe-*`, data residency should be discussed with Tatil's legal/IT team before the demo.
+### Pre-pilot backup — COMPLETE ✅
 
-### Backup command (draft — run before morning provisioning)
+**Executed:** 2026-06-08T09:46:10Z → 09:47:02Z UTC (~52 seconds)
+**Account used:** `kyronmarchan@gmail.com` (gcloud user auth — ADC not required)
+**Status:** `SUCCESSFUL`
+
+| Field | Value |
+|-------|-------|
+| Bucket | `gs://agencytrack-2a610-firestore-backups` (created 2026-06-08, `us-central1`) |
+| Export path | `gs://agencytrack-2a610-firestore-backups/pre-pilot-2026-06-08` |
+| Operation ID | `ASBlY2IwOGYyZWM5ZTgtMjMzOC05NTI0LTQ4YjItZjBlMTU2OWQkGnNlbmlsZXBpcAkKMxI` |
+| Start | `2026-06-08T09:46:10.201004Z` |
+| End | `2026-06-08T09:47:02.273648Z` |
+| Artifacts | `pre-pilot-2026-06-08.overall_export_metadata` + `all_namespaces/` ✅ |
+
+**Restore command (if needed):**
 ```bash
-# Replace TIMESTAMP with actual date, e.g. 20260607
-gcloud firestore export gs://agencytrack-2a610.appspot.com/backups/pre-pilot-TIMESTAMP \
+gcloud firestore import gs://agencytrack-2a610-firestore-backups/pre-pilot-2026-06-08 \
   --project=agencytrack-2a610
-
-# Verify export completed:
-gcloud firestore operations list --project=agencytrack-2a610
 ```
 
-⚠ OPERATOR: Confirm the GCS bucket `agencytrack-2a610.appspot.com` exists and you have write access before running. The export is async — `operations list` shows completion status.
+⚠ This snapshot captures the full database INCLUDING current test data — it is the correct restore point if cleanup goes wrong. Do NOT delete the bucket before the pilot is stable.
+
+### Re-run backup (before each major provisioning step)
+```bash
+gcloud firestore export gs://agencytrack-2a610-firestore-backups/pre-pilot-<TIMESTAMP> \
+  --project=agencytrack-2a610
+# e.g. pre-pilot-2026-06-08-post-cleanup, pre-pilot-2026-06-08-post-branch-create, etc.
+gcloud firestore operations list --project=agencytrack-2a610
+```
 
 ---
 
