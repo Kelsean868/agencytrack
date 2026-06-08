@@ -5,6 +5,40 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Suite-level CI flakiness — 4 non-nudge files (banked 2026-06-08, post-pilot)
+
+**Source:** 50× suite burn (TZ=UTC, 2026-06-07) run as part of the nudge flake stabilization matrix (PR #543). Suite failure rate: **38/50 (76%) on non-nudge files**; nudge test was **0/50** (the fix works). CI is broadly flaky beyond the nudge test; this is a real re-run tax.
+
+**Failing files (4 unique, 0 nudge):**
+
+| File | Classification | Notes |
+|------|---------------|-------|
+| `src/components/daily/__tests__/DailyEntryModal.test.jsx` | 28968bb — RTL anti-pattern sweep | Same async-batching class as CompliancePanel.nudge |
+| `src/components/wizard/__tests__/WizardFormV2RetirementR2.test.jsx` | 28968bb — RTL anti-pattern sweep | Same class |
+| `src/components/awards/__tests__/AwardsRulesetPanel.test.jsx` | NEW — not in 28968bb | Root cause unknown; investigate |
+| `src/components/wizard/__tests__/WizardFormV2RetirementR1.test.jsx` | NEW — not in 28968bb | Root cause unknown; investigate |
+
+**Action (post-pilot):** Diagnose per file. 28968bb files likely have the same `delay:null` / missing-`userEvent` async batching pattern as the nudge fix — apply the same `userEvent.setup()` + `CHIP_WAIT` treatment. New files need investigation first. Each fix ships as a standalone test-only PR; these are CI re-run tax, not correctness bugs. **Defer until after pilot stabilizes.**
+
+**Severity:** MEDIUM (post-pilot). No user-visible regressions — all failures are async-timing in tests, not in production code.
+
+---
+
+## Playwright best-practices sweep — verification scripts (banked 2026-06-08, LOW)
+
+**Source:** Gemini review of PR #543, inline comments 1–6 on accumulated verification scripts.
+
+**Findings (all in `scripts/verification/`):**
+
+1. `persistency-mgr-v2-s2-smoke.mjs:592` — `localStorage.setItem('agencytrack-dark', '1')` should be `'true'` for consistency with `aa-stragglers-axe-walk.mjs:91`
+2. `persistency-mgr-v2-s2-smoke.mjs:298` — `page.$` to find edit button; should use `page.locator` with auto-waiting
+3. `persistency-mgr-v2-s3a-axe-detail.mjs:54` — hardcoded `waitForTimeout` after clicks
+4. `persistency-mgr-v2-s3a-axe.mjs:159`, `:208`, `:216` — hardcoded `waitForTimeout` delays throughout
+
+**Action:** One pass over `scripts/verification/` smoke files: replace `page.$` → `page.locator`, replace `waitForTimeout` chains → `waitFor({ state: 'visible' })` on the target element, normalise dark-mode localStorage value to `'true'`. Mechanical XS sweep — no src/ changes. Batch into one test-tooling PR.
+
+---
+
 ## Pre-existing axe debt — surfaced by S3 axe sweep (banked 2026-06-07, PR #534)
 
 **Source:** S3 sweep axe walk (both themes, agent + manager legs). All 32 violations confirmed pre-existing; none introduced by S3. S3 result: **NO-NEW**. Per brief: "walking new rooms finds old debt — enumerate pre-existing finds for separate FUs."
