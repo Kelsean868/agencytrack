@@ -1,16 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-
-// ── Hoisted ref containers ────────────────────────────────────────────────────
-// vi.hoisted is evaluated before vi.mock factories, so these refs are available
-// inside the factory closures below.
-
-const hoisted = vi.hoisted(() => ({
-  onCreatePolicyFromPrepRef: { current: null },
-  policyLedgerInitialFormRef: { current: undefined },
-}));
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 // ── Service mocks ─────────────────────────────────────────────────────────────
 
@@ -66,13 +57,14 @@ vi.mock('../../../services/campaignService', () => ({
 }));
 
 vi.mock('../../../services/dailyActivityService', () => ({
-  getDailyEntry: vi.fn().mockResolvedValue(null),
+  getDailyEntry:          vi.fn().mockResolvedValue(null),
   getDailyEntriesForWeek: vi.fn().mockResolvedValue([]),
 }));
+
 vi.mock('../../../services/weeklyPlanService', () => ({
-  getWeeklyPlan: vi.fn().mockResolvedValue(null),
-  commitWeeklyPlan: vi.fn().mockResolvedValue(undefined),
-  deleteWeeklyPlan: vi.fn().mockResolvedValue(undefined),
+  getWeeklyPlan:     vi.fn().mockResolvedValue(null),
+  commitWeeklyPlan:  vi.fn().mockResolvedValue(undefined),
+  deleteWeeklyPlan:  vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../../services/authService', () => ({
@@ -82,11 +74,11 @@ vi.mock('../../../services/authService', () => ({
 vi.mock('../../../utils/formatters', () => ({
   getRoleLabel:      () => 'Agent',
   formatCurrency:    (v) => `$${v}`,
-  formatDateDisplay: () => '2026-05-25',
+  formatDateDisplay: () => '2026-06-07',
 }));
 
 vi.mock('../../../utils/dateHelpers', () => ({
-  getMostRecentSunday: () => '2026-05-25',
+  getMostRecentSunday: () => '2026-06-01',
 }));
 
 vi.mock('../../../utils/extractFields', () => ({
@@ -100,106 +92,62 @@ vi.mock('../../../utils/buildActivityEvents', () => ({
 
 // ── Component mocks ───────────────────────────────────────────────────────────
 
-// Shell — renders children and exposes a button to switch to the prospect-info tab
 vi.mock('../../shell/Shell', () => ({
   default: ({ children, setActiveTab }) => (
     <div data-testid="shell">
-      <button
-        type="button"
-        data-testid="go-prospect-info"
-        onClick={() => setActiveTab('prospect-info')}
-      />
+      <button type="button" data-testid="go-prospect-info"  onClick={() => setActiveTab('prospect-info')} />
+      <button type="button" data-testid="go-goals"          onClick={() => setActiveTab('goals')} />
+      <button type="button" data-testid="go-money-needs"    onClick={() => setActiveTab('money-needs')} />
       {children}
     </div>
   ),
 }));
 
-// ProspectInfoPanel — captures the onCreatePolicyFromPrep callback via the hoisted ref
-vi.mock('../../agent/ProspectInfoPanel', () => ({
-  default: ({ onCreatePolicyFromPrep }) => {
-    hoisted.onCreatePolicyFromPrepRef.current = onCreatePolicyFromPrep;
-    return React.createElement('div', { 'data-testid': 'prospect-info-panel' });
-  },
-}));
-
-// PolicyLedgerPanel — stores the initialForm it receives into the hoisted ref
-vi.mock('../../agent/PolicyLedgerPanel', () => ({
-  default: ({ initialForm, onPrefillConsumed: _onPrefillConsumed }) => {
-    hoisted.policyLedgerInitialFormRef.current = initialForm;
-    return React.createElement('div', { 'data-testid': 'policy-ledger-panel' });
-  },
-}));
-
-// Blank stubs for the remaining sub-components
-vi.mock('../../wizard/WizardForm',                  () => ({ default: () => null }));
-vi.mock('../../daily/DailyEntryModal',               () => ({ default: () => null }));
-vi.mock('../../goals/GapAnalysisPanel',              () => ({ default: () => null }));
-vi.mock('../../goals/CommissionPlayground',          () => ({ default: () => null }));
-vi.mock('../../campaigns/CampaignCard',              () => ({ default: () => null }));
-vi.mock('../../profile/CareerPortal',                () => ({ default: () => null }));
-vi.mock('../../profile/ProfileScreen',               () => ({ default: () => null }));
-vi.mock('../../ui/ReportRangeModal',                 () => ({ default: () => null }));
-vi.mock('../../gamification/Leaderboard',            () => ({ default: () => null }));
-vi.mock('../../awards/AgentAwardsPanel',             () => ({ default: () => null }));
-vi.mock('../../submissions/SubmissionViewer',        () => ({ default: () => null }));
-vi.mock('../GoalCarousel',                            () => ({ default: () => null }));
-vi.mock('../KPICard',                                 () => ({ default: () => null }));
-vi.mock('../ActivityFeed',                            () => ({ default: () => null }));
-// WeeklyStandardCard deleted in S3b (#393 removed mount; this PR removed corpse)
-vi.mock('../../gamification/BadgeGrid',              () => ({ default: () => null, computeEarnedBadges: () => [] }));
-vi.mock('../../onboarding/WelcomeScreen',            () => ({ default: () => null }));
+vi.mock('../../wizard/WizardForm',                   () => ({ default: () => null }));
+vi.mock('../../daily/DailyEntryModal',                () => ({ default: () => null }));
+vi.mock('../../goals/CommissionPlayground',           () => ({ default: () => null }));
+vi.mock('../../campaigns/CampaignCard',               () => ({ default: () => null }));
+vi.mock('../../profile/CareerPortal',                 () => ({ default: () => null }));
+vi.mock('../../profile/ProfileScreen',                () => ({ default: () => null }));
+vi.mock('../../ui/ReportRangeModal',                  () => ({ default: () => null }));
+vi.mock('../../gamification/Leaderboard',             () => ({ default: () => null }));
+vi.mock('../../awards/AgentAwardsPanel',              () => ({ default: () => null }));
+vi.mock('../../submissions/SubmissionViewer',         () => ({ default: () => null }));
+vi.mock('../GoalCarousel',                             () => ({ default: () => null }));
+vi.mock('../KPICard',                                  () => ({ default: () => null }));
+vi.mock('../ActivityFeed',                             () => ({ default: () => null }));
+vi.mock('../../gamification/BadgeGrid',               () => ({ default: () => null, computeEarnedBadges: () => [] }));
+vi.mock('../../onboarding/WelcomeScreen',             () => ({ default: () => null }));
 vi.mock('../../productionReport/ProductionReportTab', () => ({ default: () => null }));
-vi.mock('../../agent/PersistencyTab',                () => ({ default: () => null }));
-vi.mock('../../agent/MoneyNeedsPanel',               () => ({ default: () => null }));
-vi.mock('../../daily/DailyFAB',                      () => ({ default: () => null }));
+vi.mock('../../agent/PersistencyTab',                 () => ({ default: () => null }));
+vi.mock('../../daily/DailyFAB',                       () => ({ default: () => null }));
+vi.mock('../../agent/PolicyLedgerPanel',              () => ({ default: () => React.createElement('div', { 'data-testid': 'policy-ledger-panel' }) }));
 
 import AgentDashboard from '../AgentDashboard';
 
 beforeEach(() => {
   vi.clearAllMocks();
-  hoisted.onCreatePolicyFromPrepRef.current   = null;
-  hoisted.policyLedgerInitialFormRef.current  = undefined;
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-describe('AgentDashboard — handleCreatePolicyFromPrep (F3.1 + socialPlatform prefill)', () => {
-  it('prefill carries socialPlatform when prospectingSource is social-media', async () => {
+describe('AgentDashboard — coming-soon tab gating (pilot readiness)', () => {
+  it('prospect-info tab renders ComingSoonPanel, not the real panel', async () => {
     render(<AgentDashboard />);
-
-    // Navigate to prospect-info tab so ProspectInfoPanel renders and the callback is captured
     fireEvent.click(screen.getByTestId('go-prospect-info'));
-    await waitFor(() => expect(hoisted.onCreatePolicyFromPrepRef.current).toBeTruthy());
-
-    // Simulate clicking "Log Policy" on a social-media prep
-    await act(async () => {
-      hoisted.onCreatePolicyFromPrepRef.current({
-        clientName:        'Social Prospect',
-        prospectingSource: 'social-media',
-        socialPlatform:    'whatsapp',
-      });
-    });
-
-    // After the callback, activeTab switches to policy-ledger; PolicyLedgerPanel renders
-    await waitFor(() => expect(screen.getByTestId('policy-ledger-panel')).toBeInTheDocument());
-    expect(hoisted.policyLedgerInitialFormRef.current?.socialPlatform).toBe('whatsapp');
+    await waitFor(() => expect(screen.getByText('Coming soon')).toBeInTheDocument());
+    expect(screen.queryByTestId('prospect-info-panel')).not.toBeInTheDocument();
   });
 
-  it('prefill sets socialPlatform to null when prospectingSource is not social-media', async () => {
+  it('goals tab renders ComingSoonPanel', async () => {
     render(<AgentDashboard />);
+    fireEvent.click(screen.getByTestId('go-goals'));
+    await waitFor(() => expect(screen.getByText('Coming soon')).toBeInTheDocument());
+  });
 
-    fireEvent.click(screen.getByTestId('go-prospect-info'));
-    await waitFor(() => expect(hoisted.onCreatePolicyFromPrepRef.current).toBeTruthy());
-
-    await act(async () => {
-      hoisted.onCreatePolicyFromPrepRef.current({
-        clientName:        'Referral Prospect',
-        prospectingSource: 'referral',
-        socialPlatform:    null,
-      });
-    });
-
-    await waitFor(() => expect(screen.getByTestId('policy-ledger-panel')).toBeInTheDocument());
-    expect(hoisted.policyLedgerInitialFormRef.current?.socialPlatform).toBeNull();
+  it('money-needs tab renders ComingSoonPanel', async () => {
+    render(<AgentDashboard />);
+    fireEvent.click(screen.getByTestId('go-money-needs'));
+    await waitFor(() => expect(screen.getByText('Coming soon')).toBeInTheDocument());
   });
 });
