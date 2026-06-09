@@ -5,6 +5,65 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## CLAUDE.md Track I status — mark COMPLETE not PLANNED (banked 2026-06-09, XS docs)
+
+**Source:** Manager self-production capability audit (2026-06-09). CLAUDE.md Build Phase History table lists Track I (Manager Activity Reporting) as `📋 PLANNED`. Source audit found `ManagerWarTab.jsx`, `managerWarService.js`, `managerWeeklyReports` Firestore collection + rules all shipped and functional.
+
+**Action:** One-line change in CLAUDE.md Build Phase History table — change `📋 PLANNED` to `✅ COMPLETE` for the Track I row; add squash SHA reference. XS docs-only PR, green-channel eligible.
+
+**Severity:** LOW (correctness of project documentation).
+
+---
+
+## branch_manager query scoping — BMs see entire tenant, not their branch (banked 2026-06-09, MEDIUM post-pilot)
+
+**Source:** Branch-direct agent support audit (2026-06-09). `managerService.js` `getTenantUsers()` and `getAllUsers()` in `agentManagementService.js` both run `q = col` (unfiltered collection) for all non-`unit_manager` callers. No `branchId` filter is applied. A `branch_manager` currently sees every user and every submission in the entire tenant. Same applies to `getWeeklySubmissions()` and `getAllYTDSubmissions()` — no `branchId` clause for BM callers.
+
+**Action (post-pilot):** Add `where('branchId', '==', callerBranchId)` to the branch_manager arm of `getTenantUsers`, `getAllUsers`, `getWeeklySubmissions`, `getAllYTDSubmissions`. Requires callerBranchId to be available in the call context (it is — BM claims carry `branchId`). Firestore rules will also need matching composite indexes (`branchId + weekStarting`) if not already present. Scope audit: any manager surface that currently relies on tenant-wide visibility (e.g. leaderboard cross-branch views for Sales Manager role) must be verified not to regress. **Defer until after pilot — scoping change affects manager views and needs full smoke.**
+
+**Severity:** MEDIUM (data scoping correctness; no security breach since rules still enforce tenant isolation, but BMs see more data than they should).
+
+---
+
+## ManagerDashboard "Submit Report" → WizardForm path (banked 2026-06-09, MEDIUM post-pilot)
+
+**Source:** Manager self-production audit (2026-06-09). `ManagerDashboard.jsx` has a "Submit Report" button (`onSubmitReport={() => setShowWizard(true)}`) that renders the full agent `WizardForm`. The `submissions` collection `allow create` passes for `canManage()` callers, so a manager submitting via this path writes a doc to `submissions` with their UID as `agentId`. That doc is then picked up by the leaderboard CF and branch rollups (no role filter in either pipeline), polluting the agent leaderboard and submission counts.
+
+**Action (post-pilot):** Decide and implement one of:
+- **Option A (repurpose):** Wire the "Submit Report" button to `ManagerWarTab` (Track I) instead of `WizardForm`. Remove the `showWizard` state from `ManagerDashboard` entirely. Cleanest; aligns manager self-reporting to its intended surface.
+- **Option B (gate):** Add a role guard in `WizardForm` that rejects submission if `userRole !== 'agent'`, with a toast redirecting to `ManagerWarTab`.
+- **Option C (rules):** Add `isAgent()` check to `submissions allow create` rule. Breaks the existing path silently — not recommended without UI change.
+
+Recommendation: Option A. Track I is already built; the WizardForm path is an oversight.
+
+**Severity:** MEDIUM (data integrity — manager production contaminates agent leaderboard).
+
+---
+
+## leaderboardAggregate.js — enforce non-agent UID filter (banked 2026-06-09, MEDIUM post-pilot)
+
+**Source:** Manager self-production audit (2026-06-09). `functions/leaderboard/leaderboardAggregate.js` contains a comment "Skip submissions from non-agent uids (UMs etc.) — defensive" but the actual skip guard is not enforced in code. The CF queries `submissions` with no role filter; any submission with a manager UID as `agentId` (possible via the WizardForm path — see FU above) is included in the leaderboard aggregate.
+
+**Action (post-pilot):** In `leaderboardAggregate.js`, after fetching user docs for the submission batch, add a guard: `if (userDoc.data().role !== 'agent') continue;` before computing the leaderboard entry. This makes the "defensive" comment literal. Pair with the ManagerDashboard WizardForm FU above — fix the source (WizardForm path) and harden the sink (CF filter) together in one PR.
+
+**Severity:** MEDIUM (leaderboard correctness; blocked on / paired with ManagerDashboard WizardForm FU).
+
+---
+
+## Producing-manager production pipeline — personalApi/personalApps attribution (banked 2026-06-09, MEDIUM post-pilot)
+
+**Source:** Manager self-production audit (2026-06-09). `managerWarService.js` stores `personalApi` and `personalApps` fields on `managerWeeklyReports` docs when `isProducingManager === true` on the user profile. These fields are written to Firestore but have **no downstream consumer** — no CF, hook, or service reads them for leaderboard aggregation, branch rollups, or manager overview. The `isProducingManager` flag exists on user profiles but is not settable via any UI (no form field in UserManagementPanel or ProfileScreen).
+
+**Context:** Per Kyron, all Tatil Life managers produce. The `personalApi`/`personalApps` fields in the WAR form are the intended capture mechanism but are currently orphaned.
+
+**Action (post-pilot):** Two sub-tasks:
+1. **UI — `isProducingManager` toggle:** Add a boolean field to the Edit User form (tenant_admin + BM writable) so managers can be flagged as producing managers. Until set, the WAR production fields remain hidden (current behavior is correct default).
+2. **Pipeline — personalApi aggregation:** Write a CF or client-side aggregation that reads `managerWeeklyReports.personalApi` for producing managers and feeds it into the appropriate surface. Decision needed: does manager production appear on the agent leaderboard (mixed), a separate manager production board, or branch rollup totals only? Product call for Kyron before implementation.
+
+**Severity:** MEDIUM (relevant to all Tatil managers; blocks accurate production tracking for producing managers post-pilot).
+
+---
+
 ## Suite-level CI flakiness — 4 non-nudge files (banked 2026-06-08, post-pilot)
 
 **Source:** 50× suite burn (TZ=UTC, 2026-06-07) run as part of the nudge flake stabilization matrix (PR #543). Suite failure rate: **38/50 (76%) on non-nudge files**; nudge test was **0/50** (the fix works). CI is broadly flaky beyond the nudge test; this is a real re-run tax.
