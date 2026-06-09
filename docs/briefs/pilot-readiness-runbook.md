@@ -91,16 +91,48 @@ tenants/tatillife_south/users/4GeeZbhZBwdtGOLoJoggf4MQo142
 | campaigns | 9 | 0 | All real campaigns |
 | config | 3 docs | 0 | companyMinimums + managerActivityStandards + policyPlans — all real |
 
-### Morning cleanup path (no ADC needed)
+### Cleanup — COMPLETE ✅ (2026-06-09)
 
-⚠ OPERATOR: Review the 4 ambiguous accounts and 2 possible-real accounts above, then authorize cleanup. The `kelsean6+tenantadmin` account (`4GeeZbhZBwdtGOLoJoggf4MQo142`) holds 10 test submissions and 10 notifications — these cascade-delete when the user is removed.
+**Firestore: 119 docs deleted** via `scripts/cleanup-tatillife-south.mjs --execute --firestore-only`.
+**Auth: 8 UIDs to delete via Firebase Console** (see list below — not done programmatically due to ADC credential type).
+**Tenant user count: 5** (post-cleanup confirmed by Admin SDK read).
+
+Deletion manifest: `tmp/cleanup-execute-2026-06-09T01-36-10.txt`
+
+#### Deleted set (8 UIDs)
+
+| UID prefix | Label | Firestore docs deleted |
+|-----------|-------|----------------------|
+| `41Qng` | smoke-1 (kelsean+pr-d-smoke-1@gmail.com) | 10 |
+| `leseP` | smoke-2 (kelsean+pr-d-smoke-2@gmail.com) | 8 |
+| `0nqP5` | smoke-3 (kelsean+pr-d-smoke-3@gmail.com) | 8 |
+| `1wEJ1` | smoke-4 (kelsean+pr-d-smoke-4@gmail.com) | 8 |
+| `4GeeZ` | tenantadmin (kelsean+tenantadmin@gmail.com) | 17 |
+| `6AUDn` | letitiaagent (letitiaagent@gmail.com) | 22 |
+| `SIdMI` | kelsean6 (kelsean6@gmail.com) | 29 |
+| `5P00q` | pr4b-prod-spot-check (kelsean6+pr4b-prod-spot-check@gmail.com) | 16 |
+
+Surgical exception: `leaderboard/J0j4uBqzTPcfm1IlGCPyDzo27RP2` deleted (gamification entry stripped; user doc + auth preserved).
+
+#### ⚠ Auth deletion required via Console
+
+Go to Firebase Console → Authentication → Users → search each email above → Delete.
+All 8 Auth UIDs remain until this step is done. Firestore docs already gone.
+
+#### Remaining tenant users (5)
+
+| UID prefix | Role | Identity |
+|-----------|------|---------|
+| `J0j4u` | agent | kelsean@gmail.com |
+| `da0Xa` | sales_manager | kyronmarchan@gmail.com |
+| `C94hj` | agent | testagent@tatillife.com |
+| `x8Zfg` | branch_manager | branch.manager@tatillife.com |
+| `XQhG6` | unit_manager | unit.manager@tatillife.com |
 
 Census script (re-run anytime, read-only):
 ```bash
 node scripts/census-tatillife-south-client.mjs
 ```
-
-Cleanup is a **separate** operator step — no automated cleanup script exists yet. Delete test accounts via Firebase Console → Authentication → find by email → delete, OR via tenant_admin UI (All Users → deactivate/delete). Firestore orphan docs (submissions, notifications, goals, persistency) under deleted UIDs may need manual purge from Firebase Console → Firestore → find docs by agentId/userId field.
 
 ---
 
@@ -111,7 +143,7 @@ Cleanup is a **separate** operator step — no automated cleanup script exists y
 Firestore entity dependencies: `branches` → `units` (branchId field) → `users` (unitId + branchId fields) → invite delivery verification.
 
 ### Pre-flight checklist
-- [ ] Census cleanup complete (§2 above)
+- [x] Census cleanup complete — Firestore ✅ 2026-06-09; Auth Console deletion ⚠ pending
 - [ ] Backup completed (§5 gcloud export command below)
 - [ ] `kyron.marchan@tatil.co.tt` canary invite delivered and accepted
 - [ ] Production smoke post-provisioning (§7 morning runbook)
@@ -131,11 +163,11 @@ Verification: both branches appear in Branches list with correct names.
 
 Sign in as tenant_admin (or branch_manager once assigned) → branch detail → **New Unit**
 
-> ⚠ OPERATOR AUDIT: **Phoenix Unit** — the directive lists Cyril Murray as both Branch Manager AND unit manager ("BM-as-unit-manager"). Verify whether the app's unit-manager role assignment supports a branch_manager also holding a unit_manager role, OR whether Phoenix Unit should be assigned a separate unit_manager. Check `functions/index.js` `createUser` logic and `firestore.rules` for any restriction. If unsupported, assign a placeholder until Cyril Murray's role is confirmed — do NOT block provisioning.
+> **RESOLVED: BM-as-unit-manager is NOT supported.** A `branch_manager` cannot manage a unit directly. In the app, a "unit" is not a separate entity — it is structurally the `unit_manager` user's own UID. Every agent in a unit stores `unitId = <unit_manager UID>`. All role gates (`managerService.js`, `firestore.rules`) check `role === 'unit_manager'` literally; a `branch_manager` passes none of them. Promotion to `branch_manager` also sets `unitId = null` on the user doc. **Phoenix Unit requires a dedicated `unit_manager` account.** Create it in Step 6 alongside the other unit managers — Cyril Murray's `branch_manager` account gives him branch-wide visibility over Phoenix + Juniors already.
 
 | Unit name | Branch | Manager |
 |-----------|--------|---------|
-| Phoenix Unit | Cyril Murray Branch | ⚠ See audit above |
+| Phoenix Unit | Cyril Murray Branch | **Assign dedicated unit_manager** (see Step 6) |
 | Juniors Unit | Cyril Murray Branch | Mary-Ann Mc Donald |
 | Letitia's Unit | Kendell Lowhar Branch | Letitia Lee-Ramcharan |
 | Damian's Unit | Kendell Lowhar Branch | Damian Cuffy |
@@ -174,13 +206,34 @@ After creating: check that invite email arrives at `kyron.marchan@tatil.co.tt` w
 
 Note: This is a Gmail `+` alias that delivers to the main Gmail inbox.
 
+> **⚠ BOOTSTRAP REQUIRED — cannot use the UI panel.** The old `tenant_admin` account (`4GeeZbhZBwdtGOLoJoggf4MQo142`) was deleted in cleanup. The `doCreateUser` Cloud Function blocks `platform_admin` callers (SEC-9b deferred). The first `tenant_admin` for a tenant must be bootstrapped via:
+>
+> ```bash
+> # 1. Create the Auth user manually in Firebase Console → Authentication → Add user
+> #    Email: kyronmarchan+tenant@gmail.com   Password: (set and share securely)
+> #    Copy the new UID from the Console.
+>
+> # 2. Bootstrap Firestore doc + custom claims
+> node functions/scripts/seed-first-tenant-admin.cjs \
+>   --uid <new-uid> \
+>   --email kyronmarchan+tenant@gmail.com \
+>   --tenant tatillife_south \
+>   --dry-run
+> # Review output, then re-run with --apply
+>
+> # 3. Sign in as the new tenant_admin to verify access, then proceed to Step 5+
+> ```
+>
+> **Prerequisite:** `functions/service-account-key.json` must exist (gitignored; download from Firebase Console → Project Settings → Service accounts → Generate new private key). The script will fail with a credentials error if the key is absent.
+> Once this `tenant_admin` exists, all subsequent user creation (Steps 5–9) uses the in-app UI panel.
+
 ### Step 5 — Create Branch Managers
 
 | Name | Email | Role | Branch |
 |------|-------|------|--------|
 | Cyril Murray | cyril.murray@tatil.co.tt | branch_manager | Cyril Murray Branch |
 
-⚠ OPERATOR: If Cyril Murray is also the Phoenix Unit manager (see §3 Step 2 audit), resolve this first. A branch_manager account may not need a separate unit_manager assignment depending on app behavior.
+Note: Cyril Murray's `branch_manager` account gives him visibility over all agents in his branch (Phoenix + Juniors). Phoenix Unit still requires a separate `unit_manager` account — see Step 6. Create Cyril's `branch_manager` account here regardless.
 
 ### Step 6 — Create Unit Managers
 
