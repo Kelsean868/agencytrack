@@ -25,7 +25,7 @@ function computePoints(fields) {
     Math.floor(n(fields.f2fAttempts))                           * POINTS_WEIGHTS.f2fAttempts +
     Math.floor(n(fields.ffiConducted))                          * POINTS_WEIGHTS.ffiConducted +
     Math.floor(n(fields.ciConducted))                           * POINTS_WEIGHTS.ciConducted +
-    Math.floor(n(fields.applicationsSold || fields.appsSold))   * POINTS_WEIGHTS.applicationsSold +
+    Math.floor(n(fields.applicationsSold ?? fields.appsSold))   * POINTS_WEIGHTS.applicationsSold +
     Math.floor(n(fields.apiSold) / 1000)                        * POINTS_WEIGHTS.apiPerThousand
   );
 }

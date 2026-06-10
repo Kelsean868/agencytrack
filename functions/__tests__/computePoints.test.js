@@ -38,6 +38,11 @@ describe('computePoints — regression guard (existing weights unchanged)', () =
     expect(computePoints({ ...rest, appsSold: 2 })).toBe(82);
   });
 
+  test('applicationsSold=0 is NOT overridden by appsSold (nullish fallback, not truthy)', () => {
+    // If || were used instead of ??, 0 apps would fall back to appsSold=99 → wrong.
+    expect(computePoints({ applicationsSold: 0, appsSold: 99 })).toBe(0);
+  });
+
   test('empty doc → 0 (no crash)', () => {
     expect(computePoints({})).toBe(0);
   });

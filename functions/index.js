@@ -1336,7 +1336,7 @@ exports.onSubmissionWrite = functions.firestore
       // ── Badge eligibility ─────────────────────────────────────────────────
       // These raw values are needed for per-submission badge thresholds only
       // (not for point computation — that lives in computePoints()).
-      const apps  = Math.floor(parseFloat(after.applicationsSold || after.appsSold) || 0);
+      const apps  = Math.floor(parseFloat(after.applicationsSold ?? after.appsSold) || 0);
       const api   = parseFloat(after.apiSold) || 0;
       const dials =
         (parseFloat(after.referralCalls)        || 0) +
