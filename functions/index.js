@@ -1281,6 +1281,21 @@ exports.onSubmissionWrite = functions.firestore
     if (!agentId) return;
 
     try {
+      // ── Test-account guard ────────────────────────────────────────────────
+      // Fail-open: a transient read error defaults to non-test-account
+      // so real users' leaderboard writes are not blocked by a flaky read.
+      let isTestAccount = false;
+      try {
+        const userSnap = await admin.firestore()
+          .doc(`tenants/${tenantId}/users/${agentId}`).get();
+        isTestAccount = userSnap.data()?.isTestAccount === true;
+      } catch { /* fail-open: transient read error defaults to non-test-account */ }
+      if (isTestAccount) {
+        await admin.firestore().doc(`tenants/${tenantId}/leaderboard/${agentId}`)
+          .delete().catch(() => {});
+        return;
+      }
+
       // ── Compute points ────────────────────────────────────────────────────
       const dials =
         (parseFloat(after.referralCalls)        || 0) +
