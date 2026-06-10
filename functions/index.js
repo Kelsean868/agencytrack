@@ -1289,7 +1289,7 @@ exports.onSubmissionWrite = functions.firestore
         const userSnap = await admin.firestore()
           .doc(`tenants/${tenantId}/users/${agentId}`).get();
         isTestAccount = userSnap.data()?.isTestAccount === true;
-      } catch (_err) {}
+      } catch { /* fail-open: transient read error defaults to non-test-account */ }
       if (isTestAccount) {
         await admin.firestore().doc(`tenants/${tenantId}/leaderboard/${agentId}`)
           .delete().catch(() => {});
