@@ -5,6 +5,20 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## LoginPattern backdrop — extract to shared component (banked 2026-06-09, LOW)
+
+**Source:** Branded reset handler dispatch (PR #{TBD}).
+
+`LoginPattern` (animated insurance-iconography backdrop — 4 rows of drifting SVG glyphs, CSS keyframes, `animate-login-drift-l`/`r`) is currently duplicated between `src/components/auth/LoginScreen.jsx` and `src/components/auth/ResetPasswordHandler.jsx`. Extracting it to `src/components/auth/LoginPattern.jsx` + updating both imports would eliminate the duplication.
+
+**Why deferred:** Extraction requires modifying `LoginScreen.jsx`, which was outside the branded-reset-handler brief's file inventory. The duplication is cosmetic/maintainability only — no behavior impact.
+
+**Action:** XS refactor. Create `LoginPattern.jsx`, import in both consumers, delete the inline copy from each. No test changes required (the existing `LoginScreenV2.test.jsx` backdrop test will cover the extracted component; `ResetPasswordHandler.test.jsx` does not test the pattern).
+
+**Severity:** LOW (code quality, no user-visible impact).
+
+---
+
 ## seed-first-tenant-admin — service-account-key-archived.json as fallback key (banked 2026-06-09, XS ops note)
 
 **Source:** `kyronmarchan+tenant@gmail.com` provisioning fix (2026-06-09). `seed-first-tenant-admin.cjs` requires `functions/service-account-key.json`. ADC user credentials (`gcloud auth login`) cannot call `identitytoolkit.googleapis.com` — that API only accepts service account tokens.
