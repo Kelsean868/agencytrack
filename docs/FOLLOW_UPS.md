@@ -5,9 +5,13 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## ~~Leaderboard test-account pollution — test accounts appear on tenant-wide leaderboard~~ (RESOLVED — PR #{TBD}, `{TBD}`)
+## ~~Leaderboard test-account pollution — test accounts appear on tenant-wide leaderboard~~ (RESOLVED — PR #550 `0ccab45` + PR #{TBD} `{TBD}`)
 
-**Status:** RESOLVED. Write-layer `isTestAccount` guard in `onSubmissionWrite` (CF): when `isTestAccount === true` on the agent's user doc, the leaderboard `.set()` is skipped and any existing `leaderboard/{agentId}` doc is deleted (self-healing). Absent/`false` → behavior unchanged. New `scripts/maintenance/flag-test-accounts.mjs` ops script sets `isTestAccount: true` on the 5 preserved test accounts and deletes their existing leaderboard entries (one-time durable cleanup). Emulator tests cover both paths (flagged-uid → no write + delete; non-flagged-uid → write preserved). Guard is activated post-merge by operator: `firebase deploy --only functions` → flag script `--apply` → post-deploy production smoke. Hard-excluded from flagging: `kyronmarchan+tenant@gmail.com` (real tenant admin). Convention banked in CLAUDE.md.
+**Status:** RESOLVED. Two-surface fix:
+- **Surface A — `leaderboard/{uid}` (singular, gamification points, `Leaderboard.jsx`) — PR #550 `0ccab45`:** Write-layer `isTestAccount` guard in `onSubmissionWrite` (CF): when `isTestAccount === true`, the leaderboard `.set()` is skipped and any existing `leaderboard/{agentId}` doc is deleted (self-healing). Absent/`false` → unchanged. `scripts/maintenance/flag-test-accounts.mjs` ops script sets `isTestAccount: true` on the 5 preserved test accounts and deletes their existing leaderboard entries. Emulator tests cover both paths (flagged-uid → no write + delete; non-flagged-uid → write preserved). Hard-excluded from flagging: `kyronmarchan+tenant@gmail.com` (real tenant admin).
+- **Surface B — `leaderboards/{branchId}` (plural, branch-aggregate podium + champions, `ProductionLeaderboardSurface.jsx`) — PR #{TBD} `{TBD}`:** Read-layer filter in `leaderboardAggregate.js` — test accounts excluded from `groupByBranch` (subs dropped/skipped, not ranked even at $0) and `computeWeeklyChampions` (not champion-eligible). Propagated by hourly `recomputeLeaderboardScheduled` cron or `recomputeLeaderboardOnDemand` callable.
+
+Both surfaces documented in CLAUDE.md § Key Technical Decisions. Guard activated post-merge (Surface B): `firebase deploy --only functions` → `recomputeLeaderboardOnDemand` (or wait for hourly cron) → verify podium ("Top of the Board" shows only real agents).
 
 ---
 

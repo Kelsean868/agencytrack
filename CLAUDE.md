@@ -170,7 +170,10 @@ Tracks A through E are complete (see Build Phase History). User-mgmt PR-3/PR-4/P
 Open follow-ups live in [`docs/FOLLOW_UPS.md`](docs/FOLLOW_UPS.md). Dynamic state (active track, recent shipping, where-we-left-off) lives in [`docs/CONTEXT.md`](docs/CONTEXT.md).
 
 ## Key Technical Decisions
-- `isTestAccount: true` on a user doc (`tenants/{tid}/users/{uid}`) excludes that account from the tenant-wide leaderboard. Enforced in `onSubmissionWrite` (CF): guard reads the user doc; if flagged, skips the leaderboard `.set()` and deletes any existing `leaderboard/{uid}` doc (self-healing). Absent/false → behavior unchanged. Set via `scripts/maintenance/flag-test-accounts.mjs` (`--apply --emails`). Hard-excluded from flagging: `kyronmarchan+tenant@gmail.com` (real tenant admin). Banked PR #{TBD}.
+- `isTestAccount: true` on a user doc (`tenants/{tid}/users/{uid}`) excludes that account from both leaderboard surfaces. Two-surface architecture:
+  - **`leaderboard/{uid}` (singular, gamification points, `Leaderboard.jsx`):** Write-layer guard in `onSubmissionWrite` (CF) — if flagged, skips the leaderboard `.set()` and deletes any existing `leaderboard/{uid}` doc (self-healing). Banked PR #550 (`0ccab45`).
+  - **`leaderboards/{branchId}` (plural, branch-aggregate podium + champions, `ProductionLeaderboardSurface.jsx` via `useLeaderboard.js`):** Read-layer filter in `leaderboardAggregate.js` (`groupByBranch` + `computeWeeklyChampions`) — test accounts excluded from `branchByAgent` map (subs dropped/skipped), from `byBranch.users` (not ranked even at $0), and from weekly champion eligibility. Propagated by hourly `recomputeLeaderboardScheduled` cron or `recomputeLeaderboardOnDemand` callable. Banked PR #{TBD} (`{TBD}`).
+  Set via `scripts/maintenance/flag-test-accounts.mjs` (`--apply --emails`). Hard-excluded from flagging: `kyronmarchan+tenant@gmail.com` (real tenant admin). Absent/false → behavior unchanged on both surfaces.
 - Auth: email + password. Passwordless email link was abandoned — unreliable for field agents with intermittent connectivity.
 - Wizard: Step1–Step9 files are NEVER modified. WizardForm.jsx groups them into 5 screens. Revert to 9 steps = one git revert on WizardForm.jsx only.
 - PDF: @react-pdf/renderer ONLY. html2canvas removed — had unfixable text alignment issues in production.
