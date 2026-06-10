@@ -2,6 +2,8 @@ const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { isValidEmail } = require('./utils/validators');
 const { buildMailDoc } = require('./utils/email');
+const { computePoints } = require('./lib/computePoints');
+const { resolveLevel } = require('./lib/gamificationConfig');
 
 // Ambient credentials. createCustomToken needs iam.serviceAccounts.signBlob;
 // granted via roles/iam.serviceAccountTokenCreator on the App Engine default SA
@@ -1297,22 +1299,7 @@ exports.onSubmissionWrite = functions.firestore
       }
 
       // ── Compute points ────────────────────────────────────────────────────
-      const dials =
-        (parseFloat(after.referralCalls)        || 0) +
-        (parseFloat(after.followUpCalls)         || 0) +
-        (parseFloat(after.coldCalls)             || 0) +
-        (parseFloat(after.seminarTradeshowCalls) || 0);
-      const ffi  = parseFloat(after.ffiConducted)   || 0;
-      const ci   = parseFloat(after.ciConducted)    || 0;
-      const apps = parseFloat(after.applicationsSold || after.appsSold) || 0;
-      const api  = parseFloat(after.apiSold)        || 0;
-
-      const points =
-        Math.floor(dials) * 1 +
-        Math.floor(ffi)   * 5 +
-        Math.floor(ci)    * 10 +
-        Math.floor(apps)  * 25 +
-        Math.floor(api / 1000);
+      const points = computePoints(after);
 
       // ── Read current leaderboard doc ──────────────────────────────────────
       const lbRef  = admin.firestore().doc(`tenants/${tenantId}/leaderboard/${agentId}`);
@@ -1323,15 +1310,8 @@ exports.onSubmissionWrite = functions.firestore
       const newPoints  = prevPoints + points;
 
       // ── Gamification level ────────────────────────────────────────────────
-      const LEVELS = [
-        { min: 0,    title: 'Rookie'    },
-        { min: 100,  title: 'Associate' },
-        { min: 250,  title: 'Pro'       },
-        { min: 500,  title: 'Elite'     },
-        { min: 1000, title: 'Legend'    },
-      ];
-      const levelEntry = [...LEVELS].reverse().find((l) => newPoints >= l.min) ?? LEVELS[0];
-      const prevLevelEntry = [...LEVELS].reverse().find((l) => prevPoints >= l.min) ?? LEVELS[0];
+      const levelEntry = resolveLevel(newPoints);
+      const prevLevelEntry = resolveLevel(prevPoints);
 
       // ── Weekly streak ─────────────────────────────────────────────────────
       const weekStarting = after.weekStarting;
@@ -1354,6 +1334,16 @@ exports.onSubmissionWrite = functions.firestore
       }
 
       // ── Badge eligibility ─────────────────────────────────────────────────
+      // These raw values are needed for per-submission badge thresholds only
+      // (not for point computation — that lives in computePoints()).
+      const apps  = Math.floor(parseFloat(after.applicationsSold || after.appsSold) || 0);
+      const api   = parseFloat(after.apiSold) || 0;
+      const dials =
+        (parseFloat(after.referralCalls)        || 0) +
+        (parseFloat(after.followUpCalls)         || 0) +
+        (parseFloat(after.coldCalls)             || 0) +
+        (parseFloat(after.seminarTradeshowCalls) || 0);
+
       const existingBadges = new Set(lb.badges ?? []);
       const newBadges = [];
 
@@ -1401,7 +1391,7 @@ exports.onSubmissionWrite = functions.firestore
           tenantId,
           agentName:    after.agentName ?? lb.agentName ?? agentId,
           points:       newPoints,
-          level:        LEVELS.indexOf(levelEntry) + 1,
+          level:        levelEntry.level,
           levelTitle:   levelEntry.title,
           badges:       [...existingBadges],
           weeklyStreak: streak,
