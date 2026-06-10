@@ -33,7 +33,7 @@
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
-const admin   = require('../functions/node_modules/firebase-admin');
+const admin   = require('../../functions/node_modules/firebase-admin');
 
 // ── Args ──────────────────────────────────────────────────────────────────────
 
