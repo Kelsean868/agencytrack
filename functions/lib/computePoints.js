@@ -10,7 +10,7 @@ const { POINTS_WEIGHTS } = require('./gamificationConfig');
  * @returns {number}       Integer point total for this submission.
  */
 function computePoints(fields) {
-  const n = (v) => parseFloat(v) || 0;
+  const n = (v) => Math.max(0, parseFloat(v) || 0);
 
   // Dial types are summed first, then floored as a unit — preserves the
   // original behaviour where e.g. 1.5 + 1.5 = 3 (not 1+1 = 2).

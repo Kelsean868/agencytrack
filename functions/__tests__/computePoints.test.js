@@ -109,6 +109,11 @@ describe('computePoints — regression guard (existing weights unchanged)', () =
   test('fractional dials: summed before flooring (1.5+1.5 = 3, not 1+1 = 2)', () => {
     expect(computePoints({ referralCalls: 1.5, followUpCalls: 1.5 })).toBe(3);
   });
+
+  test('negative field value contributes 0 (not negative points)', () => {
+    // n() floors at 0 — malformed/non-UI submissions cannot subtract points.
+    expect(computePoints({ f2fAttempts: -3, applicationsSold: -99 })).toBe(0);
+  });
 });
 
 // ── Full-scale fixture ────────────────────────────────────────────────────────
