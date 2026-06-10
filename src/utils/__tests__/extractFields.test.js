@@ -136,3 +136,39 @@ describe('extractTotalCommission', () => {
     expect(extractTotalCommission(undefined, 35)).toBe(0);
   });
 });
+
+// Wire-in: seminarsConducted + tradeshowsAttended → prospectingTouches
+// Proves the Phase 3 append is correct — a typo in either field name would fail these.
+describe('extractFields — prospectingTouches includes seminarsConducted + tradeshowsAttended', () => {
+  const BASE_CALLS = {
+    f2fAttempts: 3, referralCalls: 2, coldCalls: 1,
+    followUpCalls: 1, seminarTradeshowCalls: 1, prospectingLettersSent: 1,
+  };
+  // 3+2+1+1+1+1 = 9 base; +2+1 = 12 with events
+
+  it('flat schema: prospectingTouches = base calls + seminarsConducted + tradeshowsAttended', () => {
+    const doc = { ...BASE_CALLS, seminarsConducted: 2, tradeshowsAttended: 1 };
+    expect(extractFields(doc).prospectingTouches).toBe(12);
+  });
+
+  it('flat schema: zero events → prospectingTouches equals base calls only', () => {
+    const doc = { ...BASE_CALLS, seminarsConducted: 0, tradeshowsAttended: 0 };
+    expect(extractFields(doc).prospectingTouches).toBe(9);
+  });
+
+  it('nested schema: prospectingTouches = base calls + seminarsConducted + tradeshowsAttended', () => {
+    const doc = {
+      step1: { f2fAttempts: 3, prospectingLettersSent: 1, seminarsConducted: 2, tradeshowsAttended: 1 },
+      step2: { referralCalls: 2, coldCalls: 1, followUpCalls: 1, seminarTradeshowCalls: 1 },
+    };
+    expect(extractFields(doc).prospectingTouches).toBe(12);
+  });
+
+  it('nested schema: zero events → prospectingTouches equals base calls only', () => {
+    const doc = {
+      step1: { f2fAttempts: 3, prospectingLettersSent: 1, seminarsConducted: 0, tradeshowsAttended: 0 },
+      step2: { referralCalls: 2, coldCalls: 1, followUpCalls: 1, seminarTradeshowCalls: 1 },
+    };
+    expect(extractFields(doc).prospectingTouches).toBe(9);
+  });
+});

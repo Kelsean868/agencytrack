@@ -56,6 +56,20 @@ Alternatively: live operator verification during first provisioning session conf
 
 ---
 
+## Dashboard background Firestore permission error — investigate listener (banked 2026-06-10, LOW)
+
+**Source:** seminars-tradeshows-wirein smoke (PR #554) — filtered from console-error leg.
+
+During the smoke, `FirebaseError: Missing or insufficient permissions.` fires as a background console error while the agent dashboard is loaded. It is NOT emitted from wizard code — the wizard is running correctly. It originates from a Firestore listener on the AgentDashboard that the test agent's role cannot satisfy (candidate: `leaderboard/{uid}`, `notifications`, or `campaigns` collection read).
+
+**Why filtered:** This PR makes zero changes to Firestore rules or dashboard reads — it is a wizard UI collapse + extractFields formula change. The error is pre-existing background noise. Filtering it by text match is the correct smoke-layer choice; the underlying listener issue is a separate concern.
+
+**Action:** Identify which AgentDashboard Firestore subscription triggers the denied read for the test agent role. Check if the rules for that collection correctly allow `canAccessOwn` reads, or if the test agent's claims/data are missing a required field (e.g. `unitId`, `tenantId`). Fix the rule or the listener subscription as appropriate. Low priority — no user-visible impact (denied read is swallowed silently in the UI).
+
+**Severity:** LOW (no user-visible regression; background-only).
+
+---
+
 ## LoginPattern backdrop — extract to shared component (banked 2026-06-09, LOW)
 
 **Source:** Branded reset handler dispatch (PR #545).
