@@ -173,7 +173,7 @@ function computeWeeklyChampions(priorWeekSubs, users, weekStarting) {
     // Skip submissions from non-agent uids (UMs etc.) — defensive, mirrors
     // groupByBranch + rankForLeaderboard agent-only filtering.
     const u = users.find((x) => x.id === agentId);
-    if (!u || u.role !== 'agent' || u.provisioning === true) continue;
+    if (!u || u.role !== 'agent' || u.provisioning === true || u.isTestAccount === true) continue;
 
     const cur = byAgent.get(agentId) || { api: 0, apps: 0, activity: 0 };
     cur.api      += num(extractTotalProductionCredit(s));
@@ -267,7 +267,7 @@ function groupByBranch(submissions, users) {
   // no per-agent get() — see loadInputs).
   const branchByAgent = new Map();
   for (const u of users) {
-    if (u.role === 'agent' && u.provisioning !== true && u.branchId) {
+    if (u.role === 'agent' && u.provisioning !== true && u.isTestAccount !== true && u.branchId) {
       branchByAgent.set(u.id, u.branchId);
     }
   }
@@ -281,7 +281,7 @@ function groupByBranch(submissions, users) {
 
   // Bucket each active agent into its branch (so empty-production agents still appear)
   for (const u of users) {
-    if (u.role === 'agent' && u.provisioning !== true && u.branchId) {
+    if (u.role === 'agent' && u.provisioning !== true && u.isTestAccount !== true && u.branchId) {
       ensure(u.branchId).users.push(u);
     } else if (u.role === 'unit_manager' && u.branchId) {
       // UMs only included so rankForLeaderboard's unit-name resolution works

@@ -98,6 +98,10 @@ function mkUM(id, name, branchId) {
   return { id, role: 'unit_manager', name, branchId, unitId: id, unitName: `Unit ${id}` };
 }
 
+function mkTestAgent(id, name, branchId, unitId = null) {
+  return { id, role: 'agent', name, branchId, unitId, provisioning: false, isTestAccount: true };
+}
+
 // REF inside current calendar year — use a Sunday in the current quarter.
 // Use a fixed REF for determinism.
 const REF = new Date('2026-05-15T10:00:00Z');
@@ -445,6 +449,106 @@ describe('computeAndWriteLeaderboards', () => {
     for (const op of leaderboardOps()) {
       expect(op.data.skippedNoBranch).toEqual({ count: 1, agentIds: ['a9'] });
     }
+  });
+});
+
+// ── isTestAccount filter ──────────────────────────────────────────────────────
+//
+// isTestAccount:true agents must be excluded from:
+//   1. groupByBranch() — not in branchByAgent, subs dropped, not in byBranch.users
+//   2. computeAndWriteLeaderboards() — absent from ranked output (even at $0)
+//   3. computeWeeklyChampions() — not a champion candidate
+
+describe('isTestAccount filter', () => {
+  let warnSpy;
+  beforeEach(() => {
+    for (const k of Object.keys(firestoreData)) delete firestoreData[k];
+    for (const k of Object.keys(firestoreDocs)) delete firestoreDocs[k];
+    mockBatch.ops = [];
+    warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => { warnSpy.mockRestore(); });
+
+  test('groupByBranch: test-account agent NOT in branchByAgent — subs dropped + skipped, not in users list', () => {
+    const users = [
+      mkAgent('real', 'Real Agent',   'south', 'u1'),
+      mkTestAgent('test', 'Test Account', 'south', 'u1'),
+    ];
+    const subs = [
+      mkSub('s1', 'real', WK_SUN, 100),
+      mkSub('s2', 'test', WK_SUN, 9999), // bait — must be dropped
+    ];
+    const { byBranch, skippedNoBranch } = groupByBranch(subs, users);
+    // Test account absent from byBranch.users
+    expect(byBranch.get('south').users.map((u) => u.id)).toEqual(['real']);
+    // Test account's submission dropped (not in branchByAgent → no branchId lookup)
+    expect(byBranch.get('south').subs.map((s) => s.agentId)).toEqual(['real']);
+    // Counted as skipped
+    expect(skippedNoBranch.count).toBe(1);
+    expect(skippedNoBranch.agentIds).toEqual(['test']);
+  });
+
+  test('computeAndWriteLeaderboards: test-account agent absent from ranked output in all periods', async () => {
+    firestoreData['tenants/T/submissions'] = [
+      mkSub('s1', 'real', WK_SUN, 500),
+      mkSub('s2', 'test', WK_SUN, 9999), // bait
+    ];
+    firestoreData['tenants/T/users'] = [
+      mkAgent('real',   'Real Agent',   'south', 'u1'),
+      mkTestAgent('test', 'Test Account', 'south', 'u1'),
+      mkUM('u1', 'UM', 'south'),
+    ];
+
+    await computeAndWriteLeaderboards('T', REF);
+    const leaderboardOp = mockBatch.ops.find((op) => Array.isArray(op.data.week));
+    expect(leaderboardOp).toBeDefined();
+    for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
+      const ids = leaderboardOp.data[periodKey].map((e) => e.agentId);
+      expect(ids).not.toContain('test'); // test account absent from all periods
+      expect(ids).toContain('real');     // real agent present
+    }
+  });
+
+  test('computeAndWriteLeaderboards: test-account agent with NO submission absent (not ranked at $0)', async () => {
+    firestoreData['tenants/T/submissions'] = [mkSub('s1', 'real', WK_SUN, 100)];
+    firestoreData['tenants/T/users'] = [
+      mkAgent('real',   'Real Agent',   'south', 'u1'),
+      mkTestAgent('test', 'Test Account', 'south', 'u1'), // no sub — would appear at $0 if not filtered
+      mkUM('u1', 'UM', 'south'),
+    ];
+
+    await computeAndWriteLeaderboards('T', REF);
+    const leaderboardOp = mockBatch.ops.find((op) => Array.isArray(op.data.week));
+    expect(leaderboardOp.data.week).toHaveLength(1);
+    expect(leaderboardOp.data.week[0].agentId).toBe('real');
+  });
+
+  test('computeWeeklyChampions: test-account agent NOT a champion candidate', () => {
+    const users = [
+      mkAgent('real',   'Real Agent',   'south', 'u1'),
+      mkTestAgent('test', 'Test Account', 'south', 'u1'),
+    ];
+    const subs = [
+      mkSubActivity('s1', 'real', PREV_WK_SUN, { api: 100, apps: 1, ffi: 1, ci: 1 }),
+      mkSubActivity('s2', 'test', PREV_WK_SUN, { api: 9999, apps: 99, ffi: 99, ci: 99 }), // bait
+    ];
+    const out = computeWeeklyChampions(subs, users, PREV_WK_SUN);
+    expect(out.topAPI.agentId).toBe('real');
+    expect(out.topApps.agentId).toBe('real');
+    expect(out.topActivity.agentId).toBe('real');
+  });
+
+  test('normal agent unaffected when isTestAccount is absent or false', () => {
+    const users = [
+      mkAgent('a1', 'Normal', 'south', 'u1'),
+      { id: 'a2', role: 'agent', name: 'ExplicitFalse', branchId: 'south', unitId: 'u1',
+        provisioning: false, isTestAccount: false },
+    ];
+    const subs = [mkSub('s1', 'a1', WK_SUN, 100), mkSub('s2', 'a2', WK_SUN, 200)];
+    const { byBranch, skippedNoBranch } = groupByBranch(subs, users);
+    expect(byBranch.get('south').users.map((u) => u.id).sort()).toEqual(['a1', 'a2']);
+    expect(byBranch.get('south').subs).toHaveLength(2);
+    expect(skippedNoBranch.count).toBe(0);
   });
 });
 
