@@ -22,9 +22,9 @@ export function extractFields(d) {
       f2fContacts:                 p(s1.f2fContacts),
       namesFromColdCanvass:        p(s1.namesFromColdCanvass),
       referralsObtained:           p(s1.referralsObtained),
+      seminarsConducted:           p(s1.seminarsConducted),
       namesFromSeminarsConducted:  p(s1.namesFromSeminarsConducted),
-      namesFromSeminarsAttended:   p(s1.namesFromSeminarsAttended),
-      namesFromTradeshowsConducted: p(s1.namesFromTradeshowsConducted),
+      tradeshowsAttended:          p(s1.tradeshowsAttended),
       namesFromTradeshowsAttended: p(s1.namesFromTradeshowsAttended),
       namesFromOther:              p(s1.namesFromOther),
       referralCalls:               p(s2.referralCalls),
@@ -72,9 +72,9 @@ export function extractFields(d) {
       f2fContacts:                 p(d.f2fContacts),
       namesFromColdCanvass:        p(d.namesFromColdCanvass),
       referralsObtained:           p(d.referralsObtained),
+      seminarsConducted:           p(d.seminarsConducted),
       namesFromSeminarsConducted:  p(d.namesFromSeminarsConducted),
-      namesFromSeminarsAttended:   p(d.namesFromSeminarsAttended),
-      namesFromTradeshowsConducted: p(d.namesFromTradeshowsConducted),
+      tradeshowsAttended:          p(d.tradeshowsAttended),
       namesFromTradeshowsAttended: p(d.namesFromTradeshowsAttended),
       namesFromOther:              p(d.namesFromOther),
       referralCalls:               p(d.referralCalls),
@@ -124,14 +124,15 @@ export function extractFields(d) {
   f.totalNewNames = computeTotalNewNames(f);
   f.prospectingTouches =
     f.f2fAttempts + f.referralCalls + f.coldCalls +
-    f.followUpCalls + f.seminarTradeshowCalls + f.prospectingLettersSent;
+    f.followUpCalls + f.seminarTradeshowCalls + f.prospectingLettersSent +
+    f.seminarsConducted + f.tradeshowsAttended;
 
   return f;
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Canonical NEW NAMES total. 7 channels — referralsObtained + cold canvass
-// + other + the 4 seminar/tradeshow yield fields. INTENTIONALLY EXCLUDES
+// Canonical NEW NAMES total. 5 channels — referralsObtained + cold canvass
+// + other + the 2 seminar/tradeshow yield fields. INTENTIONALLY EXCLUDES
 // namesFromSocial (pending decision — tracked as MEDIUM FU in
 // FOLLOW_UPS.md "Social-channel inclusion in canonical aggregations").
 //
@@ -139,9 +140,9 @@ export function extractFields(d) {
 // manager Master Sheet "New Names" column, the awards activity floor
 // (`referralsNewLeads`), the CF `activityTotal`, the dashboard
 // WeeklyStandardCard, and the Wizard v2 NAMES scorecard. Do NOT define
-// alternate 7-field sums elsewhere — import this function.
+// alternate 5-field sums elsewhere — import this function.
 //
-// Accepts any object that exposes the 7 source fields; tolerates missing
+// Accepts any object that exposes the 5 source fields; tolerates missing
 // keys via `?? 0` so it works on both raw wizard formData and an extracted
 // fields object. Returns a plain number.
 // ────────────────────────────────────────────────────────────────────────
@@ -152,8 +153,6 @@ export function computeTotalNewNames(source) {
     p(source.namesFromColdCanvass) +
     p(source.referralsObtained) +
     p(source.namesFromSeminarsConducted) +
-    p(source.namesFromSeminarsAttended) +
-    p(source.namesFromTradeshowsConducted) +
     p(source.namesFromTradeshowsAttended) +
     p(source.namesFromOther)
   );

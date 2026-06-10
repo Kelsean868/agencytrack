@@ -77,8 +77,6 @@ const EXPECTED_PAYLOAD_SHAPE_KEYS = [
   // Step 1 — prospecting
   'prospectingLettersSent', 'prospectingEmailsSent',
   'seminarsConducted', 'namesFromSeminarsConducted',
-  'seminarsAttended',  'namesFromSeminarsAttended',
-  'tradeshowsConducted', 'namesFromTradeshowsConducted',
   'tradeshowsAttended', 'namesFromTradeshowsAttended',
   'f2fAttempts', 'f2fContacts',
   // Step 2 — telephone

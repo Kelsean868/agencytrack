@@ -174,25 +174,21 @@ describe('totalNames — canonical totalNewNames reuse (option A, decision)', ()
       namesFromColdCanvass: 5,
       referralsObtained: 3,
       namesFromSeminarsConducted: 1,
-      namesFromSeminarsAttended: 2,
-      namesFromTradeshowsConducted: 0,
       namesFromTradeshowsAttended: 1,
       namesFromOther: 2,
     };
     expect(totalNames(formData)).toBe(computeTotalNewNames(formData));
-    expect(totalNames(formData)).toBe(14); // sum of the 7
+    expect(totalNames(formData)).toBe(12); // sum of the 5
   });
 
   it('INTENTIONALLY EXCLUDES namesFromSocial — pending FU decision', () => {
     // Tests the decision lock (option A from the dispatcher) — wizard NAMES
-    // stays in lockstep with the canonical 7-field formula across kiosk /
+    // stays in lockstep with the canonical 5-field formula across kiosk /
     // master sheet / awards floors / CF until the social-inclusion FU lands.
     const base = {
       namesFromColdCanvass: 3,
       referralsObtained: 0,
       namesFromSeminarsConducted: 0,
-      namesFromSeminarsAttended: 0,
-      namesFromTradeshowsConducted: 0,
       namesFromTradeshowsAttended: 0,
       namesFromOther: 0,
     };
@@ -249,8 +245,7 @@ describe('deriveLastWeek — same compute lib as live, decision C direction pres
       referralCalls: 5, followUpCalls: 3, coldCalls: 7,
       seminarTradeshowCalls: 2, serviceCalls: 4,
       namesFromColdCanvass: 3, referralsObtained: 2,
-      namesFromSeminarsConducted: 1, namesFromSeminarsAttended: 0,
-      namesFromTradeshowsConducted: 0, namesFromTradeshowsAttended: 0,
+      namesFromSeminarsConducted: 1, namesFromTradeshowsAttended: 0,
       namesFromOther: 0,
     };
     const lw = deriveLastWeek(persisted);
