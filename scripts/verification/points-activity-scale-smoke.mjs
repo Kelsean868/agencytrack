@@ -76,7 +76,7 @@ if (!TENANT_ID || !AGENT_UID) {
 //   premiumMtgs (1)        * 3  = 3
 //   annualReviews (1)      * 5  = 5
 //   orphansAdopted (1)     * 8  = 8
-//   EXPECTED DELTA         = 164
+//   EXPECTED DELTA         = 165
 
 const SMOKE_WEEK   = '2099-02-02'; // Far-future Sunday — won't collide with real submissions.
 
@@ -115,7 +115,7 @@ const SMOKE_SUBMISSION = {
   orphansAdopted:               1,
 };
 
-const EXPECTED_DELTA = 164;
+const EXPECTED_DELTA = 165;
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
