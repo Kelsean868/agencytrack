@@ -14,6 +14,9 @@ vi.mock('../components/auth/LoginScreen', () => ({
 vi.mock('../components/auth/ResetPasswordHandler', () => ({
   default: ({ oobCode }) => <div data-testid="stub-reset-handler" data-oobcode={oobCode} />,
 }));
+vi.mock('../components/auth/EmailVerificationHandler', () => ({
+  default: ({ oobCode }) => <div data-testid="stub-verify-handler" data-oobcode={oobCode} />,
+}));
 vi.mock('../components/dashboard/AgentDashboard', () => ({ default: () => null }));
 vi.mock('../components/dashboard/ManagerDashboard', () => ({ default: () => null }));
 vi.mock('../components/dashboard/TenantAdminDashboard', () => ({ default: () => null }));
@@ -23,7 +26,7 @@ vi.mock('../components/ui/ToastProvider', () => ({
 
 import App from '../App';
 
-describe('App — reset-handler guard', () => {
+describe('App — action-handler guard (resetPassword + verifyEmail)', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     cleanup();
@@ -55,13 +58,27 @@ describe('App — reset-handler guard', () => {
     expect(screen.getByTestId('stub-login-screen')).toBeInTheDocument();
   });
 
-  it('does NOT intercept for other Firebase action modes (verifyEmail, recoverEmail)', () => {
+  it('renders EmailVerificationHandler when mode=verifyEmail + oobCode are both present', () => {
     vi.stubGlobal('location', {
-      search: '?mode=verifyEmail&oobCode=some-code',
+      search: '?mode=verifyEmail&oobCode=verify-oob-code-abc',
+      replace: vi.fn(),
+    });
+    render(<App />);
+    const handler = screen.getByTestId('stub-verify-handler');
+    expect(handler).toBeInTheDocument();
+    expect(handler).toHaveAttribute('data-oobcode', 'verify-oob-code-abc');
+    expect(screen.queryByTestId('stub-login-screen')).toBeNull();
+    expect(screen.queryByTestId('stub-reset-handler')).toBeNull();
+  });
+
+  it('does NOT intercept for unhandled Firebase action modes (recoverEmail)', () => {
+    vi.stubGlobal('location', {
+      search: '?mode=recoverEmail&oobCode=some-code',
       replace: vi.fn(),
     });
     render(<App />);
     expect(screen.queryByTestId('stub-reset-handler')).toBeNull();
+    expect(screen.queryByTestId('stub-verify-handler')).toBeNull();
     expect(screen.getByTestId('stub-login-screen')).toBeInTheDocument();
   });
 

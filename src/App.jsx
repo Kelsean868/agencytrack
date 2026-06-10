@@ -4,6 +4,7 @@ import { auth } from './firebase';
 import { signOut } from 'firebase/auth';
 import LoginScreen from './components/auth/LoginScreen';
 import ResetPasswordHandler from './components/auth/ResetPasswordHandler';
+import EmailVerificationHandler from './components/auth/EmailVerificationHandler';
 import AgentDashboard from './components/dashboard/AgentDashboard';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
 import TenantAdminDashboard from './components/dashboard/TenantAdminDashboard';
@@ -93,6 +94,9 @@ function AppRoot() {
   const oobCode = params.get('oobCode');
   if (mode === 'resetPassword' && oobCode) {
     return <ResetPasswordHandler oobCode={oobCode} />;
+  }
+  if (mode === 'verifyEmail' && oobCode) {
+    return <EmailVerificationHandler oobCode={oobCode} />;
   }
 
   if (loading) return <LoadingScreen />;
