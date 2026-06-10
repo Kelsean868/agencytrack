@@ -5,6 +5,34 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## LoginPattern backdrop — extract to shared component (banked 2026-06-09, LOW)
+
+**Source:** Branded reset handler dispatch (PR #{TBD}).
+
+`LoginPattern` (animated insurance-iconography backdrop — 4 rows of drifting SVG glyphs, CSS keyframes, `animate-login-drift-l`/`r`) is currently duplicated across three files: `src/components/auth/LoginScreen.jsx`, `src/components/auth/ResetPasswordHandler.jsx`, and `src/components/auth/EmailVerificationHandler.jsx`. Extracting it to `src/components/auth/LoginPattern.jsx` + updating all three imports would eliminate the duplication.
+
+**Why deferred:** Extraction requires modifying `LoginScreen.jsx`, which was outside the branded-reset-handler brief's file inventory. The duplication is cosmetic/maintainability only — no behavior impact.
+
+**Action:** XS refactor. Create `LoginPattern.jsx`, import in all three consumers, delete the inline copy from each. No test changes required (the existing `LoginScreenV2.test.jsx` backdrop test will cover the extracted component; the handler tests do not test the pattern).
+
+**Severity:** LOW (code quality, no user-visible impact).
+
+---
+
+## recoverEmail action mode unhandled — falls through to LoginScreen (banked 2026-06-10, LOW)
+
+**Source:** Pre-merge audit for PR #{TBD} (branded action handlers).
+
+Firebase sends a `mode=recoverEmail` action link to the **old** email address automatically when `verifyBeforeUpdateEmail` is called (i.e., whenever a tenant_admin uses `EmailUpdateModal` to change their email). This link lets the user undo the change if they didn't initiate it. The current `App.jsx` guard handles `resetPassword` and `verifyEmail` but not `recoverEmail` — a clicked recovery link lands on LoginScreen with the oobCode ignored, silently failing to revert the email change.
+
+**Why deferred:** Dormant during the pilot (no email changes expected before the Tatil demo). The `recoverEmail` flow requires `applyActionCode(auth, oobCode)` — same call as `EmailVerificationHandler`. An `EmailRecoveryHandler` component would be a near-copy (3 states: verifying → success | invalid).
+
+**Action:** XS — add `EmailRecoveryHandler.jsx` (copy `EmailVerificationHandler`, update copy to "Email address restored to [old address]"), add `else if (mode === 'recoverEmail' && oobCode)` branch in `App.jsx`, 5–6 tests. Must ship before any tenant_admin email-change is tested in production.
+
+**Severity:** LOW during pilot (no email changes planned), HIGH before any real email-change workflow is exercised.
+
+---
+
 ## seed-first-tenant-admin — service-account-key-archived.json as fallback key (banked 2026-06-09, XS ops note)
 
 **Source:** `kyronmarchan+tenant@gmail.com` provisioning fix (2026-06-09). `seed-first-tenant-admin.cjs` requires `functions/service-account-key.json`. ADC user credentials (`gcloud auth login`) cannot call `identitytoolkit.googleapis.com` — that API only accepts service account tokens.

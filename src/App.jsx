@@ -1,7 +1,10 @@
+import React from 'react';
 import { useAuth } from './context/AuthContext';
 import { auth } from './firebase';
 import { signOut } from 'firebase/auth';
 import LoginScreen from './components/auth/LoginScreen';
+import ResetPasswordHandler from './components/auth/ResetPasswordHandler';
+import EmailVerificationHandler from './components/auth/EmailVerificationHandler';
 import AgentDashboard from './components/dashboard/AgentDashboard';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
 import TenantAdminDashboard from './components/dashboard/TenantAdminDashboard';
@@ -83,6 +86,18 @@ const ProvisioningScreen = () => (
 
 function AppRoot() {
   const { role, loading, isAuthenticated } = useAuth();
+
+  // Firebase auth action links (password reset) land here with ?mode=resetPassword&oobCode=…
+  // Intercept before auth/role logic so the handler renders for unauthenticated users.
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get('mode');
+  const oobCode = params.get('oobCode');
+  if (mode === 'resetPassword' && oobCode) {
+    return <ResetPasswordHandler oobCode={oobCode} />;
+  }
+  if (mode === 'verifyEmail' && oobCode) {
+    return <EmailVerificationHandler oobCode={oobCode} />;
+  }
 
   if (loading) return <LoadingScreen />;
   if (!isAuthenticated) return <LoginScreen />;
