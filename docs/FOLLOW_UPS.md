@@ -315,6 +315,46 @@ When multi-section components are refactored to extract hero sub-sections into s
 
 ---
 
+## Gamification — leaderboard reset-model decision (banked 2026-06-10, MEDIUM pre-scale)
+
+**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #556). Deferred per brief.
+
+**Context:** Points accumulate cumulatively and never reset. `onSubmissionWrite` adds the week's computed delta to the agent's running total; `resolveLevel()` maps the cumulative total to a level tier. This is correct for the Tatil pilot but creates a flat leaderboard over time — once an agent reaches Legend (1,000 pts), weekly effort no longer moves their rank.
+
+**Config state (as of this PR):** `f2fAttempts` now scores 1pt per attempt (new term — was 0 before). Badge set is 9 (first_submission · streak_4 · streak_8 · streak_13 · top_apps_week · big_week · century_dials · mdrt_qualified · mdrt_pace). All weights/levels/badges live in a single source: `functions/lib/gamificationConfig.js` (CJS) + `src/lib/gamificationConfig.js` (ESM mirror).
+
+**Decision needed (post-pilot):** Rolling window (weekly or monthly) vs cumulative-with-decay vs cumulative-permanent. Product call for Kyron after pilot data shows engagement trends.
+
+**Action (post-pilot):** If a rolling window is adopted, add a `windowPoints` field to `leaderboard/{uid}` alongside the cumulative `points` field. `functions/lib/computePoints.js` is already the single computation point. A window-reset cron would zero `windowPoints` each cycle without touching `points` (cumulative history preserved).
+
+**Severity:** MEDIUM (pre-scale). Not urgent for the Tatil pilot; revisit after the first month of live data.
+
+---
+
+## Gamification — API-vs-app-count weighting review (banked 2026-06-10, LOW)
+
+**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #556). Deferred per brief.
+
+**Context:** Current weights: `applicationsSold: 25` vs `apiPerThousand: 1` (1pt per TTD 1,000 API sold). A TTD 50,000 policy = 50pt from the API term alone — may over-reward large-ticket producers relative to high-volume low-API agents. Weights are inherited from the pre-extraction inline logic; the single-source extraction makes them easy to tune.
+
+**Action (post-pilot):** Review with Kyron after the first month of pilot data. Weights live in `POINTS_WEIGHTS` in `functions/lib/gamificationConfig.js` — one-line change per term. Both CJS and ESM twins must be updated together; the cross-check test at `src/lib/__tests__/gamificationConfig.cross-check.test.js` will fail on drift if only one twin is updated.
+
+**Severity:** LOW (no data integrity impact; aesthetic to the pilot leaderboard standing).
+
+---
+
+## Gamification — optional dials-points cap (banked 2026-06-10, LOW)
+
+**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #556). Deferred per brief.
+
+**Context:** The four dial types are summed then floored before multiplying by 1pt/dial. There is no per-week ceiling. An agent logging 500 dials earns 500pt from dials alone — disproportionate relative to FFI (5pt) and CI (10pt).
+
+**Action (post-pilot):** If pilot data shows dial-heavy agents dominating, add `dialsCapPerWeek` to `gamificationConfig.js` and enforce it in `computePoints.js` before the dial sum is multiplied. Cap value should be derived from observed top-decile dial counts. Both CJS/ESM twins must be updated; cross-check test guards drift.
+
+**Severity:** LOW (assess after the first month of pilot data).
+
+---
+
 ## Nexus Glass recipe HTMLs — AA tables need regeneration from module outputs (banked 2026-06-06, PRs #513 + #517)
 
 **Doctrine (banked 2026-06-06, PR #517):** CD-stated contrast ratios are provisional. The authoritative source is the `glassPair()` / `heroPair()` module output. Recipe AA tables must regenerate from those function outputs, not be authored by hand. Applies to **both** the S1 recipe (`nexus-glass-recipe.html`) and the S2 hero recipe (currently in the CD build annotation for PR #517).
@@ -4846,3 +4886,28 @@ Banked: Track J P4 around-me cluster (PR #402), 2026-05-31.
 **Priority:** LOW. MOOT if settlement retirement (Policy Ledger supersedes) proceeds before multi-branch expansion. Only revisit if multi-branch operation becomes real and granular settlement privacy is required before Policy Ledger fully replaces the settlements surface.
 
 Banked: settlements-read-scope PR #494 (Phase 1 STOP, dispatcher Option A), 2026-06-05.
+
+---
+
+## Gamification — badge eligibility thresholds machine-readable in config (banked 2026-06-10, LOW)
+
+**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #556). Out-of-scope finding.
+
+**Problem:** Badge eligibility thresholds are inline magic numbers in `functions/index.js` (the `onSubmissionWrite` trigger), while the human-readable descriptions of those same thresholds live in `BADGE_DEFINITIONS` in `functions/lib/gamificationConfig.js`. The two can drift silently.
+
+**Examples of current inline thresholds (rough locations):**
+- `top_apps_week`: `apps >= 5` — description says "5+ applications in a single week"
+- `big_week`: `api >= 20000` — description says "TTD 20,000+ API in a single week"
+- `century_dials`: `dials >= 100` — description says "100+ dials in a single week"
+- `mdrt_qualified`: `ytdApi >= 500000` — description says "YTD API ≥ TTD 500,000"
+- `mdrt_pace`: `ytdApi >= 250000 && weekNum <= 26` — description says "YTD API ≥ TTD 250,000 by week 26"
+
+**Desired end-state:** Move thresholds into `BADGE_DEFINITIONS` alongside `description`/`trigger`. Example shape:
+```js
+{ key: 'top_apps_week', ..., threshold: { field: 'appsSold', op: '>=', value: 5 } }
+```
+The awarding logic in `onSubmissionWrite` evaluates `threshold` at runtime; the panel (PR2) reads the same `threshold` to render the displayed trigger value. Drift becomes impossible.
+
+**Action (before PR2 panel implementation):** Extend `BADGE_DEFINITIONS` with a `threshold` field. Update `onSubmissionWrite` badge section to evaluate `threshold` instead of inline comparisons. PR2's points panel then reads `threshold.value` directly from the config for display — no separate human label to maintain.
+
+**Severity:** LOW (no user-visible bug today; relevant when PR2 builds the panel that displays badge trigger values).
