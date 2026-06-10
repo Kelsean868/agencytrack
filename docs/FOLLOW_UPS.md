@@ -317,7 +317,7 @@ When multi-section components are refactored to extract hero sub-sections into s
 
 ## Gamification — leaderboard reset-model decision (banked 2026-06-10, MEDIUM pre-scale)
 
-**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #TBD). Deferred per brief.
+**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #556). Deferred per brief.
 
 **Context:** Points accumulate cumulatively and never reset. `onSubmissionWrite` adds the week's computed delta to the agent's running total; `resolveLevel()` maps the cumulative total to a level tier. This is correct for the Tatil pilot but creates a flat leaderboard over time — once an agent reaches Legend (1,000 pts), weekly effort no longer moves their rank.
 
@@ -333,7 +333,7 @@ When multi-section components are refactored to extract hero sub-sections into s
 
 ## Gamification — API-vs-app-count weighting review (banked 2026-06-10, LOW)
 
-**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #TBD). Deferred per brief.
+**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #556). Deferred per brief.
 
 **Context:** Current weights: `applicationsSold: 25` vs `apiPerThousand: 1` (1pt per TTD 1,000 API sold). A TTD 50,000 policy = 50pt from the API term alone — may over-reward large-ticket producers relative to high-volume low-API agents. Weights are inherited from the pre-extraction inline logic; the single-source extraction makes them easy to tune.
 
@@ -345,7 +345,7 @@ When multi-section components are refactored to extract hero sub-sections into s
 
 ## Gamification — optional dials-points cap (banked 2026-06-10, LOW)
 
-**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #TBD). Deferred per brief.
+**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #556). Deferred per brief.
 
 **Context:** The four dial types are summed then floored before multiplying by 1pt/dial. There is no per-week ceiling. An agent logging 500 dials earns 500pt from dials alone — disproportionate relative to FFI (5pt) and CI (10pt).
 
