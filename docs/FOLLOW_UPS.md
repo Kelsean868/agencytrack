@@ -70,6 +70,20 @@ During the smoke, `FirebaseError: Missing or insufficient permissions.` fires as
 
 ---
 
+## computePoints reads after.data() directly — flat schema only (banked 2026-06-10, LOW)
+
+**Source:** PR #558 (points-activity-scale) Phase 1 ruling — LOW FU authorized by dispatcher.
+
+`functions/lib/computePoints.js` reads raw `after.data()` fields directly, bypassing `extractFields()`. This means it only handles the **flat schema** (current wizard output). If a submission ever uses the nested step schema (`step1.referralCalls`, etc.) — currently no path creates these, but the three-arm `extractFields` already handles that variant — `computePoints` would silently score 0 on every field.
+
+**Why deferred:** The nested schema arm in `extractFields` is a legacy/future-compatibility path; no live wizard or import flow writes nested submissions today. The gap is pre-existing and low-risk for the current pilot.
+
+**Action:** When the nested or future-schema arm of `extractFields` is ever exercised in production, update `computePoints` to call `extractFields(after.data())` and read the normalized result instead of `after.data()` directly. Alternatively, if the nested schema arm is confirmed permanently dead, delete it from `extractFields` and close this FU.
+
+**Severity:** LOW (no user-visible impact today; only bites if a non-flat submission ever lands in Firestore).
+
+---
+
 ## LoginPattern backdrop — extract to shared component (banked 2026-06-09, LOW)
 
 **Source:** Branded reset handler dispatch (PR #545).

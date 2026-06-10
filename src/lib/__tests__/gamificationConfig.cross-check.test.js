@@ -6,6 +6,7 @@ import {
   POINTS_WEIGHTS as esmWeights,
   LEVEL_THRESHOLDS as esmLevels,
   BADGE_DEFINITIONS as esmBadges,
+  UNSCORED_FIELDS as esmUnscored,
   resolveLevel as esmResolveLevel,
 } from '../gamificationConfig.js';
 
@@ -46,19 +47,34 @@ describe('ESM ≡ CJS — BADGE_DEFINITIONS', () => {
   });
 });
 
+// ── UNSCORED_FIELDS ───────────────────────────────────────────────────────────
+
+describe('ESM ≡ CJS — UNSCORED_FIELDS', () => {
+  it('identical array (same key/reason order)', () => {
+    expect(cjs.UNSCORED_FIELDS).toEqual(esmUnscored);
+  });
+
+  it('every entry has key and reason', () => {
+    for (const f of esmUnscored) {
+      expect(f).toHaveProperty('key');
+      expect(f).toHaveProperty('reason');
+    }
+  });
+});
+
 // ── resolveLevel ──────────────────────────────────────────────────────────────
 
 describe('ESM ≡ CJS — resolveLevel', () => {
   const cases = [
     { points: 0,    title: 'Rookie'    },
-    { points: 99,   title: 'Rookie'    },
-    { points: 100,  title: 'Associate' },
-    { points: 249,  title: 'Associate' },
-    { points: 250,  title: 'Pro'       },
-    { points: 499,  title: 'Pro'       },
-    { points: 500,  title: 'Elite'     },
-    { points: 999,  title: 'Elite'     },
-    { points: 1000, title: 'Legend'    },
+    { points: 499,  title: 'Rookie'    },
+    { points: 500,  title: 'Associate' },
+    { points: 1499, title: 'Associate' },
+    { points: 1500, title: 'Pro'       },
+    { points: 3499, title: 'Pro'       },
+    { points: 3500, title: 'Elite'     },
+    { points: 6999, title: 'Elite'     },
+    { points: 7000, title: 'Legend'    },
     { points: 9999, title: 'Legend'    },
   ];
 

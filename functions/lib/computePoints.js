@@ -20,13 +20,41 @@ function computePoints(fields) {
     n(fields.coldCalls) +
     n(fields.seminarTradeshowCalls);
 
+  // otherNewNames: all new-name channels except referrals (scored separately at 3pt).
+  // Seminar/tradeshow name yields included — events score for effort, names
+  // score for pipeline yield ("a name is a name", Phase 1 ruling).
+  const otherNewNames =
+    n(fields.namesFromColdCanvass) +
+    n(fields.namesFromOther) +
+    n(fields.namesFromSeminarsConducted) +
+    n(fields.namesFromTradeshowsAttended);
+
   return (
-    Math.floor(dials)                                            * POINTS_WEIGHTS.dials +
-    Math.floor(n(fields.f2fAttempts))                           * POINTS_WEIGHTS.f2fAttempts +
-    Math.floor(n(fields.ffiConducted))                          * POINTS_WEIGHTS.ffiConducted +
-    Math.floor(n(fields.ciConducted))                           * POINTS_WEIGHTS.ciConducted +
-    Math.floor(n(fields.applicationsSold ?? fields.appsSold))   * POINTS_WEIGHTS.applicationsSold +
-    Math.floor(n(fields.apiSold) / 1000)                        * POINTS_WEIGHTS.apiPerThousand
+    // ── Prospecting ────────────────────────────────────────────────────────────
+    Math.floor(dials)                                               * POINTS_WEIGHTS.dials +
+    Math.min(Math.floor(n(fields.prospectingLettersSent)), 20)     * POINTS_WEIGHTS.prospectingLettersSent +
+    Math.floor(n(fields.referralsObtained))                        * POINTS_WEIGHTS.referralsObtained +
+    Math.floor(otherNewNames)                                      * POINTS_WEIGHTS.otherNewNames +
+    Math.floor(n(fields.seminarsConducted))                        * POINTS_WEIGHTS.seminarsConducted +
+    Math.floor(n(fields.tradeshowsAttended))                       * POINTS_WEIGHTS.tradeshowsAttended +
+    // ── Advancing ──────────────────────────────────────────────────────────────
+    Math.floor(n(fields.f2fAttempts))                              * POINTS_WEIGHTS.f2fAttempts +
+    Math.floor(n(fields.appointmentsSet))                          * POINTS_WEIGHTS.appointmentsSet +
+    Math.floor(n(fields.ffiConducted))                             * POINTS_WEIGHTS.ffiConducted +
+    Math.floor(n(fields.ciConducted))                              * POINTS_WEIGHTS.ciConducted +
+    // ── Closing ────────────────────────────────────────────────────────────────
+    Math.floor(n(fields.applicationsSold ?? fields.appsSold))      * POINTS_WEIGHTS.applicationsSold +
+    Math.floor(n(fields.apiSold) / 1000)                           * POINTS_WEIGHTS.apiPerThousand +
+    // ── Service ────────────────────────────────────────────────────────────────
+    Math.floor(n(fields.serviceCalls))                             * POINTS_WEIGHTS.serviceCalls +
+    Math.floor(n(fields.policiesDelivered))                        * POINTS_WEIGHTS.policiesDelivered +
+    Math.floor(n(fields.premiumCollectionMeetings))                * POINTS_WEIGHTS.premiumCollectionMeetings +
+    Math.floor(n(fields.annualReviews))                            * POINTS_WEIGHTS.annualReviews +
+    Math.floor(n(fields.orphanReviews))                            * POINTS_WEIGHTS.orphanReviews +
+    Math.floor(n(fields.orphansAdopted))                           * POINTS_WEIGHTS.orphansAdopted +
+    Math.floor(n(fields.reinstatementsSubmitted))                  * POINTS_WEIGHTS.reinstatementsSubmitted +
+    Math.floor(n(fields.reinstatementAPI) / 1000)                  * POINTS_WEIGHTS.reinstatedApiPerThousand +
+    Math.floor(n(fields.policyChanges))                            * POINTS_WEIGHTS.policyChanges
   );
 }
 
