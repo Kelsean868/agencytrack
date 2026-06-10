@@ -7,7 +7,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ## LoginPattern backdrop — extract to shared component (banked 2026-06-09, LOW)
 
-**Source:** Branded reset handler dispatch (PR #{TBD}).
+**Source:** Branded reset handler dispatch (PR #545).
 
 `LoginPattern` (animated insurance-iconography backdrop — 4 rows of drifting SVG glyphs, CSS keyframes, `animate-login-drift-l`/`r`) is currently duplicated across three files: `src/components/auth/LoginScreen.jsx`, `src/components/auth/ResetPasswordHandler.jsx`, and `src/components/auth/EmailVerificationHandler.jsx`. Extracting it to `src/components/auth/LoginPattern.jsx` + updating all three imports would eliminate the duplication.
 
@@ -21,7 +21,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ## recoverEmail action mode unhandled — falls through to LoginScreen (banked 2026-06-10, LOW)
 
-**Source:** Pre-merge audit for PR #{TBD} (branded action handlers).
+**Source:** Pre-merge audit for PR #545 (branded action handlers).
 
 Firebase sends a `mode=recoverEmail` action link to the **old** email address automatically when `verifyBeforeUpdateEmail` is called (i.e., whenever a tenant_admin uses `EmailUpdateModal` to change their email). This link lets the user undo the change if they didn't initiate it. The current `App.jsx` guard handles `resetPassword` and `verifyEmail` but not `recoverEmail` — a clicked recovery link lands on LoginScreen with the oobCode ignored, silently failing to revert the email change.
 
