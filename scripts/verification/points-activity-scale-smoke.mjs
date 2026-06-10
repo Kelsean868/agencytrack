@@ -176,13 +176,7 @@ async function main() {
     console.log(`  post-smoke level : ${postLevel.title} (threshold: ${postLevel.threshold})`);
     console.log(`  delta            : ${delta}`);
 
-    // Gate 1: delta matches expected
-    const deltaPass = delta === EXPECTED_DELTA;
-    // Gate 2: level resolves against NEW thresholds (not old 100/250/500/1000)
-    const thresholds = LEVEL_THRESHOLDS.map((l) => l.threshold);
-    const levelConsistent = thresholds.includes(postLevel.threshold) || postLevel.threshold === 0;
-
-    if (!deltaPass) {
+    if (delta !== EXPECTED_DELTA) {
       if (newPoints === prePoints) {
         console.error(`\n✗ FAIL — leaderboard did not update within 30s. CF trigger may not have fired.\n`);
       } else {
@@ -193,10 +187,9 @@ async function main() {
     } else {
       console.log(`\n✓ PASS — delta=${delta} matches expected (${EXPECTED_DELTA}).`);
       console.log(`  Letters cap confirmed (25 sent → 20 pts in delta).`);
-      console.log(`  Level "${postLevel.title}" at threshold ${postLevel.threshold} is a valid new-scale boundary.\n`);
+      console.log(`  Level "${postLevel.title}" at threshold ${postLevel.threshold}.\n`);
     }
 
-    // Print config summary for the smoke report
     console.log('  Active POINTS_WEIGHTS:');
     for (const [k, v] of Object.entries(POINTS_WEIGHTS)) {
       console.log(`    ${k}: ${v}`);
