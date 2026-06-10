@@ -5,6 +5,35 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Restore smoke-harness tenant-admin account (banked 2026-06-10, HIGH)
+
+**Source:** PR #547 smoke waiver — pilot cleanup deleted `kelsean+tenantadmin@gmail.com` (uid `4GeeZbhZBwdtGOLoJoggf4MQo142`), the dedicated tenant_admin test account used by A11Y smoke harness (`A11Y_TENANT_ADMIN_EMAIL`).
+
+**Impact:** All tenant_admin-perspective smokes are blocked until a dedicated test tenant_admin is reseeded. Any smoke that logs in as tenant_admin and navigates to Users/Branches/Config tabs will fail at login with a Firebase Auth 400 + `nav-profile` timeout.
+
+**Action:** Create a new dedicated smoke tenant_admin (e.g. `kelsean+tenantadmin-2@gmail.com`) via `functions/scripts/seed-first-tenant-admin.cjs` (requires `service-account-key.json` — see archived-key FU). Update `A11Y_TENANT_ADMIN_EMAIL` / `A11Y_TENANT_ADMIN_PASSWORD` in `.env.local`. Re-run `branch-dropdown-smoke.mjs` to verify the harness is restored.
+
+**Severity:** HIGH — blocks smoke coverage for any tenant_admin surface.
+
+---
+
+## #547 deferred-verify: branch dropdown verified live via provisioning (banked 2026-06-10, LOW)
+
+**Source:** PR #547 smoke waiver (Rule 13). Smoke blocked by deleted harness account (see above FU).
+
+**Acceptance criteria (deferred):** After harness tenant-admin is restored, run:
+```
+SMOKE_BASE_URL=https://agencytrack.vercel.app \
+  node scripts/verification/branch-dropdown-smoke.mjs
+```
+Expected: all 3 active branches (Cyril Murray Branch, Kendell Lowhar Branch, Tatil South) appear in both `unit_manager` and `branch_manager` role dropdowns, values are branch doc ids, no email/manager-name fallbacks.
+
+Alternatively: live operator verification during first provisioning session confirms all 3 branches appear in the Add User drawer — close this FU at that point.
+
+**Severity:** LOW — fix is a transparent DOM-rendering change; operator can verify in 30 seconds during provisioning.
+
+---
+
 ## LoginPattern backdrop — extract to shared component (banked 2026-06-09, LOW)
 
 **Source:** Branded reset handler dispatch (PR #545).
