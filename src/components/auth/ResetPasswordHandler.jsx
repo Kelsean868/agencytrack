@@ -104,14 +104,15 @@ export default function ResetPasswordHandler({ oobCode }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    let isMounted = true;
     verifyPasswordResetCode(auth, oobCode)
       .then(emailFromCode => {
-        setEmail(emailFromCode);
-        setPhase('ready');
+        if (isMounted) { setEmail(emailFromCode); setPhase('ready'); }
       })
       .catch(() => {
-        setPhase('invalid');
+        if (isMounted) setPhase('invalid');
       });
+    return () => { isMounted = false; };
   }, [oobCode]);
 
   async function handleSubmit(e) {
@@ -123,8 +124,12 @@ export default function ResetPasswordHandler({ oobCode }) {
       await confirmPasswordReset(auth, oobCode, password);
       setPhase('success');
     } catch (err) {
-      setError(getConfirmError(err.code));
-      setPhase('ready');
+      if (err.code === 'auth/expired-action-code' || err.code === 'auth/invalid-action-code') {
+        setPhase('invalid');
+      } else {
+        setError(getConfirmError(err.code));
+        setPhase('ready');
+      }
     }
   }
 
@@ -140,7 +145,7 @@ export default function ResetPasswordHandler({ oobCode }) {
         <div className="text-center mb-8">
           <img
             src="/icons.svg"
-            alt="AgencyTrack"
+            alt=""
             width="64"
             height="64"
             className="mx-auto mb-4"
@@ -199,7 +204,6 @@ export default function ResetPasswordHandler({ oobCode }) {
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
-                  aria-pressed={showPassword}
                   data-testid="reset-password-toggle"
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-11 w-11 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                 >
