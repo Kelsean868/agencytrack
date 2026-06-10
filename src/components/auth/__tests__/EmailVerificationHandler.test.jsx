@@ -1,8 +1,7 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 
 vi.mock('firebase/auth', () => ({
   applyActionCode: vi.fn(),
@@ -60,7 +59,7 @@ describe('EmailVerificationHandler', () => {
     vi.stubGlobal('location', { replace: replaceMock });
     render(<EmailVerificationHandler oobCode="test-code" />);
     await waitFor(() => screen.getByTestId('verify-phase-success'));
-    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
     expect(replaceMock).toHaveBeenCalledWith('/');
     vi.unstubAllGlobals();
   });
@@ -71,7 +70,7 @@ describe('EmailVerificationHandler', () => {
     vi.stubGlobal('location', { replace: replaceMock });
     render(<EmailVerificationHandler oobCode="bad-code" />);
     await waitFor(() => screen.getByTestId('verify-phase-invalid'));
-    await userEvent.click(screen.getByRole('button', { name: /back to sign in/i }));
+    fireEvent.click(screen.getByRole('button', { name: /back to sign in/i }));
     expect(replaceMock).toHaveBeenCalledWith('/');
     vi.unstubAllGlobals();
   });
