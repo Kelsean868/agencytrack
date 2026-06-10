@@ -58,7 +58,11 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
     if (!tenantId) return;
     getUnitManagers(tenantId).then(setUnitManagers).catch(console.error);
     listBranches(tenantId)
-      .then((all) => setBranches(all.filter((b) => b.isActive !== false)))
+      .then((all) => {
+        const active = all.filter((b) => b.isActive !== false);
+        active.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+        setBranches(active);
+      })
       .catch(console.error);
     if (callerRole === 'branch_manager') {
       setForm((f) => ({ ...f, branchId: callerProfile?.branchId ?? '' }));
