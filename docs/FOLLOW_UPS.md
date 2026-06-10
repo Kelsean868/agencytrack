@@ -4886,3 +4886,28 @@ Banked: Track J P4 around-me cluster (PR #402), 2026-05-31.
 **Priority:** LOW. MOOT if settlement retirement (Policy Ledger supersedes) proceeds before multi-branch expansion. Only revisit if multi-branch operation becomes real and granular settlement privacy is required before Policy Ledger fully replaces the settlements surface.
 
 Banked: settlements-read-scope PR #494 (Phase 1 STOP, dispatcher Option A), 2026-06-05.
+
+---
+
+## Gamification — badge eligibility thresholds machine-readable in config (banked 2026-06-10, LOW)
+
+**Source:** Points single-source-of-truth + f2fAttempts scoring (PR #556). Out-of-scope finding.
+
+**Problem:** Badge eligibility thresholds are inline magic numbers in `functions/index.js` (the `onSubmissionWrite` trigger), while the human-readable descriptions of those same thresholds live in `BADGE_DEFINITIONS` in `functions/lib/gamificationConfig.js`. The two can drift silently.
+
+**Examples of current inline thresholds (rough locations):**
+- `top_apps_week`: `apps >= 5` — description says "5+ applications in a single week"
+- `big_week`: `api >= 20000` — description says "TTD 20,000+ API in a single week"
+- `century_dials`: `dials >= 100` — description says "100+ dials in a single week"
+- `mdrt_qualified`: `ytdApi >= 500000` — description says "YTD API ≥ TTD 500,000"
+- `mdrt_pace`: `ytdApi >= 250000 && weekNum <= 26` — description says "YTD API ≥ TTD 250,000 by week 26"
+
+**Desired end-state:** Move thresholds into `BADGE_DEFINITIONS` alongside `description`/`trigger`. Example shape:
+```js
+{ key: 'top_apps_week', ..., threshold: { field: 'appsSold', op: '>=', value: 5 } }
+```
+The awarding logic in `onSubmissionWrite` evaluates `threshold` at runtime; the panel (PR2) reads the same `threshold` to render the displayed trigger value. Drift becomes impossible.
+
+**Action (before PR2 panel implementation):** Extend `BADGE_DEFINITIONS` with a `threshold` field. Update `onSubmissionWrite` badge section to evaluate `threshold` instead of inline comparisons. PR2's points panel then reads `threshold.value` directly from the config for display — no separate human label to maintain.
+
+**Severity:** LOW (no user-visible bug today; relevant when PR2 builds the panel that displays badge trigger values).
