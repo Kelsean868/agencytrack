@@ -1282,9 +1282,15 @@ exports.onSubmissionWrite = functions.firestore
 
     try {
       // ── Test-account guard ────────────────────────────────────────────────
-      const userSnap = await admin.firestore()
-        .doc(`tenants/${tenantId}/users/${agentId}`).get();
-      if (userSnap.data()?.isTestAccount === true) {
+      // Fail-open: a transient read error defaults to non-test-account
+      // so real users' leaderboard writes are not blocked by a flaky read.
+      let isTestAccount = false;
+      try {
+        const userSnap = await admin.firestore()
+          .doc(`tenants/${tenantId}/users/${agentId}`).get();
+        isTestAccount = userSnap.data()?.isTestAccount === true;
+      } catch (_err) {}
+      if (isTestAccount) {
         await admin.firestore().doc(`tenants/${tenantId}/leaderboard/${agentId}`)
           .delete().catch(() => {});
         return;

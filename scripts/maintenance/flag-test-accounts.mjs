@@ -145,8 +145,8 @@ async function applyTestAccountFlag(users) {
   console.log(`\n── Phase 2: apply isTestAccount: true + clear leaderboard entries ──`);
   console.log(`Target emails: ${TARGET_EMAILS.join(', ')}`);
 
-  let applied = 0;
   let skipped = 0;
+  const appliedEntries = [];
 
   for (const email of TARGET_EMAILS) {
     // Belt-and-suspenders anchor guard
@@ -180,29 +180,26 @@ async function applyTestAccountFlag(users) {
         `  ✓ ${match.name} (${match.email}) — isTestAccount: ${before} → true | no leaderboard entry`,
       );
     }
-    applied++;
+    appliedEntries.push({ uid: match.uid, email: match.email });
   }
 
-  console.log(`\n${applied} applied, ${skipped} skipped.`);
-  return applied;
+  console.log(`\n${appliedEntries.length} applied, ${skipped} skipped.`);
+  return appliedEntries;
 }
 
 // ── Read-back: re-fetch and confirm ──────────────────────────────────────────
 
-async function readBack() {
+async function readBack(applied) {
   console.log('\n── Read-back: confirming isTestAccount = true ──');
   let allOk = true;
-  for (const email of TARGET_EMAILS) {
-    const snap = await db.collection(`tenants/${TENANT_ID}/users`)
-      .where('email', '==', email)
-      .limit(1)
-      .get();
-    if (snap.empty) {
-      console.error(`  ✗ ${email} — doc not found`);
+  for (const { uid, email } of applied) {
+    const snap = await db.doc(`tenants/${TENANT_ID}/users/${uid}`).get();
+    if (!snap.exists) {
+      console.error(`  ✗ ${email} (${uid}) — doc not found`);
       allOk = false;
       continue;
     }
-    const val = snap.docs[0].data().isTestAccount;
+    const val = snap.data().isTestAccount;
     if (val === true) {
       console.log(`  ✓ ${email} — isTestAccount: true`);
     } else {
@@ -224,13 +221,13 @@ async function readBack() {
       process.exit(0);
     }
 
-    const applied = await applyTestAccountFlag(users);
-    if (applied === 0) {
+    const appliedEntries = await applyTestAccountFlag(users);
+    if (appliedEntries.length === 0) {
       console.error('\nNo records updated — check the email addresses above.');
       process.exit(1);
     }
 
-    const ok = await readBack();
+    const ok = await readBack(appliedEntries);
     process.exit(ok ? 0 : 1);
   } catch (err) {
     console.error(`\nFATAL: ${err.message ?? String(err)}`);
