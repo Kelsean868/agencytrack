@@ -17,8 +17,7 @@ const SAMPLE_FORM = {
   referralCalls: 5, followUpCalls: 3, coldCalls: 7,
   seminarTradeshowCalls: 2, serviceCalls: 4,
   namesFromColdCanvass: 3, referralsObtained: 2,
-  namesFromSeminarsConducted: 1, namesFromSeminarsAttended: 0,
-  namesFromTradeshowsConducted: 0, namesFromTradeshowsAttended: 0,
+  namesFromSeminarsConducted: 1, namesFromTradeshowsAttended: 0,
   namesFromOther: 0,
 };
 
@@ -30,8 +29,7 @@ const LAST_WEEK_DOC = {
   referralCalls: 2, followUpCalls: 2, coldCalls: 2,
   seminarTradeshowCalls: 1, serviceCalls: 1,
   namesFromColdCanvass: 1, referralsObtained: 1,
-  namesFromSeminarsConducted: 0, namesFromSeminarsAttended: 0,
-  namesFromTradeshowsConducted: 0, namesFromTradeshowsAttended: 0,
+  namesFromSeminarsConducted: 0, namesFromTradeshowsAttended: 0,
   namesFromOther: 0,
 };
 

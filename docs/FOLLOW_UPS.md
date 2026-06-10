@@ -44,6 +44,18 @@ Alternatively: live operator verification during first provisioning session conf
 
 ---
 
+## AgentReportDocument — add seminarsConducted + tradeshowsAttended to PDF (banked 2026-06-10, LOW)
+
+**Source:** seminars-tradeshows-wirein PR (dispatcher out-of-scope ruling).
+
+`AgentReportDocument.jsx` (react-pdf, hex-only) currently shows `f2fAttempts` individually but does not include the Seminars/Tradeshows section. After the 8→4 collapse, the two surviving counts are `seminarsConducted` and `tradeshowsAttended`. These are now members of `prospectingTouches` but not yet rendered in the agent PDF.
+
+**Why deferred:** The dispatcher ruled the PDF surface out of scope for this PR — occasional event counts don't suit sparkline/average treatment, and adding a new PDF section needs its own layout decision. The data is available via `extractFields()` when this FU is actioned.
+
+**Action:** Add a "Seminars & Tradeshows" row or mini-section to `AgentReportDocument.jsx` (lines ~470–510, the Prospecting/Activity section) showing `seminarsConducted` and `tradeshowsAttended`. Keep hex-only (no CSS vars — react-pdf cannot resolve them).
+
+---
+
 ## LoginPattern backdrop — extract to shared component (banked 2026-06-09, LOW)
 
 **Source:** Branded reset handler dispatch (PR #545).

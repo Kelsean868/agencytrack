@@ -1,9 +1,9 @@
 /**
  * Track J Wizard v2 PR1 — Activity step 2 of 5: "Seminars & tradeshows".
  *
- * v2 re-pagination of the legacy Step1Prospecting's "Seminars" + "Tradeshows"
- * Cards. Identical field markup as the legacy step — same `NumericField`s,
- * same `name` keys, same parent `onChange` flow. Persisted fields unchanged.
+ * Collapsed to 4 fields (seminars-tradeshows-wirein): agents CONDUCT seminars
+ * and ATTEND tradeshows. The 2×2 "conducted/attended" split is dropped.
+ * seminarsConducted + tradeshowsAttended now feed prospectingTouches.
  *
  * Pure re-fan; the legacy `Step1Prospecting.jsx` file is intentionally
  * NOT modified.
@@ -15,7 +15,7 @@ import { Card, NumericField } from '../CardStack';
 export default function StepSeminarsTradeshows({ data, onChange }) {
   return (
     <div className="flex flex-col gap-4">
-      <Card badge="Seminars" desc="Seminars you conducted or attended, and names collected from each.">
+      <Card badge="Seminars" desc="Seminars you conducted and names collected.">
         <div className="flex flex-col gap-4">
           <NumericField
             label="Seminars Conducted"
@@ -29,35 +29,11 @@ export default function StepSeminarsTradeshows({ data, onChange }) {
             value={data.namesFromSeminarsConducted}
             onChange={onChange}
           />
-          <NumericField
-            label="Seminars Attended"
-            name="seminarsAttended"
-            value={data.seminarsAttended}
-            onChange={onChange}
-          />
-          <NumericField
-            label="Names from Seminars Attended"
-            name="namesFromSeminarsAttended"
-            value={data.namesFromSeminarsAttended}
-            onChange={onChange}
-          />
         </div>
       </Card>
 
-      <Card badge="Tradeshows" desc="Tradeshows you conducted or attended, and names collected.">
+      <Card badge="Tradeshows" desc="Tradeshows you attended and names collected.">
         <div className="flex flex-col gap-4">
-          <NumericField
-            label="Tradeshows Conducted"
-            name="tradeshowsConducted"
-            value={data.tradeshowsConducted}
-            onChange={onChange}
-          />
-          <NumericField
-            label="Names from Tradeshows Conducted"
-            name="namesFromTradeshowsConducted"
-            value={data.namesFromTradeshowsConducted}
-            onChange={onChange}
-          />
           <NumericField
             label="Tradeshows Attended"
             name="tradeshowsAttended"
