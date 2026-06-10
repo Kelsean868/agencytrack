@@ -5,9 +5,9 @@ import {
   createUser,
   deactivateUser,
   getUnitManagers,
-  getBranchManagers,
   getAllUsers,
 } from '../../services/agentManagementService';
+import { listBranches } from '../../services/branchService';
 import { resendInvite } from '../../services/userService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
@@ -46,7 +46,7 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
     name: '', email: '', agentNumber: '', contractStartDate: '', unitId: '', branchId: '', unitName: '',
   });
   const [unitManagers, setUnitManagers]     = useState([]);
-  const [branchManagers, setBranchManagers] = useState([]);
+  const [branches, setBranches] = useState([]);
   const [saving, setSaving]   = useState(false);
   const [error, setError]     = useState('');
 
@@ -57,7 +57,9 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
     }
     if (!tenantId) return;
     getUnitManagers(tenantId).then(setUnitManagers).catch(console.error);
-    getBranchManagers(tenantId).then(setBranchManagers).catch(console.error);
+    listBranches(tenantId)
+      .then((all) => setBranches(all.filter((b) => b.isActive !== false)))
+      .catch(console.error);
     if (callerRole === 'branch_manager') {
       setForm((f) => ({ ...f, branchId: callerProfile?.branchId ?? '' }));
     }
@@ -286,9 +288,9 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                     className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
                   >
                     <option value="">Select a branch…</option>
-                    {branchManagers.map((bm) => (
-                      <option key={bm.uid} value={bm.branchId ?? bm.uid}>
-                        {bm.name ?? bm.branchId ?? bm.uid}
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
                       </option>
                     ))}
                   </select>
@@ -313,9 +315,9 @@ function CreateUserDrawer({ onClose, onCreated, callerRole, callerProfile, tenan
                   className="h-10 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
                 >
                   <option value="">Select a branch…</option>
-                  {branchManagers.map((bm) => (
-                    <option key={bm.uid} value={bm.branchId ?? bm.uid}>
-                      {bm.name ?? bm.branchId ?? bm.uid}
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>
+                      {branch.name}
                     </option>
                   ))}
                 </select>
