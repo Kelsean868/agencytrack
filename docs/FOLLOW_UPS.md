@@ -5,6 +5,18 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## seed-first-tenant-admin — service-account-key-archived.json as fallback key (banked 2026-06-09, XS ops note)
+
+**Source:** `kyronmarchan+tenant@gmail.com` provisioning fix (2026-06-09). `seed-first-tenant-admin.cjs` requires `functions/service-account-key.json`. ADC user credentials (`gcloud auth login`) cannot call `identitytoolkit.googleapis.com` — that API only accepts service account tokens.
+
+**Operational note:** `functions/service-account-key-archived.json` (untracked, gitignored-adjacent) is a valid service account key for `agencytrack-2a610` (`firebase-adminsdk-fbsvc@agencytrack-2a610.iam.gserviceaccount.com`). When `service-account-key.json` is absent and an Admin SDK Auth operation is needed (seed script, claims repair), this file can be temporarily copied: `cp functions/service-account-key-archived.json functions/service-account-key.json`, run the script, then `rm functions/service-account-key.json`.
+
+**Action:** No code change needed. Add this note to the runbook "Step 4 tenant_admin bootstrap" section before the Tatil demo.
+
+**Severity:** LOW (ops knowledge, not a bug).
+
+---
+
 ## CLAUDE.md Track I status — mark COMPLETE not PLANNED (banked 2026-06-09, XS docs)
 
 **Source:** Manager self-production capability audit (2026-06-09). CLAUDE.md Build Phase History table lists Track I (Manager Activity Reporting) as `📋 PLANNED`. Source audit found `ManagerWarTab.jsx`, `managerWarService.js`, `managerWeeklyReports` Firestore collection + rules all shipped and functional.
