@@ -170,6 +170,7 @@ Tracks A through E are complete (see Build Phase History). User-mgmt PR-3/PR-4/P
 Open follow-ups live in [`docs/FOLLOW_UPS.md`](docs/FOLLOW_UPS.md). Dynamic state (active track, recent shipping, where-we-left-off) lives in [`docs/CONTEXT.md`](docs/CONTEXT.md).
 
 ## Key Technical Decisions
+- `isTestAccount: true` on a user doc (`tenants/{tid}/users/{uid}`) excludes that account from the tenant-wide leaderboard. Enforced in `onSubmissionWrite` (CF): guard reads the user doc; if flagged, skips the leaderboard `.set()` and deletes any existing `leaderboard/{uid}` doc (self-healing). Absent/false → behavior unchanged. Set via `scripts/maintenance/flag-test-accounts.mjs` (`--apply --emails`). Hard-excluded from flagging: `kyronmarchan+tenant@gmail.com` (real tenant admin). Banked PR #{TBD}.
 - Auth: email + password. Passwordless email link was abandoned — unreliable for field agents with intermittent connectivity.
 - Wizard: Step1–Step9 files are NEVER modified. WizardForm.jsx groups them into 5 screens. Revert to 9 steps = one git revert on WizardForm.jsx only.
 - PDF: @react-pdf/renderer ONLY. html2canvas removed — had unfixable text alignment issues in production.

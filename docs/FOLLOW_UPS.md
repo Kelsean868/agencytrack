@@ -5,6 +5,12 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## ~~Leaderboard test-account pollution — test accounts appear on tenant-wide leaderboard~~ (RESOLVED — PR #{TBD}, `{TBD}`)
+
+**Status:** RESOLVED. Write-layer `isTestAccount` guard in `onSubmissionWrite` (CF): when `isTestAccount === true` on the agent's user doc, the leaderboard `.set()` is skipped and any existing `leaderboard/{agentId}` doc is deleted (self-healing). Absent/`false` → behavior unchanged. New `scripts/maintenance/flag-test-accounts.mjs` ops script sets `isTestAccount: true` on the 5 preserved test accounts and deletes their existing leaderboard entries (one-time durable cleanup). Emulator tests cover both paths (flagged-uid → no write + delete; non-flagged-uid → write preserved). Guard is activated post-merge by operator: `firebase deploy --only functions` → flag script `--apply` → post-deploy production smoke. Hard-excluded from flagging: `kyronmarchan+tenant@gmail.com` (real tenant admin). Convention banked in CLAUDE.md.
+
+---
+
 ## Restore smoke-harness tenant-admin account (banked 2026-06-10, HIGH)
 
 **Source:** PR #547 smoke waiver — pilot cleanup deleted `kelsean+tenantadmin@gmail.com` (uid `4GeeZbhZBwdtGOLoJoggf4MQo142`), the dedicated tenant_admin test account used by A11Y smoke harness (`A11Y_TENANT_ADMIN_EMAIL`).

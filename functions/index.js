@@ -1281,6 +1281,15 @@ exports.onSubmissionWrite = functions.firestore
     if (!agentId) return;
 
     try {
+      // ── Test-account guard ────────────────────────────────────────────────
+      const userSnap = await admin.firestore()
+        .doc(`tenants/${tenantId}/users/${agentId}`).get();
+      if (userSnap.data()?.isTestAccount === true) {
+        await admin.firestore().doc(`tenants/${tenantId}/leaderboard/${agentId}`)
+          .delete().catch(() => {});
+        return;
+      }
+
       // ── Compute points ────────────────────────────────────────────────────
       const dials =
         (parseFloat(after.referralCalls)        || 0) +
