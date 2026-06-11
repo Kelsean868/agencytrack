@@ -47,10 +47,16 @@ export const DISPLAY_MAP = {
 const GROUPS = ['Prospect & connect', 'Advance', 'Close', 'Deliver & service'];
 
 const EXIT_FIELDS = UNSCORED_FIELDS
-  .filter((f) => f.reason.includes('not incentivised'))
+  .filter((f) => f.reason?.includes('not incentivised'))
   .map((f) => (f.key === 'withdrawalsLoans' ? 'withdrawals/loans' : f.key));
 
 function PointsInfoPanel({ onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
       <div
@@ -162,7 +168,13 @@ export default function MyPointsCard() {
   const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
-    if (!tenantId || !user?.uid) return;
+    if (!tenantId || !user?.uid) {
+      setEntry(null);
+      setLoading(true);
+      return;
+    }
+    setEntry(null);
+    setLoading(true);
     const ref = doc(db, `tenants/${tenantId}/leaderboard/${user.uid}`);
     const unsub = onSnapshot(ref, (snap) => {
       setEntry(snap.exists() ? snap.data() : null);
