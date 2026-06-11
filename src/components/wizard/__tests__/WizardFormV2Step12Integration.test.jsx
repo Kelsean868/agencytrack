@@ -31,6 +31,8 @@ vi.mock('../../../services/submissionService', () => ({
   getDraft:             vi.fn().mockResolvedValue(null),
   getLastSubmission:    vi.fn().mockResolvedValue(null),
   getRecentSubmissions: vi.fn().mockResolvedValue([]),
+  getLeaderboardPoints: vi.fn().mockResolvedValue(0),
+  sanitize:             (data) => data,
 }));
 
 vi.mock('../../../utils/dateHelpers', () => ({

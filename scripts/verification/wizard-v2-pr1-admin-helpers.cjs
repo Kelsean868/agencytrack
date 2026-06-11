@@ -35,12 +35,13 @@ const TENANT_ID = 'tatillife_south';
 // ─── Operations ────────────────────────────────────────────────────────────
 async function resolveUid(email) {
   const user = await auth.getUserByEmail(email);
-  return { uid: user.uid };
+  const tenantId = user.customClaims?.tenantId ?? TENANT_ID;
+  return { uid: user.uid, tenantId };
 }
 
-async function readSubmission(uid, weekStarting) {
+async function readSubmission(uid, weekStarting, tenantId = TENANT_ID) {
   const docId = `${uid}_${weekStarting}`;
-  const ref = db.collection(`tenants/${TENANT_ID}/submissions`).doc(docId);
+  const ref = db.collection(`tenants/${tenantId}/submissions`).doc(docId);
   const snap = await ref.get();
   if (!snap.exists) return { exists: false, data: null };
   const raw = snap.data();
@@ -56,9 +57,9 @@ async function readSubmission(uid, weekStarting) {
   return { exists: true, data: serializable };
 }
 
-async function deleteSubmission(uid, weekStarting, statusFilter = 'any') {
+async function deleteSubmission(uid, weekStarting, statusFilter = 'any', tenantId = TENANT_ID) {
   const docId = `${uid}_${weekStarting}`;
-  const ref = db.collection(`tenants/${TENANT_ID}/submissions`).doc(docId);
+  const ref = db.collection(`tenants/${tenantId}/submissions`).doc(docId);
   const snap = await ref.get();
   if (!snap.exists) return { deletedCount: 0 };
   const status = snap.data().status;
@@ -88,14 +89,13 @@ process.stdin.on('data', async (chunk) => {
           res = await resolveUid(req.email);
           break;
         case 'readSubmission':
-          res = await readSubmission(req.uid, req.weekStarting);
+          res = await readSubmission(req.uid, req.weekStarting, req.tenantId);
           break;
         case 'deleteSubmission':
-          res = await deleteSubmission(req.uid, req.weekStarting, req.status);
+          res = await deleteSubmission(req.uid, req.weekStarting, req.status, req.tenantId);
           break;
         case 'exit':
           process.exit(0);
-          // eslint-disable-next-line no-unreachable
           break;
         default:
           res = { error: 'unknown op' };

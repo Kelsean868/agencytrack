@@ -1,10 +1,12 @@
-'use strict';
-
-const { POINTS_WEIGHTS } = require('./gamificationConfig');
+import { POINTS_WEIGHTS } from './gamificationConfig.js';
 
 /**
  * Computes gamification points for one submitted weekly report.
  * Pure function — reads from POINTS_WEIGHTS, no Firestore, no side effects.
+ *
+ * ESM twin of functions/lib/computePoints.js (CJS).
+ * Drift guard: src/lib/__tests__/computePoints.cross-check.test.js asserts
+ * output equality on shared fixtures. Keep in sync with the CJS version.
  *
  * @param {object} fields  Raw Firestore submission document data (after.data()).
  * @returns {number}       Integer point total for this submission.
@@ -66,4 +68,4 @@ function computePoints(fields) {
   );
 }
 
-module.exports = { computePoints };
+export { computePoints };
