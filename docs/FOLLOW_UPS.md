@@ -37,7 +37,7 @@ The original "Organize your money needs" Excel sheet listed 10 Loans/Debt rows w
 
 **Decision (dispatcher, 2026-06-11):** Seed 6 unique categories — Credit Card · Car Loan · Personal Loan · Sou-sou · Hire-Purchase · Other (all Monthly). Drop the #1/#2 duplicates; "Add your own" handles a second card/loan.
 
-**Status:** RESOLVED — implemented in money-needs-default-seed PR #TBD (`src/services/moneyNeedsService.js`, `DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.loansDebt`, 6 `seed-ld-*` items). No further action required.
+**Status:** RESOLVED — implemented in money-needs-default-seed PR #569 (`2f46a41`) (`src/services/moneyNeedsService.js`, `DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.loansDebt`, 6 `seed-ld-*` items). No further action required.
 
 ---
 
