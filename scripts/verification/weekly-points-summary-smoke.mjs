@@ -28,6 +28,7 @@ import {
   stamp,
   captureConsoleAndNetwork,
   formatCaptureReport,
+  setTheme,
 } from './lib/walk-helpers.mjs';
 
 function loadEnv() {
@@ -93,8 +94,8 @@ function startAdmin() {
     child.stdin.write(JSON.stringify({ id, op, ...payload }) + '\n');
   });
   return {
-    resolveUid:       (email)            => call('resolveUid',       { email }),
-    deleteSubmission: (uid, ws, status)  => call('deleteSubmission', { uid, weekStarting: ws, status }),
+    resolveUid:       (email)                     => call('resolveUid',       { email }),
+    deleteSubmission: (uid, ws, tenantId, status) => call('deleteSubmission', { uid, weekStarting: ws, tenantId, status }),
     close: () => { child.stdin.write(JSON.stringify({ op: 'exit' }) + '\n'); },
   };
 }
@@ -106,13 +107,14 @@ async function newCtx(theme) {
   const context = await browser.newContext({ viewport: { width: 1366, height: 900 } });
   if (BASE_URL.startsWith('https://')) await setupBypassSession(context, BASE_URL, BYPASS_TOKEN);
   const page = await context.newPage();
-  const capture = captureConsoleAndNetwork(page);
+  // Dark theme: set localStorage BEFORE first navigation (addInitScript runs before the page loads).
+  // Value must be '1' (not 'true') — app reads === '1'. Banked from walk-helpers setTheme lesson.
   if (theme === 'dark') {
     await page.addInitScript(() => {
-      localStorage.setItem('agencytrack-dark', 'true');
-      document.documentElement.classList.add('dark');
+      try { localStorage.setItem('agencytrack-dark', '1'); } catch {}
     });
   }
+  const capture = captureConsoleAndNetwork(page);
   return { browser, page, capture };
 }
 
@@ -156,10 +158,17 @@ async function openWizard(page) {
   return weekStarting;
 }
 
+/** Return the most recent Sunday as YYYY-MM-DD in local time. */
+function mostRecentSunday() {
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay()); // getDay() = 0 on Sunday
+  return d.toISOString().slice(0, 10);
+}
+
 async function next(page) {
   const btn = page.locator('[data-testid="wizard-v2-next"]');
-  await btn.scrollIntoViewIfNeeded().catch(() => {});
-  await btn.click({ timeout: 15_000 });
+  await btn.waitFor({ state: 'visible', timeout: 15_000 });
+  await btn.click();
   await page.waitForTimeout(700);
 }
 
@@ -168,20 +177,25 @@ async function fillLocator(locator, value) {
   await locator.scrollIntoViewIfNeeded().catch(() => {});
   await locator.click({ clickCount: 3 }).catch(() => {});
   await locator.fill(String(value));
+  // Read-back retry for React controlled inputs (CurrencyField, SuggestedField)
+  const readBack = await locator.inputValue().catch(() => null);
+  if (readBack !== null && readBack !== String(value)) {
+    await locator.fill('');
+    await locator.type(String(value), { delay: 30 });
+  }
 }
 
 async function fillProductionStep(page) {
   await page.waitForSelector('[data-testid="wizard-v2-step-title"]', { timeout: 10_000 });
-  const card = (badge) => page.locator('.rounded-xl', { hasText: badge }).first();
 
-  const ciCard = card('Closing Interviews');
-  await fillLocator(ciCard.locator('input').nth(2), PROD_FILL.ciConducted);
+  // CI card — SuggestedField renders id={name}, so use #ciConducted
+  await fillLocator(page.locator('#ciConducted'), PROD_FILL.ciConducted);
 
-  const nbCard = card('New Business');
-  await fillLocator(nbCard.locator('input').nth(0), PROD_FILL.newBusinessApps);
-  await fillLocator(nbCard.locator('input').nth(2), PROD_FILL.newBusinessApi);
+  // NB card — use unique inputIds (duplicate-id fix landed in step 7 v2)
+  await fillLocator(page.locator('#newBusinessApps'), PROD_FILL.newBusinessApps);
+  await fillLocator(page.locator('#newBusinessApi'), PROD_FILL.newBusinessApi);
 
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(2200);
 }
 
 // ─── Main smoke ───────────────────────────────────────────────────────────────
@@ -191,9 +205,12 @@ const timer = installGlobalTimeout(300_000, () => finishSmoke(results));
 const admin = startAdmin();
 
 let agentUid;
+let agentTenantId;
 try {
-  agentUid = await admin.resolveUid(AGENT_EMAIL);
-  log(`Agent UID resolved: ${agentUid ? '[ok]' : '[missing]'}`);
+  const resolved = await admin.resolveUid(AGENT_EMAIL);
+  agentUid      = resolved.uid;
+  agentTenantId = resolved.tenantId;
+  log(`Agent UID resolved: ${agentUid ? '[ok]' : '[missing]'} tenantId=${agentTenantId ?? '(none)'}`);
 } catch (e) {
   log(`Admin UID resolve failed (non-fatal): ${e.message}`);
 }
@@ -208,7 +225,14 @@ for (const theme of ['light', 'dark']) {
     await login(page);
     log('login: PASS');
 
-    // 2. Open wizard, record weekStarting
+    // 1b. Pre-cleanup: delete existing submission so wizard opens at step 1, not view-mode
+    const candidateWeek = mostRecentSunday();
+    if (agentUid) {
+      const { deletedCount } = await admin.deleteSubmission(agentUid, candidateWeek, agentTenantId);
+      log(`pre-cleanup ${candidateWeek} deletedCount=${deletedCount} (any status, tenant=${agentTenantId})`);
+    }
+
+    // 2. Open wizard
     weekStarting = await openWizard(page);
     log(`wizard opened, week=${weekStarting}`);
 
@@ -218,6 +242,7 @@ for (const theme of ['light', 'dark']) {
     // 4. Step 7 — fill production fields so earnedPoints > 0
     log('filling production fields (step 7)...');
     await fillProductionStep(page);
+    log('step 7 filled');
     await next(page);
 
     // 5. Steps 8-11: advance untouched
@@ -226,14 +251,14 @@ for (const theme of ['light', 'dark']) {
     // 6. Step 12 (Review) — verify counter then submit
     const counter = await page.locator('[data-testid="wizard-v2-step-counter"]').textContent();
     const onReview = counter.trim() === 'Step 12 of 12';
-    results.push({ leg: `${theme}/review-counter`, pass: onReview, detail: counter.trim() });
+    results.push({ leg: `${theme}/review-counter`, passed: onReview, detail: counter.trim() });
     log(`review-counter: ${onReview ? 'PASS' : 'FAIL'} (${counter.trim()})`);
 
     await next(page); // "Submit Report"
 
     // 7. Wait for Celebration
     await page.waitForSelector('[data-testid="wizard-v2-celebration"]', { timeout: 30_000 });
-    results.push({ leg: `${theme}/celebration-mounts`, pass: true });
+    results.push({ leg: `${theme}/celebration-mounts`, passed: true, detail: 'ok' });
     log(`${theme}/celebration-mounts: PASS`);
 
     // 8. Points section — earned element present and matches /+\d+ pts/
@@ -242,7 +267,7 @@ for (const theme of ['light', 'dark']) {
     let earnedText = '';
     if (earnedCount > 0) earnedText = (await earnedEl.textContent() || '').trim();
     const earnedOk = earnedCount > 0 && /\+\d+\s*pts/.test(earnedText);
-    results.push({ leg: `${theme}/earned-renders`, pass: earnedOk, detail: earnedText });
+    results.push({ leg: `${theme}/earned-renders`, passed: earnedOk, detail: earnedText });
     log(`${theme}/earned-renders: ${earnedOk ? 'PASS' : 'FAIL'} ("${earnedText}")`);
 
     // 9. Progress variant — one of progress / level-up / at-top present
@@ -251,17 +276,17 @@ for (const theme of ['light', 'dark']) {
     const atTopCount     = await page.locator('[data-testid="wizard-celebration-at-top"]').count();
     const progressOk = progressCount + levelUpCount + atTopCount > 0;
     const progressVariant = levelUpCount > 0 ? 'level-up' : atTopCount > 0 ? 'at-top' : 'progress';
-    results.push({ leg: `${theme}/progress-renders`, pass: progressOk, detail: progressVariant });
+    results.push({ leg: `${theme}/progress-renders`, passed: progressOk, detail: progressVariant });
     log(`${theme}/progress-renders: ${progressOk ? 'PASS' : 'FAIL'} (variant=${progressVariant})`);
 
     // 10. Zero state must NOT appear (earnedPoints > 0)
     const zeroCount = await page.locator('[data-testid="wizard-celebration-zero"]').count();
     const noZero = zeroCount === 0;
-    results.push({ leg: `${theme}/no-zero-state`, pass: noZero, detail: `zeroCount=${zeroCount}` });
+    results.push({ leg: `${theme}/no-zero-state`, passed: noZero, detail: `zeroCount=${zeroCount}` });
     log(`${theme}/no-zero-state: ${noZero ? 'PASS' : 'FAIL'}`);
 
   } catch (err) {
-    results.push({ leg: `${theme}/error`, pass: false, detail: err.message });
+    results.push({ leg: `${theme}/error`, passed: false, detail: err.message });
     console.error(`[${stamp()}]  ${theme} leg failed: ${err.message}`);
   } finally {
     formatCaptureReport(capture);
@@ -270,7 +295,7 @@ for (const theme of ['light', 'dark']) {
     // Cleanup: delete the submitted doc to restore preview state
     if (agentUid && weekStarting) {
       try {
-        await admin.deleteSubmission(agentUid, weekStarting, 'submitted');
+        await admin.deleteSubmission(agentUid, weekStarting, agentTenantId, 'submitted');
         log(`cleanup ${theme}: deleted submission ${weekStarting}`);
       } catch (e) {
         log(`cleanup ${theme}: delete failed (non-fatal): ${e.message}`);
