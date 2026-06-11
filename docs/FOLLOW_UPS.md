@@ -181,7 +181,7 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 
 ---
 
-## ~~Weekly "you earned N points this week" summary~~ (banked 2026-06-10, **IN FLIGHT — PR #TBD**)
+## ~~Weekly "you earned N points this week" summary~~ (banked 2026-06-10, **SHIPPED — PR #567**, `34dcc4f`)
 
 **Source:** Phase 4 banking from feat/agent-points-surface (MyPointsCard + PointsInfoPanel). Brief: `docs/briefs/weekly-points-summary-brief.md`.
 
