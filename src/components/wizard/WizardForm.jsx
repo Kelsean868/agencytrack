@@ -45,7 +45,8 @@ import { useAuth } from '../../context/AuthContext';
 import WeekSoFarPanel from './v2chrome/WeekSoFarPanel';
 import ReviewSubmit from './v2chrome/ReviewSubmit';
 import Celebration from './v2chrome/Celebration';
-import { saveDraft, submitReport, getDraft, getRecentSubmissions } from '../../services/submissionService';
+import { saveDraft, submitReport, getDraft, getRecentSubmissions, sanitize, getLeaderboardPoints } from '../../services/submissionService';
+import { computePoints } from '../../lib/computePoints.js';
 import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
@@ -220,6 +221,8 @@ export default function WizardForm({ onClose, initialWeek }) {
   const [stickyError, setStickyError]   = useState(false);
   const [submitting, setSubmitting]     = useState(false);
   const [error, setError]               = useState('');
+  const [priorPoints, setPriorPoints]   = useState(0);
+  const [earnedPoints, setEarnedPoints] = useState(0);
   const saveTimer = useRef(null);
   const savedTimer = useRef(null);
   const consecutiveFailures = useRef(0);
@@ -301,6 +304,16 @@ export default function WizardForm({ onClose, initialWeek }) {
     return () => clearTimeout(saveTimer.current);
   }, [formData, step, weekStarting, screen, user, draftStatus]);
 
+  // One-time read of the agent's current leaderboard total — used by Celebration
+  // to compute earned = computePoints(sanitize(formData)) and show level progress.
+  // Non-existent doc → priorPoints stays 0 (first-submission path).
+  useEffect(() => {
+    if (!tenantId || !user?.uid) return;
+    getLeaderboardPoints(tenantId, user.uid)
+      .then(setPriorPoints)
+      .catch(() => {});
+  }, [tenantId, user?.uid]);
+
   // Online / offline detection — update isOffline and re-fire save on reconnect.
   useEffect(() => {
     const handleOffline = () => setIsOffline(true);
@@ -353,6 +366,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     setSubmitting(true);
     try {
       await submitReport(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0, userProfile?.unitId ?? null);
+      setEarnedPoints(computePoints(sanitize(formData, userProfile?.commissionRate ?? 0)));
       setDraftStatus('submitted');
       setScreen('done');
     } catch (e) {
@@ -603,6 +617,8 @@ export default function WizardForm({ onClose, initialWeek }) {
           <Celebration
             formData={formData}
             weekStartingLabel={formatDateFriendly(weekStarting)}
+            earnedPoints={earnedPoints}
+            priorPoints={priorPoints}
             onClose={onClose}
           />
         )}

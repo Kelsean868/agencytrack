@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Check } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
 import { totalProductionAPI, totalApps } from '../../../lib/schema/wizardLive.computations';
+import { resolveLevel, LEVEL_THRESHOLDS } from '../../../lib/gamificationConfig.js';
 
 /**
  * Wizard v2 PR3 — submit celebration.
@@ -20,10 +21,19 @@ import { totalProductionAPI, totalApps } from '../../../lib/schema/wizardLive.co
 export default function Celebration({
   formData,
   weekStartingLabel,
+  earnedPoints = 0,
+  priorPoints = 0,
   onClose,
 }) {
   const liveAPI = totalProductionAPI(formData);
   const liveApps = totalApps(formData);
+
+  const cumulative = priorPoints + earnedPoints;
+  const currentLevel = resolveLevel(cumulative);
+  const prevLevel = resolveLevel(priorPoints);
+  const isLevelUp = earnedPoints > 0 && currentLevel.level !== prevLevel.level;
+  const nextLevel = LEVEL_THRESHOLDS.find((l) => l.level === currentLevel.level + 1);
+  const toNext = nextLevel ? nextLevel.threshold - cumulative : null;
 
   const [reduceMotion, setReduceMotion] = useState(false);
   useEffect(() => {
@@ -92,6 +102,55 @@ export default function Celebration({
           Production API · {liveApps} apps
         </p>
       </div>
+
+      {/* Points earned */}
+      {earnedPoints > 0 ? (
+        <div className="mt-6 flex flex-col items-center" data-testid="wizard-celebration-points">
+          <p
+            className={`text-[10px] font-bold font-mono uppercase tracking-widest ${
+              isLevelUp ? 'text-gold' : 'text-primary'
+            }`}
+          >
+            {isLevelUp ? 'Level Up ✦' : 'This Week'}
+          </p>
+          <p
+            data-testid="wizard-celebration-earned"
+            className="text-3xl font-display font-bold text-ink leading-none mt-1"
+            style={{ letterSpacing: '-0.022em' }}
+          >
+            +{earnedPoints} pts
+          </p>
+          {isLevelUp ? (
+            <p
+              data-testid="wizard-celebration-level-up"
+              className="text-sm text-ink mt-1"
+            >
+              You reached <span className="font-semibold">{currentLevel.title}</span>
+            </p>
+          ) : nextLevel ? (
+            <p
+              data-testid="wizard-celebration-progress"
+              className="text-xs text-ink-muted mt-1"
+            >
+              {toNext} to {nextLevel.title}
+            </p>
+          ) : (
+            <p
+              data-testid="wizard-celebration-at-top"
+              className="text-xs text-ink-muted mt-1"
+            >
+              Legend — you&apos;re at the top
+            </p>
+          )}
+        </div>
+      ) : (
+        <p
+          className="mt-6 text-sm text-ink-muted"
+          data-testid="wizard-celebration-zero"
+        >
+          Logged — keep building.
+        </p>
+      )}
 
       {/* Leaderboard messaging */}
       <p

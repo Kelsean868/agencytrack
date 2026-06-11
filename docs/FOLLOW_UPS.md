@@ -76,7 +76,7 @@ During the smoke, `FirebaseError: Missing or insufficient permissions.` fires as
 
 `functions/lib/computePoints.js` reads raw `after.data()` fields directly, bypassing `extractFields()`. The **v2 divergence** — `newBusiness.{apps,api}` scoring 0 on all v2 submissions — **is fixed in PR #566**: `computePoints` now mirrors `extractFields.js:95-97` (version check + full v1 fallback chain). Four Jest regression tests + three sanitize-driven Vitest tests guard the fix.
 
-The remaining structural gap: `computePoints` still bypasses `extractFields()`, so the legacy nested step schema arm (`step1.referralCalls`, etc.) would score 0 if ever exercised. No live wizard or import flow writes this shape today.
+The remaining structural gap: `computePoints` (both CJS `functions/lib/computePoints.js` and ESM `src/lib/computePoints.js` twin added in weekly-points-summary PR #TBD) still bypass `extractFields()`, reading raw flat fields directly. The legacy nested step schema arm (`step1.referralCalls`, etc.) would score 0 if ever exercised. No live wizard or import flow writes this shape today. **ESM twin stays flat-schema by design** (same shape as `after.data()` — the trust guarantee for the "+N pts" display).
 
 **Why deferred:** The nested schema arm is a legacy/future-compatibility path; pre-existing and low-risk for the current pilot. Symptom fixed; structural routing is cleanup only.
 
@@ -181,17 +181,13 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 
 ---
 
-## Weekly "you earned N points this week" summary (banked 2026-06-10, MEDIUM next-build)
+## ~~Weekly "you earned N points this week" summary~~ (banked 2026-06-10, **IN FLIGHT — PR #TBD**)
 
-**Source:** Phase 4 banking from feat/agent-points-surface (MyPointsCard + PointsInfoPanel).
+**Source:** Phase 4 banking from feat/agent-points-surface (MyPointsCard + PointsInfoPanel). Brief: `docs/briefs/weekly-points-summary-brief.md`.
 
-Agents now have a home surface to see cumulative points, level, streak, and badges on HomeV2 (`MyPointsCard`). The natural completion is a per-submission feedback moment: when an agent submits a weekly report, show a delta like "+N points this week" alongside the week's top-scoring activities.
+**Status:** Dispatched. `feat/weekly-points-summary` branch — implementation complete, PR open. Gamification arc (engine → surface → payoff) complete on merge.
 
-**Scoring prereq:** `computePoints` had a live correctness bug — apps/API scored 0 on all v2 submissions. This FU's Phase 1 dispatch surfaced the bug; work was stood down and the fix shipped separately as PR #566 (`231cea9`). `/dispatch` the brief **after** PR #566 merges AND `firebase deploy --only functions` completes. Brief is already on main (PR #564).
-
-**Action:** After each wizard submission (success step or post-submit toast), compute the points earned for the just-submitted week using `computePoints(fields)` (the pure function already extracted in `functions/lib/computePoints.js`; a matching ESM export can be added to `src/lib/` if needed, or the computation can be inlined client-side since the weights are in `src/lib/gamificationConfig.js`). Show the delta prominently. This is a read/derive-only change — no new Firestore writes; the CF already writes the cumulative total to `leaderboard/{uid}`.
-
-**Severity:** MEDIUM (meaningful agent experience improvement; the foundation is now in place with the points card shipped).
+**Shipped:** `src/lib/computePoints.js` (ESM twin, Option A); `getLeaderboardPoints` in `submissionService.js`; `Celebration.jsx` points section; 7 unit tests; 5 WizardForm test factories updated. 2682/2682 Vitest; lint 0; build clean.
 
 ---
 

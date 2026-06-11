@@ -187,6 +187,11 @@ export async function getLastSubmission(tenantId, uid) {
   return recent[0] ?? null;
 }
 
+export async function getLeaderboardPoints(tenantId, uid) {
+  const snap = await getDoc(doc(db, 'tenants', tenantId, 'leaderboard', uid));
+  return snap.exists() ? (parseFloat(snap.data()?.points) || 0) : 0;
+}
+
 export async function getAgentSubmissions(tenantId, uid) {
   const q = query(
     collection(db, `tenants/${tenantId}/submissions`),
