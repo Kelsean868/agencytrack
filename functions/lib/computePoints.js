@@ -29,6 +29,13 @@ function computePoints(fields) {
     n(fields.namesFromSeminarsConducted) +
     n(fields.namesFromTradeshowsAttended);
 
+  // Mirror extractFields.js:95-97 — v2 nested shape (version === 2) first,
+  // v1 flat fallback with full priority chain. Keep in sync with extractFields.js.
+  const appsSoldVal =
+    fields.version === 2 ? fields.newBusiness?.apps : (fields.applicationsSold ?? fields.appsSold);
+  const apiSoldVal =
+    fields.version === 2 ? fields.newBusiness?.api  : (fields.apiSold || fields.api || fields.annualPremium);
+
   return (
     // ── Prospecting ────────────────────────────────────────────────────────────
     Math.floor(dials)                                               * POINTS_WEIGHTS.dials +
@@ -43,8 +50,8 @@ function computePoints(fields) {
     Math.floor(n(fields.ffiConducted))                             * POINTS_WEIGHTS.ffiConducted +
     Math.floor(n(fields.ciConducted))                              * POINTS_WEIGHTS.ciConducted +
     // ── Closing ────────────────────────────────────────────────────────────────
-    Math.floor(n(fields.applicationsSold ?? fields.appsSold))      * POINTS_WEIGHTS.applicationsSold +
-    Math.floor(n(fields.apiSold) / 1000)                           * POINTS_WEIGHTS.apiPerThousand +
+    Math.floor(n(appsSoldVal))                                     * POINTS_WEIGHTS.applicationsSold +
+    Math.floor(n(apiSoldVal) / 1000)                               * POINTS_WEIGHTS.apiPerThousand +
     // ── Service ────────────────────────────────────────────────────────────────
     Math.floor(n(fields.serviceCalls))                             * POINTS_WEIGHTS.serviceCalls +
     Math.floor(n(fields.policiesDelivered))                        * POINTS_WEIGHTS.policiesDelivered +

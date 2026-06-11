@@ -70,17 +70,19 @@ During the smoke, `FirebaseError: Missing or insufficient permissions.` fires as
 
 ---
 
-## computePoints reads after.data() directly — flat schema only (banked 2026-06-10, LOW)
+## computePoints — structural bypass of extractFields (banked 2026-06-10, downgraded 2026-06-11, LOW)
 
-**Source:** PR #558 (points-activity-scale) Phase 1 ruling — LOW FU authorized by dispatcher.
+**Source:** PR #558 (points-activity-scale) Phase 1 ruling — LOW FU authorized by dispatcher. Downgraded by PR #TBD (computepoints-field-reading): the v2 flat-field divergence (apps/API scoring 0 on v2 submissions) is fixed.
 
-`functions/lib/computePoints.js` reads raw `after.data()` fields directly, bypassing `extractFields()`. This means it only handles the **flat schema** (current wizard output). If a submission ever uses the nested step schema (`step1.referralCalls`, etc.) — currently no path creates these, but the three-arm `extractFields` already handles that variant — `computePoints` would silently score 0 on every field.
+`functions/lib/computePoints.js` reads raw `after.data()` fields directly, bypassing `extractFields()`. The **v2 divergence** — `newBusiness.{apps,api}` scoring 0 on all v2 submissions — **is fixed in PR #TBD**: `computePoints` now mirrors `extractFields.js:95-97` (version check + full v1 fallback chain). Four Jest regression tests + three sanitize-driven Vitest tests guard the fix.
 
-**Why deferred:** The nested schema arm in `extractFields` is a legacy/future-compatibility path; no live wizard or import flow writes nested submissions today. The gap is pre-existing and low-risk for the current pilot.
+The remaining structural gap: `computePoints` still bypasses `extractFields()`, so the legacy nested step schema arm (`step1.referralCalls`, etc.) would score 0 if ever exercised. No live wizard or import flow writes this shape today.
 
-**Action:** When the nested or future-schema arm of `extractFields` is ever exercised in production, update `computePoints` to call `extractFields(after.data())` and read the normalized result instead of `after.data()` directly. Alternatively, if the nested schema arm is confirmed permanently dead, delete it from `extractFields` and close this FU.
+**Why deferred:** The nested schema arm is a legacy/future-compatibility path; pre-existing and low-risk for the current pilot. Symptom fixed; structural routing is cleanup only.
 
-**Severity:** LOW (no user-visible impact today; only bites if a non-flat submission ever lands in Firestore).
+**Action:** When the nested step schema arm of `extractFields` is ever exercised in production, update `computePoints` to route through `extractFields(after.data())`. Alternatively, if the nested schema arm is confirmed permanently dead, delete it from `extractFields` and close this FU.
+
+**Severity:** LOW (v2 divergence fixed and guarded by tests; only remaining gap bites if a nested-step submission ever lands in Firestore).
 
 ---
 
@@ -185,11 +187,11 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 
 Agents now have a home surface to see cumulative points, level, streak, and badges on HomeV2 (`MyPointsCard`). The natural completion is a per-submission feedback moment: when an agent submits a weekly report, show a delta like "+N points this week" alongside the week's top-scoring activities.
 
-**Action:** After each wizard submission (success step or post-submit toast), compute the points earned for the just-submitted week using `computePoints(fields)` (the pure function already extracted in `functions/lib/computePoints.js`; a matching ESM export can be added to `src/lib/` if needed, or the computation can be inlined client-side since the weights are in `src/lib/gamificationConfig.js`). Show the delta prominently. This is a read/derive-only change — no new Firestore writes; the CF already writes the cumulative total to `leaderboard/{uid}`. Needs own brief before dispatch.
+**Scoring prereq:** `computePoints` had a live correctness bug — apps/API scored 0 on all v2 submissions. This FU's Phase 1 dispatch surfaced the bug; work was stood down and the fix shipped separately as PR #TBD (`{TBD_SHA}`). `/dispatch` the brief **after** PR #TBD merges AND `firebase deploy --only functions` completes. Brief is already on main (PR #564).
+
+**Action:** After each wizard submission (success step or post-submit toast), compute the points earned for the just-submitted week using `computePoints(fields)` (the pure function already extracted in `functions/lib/computePoints.js`; a matching ESM export can be added to `src/lib/` if needed, or the computation can be inlined client-side since the weights are in `src/lib/gamificationConfig.js`). Show the delta prominently. This is a read/derive-only change — no new Firestore writes; the CF already writes the cumulative total to `leaderboard/{uid}`.
 
 **Severity:** MEDIUM (meaningful agent experience improvement; the foundation is now in place with the points card shipped).
-
-**Severity:** MEDIUM (data integrity — manager production contaminates agent leaderboard).
 
 ---
 
