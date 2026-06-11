@@ -17,6 +17,7 @@ import RecentCompact from './RecentCompact';
 import DeliveryStripCard from './DeliveryStripCard';
 import StandardDetail from './StandardDetail';
 import CampaignCard from '../../campaigns/CampaignCard';
+import MyPointsCard from '../../gamification/MyPointsCard';
 
 /**
  * AgentDashboardHomeV2 — composed v2 home for the agent role.
@@ -224,6 +225,9 @@ export default function AgentDashboardHomeV2({
 
       {/* Pulse strip */}
       <PulseStrip pulses={pulses} activeKey={drawer === 'standard' ? 'standard' : null} onChipClick={handleChipClick} />
+
+      {/* My Points — personal gamification card (self-contained, reads leaderboard/{uid}) */}
+      <MyPointsCard />
 
       {/* Recent panel — 2-col on lg+ */}
       <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-4">

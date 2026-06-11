@@ -155,6 +155,40 @@ Firebase sends a `mode=recoverEmail` action link to the **old** email address au
 
 Recommendation: Option A. Track I is already built; the WizardForm path is an oversight.
 
+---
+
+## BadgeGrid → gamificationConfig reconciliation (banked 2026-06-10, LOW)
+
+**Source:** MyPointsCard Phase 1 audit (feat/agent-points-surface).
+
+`BadgeGrid.jsx` maintains its own local `BADGES` constant (14 entries) that has drifted from `src/lib/gamificationConfig.js` `BADGE_DEFINITIONS` (9 entries) in two ways:
+
+1. **Label drift on 4 shared keys** — gamificationConfig wins (single source of truth):
+   - `streak_8`: BadgeGrid "Consistent" → should be "Committed"
+   - `streak_13`: BadgeGrid "Unstoppable" → should be "Quarter Strong"
+   - `top_apps_week`: BadgeGrid "App Machine" → should be "Closer"
+   - `century_dials`: BadgeGrid "Dialler" → should be "Century"
+
+2. **5 aspirational badges in BadgeGrid not in gamificationConfig** — client-computed stubs requiring server-side or cross-submission logic not yet in the CF pipeline: `dial_king` (highest dials in unit), `sharpshooter` (closing ratio > 80%), `mdrt_bound` (YTD API crosses 50% MDRT threshold), `untouchable` (52 consecutive weeks), `consistent` (12 months ≥ 90% persistency).
+
+**Why deferred:** `MyPointsCard` already reads from `BADGE_DEFINITIONS` (the correct source). The drift only affects the CareerPortal / BadgeGrid surface.
+
+**Action:** (1) Align the 4 drifted labels in `BadgeGrid.jsx` to gamificationConfig values. (2) Decide the 5 aspirational badges: implement CF scoring and add to `BADGE_DEFINITIONS`, or remove from BadgeGrid until the CF pipeline supports them. End state: gamificationConfig as the single badge source; BadgeGrid may keep a thin decorator layer for CareerPortal display metadata (Icon, gradient, tier) not carried by config.
+
+**Severity:** LOW (label inconsistency, no broken functionality).
+
+---
+
+## Weekly "you earned N points this week" summary (banked 2026-06-10, MEDIUM next-build)
+
+**Source:** Phase 4 banking from feat/agent-points-surface (MyPointsCard + PointsInfoPanel).
+
+Agents now have a home surface to see cumulative points, level, streak, and badges on HomeV2 (`MyPointsCard`). The natural completion is a per-submission feedback moment: when an agent submits a weekly report, show a delta like "+N points this week" alongside the week's top-scoring activities.
+
+**Action:** After each wizard submission (success step or post-submit toast), compute the points earned for the just-submitted week using `computePoints(fields)` (the pure function already extracted in `functions/lib/computePoints.js`; a matching ESM export can be added to `src/lib/` if needed, or the computation can be inlined client-side since the weights are in `src/lib/gamificationConfig.js`). Show the delta prominently. This is a read/derive-only change — no new Firestore writes; the CF already writes the cumulative total to `leaderboard/{uid}`. Needs own brief before dispatch.
+
+**Severity:** MEDIUM (meaningful agent experience improvement; the foundation is now in place with the points card shipped).
+
 **Severity:** MEDIUM (data integrity — manager production contaminates agent leaderboard).
 
 ---
