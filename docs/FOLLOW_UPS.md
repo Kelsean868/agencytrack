@@ -102,7 +102,7 @@ During the smoke, `FirebaseError: Missing or insufficient permissions.` fires as
 
 `functions/lib/computePoints.js` reads raw `after.data()` fields directly, bypassing `extractFields()`. The **v2 divergence** — `newBusiness.{apps,api}` scoring 0 on all v2 submissions — **is fixed in PR #566**: `computePoints` now mirrors `extractFields.js:95-97` (version check + full v1 fallback chain). Four Jest regression tests + three sanitize-driven Vitest tests guard the fix.
 
-The remaining structural gap: `computePoints` (both CJS `functions/lib/computePoints.js` and ESM `src/lib/computePoints.js` twin added in weekly-points-summary PR #TBD) still bypass `extractFields()`, reading raw flat fields directly. The legacy nested step schema arm (`step1.referralCalls`, etc.) would score 0 if ever exercised. No live wizard or import flow writes this shape today. **ESM twin stays flat-schema by design** (same shape as `after.data()` — the trust guarantee for the "+N pts" display).
+The remaining structural gap: `computePoints` (both CJS `functions/lib/computePoints.js` and ESM `src/lib/computePoints.js` twin added in weekly-points-summary PR #567) still bypass `extractFields()`, reading raw flat fields directly. The legacy nested step schema arm (`step1.referralCalls`, etc.) would score 0 if ever exercised. No live wizard or import flow writes this shape today. **ESM twin stays flat-schema by design** (same shape as `after.data()` — the trust guarantee for the "+N pts" display).
 
 **Why deferred:** The nested schema arm is a legacy/future-compatibility path; pre-existing and low-risk for the current pilot. Symptom fixed; structural routing is cleanup only.
 
@@ -4546,8 +4546,8 @@ Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30. **RESOLVED: Gam
 
 Game Plan v2 **Slice 1** (PR #438) shipped the shell + Money Needs re-home. The remaining slices each introduce **net-new data** (a new store, read, write, or user attribute) and were deliberately deferred — none is a port:
 
-- **Year Plan (allocator):** product-line split, percent/direct mode, add-line, award-eligibility calc, license-profile tabs. **Slice 1 (data foundation) IN FLIGHT — PR #TBD:** `yearPlan/{year}` subcollection + `yearPlanService.js` (`createYearPlan` / `getYearPlan` / `resolveLicenseProfile` / `LICENSE_PROFILES`) + Firestore owner-only rules + `licenseProfile` user-allowlist edit; 19 unit tests + 23 emulator rules tests. Full scoping: [`docs/design/year-plan-scoping-notes.md`](../design/year-plan-scoping-notes.md). Manager-read arm + profile-to-line gating + first prod smoke → Slice 2 (see below).
-- **License-profile user attribute:** Composite / Life-only / General-only. **SHIPPED in Year Plan data-foundation (PR #TBD):** `licenseProfile` appended to user self-update `hasOnly` allowlist in `firestore.rules`; `resolveLicenseProfile(userDoc)` in `yearPlanService.js` returns `'composite'` default for absent/invalid values; `LICENSE_PROFILES` const exported. Profile-to-line gating (tab visibility per license type) deferred to Slice 2.
+- **Year Plan (allocator):** product-line split, percent/direct mode, add-line, award-eligibility calc, license-profile tabs. **Slice 1 (data foundation) SHIPPED — PR #571:** `yearPlan/{year}` subcollection + `yearPlanService.js` (`createYearPlan` / `getYearPlan` / `resolveLicenseProfile` / `LICENSE_PROFILES`) + Firestore owner-only rules + `licenseProfile` user-allowlist edit; 19 unit tests + 23 emulator rules tests. Full scoping: [`docs/design/year-plan-scoping-notes.md`](../design/year-plan-scoping-notes.md). Manager-read arm + profile-to-line gating + first prod smoke → Slice 2 (see below).
+- **License-profile user attribute:** Composite / Life-only / General-only. **SHIPPED in Year Plan data-foundation (PR #571):** `licenseProfile` appended to user self-update `hasOnly` allowlist in `firestore.rules`; `resolveLicenseProfile(userDoc)` in `yearPlanService.js` returns `'composite'` default for absent/invalid values; `LICENSE_PROFILES` const exported. Profile-to-line gating (tab visibility per license type) deferred to Slice 2.
 - **Monthly Plan:** 12-month target-vs-actual chart, the monthly **target store** (plan) + **actual-by-month read** (production), variance + "to finish the month" suggestions. → new store + read.
 - **Review & Commit → Goals write:** the loop-close — writes personal API/apps into the 3-tier Goals system. The status pill goes live (draft → committed) only here. → new write.
 - **Manager review / suggest workflow:** the share-with-manager affordance (the NEW one — distinct from Money Needs' existing visibility toggle, which Slice 1 preserved), manager read of the shared plan, suggest-a-change + notify, plan-health banner. → new workflow.
@@ -4561,7 +4561,7 @@ Game Plan v2 **Slice 1** (PR #438) shipped the shell + Money Needs re-home. The 
 - **Profile → line gating + A&H license-domain confirm:** `life_only` → Life + A&H tabs only; `general_only` → Property + Motor + A&H tabs only. A&H license-domain (life vs. general) needs a product decision before encoding. Deferred to Slice 2.
 - **First production write-read-verify smoke:** Slice 1 is headless (no UI path) — smoke runs when the agent-UI surface ships in Slice 2.
 
-Banked: Game Plan v2 Slice 1 (PR #438), 2026-06-03. Year Plan data foundation Slice 1 of 3 (PR #TBD, SHA {TBD}), 2026-06-11.
+Banked: Game Plan v2 Slice 1 (PR #438), 2026-06-03. Year Plan data foundation Slice 1 of 3 (PR #571, `c3947ad`), 2026-06-11.
 
 ---
 
