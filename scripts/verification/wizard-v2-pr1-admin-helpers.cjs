@@ -96,7 +96,6 @@ process.stdin.on('data', async (chunk) => {
           break;
         case 'exit':
           process.exit(0);
-          // eslint-disable-next-line no-unreachable
           break;
         default:
           res = { error: 'unknown op' };

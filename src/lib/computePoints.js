@@ -12,6 +12,7 @@ import { POINTS_WEIGHTS } from './gamificationConfig.js';
  * @returns {number}       Integer point total for this submission.
  */
 function computePoints(fields) {
+  if (!fields) return 0;
   const n = (v) => Math.max(0, parseFloat(v) || 0);
 
   // Dial types are summed first, then floored as a unit — preserves the
