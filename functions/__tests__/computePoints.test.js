@@ -208,6 +208,50 @@ describe('computePoints — service-work zero/absent fields contribute 0 (no NaN
   });
 });
 
+// ── v2 nested schema (newBusiness.apps / newBusiness.api) ────────────────────
+
+// V2_FIXTURE mirrors the shape sanitize() writes for a v2 submission.
+// sanitize() sets version:2 and nests apps/API under newBusiness — the flat
+// applicationsSold / apiSold fields are NOT written. This fixture proves the fix.
+//
+//   ffi   (2) * 5  = 10
+//   ci    (1) * 10 = 10
+//   apps  (newBusiness.apps=2) * 25 = 50
+//   api   (newBusiness.api=5000) floor÷1k * 1 = 5
+//   TOTAL = 75
+
+const V2_FIXTURE = {
+  version: 2,
+  newBusiness:  { apps: 2, api: 5000 },
+  pppIncreases: { apps: 0, apiIncrease: 0 },
+  lumpsums:     { grossAmount: 0, apiCredit: 0, commission: 0 },
+  livesSold:    2,
+  ffiConducted: 2,
+  ciConducted:  1,
+};
+
+describe('computePoints — v2 nested schema (newBusiness.apps / newBusiness.api)', () => {
+  test('v2 fixture → 75 (apps + API score from nested fields)', () => {
+    expect(computePoints(V2_FIXTURE)).toBe(75);
+  });
+
+  test('v2: ghost flat applicationsSold/apiSold are ignored — version:2 wins', () => {
+    // Flat fields must not inflate the score when version === 2.
+    const withGhosts = { ...V2_FIXTURE, applicationsSold: 999, apiSold: 999000 };
+    expect(computePoints(withGhosts)).toBe(75);
+  });
+
+  test('v2: newBusiness.apps=0 scores 0 applications even when flat appsSold is set', () => {
+    const zeroApps = { ...V2_FIXTURE, newBusiness: { apps: 0, api: 5000 }, appsSold: 5 };
+    expect(computePoints(zeroApps)).toBe(5 + 10 + 10); // api:5 + ffi:10 + ci:10
+  });
+
+  test('v2: newBusiness.api=0 scores 0 API points even when flat apiSold is set', () => {
+    const zeroApi = { ...V2_FIXTURE, newBusiness: { apps: 2, api: 0 }, apiSold: 99000 };
+    expect(computePoints(zeroApi)).toBe(50 + 10 + 10); // apps:50 + ffi:10 + ci:10
+  });
+});
+
 // ── resolveLevel — new threshold boundaries ───────────────────────────────────
 
 describe('resolveLevel — new thresholds (provisional, tune at pilot week 4–6)', () => {
