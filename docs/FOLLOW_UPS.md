@@ -155,6 +155,40 @@ Firebase sends a `mode=recoverEmail` action link to the **old** email address au
 
 Recommendation: Option A. Track I is already built; the WizardForm path is an oversight.
 
+---
+
+## BadgeGrid → gamificationConfig reconciliation (banked 2026-06-10, LOW)
+
+**Source:** MyPointsCard Phase 1 audit (feat/agent-points-surface).
+
+`BadgeGrid.jsx` maintains its own local `BADGES` constant (14 entries) that has drifted from `src/lib/gamificationConfig.js` `BADGE_DEFINITIONS` (9 entries) in two ways:
+
+1. **Label drift on 4 shared keys** — gamificationConfig wins (single source of truth):
+   - `streak_8`: BadgeGrid "Consistent" → should be "Committed"
+   - `streak_13`: BadgeGrid "Unstoppable" → should be "Quarter Strong"
+   - `top_apps_week`: BadgeGrid "App Machine" → should be "Closer"
+   - `century_dials`: BadgeGrid "Dialler" → should be "Century"
+
+2. **5 aspirational badges in BadgeGrid not in gamificationConfig** — client-computed stubs requiring server-side or cross-submission logic not yet in the CF pipeline: `dial_king` (highest dials in unit), `sharpshooter` (closing ratio > 80%), `mdrt_bound` (YTD API crosses 50% MDRT threshold), `untouchable` (52 consecutive weeks), `consistent` (12 months ≥ 90% persistency).
+
+**Why deferred:** `MyPointsCard` already reads from `BADGE_DEFINITIONS` (the correct source). The drift only affects the CareerPortal / BadgeGrid surface.
+
+**Action:** (1) Align the 4 drifted labels in `BadgeGrid.jsx` to gamificationConfig values. (2) Decide the 5 aspirational badges: implement CF scoring and add to `BADGE_DEFINITIONS`, or remove from BadgeGrid until the CF pipeline supports them. End state: gamificationConfig as the single badge source; BadgeGrid may keep a thin decorator layer for CareerPortal display metadata (Icon, gradient, tier) not carried by config.
+
+**Severity:** LOW (label inconsistency, no broken functionality).
+
+---
+
+## Weekly "you earned N points this week" summary (banked 2026-06-10, MEDIUM next-build)
+
+**Source:** Phase 4 banking from feat/agent-points-surface (MyPointsCard + PointsInfoPanel).
+
+Agents now have a home surface to see cumulative points, level, streak, and badges on HomeV2 (`MyPointsCard`). The natural completion is a per-submission feedback moment: when an agent submits a weekly report, show a delta like "+N points this week" alongside the week's top-scoring activities.
+
+**Action:** After each wizard submission (success step or post-submit toast), compute the points earned for the just-submitted week using `computePoints(fields)` (the pure function already extracted in `functions/lib/computePoints.js`; a matching ESM export can be added to `src/lib/` if needed, or the computation can be inlined client-side since the weights are in `src/lib/gamificationConfig.js`). Show the delta prominently. This is a read/derive-only change — no new Firestore writes; the CF already writes the cumulative total to `leaderboard/{uid}`. Needs own brief before dispatch.
+
+**Severity:** MEDIUM (meaningful agent experience improvement; the foundation is now in place with the points card shipped).
+
 **Severity:** MEDIUM (data integrity — manager production contaminates agent leaderboard).
 
 ---
@@ -183,11 +217,13 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 
 ---
 
-## Suite-level CI flakiness — 4 non-nudge files (banked 2026-06-08, post-pilot)
+## Suite-level CI flakiness — 6 files (ACTIVE/blocking — elevated 2026-06-11, ref PR #561)
+
+**Status:** ACTIVE/blocking. PR #561 (`7a02b63`) required a Rule 13 CI waiver after 3 consecutive `lint-and-build` failures on 3 *different* unrelated tests. This is now a merge blocker, not a post-pilot deferral.
 
 **Source:** 50× suite burn (TZ=UTC, 2026-06-07) run as part of the nudge flake stabilization matrix (PR #543). Suite failure rate: **38/50 (76%) on non-nudge files**; nudge test was **0/50** (the fix works). CI is broadly flaky beyond the nudge test; this is a real re-run tax.
 
-**Failing files (4 unique, 0 nudge):**
+**Failing files (6 unique, confirmed post-#543):**
 
 | File | Classification | Notes |
 |------|---------------|-------|
@@ -195,10 +231,17 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 | `src/components/wizard/__tests__/WizardFormV2RetirementR2.test.jsx` | 28968bb — RTL anti-pattern sweep | Same class |
 | `src/components/awards/__tests__/AwardsRulesetPanel.test.jsx` | NEW — not in 28968bb | Root cause unknown; investigate |
 | `src/components/wizard/__tests__/WizardFormV2RetirementR1.test.jsx` | NEW — not in 28968bb | Root cause unknown; investigate |
+| `src/components/manager/__tests__/CompliancePanel.nudge.test.jsx` | #543 fix + probation — still flaking | Probation effectively failed; #543 fix insufficient |
+| `src/components/agent/__tests__/PolicyLedgerPanel.test.jsx` | NEW (surfaced PR #561 run 3) | Root cause unknown; investigate |
 
-**Action (post-pilot):** Diagnose per file. 28968bb files likely have the same `delay:null` / missing-`userEvent` async batching pattern as the nudge fix — apply the same `userEvent.setup()` + `CHIP_WAIT` treatment. New files need investigation first. Each fix ships as a standalone test-only PR; these are CI re-run tax, not correctness bugs. **Defer until after pilot stabilizes.**
+**Root-cause candidates (banked 2026-06-11):**
+- CI runner resource contention — GitHub Actions runner slower than local; `waitFor` default timeouts (1000ms) too tight under load
+- Test isolation leakage — state bleed between test files in parallel Vitest worker pool
+- `waitFor` timeouts need per-call explicit extension (e.g. `{ timeout: 5000 }`) or Vitest `testTimeout` global increase for async-heavy suites
 
-**Severity:** MEDIUM (post-pilot). No user-visible regressions — all failures are async-timing in tests, not in production code.
+**Action (ACTIVE):** Diagnose per file. 28968bb + CompliancePanel.nudge files likely have the same `delay:null` / missing-`userEvent` async batching pattern — apply the same `userEvent.setup()` + `CHIP_WAIT` treatment. New files (AwardsRulesetPanel, WizardFormV2R1, PolicyLedgerPanel) need investigation. Consider raising `testTimeout` globally in `vite.config.js` as a blunt instrument while targeted fixes land. Each fix ships as a standalone test-only PR.
+
+**Severity:** HIGH — now blocking merges (3 consecutive CI failures on PR #561 all required Rule 13 waivers). No user-visible regressions — all failures are async-timing in tests, not in production code.
 
 ---
 
