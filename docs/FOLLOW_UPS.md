@@ -15,6 +15,32 @@ Both surfaces documented in CLAUDE.md § Key Technical Decisions. Guard activate
 
 ---
 
+## Money Needs — per-tenant taxonomy via `config/budgetCategories` (banked 2026-06-11, LOW)
+
+**Source:** money-needs-default-seed brief § 2 (dispatcher decision — deferred multi-tenant upgrade).
+
+The canonical T&T expense taxonomy ships as a code constant (`DEFAULT_MONEY_NEEDS_CATEGORIES` in `moneyNeedsService.js`). Correct for the single-tenant pilot. The PRD originally planned a `config/budgetCategories` Firestore doc for per-tenant taxonomy customization (different carriers, different expense categories or industry events).
+
+**Why deferred:** Single-tenant pilot — per-tenant customization adds a Firestore collection + rules block + admin UI not needed before the Tatil demo. `createMoneyNeeds` uses the code constant directly.
+
+**Action:** Add `tenants/{tenantId}/config/budgetCategories` doc; update `createMoneyNeeds` to fetch and merge it (falling back to `DEFAULT_MONEY_NEEDS_CATEGORIES` if absent). Add tenant_admin UI to manage the taxonomy. Requires rules block + composite index for the new collection path.
+
+**Severity:** LOW (pilot is single-tenant; deferred to multi-tenant expansion).
+
+---
+
+## Money Needs — Loans/Debt seed: 6-category decision record (banked 2026-06-11, RESOLVED)
+
+**Source:** money-needs-default-seed Phase 1 dispatcher ruling (2026-06-11).
+
+The original "Organize your money needs" Excel sheet listed 10 Loans/Debt rows with numbered duplicates (Credit Card #1/#2, Car Loan #1/#2, Personal Loan #1/#2, Sou-sou #1/#2, Hire-Purchase, Other). The brief flagged these as a spreadsheet artifact and escalated to dispatcher.
+
+**Decision (dispatcher, 2026-06-11):** Seed 6 unique categories — Credit Card · Car Loan · Personal Loan · Sou-sou · Hire-Purchase · Other (all Monthly). Drop the #1/#2 duplicates; "Add your own" handles a second card/loan.
+
+**Status:** RESOLVED — implemented in money-needs-default-seed PR #TBD (`src/services/moneyNeedsService.js`, `DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.loansDebt`, 6 `seed-ld-*` items). No further action required.
+
+---
+
 ## Restore smoke-harness tenant-admin account (banked 2026-06-10, HIGH)
 
 **Source:** PR #547 smoke waiver — pilot cleanup deleted `kelsean+tenantadmin@gmail.com` (uid `4GeeZbhZBwdtGOLoJoggf4MQo142`), the dedicated tenant_admin test account used by A11Y smoke harness (`A11Y_TENANT_ADMIN_EMAIL`).

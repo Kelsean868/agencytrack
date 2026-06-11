@@ -71,7 +71,7 @@ describe('createMoneyNeeds', () => {
     expect(result.id).toBe('2026');
   });
 
-  it('scaffolds all 5 expense groups with empty lineItems', async () => {
+  it('scaffolds all 5 expense groups with seeded lineItems', async () => {
     hoisted.mockGetDoc.mockResolvedValue(hoisted.makeDocSnap(false, null));
 
     await createMoneyNeeds(TENANT_ID, UID, YEAR);
@@ -82,13 +82,18 @@ describe('createMoneyNeeds', () => {
       'fixedExpenses', 'livingExpenses', 'businessExpenses',
       'savingsAccumulation', 'miscellaneous',
     ]);
+    expect(groups.fixedExpenses.lineItems).toHaveLength(7);
+    expect(groups.livingExpenses.lineItems).toHaveLength(8);
+    expect(groups.businessExpenses.lineItems).toHaveLength(7);
+    expect(groups.savingsAccumulation.lineItems).toHaveLength(6);
+    expect(groups.miscellaneous.lineItems).toHaveLength(6);
     for (const g of Object.values(groups)) {
-      expect(g.lineItems).toEqual([]);
       expect(g.groupAnnualTotal).toBe(0);
+      expect(g.subCalculatorRefs).toEqual([]);
     }
   });
 
-  it('scaffolds all 3 sub-calculators', async () => {
+  it('scaffolds all 3 sub-calculators with seeded lineItems', async () => {
     hoisted.mockGetDoc.mockResolvedValue(hoisted.makeDocSnap(false, null));
 
     await createMoneyNeeds(TENANT_ID, UID, YEAR);
@@ -97,8 +102,11 @@ describe('createMoneyNeeds', () => {
     const sc = payload.subCalculators;
     expect(Object.keys(sc)).toEqual(['insuranceIndustry', 'carExpenses', 'loansDebt']);
     expect(sc.insuranceIndustry.annualTotal).toBe(0);
+    expect(sc.insuranceIndustry.lineItems).toHaveLength(11);
     expect(sc.carExpenses.personalSharePct).toBe(33);
+    expect(sc.carExpenses.lineItems).toHaveLength(8);
     expect(sc.loansDebt.annualTotal).toBe(0);
+    expect(sc.loansDebt.lineItems).toHaveLength(6);
   });
 
   it('stores tenantId and uid on the doc', async () => {
@@ -133,6 +141,90 @@ describe('createMoneyNeeds', () => {
     expect(result.id).toBe('2026');
     const payload = hoisted.mockSetDoc.mock.calls[0][1];
     expect(payload.year).toBe(2026);
+  });
+});
+
+// ── createMoneyNeeds — seeded taxonomy ───────────────────────────────────────
+
+describe('createMoneyNeeds — seeded taxonomy', () => {
+  beforeEach(() => {
+    hoisted.mockGetDoc.mockResolvedValue(hoisted.makeDocSnap(false, null));
+  });
+
+  async function getPayload() {
+    await createMoneyNeeds(TENANT_ID, UID, YEAR);
+    return hoisted.mockSetDoc.mock.calls[0][1];
+  }
+
+  it('seeds the correct item count per expense group (7-8-7-6-6)', async () => {
+    const { expenseGroups: g } = await getPayload();
+    expect(g.fixedExpenses.lineItems).toHaveLength(7);
+    expect(g.livingExpenses.lineItems).toHaveLength(8);
+    expect(g.businessExpenses.lineItems).toHaveLength(7);
+    expect(g.savingsAccumulation.lineItems).toHaveLength(6);
+    expect(g.miscellaneous.lineItems).toHaveLength(6);
+  });
+
+  it('seeds the correct item count per sub-calculator (11-8-6)', async () => {
+    const { subCalculators: sc } = await getPayload();
+    expect(sc.insuranceIndustry.lineItems).toHaveLength(11);
+    expect(sc.carExpenses.lineItems).toHaveLength(8);
+    expect(sc.loansDebt.lineItems).toHaveLength(6);
+  });
+
+  it('every seeded item has isCustom: false, amount: 0, annualizedAmount: 0', async () => {
+    const payload = await getPayload();
+    const allItems = [
+      ...Object.values(payload.expenseGroups).flatMap((g) => g.lineItems),
+      ...Object.values(payload.subCalculators).flatMap((sc) => sc.lineItems),
+    ];
+    expect(allItems.length).toBeGreaterThan(0);
+    for (const item of allItems) {
+      expect(item.isCustom).toBe(false);
+      expect(item.amount).toBe(0);
+      expect(item.annualizedAmount).toBe(0);
+    }
+  });
+
+  it('every seeded item frequency is a valid FREQUENCY_MULTIPLIERS key', async () => {
+    const payload = await getPayload();
+    const validFreqs = Object.keys(FREQUENCY_MULTIPLIERS);
+    const allItems = [
+      ...Object.values(payload.expenseGroups).flatMap((g) => g.lineItems),
+      ...Object.values(payload.subCalculators).flatMap((sc) => sc.lineItems),
+    ];
+    for (const item of allItems) {
+      expect(validFreqs).toContain(item.frequency);
+    }
+  });
+
+  it('every seeded item has a non-empty id and label', async () => {
+    const payload = await getPayload();
+    const allItems = [
+      ...Object.values(payload.expenseGroups).flatMap((g) => g.lineItems),
+      ...Object.values(payload.subCalculators).flatMap((sc) => sc.lineItems),
+    ];
+    for (const item of allItems) {
+      expect(typeof item.id).toBe('string');
+      expect(item.id.length).toBeGreaterThan(0);
+      expect(typeof item.label).toBe('string');
+      expect(item.label.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('seeded ids are unique across all groups and sub-calculators', async () => {
+    const payload = await getPayload();
+    const allIds = [
+      ...Object.values(payload.expenseGroups).flatMap((g) => g.lineItems.map((i) => i.id)),
+      ...Object.values(payload.subCalculators).flatMap((sc) => sc.lineItems.map((i) => i.id)),
+    ];
+    expect(new Set(allIds).size).toBe(allIds.length);
+  });
+
+  it('existing doc path does not call setDoc (idempotency gate)', async () => {
+    hoisted.mockGetDoc.mockResolvedValue(hoisted.makeDocSnap(true, EXISTING_DOC_DATA));
+    await createMoneyNeeds(TENANT_ID, UID, YEAR);
+    expect(hoisted.mockSetDoc).not.toHaveBeenCalled();
   });
 });
 
