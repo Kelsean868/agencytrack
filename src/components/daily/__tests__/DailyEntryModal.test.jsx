@@ -124,6 +124,7 @@ describe('DailyEntryModal', () => {
     const onClose = vi.fn();
     render(<DailyEntryModal onClose={onClose} />);
     const saveBtn = await screen.findByRole('button', { name: /^save$/i });
+    await waitFor(() => expect(saveBtn).not.toBeDisabled()); // button is disabled while loading; wait for enabled
     fireEvent.click(saveBtn);
     await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
   });

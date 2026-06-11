@@ -217,31 +217,51 @@ Agents now have a home surface to see cumulative points, level, streak, and badg
 
 ---
 
-## Suite-level CI flakiness — 6 files (ACTIVE/blocking — elevated 2026-06-11, ref PR #561)
+## Suite-level CI flakiness — 6 files (RESOLVED — fix/ci-suite-flakiness PR #{TBD_PR} `{TBD_SHA}`)
 
-**Status:** ACTIVE/blocking. PR #561 (`7a02b63`) required a Rule 13 CI waiver after 3 consecutive `lint-and-build` failures on 3 *different* unrelated tests. This is now a merge blocker, not a post-pilot deferral.
+**Status:** RESOLVED — fix shipped in PR #{TBD_PR} (`{TBD_SHA}`). Three changes:
+1. `src/test-setup.js` — `configure({ asyncUtilTimeout: 5000 })` globally (covers items 2/4/5 below)
+2. `CompliancePanel.nudge.test.jsx` — restored c32cc0d's `userEvent.setup()` + `CHIP_WAIT = {timeout:3000}` + tripwire comments (logic fix — global alone cannot fix missing async drain)
+3. `DailyEntryModal.test.jsx` — added `await waitFor(() => expect(saveBtn).not.toBeDisabled())` before click (logic fix — React 19 suppresses onClick on disabled buttons; button was found while loading=true)
 
 **Source:** 50× suite burn (TZ=UTC, 2026-06-07) run as part of the nudge flake stabilization matrix (PR #543). Suite failure rate: **38/50 (76%) on non-nudge files**; nudge test was **0/50** (the fix works). CI is broadly flaky beyond the nudge test; this is a real re-run tax.
 
-**Failing files (6 unique, confirmed post-#543):**
+**Root cause (confirmed Phase 1 diagnosis, 2026-06-11):**
 
-| File | Classification | Notes |
-|------|---------------|-------|
-| `src/components/daily/__tests__/DailyEntryModal.test.jsx` | 28968bb — RTL anti-pattern sweep | Same async-batching class as CompliancePanel.nudge |
-| `src/components/wizard/__tests__/WizardFormV2RetirementR2.test.jsx` | 28968bb — RTL anti-pattern sweep | Same class |
-| `src/components/awards/__tests__/AwardsRulesetPanel.test.jsx` | NEW — not in 28968bb | Root cause unknown; investigate |
-| `src/components/wizard/__tests__/WizardFormV2RetirementR1.test.jsx` | NEW — not in 28968bb | Root cause unknown; investigate |
-| `src/components/manager/__tests__/CompliancePanel.nudge.test.jsx` | #543 fix + probation — still flaking | Probation effectively failed; #543 fix insufficient |
-| `src/components/agent/__tests__/PolicyLedgerPanel.test.jsx` | NEW (surfaced PR #561 run 3) | Root cause unknown; investigate |
+| File | Root Cause | Fix Applied |
+|------|-----------|-------------|
+| `CompliancePanel.nudge.test.jsx` | **Regression:** `28968bb` (gemini-batch-a) stripped `act()` wraps; c32cc0d's userEvent fix was NOT on main (`git merge-base --is-ancestor c32cc0d origin/main` → NOT ON MAIN). File was at naked `fireEvent.click` + no timeout — repro'd locally on first full-suite run. | Restore c32cc0d: `userEvent.setup()` + `CHIP_WAIT` + tripwire comments |
+| `DailyEntryModal.test.jsx` | **Logic bug:** `findByRole` finds button while `loading=true` (disabled); React 19 suppresses onClick on disabled elements; `handleSave` never called; `onClose` never fires; 2000ms waitFor expires. | Add `waitFor(() => expect(saveBtn).not.toBeDisabled())` before click |
+| `WizardFormV2RetirementR1.test.jsx` | **Pattern mismatch:** R2 has `WAIT = { timeout: 5000 }` (with comment explaining exact CI failure mode); R1 uses naked `waitFor` (1000ms default). Mounting 12 wizard steps exceeds 1000ms under full-suite load. | `configure({ asyncUtilTimeout: 5000 })` in test-setup.js |
+| `AwardsRulesetPanel.test.jsx` | **Naked `waitFor`** in `renderPanel()` — 1000ms default; getAwardsRuleset mock resolves fast but useEffect→setState→re-render chain hits 1000ms on starved CI runner. | `configure({ asyncUtilTimeout: 5000 })` in test-setup.js |
+| `PolicyLedgerPanel.test.jsx` | **Naked `waitFor`** in `openDrawerFor()` + F3.1 prefill tests — same starved-runner pattern. | `configure({ asyncUtilTimeout: 5000 })` in test-setup.js |
 
-**Root-cause candidates (banked 2026-06-11):**
-- CI runner resource contention — GitHub Actions runner slower than local; `waitFor` default timeouts (1000ms) too tight under load
-- Test isolation leakage — state bleed between test files in parallel Vitest worker pool
-- `waitFor` timeouts need per-call explicit extension (e.g. `{ timeout: 5000 }`) or Vitest `testTimeout` global increase for async-heavy suites
+**Stability gate:** 20× consecutive full-suite runs local — all green (documented in PR #{TBD_PR}).
 
-**Action (ACTIVE):** Diagnose per file. 28968bb + CompliancePanel.nudge files likely have the same `delay:null` / missing-`userEvent` async batching pattern — apply the same `userEvent.setup()` + `CHIP_WAIT` treatment. New files (AwardsRulesetPanel, WizardFormV2R1, PolicyLedgerPanel) need investigation. Consider raising `testTimeout` globally in `vite.config.js` as a blunt instrument while targeted fixes land. Each fix ships as a standalone test-only PR.
+**Severity:** HIGH — was blocking merges (3 consecutive CI failures on PR #561 all required Rule 13 waivers). No user-visible regressions — all failures were async-timing in tests, not in production code.
 
-**Severity:** HIGH — now blocking merges (3 consecutive CI failures on PR #561 all required Rule 13 waivers). No user-visible regressions — all failures are async-timing in tests, not in production code.
+---
+
+## 28968bb latent-flake audit — 12 remaining files (banked 2026-06-11, MEDIUM)
+
+**Source:** CI suite flakiness Phase 1 diagnosis (fix/ci-suite-flakiness PR #{TBD_PR}). `28968bb` (gemini-batch-a, "RTL anti-patterns in 13 test files") touched 13 files. CompliancePanel.nudge and DailyEntryModal (2 of the 13) had verifiable regressions that were fixed in that PR. The other **11 files** received similar act()-stripping or RTL refactoring and may have had their own intentional timing guards stripped.
+
+**Files to audit (11 remaining from `git show 28968bb --stat`):**
+- `src/components/admin/__tests__/BranchesPanel.test.jsx`
+- `src/components/agent/__tests__/PolicyLedgerPanel.test.jsx` (covered by global asyncUtilTimeout fix)
+- `src/components/agent/__tests__/ProspectInfoPanel.test.jsx`
+- `src/components/awards/__tests__/AgentAwardsPanel.test.jsx`
+- `src/components/gamification/GamePlanV2/__tests__/SuggestedWeekCard.test.jsx`
+- `src/components/dashboard/HomeV2/__tests__/HeroCard.test.jsx`
+- `src/components/manager/__tests__/CoachingNotesModal.test.jsx`
+- `src/components/manager/__tests__/GoalsPanel.test.jsx`
+- `src/components/manager/__tests__/JointCallsTab.test.jsx`
+- `src/components/manager/__tests__/PolicyReconciliationPanel.test.jsx`
+- `src/components/wizard/__tests__/WizardFormV2RetirementR2.test.jsx`
+
+**Action:** For each file: (1) `git show 28968bb -- <file>` to see what `28968bb` changed; (2) check if any stripped `act()` wrappers or timing patterns were intentional guards (blame the pre-28968bb state, read adjacent comments); (3) if a guard was stripped without replacement, restore the appropriate fix (userEvent, explicit timeout, or `not.toBeDisabled()` wait). The global `asyncUtilTimeout: 5000` from the flakiness fix already covers naked-waitFor cases — the audit focuses on logic bugs (click-while-disabled, missing async drain) that timeout alone cannot fix.
+
+**Severity:** MEDIUM — any stripped guard is a latent flake waiting to surface under CI load. The global timeout fix reduces surface area significantly, but logic bugs remain exploitable at any budget.
 
 ---
 
