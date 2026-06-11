@@ -217,11 +217,13 @@ Agents now have a home surface to see cumulative points, level, streak, and badg
 
 ---
 
-## Suite-level CI flakiness — 4 non-nudge files (banked 2026-06-08, post-pilot)
+## Suite-level CI flakiness — 6 files (ACTIVE/blocking — elevated 2026-06-11, ref PR #561)
+
+**Status:** ACTIVE/blocking. PR #561 (`7a02b63`) required a Rule 13 CI waiver after 3 consecutive `lint-and-build` failures on 3 *different* unrelated tests. This is now a merge blocker, not a post-pilot deferral.
 
 **Source:** 50× suite burn (TZ=UTC, 2026-06-07) run as part of the nudge flake stabilization matrix (PR #543). Suite failure rate: **38/50 (76%) on non-nudge files**; nudge test was **0/50** (the fix works). CI is broadly flaky beyond the nudge test; this is a real re-run tax.
 
-**Failing files (4 unique, 0 nudge):**
+**Failing files (6 unique, confirmed post-#543):**
 
 | File | Classification | Notes |
 |------|---------------|-------|
@@ -229,10 +231,17 @@ Agents now have a home surface to see cumulative points, level, streak, and badg
 | `src/components/wizard/__tests__/WizardFormV2RetirementR2.test.jsx` | 28968bb — RTL anti-pattern sweep | Same class |
 | `src/components/awards/__tests__/AwardsRulesetPanel.test.jsx` | NEW — not in 28968bb | Root cause unknown; investigate |
 | `src/components/wizard/__tests__/WizardFormV2RetirementR1.test.jsx` | NEW — not in 28968bb | Root cause unknown; investigate |
+| `src/components/manager/__tests__/CompliancePanel.nudge.test.jsx` | #543 fix + probation — still flaking | Probation effectively failed; #543 fix insufficient |
+| `src/components/agent/__tests__/PolicyLedgerPanel.test.jsx` | NEW (surfaced PR #561 run 3) | Root cause unknown; investigate |
 
-**Action (post-pilot):** Diagnose per file. 28968bb files likely have the same `delay:null` / missing-`userEvent` async batching pattern as the nudge fix — apply the same `userEvent.setup()` + `CHIP_WAIT` treatment. New files need investigation first. Each fix ships as a standalone test-only PR; these are CI re-run tax, not correctness bugs. **Defer until after pilot stabilizes.**
+**Root-cause candidates (banked 2026-06-11):**
+- CI runner resource contention — GitHub Actions runner slower than local; `waitFor` default timeouts (1000ms) too tight under load
+- Test isolation leakage — state bleed between test files in parallel Vitest worker pool
+- `waitFor` timeouts need per-call explicit extension (e.g. `{ timeout: 5000 }`) or Vitest `testTimeout` global increase for async-heavy suites
 
-**Severity:** MEDIUM (post-pilot). No user-visible regressions — all failures are async-timing in tests, not in production code.
+**Action (ACTIVE):** Diagnose per file. 28968bb + CompliancePanel.nudge files likely have the same `delay:null` / missing-`userEvent` async batching pattern — apply the same `userEvent.setup()` + `CHIP_WAIT` treatment. New files (AwardsRulesetPanel, WizardFormV2R1, PolicyLedgerPanel) need investigation. Consider raising `testTimeout` globally in `vite.config.js` as a blunt instrument while targeted fixes land. Each fix ships as a standalone test-only PR.
+
+**Severity:** HIGH — now blocking merges (3 consecutive CI failures on PR #561 all required Rule 13 waivers). No user-visible regressions — all failures are async-timing in tests, not in production code.
 
 ---
 
