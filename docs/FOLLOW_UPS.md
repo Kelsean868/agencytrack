@@ -4546,8 +4546,8 @@ Banked: Track J v2 Agent Dashboard nav IA (PR #392), 2026-05-30. **RESOLVED: Gam
 
 Game Plan v2 **Slice 1** (PR #438) shipped the shell + Money Needs re-home. The remaining slices each introduce **net-new data** (a new store, read, write, or user attribute) and were deliberately deferred — none is a port:
 
-- **Year Plan (allocator):** product-line split, percent/direct mode, add-line, award-eligibility calc, license-profile tabs. Needs a stored per-line allocation. → new store.
-- **License-profile user attribute:** Composite / Life-only / General-only — "not stored on the user yet." → new user field.
+- **Year Plan (allocator):** product-line split, percent/direct mode, add-line, award-eligibility calc, license-profile tabs. **Slice 1 (data foundation) IN FLIGHT — PR #TBD:** `yearPlan/{year}` subcollection + `yearPlanService.js` (`createYearPlan` / `getYearPlan` / `resolveLicenseProfile` / `LICENSE_PROFILES`) + Firestore owner-only rules + `licenseProfile` user-allowlist edit; 19 unit tests + 23 emulator rules tests. Full scoping: [`docs/design/year-plan-scoping-notes.md`](../design/year-plan-scoping-notes.md). Manager-read arm + profile-to-line gating + first prod smoke → Slice 2 (see below).
+- **License-profile user attribute:** Composite / Life-only / General-only. **SHIPPED in Year Plan data-foundation (PR #TBD):** `licenseProfile` appended to user self-update `hasOnly` allowlist in `firestore.rules`; `resolveLicenseProfile(userDoc)` in `yearPlanService.js` returns `'composite'` default for absent/invalid values; `LICENSE_PROFILES` const exported. Profile-to-line gating (tab visibility per license type) deferred to Slice 2.
 - **Monthly Plan:** 12-month target-vs-actual chart, the monthly **target store** (plan) + **actual-by-month read** (production), variance + "to finish the month" suggestions. → new store + read.
 - **Review & Commit → Goals write:** the loop-close — writes personal API/apps into the 3-tier Goals system. The status pill goes live (draft → committed) only here. → new write.
 - **Manager review / suggest workflow:** the share-with-manager affordance (the NEW one — distinct from Money Needs' existing visibility toggle, which Slice 1 preserved), manager read of the shared plan, suggest-a-change + notify, plan-health banner. → new workflow.
@@ -4556,7 +4556,12 @@ Game Plan v2 **Slice 1** (PR #438) shipped the shell + Money Needs re-home. The 
 
 **Priority:** MEDIUM. Slice 1 is functional and honest on its own. Slices ship one brief + PR each.
 
-Banked: Game Plan v2 Slice 1 (PR #438), 2026-06-03.
+**Year Plan data foundation — deferred to Slice 2:**
+- **Manager-override arm:** upline `canManage` read of an agent's `yearPlan/{year}` doc. Deferred — no manager-UI surface yet.
+- **Profile → line gating + A&H license-domain confirm:** `life_only` → Life + A&H tabs only; `general_only` → Property + Motor + A&H tabs only. A&H license-domain (life vs. general) needs a product decision before encoding. Deferred to Slice 2.
+- **First production write-read-verify smoke:** Slice 1 is headless (no UI path) — smoke runs when the agent-UI surface ships in Slice 2.
+
+Banked: Game Plan v2 Slice 1 (PR #438), 2026-06-03. Year Plan data foundation Slice 1 of 3 (PR #TBD, SHA {TBD}), 2026-06-11.
 
 ---
 
@@ -5012,3 +5017,55 @@ The awarding logic in `onSubmissionWrite` evaluates `threshold` at runtime; the 
 **Action (before PR2 panel implementation):** Extend `BADGE_DEFINITIONS` with a `threshold` field. Update `onSubmissionWrite` badge section to evaluate `threshold` instead of inline comparisons. PR2's points panel then reads `threshold.value` directly from the config for display — no separate human label to maintain.
 
 **Severity:** LOW (no user-visible bug today; relevant when PR2 builds the panel that displays badge trigger values).
+
+---
+
+## yearPlan rules — field=path cross-checks + licenseProfile/status value constraints (LOW, banked 2026-06-11, PR #571)
+
+**Source:** Gemini review on PR #571 (year-plan data-foundation). Comments #1 + #2 from the disposition table — OUT-OF-SCOPE for Slice 1, deferred here.
+
+**Problem:** The `yearPlan` Firestore rules (Slice 1) enforce path-level ownership (`request.auth.uid == uid`) but do not cross-check that the document's internal `uid` and `tenantId` *fields* match the path parameters. They also do not constrain `licenseProfile` or `status` to their valid value sets on create/update. Similarly, the general user self-update arm allows writing any string to `licenseProfile` without validating it against the three valid members.
+
+**Desired end-state (fold into Slice 2 constraint maturation):**
+- `yearPlan` create: add `request.resource.data.uid == uid && request.resource.data.tenantId == tenantId`
+- `yearPlan` create: add `request.resource.data.licenseProfile in ['composite', 'life_only', 'general_only']`
+- `yearPlan` update: add status-transition guard once `draft → committed` lifecycle is defined
+- User self-update arm: add conditional `licenseProfile` value check (only when `licenseProfile` is in `affectedKeys()`)
+
+**Action:** Address alongside the Slice-2 manager-read arm and `draft → committed` status lifecycle — the three are logically coupled (manager can only read committed plans; status transitions need validation). Do not patch piecemeal before Slice 2.
+
+**Priority:** LOW. The service layer already clamps `licenseProfile` to valid values; a direct Rules bypass requires a crafted Firestore SDK call, not a UI exploit. Real risk surface is minimal until the UI ships in Slice 2.
+
+Banked: yearPlan data-foundation PR #571, 2026-06-11.
+
+---
+
+## moneyNeeds.rules.test.mjs — emulator port hardcoded as 8080 instead of 9090 (LOW, banked 2026-06-11, PR #571)
+
+**Source:** Discovered during PR #571 emulator rules test setup. `tests/rules/yearPlan.rules.test.mjs` was initially authored mirroring `moneyNeeds.rules.test.mjs` and inherited the wrong port, causing ECONNREFUSED. The new file was fixed; the original was left as out-of-scope.
+
+**Problem:** `tests/rules/moneyNeeds.rules.test.mjs` hardcodes `port: 8080` (and likely `host: 'localhost'`). The project's `firebase.json` configures the Firestore emulator on `host: '127.0.0.1', port: 9090`. The mismatch means `moneyNeeds.rules.test.mjs` silently fails to connect if run against the live emulator on the correct port.
+
+**Action:** One-line fix — change `port: 8080` → `port: 9090` (and `host` if needed) to match `firebase.json` and the yearPlan test. Verify the money-needs emulator rules tests pass after the change.
+
+**Priority:** LOW. Standalone mechanical fix; no logic change. Safe as a GREEN-CHANNEL docs/tooling PR.
+
+Banked: yearPlan data-foundation PR #571, 2026-06-11.
+
+---
+
+## .mjs emulator rules tests — manual-only, not wired into CI (LOW, banked 2026-06-11, PR #571)
+
+**Source:** PR #571 rules test authoring. `tests/rules/*.rules.test.mjs` files require a running Firebase emulator and are invoked manually (`node tests/rules/yearPlan.rules.test.mjs`). They are not part of `npm test` (Vitest) or the `functions-tests` CI job.
+
+**Problem:** Any future `firestore.rules` change gets no automatic emulator-rules coverage from CI. A rules regression is only caught if the author remembers to run the emulator tests manually before pushing.
+
+**Scope of gap:** Currently two rules test files exist — `moneyNeeds.rules.test.mjs` and `yearPlan.rules.test.mjs`. Both are manual-only. The `functions-tests` CI job runs Jest against Cloud Functions unit tests, not Firestore rules.
+
+**Desired end-state:** Wire emulator rules tests into CI — either as a dedicated `rules-tests` job in `.github/workflows/ci.yml` (starts the emulator, runs all `tests/rules/*.mjs` files, tears down) or as a Vitest integration-test phase using `@firebase/rules-unit-testing` with emulator startup managed by a global setup file.
+
+**Action:** Design and implement the CI job. Requires the emulator to be startable in a GitHub Actions runner (Firebase CLI is already a dev dependency; emulator start/stop can be scripted). Medium infra effort; LOW urgency while the rules test suite is small.
+
+**Priority:** LOW. Manual coverage today is better than no coverage; risk grows as the rules surface expands.
+
+Banked: yearPlan data-foundation PR #571, 2026-06-11.

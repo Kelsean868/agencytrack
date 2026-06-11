@@ -189,7 +189,8 @@ service cloud.firestore {
               ||
               request.resource.data.diff(resource.data).affectedKeys()
                  .hasOnly(['hasSeenWelcome', 'photoURL', 'bio', 'phone',
-                           'loggingMode', 'dailyNudgeTime', 'updatedAt', 'email'])
+                           'loggingMode', 'dailyNudgeTime', 'updatedAt', 'email',
+                           'licenseProfile'])
             ));
         allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
       }
@@ -1255,6 +1256,16 @@ service cloud.firestore {
         // Update: owner only (agent controls visibility and shareWithSm)
         allow update: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
 
+        allow delete: if false;
+      }
+
+      // Year Plan — agent-own annual production plan (Game Plan Step 2).
+      // Owner-only; manager-read arm added with the Manager-review slice later.
+      match /users/{uid}/yearPlan/{year} {
+        allow get, list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
+        allow create: if isAgent() && getTenantId() == tenantId && request.auth.uid == uid
+          && request.resource.data.status == 'draft';
+        allow update: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
         allow delete: if false;
       }
 
