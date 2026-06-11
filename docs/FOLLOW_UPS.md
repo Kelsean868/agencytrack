@@ -217,9 +217,9 @@ Agents now have a home surface to see cumulative points, level, streak, and badg
 
 ---
 
-## Suite-level CI flakiness — 6 files (RESOLVED — fix/ci-suite-flakiness PR #{TBD_PR} `{TBD_SHA}`)
+## Suite-level CI flakiness — 6 files (RESOLVED — fix/ci-suite-flakiness PR #563 `063fff1`)
 
-**Status:** RESOLVED — fix shipped in PR #{TBD_PR} (`{TBD_SHA}`). Three changes:
+**Status:** RESOLVED — fix shipped in PR #563 (`063fff1`). Three changes:
 1. `src/test-setup.js` — `configure({ asyncUtilTimeout: 5000 })` globally (covers items 2/4/5 below)
 2. `CompliancePanel.nudge.test.jsx` — restored c32cc0d's `userEvent.setup()` + `CHIP_WAIT = {timeout:3000}` + tripwire comments (logic fix — global alone cannot fix missing async drain)
 3. `DailyEntryModal.test.jsx` — added `await waitFor(() => expect(saveBtn).not.toBeDisabled())` before click (logic fix — React 19 suppresses onClick on disabled buttons; button was found while loading=true)
@@ -236,7 +236,7 @@ Agents now have a home surface to see cumulative points, level, streak, and badg
 | `AwardsRulesetPanel.test.jsx` | **Naked `waitFor`** in `renderPanel()` — 1000ms default; getAwardsRuleset mock resolves fast but useEffect→setState→re-render chain hits 1000ms on starved CI runner. | `configure({ asyncUtilTimeout: 5000 })` in test-setup.js |
 | `PolicyLedgerPanel.test.jsx` | **Naked `waitFor`** in `openDrawerFor()` + F3.1 prefill tests — same starved-runner pattern. | `configure({ asyncUtilTimeout: 5000 })` in test-setup.js |
 
-**Stability gate:** 20× consecutive full-suite runs local — all green (documented in PR #{TBD_PR}).
+**Stability gate:** 20× consecutive full-suite runs local — all green (documented in PR #563).
 
 **Severity:** HIGH — was blocking merges (3 consecutive CI failures on PR #561 all required Rule 13 waivers). No user-visible regressions — all failures were async-timing in tests, not in production code.
 
@@ -244,7 +244,7 @@ Agents now have a home surface to see cumulative points, level, streak, and badg
 
 ## 28968bb latent-flake audit — 12 remaining files (banked 2026-06-11, MEDIUM)
 
-**Source:** CI suite flakiness Phase 1 diagnosis (fix/ci-suite-flakiness PR #{TBD_PR}). `28968bb` (gemini-batch-a, "RTL anti-patterns in 13 test files") touched 13 files. CompliancePanel.nudge and DailyEntryModal (2 of the 13) had verifiable regressions that were fixed in that PR. The other **11 files** received similar act()-stripping or RTL refactoring and may have had their own intentional timing guards stripped.
+**Source:** CI suite flakiness Phase 1 diagnosis (fix/ci-suite-flakiness PR #563). `28968bb` (gemini-batch-a, "RTL anti-patterns in 13 test files") touched 13 files. CompliancePanel.nudge and DailyEntryModal (2 of the 13) had verifiable regressions that were fixed in that PR. The other **11 files** received similar act()-stripping or RTL refactoring and may have had their own intentional timing guards stripped.
 
 **Files to audit (11 remaining from `git show 28968bb --stat`):**
 - `src/components/admin/__tests__/BranchesPanel.test.jsx`
