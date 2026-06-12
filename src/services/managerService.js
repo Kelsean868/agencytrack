@@ -3,6 +3,18 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
+// Fetches agent UIDs for a branch. Single-field query (no composite index).
+// Role filter applied client-side to avoid requiring a (branchId, role) index.
+async function getBranchAgentIds(tenantId, branchId) {
+  const snap = await getDocs(query(
+    collection(db, `tenants/${tenantId}/users`),
+    where('branchId', '==', branchId)
+  ));
+  return snap.docs
+    .filter((d) => d.data().role === 'agent')
+    .map((d) => d.id);
+}
+
 export async function getWeeklySubmissions(tenantId, weekStarting) {
   const { claims } = await auth.currentUser.getIdTokenResult();
 
@@ -17,7 +29,21 @@ export async function getWeeklySubmissions(tenantId, weekStarting) {
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   }
 
-  // BM / TA / PA: full query unchanged.
+  if (claims.role === 'branch_manager' && claims.branchId) {
+    const agentIds = await getBranchAgentIds(tenantId, claims.branchId);
+    if (agentIds.length === 0) return [];
+    const branchSet = new Set(agentIds);
+    const q = query(
+      collection(db, `tenants/${tenantId}/submissions`),
+      where('weekStarting', '==', weekStarting)
+    );
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((s) => branchSet.has(s.agentId ?? s.userId ?? ''));
+  }
+
+  // TA / PA: full query.
   const q = query(
     collection(db, `tenants/${tenantId}/submissions`),
     where('weekStarting', '==', weekStarting)
@@ -30,12 +56,15 @@ export async function getTenantUsers(tenantId, { includeInactive = false } = {})
   const { claims } = await auth.currentUser.getIdTokenResult();
   const callerUid = auth.currentUser.uid;
 
-  // SHAKEDOWN-002: unit_manager callers see only their own unit's agents.
-  // Other manager roles retain full branch/tenant visibility.
   const col = collection(db, `tenants/${tenantId}/users`);
-  const q = claims.role === 'unit_manager'
-    ? query(col, where('unitId', '==', callerUid))
-    : col;
+  let q;
+  if (claims.role === 'unit_manager') {
+    q = query(col, where('unitId', '==', callerUid));
+  } else if (claims.role === 'branch_manager' && claims.branchId) {
+    q = query(col, where('branchId', '==', claims.branchId));
+  } else {
+    q = col;
+  }
 
   const snap = await getDocs(q);
   return snap.docs
@@ -63,7 +92,23 @@ export async function getAllYTDSubmissions(tenantId) {
       .filter((s) => s.status === 'submitted');
   }
 
-  // BM / TA / PA: full query unchanged.
+  if (claims.role === 'branch_manager' && claims.branchId) {
+    const agentIds = await getBranchAgentIds(tenantId, claims.branchId);
+    if (agentIds.length === 0) return [];
+    const branchSet = new Set(agentIds);
+    const q = query(
+      collection(db, `tenants/${tenantId}/submissions`),
+      where('weekStarting', '>=', `${year}-01-01`),
+      where('weekStarting', '<=', `${year}-12-31`),
+      where('status', '==', 'submitted')
+    );
+    const snap = await getDocs(q);
+    return snap.docs
+      .map((d) => ({ id: d.id, ...d.data() }))
+      .filter((s) => branchSet.has(s.agentId ?? s.userId ?? ''));
+  }
+
+  // TA / PA: full query.
   const q = query(
     collection(db, `tenants/${tenantId}/submissions`),
     where('weekStarting', '>=', `${year}-01-01`),
