@@ -3,7 +3,7 @@ Hi {{userName}},
 Just a friendly reminder from {{managerName}} to set your weekly plan for the week of {{weekStarting}} in AgencyTrack.
 
 Open your Game Plan and commit this week's targets — it only takes a minute:
-https://agencytrack.vercel.app
+{{appUrl}}
 
 Thanks for planning ahead.
 

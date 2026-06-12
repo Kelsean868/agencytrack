@@ -3,7 +3,7 @@ Hi {{userName}},
 Just a friendly reminder from {{managerName}} to submit your AgencyTrack weekly report for the week of {{weekStarting}}.
 
 It only takes a few minutes:
-https://agencytrack.vercel.app
+{{appUrl}}
 
 Thanks for keeping your activity up to date.
 
