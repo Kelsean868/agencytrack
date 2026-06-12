@@ -68,6 +68,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.js'],
+    env: {
+      VITE_YEAR_PLAN_ENABLED: 'true',
+    },
     exclude: [
       '**/node_modules/**',
       '**/dist/**',

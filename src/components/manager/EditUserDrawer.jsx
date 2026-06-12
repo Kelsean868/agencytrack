@@ -11,6 +11,8 @@ import { getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import Avatar from '../ui/Avatar';
 import ConfirmDialog from '../ui/ConfirmDialog';
 
+const YEAR_PLAN_ENABLED = import.meta.env.VITE_YEAR_PLAN_ENABLED === 'true';
+
 // Mirror of functions/index.js CREATION_MATRIX. Two-sided gate: caller must be
 // able to create both the target's current role AND the target's new role.
 const CREATION_MATRIX = {
@@ -647,7 +649,7 @@ export default function EditUserDrawer({
             </label>
           )}
 
-          {editable.has('licenseProfile') && (
+          {YEAR_PLAN_ENABLED && editable.has('licenseProfile') && (
             <div className="flex flex-col gap-1.5">
               <label htmlFor="edit-user-license-profile" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">License Profile</label>
               <select
