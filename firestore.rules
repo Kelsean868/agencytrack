@@ -141,11 +141,12 @@ service cloud.firestore {
                || request.auth.uid == userId
                || resource.data.unitId == request.auth.uid
              ));
-        // list: manager-tier only. unit_manager is restricted to own unit —
-        // an unscoped collection query from a UM is denied (defense in depth).
-        // Client must include where('unitId','==',callerUid) for UM list reads.
+        // list: manager-tier only. unit_manager restricted to own unit;
+        // branch_manager restricted to own branch. Defense in depth — clients
+        // must include the corresponding where() clause for their role.
         allow list: if canManage(tenantId) && (
-          getRole() != 'unit_manager'
+          (getRole() != 'unit_manager' && getRole() != 'branch_manager')
+          || (getRole() == 'branch_manager' && callerBranchId(tenantId) != null && resource.data.branchId == callerBranchId(tenantId))
           || resource.data.unitId == request.auth.uid
         );
         // SEC-4: unit_manager can only create/update users within their own unit
