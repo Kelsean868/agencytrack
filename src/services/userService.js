@@ -18,7 +18,7 @@ export const MANAGER_EDITABLE_FIELDS = Object.freeze([
   'unitId', 'unitName',
   'agentNumber', 'contractStartDate',
   'canConfirmSettlements',
-  'licenseStatus', 'cbttExamPassedDate', 'cbttExtensionGranted',
+  'licenseStatus', 'cbttExamPassedDate', 'cbttExtensionGranted', 'licenseProfile',
 ]);
 
 /**

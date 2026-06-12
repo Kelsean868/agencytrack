@@ -43,6 +43,7 @@ function getEditableFieldsFor(editorRole, targetRole) {
     fields.add('licenseStatus');
     fields.add('cbttExamPassedDate');
     fields.add('cbttExtensionGranted');
+    fields.add('licenseProfile');
   }
 
   if (targetRole === 'unit_manager' && editorRole !== 'unit_manager') {
@@ -108,6 +109,7 @@ export default function EditUserDrawer({
     licenseStatus: user?.licenseStatus ?? '',
     cbttExamPassedDate: user?.cbttExamPassedDate ?? '',
     cbttExtensionGranted: Boolean(user?.cbttExtensionGranted),
+    licenseProfile: user?.licenseProfile ?? '',
     role: user?.role ?? '',
     branchId: user?.branchId ?? '',
   });
@@ -643,6 +645,23 @@ export default function EditUserDrawer({
                 </span>
               </span>
             </label>
+          )}
+
+          {editable.has('licenseProfile') && (
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="edit-user-license-profile" className="text-xs font-semibold text-ink-muted uppercase tracking-wide">License Profile</label>
+              <select
+                id="edit-user-license-profile"
+                value={form.licenseProfile}
+                onChange={(e) => setField('licenseProfile', e.target.value)}
+                className="h-11 px-3 rounded-lg border border-border bg-card text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+              >
+                <option value="">— Not set —</option>
+                <option value="composite">Composite (Life, A&amp;H, Property &amp; Motor)</option>
+                <option value="life_only">Life &amp; A&amp;H</option>
+                <option value="general_only">A&amp;H, Property &amp; Motor</option>
+              </select>
+            </div>
           )}
 
           {showUnitDropdown && (

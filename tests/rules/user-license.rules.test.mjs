@@ -7,11 +7,13 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (4 cases):
+ * Test matrix (6 cases):
  *   1. Manager writes licenseStatus: 'official' on an agent doc → ALLOW
  *   2. Agent writes licenseStatus on own doc                    → DENY (not in self-edit arm)
  *   3. UM writes licenseStatus on agent outside own unit        → DENY (UM scope guard)
  *   4. active cannot be written client-side (regression)        → DENY
+ *   5. BM writes licenseProfile on agent doc                    → ALLOW (Slice 2b)
+ *   6. Agent writes licenseProfile on own doc                   → ALLOW (agent self-write arm)
  */
 
 import {
@@ -117,6 +119,25 @@ async function main() {
     const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
     await assertFails(updateDoc(userDocRef(db, AGENT_ID), {
       active: false,
+    }));
+  });
+
+  // ── Case 5: BM writes licenseProfile → ALLOW (Slice 2b) ──────────────────
+  await t('5. BM writes licenseProfile: "life_only" on agent doc → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
+    await assertSucceeds(updateDoc(userDocRef(db, AGENT_ID), {
+      licenseProfile: 'life_only',
+      updatedAt: new Date(),
+      updatedBy: BM_ID,
+    }));
+  });
+
+  // ── Case 6: Agent writes licenseProfile on own doc → ALLOW (self-write arm)
+  await t('6. Agent writes licenseProfile on own doc → ALLOW (self-write arm)', async () => {
+    const db = testEnv.authenticatedContext(AGENT_ID, authToken('agent')).firestore();
+    await assertSucceeds(updateDoc(userDocRef(db, AGENT_ID), {
+      licenseProfile: 'composite',
+      updatedAt: new Date(),
     }));
   });
 
