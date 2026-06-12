@@ -147,7 +147,7 @@ function NoteCard({ note, isAuthor, onEditSaved }) {
             <button
               onClick={saveEdit}
               disabled={saving || !editBody.trim()}
-              className="min-h-[44px] px-4 rounded-lg bg-primary text-white text-sm font-medium flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="min-h-[44px] px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-medium flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               <Check size={14} />
               {saving ? 'Saving…' : 'Save'}
@@ -426,7 +426,7 @@ export default function CoachingNotesModal({ agentId, agentName, agentUnitId, on
             <button
               type="submit"
               disabled={submitting || !body.trim()}
-              className="min-h-[44px] w-full rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="min-h-[44px] w-full rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {submitting ? 'Adding…' : 'Add Note'}
             </button>

@@ -372,7 +372,7 @@ export default function PlanCatalogModal({ tenantId, onClose }) {
                     <button
                       type="submit"
                       disabled={saving}
-                      className="flex-1 h-10 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
+                      className="flex-1 h-10 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
                       data-testid="plan-form-submit"
                     >
                       {saving ? <><Loader2 size={14} className="animate-spin" /> Saving…</> : (editingId ? 'Save Changes' : 'Add Plan')}
@@ -441,7 +441,7 @@ export default function PlanCatalogModal({ tenantId, onClose }) {
                             <button
                               type="submit"
                               disabled={promoting}
-                              className="flex-1 h-10 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
+                              className="flex-1 h-10 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-1.5"
                               data-testid={`promote-submit-${entry.name}`}
                             >
                               {promoting ? <><Loader2 size={14} className="animate-spin" /> Approving…</> : 'Approve'}

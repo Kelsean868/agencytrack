@@ -140,7 +140,7 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
                   <span
                     className={
                       n.state === 'done'
-                        ? 'w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center'
+                        ? 'w-7 h-7 rounded-full bg-primary dark:bg-primary-dark text-white flex items-center justify-center'
                         : n.state === 'cur'
                         ? 'w-7 h-7 rounded-full bg-gold flex items-center justify-center shadow-[0_0_0_4px_var(--color-gold-tint)]'
                         : 'w-7 h-7 rounded-full bg-card border-[1.5px] border-ink-faint/50'
@@ -212,14 +212,14 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
             <p className="text-[11.5px] text-ink-muted mb-2.5">Next step: {POLICY_STATUS_LABELS[txTo] ?? txTo}</p>
             <form onSubmit={submitTransition} className="flex flex-col gap-3">
               <div className="flex items-stretch w-fit rounded-lg overflow-hidden shadow-sm">
-                <span className="px-4 py-2.5 bg-primary text-white text-[12.5px] font-bold">Move to {POLICY_STATUS_LABELS[txTo] ?? txTo}</span>
+                <span className="px-4 py-2.5 bg-primary dark:bg-primary-dark text-white text-[12.5px] font-bold">Move to {POLICY_STATUS_LABELS[txTo] ?? txTo}</span>
                 {legalNext.length > 1 && (
                   <>
                     <span className="w-px bg-white/25" />
                     <button
                       type="button"
                       onClick={() => setMenuOpen((o) => !o)}
-                      className="px-3 bg-primary text-white flex items-center"
+                      className="px-3 bg-primary dark:bg-primary-dark text-white flex items-center"
                       aria-label="Other status options"
                       aria-expanded={menuOpen}
                       data-testid="drawer-tx-menu-toggle"
@@ -300,7 +300,7 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
               <button
                 type="submit"
                 disabled={transitioning}
-                className="h-11 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                className="h-11 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                 data-testid="drawer-tx-confirm"
               >
                 {transitioning ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : `Confirm — ${POLICY_STATUS_LABELS[txTo] ?? txTo}`}

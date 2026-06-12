@@ -395,7 +395,7 @@ export default function PolicyReconciliationPanel() {
                         {/* Action */}
                         {!isConfirmedView && (
                           <button type="button" onClick={() => handleConfirm(policy)} disabled={fs.submitting}
-                            className="h-9 px-4 rounded-lg bg-primary text-white text-[12.5px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
+                            className="h-9 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-[12.5px] font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 shrink-0"
                             data-testid={`confirm-btn-${policy.id}`}>
                             {fs.submitting ? '…' : 'Confirm'}
                           </button>
