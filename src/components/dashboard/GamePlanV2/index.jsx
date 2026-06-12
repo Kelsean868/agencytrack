@@ -10,6 +10,9 @@ import StepRail from './StepRail';
 import PlanCascade from './PlanCascade';
 import CommitPreviewCard from './CommitPreviewCard';
 import SuggestedWeekCard from './SuggestedWeekCard';
+import YearPlanModal from '../../agent/YearPlanModal';
+
+const YEAR_PLAN_ENABLED = import.meta.env.VITE_YEAR_PLAN_ENABLED === 'true';
 
 /**
  * GamePlanScreen — Game Plan v2 hub (Slice 1).
@@ -65,6 +68,7 @@ export default function GamePlanScreen({
   const [worksheet, setWorksheet] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [yearPlanOpen, setYearPlanOpen] = useState(false);
 
   // Weekly plan (Slice 2) — committed plan for this week + commit lifecycle.
   const [committedPlan, setCommittedPlan] = useState(null);
@@ -168,6 +172,7 @@ export default function GamePlanScreen({
 
   const openMoneyNeeds = () => onOpenTab?.('money-needs');
   const openGoals = () => onOpenTab?.('goals');
+  const openYearPlan = YEAR_PLAN_ENABLED ? () => setYearPlanOpen(true) : undefined;
 
   return (
     <div className="mx-auto max-w-5xl space-y-4" data-testid="game-plan-hub">
@@ -210,6 +215,13 @@ export default function GamePlanScreen({
         </div>
       )}
 
+      {yearPlanOpen && (
+        <YearPlanModal
+          onClose={() => setYearPlanOpen(false)}
+          moneyNeedsWorksheet={worksheet}
+        />
+      )}
+
       {!loading && !error && (
         <>
           <PlanAnchorStrip
@@ -225,7 +237,11 @@ export default function GamePlanScreen({
             moneyNeedsFilled={moneyNeedsFilled}
           />
 
-          <StepRail moneyNeedsFilled={moneyNeedsFilled} onOpenMoneyNeeds={openMoneyNeeds} />
+          <StepRail
+            moneyNeedsFilled={moneyNeedsFilled}
+            onOpenMoneyNeeds={openMoneyNeeds}
+            onOpenYearPlan={openYearPlan}
+          />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
             <PlanCascade commissionNeed={commissionNeed} moneyNeedsFilled={moneyNeedsFilled} />
