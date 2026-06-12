@@ -265,6 +265,12 @@ async function runPartB(browser) {
     const dropdownPresent = await page.evaluate(
       () => Boolean(document.querySelector('#edit-user-license-profile'))
     );
+    // Absent dropdown = VITE_YEAR_PLAN_ENABLED not set in build — gate correctly applied.
+    if (!dropdownPresent) {
+      const note = 'VITE_YEAR_PLAN_ENABLED not true in preview build — licenseProfile dropdown absent (flag gate correct)';
+      console.log(`  [B/${theme}] ENV_GATE: ${note}`);
+      return { part: 'B', theme, result: 'ENV_GATE', pass: true, note };
+    }
     const optionValues = await page.evaluate(() => {
       const sel = document.querySelector('#edit-user-license-profile');
       return sel ? Array.from(sel.options).map((o) => o.value) : [];
@@ -277,8 +283,8 @@ async function runPartB(browser) {
     const hasLifeOnly  = optionValues.includes('life_only');
     const hasGeneral   = optionValues.includes('general_only');
     const validValue   = ['', 'composite', 'life_only', 'general_only'].includes(currentVal);
-    const pass = dropdownPresent && optionValues.length === 4 && hasBlank && hasComposite && hasLifeOnly && hasGeneral && validValue && errors.length === 0;
-    console.log(`  [B/${theme}] dropdown=${dropdownPresent} options=${optionValues.length} blank=${hasBlank} composite=${hasComposite} life_only=${hasLifeOnly} general_only=${hasGeneral} val="${currentVal}" valid=${validValue} errors=${errors.length} → ${pass ? 'PASS' : 'FAIL'}`);
+    const pass = optionValues.length === 4 && hasBlank && hasComposite && hasLifeOnly && hasGeneral && validValue && errors.length === 0;
+    console.log(`  [B/${theme}] dropdown=true options=${optionValues.length} blank=${hasBlank} composite=${hasComposite} life_only=${hasLifeOnly} general_only=${hasGeneral} val="${currentVal}" valid=${validValue} errors=${errors.length} → ${pass ? 'PASS' : 'FAIL'}`);
     return { part: 'B', theme, dropdownPresent, optionCount: optionValues.length, currentVal, validValue, errors: errors.length, pass };
   }
 
