@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getMoneyNeeds } from '../../../services/moneyNeedsService';
+import { getYearPlan, LINE_KEYS } from '../../../services/yearPlanService';
 import { getWeeklyPlan, commitWeeklyPlan, deleteWeeklyPlan } from '../../../services/weeklyPlanService';
 import { getDailyEntriesForWeek } from '../../../services/dailyActivityService';
 import { getRecentSundays } from '../../../utils/validators';
@@ -66,6 +67,7 @@ export default function GamePlanScreen({
   const weekStart = getRecentSundays(1)[0];
 
   const [worksheet, setWorksheet] = useState(null);
+  const [yearPlan, setYearPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [yearPlanOpen, setYearPlanOpen] = useState(false);
@@ -84,8 +86,14 @@ export default function GamePlanScreen({
     setLoading(true);
     setError('');
     try {
-      const result = await getMoneyNeeds(tenantId, uid, year);
+      const [result, plan] = await Promise.all([
+        getMoneyNeeds(tenantId, uid, year),
+        YEAR_PLAN_ENABLED
+          ? getYearPlan(tenantId, uid, year).catch(() => null)
+          : Promise.resolve(null),
+      ]);
       setWorksheet(result);
+      setYearPlan(plan);
     } catch {
       setError('Could not load your plan. Check your connection and try again.');
     } finally {
@@ -167,7 +175,14 @@ export default function GamePlanScreen({
   // before the agent opens the commission-targets step.
   const commissionNeed = grossNeed > 0 ? Math.max(0, grossNeed - renewalsCover) : 0;
   const moneyNeedsFilled = afterTaxNeed > 0;
-  const stepsBuilt = moneyNeedsFilled ? 1 : 0;
+  const yearPlanTotalAPI = yearPlan
+    ? LINE_KEYS.reduce((sum, k) => {
+        const line = yearPlan.lines?.[k];
+        return sum + (line?.enabled !== false ? (line?.targetAPI ?? 0) : 0);
+      }, 0)
+    : 0;
+  const yearPlanFilled = YEAR_PLAN_ENABLED && yearPlanTotalAPI > 0;
+  const stepsBuilt = (moneyNeedsFilled ? 1 : 0) + (yearPlanFilled ? 1 : 0);
   const planBuiltPct = Math.round((stepsBuilt / TOTAL_STEPS) * 100);
 
   const openMoneyNeeds = () => onOpenTab?.('money-needs');
@@ -241,10 +256,17 @@ export default function GamePlanScreen({
             moneyNeedsFilled={moneyNeedsFilled}
             onOpenMoneyNeeds={openMoneyNeeds}
             onOpenYearPlan={openYearPlan}
+            yearPlanFilled={yearPlanFilled}
           />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
-            <PlanCascade commissionNeed={commissionNeed} moneyNeedsFilled={moneyNeedsFilled} />
+            <PlanCascade
+              commissionNeed={commissionNeed}
+              moneyNeedsFilled={moneyNeedsFilled}
+              yearPlanEnabled={YEAR_PLAN_ENABLED}
+              yearPlanTotalAPI={yearPlanTotalAPI}
+              yearPlanFilled={yearPlanFilled}
+            />
             <CommitPreviewCard year={year} onOpenGoals={openGoals} />
           </div>
 
