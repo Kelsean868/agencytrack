@@ -5,6 +5,16 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Bulk pilot-roster provisioning + link export (banked 2026-06-12, LOW)
+
+One-shot script (`functions/scripts/`) to provision a roster CSV in dependency order — ensure branches in `tenants/{tid}/meta/branches` → branch managers → unit managers (incl. a thin `unit_manager` anchor for any unit with agents but no manager, e.g. Phoenix) → agents with `unitId` resolved to the unit_manager's UID — reusing `doCreateUser` (no bespoke provisioning; avoids claim/tenant drift). Idempotent/skip-existing by email; repair half-provisioned (Auth-but-no-doc). Then generate a password-reset link per account and write a LOCAL links file for out-of-band distribution. PII (roster CSV + links) stays local/gitignored; committed code generic.
+
+**Build-time question:** Does `bulkImportUsers` already resolve an agent's `unitId` from unit name to a same-batch `unit_manager` — if yes extend it, if no write the dedicated script.
+
+**Severity:** LOW (pilot prep; unblocks Tatil demo provisioning).
+
+---
+
 ## Copy invite link — Extract shared INVITE_CONTINUE_URL constant (banked 2026-06-11, LOW)
 
 **Source:** feat-copy-invite-link PR #573 (`80de845`) — brief Phase 1 decision (reuse inline continue URL).

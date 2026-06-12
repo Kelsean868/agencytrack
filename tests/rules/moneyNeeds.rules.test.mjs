@@ -65,8 +65,8 @@ async function main() {
     projectId: PROJECT_ID,
     firestore: {
       rules: readFileSync('firestore.rules', 'utf8'),
-      host:  'localhost',
-      port:  8080,
+      host:  '127.0.0.1',
+      port:  9090,
     },
   });
 
