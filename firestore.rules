@@ -146,7 +146,7 @@ service cloud.firestore {
         // must include the corresponding where() clause for their role.
         allow list: if canManage(tenantId) && (
           (getRole() != 'unit_manager' && getRole() != 'branch_manager')
-          || (getRole() == 'branch_manager' && resource.data.branchId == callerBranchId(tenantId))
+          || (getRole() == 'branch_manager' && callerBranchId(tenantId) != null && resource.data.branchId == callerBranchId(tenantId))
           || resource.data.unitId == request.auth.uid
         );
         // SEC-4: unit_manager can only create/update users within their own unit
