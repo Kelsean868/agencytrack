@@ -79,7 +79,8 @@ function Chevron() {
   );
 }
 
-export default function StepRail({ moneyNeedsFilled, onOpenMoneyNeeds }) {
+export default function StepRail({ moneyNeedsFilled, onOpenMoneyNeeds, onOpenYearPlan }) {
+  const step2Active = !!onOpenYearPlan;
   return (
     <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center" data-testid="game-plan-rail">
       <StepCard
@@ -91,7 +92,14 @@ export default function StepRail({ moneyNeedsFilled, onOpenMoneyNeeds }) {
         onClick={onOpenMoneyNeeds}
       />
       <Chevron />
-      <StepCard variant="next" num="2" kicker="Next" title="Year Plan" sub="Coming soon" />
+      <StepCard
+        variant={step2Active ? 'current' : 'next'}
+        num="2"
+        kicker={step2Active ? 'Open' : 'Next'}
+        title="Year Plan"
+        sub={step2Active ? 'Allocate API by line' : 'Coming soon'}
+        onClick={onOpenYearPlan}
+      />
       <Chevron />
       <StepCard variant="coming" num="3" kicker="Coming" title="Monthly Plan" sub="Coming soon" />
       <Chevron />
