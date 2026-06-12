@@ -290,7 +290,7 @@ function PrepCard({ prep, isAuthor, onSaved, onCreatePolicyFromPrep }) {
             <button
               onClick={saveEdit}
               disabled={saving}
-              className="min-h-[44px] px-4 rounded-lg bg-primary text-white text-sm font-medium flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="min-h-[44px] px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-medium flex items-center gap-2 hover:bg-primary/90 dark:hover:bg-primary-dark/90 disabled:opacity-50 transition-colors"
             >
               <Check size={14} />
               {saving ? 'Saving…' : 'Save'}
@@ -391,7 +391,7 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+            className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors"
             data-testid="prospect-info-add-btn"
           >
             <Plus size={16} aria-hidden="true" />
@@ -538,7 +538,7 @@ export default function ProspectInfoPanel({ onCreatePolicyFromPrep }) {
             <button
               type="submit"
               disabled={submitting || !form.clientName.trim() || !form.intendedAppointmentDate || (form.prospectingSource === 'social-media' && !form.socialPlatform)}
-              className="min-h-[44px] px-4 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="min-h-[44px] px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 disabled:opacity-50 transition-colors"
               data-testid="prospect-info-save-btn"
             >
               {submitting ? 'Saving…' : 'Save Prep'}

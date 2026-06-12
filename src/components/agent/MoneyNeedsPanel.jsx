@@ -424,7 +424,7 @@ function CommissionTargetsPanel({ worksheet, onTargetsSaved }) {
           type="button"
           onClick={handleSendToPlayground}
           disabled={saving || required <= 0}
-          className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary/90 transition-colors disabled:opacity-50 min-h-[44px]"
+          className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-xs font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors disabled:opacity-50 min-h-[44px]"
         >
           <Send size={13} />
           {sent ? 'Sent!' : 'Send to Playground'}
@@ -805,7 +805,7 @@ export default function MoneyNeedsPanel() {
             type="button"
             onClick={handleStart}
             disabled={creating}
-            className="flex items-center gap-2 h-11 px-5 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 min-h-[44px]"
+            className="flex items-center gap-2 h-11 px-5 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors disabled:opacity-60 min-h-[44px]"
           >
             {creating ? (
               <Loader2 size={16} className="animate-spin" />

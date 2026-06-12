@@ -355,7 +355,7 @@ export default function ManagerWarTab() {
             type="button"
             onClick={handleSubmit}
             disabled={submitting || saving}
-            className="w-full h-11 rounded-xl bg-primary text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="w-full h-11 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             {submitting ? 'Submitting…' : 'Submit Report'}
           </button>

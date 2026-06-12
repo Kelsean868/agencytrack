@@ -124,7 +124,7 @@ export default function KioskModeTab() {
             type="button"
             onClick={handleCreate}
             disabled={creating || loading}
-            className="h-11 px-4 rounded-lg bg-primary text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-11 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary-dark dark:hover:bg-primary-dark/90 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Plus size={16} />
             {creating ? 'Generating…' : 'Generate URL'}

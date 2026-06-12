@@ -80,7 +80,7 @@ function StepIndicator({ step }) {
             <span
               className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] ${
                 isCurrent
-                  ? 'bg-primary text-white'
+                  ? 'bg-primary dark:bg-primary-dark text-white'
                   : isDone
                     ? 'bg-success/20 text-success-ink'
                     : 'bg-border/60 text-ink-muted'
@@ -447,7 +447,7 @@ export default function BulkImportUsersModal({ tenantId, onClose, onImported }) 
                     onClick={() => setFilter(tab.key)}
                     className={`text-xs font-semibold h-8 px-3 rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                       filter === tab.key
-                        ? 'bg-primary text-white'
+                        ? 'bg-primary dark:bg-primary-dark text-white'
                         : 'bg-border/30 text-ink-muted hover:bg-border/50'
                     }`}
                   >

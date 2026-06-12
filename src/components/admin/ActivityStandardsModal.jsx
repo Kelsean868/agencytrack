@@ -188,7 +188,7 @@ export default function ActivityStandardsModal({
               onClick={() => setActiveRole(key)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                 activeRole === key
-                  ? 'bg-primary text-white'
+                  ? 'bg-primary dark:bg-primary-dark text-white'
                   : 'text-ink-muted hover:text-ink hover:bg-card'
               }`}
             >
