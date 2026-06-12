@@ -36,15 +36,20 @@ const OUT_DIR = join(__dirname, 'emails-v2-rendered');
 // uses danger red `#c0392b` as its entire accent palette (preserved from the
 // pre-v2 template — the 2-hour deadline urgency is the design intent).
 const TEMPLATES = [
-  { name: 'monday-nudge',    expectedAccent: '#c0392b', expectedEyebrow: /Final reminder/i, requiresBrandTeal: false },
-  { name: 'sunday-nudge',    expectedAccent: '#01696f', expectedEyebrow: /Weekly report/i,  requiresBrandTeal: true  },
-  { name: 'password-reset',  expectedAccent: '#01696f', expectedEyebrow: /Account invite/i, requiresBrandTeal: true  },
+  { name: 'monday-nudge',          expectedAccent: '#c0392b', expectedEyebrow: /Final reminder/i,    requiresBrandTeal: false },
+  { name: 'sunday-nudge',          expectedAccent: '#01696f', expectedEyebrow: /Weekly report/i,     requiresBrandTeal: true  },
+  { name: 'password-reset',        expectedAccent: '#01696f', expectedEyebrow: /Account invite/i,    requiresBrandTeal: true  },
+  { name: 'compliance-nudge',      expectedAccent: '#01696f', expectedEyebrow: /Friendly reminder/i, requiresBrandTeal: true  },
+  { name: 'compliance-plan-nudge', expectedAccent: '#01696f', expectedEyebrow: /Friendly reminder/i, requiresBrandTeal: true  },
 ];
 
 const SAMPLE_VALUES = {
   userName:     'Marsha Singh',
   weekStarting: '24 November 2026',
   resetLink:    'https://agencytrack.vercel.app/auth/reset?oobCode=SAMPLE_oobCode_value_for_static_render',
+  managerName:  'Alexandra Morgan',
+  contactEmail: 'hello@agencytrack.app',
+  appUrl:       'https://agencytrack.vercel.app',
 };
 
 function vars(text) {
@@ -124,6 +129,10 @@ for (const tpl of TEMPLATES) {
   writeFileSync(join(OUT_DIR, `${tpl.name}.html`), rendered, 'utf8');
   writeFileSync(join(OUT_DIR, `${tpl.name}.txt`),  renderedTxt, 'utf8');
 
+  // ── 8. Stale-address cleanliness ─────────────────────────────────────────
+  const noStaleEmail        = !rendered.includes('kelsean');
+  const contactEmailPresent = rendered.includes('hello@agencytrack.app');
+
   const pass = (
     varParity &&
     residual === 0 &&
@@ -131,7 +140,9 @@ for (const tpl of TEMPLATES) {
     accentPresent &&
     eyebrowPresent &&
     brandTealPresent &&
-    safeHtmlOk
+    safeHtmlOk &&
+    noStaleEmail &&
+    contactEmailPresent
   );
   if (!pass) allPass = false;
 
@@ -150,6 +161,8 @@ for (const tpl of TEMPLATES) {
     eyebrowPresent,
     brandTealPresent,
     safeHtmlOk,
+    noStaleEmail,
+    contactEmailPresent,
     renderedHtmlBytes: rendered.length,
     renderedTxtBytes:  renderedTxt.length,
     pass,

@@ -4,7 +4,7 @@ const { isValidEmail } = require('./utils/validators');
 const { buildMailDoc } = require('./utils/email');
 const { computePoints } = require('./lib/computePoints');
 const { resolveLevel } = require('./lib/gamificationConfig');
-const { APP_URL } = require('./lib/config');
+const { APP_URL, CONTACT_EMAIL } = require('./lib/config');
 
 // Ambient credentials. createCustomToken needs iam.serviceAccounts.signBlob;
 // granted via roles/iam.serviceAccountTokenCreator on the App Engine default SA
@@ -404,7 +404,7 @@ async function doCreateUser(data, context) {
         'Welcome to AgencyTrack — set your password',
         'password-reset.txt',
         'password-reset.html',
-        { userName: data.name, resetLink }
+        { userName: data.name, resetLink, contactEmail: CONTACT_EMAIL }
       )
     );
   } catch (mailErr) {
@@ -582,8 +582,6 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
   }
 
   // ── Generate invite link ──────────────────────────────────────────────────
-  // LOW FU: extract shared INVITE_CONTINUE_URL constant (dedupe with L398) and
-  // swap to portal.agencytrack.app once the portal domain is attached.
   let resetLink;
   let emailQueued = channel === 'link' ? false : true;
   let emailError;
@@ -611,7 +609,7 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
           'Welcome to AgencyTrack — set your password',
           'password-reset.txt',
           'password-reset.html',
-          { userName: targetUser.displayName ?? '', resetLink }
+          { userName: targetUser.displayName ?? '', resetLink, contactEmail: CONTACT_EMAIL }
         )
       );
     } catch (mailErr) {
@@ -1187,7 +1185,7 @@ exports.sendSundayNudge = functions.pubsub
               'Your AgencyTrack report for {{weekStarting}} is due',
               'sunday-nudge.txt',
               'sunday-nudge.html',
-              { userName: a.name ?? a.email, weekStarting, appUrl: APP_URL }
+              { userName: a.name ?? a.email, weekStarting, appUrl: APP_URL, contactEmail: CONTACT_EMAIL }
             )
           ),
         ]))
@@ -1225,7 +1223,7 @@ exports.sendMondayNudge = functions.pubsub
               '2 hours left to submit your report',
               'monday-nudge.txt',
               'monday-nudge.html',
-              { userName: a.name ?? a.email, weekStarting, appUrl: APP_URL }
+              { userName: a.name ?? a.email, weekStarting, appUrl: APP_URL, contactEmail: CONTACT_EMAIL }
             )
           ),
         ]))
