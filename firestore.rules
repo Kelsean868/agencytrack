@@ -1270,6 +1270,17 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Monthly Plan — agent-own monthly breakdown of the year plan (Game Plan Step 3).
+      // Owner-only, mirroring the yearPlan arm. Manager-read arm added with the
+      // manager-review slice. No UI writes this path until the gated Slice-2 panel.
+      match /users/{uid}/monthlyPlan/{year} {
+        allow get, list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
+        allow create: if isAgent() && getTenantId() == tenantId && request.auth.uid == uid
+          && request.resource.data.status == 'draft';
+        allow update: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
+        allow delete: if false;
+      }
+
       // ── Compliance v2 Slice 2: manager-initiated filing nudges ────────────────
       // /tenants/{tid}/nudges/{audienceUid}_{type}_{weekStart}
       //   weekStart = YYYY-MM-DD Sunday; type = 'compliance.filing.nudge' (dotted,
