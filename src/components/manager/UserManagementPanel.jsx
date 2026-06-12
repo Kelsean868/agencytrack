@@ -397,6 +397,15 @@ export default function UserManagementPanel() {
     return () => document.removeEventListener('keydown', onKey);
   }, [copyLinkUser]);
 
+  useEffect(() => {
+    if (inviteMenuUid === null) return;
+    function onClickOutside(e) {
+      if (!e.target.closest('.invite-menu-container')) setInviteMenuUid(null);
+    }
+    document.addEventListener('click', onClickOutside);
+    return () => document.removeEventListener('click', onClickOutside);
+  }, [inviteMenuUid]);
+
   function handleCreated(email, createdRole, emailQueued) {
     setShowDrawer(false);
     loadUsers();
@@ -623,7 +632,7 @@ export default function UserManagementPanel() {
                     </button>
                   )}
                   {canAct && !isInactive && (
-                    <div className="relative">
+                    <div className="relative invite-menu-container">
                       <button
                         type="button"
                         onClick={() => setInviteMenuUid((prev) => (prev === (u.uid ?? u.id) ? null : (u.uid ?? u.id)))}
@@ -784,6 +793,8 @@ export default function UserManagementPanel() {
                     readOnly
                     aria-label="Invite link"
                     data-testid="copy-link-input"
+                    onFocus={(e) => e.target.select()}
+                    onClick={(e) => e.target.select()}
                     className="flex-1 text-xs bg-surface border border-border rounded-lg px-3 py-2.5 text-ink font-mono truncate focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                   <button

@@ -531,11 +531,16 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
   // Half-provisioned targets (Auth record exists, no Firestore doc) are refused.
   let targetDoc = null;
   if (targetTenant) {
-    const targetSnap = await admin.firestore()
-      .doc(`tenants/${targetTenant}/users/${targetUid}`)
-      .get()
-      .catch(() => null);
-    if (!targetSnap?.exists) {
+    let targetSnap;
+    try {
+      targetSnap = await admin.firestore()
+        .doc(`tenants/${targetTenant}/users/${targetUid}`)
+        .get();
+    } catch (err) {
+      console.error('[resendInviteEmail] Failed to fetch target user profile:', err);
+      throw new functions.https.HttpsError('internal', 'Failed to retrieve target user profile.');
+    }
+    if (!targetSnap.exists) {
       throw new functions.https.HttpsError('failed-precondition', 'Target user has no Firestore profile.');
     }
     targetDoc = targetSnap.data();
@@ -549,11 +554,16 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
   let actorEmail = null;
   let actorUnitId = null;
   if (actorRole !== 'platform_admin' && actorTenant) {
-    const actorSnap = await admin.firestore()
-      .doc(`tenants/${actorTenant}/users/${actorUid}`)
-      .get()
-      .catch(() => null);
-    if (actorSnap?.exists) {
+    let actorSnap;
+    try {
+      actorSnap = await admin.firestore()
+        .doc(`tenants/${actorTenant}/users/${actorUid}`)
+        .get();
+    } catch (err) {
+      console.error('[resendInviteEmail] Failed to fetch actor profile:', err);
+      throw new functions.https.HttpsError('internal', 'Failed to retrieve actor profile.');
+    }
+    if (actorSnap.exists) {
       actorEmail  = actorSnap.data().email  ?? null;
       actorUnitId = actorSnap.data().unitId ?? null;
     }
@@ -577,29 +587,30 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
   let emailQueued = channel === 'link' ? false : true;
   let emailError;
 
-  if (channel === 'link') {
-    // Fatal: if link generation fails we have nothing to return to the caller.
-    try {
-      resetLink = await admin.auth().generatePasswordResetLink(targetUser.email, {
-        url: 'https://agencytrack.vercel.app',
-      });
-    } catch (linkErr) {
-      console.warn('[resendInviteEmail] generatePasswordResetLink failed (link channel):', linkErr.message);
+  // Generate the password-reset link (needed by both channels).
+  try {
+    resetLink = await admin.auth().generatePasswordResetLink(targetUser.email, {
+      url: 'https://agencytrack.vercel.app',
+    });
+  } catch (linkErr) {
+    console.warn('[resendInviteEmail] generatePasswordResetLink failed:', linkErr.message);
+    if (channel === 'link') {
       throw new functions.https.HttpsError('internal', 'Failed to generate invite link.');
     }
-  } else {
-    // email channel: link-gen + mail/ write are non-fatal (mirrors existing behavior).
+    emailQueued = false;
+    emailError = linkErr.message ?? String(linkErr);
+  }
+
+  // email channel: write to mail/ collection (non-fatal).
+  if (channel === 'email' && emailQueued) {
     try {
-      const link = await admin.auth().generatePasswordResetLink(targetUser.email, {
-        url: 'https://agencytrack.vercel.app',
-      });
       await admin.firestore().collection('mail').add(
         buildMailDoc(
           targetUser.email,
           'Welcome to AgencyTrack — set your password',
           'password-reset.txt',
           'password-reset.html',
-          { userName: targetUser.displayName ?? '', resetLink: link }
+          { userName: targetUser.displayName ?? '', resetLink }
         )
       );
     } catch (mailErr) {
