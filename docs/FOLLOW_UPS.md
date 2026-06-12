@@ -15,15 +15,9 @@ One-shot script (`functions/scripts/`) to provision a roster CSV in dependency o
 
 ---
 
-## Copy invite link — Extract shared INVITE_CONTINUE_URL constant (banked 2026-06-11, LOW)
+## ~~Copy invite link — Extract shared INVITE_CONTINUE_URL constant~~ (RESOLVED — PR #579 `16e2996`)
 
-**Source:** feat-copy-invite-link PR #573 (`80de845`) — brief Phase 1 decision (reuse inline continue URL).
-
-Both `doCreateUser` and `resendInviteEmail` Cloud Functions hard-code `https://agencytrack.vercel.app` as the `continueUrl` / `url` parameter passed to `sendPasswordResetEmail` / `generatePasswordResetLink`. This duplicated constant will diverge if the production URL ever changes (e.g. custom domain, staging environment).
-
-**Action:** Extract to a shared location in `functions/` (e.g. `functions/lib/config.js`) as `INVITE_CONTINUE_URL = 'https://agencytrack.vercel.app'`. Update both call sites. XS refactor — no behavior change.
-
-**Severity:** LOW (pilot single-URL environment; deferred to avoid scope creep on the copy-invite-link PR).
+**Status:** RESOLVED. `functions/lib/config.js` now exports `APP_URL = 'https://agencytrack.vercel.app'`; `doCreateUser` (`continueUrl`) and `resendInviteEmail` (`url`) both repointed to it. Shipped as `fix(email): centralize APP_URL to functions/lib/config.js` in PR #579 (`16e2996`, HUMAN-MERGE, 2026-06-12).
 
 ---
 
@@ -440,15 +434,11 @@ When multi-section components are refactored to extract hero sub-sections into s
 
 ---
 
-## D6 census — bg-primary+text-white buttons missing dark:bg-primary-dark (banked 2026-06-06, PR #515 axe)
+## ~~D6 census — bg-primary+text-white buttons missing dark:bg-primary-dark~~ (RESOLVED — PR #578 `d798785`)
 
-**Context:** S3a's axe scan of the agent-dark/ledger-lapsed surface found the Policy Ledger "New Policy" button (`bg-primary text-white` without `dark:bg-primary-dark`) at 2.44:1 in dark mode (expected 4.5:1). The button pre-dated S3a; it was fixed as a Rule-9 in-PR extension per dispatcher authorization. The D6 doctrine (CLAUDE.md UI rules) requires that every `bg-primary text-white` button pair `dark:bg-primary-dark`. This was the first find — siblings from Track H era and earlier are suspects.
+**Status:** RESOLVED. Systematic app-wide sweep confirmed: `dark:bg-primary-dark` paired on all `bg-primary text-white` buttons. Shipped as `fix(a11y): D6 census — dark:bg-primary-dark on all bg-primary text-white buttons` in PR #578 (`d798785`, HUMAN-MERGE, 2026-06-12).
 
-**Action:** Grep every `bg-primary` + `text-white` combination app-wide, check for `dark:bg-primary-dark` pairing. Any missing → one-line fix. Mechanical XS sweep candidate — same pattern as the #487 `text-{status}` → `text-{status}-ink` sweep in miniature.
-
-**No urgency** — the axe node is fixed at the found site. This tracks the systematic sweep of the remaining population.
-
-**Fortress lesson (banked 2026-06-06, PR #515):** "Bell-badge-only holds for WALKED surfaces; the D6 census extends the walked set to pre-doctrine rooms." The bell-badge baseline covers only surfaces that have been axe-scanned since PR #503 (cleanup-duo). Pre-doctrine surfaces (Track H era and earlier) may carry the same `bg-primary text-white` D6 pattern without dark pairing — they have never been axe-walked. Each new PR that routes navigation to a previously unwalled surface must axe-scan it, not assume the bell-badge baseline covers it.
+**Fortress lesson (retained):** "Bell-badge-only holds for WALKED surfaces; the D6 census extends the walked set to pre-doctrine rooms." Each new PR routing to a previously unwalled surface must axe-scan it — do not assume the bell-badge baseline covers pre-doctrine surfaces.
 
 ---
 
