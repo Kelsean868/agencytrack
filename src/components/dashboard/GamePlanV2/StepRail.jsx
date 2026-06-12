@@ -79,8 +79,11 @@ function Chevron() {
   );
 }
 
-export default function StepRail({ moneyNeedsFilled, onOpenMoneyNeeds, onOpenYearPlan }) {
+export default function StepRail({ moneyNeedsFilled, onOpenMoneyNeeds, onOpenYearPlan, yearPlanFilled }) {
   const step2Active = !!onOpenYearPlan;
+  const step2Variant = step2Active ? (yearPlanFilled ? 'done' : 'current') : 'next';
+  const step2Kicker = step2Active ? (yearPlanFilled ? 'Done' : 'Start') : 'Next';
+  const step2Sub = step2Active ? (yearPlanFilled ? 'API allocated by line' : 'Allocate API by line') : 'Coming soon';
   return (
     <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center" data-testid="game-plan-rail">
       <StepCard
@@ -93,11 +96,11 @@ export default function StepRail({ moneyNeedsFilled, onOpenMoneyNeeds, onOpenYea
       />
       <Chevron />
       <StepCard
-        variant={step2Active ? 'current' : 'next'}
+        variant={step2Variant}
         num="2"
-        kicker={step2Active ? 'Open' : 'Next'}
+        kicker={step2Kicker}
         title="Year Plan"
-        sub={step2Active ? 'Allocate API by line' : 'Coming soon'}
+        sub={step2Sub}
         onClick={onOpenYearPlan}
       />
       <Chevron />
