@@ -4597,7 +4597,27 @@ Game Plan v2 **Slice 1** (PR #438) shipped the shell + Money Needs re-home. The 
 - **Profile → line gating + A&H license-domain confirm:** `life_only` → Life + A&H tabs only; `general_only` → Property + Motor + A&H tabs only. A&H license-domain (life vs. general) needs a product decision before encoding. Deferred to Slice 2.
 - **First production write-read-verify smoke:** Slice 1 is headless (no UI path) — smoke runs when the agent-UI surface ships in Slice 2.
 
-Banked: Game Plan v2 Slice 1 (PR #438), 2026-06-03. Year Plan data foundation Slice 1 of 3 (PR #571, `c3947ad`), 2026-06-11.
+Banked: Game Plan v2 Slice 1 (PR #438), 2026-06-03. Year Plan data foundation Slice 1 of 3 (PR #571, `c3947ad`), 2026-06-11. Slice 2b design resolved 2026-06-13 (dispatcher ruling): award strip projects off `lines.life.targetAPI`; Part B = licenseProfile dropdown in EditUserDrawer.
+
+---
+
+## awardsEngine.js per-line filter gap (LOW, banked 2026-06-13, Slice 2b design)
+
+**Context:** `awardsEngine.js` computes award eligibility from confirmed settlements using `totalEnabledAPI` — a sum across all product lines. It has no per-line filter.
+
+**Gap:** In a multi-line world where only Life submissions count toward annual awards, the engine would over-count API (crediting A&H / Property / Motor alongside Life). This is moot for the Life-only Tatil pilot (only Life is submittable, so `totalEnabledAPI` equals Life API in practice).
+
+**Year Plan strip alignment:** The `AwardProjectionStrip` (Slice 2b) uses `lines.life.targetAPI` (Life line only) as its projection input — this is honest for the pilot. The strip and engine are intentionally divergent; reconciling them requires a product decision on non-Life submittability.
+
+**Action when non-Life becomes submittable:**
+1. Add a `lineWeights` or `lineEligibility` map to the ruleset (e.g. `{ life: 1, health: 0, property: 0, motor: 0 }`)
+2. Filter `subValues` in `awardsEngine.js` to sum only lines with `weight > 0`
+3. Update `AwardProjectionStrip` to use the same filter (or pass the weighted sum directly)
+4. Update existing engine tests
+
+Do NOT modify `awardsEngine.js` in Slice 2b — the pilot is Life-only and the engine is correct for current data.
+
+Banked: 2026-06-13, Slice 2b design resolution (dispatcher ruling).
 
 ---
 
