@@ -100,6 +100,6 @@ To debug which agents were selected for a nudge, check Cloud Functions logs for:
 | Config key | Value |
 |-----------|-------|
 | `SMTP_CONNECTION_URI` | `smtps://apikey:<SENDGRID_API_KEY>@smtp.sendgrid.net:465` |
-| `DEFAULT_FROM` | `AgencyTrack <noreply@agencytrack.app>` (or verified sender) |
+| `DEFAULT_FROM` | `AgencyTrack <notifications@agencytrack.app>` (or verified sender) |
 | Firestore collection | `mail` |
 | Extension ID | `firestore-send-email` |

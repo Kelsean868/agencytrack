@@ -19,6 +19,8 @@ One-shot script (`functions/scripts/`) to provision a roster CSV in dependency o
 
 **Status:** RESOLVED. `functions/lib/config.js` now exports `APP_URL = 'https://agencytrack.vercel.app'`; `doCreateUser` (`continueUrl`) and `resendInviteEmail` (`url`) both repointed to it. Shipped as `fix(email): centralize APP_URL to functions/lib/config.js` in PR #579 (`16e2996`, HUMAN-MERGE, 2026-06-12).
 
+**Portal sub-step (LOW):** When `portal.agencytrack.app` is attached, update `APP_URL` in `functions/lib/config.js` to the portal domain — one-line change. Rides the portal-attachment work; no standalone PR needed.
+
 ---
 
 ## Copy invite link — Create-time link affordance (banked 2026-06-11, LOW)
