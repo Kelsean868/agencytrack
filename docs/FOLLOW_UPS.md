@@ -15,6 +15,26 @@ One-shot script (`functions/scripts/`) to provision a roster CSV in dependency o
 
 ---
 
+## Monthly Plan Panel — Step-3 `done` state + cascade rung → Slice 3 (banked 2026-06-12, LOW)
+
+**Source:** monthly-plan-panel-brief-kickoff.md Phase 4 bank. StepRail Step-3 `onOpenMonthlyPlan` variant uses `'next'` (in-flight, teal) when active. Slice 3 will add a `monthlyPlanFilled` boolean derived from whether a balanced `monthlyPlan` doc exists (`balanceDelta === 0`). When `monthlyPlanFilled=true`, Step 3 should switch to `'done'` (settled, check-mark). `PlanCascade` should also gain a Monthly Plan rung (mirrors the Year Plan rung added in PR #584).
+
+**Action:** `StepRail.jsx` — add `monthlyPlanFilled` prop + `step3Variant = monthlyPlanFilled ? 'done' : (step3Active ? 'next' : 'coming')`. `PlanCascade.jsx` — add Monthly Plan rung below Year Plan rung (same visual pattern: `bg-primary-tint/border-primary/30`). `GamePlanV2/index.jsx` — derive `monthlyPlanFilled` by loading the `monthlyPlan` doc and checking `balanceDelta === 0`.
+
+**Severity:** LOW (cosmetic completeness; Step-3 done state is a nice-to-have, not blocking).
+
+---
+
+## Monthly Plan — `VITE_YEAR_PLAN_ENABLED` rename → standalone chore (banked 2026-06-12, LOW)
+
+**Source:** monthly-plan-panel-brief-kickoff.md Phase 4 bank. `VITE_YEAR_PLAN_ENABLED` gates both the Year Plan and Monthly Plan features. The flag name implies Year Plan only; before un-gating, it should be renamed to something accurate (e.g. `VITE_GAME_PLAN_ENABLED`).
+
+**Action:** Mechanical rename across all read sites — `GamePlanV2/index.jsx`, `StepRail.jsx`, `YearPlanModal.jsx`, `EditUserDrawer.jsx`, `vite.config.js` test env, `.env.example`, `.env.local`. Ship as standalone chore PR before (or alongside) the un-gate PR.
+
+**Severity:** LOW (housekeeping — avoids a permanently misleading flag name post-un-gate).
+
+---
+
 ## ~~Copy invite link — Extract shared INVITE_CONTINUE_URL constant~~ (RESOLVED — PR #579 `16e2996`)
 
 **Status:** RESOLVED. `functions/lib/config.js` now exports `APP_URL = 'https://agencytrack.vercel.app'`; `doCreateUser` (`continueUrl`) and `resendInviteEmail` (`url`) both repointed to it. Shipped as `fix(email): centralize APP_URL to functions/lib/config.js` in PR #579 (`16e2996`, HUMAN-MERGE, 2026-06-12).
