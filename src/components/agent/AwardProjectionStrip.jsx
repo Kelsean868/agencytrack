@@ -30,12 +30,14 @@ export default function AwardProjectionStrip({ lines, agentProfile, ruleset }) {
   const lifeTargetAPI = parseFloat(lines?.life?.targetAPI) || 0;
   const apps = derivedApps(lifeTargetAPI);
 
+  const { monthsInIndustry, monthsAtTatil, isBdoDso } = agentProfile ?? {};
+
   const awards = useMemo(
-    () => projectAwards(lifeTargetAPI, agentProfile, ruleset),
-    [lifeTargetAPI, agentProfile, ruleset],
+    () => projectAwards(lifeTargetAPI, { monthsInIndustry, monthsAtTatil, isBdoDso }, ruleset),
+    [lifeTargetAPI, monthsInIndustry, monthsAtTatil, isBdoDso, ruleset],
   );
 
-  if (!lifeTargetAPI) return null;
+  if (lifeTargetAPI <= 0) return null;
 
   return (
     <div
