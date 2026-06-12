@@ -15,6 +15,18 @@ One-shot script (`functions/scripts/`) to provision a roster CSV in dependency o
 
 ---
 
+## Monthly Plan + Year Plan — focus trap, initial focus, return focus (banked 2026-06-12, LOW)
+
+**Source:** Gemini #3 on PR #589; parity check confirms YearPlanModal also lacks all three. Consistent gap across both modals.
+
+Both `MonthlyPlanModal` and `YearPlanModal` open without trapping focus inside the dialog, without setting initial focus to a first interactive element, and without returning focus to the trigger element on close. Users navigating by keyboard can tab outside the modal while it is open.
+
+**Action:** For each modal, add a focus trap using a sentinel `focusin` listener (or a library like `focus-trap-react`): on open, `focusFirstInteractiveChild(panelRef)`; on close, `triggerRef.current?.focus()`. Wire via `useEffect` in each modal. Ensure the Escape-key close path also returns focus. The `panelRef` already exists on `MonthlyPlanModal`; `YearPlanModal` needs one added.
+
+**Severity:** LOW (a11y improvement — no current user reports; both modals have `role="dialog" aria-modal="true"` which tells screen readers the dialog is modal; keyboard-only users are affected by the missing trap).
+
+---
+
 ## Monthly Plan Panel — Step-3 `done` state + cascade rung → Slice 3 (banked 2026-06-12, LOW)
 
 **Source:** monthly-plan-panel-brief-kickoff.md Phase 4 bank. StepRail Step-3 `onOpenMonthlyPlan` variant uses `'next'` (in-flight, teal) when active. Slice 3 will add a `monthlyPlanFilled` boolean derived from whether a balanced `monthlyPlan` doc exists (`balanceDelta === 0`). When `monthlyPlanFilled=true`, Step 3 should switch to `'done'` (settled, check-mark). `PlanCascade` should also gain a Monthly Plan rung (mirrors the Year Plan rung added in PR #584).
