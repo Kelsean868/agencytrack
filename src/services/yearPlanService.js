@@ -116,7 +116,5 @@ export async function saveYearPlan(tenantId, uid, year, lines, licenseProfile) {
     updatedAt:      serverTimestamp(),
     updatedBy:      uid,
   });
-
-  const updated = await getDoc(docRef);
-  return { id: updated.id, ...updated.data() };
+  return { id: String(parsedYear) };
 }
