@@ -36,7 +36,13 @@ function CascadeArrow() {
   );
 }
 
-export default function PlanCascade({ commissionNeed, moneyNeedsFilled }) {
+export default function PlanCascade({
+  commissionNeed,
+  moneyNeedsFilled,
+  yearPlanEnabled,
+  yearPlanTotalAPI,
+  yearPlanFilled,
+}) {
   return (
     <div className="card" data-testid="game-plan-cascade">
       <div className="mb-3 flex items-baseline gap-2">
@@ -59,7 +65,25 @@ export default function PlanCascade({ commissionNeed, moneyNeedsFilled }) {
       </div>
 
       <CascadeArrow />
-      <ComingRung step="Step 2 · Year Plan" title="Year Plan" desc="Split across product lines" />
+
+      {yearPlanEnabled ? (
+        <div className="rounded-xl border border-primary/30 bg-primary-tint p-3.5">
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+            Step 2 · Year Plan
+          </div>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <div className="text-xs text-ink-muted">Planned annual API</div>
+            <div className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight text-ink">
+              {yearPlanFilled ? formatCurrency(yearPlanTotalAPI) : (
+                <span className="font-sans text-sm font-medium text-ink-muted">Set in your plan</span>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <ComingRung step="Step 2 · Year Plan" title="Year Plan" desc="Split across product lines" />
+      )}
+
       <CascadeArrow />
       <ComingRung step="Step 3 · Monthly Plan" title="Monthly Plan" desc="Broken into 12 months" />
     </div>
