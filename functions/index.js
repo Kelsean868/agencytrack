@@ -467,12 +467,14 @@ exports.createUser = functions.https.onCall(doCreateUser);
 // share visual styling. Writes an audit log entry to auditInviteResends
 // (top-level, CF-only via Admin SDK; mirrors auditAdminCreations).
 //
-// Actor set: platform_admin, tenant_admin, sales_manager, branch_manager —
-// matches UserManagementPanel Resend button visibility (CREATABLE_ROLES).
+// Actor set: platform_admin, tenant_admin, sales_manager, branch_manager,
+// unit_manager (own-unit agents only, via unitId scope guard below).
+// channel: 'email' (default) | 'link'. 'link' skips the mail/ write and
+// returns the reset link to the caller; 'email' queues the mail/ doc.
 // Tenant scoping: actor and target must share tenantId, except platform_admin
 // which is unrestricted (mirrors createUser tenant-scoping shape).
 // ─────────────────────────────────────────────────────────────────────────────
-const RESEND_INVITE_ACTOR_ROLES = ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager'];
+const RESEND_INVITE_ACTOR_ROLES = ['platform_admin', 'tenant_admin', 'sales_manager', 'branch_manager', 'unit_manager'];
 
 exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
   if (!context.auth) {
@@ -485,7 +487,7 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
 
   if (!RESEND_INVITE_ACTOR_ROLES.includes(actorRole)) {
     throw new functions.https.HttpsError(
-      'permission-denied', `${actorRole} cannot resend invite emails.`
+      'permission-denied', `${actorRole} cannot send invite emails.`
     );
   }
 
@@ -494,7 +496,12 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('invalid-argument', 'uid is required.');
   }
 
-  // ── Resolve target user (Auth + Firestore) ────────────────────────────────
+  const channel = data.channel ?? 'email';
+  if (channel !== 'email' && channel !== 'link') {
+    throw new functions.https.HttpsError('invalid-argument', "channel must be 'email' or 'link'.");
+  }
+
+  // ── Resolve target user (Auth record) ─────────────────────────────────────
   let targetUser;
   try {
     targetUser = await admin.auth().getUser(targetUid);
@@ -508,9 +515,7 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
     throw new functions.https.HttpsError('failed-precondition', 'Target user has no email on file.');
   }
 
-  // Resolve target tenantId from custom claims (authoritative) — for the
-  // platform_admin cross-tenant path we still need the target's tenant to
-  // record on the audit doc.
+  // Resolve target tenantId from custom claims (authoritative).
   const targetClaims = targetUser.customClaims ?? {};
   const targetTenant = targetClaims.tenantId ?? null;
 
@@ -518,46 +523,101 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
   // platform_admin may resend across tenants; everyone else must match.
   if (actorRole !== 'platform_admin' && targetTenant !== actorTenant) {
     throw new functions.https.HttpsError(
-      'permission-denied', 'Cannot resend invite for a user in a different tenant.'
+      'permission-denied', 'Cannot send invite for a user in a different tenant.'
     );
   }
 
-  // ── Read actor profile for audit fields (email, name) ─────────────────────
+  // ── Read target Firestore doc — inactive check + UM scope guard ───────────
+  // Half-provisioned targets (Auth record exists, no Firestore doc) are refused.
+  let targetDoc = null;
+  if (targetTenant) {
+    let targetSnap;
+    try {
+      targetSnap = await admin.firestore()
+        .doc(`tenants/${targetTenant}/users/${targetUid}`)
+        .get();
+    } catch (err) {
+      console.error('[resendInviteEmail] Failed to fetch target user profile:', err);
+      throw new functions.https.HttpsError('internal', 'Failed to retrieve target user profile.');
+    }
+    if (!targetSnap.exists) {
+      throw new functions.https.HttpsError('failed-precondition', 'Target user has no Firestore profile.');
+    }
+    targetDoc = targetSnap.data();
+  }
+  if (targetDoc?.active === false) {
+    throw new functions.https.HttpsError('failed-precondition', 'Cannot send invite to an inactive account.');
+  }
+
+  // ── Read actor profile + UM scope guard ───────────────────────────────────
   // platform_admin has no Firestore user doc; fall back to auth token email.
   let actorEmail = null;
+  let actorUnitId = null;
   if (actorRole !== 'platform_admin' && actorTenant) {
-    const actorSnap = await admin.firestore()
-      .doc(`tenants/${actorTenant}/users/${actorUid}`)
-      .get()
-      .catch(() => null);
-    actorEmail = actorSnap?.exists ? (actorSnap.data().email ?? null) : null;
+    let actorSnap;
+    try {
+      actorSnap = await admin.firestore()
+        .doc(`tenants/${actorTenant}/users/${actorUid}`)
+        .get();
+    } catch (err) {
+      console.error('[resendInviteEmail] Failed to fetch actor profile:', err);
+      throw new functions.https.HttpsError('internal', 'Failed to retrieve actor profile.');
+    }
+    if (actorSnap.exists) {
+      actorEmail  = actorSnap.data().email  ?? null;
+      actorUnitId = actorSnap.data().unitId ?? null;
+    }
   }
   if (!actorEmail) actorEmail = context.auth.token.email ?? null;
 
-  // ── Generate reset link + queue mail/ doc ─────────────────────────────────
-  // Mirrors doCreateUser step E-2 exactly: same template, same subject,
-  // same buildMailDoc signature. emailQueued tracks whether the dispatch
-  // pipeline accepted the doc; failure is non-fatal — the audit row still
-  // lands so admins can see the resend was attempted.
-  let emailQueued = true;
+  if (actorRole === 'unit_manager') {
+    const targetRole   = targetDoc?.role   ?? null;
+    const targetUnitId = targetDoc?.unitId ?? null;
+    if (targetRole !== 'agent' || !actorUnitId || targetUnitId !== actorUnitId) {
+      throw new functions.https.HttpsError(
+        'permission-denied', 'Unit managers can only invite agents in their own unit.'
+      );
+    }
+  }
+
+  // ── Generate invite link ──────────────────────────────────────────────────
+  // LOW FU: extract shared INVITE_CONTINUE_URL constant (dedupe with L398) and
+  // swap to portal.agencytrack.app once the portal domain is attached.
+  let resetLink;
+  let emailQueued = channel === 'link' ? false : true;
   let emailError;
+
+  // Generate the password-reset link (needed by both channels).
   try {
-    const resetLink = await admin.auth().generatePasswordResetLink(targetUser.email, {
+    resetLink = await admin.auth().generatePasswordResetLink(targetUser.email, {
       url: 'https://agencytrack.vercel.app',
     });
-    await admin.firestore().collection('mail').add(
-      buildMailDoc(
-        targetUser.email,
-        'Welcome to AgencyTrack — set your password',
-        'password-reset.txt',
-        'password-reset.html',
-        { userName: targetUser.displayName ?? '', resetLink }
-      )
-    );
-  } catch (mailErr) {
-    console.warn('[resendInviteEmail] mail/ write failed (non-fatal):', mailErr.message);
+  } catch (linkErr) {
+    console.warn('[resendInviteEmail] generatePasswordResetLink failed:', linkErr.message);
+    if (channel === 'link') {
+      throw new functions.https.HttpsError('internal', 'Failed to generate invite link.');
+    }
     emailQueued = false;
-    emailError = mailErr.message ?? String(mailErr);
+    emailError = linkErr.message ?? String(linkErr);
+  }
+
+  // email channel: write to mail/ collection (non-fatal).
+  if (channel === 'email' && emailQueued) {
+    try {
+      await admin.firestore().collection('mail').add(
+        buildMailDoc(
+          targetUser.email,
+          'Welcome to AgencyTrack — set your password',
+          'password-reset.txt',
+          'password-reset.html',
+          { userName: targetUser.displayName ?? '', resetLink }
+        )
+      );
+    } catch (mailErr) {
+      console.warn('[resendInviteEmail] mail/ write failed (non-fatal):', mailErr.message);
+      emailQueued = false;
+      emailError = mailErr.message ?? String(mailErr);
+    }
   }
 
   // ── Audit log (Admin SDK write; rules forbid client writes) ───────────────
@@ -571,18 +631,18 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
       targetEmail: targetUser.email,
       ip:          context.rawRequest?.ip ?? null,
       userAgent:   context.rawRequest?.headers?.['user-agent'] ?? null,
+      method:      channel,
       emailQueued,
       timestamp:   admin.firestore.FieldValue.serverTimestamp(),
     });
   } catch (auditErr) {
-    // Audit failure is logged but does not fail the call — the email side
-    // effect already happened (or didn't, captured in emailQueued).
     console.error('[resendInviteEmail] audit write failed:', auditErr);
   }
 
-  console.log(`[resendInviteEmail] ${actorRole} ${actorUid} resent invite to ${targetUid} (${targetUser.email}) — emailQueued=${emailQueued}`);
+  console.log(`[resendInviteEmail] ${actorRole} ${actorUid} channel=${channel} → ${targetUid} (${targetUser.email}) — emailQueued=${emailQueued}`);
 
   const result = { success: true, targetUid, targetEmail: targetUser.email, emailQueued };
+  if (channel === 'link') result.link = resetLink;
   if (emailError) result.emailError = emailError;
   return result;
 });

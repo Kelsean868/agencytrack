@@ -10,6 +10,7 @@ const hoisted = vi.hoisted(() => ({
   getUnitManagers:    vi.fn(),
   getBranchManagers:  vi.fn(),
   resendInvite:       vi.fn(),
+  getInviteLink:      vi.fn(),
   toastShow:          vi.fn(),
 }));
 
@@ -22,7 +23,8 @@ vi.mock('../../../services/agentManagementService', () => ({
 }));
 
 vi.mock('../../../services/userService', () => ({
-  resendInvite: hoisted.resendInvite,
+  resendInvite:  hoisted.resendInvite,
+  getInviteLink: hoisted.getInviteLink,
 }));
 
 vi.mock('../../../hooks/useToast', () => ({
@@ -63,30 +65,51 @@ const INACTIVE_AGENT = {
   active:  false,
 };
 
-describe('UserManagementPanel — Resend invite UI', () => {
+const FAKE_LINK = 'https://agencytrack.vercel.app/__/auth/action?oobCode=FAKETOKEN';
+
+// Clipboard mock
+Object.assign(navigator, {
+  clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+});
+
+describe('UserManagementPanel — Invite control', () => {
   beforeEach(() => {
     hoisted.getAllUsers.mockReset();
     hoisted.resendInvite.mockReset();
+    hoisted.getInviteLink.mockReset();
     hoisted.toastShow.mockReset();
+    navigator.clipboard.writeText.mockReset().mockResolvedValue(undefined);
   });
 
-  it('renders Resend invite button for active users when caller canAct, hidden for inactive users', async () => {
+  // ── Visibility ─────────────────────────────────────────────────────────────
+
+  it('renders Invite button for active users, hidden for inactive users', async () => {
     hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT, INACTIVE_AGENT]);
     render(<UserManagementPanel />);
 
-    // Wait for the user list to load.
-    await waitFor(() => {
-      expect(screen.getByTestId('user-resend-agent-1')).toBeInTheDocument();
-    });
-    // Active agent: button present with the right aria-label.
-    const resendBtn = screen.getByTestId('user-resend-agent-1');
-    expect(resendBtn).toHaveAttribute('aria-label', 'Resend invite email to Active Agent');
+    await waitFor(() => expect(screen.getByTestId('user-invite-agent-1')).toBeInTheDocument());
 
-    // Inactive agent: button hidden (canAct && !isInactive gate).
-    expect(screen.queryByTestId('user-resend-agent-2')).not.toBeInTheDocument();
+    expect(screen.getByTestId('user-invite-agent-1')).toHaveAttribute(
+      'aria-label', 'Invite options for Active Agent'
+    );
+    expect(screen.queryByTestId('user-invite-agent-2')).not.toBeInTheDocument();
   });
 
-  it('click Resend → ConfirmDialog opens → confirm → resendInvite called with target uid, success toast shown', async () => {
+  // ── Dropdown ───────────────────────────────────────────────────────────────
+
+  it('clicking Invite button opens dropdown with Copy link and Resend email items', async () => {
+    hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT]);
+    render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId('user-invite-agent-1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('user-invite-agent-1'));
+    await waitFor(() => expect(screen.getByRole('menuitem', { name: /Copy link/i })).toBeInTheDocument());
+    expect(screen.getByRole('menuitem', { name: /Resend email/i })).toBeInTheDocument();
+  });
+
+  // ── Resend email path ──────────────────────────────────────────────────────
+
+  it('Resend email → ConfirmDialog → confirm → resendInvite called, success toast shown', async () => {
     hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT]);
     hoisted.resendInvite.mockResolvedValue({
       success: true,
@@ -95,33 +118,25 @@ describe('UserManagementPanel — Resend invite UI', () => {
       emailQueued: true,
     });
     render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId('user-invite-agent-1')).toBeInTheDocument());
 
-    // Wait for the row to render.
-    await waitFor(() => {
-      expect(screen.getByTestId('user-resend-agent-1')).toBeInTheDocument();
-    });
+    // Open dropdown
+    fireEvent.click(screen.getByTestId('user-invite-agent-1'));
+    await waitFor(() => expect(screen.getByRole('menuitem', { name: /Resend email/i })).toBeInTheDocument());
 
-    // Open the confirm dialog.
-    fireEvent.click(screen.getByTestId('user-resend-agent-1'));
-    await waitFor(() => {
-      expect(screen.getByText(/Resend invite email\?/i)).toBeInTheDocument();
-    });
-    // Edge-case copy banked in the FU body is present.
+    // Click Resend email item → opens ConfirmDialog
+    fireEvent.click(screen.getByRole('menuitem', { name: /Resend email/i }));
+    await waitFor(() => expect(screen.getByText(/Resend invite email\?/i)).toBeInTheDocument());
     expect(screen.getByText(/Previous reset email link will stop working/i)).toBeInTheDocument();
 
-    // Confirm.
+    // Confirm
     fireEvent.click(screen.getByRole('button', { name: /^Resend$/ }));
 
-    // resendInvite invoked with the target user's uid (CF payload shape).
-    await waitFor(() => expect(hoisted.resendInvite).toHaveBeenCalledTimes(1));
-    expect(hoisted.resendInvite).toHaveBeenCalledWith('agent-1');
-
-    // Success toast surfaced.
-    await waitFor(() => expect(hoisted.toastShow).toHaveBeenCalledTimes(1));
-    expect(hoisted.toastShow).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(hoisted.resendInvite).toHaveBeenCalledWith('agent-1'));
+    await waitFor(() => expect(hoisted.toastShow).toHaveBeenCalledWith(expect.objectContaining({
       variant: 'success',
       message: expect.stringMatching(/Invite email resent to Active Agent/i),
-    }));
+    })));
   });
 
   it('resendInvite returning emailQueued:false surfaces a warning toast, not success', async () => {
@@ -134,20 +149,72 @@ describe('UserManagementPanel — Resend invite UI', () => {
       emailError: 'mail/ write failed',
     });
     render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId('user-invite-agent-1')).toBeInTheDocument());
 
-    await waitFor(() => {
-      expect(screen.getByTestId('user-resend-agent-1')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByTestId('user-resend-agent-1'));
-    await waitFor(() => {
-      expect(screen.getByText(/Resend invite email\?/i)).toBeInTheDocument();
-    });
+    fireEvent.click(screen.getByTestId('user-invite-agent-1'));
+    await waitFor(() => expect(screen.getByRole('menuitem', { name: /Resend email/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('menuitem', { name: /Resend email/i }));
+    await waitFor(() => expect(screen.getByText(/Resend invite email\?/i)).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /^Resend$/ }));
 
-    await waitFor(() => expect(hoisted.toastShow).toHaveBeenCalledTimes(1));
-    expect(hoisted.toastShow).toHaveBeenCalledWith(expect.objectContaining({
+    await waitFor(() => expect(hoisted.toastShow).toHaveBeenCalledWith(expect.objectContaining({
       variant: 'warning',
       message: expect.stringMatching(/may not have sent/i),
-    }));
+    })));
+  });
+
+  // ── Copy link path ─────────────────────────────────────────────────────────
+
+  it('Copy link → getInviteLink called → modal shows link and caveats', async () => {
+    hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT]);
+    hoisted.getInviteLink.mockResolvedValue(FAKE_LINK);
+    render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId('user-invite-agent-1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('user-invite-agent-1'));
+    await waitFor(() => expect(screen.getByRole('menuitem', { name: /Copy link/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('menuitem', { name: /Copy link/i }));
+
+    await waitFor(() => expect(hoisted.getInviteLink).toHaveBeenCalledWith('agent-1'));
+    await waitFor(() => expect(screen.getByTestId('copy-link-input')).toBeInTheDocument());
+
+    expect(screen.getByTestId('copy-link-input')).toHaveValue(FAKE_LINK);
+    expect(screen.getByText(/expires in approximately 1 hour/i)).toBeInTheDocument();
+    expect(screen.getByText(/invalidates any previous invite link/i)).toBeInTheDocument();
+    expect(screen.getByText(/Send it privately/i)).toBeInTheDocument();
+  });
+
+  it('Copy button writes link to clipboard and shows Copied!', async () => {
+    hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT]);
+    hoisted.getInviteLink.mockResolvedValue(FAKE_LINK);
+    render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId('user-invite-agent-1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('user-invite-agent-1'));
+    await waitFor(() => expect(screen.getByRole('menuitem', { name: /Copy link/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('menuitem', { name: /Copy link/i }));
+    await waitFor(() => expect(screen.getByTestId('copy-link-button')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('copy-link-button'));
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalledWith(FAKE_LINK));
+    await waitFor(() => expect(screen.getByTestId('copy-link-button')).toHaveTextContent('Copied!'));
+  });
+
+  it('getInviteLink error → error toast shown, modal closed', async () => {
+    hoisted.getAllUsers.mockResolvedValue([ACTIVE_AGENT]);
+    hoisted.getInviteLink.mockRejectedValue(
+      Object.assign(new Error('permission-denied: not allowed'), { code: 'permission-denied' })
+    );
+    render(<UserManagementPanel />);
+    await waitFor(() => expect(screen.getByTestId('user-invite-agent-1')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('user-invite-agent-1'));
+    await waitFor(() => expect(screen.getByRole('menuitem', { name: /Copy link/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('menuitem', { name: /Copy link/i }));
+
+    await waitFor(() => expect(hoisted.toastShow).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: 'error' })
+    ));
+    expect(screen.queryByTestId('copy-link-input')).not.toBeInTheDocument();
   });
 });

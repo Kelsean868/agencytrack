@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload, Pencil, MailPlus } from 'lucide-react';
+import { Plus, X, Loader2, UserCircle, AlertTriangle, Upload, Pencil, MailPlus, Link, ChevronDown, Copy } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   createUser,
@@ -8,7 +8,7 @@ import {
   getAllUsers,
 } from '../../services/agentManagementService';
 import { listBranches } from '../../services/branchService';
-import { resendInvite } from '../../services/userService';
+import { resendInvite, getInviteLink } from '../../services/userService';
 import { formatDateDisplay, formatDateFriendly, getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import { EMAIL_RE } from '../../utils/validators';
 import useToast from '../../hooks/useToast';
@@ -366,6 +366,11 @@ export default function UserManagementPanel() {
   const [deactivating, setDeactivating] = useState(false);
   const [resendTarget, setResendTarget] = useState(null);
   const [resending, setResending]       = useState(false);
+  const [inviteMenuUid, setInviteMenuUid] = useState(null);
+  const [copyLinkUser, setCopyLinkUser]   = useState(null);
+  const [copyLinkValue, setCopyLinkValue] = useState('');
+  const [copyLinkLoading, setCopyLinkLoading] = useState(false);
+  const [copied, setCopied]               = useState(false);
 
   const canCreate = (CREATABLE_ROLES[role]?.length ?? 0) > 0;
   const canBulkImport = role === 'tenant_admin' || role === 'platform_admin';
@@ -384,6 +389,22 @@ export default function UserManagementPanel() {
   }, [showInactive, tenantId]);
 
   useEffect(() => { loadUsers(); }, [loadUsers]);
+
+  useEffect(() => {
+    if (!copyLinkUser) return;
+    function onKey(e) { if (e.key === 'Escape') setCopyLinkUser(null); }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [copyLinkUser]);
+
+  useEffect(() => {
+    if (inviteMenuUid === null) return;
+    function onClickOutside(e) {
+      if (!e.target.closest('.invite-menu-container')) setInviteMenuUid(null);
+    }
+    document.addEventListener('click', onClickOutside);
+    return () => document.removeEventListener('click', onClickOutside);
+  }, [inviteMenuUid]);
 
   function handleCreated(email, createdRole, emailQueued) {
     setShowDrawer(false);
@@ -445,6 +466,38 @@ export default function UserManagementPanel() {
       setResendTarget(null);
     } finally {
       setResending(false);
+    }
+  }
+
+  async function handleCopyLink(u) {
+    setCopyLinkUser(u);
+    setCopyLinkValue('');
+    setCopyLinkLoading(true);
+    setCopied(false);
+    try {
+      const link = await getInviteLink(u.uid);
+      setCopyLinkValue(link);
+    } catch (err) {
+      setCopyLinkUser(null);
+      const msg = err?.message?.includes('permission')
+        ? "You don't have permission to do this."
+        : err?.message?.includes('precondition') || err?.message?.includes('inactive')
+        ? 'Cannot generate a link for an inactive account.'
+        : 'Could not generate invite link. Please try again.';
+      toast.show({ variant: 'error', message: msg, duration: 4000 });
+    } finally {
+      setCopyLinkLoading(false);
+    }
+  }
+
+  async function handleCopyToClipboard() {
+    if (!copyLinkValue) return;
+    try {
+      await navigator.clipboard.writeText(copyLinkValue);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      toast.show({ variant: 'error', message: 'Could not copy to clipboard. Please copy manually.', duration: 4000 });
     }
   }
 
@@ -579,15 +632,42 @@ export default function UserManagementPanel() {
                     </button>
                   )}
                   {canAct && !isInactive && (
-                    <button
-                      type="button"
-                      onClick={() => setResendTarget(u)}
-                      aria-label={`Resend invite email to ${u.name ?? u.email ?? 'user'}`}
-                      data-testid={`user-resend-${u.uid ?? u.id}`}
-                      className="text-xs font-semibold text-ink-muted hover:text-ink bg-border/20 hover:bg-border/40 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center"
-                    >
-                      <MailPlus size={15} />
-                    </button>
+                    <div className="relative invite-menu-container">
+                      <button
+                        type="button"
+                        onClick={() => setInviteMenuUid((prev) => (prev === (u.uid ?? u.id) ? null : (u.uid ?? u.id)))}
+                        aria-label={`Invite options for ${u.name ?? u.email ?? 'user'}`}
+                        aria-expanded={inviteMenuUid === (u.uid ?? u.id)}
+                        aria-haspopup="true"
+                        data-testid={`user-invite-${u.uid ?? u.id}`}
+                        className="text-xs font-semibold text-ink-muted hover:text-ink bg-border/20 hover:bg-border/40 min-w-[44px] min-h-[44px] rounded-lg transition-colors flex items-center justify-center gap-0.5"
+                      >
+                        <Link size={14} /><ChevronDown size={11} />
+                      </button>
+                      {inviteMenuUid === (u.uid ?? u.id) && (
+                        <div
+                          role="menu"
+                          className="absolute right-0 top-full mt-1 z-20 bg-card border border-border rounded-xl shadow-md min-w-[160px] py-1 overflow-hidden"
+                        >
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => { setInviteMenuUid(null); handleCopyLink(u); }}
+                            className="w-full text-left text-xs font-medium text-ink-muted hover:text-ink hover:bg-border/30 px-3 py-2.5 flex items-center gap-2 transition-colors"
+                          >
+                            <Copy size={13} /> Copy link
+                          </button>
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => { setInviteMenuUid(null); setResendTarget(u); }}
+                            className="w-full text-left text-xs font-medium text-ink-muted hover:text-ink hover:bg-border/30 px-3 py-2.5 flex items-center gap-2 transition-colors"
+                          >
+                            <MailPlus size={13} /> Resend email
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
                   {canAct && (
                     <button
@@ -673,6 +753,69 @@ export default function UserManagementPanel() {
         onConfirm={handleResendConfirm}
         onCancel={() => setResendTarget(null)}
       />
+
+      {/* Copy-link modal */}
+      {copyLinkUser && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="copy-link-title"
+        >
+          <div
+            className="bg-card border border-border rounded-2xl shadow-lg w-full max-w-md p-6 flex flex-col gap-4"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 id="copy-link-title" className="text-base font-semibold text-ink">Copy invite link</h2>
+                <p className="text-xs text-ink-muted mt-0.5">
+                  For <span className="font-medium text-ink">{copyLinkUser.name ?? copyLinkUser.email}</span>
+                </p>
+              </div>
+              <button
+                onClick={() => setCopyLinkUser(null)}
+                aria-label="Close copy link modal"
+                className="text-ink-muted hover:text-ink p-1 rounded-lg transition-colors mt-0.5 shrink-0"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            {copyLinkLoading ? (
+              <div className="flex items-center gap-2 text-sm text-ink-muted py-2">
+                <Loader2 size={16} className="animate-spin" /> Generating link…
+              </div>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={copyLinkValue}
+                    readOnly
+                    aria-label="Invite link"
+                    data-testid="copy-link-input"
+                    onFocus={(e) => e.target.select()}
+                    onClick={(e) => e.target.select()}
+                    className="flex-1 text-xs bg-surface border border-border rounded-lg px-3 py-2.5 text-ink font-mono truncate focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                  <button
+                    onClick={handleCopyToClipboard}
+                    data-testid="copy-link-button"
+                    className="btn-primary flex items-center gap-1.5 px-3 text-sm shrink-0"
+                  >
+                    {copied ? 'Copied!' : <><Copy size={14} /> Copy</>}
+                  </button>
+                </div>
+                <span aria-live="polite" className="sr-only">{copied ? 'Link copied to clipboard' : ''}</span>
+                <ul className="text-xs text-ink-muted flex flex-col gap-1.5 list-disc pl-4">
+                  <li>This link expires in approximately 1 hour.</li>
+                  <li>Generating this link invalidates any previous invite link for this user.</li>
+                  <li>Send it privately — anyone with the link can set the password.</li>
+                </ul>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Bulk import users (tenant_admin / platform_admin only) */}
       {showBulkImport && (

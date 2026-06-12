@@ -36,6 +36,7 @@ import {
   updateUserFields,
   callUpdateUser,
   resendInvite,
+  getInviteLink,
   MANAGER_EDITABLE_FIELDS,
   CLAIM_KEYED_FIELDS,
 } from '../userService';
@@ -279,5 +280,49 @@ describe('userService.resendInvite', () => {
     });
     hoisted.mockCallable.mockRejectedValueOnce(cfErr);
     await expect(resendInvite('target-uid')).rejects.toBe(cfErr);
+  });
+});
+
+describe('userService.getInviteLink', () => {
+  const FAKE_LINK = 'https://agencytrack.vercel.app/__/auth/action?oobCode=FAKETOKEN';
+
+  beforeEach(() => {
+    hoisted.mockCallable.mockReset();
+    hoisted.mockHttpsCallable.mockReset();
+    hoisted.mockCallable.mockResolvedValue({
+      data: {
+        success: true,
+        targetUid: 'target-uid',
+        targetEmail: 'target@example.com',
+        emailQueued: false,
+        link: FAKE_LINK,
+      },
+    });
+    hoisted.mockHttpsCallable.mockImplementation(() => hoisted.mockCallable);
+  });
+
+  it("invokes resendInviteEmail CF with channel:'link' and returns data.link", async () => {
+    const result = await getInviteLink('target-uid');
+    expect(hoisted.mockHttpsCallable.mock.calls[0][1]).toBe('resendInviteEmail');
+    expect(hoisted.mockCallable).toHaveBeenCalledWith({ uid: 'target-uid', channel: 'link' });
+    expect(result).toBe(FAKE_LINK);
+  });
+
+  it('throws when uid is missing without invoking the CF', async () => {
+    await expect(getInviteLink()).rejects.toThrow(/uid is required/);
+    expect(hoisted.mockHttpsCallable).not.toHaveBeenCalled();
+  });
+
+  it('throws when uid is empty string without invoking the CF', async () => {
+    await expect(getInviteLink('')).rejects.toThrow(/uid is required/);
+    expect(hoisted.mockHttpsCallable).not.toHaveBeenCalled();
+  });
+
+  it('propagates Firebase HttpsError from the CF', async () => {
+    const cfErr = Object.assign(new Error('failed-precondition: inactive'), {
+      code: 'failed-precondition',
+    });
+    hoisted.mockCallable.mockRejectedValueOnce(cfErr);
+    await expect(getInviteLink('target-uid')).rejects.toBe(cfErr);
   });
 });
