@@ -284,7 +284,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             <p className="text-xs text-ink-muted">Your written business will show here as a live pipeline.</p>
             <button
               onClick={openCreate}
-              className="mt-1 h-11 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 transition-colors"
+              className="mt-1 h-11 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors"
             >
               Log a policy
             </button>
@@ -571,7 +571,7 @@ export default function PolicyLedgerPanel({ initialForm, onPrefillConsumed, init
             Cancel
           </button>
           <button type="submit" disabled={saving || (form.sourceOfProspect === 'social-media' && !form.socialPlatform)}
-            className="flex-1 h-11 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
+            className="flex-1 h-11 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
             {saving ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : 'Save Policy'}
           </button>
         </div>

@@ -300,7 +300,7 @@ export default function PolicyDrillDrawer({ policy, onClose, onTransition, trans
               <button
                 type="submit"
                 disabled={transitioning}
-                className="h-11 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                className="h-11 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                 data-testid="drawer-tx-confirm"
               >
                 {transitioning ? <><Loader2 size={16} className="animate-spin" /> Saving…</> : `Confirm — ${POLICY_STATUS_LABELS[txTo] ?? txTo}`}

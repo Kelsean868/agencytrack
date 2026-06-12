@@ -280,7 +280,7 @@ function CallCard({ call, isAuthor, agentId, onEditSaved, onArchived, preps }) {
             <button
               onClick={saveEdit}
               disabled={saving}
-              className="min-h-[44px] px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-medium flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              className="min-h-[44px] px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-medium flex items-center gap-2 hover:bg-primary/90 dark:hover:bg-primary-dark/90 disabled:opacity-50 transition-colors"
             >
               <Check size={14} />
               {saving ? 'Saving…' : 'Save'}
@@ -569,7 +569,7 @@ export default function JointCallsTab({ agentId, agentUnitId }) {
         <button
           type="submit"
           disabled={submitting || !form.appointmentDate}
-          className="min-h-[44px] w-full rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 transition-colors"
+          className="min-h-[44px] w-full rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 disabled:opacity-50 transition-colors"
         >
           {submitting ? 'Logging…' : 'Log Joint Call'}
         </button>

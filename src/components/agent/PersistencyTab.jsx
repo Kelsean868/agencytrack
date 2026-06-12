@@ -214,7 +214,7 @@ export default function PersistencyTab({ onViewLapsedPolicies }) {
             type="button"
             onClick={() => setEditing(true)}
             disabled={!activeMonthKey || lockedByManager}
-            className="h-10 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors disabled:opacity-60"
+            className="h-10 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold flex items-center gap-2 hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors disabled:opacity-60"
             data-testid="agent-persistency-edit-button"
           >
             {lockedByManager ? <Lock size={14} /> : <Edit3 size={14} />}
