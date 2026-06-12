@@ -117,6 +117,14 @@ export async function resendInvite(uid) {
   return result.data;
 }
 
+export async function getInviteLink(uid) {
+  if (!uid) throw new Error('uid is required.');
+  const fns = getFunctions();
+  const fn = httpsCallable(fns, 'resendInviteEmail');
+  const result = await fn({ uid, channel: 'link' });
+  return result.data.link;
+}
+
 // Compress an image File/Blob to maxDim × maxDim, returns a Blob (image/jpeg)
 export function compressImage(file, maxDim = 400) {
   return new Promise((resolve, reject) => {
