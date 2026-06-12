@@ -79,11 +79,23 @@ function Chevron() {
   );
 }
 
-export default function StepRail({ moneyNeedsFilled, onOpenMoneyNeeds, onOpenYearPlan, yearPlanFilled }) {
+export default function StepRail({
+  moneyNeedsFilled,
+  onOpenMoneyNeeds,
+  onOpenYearPlan,
+  yearPlanFilled,
+  onOpenMonthlyPlan,
+}) {
   const step2Active = !!onOpenYearPlan;
   const step2Variant = step2Active ? (yearPlanFilled ? 'done' : 'current') : 'next';
   const step2Kicker = step2Active ? (yearPlanFilled ? 'Done' : 'Start') : 'Next';
   const step2Sub = step2Active ? (yearPlanFilled ? 'API allocated by line' : 'Allocate API by line') : 'Coming soon';
+
+  const step3Active = !!onOpenMonthlyPlan;
+  const step3Variant = step3Active ? 'next' : 'coming';
+  const step3Kicker = step3Active ? 'Next' : 'Coming';
+  const step3Sub = step3Active ? 'Split into months' : 'Coming soon';
+
   return (
     <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center" data-testid="game-plan-rail">
       <StepCard
@@ -104,7 +116,14 @@ export default function StepRail({ moneyNeedsFilled, onOpenMoneyNeeds, onOpenYea
         onClick={onOpenYearPlan}
       />
       <Chevron />
-      <StepCard variant="coming" num="3" kicker="Coming" title="Monthly Plan" sub="Coming soon" />
+      <StepCard
+        variant={step3Variant}
+        num="3"
+        kicker={step3Kicker}
+        title="Monthly Plan"
+        sub={step3Sub}
+        onClick={step3Active ? onOpenMonthlyPlan : undefined}
+      />
       <Chevron />
       <StepCard variant="coming" num="4" kicker="Coming" title="Review & Commit" sub="Coming soon" />
     </div>

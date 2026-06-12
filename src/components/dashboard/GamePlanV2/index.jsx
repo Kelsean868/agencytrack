@@ -12,6 +12,7 @@ import PlanCascade from './PlanCascade';
 import CommitPreviewCard from './CommitPreviewCard';
 import SuggestedWeekCard from './SuggestedWeekCard';
 import YearPlanModal from '../../agent/YearPlanModal';
+import MonthlyPlanModal from '../../agent/MonthlyPlanModal';
 
 const YEAR_PLAN_ENABLED = import.meta.env.VITE_YEAR_PLAN_ENABLED === 'true';
 
@@ -71,6 +72,7 @@ export default function GamePlanScreen({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [yearPlanOpen, setYearPlanOpen] = useState(false);
+  const [monthlyPlanOpen, setMonthlyPlanOpen] = useState(false);
 
   // Weekly plan (Slice 2) — committed plan for this week + commit lifecycle.
   const [committedPlan, setCommittedPlan] = useState(null);
@@ -188,6 +190,7 @@ export default function GamePlanScreen({
   const openMoneyNeeds = () => onOpenTab?.('money-needs');
   const openGoals = () => onOpenTab?.('goals');
   const openYearPlan = YEAR_PLAN_ENABLED ? () => setYearPlanOpen(true) : undefined;
+  const openMonthlyPlan = YEAR_PLAN_ENABLED ? () => setMonthlyPlanOpen(true) : undefined;
 
   return (
     <div className="mx-auto max-w-5xl space-y-4" data-testid="game-plan-hub">
@@ -237,6 +240,15 @@ export default function GamePlanScreen({
         />
       )}
 
+      {monthlyPlanOpen && (
+        <MonthlyPlanModal
+          onClose={() => setMonthlyPlanOpen(false)}
+          yearPlanAPI={yearPlanTotalAPI}
+          submissions={submissions}
+          year={year}
+        />
+      )}
+
       {!loading && !error && (
         <>
           <PlanAnchorStrip
@@ -257,6 +269,7 @@ export default function GamePlanScreen({
             onOpenMoneyNeeds={openMoneyNeeds}
             onOpenYearPlan={openYearPlan}
             yearPlanFilled={yearPlanFilled}
+            onOpenMonthlyPlan={openMonthlyPlan}
           />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
