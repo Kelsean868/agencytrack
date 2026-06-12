@@ -118,7 +118,7 @@ describe('userService.updateUserFields', () => {
       'unitId', 'unitName',
       'agentNumber', 'contractStartDate',
       'canConfirmSettlements',
-      'licenseStatus', 'cbttExamPassedDate', 'cbttExtensionGranted',
+      'licenseStatus', 'cbttExamPassedDate', 'cbttExtensionGranted', 'licenseProfile',
     ]);
   });
 });

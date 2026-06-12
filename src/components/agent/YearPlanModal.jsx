@@ -18,6 +18,8 @@ import {
   totalEnabledAPI,
 } from '../../lib/yearPlanAllocation';
 import { DEFAULT_DECOMPOSITION_INPUTS } from '../../utils/goalDecomposition';
+import AwardProjectionStrip from './AwardProjectionStrip';
+import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const DEFAULT_AVG_POLICY = DEFAULT_DECOMPOSITION_INPUTS.avgPolicyAPI;
@@ -560,6 +562,17 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
                 lines={lines}
                 firstYearCommissionsRequired={moneyNeedsWorksheet?.firstYearCommissionsRequired}
                 commissionRate={commissionRate}
+              />
+
+              {/* Award projection strip */}
+              <AwardProjectionStrip
+                lines={lines}
+                agentProfile={{
+                  monthsInIndustry: user?.monthsInIndustry,
+                  monthsAtTatil:    user?.monthsAtTatil,
+                  isBdoDso:         user?.isBdoDso,
+                }}
+                ruleset={DEFAULT_RULESET_2026}
               />
             </div>
           )}

@@ -24,6 +24,7 @@ vi.mock('../../../services/userService', () => ({
     'unitId', 'unitName',
     'agentNumber', 'contractStartDate',
     'canConfirmSettlements',
+    'licenseStatus', 'cbttExamPassedDate', 'cbttExtensionGranted', 'licenseProfile',
   ]),
   CLAIM_KEYED_FIELDS: Object.freeze(['role', 'branchId']),
 }));
@@ -577,5 +578,85 @@ describe('EditUserDrawer', () => {
     await waitFor(() => expect(hoisted.callUpdateUser).toHaveBeenCalled());
     expect(await screen.findByText(/don't have permission/i)).toBeInTheDocument();
     expect(onSaved).not.toHaveBeenCalled();
+  });
+});
+
+// ── licenseProfile dropdown ──────────────────────────────────────────────────
+
+describe('EditUserDrawer — licenseProfile dropdown', () => {
+  it('branch_manager editing agent: licenseProfile dropdown is visible', () => {
+    render(
+      <EditUserDrawer
+        user={AGENT}
+        callerRole="branch_manager"
+        callerProfile={BRANCH_MANAGER_PROFILE}
+        tenantId="t1"
+        onClose={() => {}}
+        onSaved={() => {}}
+      />
+    );
+    expect(screen.getByLabelText(/License Profile/i)).toBeInTheDocument();
+  });
+
+  it('unit_manager editing agent: licenseProfile dropdown is hidden', () => {
+    render(
+      <EditUserDrawer
+        user={AGENT}
+        callerRole="unit_manager"
+        callerProfile={{ uid: 'um-1', branchId: 'branch-1' }}
+        tenantId="t1"
+        onClose={() => {}}
+        onSaved={() => {}}
+      />
+    );
+    expect(screen.queryByLabelText(/License Profile/i)).not.toBeInTheDocument();
+  });
+
+  it('branch_manager editing unit_manager: licenseProfile dropdown is hidden', () => {
+    render(
+      <EditUserDrawer
+        user={UNIT_MANAGER}
+        callerRole="branch_manager"
+        callerProfile={BRANCH_MANAGER_PROFILE}
+        tenantId="t1"
+        onClose={() => {}}
+        onSaved={() => {}}
+      />
+    );
+    expect(screen.queryByLabelText(/License Profile/i)).not.toBeInTheDocument();
+  });
+
+  it('licenseProfile change saves the new value via updateUserFields', async () => {
+    hoisted.updateUserFields.mockResolvedValue();
+    const onSaved = vi.fn();
+    render(
+      <EditUserDrawer
+        user={{ ...AGENT, licenseProfile: 'composite' }}
+        callerRole="branch_manager"
+        callerProfile={BRANCH_MANAGER_PROFILE}
+        tenantId="t1"
+        onClose={() => {}}
+        onSaved={onSaved}
+      />
+    );
+    fireEvent.change(screen.getByLabelText(/License Profile/i), { target: { value: 'life_only' } });
+    fireEvent.click(screen.getByRole('button', { name: /save changes/i }));
+    await waitFor(() => expect(hoisted.updateUserFields).toHaveBeenCalledTimes(1));
+    expect(hoisted.updateUserFields).toHaveBeenCalledWith('t1', 'agent-1', { licenseProfile: 'life_only' });
+    expect(onSaved).toHaveBeenCalled();
+  });
+
+  it('dropdown initialises to the user current licenseProfile value', () => {
+    render(
+      <EditUserDrawer
+        user={{ ...AGENT, licenseProfile: 'composite' }}
+        callerRole="branch_manager"
+        callerProfile={BRANCH_MANAGER_PROFILE}
+        tenantId="t1"
+        onClose={() => {}}
+        onSaved={() => {}}
+      />
+    );
+    expect(screen.getByLabelText(/License Profile/i)).toHaveValue('composite');
   });
 });
