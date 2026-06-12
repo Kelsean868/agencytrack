@@ -7,7 +7,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ## Copy invite link — Extract shared INVITE_CONTINUE_URL constant (banked 2026-06-11, LOW)
 
-**Source:** feat-copy-invite-link PR #{TBD} — brief Phase 1 decision (reuse inline continue URL).
+**Source:** feat-copy-invite-link PR #573 (`80de845`) — brief Phase 1 decision (reuse inline continue URL).
 
 Both `doCreateUser` and `resendInviteEmail` Cloud Functions hard-code `https://agencytrack.vercel.app` as the `continueUrl` / `url` parameter passed to `sendPasswordResetEmail` / `generatePasswordResetLink`. This duplicated constant will diverge if the production URL ever changes (e.g. custom domain, staging environment).
 
@@ -19,7 +19,7 @@ Both `doCreateUser` and `resendInviteEmail` Cloud Functions hard-code `https://a
 
 ## Copy invite link — Create-time link affordance (banked 2026-06-11, LOW)
 
-**Source:** feat-copy-invite-link PR #{TBD} — brief Phase 1 scoping decision (deferred to FU).
+**Source:** feat-copy-invite-link PR #573 (`80de845`) — brief Phase 1 scoping decision (deferred to FU).
 
 During account creation (Add User drawer), the system could optionally generate and display the invite link immediately, so the manager never needs a separate "Invite ▾ → Copy link" step for freshly created accounts. The `resendInviteEmail` CF's `channel:'link'` path is the correct backend mechanism.
 
