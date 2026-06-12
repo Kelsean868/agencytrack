@@ -10,7 +10,7 @@ const MANAGER_ROLES = new Set([
 ]);
 
 const TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
-const BASE_URL = 'https://agencytrack.vercel.app';
+const { APP_URL: BASE_URL } = require('../lib/config');
 
 exports.createKioskToken = functions.https.onCall(async (data, context) => {
   if (!context.auth) {

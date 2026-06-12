@@ -4,6 +4,7 @@ const { isValidEmail } = require('./utils/validators');
 const { buildMailDoc } = require('./utils/email');
 const { computePoints } = require('./lib/computePoints');
 const { resolveLevel } = require('./lib/gamificationConfig');
+const { APP_URL } = require('./lib/config');
 
 // Ambient credentials. createCustomToken needs iam.serviceAccounts.signBlob;
 // granted via roles/iam.serviceAccountTokenCreator on the App Engine default SA
@@ -395,7 +396,7 @@ async function doCreateUser(data, context) {
   let emailError;
   try {
     const resetLink = await admin.auth().generatePasswordResetLink(data.email, {
-      url: 'https://agencytrack.vercel.app',
+      url: APP_URL,
     });
     await admin.firestore().collection('mail').add(
       buildMailDoc(
@@ -590,7 +591,7 @@ exports.resendInviteEmail = functions.https.onCall(async (data, context) => {
   // Generate the password-reset link (needed by both channels).
   try {
     resetLink = await admin.auth().generatePasswordResetLink(targetUser.email, {
-      url: 'https://agencytrack.vercel.app',
+      url: APP_URL,
     });
   } catch (linkErr) {
     console.warn('[resendInviteEmail] generatePasswordResetLink failed:', linkErr.message);
@@ -1186,7 +1187,7 @@ exports.sendSundayNudge = functions.pubsub
               'Your AgencyTrack report for {{weekStarting}} is due',
               'sunday-nudge.txt',
               'sunday-nudge.html',
-              { userName: a.name ?? a.email, weekStarting }
+              { userName: a.name ?? a.email, weekStarting, appUrl: APP_URL }
             )
           ),
         ]))
@@ -1224,7 +1225,7 @@ exports.sendMondayNudge = functions.pubsub
               '2 hours left to submit your report',
               'monday-nudge.txt',
               'monday-nudge.html',
-              { userName: a.name ?? a.email, weekStarting }
+              { userName: a.name ?? a.email, weekStarting, appUrl: APP_URL }
             )
           ),
         ]))

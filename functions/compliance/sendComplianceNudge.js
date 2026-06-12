@@ -1,5 +1,7 @@
 'use strict';
 
+const { APP_URL } = require('../lib/config');
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Compliance v2 Slice 2 — sendComplianceNudge callable CF
 //
@@ -222,7 +224,7 @@ exports.sendComplianceNudge = functions.https.onCall(async (data, context) => {
             cfg.emailSubject,
             cfg.txt,
             cfg.html,
-            { userName: t.name, managerName, weekStarting: weekStart }
+            { userName: t.name, managerName, weekStarting: weekStart, appUrl: APP_URL }
           )
         );
       } catch (mailErr) {
