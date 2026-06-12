@@ -131,7 +131,7 @@ for (const tpl of TEMPLATES) {
 
   // ── 8. Stale-address cleanliness ─────────────────────────────────────────
   const noStaleEmail        = !rendered.includes('kelsean');
-  const contactEmailPresent = rendered.includes('hello@agencytrack.app');
+  const contactEmailPresent = rendered.includes(SAMPLE_VALUES.contactEmail);
 
   const pass = (
     varParity &&
