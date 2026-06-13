@@ -254,13 +254,17 @@ async function assertFirestoreState() {
   try {
     const require = createRequire(import.meta.url);
     const admin = require('../../functions/node_modules/firebase-admin');
-    if (!admin.apps.length) admin.initializeApp({ projectId: 'agencytrack-2a610' });
+    const projectId = process.env.GCLOUD_PROJECT || 'agencytrack-2a610';
+    if (!admin.apps.length) admin.initializeApp({ projectId });
 
     const db         = admin.firestore();
     const userRecord = await admin.auth().getUserByEmail(AGENT_EMAIL);
     const uid        = userRecord.uid;
     const tenantId   = userRecord.customClaims?.tenantId;
-    const year       = new Date().getFullYear();
+    const year       = parseInt(new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Port_of_Spain',
+      year: 'numeric',
+    }).format(new Date()), 10);
 
     if (!tenantId) throw new Error('No tenantId in custom claims');
 
