@@ -162,6 +162,16 @@ async function main() {
     updateDoc(doc(anonDb, mpDocPath('agent-a', '2026')), { split: 'custom' })
   );
 
+  // ── status flip: draft → committed (Step 4 commit transaction path) ──────────
+
+  await run('agent-a FLIP monthlyPlan status to committed → ALLOW', true, () =>
+    updateDoc(doc(agentADb, mpDocPath('agent-a', '2026')), { status: 'committed', committedAt: new Date() })
+  );
+
+  await run('agent-b FLIP agent-a monthlyPlan status to committed → DENY', false, () =>
+    updateDoc(doc(agentBDb, mpDocPath('agent-a', '2026')), { status: 'committed', committedAt: new Date() })
+  );
+
   // ── DELETE ────────────────────────────────────────────────────────────────────
 
   await run('agent-a DELETE own monthlyPlan → DENY (delete: if false)', false, () =>

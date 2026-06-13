@@ -5,6 +5,26 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Step 4 Commit Logic — Slice 2: ReviewCommitPanel (banked 2026-06-13, MEDIUM)
+
+`ReviewCommitModal` + `PlanReview` (year plan line breakdown + derived apps) + `CommitConsequence` (floor-display, what-changes summary) + `CommitConfirm` (loading/error/success states) + `CommittedDone` capstone. States: committing / incomplete-loop (money needs or year plan not filled) / **below-floor** (catch `BelowFloorError` from `commitPlan()` → "raise your Year Plan target" inline state) / failed (network/Firestore error). Three lean product calls to confirm at Slice 2: re-commit policy (`recommitPolicy: 'open'`), write fields (API + apps both — annotation said API only; brief rationale banked), manager visibility (deferred surfaces per annotation). Live commit write-read smoke rides this slice (first UI that triggers `commitPlan()`).
+
+**Action:** Brief + dispatch as a standard HUMAN-MERGE slice. Source: CD's `Review & Commit Panel — Step 4 Build` annotation + `docs/briefs/step4-commit-logic-brief-kickoff.md` § Deferred OUT of this slice.
+
+**Severity:** MEDIUM (the capstone UI; no un-gate until Slice 3 is also done).
+
+---
+
+## Step 4 Commit Logic — Slice 3: StepRail Step 4 + Cascade Commit rung + 100% un-gate (banked 2026-06-13, MEDIUM)
+
+StepRail Step 4 status (done/current via `isCommitted` from `goals.personalAnnualAPI` set); PlanCascade Commit rung (mirrors Monthly rung pattern — committed API amount + `committedAt` display); PlanAnchorStrip completeness → 100% when all 4 steps done; 100% completeness is the **un-gate trigger** (`VITE_YEAR_PLAN_ENABLED` flag removal + production deploy).
+
+**Action:** Brief + dispatch after Slice 2 merges. This slice has no deploy step until the un-gate decision is made by dispatcher.
+
+**Severity:** MEDIUM (completes the Game Plan arc; un-gate is the final step before Tatil pilot).
+
+---
+
 ## Bulk pilot-roster provisioning + link export (banked 2026-06-12, LOW)
 
 One-shot script (`functions/scripts/`) to provision a roster CSV in dependency order — ensure branches in `tenants/{tid}/meta/branches` → branch managers → unit managers (incl. a thin `unit_manager` anchor for any unit with agents but no manager, e.g. Phoenix) → agents with `unitId` resolved to the unit_manager's UID — reusing `doCreateUser` (no bespoke provisioning; avoids claim/tenant drift). Idempotent/skip-existing by email; repair half-provisioned (Auth-but-no-doc). Then generate a password-reset link per account and write a LOCAL links file for out-of-band distribution. PII (roster CSV + links) stays local/gitignored; committed code generic.
