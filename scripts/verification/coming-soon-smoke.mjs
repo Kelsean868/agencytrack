@@ -5,7 +5,7 @@
  * intentionally non-navigable via click. This smoke verifies the sidebar
  * visual treatment (sidebar-link-disabled class, Soon badge, aria-disabled).
  * ComingSoonPanel rendering is covered by AgentDashboard.test.jsx (2 gated + 1 un-gated test).
- * money-needs was un-gated in PR #TBD (feat/ungate-money-needs).
+ * money-needs was un-gated in PR #605 (feat/ungate-money-needs, d4bec45).
  *
  * Usage:
  *   node scripts/verification/coming-soon-smoke.mjs [preview-url]
