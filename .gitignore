@@ -120,7 +120,9 @@ scripts/verification/*.png
 /ui_capture_script.js
 /batch-report.md
 
-# Graphify — volatile/machine-specific outputs (tracked: graph.json, graph.html, GRAPH_REPORT.md, .graphify_labels.json)
+# Graphify — volatile/machine-specific outputs (tracked: graph.html, GRAPH_REPORT.md, .graphify_labels.json)
+# graph.json excluded: exceeds GitHub's 100 MB file size limit (generated at 147.89 MB)
+graphify-out/graph.json
 graphify-out/manifest.json
 graphify-out/cost.json
 graphify-out/cache/
