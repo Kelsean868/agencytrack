@@ -56,15 +56,15 @@ async function loginAs(page, email, password) {
 
 async function navigateToMoneyNeeds(page, viewport = 'desktop') {
   if (viewport === 'mobile') {
-    // Mobile: open "More" drawer first, then click money-needs
-    const moreBtn = page.getByRole('button', { name: /^more$/i });
-    if (await moreBtn.isVisible().catch(() => false)) {
-      await moreBtn.click();
-      await page.waitForTimeout(500);
-    }
+    // Mobile: sidebar is CSS-hidden; open "More" drawer then click by label
+    const moreBtn = page.getByTestId('bottomnav-more');
+    await moreBtn.click();
+    await page.waitForTimeout(500);
+    await page.getByRole('button', { name: 'Money Needs' }).click();
+  } else {
+    const tab = page.getByTestId('agent-tab-money-needs');
+    await tab.click();
   }
-  const tab = page.getByTestId('agent-tab-money-needs');
-  await tab.click();
   await page.waitForTimeout(800);
 }
 
@@ -137,7 +137,7 @@ async function leg3(browser) {
   }
 }
 
-// Leg 4 — write-read-verify (commission target)
+// Leg 4 — write-read-verify (Life commission target)
 async function leg4(browser) {
   console.log('\n── Leg 4: write-read-verify ──');
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
@@ -147,34 +147,36 @@ async function leg4(browser) {
     await loginAs(page, AGENT_EMAIL, AGENT_PASS);
     await navigateToMoneyNeeds(page);
 
-    // Wait for the worksheet to load (heading present)
-    await page.waitForFunction(
-      () => document.body.textContent.includes('Money Needs Worksheet'),
-      { timeout: 10000 }
-    ).catch(() => null);
+    // Wait for worksheet and Commission Targets section to render
+    await page.waitForSelector('input[aria-label="Life commission target"]', { timeout: 12000 })
+      .catch(() => null);
 
-    // Find a Life commission target input and set a unique value
-    const sentinel = String(Math.floor(Math.random() * 50000) + 10000);
-    const lifeInput = page.locator('input[aria-label*="life" i], input[placeholder*="0"][type="number"]').first();
+    const lifeInput = page.locator('input[aria-label="Life commission target"]');
     const inputVisible = await lifeInput.isVisible().catch(() => false);
 
-    if (inputVisible) {
-      await lifeInput.fill(sentinel);
-      await lifeInput.blur();
-      // Wait for auto-save
-      await page.waitForTimeout(2000);
-
-      // Hard reload to verify persistence
-      await page.reload({ waitUntil: 'domcontentloaded' });
-      await page.waitForTimeout(2000);
-      await navigateToMoneyNeeds(page);
-      await page.waitForTimeout(1500);
-
-      const bodyText = await page.evaluate(() => document.body.textContent);
-      report('Write-read-verify: sentinel value persisted after reload', bodyText.includes(sentinel), `sentinel=${sentinel}`);
-    } else {
-      report('Write-read-verify: skipped — commission input not found (data-load variance)', true, 'SKIP');
+    if (!inputVisible) {
+      report('Write-read-verify: skipped — commission input not visible (worksheet may not have loaded)', true, 'SKIP');
+      return;
     }
+
+    // Use a 4-digit sentinel to avoid comma-formatting ambiguity
+    const sentinel = String(1000 + Math.floor(Math.random() * 8999));
+    await lifeInput.fill(sentinel);
+    await lifeInput.blur();
+    // Wait for onBlur save + Firestore write to complete
+    await page.waitForTimeout(3000);
+
+    // Hard reload then re-navigate
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2000);
+    await navigateToMoneyNeeds(page);
+    await page.waitForSelector('input[aria-label="Life commission target"]', { timeout: 12000 })
+      .catch(() => null);
+    await page.waitForTimeout(1000);
+
+    // Read back via inputValue() — textContent doesn't include input values
+    const storedVal = await page.locator('input[aria-label="Life commission target"]').inputValue().catch(() => '');
+    report('Write-read-verify: sentinel value persisted after reload', storedVal === sentinel, `stored=${storedVal} sentinel=${sentinel}`);
   } finally {
     await ctx.close();
   }
