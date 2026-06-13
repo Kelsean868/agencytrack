@@ -31,7 +31,7 @@ Same pattern as the `commitPlanService` fix applied in PR #593: `goalsService.js
 
 ## `VITE_GAME_PLAN_LOOP_ENABLED` kill-switch — remove once planning loop is stable (banked 2026-06-13, LOW)
 
-Flag defaulted to `true` (`!== 'false'`) in the un-gate PR (`feat/ungate-planning-loop`). Once the planning loop is confirmed stable in production (~2 weeks post-Tatil pilot, no user-reported issues), remove the flag entirely: delete all `import.meta.env.VITE_GAME_PLAN_LOOP_ENABLED` reads in `GamePlanV2/index.jsx` and `EditUserDrawer.jsx`, remove the key from `.env.example` and `vite.config.js` test env.
+Flag defaulted to `true` (`!== 'false'`) in PR #601 (`0f7fa55`, `feat/ungate-planning-loop`). Once the planning loop is confirmed stable in production (~2 weeks post-Tatil pilot, no user-reported issues), remove the flag entirely: delete all `import.meta.env.VITE_GAME_PLAN_LOOP_ENABLED` reads in `GamePlanV2/index.jsx` and `EditUserDrawer.jsx`, remove the key from `.env.example` and `vite.config.js` test env.
 
 **Severity:** LOW (cleanup chore; dead flags accumulate).
 
