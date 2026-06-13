@@ -235,6 +235,11 @@ describe('monthlyPace', () => {
     const { toFinishApps } = monthlyPace(12000, 2026, 0, 0, '2026-01-16');
     expect(toFinishApps).toBeCloseTo(1, 2);
   });
+
+  it('toFinishApps uses explicit avgPolicyAPI when provided', () => {
+    const { toFinishApps } = monthlyPace(15000, 2026, 0, 0, '2026-01-16', 15000);
+    expect(toFinishApps).toBeCloseTo(1, 2);
+  });
 });
 
 // ── ytdDelta ──────────────────────────────────────────────────────────────────

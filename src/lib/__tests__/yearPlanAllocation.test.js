@@ -111,6 +111,10 @@ describe('derivedApps', () => {
   it('returns 0 for zero targetAPI', () => {
     expect(derivedApps(0, 12000)).toBe(0);
   });
+
+  it('passes non-default avgPolicyAPI through to the helper', () => {
+    expect(derivedApps(150000, 15000)).toBeCloseTo(10, 4);
+  });
 });
 
 describe('derivedCommission', () => {

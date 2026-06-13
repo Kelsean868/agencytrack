@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { commitPlan, BelowFloorError } from '../commitPlanService';
+import { commitPlan, BelowApiFloorError, BelowAppsFloorError, AvgPolicyMissingError } from '../commitPlanService';
 
 // Hoisted so they can be referenced inside vi.mock() factory callbacks.
 const {
@@ -45,7 +45,10 @@ beforeEach(() => {
 
   mockServerTimestamp.mockReturnValue(SENTINEL_TS);
 
+  // annualApps: 15 — low enough that happy-path tests (annualAPI: 250k, avgPolicy: 12k → ~21 apps) clear the floor.
+  // Explicit apps-floor tests override this value.
   mockGetCompanyMinimums.mockResolvedValue({
+    annualApps: 15,
     tenureApiFloors: {
       band0_lt12: 150000,
       band12_to_24: 200000,
@@ -56,9 +59,13 @@ beforeEach(() => {
     },
   });
 
-  mockGetDoc.mockResolvedValue({
-    exists: () => true,
-    data: () => ({ contractStartDate: null }),
+  // Differentiate users doc vs goals doc by path.
+  mockGetDoc.mockImplementation((ref) => {
+    const path = String(ref);
+    if (path.includes('/goals/')) {
+      return Promise.resolve({ exists: () => true, data: () => ({ playgroundAvgPolicyAPI: 12000 }) });
+    }
+    return Promise.resolve({ exists: () => true, data: () => ({ contractStartDate: null }) });
   });
 
   // Default floor: flat 200 000 fallback.
@@ -124,7 +131,13 @@ describe('commitPlan — happy path writes', () => {
   });
 
   it('falls back to flat 200K floor when contractStartDate is absent on the doc', async () => {
-    mockGetDoc.mockResolvedValue({ exists: () => true, data: () => ({}) });
+    mockGetDoc.mockImplementation((ref) => {
+      const path = String(ref);
+      if (path.includes('/goals/')) {
+        return Promise.resolve({ exists: () => true, data: () => ({ playgroundAvgPolicyAPI: 12000 }) });
+      }
+      return Promise.resolve({ exists: () => true, data: () => ({}) });
+    });
 
     await expect(
       commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
@@ -136,33 +149,106 @@ describe('commitPlan — happy path writes', () => {
   });
 });
 
-describe('commitPlan — BelowFloorError', () => {
-  it('throws BelowFloorError when annualAPI is below the flat fallback floor', async () => {
+describe('commitPlan — BelowApiFloorError', () => {
+  it('throws BelowApiFloorError when annualAPI is below the flat fallback floor', async () => {
     // mockResolveAnnualAPIFloor returns 200000 (default)
     await expect(
       commitPlan('tid', 'uid', 2026, { annualAPI: 150000, annualApps: 30 }),
-    ).rejects.toBeInstanceOf(BelowFloorError);
+    ).rejects.toBeInstanceOf(BelowApiFloorError);
   });
 
   it('carries floor and planTotal on the error', async () => {
     const err = await commitPlan('tid', 'uid', 2026, { annualAPI: 150000, annualApps: 30 })
       .catch((e) => e);
-    expect(err).toBeInstanceOf(BelowFloorError);
+    expect(err).toBeInstanceOf(BelowApiFloorError);
     expect(err.floor).toBe(200000);
     expect(err.planTotal).toBe(150000);
   });
 
-  it('throws BelowFloorError for a tenure-band floor (band_gt60 = 500k)', async () => {
+  it('throws BelowApiFloorError for a tenure-band floor (band_gt60 = 500k)', async () => {
     mockResolveAnnualAPIFloor.mockReturnValue(500000);
 
     await expect(
       commitPlan('tid', 'uid', 2026, { annualAPI: 400000, annualApps: 80 }),
-    ).rejects.toBeInstanceOf(BelowFloorError);
+    ).rejects.toBeInstanceOf(BelowApiFloorError);
   });
 
   it('does not call runTransaction when the floor check fails', async () => {
     await commitPlan('tid', 'uid', 2026, { annualAPI: 150000, annualApps: 30 }).catch(() => {});
     expect(mockRunTransaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('commitPlan — apps floor', () => {
+  it('throws AvgPolicyMissingError when goals doc has no playgroundAvgPolicyAPI', async () => {
+    mockGetDoc.mockImplementation((ref) => {
+      const path = String(ref);
+      if (path.includes('/goals/')) {
+        return Promise.resolve({ exists: () => true, data: () => ({}) });
+      }
+      return Promise.resolve({ exists: () => true, data: () => ({ contractStartDate: null }) });
+    });
+
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
+    ).rejects.toBeInstanceOf(AvgPolicyMissingError);
+  });
+
+  it('throws AvgPolicyMissingError when goals doc does not exist', async () => {
+    mockGetDoc.mockImplementation((ref) => {
+      const path = String(ref);
+      if (path.includes('/goals/')) {
+        return Promise.resolve({ exists: () => false, data: () => ({}) });
+      }
+      return Promise.resolve({ exists: () => true, data: () => ({ contractStartDate: null }) });
+    });
+
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
+    ).rejects.toBeInstanceOf(AvgPolicyMissingError);
+  });
+
+  it('throws BelowAppsFloorError when derived apps are below the company floor', async () => {
+    mockGetCompanyMinimums.mockResolvedValue({
+      annualApps: 42,
+      tenureApiFloors: {
+        band0_lt12: 150000, band12_to_24: 200000, band25_to_36: 250000,
+        band37_to_48: 300000, band49_to_60: 400000, band_gt60: 500000,
+      },
+    });
+    // annualAPI = 250000, avgPolicyAPI = 12000 → appsCount = 20.83 < 42
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
+    ).rejects.toBeInstanceOf(BelowAppsFloorError);
+    expect(mockRunTransaction).not.toHaveBeenCalled();
+  });
+
+  it('carries floor, actual, and avgPolicyAPI on BelowAppsFloorError', async () => {
+    mockGetCompanyMinimums.mockResolvedValue({
+      annualApps: 42,
+      tenureApiFloors: {
+        band0_lt12: 150000, band12_to_24: 200000, band25_to_36: 250000,
+        band37_to_48: 300000, band49_to_60: 400000, band_gt60: 500000,
+      },
+    });
+    const err = await commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }).catch((e) => e);
+    expect(err).toBeInstanceOf(BelowAppsFloorError);
+    expect(err.floor).toBe(42);
+    expect(err.avgPolicyAPI).toBe(12000);
+  });
+
+  it('passes when API floor and apps floor are both cleared', async () => {
+    mockGetCompanyMinimums.mockResolvedValue({
+      annualApps: 42,
+      tenureApiFloors: {
+        band0_lt12: 150000, band12_to_24: 200000, band25_to_36: 250000,
+        band37_to_48: 300000, band49_to_60: 400000, band_gt60: 500000,
+      },
+    });
+    // annualAPI = 504000, avgPolicyAPI = 12000 → appsCount = 42.0 (boundary, passes)
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 504000, annualApps: 42 }),
+    ).resolves.toBeUndefined();
   });
 });
 

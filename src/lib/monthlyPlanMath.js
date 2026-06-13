@@ -23,6 +23,7 @@ import { extractTotalProductionCredit } from '../utils/extractFields';
 import { parseDateOnlyTT } from '../utils/dateInputs';
 import { PACE_ON_TRACK_FRACTION } from '../utils/planVariance';
 import { DEFAULT_DECOMPOSITION_INPUTS } from '../utils/goalDecomposition';
+import { deriveAnnualApps } from './deriveApps';
 
 const AVG_POLICY_API = DEFAULT_DECOMPOSITION_INPUTS.avgPolicyAPI;
 
@@ -143,7 +144,7 @@ export function bucketActualsByMonth(submissions, year) {
  * @param {string} todayTT — YYYY-MM-DD in TT timezone (from getTodayTT())
  * @returns {{ expectedToDate:number, state:'ahead'|'on-track'|'behind', toFinishAPI:number, toFinishApps:number }}
  */
-export function monthlyPace(target, year, monthIndex, actualToDate, todayTT) {
+export function monthlyPace(target, year, monthIndex, actualToDate, todayTT, avgPolicyAPI = AVG_POLICY_API) {
   const t = parseFloat(target) || 0;
   const actual = parseFloat(actualToDate) || 0;
   const dim = daysInMonth(year, monthIndex);
@@ -177,7 +178,7 @@ export function monthlyPace(target, year, monthIndex, actualToDate, todayTT) {
   }
 
   const toFinishAPI = parseFloat(Math.max(0, t - actual).toFixed(2));
-  const toFinishApps = parseFloat((AVG_POLICY_API > 0 ? toFinishAPI / AVG_POLICY_API : 0).toFixed(4));
+  const toFinishApps = parseFloat(deriveAnnualApps(toFinishAPI, avgPolicyAPI).toFixed(4));
 
   return { expectedToDate, state, toFinishAPI, toFinishApps };
 }

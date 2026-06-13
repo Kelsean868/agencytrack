@@ -11,6 +11,7 @@
  */
 
 import { DEFAULT_DECOMPOSITION_INPUTS } from '../utils/goalDecomposition';
+import { deriveAnnualApps } from './deriveApps';
 
 // ── License gating ────────────────────────────────────────────────────────────
 
@@ -71,11 +72,9 @@ export function seedFromTargets(targets, commissionRate) {
 
 const DEFAULT_AVG_POLICY = DEFAULT_DECOMPOSITION_INPUTS.avgPolicyAPI; // 12 000
 
-/** derivedApps — targetAPI ÷ avgPolicyAPI (matches goalDecomposition single source). */
+/** derivedApps — targetAPI ÷ avgPolicyAPI, routed through the shared helper. */
 export function derivedApps(targetAPI, avgPolicyAPI) {
-  const avg = parseFloat(avgPolicyAPI) || DEFAULT_AVG_POLICY;
-  const api = parseFloat(targetAPI) || 0;
-  return avg > 0 ? api / avg : 0;
+  return deriveAnnualApps(targetAPI, parseFloat(avgPolicyAPI) || DEFAULT_AVG_POLICY);
 }
 
 /** derivedCommission — targetAPI × (commissionRate / 100). */
