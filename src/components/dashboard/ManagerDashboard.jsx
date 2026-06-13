@@ -38,7 +38,7 @@ import TeamWarsTab from '../manager/TeamWarsTab';
 import MonthlyRecruitingTab from '../manager/MonthlyRecruitingTab';
 import PolicyReconciliationPanel from '../manager/PolicyReconciliationPanel';
 import { MANAGER_COMING_SOON_TABS } from '../../config/comingSoonTabs';
-import ComingSoonPanel from '../ui/ComingSoonPanel';
+import GoalsPanel from '../manager/GoalsPanel';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -271,7 +271,7 @@ export default function ManagerDashboard() {
 
         {activeTab === 'persistency' && <PersistencyTab />}
 
-        {activeTab === 'goals' && <ComingSoonPanel label="Goals" />}
+        {activeTab === 'goals' && <GoalsPanel />}
 
         {activeTab === 'settlements' && <SettlementPanel />}
 

@@ -3,11 +3,9 @@
 // (2) restore the component import in the dashboard file,
 // (3) replace <ComingSoonPanel> with the real component in the tab render block.
 export const COMING_SOON_TABS = new Set([
-  'goals',
   'prospect-info',
 ]);
 
 // Manager dashboard gated tabs (ManagerDashboard + TenantAdminDashboard).
 export const MANAGER_COMING_SOON_TABS = new Set([
-  'goals',
 ]);

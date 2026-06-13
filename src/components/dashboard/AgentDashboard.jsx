@@ -45,6 +45,7 @@ import AgentDashboardHomeV2 from './HomeV2';
 import { COMING_SOON_TABS } from '../../config/comingSoonTabs';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
+import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 
 // Sidebar nav items for the agent role. Mirrors the live dashboard tabs
 // 1:1 — no fabricated items (per kickoff Decisions: "mirrors the existing
@@ -660,7 +661,14 @@ export default function AgentDashboard() {
       {activeTab === 'money-needs' && <MoneyNeedsPanel />}
 
       {/* ── GOALS TAB ── */}
-      {activeTab === 'goals' && <ComingSoonPanel label="Goals" />}
+      {activeTab === 'goals' && (
+        <GapAnalysisPanel
+          hierarchy={hierarchy}
+          ytdTotals={ytdTotals}
+          loading={hierarchyLoading}
+          error={hierarchyError}
+        />
+      )}
 
       {/* ── COMMISSION TAB ── */}
       {activeTab === 'commission' && (
