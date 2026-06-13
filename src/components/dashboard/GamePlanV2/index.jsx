@@ -200,7 +200,9 @@ export default function GamePlanScreen({
   const monthlyYtdDelta = monthlyPlanFilled
     ? computeYtdDelta(bucketActualsByMonth(submissions, year), monthlyPlan.targets, currentMonthIndex)
     : 0;
-  const stepsBuilt = (moneyNeedsFilled ? 1 : 0) + (yearPlanFilled ? 1 : 0) + (monthlyPlanFilled ? 1 : 0);
+  const committed = YEAR_PLAN_ENABLED && monthlyPlan?.status === 'committed';
+  const committedAt = committed ? (monthlyPlan?.committedAt?.toDate?.() ?? null) : null;
+  const stepsBuilt = (moneyNeedsFilled ? 1 : 0) + (yearPlanFilled ? 1 : 0) + (monthlyPlanFilled ? 1 : 0) + (committed ? 1 : 0);
   const planBuiltPct = Math.round((stepsBuilt / TOTAL_STEPS) * 100);
 
   const openMoneyNeeds = () => onOpenTab?.('money-needs');
@@ -308,6 +310,7 @@ export default function GamePlanScreen({
             onOpenMonthlyPlan={openMonthlyPlan}
             monthlyPlanFilled={monthlyPlanFilled}
             onOpenReviewCommit={openReviewCommit}
+            committed={committed}
           />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
@@ -320,6 +323,8 @@ export default function GamePlanScreen({
               monthlyPlanFilled={monthlyPlanFilled}
               monthlyPlanTotal={monthlyPlanTotal}
               monthlyYtdDelta={monthlyYtdDelta}
+              committed={committed}
+              committedAt={committedAt}
             />
             <CommitPreviewCard year={year} onOpenGoals={openGoals} />
           </div>

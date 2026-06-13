@@ -74,8 +74,8 @@ describe('PlanCascade — flag OFF', () => {
         yearPlanFilled={false}
       />
     );
-    // Two ComingRungs rendered — Year Plan + Monthly Plan
-    expect(screen.getAllByText('Coming')).toHaveLength(2);
+    // Three ComingRungs rendered — Year Plan + Monthly Plan + Commit
+    expect(screen.getAllByText('Coming')).toHaveLength(3);
   });
 });
 
