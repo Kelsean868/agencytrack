@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import ReviewCommitModal from '../components/dashboard/GamePlanV2/ReviewCommitModal';
@@ -274,5 +274,37 @@ describe('ReviewCommitModal', () => {
     const { user } = setup();
     await user.click(screen.getByRole('button', { name: /close/i }));
     expect(BASE_PROPS.onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Keyboard — focus trap ─────────────────────────────────────────────────────
+
+describe('ReviewCommitModal — keyboard (focus trap)', () => {
+  beforeEach(() => {
+    commitPlanMock.mockReset();
+    vi.mocked(BASE_PROPS.onClose).mockReset();
+  });
+
+  it('Escape calls onClose from review view', () => {
+    setup();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(BASE_PROPS.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape calls onClose from consequence view', async () => {
+    const { user } = setup();
+    await user.click(screen.getByTestId('review-continue-btn'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(BASE_PROPS.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Escape is suppressed while committing', async () => {
+    commitPlanMock.mockImplementation(() => new Promise(() => {}));
+    const { user } = setup();
+    await advanceToConfirm(user);
+    await user.click(screen.getByTestId('commit-btn'));
+    await waitFor(() => expect(screen.getByTestId('commit-btn')).toBeDisabled());
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(BASE_PROPS.onClose).not.toHaveBeenCalled();
   });
 });

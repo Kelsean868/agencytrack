@@ -20,6 +20,7 @@ import {
 import { DEFAULT_DECOMPOSITION_INPUTS } from '../../utils/goalDecomposition';
 import AwardProjectionStrip from './AwardProjectionStrip';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
+import useFocusTrap from '../../hooks/useFocusTrap';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const DEFAULT_AVG_POLICY = DEFAULT_DECOMPOSITION_INPUTS.avgPolicyAPI;
@@ -280,6 +281,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet, avgPolicyA
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
+  const modalRef = useFocusTrap({ onEscape: onClose, escapeDisabled: saving || profileSaving });
 
   // ── Load ──────────────────────────────────────────────────────────────────
   const load = useCallback(async () => {
@@ -454,7 +456,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet, avgPolicyA
       aria-modal="true"
       aria-label="Year Plan — Step 2 of 4"
     >
-      <div className="bg-surface-raised rounded-2xl shadow-xl w-full max-w-3xl border border-border flex flex-col max-h-[90vh]">
+      <div ref={modalRef} className="bg-surface-raised rounded-2xl shadow-xl w-full max-w-3xl border border-border flex flex-col max-h-[90vh]">
 
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-border shrink-0">

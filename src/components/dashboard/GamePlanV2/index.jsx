@@ -17,7 +17,7 @@ import YearPlanModal from '../../agent/YearPlanModal';
 import MonthlyPlanModal from '../../agent/MonthlyPlanModal';
 import ReviewCommitModal from './ReviewCommitModal';
 
-const YEAR_PLAN_ENABLED = import.meta.env.VITE_YEAR_PLAN_ENABLED === 'true';
+const GAME_PLAN_LOOP_ENABLED = import.meta.env.VITE_GAME_PLAN_LOOP_ENABLED !== 'false';
 
 /**
  * GamePlanScreen — Game Plan v2 hub (Slice 1).
@@ -96,10 +96,10 @@ export default function GamePlanScreen({
     try {
       const [result, plan, mPlan] = await Promise.all([
         getMoneyNeeds(tenantId, uid, year),
-        YEAR_PLAN_ENABLED
+        GAME_PLAN_LOOP_ENABLED
           ? getYearPlan(tenantId, uid, year).catch(() => null)
           : Promise.resolve(null),
-        YEAR_PLAN_ENABLED
+        GAME_PLAN_LOOP_ENABLED
           ? getMonthlyPlan(tenantId, uid, year).catch(() => null)
           : Promise.resolve(null),
       ]);
@@ -193,14 +193,14 @@ export default function GamePlanScreen({
         return sum + (line?.enabled !== false ? (line?.targetAPI ?? 0) : 0);
       }, 0)
     : 0;
-  const yearPlanFilled = YEAR_PLAN_ENABLED && yearPlanTotalAPI > 0;
-  const monthlyPlanFilled = YEAR_PLAN_ENABLED &&
+  const yearPlanFilled = GAME_PLAN_LOOP_ENABLED && yearPlanTotalAPI > 0;
+  const monthlyPlanFilled = GAME_PLAN_LOOP_ENABLED &&
     (monthlyPlan?.targets ?? []).reduce((s, v) => s + (parseFloat(v) || 0), 0) > 0;
   const monthlyPlanTotal = monthlyPlan?.anchorAPI ?? 0;
   const monthlyYtdDelta = monthlyPlanFilled
     ? computeYtdDelta(bucketActualsByMonth(submissions, year), monthlyPlan.targets, currentMonthIndex)
     : 0;
-  const committed = YEAR_PLAN_ENABLED && monthlyPlan?.status === 'committed';
+  const committed = GAME_PLAN_LOOP_ENABLED && monthlyPlan?.status === 'committed';
   const committedAt = committed
     ? (monthlyPlan?.committedAt instanceof Date
         ? monthlyPlan.committedAt
@@ -211,9 +211,9 @@ export default function GamePlanScreen({
 
   const openMoneyNeeds = () => onOpenTab?.('money-needs');
   const openGoals = () => onOpenTab?.('goals');
-  const openYearPlan = YEAR_PLAN_ENABLED ? () => setYearPlanOpen(true) : undefined;
-  const openMonthlyPlan = YEAR_PLAN_ENABLED ? () => setMonthlyPlanOpen(true) : undefined;
-  const openReviewCommit = YEAR_PLAN_ENABLED ? () => setReviewCommitOpen(true) : undefined;
+  const openYearPlan = GAME_PLAN_LOOP_ENABLED ? () => setYearPlanOpen(true) : undefined;
+  const openMonthlyPlan = GAME_PLAN_LOOP_ENABLED ? () => setMonthlyPlanOpen(true) : undefined;
+  const openReviewCommit = GAME_PLAN_LOOP_ENABLED ? () => setReviewCommitOpen(true) : undefined;
 
   return (
     <div className="mx-auto max-w-5xl space-y-4" data-testid="game-plan-hub">
@@ -321,7 +321,7 @@ export default function GamePlanScreen({
             <PlanCascade
               commissionNeed={commissionNeed}
               moneyNeedsFilled={moneyNeedsFilled}
-              yearPlanEnabled={YEAR_PLAN_ENABLED}
+              yearPlanEnabled={GAME_PLAN_LOOP_ENABLED}
               yearPlanTotalAPI={yearPlanTotalAPI}
               yearPlanFilled={yearPlanFilled}
               monthlyPlanFilled={monthlyPlanFilled}
