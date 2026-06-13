@@ -26,7 +26,7 @@ function trinidadDate(d) {
   return new Intl.DateTimeFormat('en-TT', {
     timeZone: 'America/Port_of_Spain',
     year: 'numeric', month: 'short', day: 'numeric',
-  }).format(d instanceof Date ? d : tsToDate(d));
+  }).format(tsToDate(d));
 }
 
 // ── Modal shell (matches YearPlanModal / MonthlyPlanModal chrome) ─────────────
@@ -495,8 +495,8 @@ export default function ReviewCommitModal({
   const displayName = user?.displayName ?? '';
 
   const alreadyCommitted = yearPlan?.status === 'committed';
-  const initResult = alreadyCommitted && committedAnnualAPI
-    ? { api: committedAnnualAPI, date: tsToDate(yearPlan.committedAt) }
+  const initResult = alreadyCommitted
+    ? { api: committedAnnualAPI ?? yearPlanTotalAPI, date: tsToDate(yearPlan.committedAt) }
     : null;
 
   const [view, setView] = useState(alreadyCommitted ? 'done' : 'review');
@@ -710,7 +710,6 @@ export default function ReviewCommitModal({
           avgSaving={avgSaving}
           avgError={avgError}
           onSaveAvgAndRecommit={handleSaveAvgAndRecommit}
-          onCommit={handleCommit}
           onOpenYearPlan={onOpenYearPlan}
         />
       </ModalShell>
