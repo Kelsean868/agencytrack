@@ -16,7 +16,8 @@ Execute the canonical sequence (CLAUDE.md Session Protocol step 9 + § Post-merg
 7. **Push** to main.
 8. **Rule 15 verification (mandatory)** — `git fetch origin && git log origin/main --oneline -1`. Confirm the SHA matches `git rev-parse HEAD` on local main. Report explicit "pushed and verified — SHA <sha>".
 9. **Optional cleanup** — per banked squash-merge stale-branch detection: `git fetch --prune origin`, then sweep branches in `[origin/X: gone]` state (skip worktree-attached branches via `git worktree list --porcelain`, skip live-upstream branches).
-10. **Summary report** — squash SHA, placeholder-fill commit SHA, verification status, any cleanup actions taken, and known gaps (Rule 22).
+10. **Re-poll Gemini (Rule 21 backstop)** — Check for a gemini-code-assist[bot] review that landed after the pre-merge window. Disposition any not-yet-covered comments under the Rule 21 taxonomy: IMPLEMENT-worthy comments become a follow-up PR or banked FU (the PR is already merged — no in-PR fix); DISAGREE → recorded in summary; OUT-OF-SCOPE → banked as FU; ALREADY-RESOLVED → noted.
+11. **Summary report** — squash SHA, placeholder-fill commit SHA, verification status, any cleanup actions taken, Gemini backstop result (late reviews dispositioned, or "absent after re-poll"), and known gaps (Rule 22).
 
 ## Stop conditions
 

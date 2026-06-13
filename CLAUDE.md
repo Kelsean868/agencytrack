@@ -650,6 +650,8 @@ Banked from PR #418 post-merge fill (2026-06-01).
 
 After opening any PR, poll for the gemini-code-assist[bot] review (up to 10 min; if absent, note it and proceed). Every bot comment gets a disposition in the Phase 5 report: IMPLEMENT (agreed, in-family with the PR's scope — apply in-PR before the report) · ALREADY-RESOLVED · OBSOLETE · DISAGREE (one-line technical rationale; recorded doctrine and dispatcher rulings outrank Gemini) · OUT-OF-SCOPE (valid but expands the PR — banked as an FU, never silently implemented). The disposition table is a mandatory report section; a PR is not pre-review-ready without it. On auto-merge green-channel PRs, CC self-dispositions under the same taxonomy and the report records it; DISAGREE and OUT-OF-SCOPE items on auto-merged PRs roll up to the dispatcher in the next report.
 
+**Post-merge backstop.** A pre-merge "absent" is provisional. `/post-merge` re-polls for the Gemini review; any comment that arrived after the pre-merge window is dispositioned in the post-merge report under the same taxonomy — IMPLEMENT → banked as a follow-up PR or FU (the PR is already merged, no in-PR fix possible) · DISAGREE → recorded in summary · OUT-OF-SCOPE → banked as FU · ALREADY-RESOLVED → noted. The gate is not satisfied by a pre-merge "absent" alone.
+
 ### 22. Self-critique gate
 
 Before posting any PR-ready report, plan, or final session summary, CC enumerates ≥1 known gap — what it did NOT verify, the weakest part of the change, or an assumption that could be wrong. Self-generated and independent of Rule 21 (Gemini disposition): surfaces blind spots before external review, not after. A report with no stated gap is incomplete, not clean.
