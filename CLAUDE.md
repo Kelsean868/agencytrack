@@ -650,6 +650,18 @@ Banked from PR #418 post-merge fill (2026-06-01).
 
 After opening any PR, poll for the gemini-code-assist[bot] review (up to 10 min; if absent, note it and proceed). Every bot comment gets a disposition in the Phase 5 report: IMPLEMENT (agreed, in-family with the PR's scope — apply in-PR before the report) · ALREADY-RESOLVED · OBSOLETE · DISAGREE (one-line technical rationale; recorded doctrine and dispatcher rulings outrank Gemini) · OUT-OF-SCOPE (valid but expands the PR — banked as an FU, never silently implemented). The disposition table is a mandatory report section; a PR is not pre-review-ready without it. On auto-merge green-channel PRs, CC self-dispositions under the same taxonomy and the report records it; DISAGREE and OUT-OF-SCOPE items on auto-merged PRs roll up to the dispatcher in the next report.
 
+### 22. Self-critique gate
+
+Before posting any PR-ready report, plan, or final session summary, CC enumerates ≥1 known gap — what it did NOT verify, the weakest part of the change, or an assumption that could be wrong. Self-generated and independent of Rule 21 (Gemini disposition): surfaces blind spots before external review, not after. A report with no stated gap is incomplete, not clean.
+
+### 23. Falsification-before-banking gate
+
+Before a finding is banked as a locked decision (CONTEXT.md § Locked decisions), an active follow-up, or a CLAUDE.md rule, state what evidence would overturn it. If that can't be answered, the finding is provisional — record it as provisional, do not bank it as settled. Applies to architecture findings, audit conclusions, and rule rationales.
+
+### 24. Currency verification
+
+Any time-sensitive or current-world fact handed to the operator — role holders, prices, laws/regulatory status, product or model availability, recent events — is web-searched and verified current at answer time, not asserted from training priors. Rule 17 extended from brief-authoring to live answers: training-era confidence on a present-tense fact is the trigger to search, not to assert. State the as-of date or source when the fact could have changed. Applies to the dispatcher's chat answers and CC's knowledge-work outputs alike.
+
 ---
 
 ## Dispatcher tooling
