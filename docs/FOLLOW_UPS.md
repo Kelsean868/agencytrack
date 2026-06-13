@@ -5,6 +5,23 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Rule 21 reviewer replacement — choose + install before 2026-07-17 (banked PR #{TBD}, HIGH)
+
+Consumer Gemini Code Assist on GitHub is deprecated 2026-06-18 (no new installs) and shut down 2026-07-17 (all code review ends). The Rule 21 post-merge backstop added in PR #{TBD} closes the timing gap for the interim, but a replacement reviewer must be chosen and installed before the shut-down date.
+
+**Options (from brief):**
+- **B1 — Enterprise Gemini Code Assist (GCP):** Most drop-in; same disposition taxonomy. Requires GCP project (`agencytrack-2a610`), IAM roles, and SCM connection. **Verify first:** docs emphasize GitHub Enterprise Cloud/Server — confirm it supports a standard github.com personal/public repo (`Kelsean868/agencytrack`) before committing. Possible cost.
+- **B2 — Different bot** (e.g., GitHub Copilot code review, CodeRabbit): Independent review; new integration + different disposition surface.
+- **B3 — CC self-disposition for all PRs:** Extend auto-merge-lane self-disposition to every PR. Free, zero dependency; weaker (no external second opinion).
+
+**Recommendation:** Make B3 the always-on floor so Rule 21 degrades gracefully when a reviewer is down, then add B1 (if eligibility confirmed) or B2 as the independent layer on top.
+
+**First step:** Verify B1 eligibility for a standard github.com personal/public repo. If ineligible → decide B2 vs. B3-only.
+
+**Severity:** HIGH — hard deadline 2026-07-17; after that the Rule 21 pre-merge poll has no reviewer and the backstop catches nothing.
+
+---
+
 ## commitPlanService — annualApps company minimum check (Gemini #593, banked 2026-06-13, LOW)
 
 `commitPlanService.js` validates `annualAPI` against the tenure floor but does not check `annualApps` against `mins.annualApps` (company minimum apps, defaults 42). A commit with low apps would write an inconsistent `personalAnnualApps` to `goals/{uid}`.
