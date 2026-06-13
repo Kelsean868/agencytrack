@@ -3,7 +3,6 @@
 // (2) restore the component import in the dashboard file,
 // (3) replace <ComingSoonPanel> with the real component in the tab render block.
 export const COMING_SOON_TABS = new Set([
-  'money-needs',
   'goals',
   'prospect-info',
 ]);
