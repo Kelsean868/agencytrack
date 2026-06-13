@@ -16,7 +16,7 @@ Execute the canonical sequence (CLAUDE.md Session Protocol step 9 + § Post-merg
 7. **Push** to main.
 8. **Rule 15 verification (mandatory)** — `git fetch origin && git log origin/main --oneline -1`. Confirm the SHA matches `git rev-parse HEAD` on local main. Report explicit "pushed and verified — SHA <sha>".
 9. **Optional cleanup** — per banked squash-merge stale-branch detection: `git fetch --prune origin`, then sweep branches in `[origin/X: gone]` state (skip worktree-attached branches via `git worktree list --porcelain`, skip live-upstream branches).
-10. **Summary report** — squash SHA, placeholder-fill commit SHA, verification status, any cleanup actions taken.
+10. **Summary report** — squash SHA, placeholder-fill commit SHA, verification status, any cleanup actions taken, and known gaps (Rule 22).
 
 ## Stop conditions
 

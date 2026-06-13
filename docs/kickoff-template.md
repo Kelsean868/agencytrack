@@ -59,8 +59,9 @@ Choose one — only one — based on session scope:
 > Do not write code yet. Produce a work plan in chat covering:
 > 1. Audit current state vs scope (read the files listed above).
 > 2. File-by-file change map with risk assessment per file.
-> 3. Verification strategy (build, lint, walkthrough, emulator tests as applicable).
-> 4. Open questions for me to answer before code starts.
+> 3. Expected output per stage — for each file in the change map, state the expected post-change state, so drift is detectable when actual ≠ expected at the surprise-stop gate.
+> 4. Verification strategy (build, lint, walkthrough, emulator tests as applicable).
+> 5. Open questions for me to answer before code starts.
 >
 > I'll review and approve before any code is written.
 
@@ -78,7 +79,7 @@ Choose one — only one — based on session scope:
 > 3. `npm run build && npm run lint` — must pass.
 > 4. Commit (conventional commits, per CLAUDE.md).
 > 5. Push to feature branch.
-> 6. Open PR with description covering: scope, file count breakdown, verification plan, open follow-ups.
+> 6. Open PR with description covering: scope, file count breakdown, verification plan, open follow-ups, and known gaps (what was not verified / weakest part).
 > 7. Wait for Vercel preview Ready via `scripts/wait-vercel-ready.sh <sha> --target preview --pr <PR#>`.
 > 8. Run preview walkthrough via `scripts/exploration-walk.cjs --url=<preview> --label=<label>`.
 > 9. Post walkthrough summary in PR comments.
@@ -116,7 +117,7 @@ End the session when:
 - `[CONDITION 1 — e.g., "PR is open with preview verified, walkthrough posted in PR comments"]`
 - `[CONDITION 2 — e.g., "All open questions for me are listed at the end of the plan"]`
 
-Post a summary in chat with: tree state, PR link if applicable, what's done, what's blocked on me, two-strike counter status.
+Post a summary in chat with: tree state, PR link if applicable, what's done, what's blocked on me, two-strike counter status, and known gaps (per the self-critique gate).
 
 ---
 
