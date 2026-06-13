@@ -69,7 +69,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.js'],
     env: {
-      VITE_YEAR_PLAN_ENABLED: 'true',
+      VITE_GAME_PLAN_LOOP_ENABLED: 'true',
     },
     exclude: [
       '**/node_modules/**',

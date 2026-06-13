@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import useFocusTrap from '../../../hooks/useFocusTrap';
 import { X, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { commitPlan } from '../../../services/commitPlanService';
@@ -31,7 +32,8 @@ function trinidadDate(d) {
 
 // ── Modal shell (matches YearPlanModal / MonthlyPlanModal chrome) ─────────────
 
-function ModalShell({ title, subtitle, onClose, children, footer }) {
+function ModalShell({ title, subtitle, onClose, children, footer, saving = false }) {
+  const modalRef = useFocusTrap({ onEscape: onClose, escapeDisabled: saving });
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
@@ -39,7 +41,7 @@ function ModalShell({ title, subtitle, onClose, children, footer }) {
       aria-modal="true"
       aria-label={title}
     >
-      <div className="bg-surface-raised rounded-2xl shadow-xl w-full max-w-2xl border border-border flex flex-col max-h-[90vh]">
+      <div ref={modalRef} className="bg-surface-raised rounded-2xl shadow-xl w-full max-w-2xl border border-border flex flex-col max-h-[90vh]">
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-border shrink-0">
           <div>
             <p className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-primary">
@@ -666,6 +668,7 @@ export default function ReviewCommitModal({
         title="Confirm commitment"
         subtitle="This is the deliberate moment — no taking it back without re-opening."
         onClose={onClose}
+        saving={committing || avgSaving}
         footer={
           <>
             <button

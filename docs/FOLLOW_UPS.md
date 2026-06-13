@@ -29,23 +29,11 @@ Same pattern as the `commitPlanService` fix applied in PR #593: `goalsService.js
 
 ---
 
-## Step 4 Commit Logic — Slice 2: ReviewCommitPanel (banked 2026-06-13, MEDIUM)
+## `VITE_GAME_PLAN_LOOP_ENABLED` kill-switch — remove once planning loop is stable (banked 2026-06-13, LOW)
 
-`ReviewCommitModal` + `PlanReview` (year plan line breakdown + derived apps) + `CommitConsequence` (floor-display, what-changes summary) + `CommitConfirm` (loading/error/success states) + `CommittedDone` capstone. States: committing / incomplete-loop (money needs or year plan not filled) / **below-floor** (catch `BelowFloorError` from `commitPlan()` → "raise your Year Plan target" inline state) / failed (network/Firestore error). Three lean product calls to confirm at Slice 2: re-commit policy (`recommitPolicy: 'open'`), write fields (API + apps both — annotation said API only; brief rationale banked), manager visibility (deferred surfaces per annotation). Live commit write-read smoke rides this slice (first UI that triggers `commitPlan()`).
+Flag defaulted to `true` (`!== 'false'`) in the un-gate PR (`feat/ungate-planning-loop`). Once the planning loop is confirmed stable in production (~2 weeks post-Tatil pilot, no user-reported issues), remove the flag entirely: delete all `import.meta.env.VITE_GAME_PLAN_LOOP_ENABLED` reads in `GamePlanV2/index.jsx` and `EditUserDrawer.jsx`, remove the key from `.env.example` and `vite.config.js` test env.
 
-**Action:** Brief + dispatch as a standard HUMAN-MERGE slice. Source: CD's `Review & Commit Panel — Step 4 Build` annotation + `docs/briefs/step4-commit-logic-brief-kickoff.md` § Deferred OUT of this slice.
-
-**Severity:** MEDIUM (the capstone UI; no un-gate until Slice 3 is also done).
-
----
-
-## Step 4 Commit Logic — Slice 3: StepRail Step 4 + Cascade Commit rung + 100% un-gate (banked 2026-06-13, MEDIUM)
-
-StepRail Step 4 status (done/current via `isCommitted` from `goals.personalAnnualAPI` set); PlanCascade Commit rung (mirrors Monthly rung pattern — committed API amount + `committedAt` display); PlanAnchorStrip completeness → 100% when all 4 steps done; 100% completeness is the **un-gate trigger** (`VITE_YEAR_PLAN_ENABLED` flag removal + production deploy).
-
-**Action:** Brief + dispatch after Slice 2 merges. This slice has no deploy step until the un-gate decision is made by dispatcher.
-
-**Severity:** MEDIUM (completes the Game Plan arc; un-gate is the final step before Tatil pilot).
+**Severity:** LOW (cleanup chore; dead flags accumulate).
 
 ---
 
@@ -56,38 +44,6 @@ One-shot script (`functions/scripts/`) to provision a roster CSV in dependency o
 **Build-time question:** Does `bulkImportUsers` already resolve an agent's `unitId` from unit name to a same-batch `unit_manager` — if yes extend it, if no write the dedicated script.
 
 **Severity:** LOW (pilot prep; unblocks Tatil demo provisioning).
-
----
-
-## Monthly Plan + Year Plan — focus trap, initial focus, return focus (banked 2026-06-12, LOW)
-
-**Source:** Gemini #3 on PR #589; parity check confirms YearPlanModal also lacks all three. Consistent gap across both modals.
-
-Both `MonthlyPlanModal` and `YearPlanModal` open without trapping focus inside the dialog, without setting initial focus to a first interactive element, and without returning focus to the trigger element on close. Users navigating by keyboard can tab outside the modal while it is open.
-
-**Action:** For each modal, add a focus trap using a sentinel `focusin` listener (or a library like `focus-trap-react`): on open, `focusFirstInteractiveChild(panelRef)`; on close, `triggerRef.current?.focus()`. Wire via `useEffect` in each modal. Ensure the Escape-key close path also returns focus. The `panelRef` already exists on `MonthlyPlanModal`; `YearPlanModal` needs one added.
-
-**Severity:** LOW (a11y improvement — no current user reports; both modals have `role="dialog" aria-modal="true"` which tells screen readers the dialog is modal; keyboard-only users are affected by the missing trap).
-
----
-
-## Monthly Plan Panel — Step-3 `done` state + cascade rung → Slice 3 (banked 2026-06-12, LOW)
-
-**Source:** monthly-plan-panel-brief-kickoff.md Phase 4 bank. StepRail Step-3 `onOpenMonthlyPlan` variant uses `'next'` (in-flight, teal) when active. Slice 3 will add a `monthlyPlanFilled` boolean derived from whether a balanced `monthlyPlan` doc exists (`balanceDelta === 0`). When `monthlyPlanFilled=true`, Step 3 should switch to `'done'` (settled, check-mark). `PlanCascade` should also gain a Monthly Plan rung (mirrors the Year Plan rung added in PR #584).
-
-**Action:** `StepRail.jsx` — add `monthlyPlanFilled` prop + `step3Variant = monthlyPlanFilled ? 'done' : (step3Active ? 'next' : 'coming')`. `PlanCascade.jsx` — add Monthly Plan rung below Year Plan rung (same visual pattern: `bg-primary-tint/border-primary/30`). `GamePlanV2/index.jsx` — derive `monthlyPlanFilled` by loading the `monthlyPlan` doc and checking `balanceDelta === 0`.
-
-**Severity:** LOW (cosmetic completeness; Step-3 done state is a nice-to-have, not blocking).
-
----
-
-## Monthly Plan — `VITE_YEAR_PLAN_ENABLED` rename → standalone chore (banked 2026-06-12, LOW)
-
-**Source:** monthly-plan-panel-brief-kickoff.md Phase 4 bank. `VITE_YEAR_PLAN_ENABLED` gates both the Year Plan and Monthly Plan features. The flag name implies Year Plan only; before un-gating, it should be renamed to something accurate (e.g. `VITE_GAME_PLAN_ENABLED`).
-
-**Action:** Mechanical rename across all read sites — `GamePlanV2/index.jsx`, `StepRail.jsx`, `YearPlanModal.jsx`, `EditUserDrawer.jsx`, `vite.config.js` test env, `.env.example`, `.env.local`. Ship as standalone chore PR before (or alongside) the un-gate PR.
-
-**Severity:** LOW (housekeeping — avoids a permanently misleading flag name post-un-gate).
 
 ---
 

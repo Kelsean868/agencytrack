@@ -298,3 +298,26 @@ describe('YearPlanModal — dismiss', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
+
+// ── Keyboard — focus trap ─────────────────────────────────────────────────────
+
+describe('YearPlanModal — keyboard (focus trap)', () => {
+  it('Escape calls onClose', async () => {
+    const onClose = vi.fn();
+    renderModal({ onClose });
+    await flush();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('Escape is suppressed while saving', async () => {
+    const onClose = vi.fn();
+    hoisted.saveYearPlan.mockImplementation(() => new Promise(() => {}));
+    renderModal({ onClose, moneyNeedsWorksheet: WORKSHEET_WITH_TARGETS });
+    await flush();
+    fireEvent.click(screen.getByRole('button', { name: /save draft/i }));
+    expect(screen.getByRole('button', { name: /save draft/i })).toBeDisabled();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+});
