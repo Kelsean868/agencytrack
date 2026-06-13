@@ -5,18 +5,6 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## commitPlanService — agent doc fetch error handling (Gemini #593, banked 2026-06-13, LOW)
-
-`commitPlanService.js:44` uses `.catch(() => null)` on `getDoc(users/{uid})`, which silently falls back to `FLAT_ANNUAL_API_FALLBACK` (200 000) on ANY error — including transient network failures. For a high-tenure agent (e.g. 500k floor), a transient error causes a lower-floor commit to succeed.
-
-**Fix shape:** Replace the blanket catch with one that re-throws non-not-found errors: `agentSnap?.catch(e => { if (isFirestoreNotFound(e)) return null; throw e; })`. Needs a helper to detect Firestore "not-found" error code (code `5` / `NOT_FOUND`).
-
-**Why deferred:** Fixing this conflates two separate behaviors (missing doc = fallback; network error = propagate) that require a Firestore error-code helper not yet in the codebase. Out of scope for the headless Slice 1; brief Phase 4 bank noted.
-
-**Severity:** LOW (transient errors are rare; policy bypass requires a specific tenure tier + transient fetch failure timing).
-
----
-
 ## commitPlanService — annualApps company minimum check (Gemini #593, banked 2026-06-13, LOW)
 
 `commitPlanService.js` validates `annualAPI` against the tenure floor but does not check `annualApps` against `mins.annualApps` (company minimum apps, defaults 42). A commit with low apps would write an inconsistent `personalAnnualApps` to `goals/{uid}`.
@@ -26,6 +14,18 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 **Why deferred:** The brief scopes floor enforcement to `annualAPI` only. `annualApps` is derived from `yearPlan.lines[k].derivedApps` (already constrained by the API allocation), so if API >= floor the apps total is proportionally valid in practice. Adding an apps check requires a new panel error path not scoped in Slice 2's brief. Revisit when Slice 2 brief is authored.
 
 **Severity:** LOW (apps value is derived, not user-entered; practical violation requires a broken derivation in yearPlanService).
+
+---
+
+## goalsService — blanket .catch(() => null) on agent-doc reads (banked 2026-06-13, LOW)
+
+Same pattern as the `commitPlanService` fix applied in PR #593: `goalsService.js` uses `.catch(() => null)` on `getDoc(users/{agentId})` in at least two places (line 131 inside one service function; line 266 inside `getGoalHierarchy`) plus several adjacent reads in the same `Promise.all` block (lines 261–266). A transient Firestore error silently degrades goal-hierarchy data to nulls rather than propagating.
+
+**Fix shape:** Remove the blanket catches on reads that feed business-logic decisions. Reads that are purely additive (i.e., absence is acceptable) can retain a selective catch. Audit all `.catch(() => null)` sites in `goalsService.js` before fixing — some (e.g., optional SM goals fetch) are intentionally nullable.
+
+**Why deferred:** Out of scope for the PR #593 agent-doc catch fix. `getGoalHierarchy` is a read-only path (no floor enforcement); risk of silent degradation is lower than `commitPlanService`'s floor bypass scenario.
+
+**Severity:** LOW.
 
 ---
 

@@ -122,6 +122,18 @@ describe('commitPlan — happy path writes', () => {
       commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
     ).resolves.toBeUndefined();
   });
+
+  it('falls back to flat 200K floor when contractStartDate is absent on the doc', async () => {
+    mockGetDoc.mockResolvedValue({ exists: () => true, data: () => ({}) });
+
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
+    ).resolves.toBeUndefined();
+
+    expect(mockResolveAnnualAPIFloor).toHaveBeenCalledWith(
+      expect.objectContaining({ contractStartDate: null }),
+    );
+  });
 });
 
 describe('commitPlan — BelowFloorError', () => {
@@ -169,5 +181,15 @@ describe('commitPlan — transaction / guard errors', () => {
     await expect(
       commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
     ).rejects.toThrow('Year plan not found');
+  });
+
+  it('propagates agent doc read error — no writes, no floor bypass', async () => {
+    mockGetDoc.mockRejectedValue(new Error('Network error'));
+
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
+    ).rejects.toThrow('Network error');
+
+    expect(mockRunTransaction).not.toHaveBeenCalled();
   });
 });

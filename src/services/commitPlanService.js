@@ -37,10 +37,10 @@ export async function commitPlan(tenantId, uid, year, { annualAPI, annualApps })
   // getDoc are read-only and don't need transactional consistency with the writes.
   const [mins, agentSnap] = await Promise.all([
     getCompanyMinimums(tenantId),
-    getDoc(doc(db, 'tenants', tenantId, 'users', uid)).catch(() => null),
+    getDoc(doc(db, 'tenants', tenantId, 'users', uid)),
   ]);
 
-  const contractStartDate = agentSnap?.exists?.() ? agentSnap.data().contractStartDate : null;
+  const contractStartDate = agentSnap.exists() ? (agentSnap.data().contractStartDate ?? null) : null;
   const floor = resolveAnnualAPIFloor({
     contractStartDate,
     tenureApiFloors: mins.tenureApiFloors,
