@@ -201,7 +201,11 @@ export default function GamePlanScreen({
     ? computeYtdDelta(bucketActualsByMonth(submissions, year), monthlyPlan.targets, currentMonthIndex)
     : 0;
   const committed = YEAR_PLAN_ENABLED && monthlyPlan?.status === 'committed';
-  const committedAt = committed ? (monthlyPlan?.committedAt?.toDate?.() ?? null) : null;
+  const committedAt = committed
+    ? (monthlyPlan?.committedAt instanceof Date
+        ? monthlyPlan.committedAt
+        : monthlyPlan?.committedAt?.toDate?.() ?? null)
+    : null;
   const stepsBuilt = (moneyNeedsFilled ? 1 : 0) + (yearPlanFilled ? 1 : 0) + (monthlyPlanFilled ? 1 : 0) + (committed ? 1 : 0);
   const planBuiltPct = Math.round((stepsBuilt / TOTAL_STEPS) * 100);
 

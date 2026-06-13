@@ -104,8 +104,8 @@ export default function StepRail({
   const step3Sub = step3Active ? 'Split into months' : 'Coming soon';
 
   const step4Active = !!onOpenReviewCommit && monthlyPlanFilled;
-  const step4Variant = step4Active ? (committed ? 'done' : 'current') : 'coming';
-  const step4Kicker = step4Active ? (committed ? 'Done' : 'Review') : 'Coming';
+  const step4Variant = committed ? 'done' : step4Active ? 'current' : 'coming';
+  const step4Kicker = committed ? 'Done' : step4Active ? 'Review' : 'Coming';
   const step4Sub = committed ? 'Plan committed' : step4Active ? 'Review & commit your plan' : 'Coming soon';
 
   return (
