@@ -80,7 +80,7 @@ describe('PlanCascade — flag OFF', () => {
 });
 
 describe('PlanCascade — flag ON, no plan', () => {
-  it('Year Plan live rung shows honest empty, Monthly Plan still Coming', () => {
+  it('Year Plan and Monthly Plan both show honest empty live rungs, no Coming badges', () => {
     render(
       <PlanCascade
         commissionNeed={50000}
@@ -90,15 +90,16 @@ describe('PlanCascade — flag ON, no plan', () => {
         yearPlanFilled={false}
       />
     );
-    expect(screen.getByText('Set in your plan')).toBeInTheDocument();
+    // Both live rungs show "Set in your plan" when neither plan is filled
+    expect(screen.getAllByText('Set in your plan')).toHaveLength(2);
     expect(screen.getByText('Planned annual API')).toBeInTheDocument();
-    // Only Monthly Plan ComingRung remains
-    expect(screen.getAllByText('Coming')).toHaveLength(1);
+    // No ComingRung badges — both Step 2 and Step 3 are live rungs
+    expect(screen.queryByText('Coming')).not.toBeInTheDocument();
   });
 });
 
-describe('PlanCascade — flag ON, saved plan', () => {
-  it('Year Plan live rung shows plan total API, Monthly Plan still Coming', () => {
+describe('PlanCascade — flag ON, year plan saved, no monthly plan', () => {
+  it('Year Plan shows total, Monthly rung shows honest empty, no Coming badges', () => {
     render(
       <PlanCascade
         commissionNeed={50000}
@@ -108,12 +109,95 @@ describe('PlanCascade — flag ON, saved plan', () => {
         yearPlanFilled={true}
       />
     );
-    // Formatted plan total is rendered (TTD currency)
+    // Year plan total is rendered (TTD currency)
     expect(screen.getByText(/120,000/)).toBeInTheDocument();
-    // Only Monthly Plan ComingRung
-    expect(screen.getAllByText('Coming')).toHaveLength(1);
-    // "Set in your plan" is NOT shown
-    expect(screen.queryByText('Set in your plan')).not.toBeInTheDocument();
+    // Monthly live rung shows honest empty
+    expect(screen.getByText('Set in your plan')).toBeInTheDocument();
+    // No ComingRung badges — both Step 2 and Step 3 are live rungs
+    expect(screen.queryByText('Coming')).not.toBeInTheDocument();
+  });
+});
+
+// ── StepRail — Step 3 live status (Slice 3) ────────────────────────────────
+
+describe('StepRail — Step 3 done when monthlyPlanFilled', () => {
+  it('shows Done kicker for Step 3 when year and monthly plans both filled', () => {
+    render(
+      <StepRail
+        moneyNeedsFilled={true}
+        onOpenMoneyNeeds={() => {}}
+        onOpenYearPlan={() => {}}
+        yearPlanFilled={true}
+        onOpenMonthlyPlan={() => {}}
+        monthlyPlanFilled={true}
+      />
+    );
+    // Steps 1, 2, and 3 all Done
+    expect(screen.getAllByText('Done')).toHaveLength(3);
+    expect(screen.getByRole('button', { name: /monthly plan/i })).toBeInTheDocument();
+  });
+});
+
+describe('StepRail — Step 3 current when year filled, monthly not', () => {
+  it('shows Start kicker for Step 3 when year plan done and monthly not started', () => {
+    render(
+      <StepRail
+        moneyNeedsFilled={true}
+        onOpenMoneyNeeds={() => {}}
+        onOpenYearPlan={() => {}}
+        yearPlanFilled={true}
+        onOpenMonthlyPlan={() => {}}
+        monthlyPlanFilled={false}
+      />
+    );
+    // Step 3 is first-incomplete — shows Start (current variant)
+    const startButtons = screen.getAllByText('Start');
+    expect(startButtons).toHaveLength(1);
+    expect(screen.getByText('Split into months')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /monthly plan/i })).toBeInTheDocument();
+  });
+});
+
+// ── PlanCascade — Monthly plan filled (Slice 3) ─────────────────────────────
+
+describe('PlanCascade — flag ON, monthly plan filled', () => {
+  it('Monthly rung shows total and YTD ahead badge', () => {
+    render(
+      <PlanCascade
+        commissionNeed={50000}
+        moneyNeedsFilled={true}
+        yearPlanEnabled={true}
+        yearPlanTotalAPI={120000}
+        yearPlanFilled={true}
+        monthlyPlanFilled={true}
+        monthlyPlanTotal={120000}
+        monthlyYtdDelta={5000}
+      />
+    );
+    // Monthly total rendered
+    const matches = screen.getAllByText(/120,000/);
+    expect(matches.length).toBeGreaterThanOrEqual(1);
+    // YTD badge shown with ahead indicator
+    expect(screen.getByTestId('monthly-ytd-badge')).toBeInTheDocument();
+    expect(screen.getByTestId('monthly-ytd-badge').textContent).toMatch(/ahead/);
+    // No ComingRung
+    expect(screen.queryByText('Coming')).not.toBeInTheDocument();
+  });
+
+  it('Monthly rung shows on pace badge when ytdDelta is 0', () => {
+    render(
+      <PlanCascade
+        commissionNeed={50000}
+        moneyNeedsFilled={true}
+        yearPlanEnabled={true}
+        yearPlanTotalAPI={120000}
+        yearPlanFilled={true}
+        monthlyPlanFilled={true}
+        monthlyPlanTotal={120000}
+        monthlyYtdDelta={0}
+      />
+    );
+    expect(screen.getByTestId('monthly-ytd-badge').textContent).toBe('on pace');
   });
 });
 
@@ -157,5 +241,26 @@ describe('PlanAnchorStrip — completeness when Year Plan filled', () => {
     // Goals API unset → chip shows "—" and "Set in your plan" hint
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.getByText('Set in your plan')).toBeInTheDocument();
+  });
+});
+
+describe('PlanAnchorStrip — completeness when Monthly Plan also filled', () => {
+  it('shows 75% with 3 of 4 steps built', () => {
+    render(
+      <PlanAnchorStrip
+        year={2026}
+        commissionNeed={50000}
+        afterTaxNeed={80000}
+        renewalsCover={10000}
+        grossNeed={90000}
+        apiCommitment={null}
+        planBuiltPct={75}
+        stepsBuilt={3}
+        totalSteps={4}
+        moneyNeedsFilled={true}
+      />
+    );
+    expect(screen.getByText('75%')).toBeInTheDocument();
+    expect(screen.getByText('3 of 4 steps')).toBeInTheDocument();
   });
 });

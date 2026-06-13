@@ -3,6 +3,8 @@ import { Loader2, AlertCircle, RotateCw } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { getMoneyNeeds } from '../../../services/moneyNeedsService';
 import { getYearPlan, LINE_KEYS } from '../../../services/yearPlanService';
+import { getMonthlyPlan } from '../../../services/monthlyPlanService';
+import { bucketActualsByMonth, ytdDelta as computeYtdDelta } from '../../../lib/monthlyPlanMath';
 import { getWeeklyPlan, commitWeeklyPlan, deleteWeeklyPlan } from '../../../services/weeklyPlanService';
 import { getDailyEntriesForWeek } from '../../../services/dailyActivityService';
 import { getRecentSundays } from '../../../utils/validators';
@@ -64,11 +66,13 @@ export default function GamePlanScreen({
   // Week-of-year label (mirrors AgentDashboard's topbar crumb math).
   const yearStart = new Date(year, 0, 1);
   const weekNum = Math.ceil(((now - yearStart) / 86400000 + yearStart.getDay() + 1) / 7);
+  const currentMonthIndex = now.getMonth();
   // This week's Sunday (YYYY-MM-DD) — the weeklyPlans doc-ID date segment.
   const weekStart = getRecentSundays(1)[0];
 
   const [worksheet, setWorksheet] = useState(null);
   const [yearPlan, setYearPlan] = useState(null);
+  const [monthlyPlan, setMonthlyPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [yearPlanOpen, setYearPlanOpen] = useState(false);
@@ -88,14 +92,18 @@ export default function GamePlanScreen({
     setLoading(true);
     setError('');
     try {
-      const [result, plan] = await Promise.all([
+      const [result, plan, mPlan] = await Promise.all([
         getMoneyNeeds(tenantId, uid, year),
         YEAR_PLAN_ENABLED
           ? getYearPlan(tenantId, uid, year).catch(() => null)
           : Promise.resolve(null),
+        YEAR_PLAN_ENABLED
+          ? getMonthlyPlan(tenantId, uid, year).catch(() => null)
+          : Promise.resolve(null),
       ]);
       setWorksheet(result);
       setYearPlan(plan);
+      setMonthlyPlan(mPlan);
     } catch {
       setError('Could not load your plan. Check your connection and try again.');
     } finally {
@@ -184,7 +192,13 @@ export default function GamePlanScreen({
       }, 0)
     : 0;
   const yearPlanFilled = YEAR_PLAN_ENABLED && yearPlanTotalAPI > 0;
-  const stepsBuilt = (moneyNeedsFilled ? 1 : 0) + (yearPlanFilled ? 1 : 0);
+  const monthlyPlanFilled = YEAR_PLAN_ENABLED &&
+    (monthlyPlan?.targets ?? []).reduce((s, v) => s + (parseFloat(v) || 0), 0) > 0;
+  const monthlyPlanTotal = monthlyPlan?.anchorAPI ?? 0;
+  const monthlyYtdDelta = monthlyPlanFilled
+    ? computeYtdDelta(bucketActualsByMonth(submissions, year), monthlyPlan.targets, currentMonthIndex)
+    : 0;
+  const stepsBuilt = (moneyNeedsFilled ? 1 : 0) + (yearPlanFilled ? 1 : 0) + (monthlyPlanFilled ? 1 : 0);
   const planBuiltPct = Math.round((stepsBuilt / TOTAL_STEPS) * 100);
 
   const openMoneyNeeds = () => onOpenTab?.('money-needs');
@@ -270,6 +284,7 @@ export default function GamePlanScreen({
             onOpenYearPlan={openYearPlan}
             yearPlanFilled={yearPlanFilled}
             onOpenMonthlyPlan={openMonthlyPlan}
+            monthlyPlanFilled={monthlyPlanFilled}
           />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
@@ -279,6 +294,9 @@ export default function GamePlanScreen({
               yearPlanEnabled={YEAR_PLAN_ENABLED}
               yearPlanTotalAPI={yearPlanTotalAPI}
               yearPlanFilled={yearPlanFilled}
+              monthlyPlanFilled={monthlyPlanFilled}
+              monthlyPlanTotal={monthlyPlanTotal}
+              monthlyYtdDelta={monthlyYtdDelta}
             />
             <CommitPreviewCard year={year} onOpenGoals={openGoals} />
           </div>

@@ -85,6 +85,7 @@ export default function StepRail({
   onOpenYearPlan,
   yearPlanFilled,
   onOpenMonthlyPlan,
+  monthlyPlanFilled = false,
 }) {
   const step2Active = !!onOpenYearPlan;
   const step2Variant = step2Active ? (yearPlanFilled ? 'done' : 'current') : 'next';
@@ -92,8 +93,12 @@ export default function StepRail({
   const step2Sub = step2Active ? (yearPlanFilled ? 'API allocated by line' : 'Allocate API by line') : 'Coming soon';
 
   const step3Active = !!onOpenMonthlyPlan;
-  const step3Variant = step3Active ? 'next' : 'coming';
-  const step3Kicker = step3Active ? 'Next' : 'Coming';
+  const step3Variant = step3Active
+    ? (monthlyPlanFilled ? 'done' : yearPlanFilled ? 'current' : 'next')
+    : 'coming';
+  const step3Kicker = step3Active
+    ? (monthlyPlanFilled ? 'Done' : yearPlanFilled ? 'Start' : 'Next')
+    : 'Coming';
   const step3Sub = step3Active ? 'Split into months' : 'Coming soon';
 
   return (
