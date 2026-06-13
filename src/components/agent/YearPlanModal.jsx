@@ -165,7 +165,8 @@ function LineRow({ lineKey, label, line, mode, onAPIChange, onPctChange, disable
 
 function SummaryCard({ lines, firstYearCommissionsRequired, commissionRate, avgPolicyAPI = null }) {
   const totalAPI = totalEnabledAPI(lines);
-  const totalApps = totalAPI / (avgPolicyAPI ?? DEFAULT_AVG_POLICY);
+  const avg = parseFloat(avgPolicyAPI) || DEFAULT_AVG_POLICY;
+  const totalApps = avg > 0 ? totalAPI / avg : 0;
   const totalComm = totalAPI * ((parseFloat(commissionRate) || 35) / 100);
   const required = parseFloat(firstYearCommissionsRequired) || 0;
   const meetNeed = required > 0 && totalComm >= required;

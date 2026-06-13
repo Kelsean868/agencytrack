@@ -14,6 +14,10 @@ describe('deriveAnnualApps', () => {
     expect(deriveAnnualApps(24000, undefined)).toBeCloseTo(2, 4);
   });
 
+  it('defaults to 12000 when avgPolicyAPI is null', () => {
+    expect(deriveAnnualApps(12000, null)).toBeCloseTo(1, 4);
+  });
+
   it('returns a non-rounded float (callers round as needed)', () => {
     expect(deriveAnnualApps(250000, 12000)).toBeCloseTo(20.8333, 3);
   });
