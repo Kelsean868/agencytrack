@@ -163,9 +163,9 @@ function LineRow({ lineKey, label, line, mode, onAPIChange, onPctChange, disable
   );
 }
 
-function SummaryCard({ lines, firstYearCommissionsRequired, commissionRate }) {
+function SummaryCard({ lines, firstYearCommissionsRequired, commissionRate, avgPolicyAPI = null }) {
   const totalAPI = totalEnabledAPI(lines);
-  const totalApps = totalAPI / DEFAULT_AVG_POLICY;
+  const totalApps = totalAPI / (avgPolicyAPI ?? DEFAULT_AVG_POLICY);
   const totalComm = totalAPI * ((parseFloat(commissionRate) || 35) / 100);
   const required = parseFloat(firstYearCommissionsRequired) || 0;
   const meetNeed = required > 0 && totalComm >= required;
@@ -264,7 +264,7 @@ function NoSeedState({ onDismiss }) {
 
 // ── Main modal ────────────────────────────────────────────────────────────────
 
-export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
+export default function YearPlanModal({ onClose, moneyNeedsWorksheet, avgPolicyAPI = null }) {
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
   const commissionRate = parseFloat(user?.commissionRate) || 35;
@@ -315,13 +315,13 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
       } else {
         // No seed and no existing plan — show no-seed state (user can dismiss to scratch).
         const scratch = applyGating(blankLines(), profile);
-        setLines(buildDisplayLines(scratch, commissionRate, DEFAULT_AVG_POLICY));
+        setLines(buildDisplayLines(scratch, commissionRate, avgPolicyAPI ?? DEFAULT_AVG_POLICY));
         setTotalAPI(0);
         setPhase('no-seed');
         return;
       }
 
-      const enriched = buildDisplayLines(initialLines, commissionRate, DEFAULT_AVG_POLICY);
+      const enriched = buildDisplayLines(initialLines, commissionRate, avgPolicyAPI ?? DEFAULT_AVG_POLICY);
       const computed = recomputePct(enriched);
       setLines(computed);
       setTotalAPI(totalEnabledAPI(computed));
@@ -330,7 +330,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
       setSaveError('Could not load your Year Plan. Check your connection.');
       setPhase('allocating');
     }
-  }, [tenantId, uid, year, user, moneyNeedsWorksheet, commissionRate]);
+  }, [tenantId, uid, year, user, moneyNeedsWorksheet, commissionRate, avgPolicyAPI]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -352,7 +352,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
       } else {
         initialLines = applyGating(blankLines(), profile);
       }
-      const enriched = buildDisplayLines(initialLines, commissionRate, DEFAULT_AVG_POLICY);
+      const enriched = buildDisplayLines(initialLines, commissionRate, avgPolicyAPI ?? DEFAULT_AVG_POLICY);
       const computed = recomputePct(enriched);
       setLines(computed);
       setTotalAPI(totalEnabledAPI(computed));
@@ -368,7 +368,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
   async function handleProfileChange(profile) {
     setLicenseProfile(profile);
     const regated = applyGating(lines, profile);
-    const enriched = buildDisplayLines(regated, commissionRate, DEFAULT_AVG_POLICY);
+    const enriched = buildDisplayLines(regated, commissionRate, avgPolicyAPI ?? DEFAULT_AVG_POLICY);
     const computed = recomputePct(enriched);
     setLines(computed);
     setTotalAPI(totalEnabledAPI(computed));
@@ -386,7 +386,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
       ...lines,
       [key]: { ...lines[key], targetAPI: api },
     };
-    const enriched = buildDisplayLines(updated, commissionRate, DEFAULT_AVG_POLICY);
+    const enriched = buildDisplayLines(updated, commissionRate, avgPolicyAPI ?? DEFAULT_AVG_POLICY);
     const withPct = recomputePct(enriched);
     setLines(withPct);
     setTotalAPI(totalEnabledAPI(withPct));
@@ -404,7 +404,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
     }
 
     const withAPI = applyPctToLines(updatedLines, totalAPI);
-    const enriched = buildDisplayLines(withAPI, commissionRate, DEFAULT_AVG_POLICY);
+    const enriched = buildDisplayLines(withAPI, commissionRate, avgPolicyAPI ?? DEFAULT_AVG_POLICY);
     setLines(enriched);
   }
 
@@ -413,7 +413,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
     const total = parseFloat(value) || 0;
     setTotalAPI(total);
     const withAPI = applyPctToLines(lines, total);
-    const enriched = buildDisplayLines(withAPI, commissionRate, DEFAULT_AVG_POLICY);
+    const enriched = buildDisplayLines(withAPI, commissionRate, avgPolicyAPI ?? DEFAULT_AVG_POLICY);
     setLines(enriched);
   }
 
@@ -562,6 +562,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
                 lines={lines}
                 firstYearCommissionsRequired={moneyNeedsWorksheet?.firstYearCommissionsRequired}
                 commissionRate={commissionRate}
+                avgPolicyAPI={avgPolicyAPI}
               />
 
               {/* Award projection strip */}
@@ -573,6 +574,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet }) {
                   isBdoDso:         user?.isBdoDso,
                 }}
                 ruleset={DEFAULT_RULESET_2026}
+                avgPolicyAPI={avgPolicyAPI}
               />
             </div>
           )}

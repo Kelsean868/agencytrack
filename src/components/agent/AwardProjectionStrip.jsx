@@ -26,15 +26,15 @@ function AwardPill({ id, label, state, persistNote }) {
   );
 }
 
-export default function AwardProjectionStrip({ lines, agentProfile, ruleset }) {
+export default function AwardProjectionStrip({ lines, agentProfile, ruleset, avgPolicyAPI = null }) {
   const lifeTargetAPI = parseFloat(lines?.life?.targetAPI) || 0;
-  const apps = derivedApps(lifeTargetAPI);
+  const apps = derivedApps(lifeTargetAPI, avgPolicyAPI);
 
   const { monthsInIndustry, monthsAtTatil, isBdoDso } = agentProfile ?? {};
 
   const awards = useMemo(
-    () => projectAwards(lifeTargetAPI, { monthsInIndustry, monthsAtTatil, isBdoDso }, ruleset),
-    [lifeTargetAPI, monthsInIndustry, monthsAtTatil, isBdoDso, ruleset],
+    () => projectAwards(lifeTargetAPI, { monthsInIndustry, monthsAtTatil, isBdoDso }, ruleset, avgPolicyAPI),
+    [lifeTargetAPI, monthsInIndustry, monthsAtTatil, isBdoDso, ruleset, avgPolicyAPI],
   );
 
   if (lifeTargetAPI <= 0) return null;

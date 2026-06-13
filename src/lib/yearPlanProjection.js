@@ -1,9 +1,11 @@
+import { deriveAnnualApps } from './deriveApps';
+
 const DEFAULT_AVG_POLICY_API = 12000;
 
 export const ASSUMED_PERSIST_DEFAULT = 90;
 
 export function derivedApps(lifeTargetAPI, avgPolicyAPI) {
-  return Math.round(lifeTargetAPI / (avgPolicyAPI ?? DEFAULT_AVG_POLICY_API));
+  return Math.round(deriveAnnualApps(lifeTargetAPI, avgPolicyAPI ?? DEFAULT_AVG_POLICY_API));
 }
 
 function apiGateState(api, threshold, inContention) {
@@ -39,9 +41,9 @@ function worstState(a, b) {
  *   Awards that fail an immutable profile gate (isBdoDso, experience) are
  *   omitted entirely (equivalent to 'n/a' in the brief display states).
  */
-export function projectAwards(lifeTargetAPI, agentProfile, ruleset) {
+export function projectAwards(lifeTargetAPI, agentProfile, ruleset, avgPolicyAPI) {
   const api = lifeTargetAPI;
-  const apps = derivedApps(api);
+  const apps = derivedApps(api, avgPolicyAPI);
   const { monthsInIndustry, monthsAtTatil, isBdoDso } = agentProfile ?? {};
   const {
     persistencyAward,

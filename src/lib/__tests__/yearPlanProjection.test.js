@@ -234,3 +234,16 @@ describe('projectAwards — result ordering', () => {
     }
   });
 });
+
+// ── projectAwards — explicit avgPolicyAPI ────────────────────────────────────
+
+describe('projectAwards — avgPolicyAPI pass-through', () => {
+  it('higher avgPolicyAPI reduces apps count and downgrades apps-gated award state', () => {
+    // 264k ÷ 12000 = 22 apps (inContention threshold) → 'in-contention' with default
+    // 264k ÷ 24000 = 11 apps (below inContention)     → 'not-yet'  with higher avg
+    const defaultResult = byId(proj(264000), 'persistency_silver');
+    const highAvgResult = byId(projectAwards(264000, {}, R, 24000), 'persistency_silver');
+    expect(defaultResult.state).toBe('in-contention');
+    expect(highAvgResult.state).toBe('not-yet');
+  });
+});

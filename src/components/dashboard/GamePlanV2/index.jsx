@@ -251,6 +251,7 @@ export default function GamePlanScreen({
         <YearPlanModal
           onClose={() => setYearPlanOpen(false)}
           moneyNeedsWorksheet={worksheet}
+          avgPolicyAPI={avgPolicyAPI}
         />
       )}
 
@@ -260,6 +261,7 @@ export default function GamePlanScreen({
           yearPlanAPI={yearPlanTotalAPI}
           submissions={submissions}
           year={year}
+          avgPolicyAPI={avgPolicyAPI}
         />
       )}
 

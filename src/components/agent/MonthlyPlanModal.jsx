@@ -24,7 +24,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
  *   submissions   — agent's submissions (hub-loaded, reused for actuals bucketing)
  *   year          — current plan year
  */
-export default function MonthlyPlanModal({ onClose, yearPlanAPI = 0, submissions = [], year }) {
+export default function MonthlyPlanModal({ onClose, yearPlanAPI = 0, submissions = [], year, avgPolicyAPI = null }) {
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
 
@@ -131,7 +131,7 @@ export default function MonthlyPlanModal({ onClose, yearPlanAPI = 0, submissions
   }, [canSave, tenantId, uid, year, targets, split, onClose]);
 
   const currentPace = phase === 'allocating' && targets
-    ? monthlyPace(targets[currentMonthIndex], year, currentMonthIndex, actuals[currentMonthIndex], todayTT)
+    ? monthlyPace(targets[currentMonthIndex], year, currentMonthIndex, actuals[currentMonthIndex], todayTT, avgPolicyAPI ?? undefined)
     : null;
   const ytd = phase === 'allocating' && targets
     ? ytdDelta(actuals, targets, currentMonthIndex)

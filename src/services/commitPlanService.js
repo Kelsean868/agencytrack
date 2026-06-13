@@ -2,16 +2,41 @@ import { doc, getDoc, runTransaction, serverTimestamp } from 'firebase/firestore
 import { db } from '../firebase';
 import { FLAT_ANNUAL_API_FALLBACK, resolveAnnualAPIFloor } from '../utils/tenureFloors';
 import { getCompanyMinimums } from './goalsService';
+import { deriveAnnualApps } from '../lib/deriveApps';
 
-export class BelowFloorError extends Error {
+export class BelowApiFloorError extends Error {
   constructor(floor, planTotal) {
     super(
       `Plan total (TTD ${planTotal.toLocaleString()}) is below the agent's annual API floor ` +
       `(TTD ${floor.toLocaleString()}). Raise your Year Plan target.`
     );
-    this.name = 'BelowFloorError';
+    this.name = 'BelowApiFloorError';
     this.floor = floor;
     this.planTotal = planTotal;
+  }
+}
+
+export class BelowAppsFloorError extends Error {
+  constructor(floor, actual, avgPolicyAPI) {
+    super(
+      `Derived apps (${actual.toFixed(1)}) are below the company apps floor ` +
+      `(${floor}). Raise your Year Plan target or adjust your average policy size ` +
+      `(current: TTD ${avgPolicyAPI?.toLocaleString() ?? 'unset'}).`
+    );
+    this.name = 'BelowAppsFloorError';
+    this.floor = floor;
+    this.actual = actual;
+    this.avgPolicyAPI = avgPolicyAPI;
+  }
+}
+
+export class AvgPolicyMissingError extends Error {
+  constructor() {
+    super(
+      'Cannot check the apps floor — no average policy size saved. ' +
+      'Set your average policy size in the Commission Playground first.'
+    );
+    this.name = 'AvgPolicyMissingError';
   }
 }
 
@@ -22,7 +47,9 @@ export class BelowFloorError extends Error {
  * flips yearPlan/{year} and monthlyPlan/{year} (if it exists) to committed,
  * and sets committedAt on the plan docs — all in one transaction.
  *
- * @throws {BelowFloorError} when annualAPI is below the agent's tenure floor.
+ * @throws {BelowApiFloorError}    when annualAPI is below the agent's tenure floor.
+ * @throws {AvgPolicyMissingError} when no average policy size is saved in goals.
+ * @throws {BelowAppsFloorError}   when derived apps are below the company apps floor.
  */
 export async function commitPlan(tenantId, uid, year, { annualAPI, annualApps }) {
   const parsedYear = parseInt(year, 10);
@@ -33,14 +60,20 @@ export async function commitPlan(tenantId, uid, year, { annualAPI, annualApps })
   const api  = parseFloat(annualAPI) || 0;
   const apps = parseFloat(annualApps) || 0;
 
-  // Resolve the tenure floor outside the transaction — getCompanyMinimums and
-  // getDoc are read-only and don't need transactional consistency with the writes.
-  const [mins, agentSnap] = await Promise.all([
+  // goalsRef hoisted above Promise.all — reused for both the pre-flight
+  // avgPolicyAPI read and the transactional goals write below.
+  const goalsRef = doc(db, 'tenants', tenantId, 'goals', uid);
+
+  // Resolve both floors outside the transaction — reads are non-mutating.
+  const [mins, agentSnap, goalsSnap] = await Promise.all([
     getCompanyMinimums(tenantId),
     getDoc(doc(db, 'tenants', tenantId, 'users', uid)),
+    getDoc(goalsRef),
   ]);
 
   const contractStartDate = agentSnap.exists() ? (agentSnap.data().contractStartDate ?? null) : null;
+  const avgPolicyAPI = goalsSnap.exists() ? (goalsSnap.data().playgroundAvgPolicyAPI ?? null) : null;
+
   const floor = resolveAnnualAPIFloor({
     contractStartDate,
     tenureApiFloors: mins.tenureApiFloors,
@@ -48,10 +81,19 @@ export async function commitPlan(tenantId, uid, year, { annualAPI, annualApps })
   });
 
   if (api < floor) {
-    throw new BelowFloorError(floor, api);
+    throw new BelowApiFloorError(floor, api);
   }
 
-  const goalsRef       = doc(db, 'tenants', tenantId, 'goals', uid);
+  if (avgPolicyAPI === null) {
+    throw new AvgPolicyMissingError();
+  }
+
+  const appsFloor  = mins.annualApps ?? 42;
+  const appsCount  = deriveAnnualApps(api, avgPolicyAPI);
+  if (appsCount < appsFloor) {
+    throw new BelowAppsFloorError(appsFloor, appsCount, avgPolicyAPI);
+  }
+
   const yearPlanRef    = doc(db, 'tenants', tenantId, 'users', uid, 'yearPlan', String(parsedYear));
   const monthlyPlanRef = doc(db, 'tenants', tenantId, 'users', uid, 'monthlyPlan', String(parsedYear));
 
