@@ -159,6 +159,16 @@ async function main() {
     updateDoc(doc(anonDb, ypDocPath('agent-a', '2026')), { 'lines.life.targetAPI': 1 })
   );
 
+  // ── status flip: draft → committed (Step 4 commit transaction path) ──────────
+
+  await run('agent-a FLIP yearPlan status to committed → ALLOW', true, () =>
+    updateDoc(doc(agentADb, ypDocPath('agent-a', '2026')), { status: 'committed', committedAt: new Date() })
+  );
+
+  await run('agent-b FLIP agent-a yearPlan status to committed → DENY', false, () =>
+    updateDoc(doc(agentBDb, ypDocPath('agent-a', '2026')), { status: 'committed', committedAt: new Date() })
+  );
+
   // ── DELETE ────────────────────────────────────────────────────────────────────
 
   await run('agent-a DELETE own yearPlan → DENY (delete: if false)', false, () =>

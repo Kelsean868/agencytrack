@@ -5,6 +5,50 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## commitPlanService — annualApps company minimum check (Gemini #593, banked 2026-06-13, LOW)
+
+`commitPlanService.js` validates `annualAPI` against the tenure floor but does not check `annualApps` against `mins.annualApps` (company minimum apps, defaults 42). A commit with low apps would write an inconsistent `personalAnnualApps` to `goals/{uid}`.
+
+**Fix shape:** After the floor check, add: `if (apps < mins.annualApps) throw new Error(...)`. Needs a typed error variant (or reuse a generic) so the Slice 2 panel can display a user-facing message.
+
+**Why deferred:** The brief scopes floor enforcement to `annualAPI` only. `annualApps` is derived from `yearPlan.lines[k].derivedApps` (already constrained by the API allocation), so if API >= floor the apps total is proportionally valid in practice. Adding an apps check requires a new panel error path not scoped in Slice 2's brief. Revisit when Slice 2 brief is authored.
+
+**Severity:** LOW (apps value is derived, not user-entered; practical violation requires a broken derivation in yearPlanService).
+
+---
+
+## goalsService — blanket .catch(() => null) on agent-doc reads (banked 2026-06-13, LOW)
+
+Same pattern as the `commitPlanService` fix applied in PR #593: `goalsService.js` uses `.catch(() => null)` on `getDoc(users/{agentId})` in at least two places (line 131 inside one service function; line 266 inside `getGoalHierarchy`) plus several adjacent reads in the same `Promise.all` block (lines 261–266). A transient Firestore error silently degrades goal-hierarchy data to nulls rather than propagating.
+
+**Fix shape:** Remove the blanket catches on reads that feed business-logic decisions. Reads that are purely additive (i.e., absence is acceptable) can retain a selective catch. Audit all `.catch(() => null)` sites in `goalsService.js` before fixing — some (e.g., optional SM goals fetch) are intentionally nullable.
+
+**Why deferred:** Out of scope for the PR #593 agent-doc catch fix. `getGoalHierarchy` is a read-only path (no floor enforcement); risk of silent degradation is lower than `commitPlanService`'s floor bypass scenario.
+
+**Severity:** LOW.
+
+---
+
+## Step 4 Commit Logic — Slice 2: ReviewCommitPanel (banked 2026-06-13, MEDIUM)
+
+`ReviewCommitModal` + `PlanReview` (year plan line breakdown + derived apps) + `CommitConsequence` (floor-display, what-changes summary) + `CommitConfirm` (loading/error/success states) + `CommittedDone` capstone. States: committing / incomplete-loop (money needs or year plan not filled) / **below-floor** (catch `BelowFloorError` from `commitPlan()` → "raise your Year Plan target" inline state) / failed (network/Firestore error). Three lean product calls to confirm at Slice 2: re-commit policy (`recommitPolicy: 'open'`), write fields (API + apps both — annotation said API only; brief rationale banked), manager visibility (deferred surfaces per annotation). Live commit write-read smoke rides this slice (first UI that triggers `commitPlan()`).
+
+**Action:** Brief + dispatch as a standard HUMAN-MERGE slice. Source: CD's `Review & Commit Panel — Step 4 Build` annotation + `docs/briefs/step4-commit-logic-brief-kickoff.md` § Deferred OUT of this slice.
+
+**Severity:** MEDIUM (the capstone UI; no un-gate until Slice 3 is also done).
+
+---
+
+## Step 4 Commit Logic — Slice 3: StepRail Step 4 + Cascade Commit rung + 100% un-gate (banked 2026-06-13, MEDIUM)
+
+StepRail Step 4 status (done/current via `isCommitted` from `goals.personalAnnualAPI` set); PlanCascade Commit rung (mirrors Monthly rung pattern — committed API amount + `committedAt` display); PlanAnchorStrip completeness → 100% when all 4 steps done; 100% completeness is the **un-gate trigger** (`VITE_YEAR_PLAN_ENABLED` flag removal + production deploy).
+
+**Action:** Brief + dispatch after Slice 2 merges. This slice has no deploy step until the un-gate decision is made by dispatcher.
+
+**Severity:** MEDIUM (completes the Game Plan arc; un-gate is the final step before Tatil pilot).
+
+---
+
 ## Bulk pilot-roster provisioning + link export (banked 2026-06-12, LOW)
 
 One-shot script (`functions/scripts/`) to provision a roster CSV in dependency order — ensure branches in `tenants/{tid}/meta/branches` → branch managers → unit managers (incl. a thin `unit_manager` anchor for any unit with agents but no manager, e.g. Phoenix) → agents with `unitId` resolved to the unit_manager's UID — reusing `doCreateUser` (no bespoke provisioning; avoids claim/tenant drift). Idempotent/skip-existing by email; repair half-provisioned (Auth-but-no-doc). Then generate a password-reset link per account and write a LOCAL links file for out-of-band distribution. PII (roster CSV + links) stays local/gitignored; committed code generic.
