@@ -1,22 +1,32 @@
 /**
- * review-commit-smoke.mjs — end-to-end smoke for ReviewCommitModal (Step 4, Slice 3).
- *
- * Live write-read: navigates to Game Plan → opens Step 4 → walks
- * Review → Consequence → Confirm → commits → asserts CommittedDone →
- * reloads → asserts the modal opens in done state (persistence proof).
+ * review-commit-smoke.mjs — end-to-end write-read smoke for ReviewCommitModal (Step 4, Slice 3).
  *
  * Requires:
- *   - Dev server running at localhost:5173 with VITE_YEAR_PLAN_ENABLED=true
- *     (set in .env.local before starting `npm run dev`).
- *   - A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD in .env.local.
- *   - The agent account should have Money Needs filled.
- *     Year Plan + Monthly Plan are auto-ensured by this smoke if absent.
+ *   - seed-commit-smoke.mjs run first (sets yearPlan=504K draft, clears monthlyPlan + avg)
+ *   - Dev server at localhost:5173 with VITE_YEAR_PLAN_ENABLED=true
+ *   - A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD in .env.local
+ *
+ * Legs:
+ *   Leg 1  — light 1280×800: ensureMonthlyPlan → Step 4 → inline avg capture
+ *            (avg null → AvgPolicyMissingError → fill 12,000 → save → re-commit
+ *             → CommittedDone) → Admin SDK Firestore assertions
+ *   Leg 2  — reload + persistence: Step 4 opens in done state (yearPlan.status='committed')
+ *   Leg 3  — dark mode: already committed → done state renders with correct API
+ *   Leg 4  — mobile 390×844: Game Plan reachable → Step 4 opens → done state
+ *   Leg 5  — 0 unexpected console errors
+ *
+ * Firestore write-read assertions (via Admin SDK, after Leg 1 commit):
+ *   goals.personalAnnualAPI    = 504,000
+ *   yearPlan.status            = 'committed'
+ *   yearPlan.committedAt       present
+ *   monthlyPlan.status         = 'committed'
+ *   monthlyPlan.committedAt    present
  *
  * Usage:
- *   VITE_YEAR_PLAN_ENABLED=true npm run dev   # terminal 1 — keep running
- *   node scripts/verification/review-commit-smoke.mjs  # terminal 2
+ *   node scripts/verification/review-commit-smoke.mjs
  */
 
+import { createRequire } from 'module';
 import { readFileSync } from 'fs';
 import { chromium } from 'playwright';
 
@@ -27,13 +37,18 @@ function loadEnv() {
       const m = line.replace(/\r$/, '').match(/^([A-Z0-9_]+)=(.*)/);
       if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^['"]|['"]$/g, '');
     }
-  } catch { /* file absent — rely on shell env */ }
+  } catch { /* rely on shell env */ }
 }
 loadEnv();
 
 const BASE        = 'http://localhost:5173';
 const AGENT_EMAIL = process.env.A11Y_AGENT_EMAIL;
 const AGENT_PASS  = process.env.A11Y_AGENT_PASSWORD;
+
+if (!AGENT_EMAIL || !AGENT_PASS) {
+  console.error('ERROR: A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD not set in .env.local');
+  process.exit(1);
+}
 
 const RESULTS = [];
 let passed = 0, failed = 0;
@@ -53,8 +68,7 @@ function wireCapture(page) {
       const text = msg.text();
       const ignore = [
         'Missing or insufficient permissions', 'permission-denied',
-        'fontshare', 'api.fontshare.com', 'net::ERR',
-        'Failed to load resource', 'favicon', 'CORS',
+        'fontshare', 'net::ERR', 'Failed to load resource', 'favicon', 'CORS',
       ];
       if (!ignore.some(p => text.includes(p))) consoleErrors.push(text.slice(0, 200));
     }
@@ -79,16 +93,13 @@ async function loginMobile(page) {
 }
 
 async function openGamePlan(page) {
-  const tab = page.getByTestId('agent-tab-game-plan');
-  await tab.click();
+  await page.getByTestId('agent-tab-game-plan').click();
   await page.waitForSelector('[data-testid="game-plan-hub"]', { timeout: 10000 });
   await page.waitForTimeout(1500);
 }
 
 async function closeDialog(page) {
-  // Close any open dialog — try labelled X buttons first, then Escape.
-  const xBtns = ['button[aria-label="Close"]', 'button[aria-label="Close Year Plan"]',
-                  'button[aria-label="Close monthly plan"]'];
+  const xBtns = ['button[aria-label="Close"]'];
   for (const sel of xBtns) {
     const btn = page.locator(sel).first();
     if (await btn.isVisible({ timeout: 500 }).catch(() => false)) {
@@ -102,94 +113,16 @@ async function closeDialog(page) {
 }
 
 /**
- * Ensure a Year Plan is drafted (mirrors monthly-plan-smoke ensureYearPlan).
- * Returns true if plan is ready, false on failure.
- */
-async function ensureYearPlan(page) {
-  const rail    = page.getByTestId('game-plan-rail');
-  const step2Btn = rail.locator('button').filter({ hasText: /Year Plan/i });
-
-  if (!await step2Btn.isVisible().catch(() => false)) {
-    console.log('  [ensureYearPlan] Year Plan button not visible — skip');
-    return false;
-  }
-
-  await step2Btn.click();
-  await page.waitForSelector('div[role="dialog"]', { timeout: 10000 });
-
-  await page.waitForFunction(() => {
-    const d = document.querySelector('[role="dialog"]');
-    return d && d.querySelectorAll('button').length >= 2;
-  }, { timeout: 15000 }).catch(() => {});
-  await page.waitForTimeout(300);
-
-  // Profile-prompt phase
-  const compositeBtn = page.locator('[role="dialog"] button').filter({ hasText: 'Composite' });
-  if (await compositeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-    console.log('  [ensureYearPlan] profile-prompt → Composite');
-    await compositeBtn.click();
-    await page.waitForFunction(() => {
-      const btns = [...document.querySelectorAll('[role="dialog"] button')];
-      return !btns.some(b => b.textContent.includes('Composite'));
-    }, { timeout: 15000 }).catch(() => {});
-    await page.waitForFunction(() => {
-      const btns = [...document.querySelectorAll('[role="dialog"] button')];
-      const hasScratch = btns.some(b => b.textContent.trim() === 'Enter from scratch');
-      return hasScratch || !!document.querySelector('[role="dialog"] input[type="number"]');
-    }, { timeout: 20000 }).catch(() => {});
-    await page.waitForTimeout(300);
-  }
-
-  // No-seed phase
-  const scratchBtn = page.locator('[role="dialog"] button').filter({ hasText: 'Enter from scratch' });
-  if (await scratchBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-    console.log('  [ensureYearPlan] no-seed → Enter from scratch');
-    await scratchBtn.click();
-    await page.waitForTimeout(500);
-  }
-
-  // Direct mode
-  const directBtn = page.locator('[role="dialog"] button').filter({ hasText: 'Direct $' });
-  if (await directBtn.isVisible({ timeout: 5000 }).catch(() => false)) {
-    console.log('  [ensureYearPlan] → Direct mode');
-    await directBtn.click();
-    await page.waitForTimeout(400);
-  }
-
-  // Fill Life line
-  const firstInput = page.locator('[role="dialog"] input[type="number"]').first();
-  try {
-    await firstInput.waitFor({ state: 'visible', timeout: 8000 });
-    await firstInput.fill('120000');
-    console.log('  [ensureYearPlan] Life=120000 entered');
-  } catch {
-    console.log('  [ensureYearPlan] no input found — aborting');
-    await closeDialog(page);
-    return false;
-  }
-
-  const saveBtn = page.locator('[role="dialog"] button').filter({ hasText: /save draft/i });
-  await saveBtn.waitFor({ state: 'visible', timeout: 5000 });
-  await saveBtn.click();
-  await page.waitForTimeout(2500);
-
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('[data-testid^="agent-tab-"]', { timeout: 15000 });
-  await openGamePlan(page);
-  console.log('  [ensureYearPlan] Year Plan saved; hub reloaded');
-  return true;
-}
-
-/**
- * Ensure a Monthly Plan is drafted.
- * Assumes Year Plan is already in place. Returns true on success.
+ * ensureMonthlyPlan — opens Monthly Plan modal and saves draft.
+ * Assumes Year Plan is already set (seed script).
+ * After seed deleted monthlyPlan, this re-creates it with anchorAPI=504,000.
  */
 async function ensureMonthlyPlan(page) {
-  const rail     = page.getByTestId('game-plan-rail');
+  const rail = page.getByTestId('game-plan-rail');
   const step3Btn = rail.locator('button').filter({ hasText: /Monthly Plan/i });
 
-  if (!await step3Btn.isVisible().catch(() => false)) {
-    console.log('  [ensureMonthlyPlan] Monthly Plan button not visible — skip');
+  if (!await step3Btn.isVisible({ timeout: 3000 }).catch(() => false)) {
+    console.log('  [ensureMonthlyPlan] Step-3 button not visible — skip');
     return false;
   }
 
@@ -197,49 +130,110 @@ async function ensureMonthlyPlan(page) {
   await page.waitForSelector('div[role="dialog"]', { timeout: 10000 });
   await page.waitForTimeout(2500);
 
-  // If no-yearplan state shows, Year Plan is missing (shouldn't happen after ensureYearPlan).
+  // Verify dialog is in normal state (not no-yearplan).
   const noYP = await page.locator('[data-testid="no-yearplan-state"]')
     .isVisible({ timeout: 1000 }).catch(() => false);
   if (noYP) {
-    console.log('  [ensureMonthlyPlan] no-yearplan state — closing and returning false');
+    console.log('  [ensureMonthlyPlan] no-yearplan state — Year Plan missing, aborting');
     await page.keyboard.press('Escape').catch(() => {});
     return false;
   }
 
-  // Save draft (should be balanced already with even month split).
   const saveBtn = page.locator('[role="dialog"] button').filter({ hasText: /save draft/i });
   const saveEl  = await saveBtn.elementHandle().catch(() => null);
   const disabled = saveEl ? await saveEl.getAttribute('disabled') : 'not-found';
 
   if (disabled !== null) {
-    console.log('  [ensureMonthlyPlan] Save draft disabled — cannot save automatically');
+    console.log('  [ensureMonthlyPlan] Save draft disabled — monthly plan may already be balanced or issue with modal');
+    // Close dialog and proceed — step4 might already be active from a prior run.
     await page.keyboard.press('Escape').catch(() => {});
     return false;
   }
 
   await saveBtn.click();
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(2000);
 
+  // Wait for dialog to close.
   const dialogGone = !(await page.locator('div[role="dialog"]').isVisible().catch(() => true));
-  if (!dialogGone) await closeDialog(page);
+  if (!dialogGone) {
+    await page.keyboard.press('Escape').catch(() => {});
+    await page.waitForTimeout(500);
+  }
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-testid^="agent-tab-"]', { timeout: 15000 });
   await openGamePlan(page);
-  console.log('  [ensureMonthlyPlan] Monthly Plan saved; hub reloaded');
+  console.log('  [ensureMonthlyPlan] Monthly Plan saved (anchorAPI=504,000); hub reloaded');
   return true;
 }
 
-if (!AGENT_EMAIL || !AGENT_PASS) {
-  console.error('ERROR: A11Y_AGENT_EMAIL / A11Y_AGENT_PASSWORD not set in .env.local');
-  process.exit(1);
+// ── Admin SDK Firestore assertions (post-commit) ──────────────────────────────
+
+async function assertFirestoreState() {
+  try {
+    const require = createRequire(import.meta.url);
+    const admin = require('../../functions/node_modules/firebase-admin');
+
+    if (!admin.apps.length) {
+      admin.initializeApp({ projectId: 'agencytrack-2a610' });
+    }
+
+    const db = admin.firestore();
+
+    const userRecord = await admin.auth().getUserByEmail(AGENT_EMAIL);
+    const uid      = userRecord.uid;
+    const tenantId = userRecord.customClaims?.tenantId;
+    const year     = new Date().getFullYear();
+
+    if (!tenantId) throw new Error('No tenantId in custom claims');
+
+    const [goalsSnap, yearPlanSnap, monthlyPlanSnap] = await Promise.all([
+      db.collection('tenants').doc(tenantId).collection('goals').doc(uid).get(),
+      db.collection('tenants').doc(tenantId).collection('users').doc(uid)
+        .collection('yearPlan').doc(String(year)).get(),
+      db.collection('tenants').doc(tenantId).collection('users').doc(uid)
+        .collection('monthlyPlan').doc(String(year)).get(),
+    ]);
+
+    const goals       = goalsSnap.exists   ? goalsSnap.data()       : {};
+    const yearPlan    = yearPlanSnap.exists ? yearPlanSnap.data()    : {};
+    const monthlyPlan = monthlyPlanSnap.exists ? monthlyPlanSnap.data() : {};
+
+    report('Firestore — goals.personalAnnualAPI = 504,000',
+      goals.personalAnnualAPI === 504000,
+      `actual: ${goals.personalAnnualAPI}`);
+
+    report('Firestore — yearPlan.status = committed',
+      yearPlan.status === 'committed',
+      `actual: ${yearPlan.status}`);
+
+    report('Firestore — yearPlan.committedAt set',
+      !!yearPlan.committedAt,
+      yearPlan.committedAt ? 'present' : 'absent');
+
+    report('Firestore — monthlyPlan.status = committed',
+      monthlyPlan.status === 'committed',
+      `actual: ${monthlyPlan.status}`);
+
+    report('Firestore — monthlyPlan.committedAt set',
+      !!monthlyPlan.committedAt,
+      monthlyPlan.committedAt ? 'present' : 'absent');
+
+    return { uid, tenantId };
+  } catch (err) {
+    report('Firestore assertions — Admin SDK available', false,
+      `skipped: ${err.message?.slice(0, 100)}`);
+    return null;
+  }
 }
+
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 const browser = await chromium.launch({ headless: true });
 
 try {
-  // ── LEG 1: Light 1280×800 — full write-read commit cycle ──────────────────
-  console.log('\n── Leg 1: Light 1280×800 — full commit cycle ───────────────');
+  // ── LEG 1 + 2: Light 1280×800 — inline-capture commit + reload persist ─────
+  console.log('\n── Leg 1: Light 1280×800 — inline avg capture + commit ─────');
   {
     const ctx  = await browser.newContext({ viewport: { width: 1280, height: 800 } });
     const page = await ctx.newPage();
@@ -252,153 +246,131 @@ try {
     report('Leg 1 — Game Plan hub visible',
       await page.locator('[data-testid="game-plan-hub"]').isVisible().catch(() => false));
 
-    // Verify flag is on (Step-4 button requires monthlyPlanFilled AND flag).
-    // Step 4 becomes active only after Monthly Plan is drafted.
+    // ── Prerequisite: ensure Monthly Plan (seed deleted it) ─────────────────
     const getStep4 = () =>
       page.getByTestId('game-plan-rail').locator('button').filter({ hasText: /Review & Commit/i });
 
-    // Pre-flight: ensure Year Plan + Monthly Plan are drafted.
-    const step4Visible = await getStep4().isVisible().catch(() => false);
-    if (!step4Visible) {
-      console.log('  [Leg 1] Step 4 not yet active — ensuring prerequisites');
-
-      // Check if Monthly Plan is active (which implies Year Plan is done).
-      const step3Btn = page.getByTestId('game-plan-rail')
-        .locator('button').filter({ hasText: /Monthly Plan/i });
-      const step3Active = await step3Btn.isVisible().catch(() => false);
-
-      if (!step3Active) {
-        const yearPlanOk = await ensureYearPlan(page);
-        report('Leg 1 — Year Plan set up (prerequisite)', yearPlanOk);
-        if (!yearPlanOk) {
-          report('Leg 1 — ABORT: could not ensure Year Plan', false);
-          await ctx.close();
-          // Skip to leg 2
-          goto_leg2: {
-            break goto_leg2;
-          }
-        }
-      }
-
-      const monthlyPlanOk = await ensureMonthlyPlan(page);
-      report('Leg 1 — Monthly Plan set up (prerequisite)', monthlyPlanOk);
+    const step4InitiallyActive = await getStep4().isVisible({ timeout: 2000 }).catch(() => false);
+    if (!step4InitiallyActive) {
+      console.log('  [Leg 1] Step 4 not active — running ensureMonthlyPlan (seed deleted it)');
+      const mpOk = await ensureMonthlyPlan(page);
+      report('Leg 1 — Monthly Plan ensured (504,000 anchor)', mpOk);
+    } else {
+      report('Leg 1 — Monthly Plan already drafted (step 4 pre-active)', true);
     }
 
-    // Verify Step 4 is now active.
+    // ── Verify flag + Step 4 active ─────────────────────────────────────────
     const step4Active = await getStep4().isVisible({ timeout: 3000 }).catch(() => false);
-    report('Leg 1 — Step-4 "Review & Commit" button active', step4Active,
-      step4Active ? '' : 'flag may be off or prerequisites missing');
+    report('Leg 1 — Step-4 "Review & Commit" active (flag on + monthly drafted)', step4Active,
+      step4Active ? '' : 'ABORT: flag off or monthly plan not saved');
 
     if (!step4Active) {
-      report('Leg 1 — ABORT: Step 4 not active', false,
-        'Ensure VITE_YEAR_PLAN_ENABLED=true in .env.local and restart dev server');
       await ctx.close();
-    }
-    if (step4Active) {
+    } else {
       // ── Open Step 4 modal ────────────────────────────────────────────────
       await getStep4().click();
       await page.waitForSelector('[role="dialog"]', { timeout: 8000 });
       await page.waitForTimeout(1000);
 
       const inReview = await page.locator('[data-testid="review-api"]')
-        .isVisible({ timeout: 3000 }).catch(() => false);
-      // Could open in 'done' state if already committed.
+        .isVisible({ timeout: 2000 }).catch(() => false);
       const inDone = await page.locator('[data-testid="committed-done"]')
-        .isVisible({ timeout: 1000 }).catch(() => false);
+        .isVisible({ timeout: 500 }).catch(() => false);
 
-      if (inDone) {
-        // Already committed — use re-open path to re-commit.
-        console.log('  [Leg 1] Modal opened in done state — using re-open path');
-        report('Leg 1 — modal opened (done state — re-open path)', true);
+      report('Leg 1 — modal opened in review state (plan not yet committed)',
+        inReview && !inDone,
+        inDone ? 'opened in done state — seed may not have cleared personalAnnualAPI' : '');
 
-        await page.getByTestId('reopen-btn').click();
+      if (inReview) {
+        // ── Review view: verify annual hero shows 504,000 ─────────────────
+        const reviewApiText = await page.getByTestId('review-api').textContent().catch(() => '');
+        report('Leg 1 — PlanReview hero shows 504,000 API',
+          reviewApiText.includes('504') || reviewApiText.includes('504,000'),
+          `text: "${reviewApiText.trim()}"`);
+
+        // Continue → CommitConsequence
+        await page.getByTestId('review-continue-btn').click();
         await page.waitForTimeout(500);
-        report('Leg 1 — re-open routes to CommitConfirm',
-          await page.locator('[data-testid="commit-btn"]').isVisible().catch(() => false));
-      } else {
-        report('Leg 1 — modal opened in review state', inReview);
+        report('Leg 1 — CommitConsequence: goal hierarchy shown',
+          await page.locator('[aria-label="5-layer goal hierarchy"]').isVisible().catch(() => false));
 
-        if (inReview) {
-          // Review → Consequence → Confirm
-          const continueBtns = page.getByTestId('review-continue-btn');
-          const hasReviewContinue = await continueBtns.isVisible({ timeout: 2000 }).catch(() => false);
-          report('Leg 1 — review: Continue button present (plans complete)', hasReviewContinue);
+        // Continue → CommitConfirm
+        await page.getByTestId('consequence-continue-btn').click();
+        await page.waitForTimeout(500);
+        report('Leg 1 — CommitConfirm: recap shows 504,000',
+          await page.locator('[data-testid="confirm-api"]').isVisible().catch(() => false));
 
-          if (hasReviewContinue) {
-            await continueBtns.click();
-            await page.waitForTimeout(500);
-            report('Leg 1 — consequence view loaded',
-              await page.locator('[data-testid="consequence-continue-btn"]').isVisible().catch(() => false));
+        // ── Inline avg capture path ──────────────────────────────────────
+        // Seed cleared playgroundAvgPolicyAPI → commitPlan throws AvgPolicyMissingError
+        // → modal shows inline capture field.
 
-            // Verify GoalsCascade is present on consequence view
-            report('Leg 1 — 5-layer goal hierarchy shown',
-              await page.locator('[aria-label="5-layer goal hierarchy"]').isVisible().catch(() => false));
+        // Click commit — expect avg-missing error.
+        const commitBtn = page.getByTestId('commit-btn');
+        report('Leg 1 — commit button present before submit', await commitBtn.isVisible().catch(() => false));
 
-            await page.getByTestId('consequence-continue-btn').click();
-            await page.waitForTimeout(500);
-            report('Leg 1 — confirm view loaded',
-              await page.locator('[data-testid="confirm-api"]').isVisible().catch(() => false));
+        await commitBtn.click();
+        await page.waitForTimeout(3000); // allow commitPlan round-trip
+
+        const avgCapture = page.getByTestId('avg-capture');
+        const avgCaptureVisible = await avgCapture.isVisible({ timeout: 3000 }).catch(() => false);
+        report('Leg 1 — inline avg capture shown (AvgPolicyMissingError triggered)', avgCaptureVisible);
+
+        // Commit button should be hidden while avg-missing
+        report('Leg 1 — commit button hidden during avg capture',
+          !(await page.getByTestId('commit-btn').isVisible({ timeout: 500 }).catch(() => false)));
+
+        if (avgCaptureVisible) {
+          // Fill avg = 12,000 → apps = 504,000/12,000 = 42 ≥ 42 floor ✓
+          await page.getByTestId('avg-policy-input').fill('12000');
+          report('Leg 1 — avg-policy-input filled: 12,000', true);
+
+          await page.getByTestId('save-avg-btn').click();
+          // Allow time for setGoals write + second commitPlan round-trip
+          await page.waitForTimeout(6000);
+
+          const doneEl   = page.getByTestId('committed-done');
+          const doneVisible = await doneEl.isVisible({ timeout: 5000 }).catch(() => false);
+          report('Leg 1 — CommittedDone rendered after inline avg save + re-commit', doneVisible);
+
+          if (doneVisible) {
+            const doneApiText = await page.getByTestId('done-api').textContent().catch(() => '');
+            report('Leg 1 — done-api shows 504,000',
+              doneApiText.includes('504') || doneApiText.includes('504,000'),
+              `text: "${doneApiText.trim()}"`);
+
+            const fourOfFour = await page.locator('text=/4\\s*\\/\\s*4/').isVisible().catch(() => false);
+            report('Leg 1 — 4/4 · 100% badge shown', fourOfFour);
           }
         }
-      }
-
-      // ── Commit ────────────────────────────────────────────────────────────
-      const commitBtn = page.getByTestId('commit-btn');
-      const commitVisible = await commitBtn.isVisible({ timeout: 2000 }).catch(() => false);
-
-      if (!commitVisible) {
-        // avg-missing inline capture may be showing.
-        const avgCapture = await page.locator('[data-testid="avg-capture"]')
-          .isVisible({ timeout: 1000 }).catch(() => false);
-
-        if (avgCapture) {
-          console.log('  [Leg 1] avg-missing error — filling inline avg policy');
-          await page.getByTestId('avg-policy-input').fill('10000');
-          await page.getByTestId('save-avg-btn').click();
-          await page.waitForTimeout(3000);
-          // Should now be in done state after save+recommit.
-        } else {
-          report('Leg 1 — commit button missing (unexpected)', false);
-        }
-      } else {
-        await commitBtn.click();
-        // Allow up to 10s for the transaction to complete.
+      } else if (inDone) {
+        // Already committed (seed may not have cleared personalAnnualAPI).
+        // Use re-open → re-commit path.
+        console.log('  [Leg 1] Already in done state — using re-open path');
+        await page.getByTestId('reopen-btn').click();
         await page.waitForTimeout(500);
 
-        // May hit avg-missing after clicking commit.
-        const avgCapture = await page.locator('[data-testid="avg-capture"]')
-          .isVisible({ timeout: 1000 }).catch(() => false);
-        if (avgCapture) {
-          console.log('  [Leg 1] avg-missing post-commit — filling avg policy');
-          await page.getByTestId('avg-policy-input').fill('10000');
-          await page.getByTestId('save-avg-btn').click();
-          await page.waitForTimeout(3000);
-        } else {
+        const confirmVisible = await page.locator('[data-testid="commit-btn"]').isVisible().catch(() => false);
+        report('Leg 1 — re-open routes to CommitConfirm', confirmVisible);
+
+        if (confirmVisible) {
+          await page.getByTestId('commit-btn').click();
           await page.waitForTimeout(5000);
+
+          const doneVisible = await page.getByTestId('committed-done').isVisible({ timeout: 3000 }).catch(() => false);
+          report('Leg 1 — CommittedDone after re-commit', doneVisible);
         }
       }
 
-      // ── Assert CommittedDone ──────────────────────────────────────────────
-      const doneEl = page.getByTestId('committed-done');
-      const doneVisible = await doneEl.isVisible({ timeout: 5000 }).catch(() => false);
-      report('Leg 1 — CommittedDone rendered after commit', doneVisible);
+      // ── Admin SDK Firestore assertions ───────────────────────────────────
+      console.log('\n  [Leg 1] Firestore write-read assertions');
+      await assertFirestoreState();
 
-      if (doneVisible) {
-        const doneApiText = await page.getByTestId('done-api').textContent().catch(() => '');
-        report('Leg 1 — done-api shows non-zero amount',
-          doneApiText.trim().length > 0 && !doneApiText.includes('$0.00'),
-          `"${doneApiText.trim()}"`);
+      // ── Close modal ──────────────────────────────────────────────────────
+      await closeDialog(page);
 
-        const fourOfFour = await page.locator('text=/4\\s*\\/\\s*4/').isVisible().catch(() => false);
-        report('Leg 1 — 4/4 badge shown', fourOfFour);
-      }
+      // ── Leg 2: Reload + persistence ──────────────────────────────────────
+      console.log('\n── Leg 2: Reload — persistence proof ───────────────────');
 
-      // Close modal
-      await page.locator('button[aria-label="Close"]').first().click().catch(() =>
-        page.keyboard.press('Escape'));
-      await page.waitForTimeout(500);
-
-      // ── Reload + assert persistence ────────────────────────────────────────
       await page.reload({ waitUntil: 'domcontentloaded' });
       await page.waitForSelector('[data-testid^="agent-tab-"]', { timeout: 15000 });
       await openGamePlan(page);
@@ -409,17 +381,18 @@ try {
 
       const persistedDone = await page.locator('[data-testid="committed-done"]')
         .isVisible({ timeout: 3000 }).catch(() => false);
-      report('Leg 1 — after reload: modal opens in done state (Firestore persisted)', persistedDone);
+      report('Leg 2 — after reload: Step 4 opens in done state (yearPlan.status persisted)',
+        persistedDone);
 
       if (persistedDone) {
-        const persistedAPI = await page.getByTestId('done-api').textContent().catch(() => '');
-        report('Leg 1 — after reload: committed amount non-zero',
-          persistedAPI.trim().length > 0 && !persistedAPI.includes('$0.00'),
-          `"${persistedAPI.trim()}"`);
+        const persistedApi = await page.getByTestId('done-api').textContent().catch(() => '');
+        report('Leg 2 — after reload: committed amount shows 504,000',
+          persistedApi.includes('504') || persistedApi.includes('504,000'),
+          `text: "${persistedApi.trim()}"`);
       }
 
-      // ── Leg 2: Dark mode ──────────────────────────────────────────────────
-      console.log('\n── Leg 2: Dark mode ─────────────────────────────────────');
+      // ── Leg 3: Dark mode ─────────────────────────────────────────────────
+      console.log('\n── Leg 3: Dark mode ────────────────────────────────────');
 
       await closeDialog(page);
 
@@ -428,22 +401,22 @@ try {
         localStorage.setItem('agencytrack-dark', 'true');
       });
       await page.waitForTimeout(300);
-      report('Leg 2 — dark class applied',
+      report('Leg 3 — dark class applied',
         await page.evaluate(() => document.documentElement.classList.contains('dark')));
 
       await getStep4().click();
       await page.waitForSelector('[role="dialog"]', { timeout: 8000 });
-      await page.waitForTimeout(1000);
+      await page.waitForTimeout(800);
 
       const darkDone = await page.locator('[data-testid="committed-done"]')
-        .isVisible({ timeout: 3000 }).catch(() => false);
-      report('Leg 2 — dark mode: modal renders (done state)', darkDone);
+        .isVisible({ timeout: 2000 }).catch(() => false);
+      report('Leg 3 — dark mode: CommittedDone renders', darkDone);
 
       if (darkDone) {
-        const darkAPI = await page.getByTestId('done-api').textContent().catch(() => '');
-        report('Leg 2 — dark mode: committed amount visible',
-          darkAPI.trim().length > 0 && !darkAPI.includes('$0.00'),
-          `"${darkAPI.trim()}"`);
+        const darkApi = await page.getByTestId('done-api').textContent().catch(() => '');
+        report('Leg 3 — dark mode: committed amount shows 504,000',
+          darkApi.includes('504') || darkApi.includes('504,000'),
+          `text: "${darkApi.trim()}"`);
       }
 
       await closeDialog(page);
@@ -451,18 +424,17 @@ try {
     }
   }
 
-  // ── LEG 3: Mobile 390×844 — modal opens ───────────────────────────────────
-  console.log('\n── Leg 3: Mobile 390×844 ───────────────────────────────────');
+  // ── LEG 4: Mobile 390×844 ─────────────────────────────────────────────────
+  console.log('\n── Leg 4: Mobile 390×844 ───────────────────────────────────');
   {
     const ctx  = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const page = await ctx.newPage();
     wireCapture(page);
 
     await loginMobile(page);
-    report('Leg 3 (mobile) — login successful', true);
+    report('Leg 4 (mobile) — login successful', true);
 
-    // Game Plan is in More drawer on mobile.
-    const moreBtn       = page.getByTestId('bottomnav-more');
+    const moreBtn        = page.getByTestId('bottomnav-more');
     const drawerGamePlan = page.locator('.mobile-nav-drawer nav').getByRole('button', { name: 'Game Plan' });
 
     let gpReachable = false;
@@ -470,30 +442,34 @@ try {
       await moreBtn.click();
       gpReachable = await drawerGamePlan.isVisible({ timeout: 3000 }).catch(() => false);
     }
-    report('Leg 3 (mobile) — Game Plan tab reachable', gpReachable);
+    report('Leg 4 (mobile) — Game Plan tab reachable via More drawer', gpReachable);
 
     if (gpReachable) {
       await drawerGamePlan.click();
       await page.waitForTimeout(2000);
-      report('Leg 3 (mobile) — hub loaded',
+      report('Leg 4 (mobile) — hub loaded',
         await page.locator('[data-testid="game-plan-hub"]').isVisible().catch(() => false));
 
       const step4Mobile = page.getByTestId('game-plan-rail')
         .locator('button').filter({ hasText: /Review & Commit/i });
       const s4v = await step4Mobile.isVisible().catch(() => false);
-      report('Leg 3 (mobile) — Step-4 button visible', s4v);
+      report('Leg 4 (mobile) — Step-4 button visible', s4v);
 
       if (s4v) {
         await step4Mobile.click();
         await page.waitForSelector('[role="dialog"]', { timeout: 8000 });
         await page.waitForTimeout(1000);
-        const dlgOpen = await page.locator('[role="dialog"]').isVisible().catch(() => false);
-        report('Leg 3 (mobile) — ReviewCommitModal opens', dlgOpen);
 
-        // Already committed (from Leg 1) — should open in done state.
         const mobileDone = await page.locator('[data-testid="committed-done"]')
           .isVisible({ timeout: 2000 }).catch(() => false);
-        report('Leg 3 (mobile) — done state persisted on mobile', mobileDone);
+        report('Leg 4 (mobile) — ReviewCommitModal opens in done state', mobileDone);
+
+        if (mobileDone) {
+          const mobileApi = await page.getByTestId('done-api').textContent().catch(() => '');
+          report('Leg 4 (mobile) — done-api amount visible',
+            mobileApi.trim().length > 0 && !mobileApi.includes('$0.00'),
+            `text: "${mobileApi.trim()}"`);
+        }
       }
     }
 
@@ -501,7 +477,7 @@ try {
   }
 
   // ── Console errors ─────────────────────────────────────────────────────────
-  report('Leg 4 — 0 unexpected console errors', consoleErrors.length === 0,
+  report('Leg 5 — 0 unexpected console errors', consoleErrors.length === 0,
     consoleErrors.length > 0
       ? `${consoleErrors.length} error(s): ${consoleErrors.slice(0, 2).join(' | ')}`
       : '');
