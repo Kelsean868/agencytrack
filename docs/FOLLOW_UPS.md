@@ -5,9 +5,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Rule 21 reviewer replacement — choose + install before 2026-07-17 (banked PR #{TBD}, HIGH)
+## Rule 21 reviewer replacement — choose + install before 2026-07-17 (banked PR #607, HIGH)
 
-Consumer Gemini Code Assist on GitHub is deprecated 2026-06-18 (no new installs) and shut down 2026-07-17 (all code review ends). The Rule 21 post-merge backstop added in PR #{TBD} closes the timing gap for the interim, but a replacement reviewer must be chosen and installed before the shut-down date.
+Consumer Gemini Code Assist on GitHub is deprecated 2026-06-18 (no new installs) and shut down 2026-07-17 (all code review ends). The Rule 21 post-merge backstop added in PR #607 closes the timing gap for the interim, but a replacement reviewer must be chosen and installed before the shut-down date.
 
 **Options (from brief):**
 - **B1 — Enterprise Gemini Code Assist (GCP):** Most drop-in; same disposition taxonomy. Requires GCP project (`agencytrack-2a610`), IAM roles, and SCM connection. **Verify first:** docs emphasize GitHub Enterprise Cloud/Server — confirm it supports a standard github.com personal/public repo (`Kelsean868/agencytrack`) before committing. Possible cost.
