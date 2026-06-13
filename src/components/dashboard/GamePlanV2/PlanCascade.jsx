@@ -42,6 +42,9 @@ export default function PlanCascade({
   yearPlanEnabled,
   yearPlanTotalAPI,
   yearPlanFilled,
+  monthlyPlanFilled = false,
+  monthlyPlanTotal = 0,
+  monthlyYtdDelta = 0,
 }) {
   return (
     <div className="card" data-testid="game-plan-cascade">
@@ -85,7 +88,43 @@ export default function PlanCascade({
       )}
 
       <CascadeArrow />
-      <ComingRung step="Step 3 · Monthly Plan" title="Monthly Plan" desc="Broken into 12 months" />
+      {yearPlanEnabled ? (
+        <div className="rounded-xl border border-primary/30 bg-primary-tint p-3.5">
+          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+            Step 3 · Monthly Plan
+          </div>
+          <div className="mt-1 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-xs text-ink-muted">Annual target split into 12 months</div>
+              {monthlyPlanFilled && (
+                <div
+                  className={`mt-1 font-mono text-[9px] font-bold ${
+                    monthlyYtdDelta > 0
+                      ? 'text-success-ink'
+                      : monthlyYtdDelta < 0
+                      ? 'text-danger-ink'
+                      : 'text-ink-muted'
+                  }`}
+                  data-testid="monthly-ytd-badge"
+                >
+                  {monthlyYtdDelta > 0
+                    ? `+${formatCurrency(monthlyYtdDelta)} ahead`
+                    : monthlyYtdDelta < 0
+                    ? `${formatCurrency(Math.abs(monthlyYtdDelta))} behind`
+                    : 'on pace'}
+                </div>
+              )}
+            </div>
+            <div className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight text-ink">
+              {monthlyPlanFilled
+                ? formatCurrency(monthlyPlanTotal)
+                : <span className="font-sans text-sm font-medium text-ink-muted">Set in your plan</span>}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <ComingRung step="Step 3 · Monthly Plan" title="Monthly Plan" desc="Broken into 12 months" />
+      )}
     </div>
   );
 }
