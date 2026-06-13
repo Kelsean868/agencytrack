@@ -1,6 +1,15 @@
 import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
+import { statusToken } from '../../../lib/policyStatusTokens';
+
+function formatSeal(date) {
+  if (!date) return '';
+  return new Intl.DateTimeFormat('en-TT', {
+    timeZone: 'America/Port_of_Spain',
+    year: 'numeric', month: 'short', day: 'numeric',
+  }).format(date);
+}
 
 /**
  * PlanCascade — Game Plan v2 "plan so far" (NEW chrome, read-only).
@@ -45,7 +54,10 @@ export default function PlanCascade({
   monthlyPlanFilled = false,
   monthlyPlanTotal = 0,
   monthlyYtdDelta = 0,
+  committed = false,
+  committedAt = null,
 }) {
+  const committedToken = statusToken('settled');
   return (
     <div className="card" data-testid="game-plan-cascade">
       <div className="mb-3 flex items-baseline gap-2">
@@ -124,6 +136,45 @@ export default function PlanCascade({
         </div>
       ) : (
         <ComingRung step="Step 3 · Monthly Plan" title="Monthly Plan" desc="Broken into 12 months" />
+      )}
+
+      <CascadeArrow />
+
+      {yearPlanEnabled ? (
+        committed ? (
+          <div
+            className={`rounded-xl border border-success/30 ${committedToken.tint} p-3.5`}
+            data-testid="commit-rung-committed"
+          >
+            <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+              Step 4 · Review &amp; Commit
+            </div>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <div className="text-xs text-ink-muted">
+                {committedAt ? `Committed · ${formatSeal(committedAt)} TT` : 'Committed'}
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-1 font-mono text-[8.5px] font-bold uppercase tracking-wider ${committedToken.tint} ${committedToken.text}`}
+              >
+                Committed
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-primary/30 bg-primary-tint p-3.5" data-testid="commit-rung-ready">
+            <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
+              Step 4 · Review &amp; Commit
+            </div>
+            <div className="mt-1 flex items-center justify-between gap-3">
+              <div className="text-xs text-ink-muted">Commit to your plan</div>
+              <span className="shrink-0 rounded-full bg-surface-muted px-2.5 py-1 font-mono text-[8.5px] font-bold uppercase tracking-wider text-ink-muted">
+                Next
+              </span>
+            </div>
+          </div>
+        )
+      ) : (
+        <ComingRung step="Step 4 · Review &amp; Commit" title="Review &amp; Commit" desc="Commit to your plan" />
       )}
     </div>
   );

@@ -87,6 +87,7 @@ export default function StepRail({
   onOpenMonthlyPlan,
   monthlyPlanFilled = false,
   onOpenReviewCommit,
+  committed = false,
 }) {
   const step2Active = !!onOpenYearPlan;
   const step2Variant = step2Active ? (yearPlanFilled ? 'done' : 'current') : 'next';
@@ -103,9 +104,9 @@ export default function StepRail({
   const step3Sub = step3Active ? 'Split into months' : 'Coming soon';
 
   const step4Active = !!onOpenReviewCommit && monthlyPlanFilled;
-  const step4Variant = step4Active ? 'current' : 'coming';
-  const step4Kicker = step4Active ? 'Review' : 'Coming';
-  const step4Sub = step4Active ? 'Review & commit your plan' : 'Coming soon';
+  const step4Variant = committed ? 'done' : step4Active ? 'current' : 'coming';
+  const step4Kicker = committed ? 'Done' : step4Active ? 'Review' : 'Coming';
+  const step4Sub = committed ? 'Plan committed' : step4Active ? 'Review & commit your plan' : 'Coming soon';
 
   return (
     <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center" data-testid="game-plan-rail">
