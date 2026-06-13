@@ -44,6 +44,7 @@ import DailyFAB from '../daily/DailyFAB';
 import AgentDashboardHomeV2 from './HomeV2';
 import { COMING_SOON_TABS } from '../../config/comingSoonTabs';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
+import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 
 // Sidebar nav items for the agent role. Mirrors the live dashboard tabs
 // 1:1 — no fabricated items (per kickoff Decisions: "mirrors the existing
@@ -656,7 +657,7 @@ export default function AgentDashboard() {
         />
       )}
 
-      {activeTab === 'money-needs' && <ComingSoonPanel label="Money Needs" />}
+      {activeTab === 'money-needs' && <MoneyNeedsPanel />}
 
       {/* ── GOALS TAB ── */}
       {activeTab === 'goals' && <ComingSoonPanel label="Goals" />}
