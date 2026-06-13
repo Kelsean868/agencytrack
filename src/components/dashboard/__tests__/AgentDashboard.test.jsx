@@ -123,6 +123,7 @@ vi.mock('../../agent/PersistencyTab',                 () => ({ default: () => nu
 vi.mock('../../daily/DailyFAB',                       () => ({ default: () => null }));
 vi.mock('../../agent/PolicyLedgerPanel',              () => ({ default: () => React.createElement('div', { 'data-testid': 'policy-ledger-panel' }) }));
 vi.mock('../../agent/MoneyNeedsPanel',                () => ({ default: () => React.createElement('div', { 'data-testid': 'money-needs-panel' }) }));
+vi.mock('../../goals/GapAnalysisPanel',               () => ({ default: () => React.createElement('div', { 'data-testid': 'gap-analysis-panel' }) }));
 
 import AgentDashboard from '../AgentDashboard';
 
@@ -140,10 +141,11 @@ describe('AgentDashboard — coming-soon tab gating (pilot readiness)', () => {
     expect(screen.queryByTestId('prospect-info-panel')).not.toBeInTheDocument();
   });
 
-  it('goals tab renders ComingSoonPanel', async () => {
+  it('goals tab renders GapAnalysisPanel (un-gated)', async () => {
     render(<AgentDashboard />);
     fireEvent.click(screen.getByTestId('go-goals'));
-    await waitFor(() => expect(screen.getByText('Coming soon')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('gap-analysis-panel')).toBeInTheDocument());
+    expect(screen.queryByText('Coming soon')).not.toBeInTheDocument();
   });
 
   it('money-needs tab renders MoneyNeedsPanel (un-gated)', async () => {
