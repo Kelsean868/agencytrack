@@ -15,6 +15,7 @@ import CommitPreviewCard from './CommitPreviewCard';
 import SuggestedWeekCard from './SuggestedWeekCard';
 import YearPlanModal from '../../agent/YearPlanModal';
 import MonthlyPlanModal from '../../agent/MonthlyPlanModal';
+import ReviewCommitModal from './ReviewCommitModal';
 
 const YEAR_PLAN_ENABLED = import.meta.env.VITE_YEAR_PLAN_ENABLED === 'true';
 
@@ -77,6 +78,7 @@ export default function GamePlanScreen({
   const [error, setError] = useState('');
   const [yearPlanOpen, setYearPlanOpen] = useState(false);
   const [monthlyPlanOpen, setMonthlyPlanOpen] = useState(false);
+  const [reviewCommitOpen, setReviewCommitOpen] = useState(false);
 
   // Weekly plan (Slice 2) — committed plan for this week + commit lifecycle.
   const [committedPlan, setCommittedPlan] = useState(null);
@@ -205,6 +207,7 @@ export default function GamePlanScreen({
   const openGoals = () => onOpenTab?.('goals');
   const openYearPlan = YEAR_PLAN_ENABLED ? () => setYearPlanOpen(true) : undefined;
   const openMonthlyPlan = YEAR_PLAN_ENABLED ? () => setMonthlyPlanOpen(true) : undefined;
+  const openReviewCommit = YEAR_PLAN_ENABLED ? () => setReviewCommitOpen(true) : undefined;
 
   return (
     <div className="mx-auto max-w-5xl space-y-4" data-testid="game-plan-hub">
@@ -265,6 +268,23 @@ export default function GamePlanScreen({
         />
       )}
 
+      {reviewCommitOpen && (
+        <ReviewCommitModal
+          onClose={() => setReviewCommitOpen(false)}
+          year={year}
+          yearPlan={yearPlan}
+          monthlyPlan={monthlyPlan}
+          yearPlanFilled={yearPlanFilled}
+          monthlyPlanFilled={monthlyPlanFilled}
+          yearPlanTotalAPI={yearPlanTotalAPI}
+          avgPolicyAPI={avgPolicyAPI}
+          committedAnnualAPI={committedAnnualAPI}
+          onAfterCommit={load}
+          onOpenYearPlan={() => { setReviewCommitOpen(false); setYearPlanOpen(true); }}
+          onOpenMonthlyPlan={() => { setReviewCommitOpen(false); setMonthlyPlanOpen(true); }}
+        />
+      )}
+
       {!loading && !error && (
         <>
           <PlanAnchorStrip
@@ -287,6 +307,7 @@ export default function GamePlanScreen({
             yearPlanFilled={yearPlanFilled}
             onOpenMonthlyPlan={openMonthlyPlan}
             monthlyPlanFilled={monthlyPlanFilled}
+            onOpenReviewCommit={openReviewCommit}
           />
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
