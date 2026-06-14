@@ -1,34 +1,60 @@
 // @vitest-environment jsdom
 import React from 'react';
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import GapAnalysisPanel from '../GapAnalysisPanel';
 
+// ── Fixtures ──────────────────────────────────────────────────────────────────
+
 const baseHierarchy = {
-  personal:            { api: 100000 },
+  personal:            { api: 100000, apps: 20 },
   unitTarget:          { api: 120000 },
   branchTarget:        { api: 150000 },
   salesManagerTarget:  { api: 200000 },
   companyFloor:        { api: 50000 },
 };
 
-const baseYtd = { api: 25000, apps: 5 };
+// Commitment below the company floor — triggers warning / "below" GapNote
+const belowFloorHierarchy = {
+  personal:            { api: 30000 },
+  unitTarget:          null,
+  branchTarget:        null,
+  salesManagerTarget:  null,
+  companyFloor:        { api: 50000 },
+};
+
+// YTD meets the floor
+const floorMetYtd = { api: 60000, apps: 12 };
+const baseYtd     = { api: 25000, apps: 5  };
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('GapAnalysisPanel', () => {
+
+  // ── State: loading ──────────────────────────────────────────────────────────
   it('renders loading skeleton when loading=true', () => {
     const { container } = render(
       <GapAnalysisPanel hierarchy={null} ytdTotals={null} loading={true} />
     );
     expect(container.querySelectorAll('.animate-pulse').length).toBeGreaterThan(0);
+    expect(container.querySelector('[data-testid="gap-analysis-loading"]')).toBeInTheDocument();
   });
 
-  it('renders error state when error prop is set', () => {
+  // ── State: error ────────────────────────────────────────────────────────────
+  it('renders honest error state with "Nothing\'s wrong with your plan" message', () => {
     render(
-      <GapAnalysisPanel hierarchy={null} ytdTotals={null} loading={false} error="Failed to load goals" />
+      <GapAnalysisPanel
+        hierarchy={null}
+        ytdTotals={null}
+        loading={false}
+        error="Failed to load goals"
+      />
     );
+    expect(screen.getByText(/Nothing.s wrong with your plan/i)).toBeInTheDocument();
     expect(screen.getByText('Failed to load goals')).toBeInTheDocument();
   });
 
+  // ── State: empty (no hierarchy) ─────────────────────────────────────────────
   it('renders "No targets" when hierarchy is null', () => {
     render(
       <GapAnalysisPanel hierarchy={null} ytdTotals={baseYtd} loading={false} />
@@ -36,55 +62,120 @@ describe('GapAnalysisPanel', () => {
     expect(screen.getByText(/No targets have been set/i)).toBeInTheDocument();
   });
 
-  it('renders layer labels for each goal tier when data is provided', () => {
+  // ── State: empty (hierarchy present but no personal commitment) ─────────────
+  it('renders "Build it in Game Plan" when hierarchy has no personal commitment', () => {
+    const hierarchyNoPersonal = { ...baseHierarchy, personal: null };
+    render(
+      <GapAnalysisPanel hierarchy={hierarchyNoPersonal} ytdTotals={baseYtd} loading={false} />
+    );
+    expect(screen.getByText(/Build it in Game Plan/i)).toBeInTheDocument();
+    expect(screen.getByText(/No commitment set yet/i)).toBeInTheDocument();
+  });
+
+  it('still renders Company Floor in no-commitment state', () => {
+    const hierarchyNoPersonal = { ...baseHierarchy, personal: null };
+    render(
+      <GapAnalysisPanel hierarchy={hierarchyNoPersonal} ytdTotals={baseYtd} loading={false} />
+    );
+    expect(screen.getByTestId('floor-row')).toBeInTheDocument();
+    expect(screen.getByText('Company Floor')).toBeInTheDocument();
+  });
+
+  // ── State: populated ────────────────────────────────────────────────────────
+  it('renders CommitmentHero with personal API target when populated', () => {
     render(
       <GapAnalysisPanel hierarchy={baseHierarchy} ytdTotals={baseYtd} loading={false} />
     );
-    // Labels may appear more than once (MetricSection × n metrics per layer)
-    expect(screen.getAllByText('Personal Commitment').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Unit Target').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Branch Target').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Company Floor').length).toBeGreaterThan(0);
+    const hero = screen.getByTestId('commitment-hero');
+    expect(hero).toBeInTheDocument();
+    // Scope text checks inside the hero to avoid collision with GapNote's "Your commitment is..."
+    expect(within(hero).getByText('Your Commitment')).toBeInTheDocument();
+    expect(within(hero).getByText(/Annual API target/i)).toBeInTheDocument();
   });
 
-  it('renders SM Target layer label when salesManagerTarget is populated', () => {
+  it('renders OrgContextStrip with Unit / Branch / SM tiers', () => {
     render(
       <GapAnalysisPanel hierarchy={baseHierarchy} ytdTotals={baseYtd} loading={false} />
     );
-    expect(screen.getAllByText('SM Target').length).toBeGreaterThan(0);
+    expect(screen.getByTestId('org-context-strip')).toBeInTheDocument();
+    expect(screen.getByText(/Rolls up through/i)).toBeInTheDocument();
+    expect(screen.getByText('Unit:')).toBeInTheDocument();
+    expect(screen.getByText('Branch:')).toBeInTheDocument();
+    expect(screen.getByText('SM:')).toBeInTheDocument();
   });
 
-  it('renders SM Target row with "Not set" when salesManagerTarget is null', () => {
-    const hierarchyNoSm = { ...baseHierarchy, salesManagerTarget: null };
+  it('hides OrgContextStrip when no org tiers are set', () => {
+    const noOrgHierarchy = {
+      personal:           { api: 100000 },
+      unitTarget:         null,
+      branchTarget:       null,
+      salesManagerTarget: null,
+      companyFloor:       { api: 50000 },
+    };
     render(
-      <GapAnalysisPanel hierarchy={hierarchyNoSm} ytdTotals={baseYtd} loading={false} />
+      <GapAnalysisPanel hierarchy={noOrgHierarchy} ytdTotals={baseYtd} loading={false} />
     );
-    expect(screen.getAllByText('SM Target').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Not set').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('org-context-strip')).not.toBeInTheDocument();
   });
 
-  it('does not show "Not set" when salesManagerTarget is populated', () => {
+  it('renders Company Floor row in populated state', () => {
     render(
       <GapAnalysisPanel hierarchy={baseHierarchy} ytdTotals={baseYtd} loading={false} />
     );
-    expect(screen.queryByText('Not set')).not.toBeInTheDocument();
+    expect(screen.getByTestId('floor-row')).toBeInTheDocument();
+    expect(screen.getByText('Company Floor')).toBeInTheDocument();
   });
 
+  // ── GapNote ─────────────────────────────────────────────────────────────────
+  it('renders GapNote "above" when commitment exceeds company floor', () => {
+    render(
+      <GapAnalysisPanel hierarchy={baseHierarchy} ytdTotals={baseYtd} loading={false} />
+    );
+    const note = screen.getByTestId('gap-note');
+    expect(note).toBeInTheDocument();
+    expect(note.textContent).toMatch(/above/i);
+    expect(note.textContent).not.toMatch(/below/i);
+  });
+
+  it('renders GapNote "below" when commitment is under the company floor', () => {
+    render(
+      <GapAnalysisPanel hierarchy={belowFloorHierarchy} ytdTotals={baseYtd} loading={false} />
+    );
+    const note = screen.getByTestId('gap-note');
+    expect(note.textContent).toMatch(/below/i);
+  });
+
+  it('hides GapNote when no company floor is set', () => {
+    const noFloor = { ...baseHierarchy, companyFloor: null };
+    render(
+      <GapAnalysisPanel hierarchy={noFloor} ytdTotals={baseYtd} loading={false} />
+    );
+    expect(screen.queryByTestId('gap-note')).not.toBeInTheDocument();
+  });
+
+  // ── Below-floor hero ────────────────────────────────────────────────────────
+  it('renders CommitmentHero in warning tone when commitment is below floor', () => {
+    render(
+      <GapAnalysisPanel hierarchy={belowFloorHierarchy} ytdTotals={baseYtd} loading={false} />
+    );
+    const hero = screen.getByTestId('commitment-hero');
+    // Warning tone applies bg-warning-tint class (below-floor path)
+    expect(hero.className).toMatch(/warning/);
+  });
+
+  // ── Floor Met badge ─────────────────────────────────────────────────────────
+  it('shows Met badge when YTD meets or exceeds company floor', () => {
+    render(
+      <GapAnalysisPanel hierarchy={baseHierarchy} ytdTotals={floorMetYtd} loading={false} />
+    );
+    expect(screen.getByText('Met')).toBeInTheDocument();
+  });
+
+  // ── Custom title ─────────────────────────────────────────────────────────────
   it('uses custom title prop', () => {
     render(
       <GapAnalysisPanel hierarchy={null} ytdTotals={null} loading={false} title="My Goals" />
     );
     expect(screen.getByText('My Goals')).toBeInTheDocument();
-  });
-
-  it('shows Met badge when actual meets or exceeds a target', () => {
-    render(
-      <GapAnalysisPanel
-        hierarchy={{ personal: { api: 20000 }, unitTarget: null, branchTarget: null, companyFloor: null }}
-        ytdTotals={{ api: 25000, apps: 0 }}
-        loading={false}
-      />
-    );
-    expect(screen.getByText('Met')).toBeInTheDocument();
   });
 });
