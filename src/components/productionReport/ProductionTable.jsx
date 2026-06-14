@@ -30,7 +30,7 @@ export default function ProductionTable({ rows = [], showRankColumn = false, per
               <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ink-muted w-8">#</th>
             )}
             <th className="px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-wide text-ink-muted">
-              Agent {periodLabel && <span className="normal-case text-ink-muted">— {periodLabel}</span>}
+              Agent {periodLabel && <span className="normal-case">— {periodLabel}</span>}
             </th>
             <th className="px-3 py-2 text-right text-[10px] font-semibold uppercase tracking-wide text-ink-muted" colSpan={2}>
               New Business
