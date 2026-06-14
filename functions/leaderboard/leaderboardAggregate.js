@@ -267,7 +267,7 @@ function groupByBranch(submissions, users) {
   // no per-agent get() — see loadInputs).
   const branchByAgent = new Map();
   for (const u of users) {
-    if (u.role === 'agent' && u.provisioning !== true && u.isTestAccount !== true && u.branchId) {
+    if (u.hiddenFromLeaderboard !== true && u.provisioning !== true && u.isTestAccount !== true && u.branchId) {
       branchByAgent.set(u.id, u.branchId);
     }
   }
@@ -279,12 +279,10 @@ function groupByBranch(submissions, users) {
     return byBranch.get(b);
   };
 
-  // Bucket each active agent into its branch (so empty-production agents still appear)
+  // Bucket all visible users into their branch. hiddenFromLeaderboard drives
+  // exclusion instead of role — UMs appear by default (flag false/absent).
   for (const u of users) {
-    if (u.role === 'agent' && u.provisioning !== true && u.isTestAccount !== true && u.branchId) {
-      ensure(u.branchId).users.push(u);
-    } else if (u.role === 'unit_manager' && u.branchId) {
-      // UMs only included so rankForLeaderboard's unit-name resolution works
+    if (u.hiddenFromLeaderboard !== true && u.provisioning !== true && u.isTestAccount !== true && u.branchId) {
       ensure(u.branchId).users.push(u);
     }
   }

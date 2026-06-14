@@ -6,6 +6,7 @@ import {
   updateUserFields,
   callUpdateUser,
   MANAGER_EDITABLE_FIELDS,
+  setLeaderboardVisibility,
 } from '../../services/userService';
 import { getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import Avatar from '../ui/Avatar';
@@ -123,6 +124,9 @@ export default function EditUserDrawer({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pendingConfirm, setPendingConfirm] = useState(null);
+  const [hiddenFromLb, setHiddenFromLb] = useState(Boolean(user?.hiddenFromLeaderboard));
+  const [hiddenSaving, setHiddenSaving] = useState(false);
+  const [hiddenError, setHiddenError] = useState(null);
 
   const firstFieldRef = useRef(null);
 
@@ -482,6 +486,21 @@ export default function EditUserDrawer({
     await runSave(pr4Diff, cfUpdates, null);
   }
 
+  async function handleToggleHiddenFromLb(e) {
+    const next = e.target.checked;
+    setHiddenFromLb(next);
+    setHiddenSaving(true);
+    setHiddenError(null);
+    try {
+      await setLeaderboardVisibility(tenantId, user.uid ?? user.id, next);
+    } catch (err) {
+      setHiddenFromLb(!next);
+      setHiddenError(err?.message ?? 'Failed to update visibility');
+    } finally {
+      setHiddenSaving(false);
+    }
+  }
+
   if (!user) return null;
 
   const targetRoleLabel = getRoleLabel(user.role);
@@ -735,6 +754,40 @@ export default function EditUserDrawer({
                 </span>
               </span>
             </label>
+          )}
+
+          {['branch_manager', 'sales_manager', 'tenant_admin'].includes(callerRole) && (
+            <div className="flex flex-col gap-2 pt-3 border-t border-border">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+                Leaderboard
+              </p>
+              <label
+                htmlFor="edit-user-hidden-from-lb"
+                className={`flex items-start gap-3 px-3 py-3 rounded-xl border border-border transition-colors ${
+                  hiddenSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:bg-border/20'
+                }`}
+              >
+                <input
+                  id="edit-user-hidden-from-lb"
+                  type="checkbox"
+                  checked={hiddenFromLb}
+                  disabled={hiddenSaving}
+                  onChange={handleToggleHiddenFromLb}
+                  className="mt-0.5 w-4 h-4 accent-primary"
+                />
+                <span className="flex-1 text-sm font-semibold text-ink">
+                  Hide from leaderboard
+                  <span className="block text-[11px] font-normal text-ink-muted leading-snug mt-0.5">
+                    {hiddenSaving
+                      ? 'Saving…'
+                      : "Hidden individuals won’t appear on the production leaderboard."}
+                  </span>
+                </span>
+              </label>
+              {hiddenError && (
+                <p className="text-[11px] text-danger-ink px-1" role="alert">{hiddenError}</p>
+              )}
+            </div>
           )}
 
           {/* PR-4b: Role + branchId edit section (claim-keyed; goes through CF) */}

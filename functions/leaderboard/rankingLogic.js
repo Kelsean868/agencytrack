@@ -205,9 +205,10 @@ function rankForLeaderboard(allSubmissions, allUsers, period, referenceDate) {
   const submissions = allSubmissions || [];
   const users       = allUsers || [];
 
-  // Active agents only (excludes managers, provisioning stubs).
+  // Visible participants only — hiddenFromLeaderboard drives exclusion, not role.
+  // provisioning stubs excluded as belt-and-suspenders (already filtered upstream).
   const agents = users.filter(
-    (u) => u.role === 'agent' && u.provisioning !== true
+    (u) => u.hiddenFromLeaderboard !== true && u.provisioning !== true
   );
 
   const agentTotals = agents.map((u) => {
