@@ -1092,4 +1092,40 @@ describe('computeAndWriteLeaderboards — P5-prep wiring', () => {
     expect(championsOp.data.topActivity).toBeNull();
     expect(championsOp.data.weekStarting).toBe(PREV_WK_SUN);
   });
+
+  // ── Year-boundary: TT year-end (UTC Jan 1 02:00 = TT Dec 31 22:00) ──────────
+  //
+  // Regression guard: before P5-prep, loadInputs used lowerBound = Jan 1 of UTC
+  // year (no 14-day cushion). When UTC year ticked over before TT year (a 4-hour
+  // window), lowerBound jumped to next-year Jan 1 and excluded the last TT-week
+  // submissions, producing an empty leaderboard. P5-prep's 14-day cushion
+  // inadvertently fixed this; this test pins the fix.
+  test('year-boundary: TT Dec-31 ref (UTC Jan 1 02:00) still loads and ranks late-Dec submissions', async () => {
+    // UTC Jan 1 02:00 = TT Dec 31 22:00 — still the prior TT calendar year.
+    const TT_YE_REF = new Date('2026-01-01T02:00:00Z');
+    // The last TT-week Sunday in Dec 2025: Dec 28.
+    const DEC_28_SUN = '2025-12-28';
+
+    firestoreData['tenants/T/submissions'] = [
+      mkSub('s1', 'a1', DEC_28_SUN, 500),
+    ];
+    firestoreData['tenants/T/users'] = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      mkUM('u1', 'UM South', 'south'),
+    ];
+
+    const result = await computeAndWriteLeaderboards('T', TT_YE_REF);
+
+    // The branch must have been computed — not empty.
+    expect(result.branchCount).toBe(1);
+    const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
+    expect(lbOps).toHaveLength(1);
+
+    // The agent must appear in EVERY period with positive API (not silently dropped).
+    for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
+      const entry = lbOps[0].data[periodKey].find((e) => e.agentId === 'a1');
+      expect(entry).toBeDefined();          // agent is ranked
+      expect(entry.periodApi).toBeGreaterThan(0); // submission was counted
+    }
+  });
 });

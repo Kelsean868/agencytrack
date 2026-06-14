@@ -593,11 +593,21 @@ No standalone hero recipe HTML was produced (analogous to `docs/design/nexus-gla
 
 **Item 1 — S3b persistency nudge CF (MEDIUM, planned).** Extension of `sendComplianceNudge` for the persistency coaching nudge type. Architecture locked: mirrors the Compliance v2 S3 `compliance.plan.nudge` extension pattern (`NUDGE_CONFIG` map entry + new email template pair). Requires its own kickoff brief (S3b brief). Dispatch when brief is on `origin/main`.
 
-**Item 2 — leaderboardAggregate: empty-WriteBatch crash (MEDIUM, hard-line report-only).** The scheduled `leaderboardAggregate` Cloud Function performs a `batch.commit()` at the end of its run. When a period has zero agent submissions, the batch is empty. Some Firebase Admin SDK versions throw on `commit()` of a zero-ops batch — the function crashes silently (no leaderboard update; no user-visible error). Fix pattern: guard `if (batch._ops?.length > 0)` or equivalent before commit. **Hard-line: `functions/**` — report only until dispatcher authorizes.**
+**Item 2 — leaderboardAggregate: empty-WriteBatch crash (MEDIUM, hard-line report-only). ✅ MITIGATED by P5-prep.** P5-prep added an unconditional `batch.set(championsRef, ...)` that runs before `batch.commit()` — the batch always has ≥ 1 op even when branchCount = 0. Existing test at `leaderboardAggregate.test.js:371` pins this. No code change needed.
 
-**Item 3 — leaderboardAggregate: early-January year boundary (MEDIUM, hard-line report-only).** The function's year derivation for the aggregation window uses `new Date().getFullYear()` (UTC). At TT year-end, the function computes against next year's aggregates before TT midnight, producing a spurious empty leaderboard for ~4 hours on Jan 1 TT. Fix: TT-safe year derivation (R1-A/R1-C pattern). **Hard-line: `functions/**` — report only until dispatcher authorizes.**
+**Item 3 — leaderboardAggregate: early-January year boundary (downgraded to LOW). ✅ DOES NOT REPRODUCE.** Reproducing test written (`leaderboardAggregate.test.js` — "year-boundary: TT Dec-31 ref" case) and confirmed PASS against current unmodified code. P5-prep's 14-day `lowerBound` cushion ensures late-Dec submissions are within the Firestore query window even when `loadInputs` derives `year` from UTC (not TT). `rankingLogic.getPeriodBoundaries` correctly uses TT-local year via `toTriniDate()`, so the period-filter also handles the boundary. Theoretical inconsistency: `loadInputs` uses `referenceDate.getFullYear()` (timezone-local) while `rankingLogic` uses `getUTCFullYear()` after TT offset — these agree on UTC machines (CI / Cloud Functions) but diverge on non-UTC dev machines. **Banked as LOW FU below; no immediate action.**
 
-**Dispatch sequence:** draft S3b brief → dispatcher authorizes functions day → one deploy covers items 1 + 2 + 3.
+**Dispatch sequence:** draft S3b brief → dispatcher authorizes functions day → deploy covers item 1 only (items 2 + 3 already mitigated).
+
+---
+
+## leaderboardAggregate: `loadInputs` year derivation — make TT-consistent (banked 2026-06-14, LOW)
+
+**Source:** Year-boundary reproducing-test run (2026-06-14). `loadInputs` in `functions/leaderboard/leaderboardAggregate.js` derives `year` via `referenceDate.getFullYear()` (timezone-local). On UTC machines (CI, Cloud Functions) this equals `getUTCFullYear()`. On a non-UTC dev machine it returns the local year, which differs from TT year in the 4-hour UTC Jan 1 window when TT is still Dec 31. In production this is harmless (Cloud Functions = UTC), but it's inconsistent with `rankingLogic.getPeriodBoundaries` which correctly uses `toTriniDate(referenceDate).getUTCFullYear()`.
+
+**Action (LOW, no urgency):** Replace `referenceDate.getFullYear()` in `loadInputs` with the TT-safe equivalent used by `rankingLogic`: `const TRINI_OFFSET_MS = 4 * 60 * 60 * 1000; const year = new Date(referenceDate.getTime() - TRINI_OFFSET_MS).getUTCFullYear();`. One-line change. Bundle with the next `functions/**` deploy rather than a standalone PR.
+
+**Severity:** LOW (production behavior correct on UTC infrastructure; inconsistency is a latent correctness debt for non-UTC dev environments only).
 
 ---
 
