@@ -359,6 +359,32 @@ export async function hardReloadAndAwaitReady(page) {
 }
 
 /**
+ * loginAs — navigates to /login and signs in with email + password.
+ *
+ * Waits for the login form to appear, fills credentials, submits, then
+ * polls for body content length > 200 as a proxy for the dashboard
+ * rendering. Adds a 1 s settle delay after the poll resolves.
+ *
+ * This is the canonical login helper for smoke scripts — use it instead of
+ * copy-pasting a `waitForFunction(() => document.body.textContent.length > 200)`
+ * block into each smoke.
+ *
+ * @param {import('playwright').Page} page
+ * @param {string} baseUrl - Base URL, no trailing slash (e.g. 'https://agencytrack.vercel.app').
+ * @param {string} email
+ * @param {string} password
+ */
+export async function loginAs(page, baseUrl, email, password) {
+  await page.goto(`${baseUrl}/login`, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('input[type="email"]', { timeout: 15_000 });
+  await page.fill('input[type="email"]', email);
+  await page.fill('input[type="password"]', password);
+  await page.click('button[type="submit"]');
+  await page.waitForFunction(() => document.body.textContent.length > 200, { timeout: 25_000 });
+  await page.waitForTimeout(1000);
+}
+
+/**
  * mobileDispatchClick — dispatches a bubbling click event on a DOM element
  * by selector, bypassing Playwright's actionability checks.
  *
