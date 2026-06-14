@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useId } from 'react';
 import { X, Lock, Lightbulb, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
+import useFocusTrap from '../../hooks/useFocusTrap';
 
 function NumField({ id, label, value, onChange, currency, floor, hint }) {
   const parsed = parseFloat(value) || 0;
@@ -65,6 +66,7 @@ export default function RecommendLockDrawer({
   const [pers, setPers]       = useState(initial.targetAnnualPersistency ?? '');
   const [weeklyApi, setWeeklyApi] = useState(initial.targetWeeklyAPI     ?? '');
   const [error, setError]     = useState('');
+  const dialogRef = useFocusTrap({ onEscape: onClose, escapeDisabled: !open || saving });
 
   // Re-seed whenever the drawer opens with new initial values.
   useEffect(() => {
@@ -97,6 +99,7 @@ export default function RecommendLockDrawer({
   return (
     // Backdrop
     <div
+      ref={dialogRef}
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
       role="dialog"
       aria-modal="true"

@@ -125,6 +125,18 @@ describe('RecommendLockDrawer — close', () => {
     fireEvent.click(dialog.firstChild);
     expect(DEFAULT_PROPS.onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('calls onClose when Escape is pressed', () => {
+    render(<RecommendLockDrawer {...DEFAULT_PROPS} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(DEFAULT_PROPS.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onClose when Escape is pressed while saving', () => {
+    render(<RecommendLockDrawer {...DEFAULT_PROPS} saving={true} />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(DEFAULT_PROPS.onClose).not.toHaveBeenCalled();
+  });
 });
 
 describe('RecommendLockDrawer — error display', () => {
