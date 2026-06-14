@@ -21,6 +21,7 @@ vi.mock('firebase/firestore', () => ({
 import {
   getCompanyMinimums, setCompanyMinimums, getGoalHierarchy,
   getSalesManagerGoals, setSalesManagerGoals, getSalesManagerUid,
+  setGoals,
 } from '../goalsService';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
 import { DEFAULT_TENURE_API_FLOORS } from '../../utils/tenureFloors';
@@ -382,5 +383,106 @@ describe('getGoalHierarchy — salesManagerTarget tier', () => {
     wireDocs({ 'tenants/t1/config/companyMinimums': { annualAPI: 200000, annualApps: 42 } });
     const result = await getGoalHierarchy('t1', null, 2026, null, 'sm1');
     expect(result.salesManagerTarget).toBeNull();
+  });
+});
+
+// ── setGoals — targetLocked field ─────────────────────────────────────────────
+
+describe('setGoals — targetLocked field', () => {
+  beforeEach(() => {
+    mockSetDoc.mockResolvedValue(undefined);
+  });
+
+  it('does NOT write targetLocked when not provided in data (preserves existing flag)', async () => {
+    await setGoals('t1', 'a1', { targetAnnualAPI: 200000, targetWeeklyAPI: 3800 }, 'mgr', 'Mgr');
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect('targetLocked' in payload).toBe(false);
+  });
+
+  it('writes targetLocked: true when data.targetLocked is true', async () => {
+    await setGoals('t1', 'a1', { targetAnnualAPI: 300000, targetWeeklyAPI: 5700, targetLocked: true }, 'mgr', 'Mgr');
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.targetLocked).toBe(true);
+  });
+
+  it('coerces a non-boolean truthy value for targetLocked to false (strict === check)', async () => {
+    await setGoals('t1', 'a1', { targetAnnualAPI: 200000, targetWeeklyAPI: 3800, targetLocked: 1 }, 'mgr', 'Mgr');
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.targetLocked).toBe(false);
+  });
+});
+
+// ── setGoals — cascade-floor enforcement ─────────────────────────────────────
+
+describe('setGoals — cascade-floor (agent personal commitment vs locked target)', () => {
+  // Wires getDoc to return path-keyed docs. Handles companyMinimums, user doc,
+  // and existing goals doc in the same mockGetDoc call.
+  const wirePersonal = (existingGoals, mins = { annualAPI: 200000, annualApps: 42, persistency: 90 }) => {
+    mockGetDoc.mockImplementation((ref) => {
+      const path = ref?.__ref ?? '';
+      const docs = {
+        'tenants/t1/config/companyMinimums': mins,
+        'tenants/t1/users/a1': {},         // contractStartDate absent → flat 200k floor
+        'tenants/t1/goals/a1': existingGoals,
+      };
+      const data = docs[path];
+      return Promise.resolve({ exists: () => data !== undefined, data: () => data });
+    });
+    mockSetDoc.mockResolvedValue(undefined);
+  };
+
+  it('rejects personalAnnualAPI below a locked manager target', async () => {
+    wirePersonal({ targetLocked: true, targetAnnualAPI: 300000 });
+    await expect(
+      setGoals('t1', 'a1', { personalAnnualAPI: 250000 }, 'a1', 'Agent'),
+    ).rejects.toThrow(/manager locked target/i);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('accepts personalAnnualAPI at exactly the locked manager target', async () => {
+    wirePersonal({ targetLocked: true, targetAnnualAPI: 300000 });
+    await expect(
+      setGoals('t1', 'a1', { personalAnnualAPI: 300000 }, 'a1', 'Agent'),
+    ).resolves.toBeUndefined();
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.personalAnnualAPI).toBe(300000);
+  });
+
+  it('allows personalAnnualAPI below an unlocked (recommended) target', async () => {
+    // target is 500k but unlocked; company floor is 200k; personal 250k should pass
+    wirePersonal({ targetLocked: false, targetAnnualAPI: 500000 });
+    await expect(
+      setGoals('t1', 'a1', { personalAnnualAPI: 250000 }, 'a1', 'Agent'),
+    ).resolves.toBeUndefined();
+  });
+
+  it('company floor still enforced when locked target is below the company floor', async () => {
+    // locked target = 100k < company floor 200k → effective floor = 200k, source = company minimum
+    wirePersonal({ targetLocked: true, targetAnnualAPI: 100000 });
+    await expect(
+      setGoals('t1', 'a1', { personalAnnualAPI: 150000 }, 'a1', 'Agent'),
+    ).rejects.toThrow(/company minimum/i);
+  });
+
+  it('rejects personalAnnualApps below a locked manager target for apps', async () => {
+    wirePersonal({ targetLocked: true, targetAnnualApps: 60 });
+    await expect(
+      setGoals('t1', 'a1', { personalAnnualApps: 50 }, 'a1', 'Agent'),
+    ).rejects.toThrow(/manager locked target/i);
+  });
+
+  it('rejects personalAnnualPersistency below a locked manager target for persistency', async () => {
+    wirePersonal({ targetLocked: true, targetAnnualPersistency: 95 });
+    await expect(
+      setGoals('t1', 'a1', { personalAnnualPersistency: 92 }, 'a1', 'Agent'),
+    ).rejects.toThrow(/manager locked target/i);
+  });
+
+  it('uses max() — locked target beats company floor when higher', async () => {
+    // company floor 200k, locked target 300k → error message names "manager locked target"
+    wirePersonal({ targetLocked: true, targetAnnualAPI: 300000 });
+    const err = await setGoals('t1', 'a1', { personalAnnualAPI: 250000 }, 'a1', 'Agent').catch((e) => e);
+    expect(err.message).toMatch(/TTD 300,000/);
+    expect(err.message).toMatch(/manager locked target/i);
   });
 });

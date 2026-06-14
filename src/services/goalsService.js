@@ -105,8 +105,11 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
     payload.importedFromCsv = true;
   }
 
-  // Manager target fields — write all if any target* key is present
+  // Manager target fields — write all if any target* key is present.
+  // targetLocked: true  → binding floor; agent's personal commitment must be ≥ this target.
+  // targetLocked: false → recommended only; does not constrain the agent's personal commitment.
   if ('targetAnnualAPI' in data || 'targetWeeklyAPI' in data) {
+    if ('targetLocked' in data) payload.targetLocked = data.targetLocked === true;
     payload.targetAnnualAPI         = p(data.targetAnnualAPI);
     payload.targetAnnualApps        = p(data.targetAnnualApps);
     payload.targetAnnualPersistency = p(data.targetAnnualPersistency);
@@ -127,8 +130,11 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
     'personalAnnualPersistency' in data;
 
   if (hasPersonal) {
-    const mins = await getCompanyMinimums(tenantId);
-    const agentSnap = await getDoc(doc(db, `tenants/${tenantId}/users/${agentId}`)).catch(() => null);
+    const [mins, agentSnap, existingSnap] = await Promise.all([
+      getCompanyMinimums(tenantId),
+      getDoc(doc(db, `tenants/${tenantId}/users/${agentId}`)).catch(() => null),
+      getDoc(ref),
+    ]);
     const contractStartDate = agentSnap?.exists() ? agentSnap.data().contractStartDate : null;
     const annualFloor = resolveAnnualAPIFloor({
       contractStartDate,
@@ -136,15 +142,37 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
       fallback: FLAT_ANNUAL_API_FALLBACK,
     });
 
-    if ('personalAnnualAPI' in data && p(data.personalAnnualAPI) < annualFloor) {
-      throw new Error(`Annual API must be at least TTD ${annualFloor.toLocaleString()} (company minimum).`);
+    // If the manager set a locked target, it raises the agent's effective floor
+    // (max of company floor and locked target). A recommended target (targetLocked: false)
+    // is advisory only and does not constrain the personal commitment.
+    const existing = existingSnap.exists() ? existingSnap.data() : {};
+    const locked = existing.targetLocked === true;
+
+    if ('personalAnnualAPI' in data) {
+      const mgr = locked ? (parseFloat(existing.targetAnnualAPI) || 0) : 0;
+      const floor = Math.max(annualFloor, mgr);
+      if (p(data.personalAnnualAPI) < floor) {
+        const src = mgr > annualFloor ? 'manager locked target' : 'company minimum';
+        throw new Error(`Annual API must be at least TTD ${floor.toLocaleString()} (${src}).`);
+      }
     }
-    if ('personalAnnualApps' in data && p(data.personalAnnualApps) < mins.annualApps) {
-      throw new Error(`Annual Apps must be at least ${mins.annualApps} (company minimum).`);
+    if ('personalAnnualApps' in data) {
+      const mgr = locked ? (parseFloat(existing.targetAnnualApps) || 0) : 0;
+      const floor = Math.max(mins.annualApps, mgr);
+      if (p(data.personalAnnualApps) < floor) {
+        const src = mgr > mins.annualApps ? 'manager locked target' : 'company minimum';
+        throw new Error(`Annual Apps must be at least ${floor} (${src}).`);
+      }
     }
-    if ('personalAnnualPersistency' in data && p(data.personalAnnualPersistency) < mins.persistency) {
-      throw new Error(`Persistency must be at least ${mins.persistency}% (company minimum).`);
+    if ('personalAnnualPersistency' in data) {
+      const mgr = locked ? (parseFloat(existing.targetAnnualPersistency) || 0) : 0;
+      const floor = Math.max(mins.persistency, mgr);
+      if (p(data.personalAnnualPersistency) < floor) {
+        const src = mgr > mins.persistency ? 'manager locked target' : 'company minimum';
+        throw new Error(`Persistency must be at least ${floor}% (${src}).`);
+      }
     }
+
     if ('personalAnnualAPI' in data)         payload.personalAnnualAPI         = p(data.personalAnnualAPI);
     if ('personalAnnualApps' in data)        payload.personalAnnualApps        = p(data.personalAnnualApps);
     if ('personalAnnualPersistency' in data) payload.personalAnnualPersistency = p(data.personalAnnualPersistency);
@@ -177,6 +205,7 @@ export async function setUnitGoals(tenantId, unitId, year, targets, meta) {
     unitId, year, tenantId,
     api:  p(targets.api),
     apps: p(targets.apps),
+    locked:    meta?.locked === true,
     setBy:     meta.setBy,
     setByName: meta.setByName,
     setByRole: meta.setByRole,
@@ -203,6 +232,7 @@ export async function setBranchGoals(tenantId, year, targets, meta) {
     year, tenantId,
     api:  p(targets.api),
     apps: p(targets.apps),
+    locked:    meta?.locked === true,
     setBy:     meta.setBy,
     setByName: meta.setByName,
     setAt:     serverTimestamp(),
@@ -228,6 +258,7 @@ export async function setSalesManagerGoals(tenantId, smUid, year, targets, meta)
     smUid, year, tenantId,
     api:  p(targets.api),
     apps: p(targets.apps),
+    locked:    meta?.locked === true,
     setBy:     meta.setBy,
     setByName: meta.setByName,
     setAt:     serverTimestamp(),

@@ -81,14 +81,20 @@ beforeEach(() => {
 });
 
 describe('commitPlan — happy path writes', () => {
-  it('writes personalAnnualAPI and personalAnnualApps with merge:true', async () => {
+  it('writes personalAnnualAPI, personalAnnualApps, and gamePlanCommitted with merge:true', async () => {
     await commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 });
 
     expect(mockTx.set).toHaveBeenCalledWith(
       expect.stringContaining('goals/uid'),
-      { personalAnnualAPI: 250000, personalAnnualApps: 50 },
+      { personalAnnualAPI: 250000, personalAnnualApps: 50, gamePlanCommitted: true },
       { merge: true },
     );
+  });
+
+  it('writes gamePlanCommitted: true to the goals doc on commit', async () => {
+    await commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 });
+    const [, payload] = mockTx.set.mock.calls[0];
+    expect(payload.gamePlanCommitted).toBe(true);
   });
 
   it('flips yearPlan status to committed with committedAt', async () => {
