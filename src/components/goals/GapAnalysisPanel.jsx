@@ -38,9 +38,9 @@ function HeroMetricRow({ label, ytd, pct, belowFloor }) {
 }
 
 // ── CommitmentHero ─────────────────────────────────────────────────────────────
-// Hero pane for the agent's Personal Commitment — API + Apps vs YTD.
-// Flips to warning tone when commitment is below the company floor.
-function CommitmentHero({ personal, ytdTotals, belowFloor }) {
+// Hero pane for the agent's Personal Commitment — API + Apps + Persistency vs YTD.
+// Flips to warning tone when any metric is below the company floor.
+function CommitmentHero({ personal, ytdTotals, belowFloor, ytdPersistency, persistencyFloor }) {
   const apiTarget  = personal?.api  ?? null;
   const appsTarget = personal?.apps ?? null;
   const ytdApi     = ytdTotals?.api  ?? 0;
@@ -48,6 +48,13 @@ function CommitmentHero({ personal, ytdTotals, belowFloor }) {
 
   const apiPct  = apiTarget  > 0 ? Math.max(0, Math.min(100, Math.round((ytdApi  / apiTarget)  * 100))) : null;
   const appsPct = appsTarget > 0 ? Math.max(0, Math.min(100, Math.round((ytdApps / appsTarget) * 100))) : null;
+
+  const pstDisplay = ytdPersistency !== null
+    ? `${(ytdPersistency * 100).toFixed(1)}%`
+    : '—';
+  const pstBarPct = ytdPersistency !== null && persistencyFloor > 0
+    ? Math.max(0, Math.min(100, Math.round((ytdPersistency * 100 / persistencyFloor) * 100)))
+    : null;
 
   const containerCls = belowFloor
     ? 'bg-warning-tint border border-warning/30 dark:bg-surface-raised dark:border-warning/50'
@@ -86,6 +93,12 @@ function CommitmentHero({ personal, ytdTotals, belowFloor }) {
             belowFloor={belowFloor}
           />
         )}
+        <HeroMetricRow
+          label="Pst."
+          ytd={pstDisplay}
+          pct={pstBarPct}
+          belowFloor={belowFloor}
+        />
       </div>
     </div>
   );
@@ -203,13 +216,16 @@ export default function GapAnalysisPanel({
   loading,
   error = null,
   title = 'Goal Hierarchy',
+  ytdPersistency = null,
+  persistencyFloor = 90,
 }) {
   const ytdApi      = ytdTotals?.api ?? 0;
   const hasPersonal = Boolean(hierarchy?.personal?.api);
   const belowFloor  =
-    hasPersonal &&
-    hierarchy?.companyFloor?.api != null &&
-    hierarchy.personal.api < hierarchy.companyFloor.api;
+    (hasPersonal &&
+      hierarchy?.companyFloor?.api != null &&
+      hierarchy.personal.api < hierarchy.companyFloor.api) ||
+    (ytdPersistency !== null && ytdPersistency * 100 < persistencyFloor);
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
@@ -276,6 +292,8 @@ export default function GapAnalysisPanel({
         personal={hierarchy.personal}
         ytdTotals={ytdTotals}
         belowFloor={belowFloor}
+        ytdPersistency={ytdPersistency}
+        persistencyFloor={persistencyFloor}
       />
 
       <OrgContextStrip hierarchy={hierarchy} />

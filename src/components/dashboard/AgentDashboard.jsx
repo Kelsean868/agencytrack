@@ -295,6 +295,11 @@ export default function AgentDashboard() {
     }, { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 });
   }, [allSubmissions, thisYear]);
 
+  const ytdPersistency = useMemo(
+    () => persistency.length > 0 ? persistency[persistency.length - 1].persistency : null,
+    [persistency],
+  );
+
   // Last 4 submitted weeks for KPI sparklines (oldest → newest)
   const kpiData = useMemo(() => {
     return allSubmissions
@@ -667,6 +672,8 @@ export default function AgentDashboard() {
           ytdTotals={ytdTotals}
           loading={hierarchyLoading}
           error={hierarchyError}
+          ytdPersistency={ytdPersistency}
+          persistencyFloor={companyMinimums?.persistency ?? 90}
         />
       )}
 

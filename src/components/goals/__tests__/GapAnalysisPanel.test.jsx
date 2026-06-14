@@ -178,4 +178,62 @@ describe('GapAnalysisPanel', () => {
     );
     expect(screen.getByText('My Goals')).toBeInTheDocument();
   });
+
+  // ── Persistency metric row ────────────────────────────────────────────────────
+  it('renders persistency metric row with formatted value when ytdPersistency is provided', () => {
+    render(
+      <GapAnalysisPanel
+        hierarchy={baseHierarchy}
+        ytdTotals={baseYtd}
+        loading={false}
+        ytdPersistency={0.923}
+        persistencyFloor={90}
+      />
+    );
+    const hero = screen.getByTestId('commitment-hero');
+    expect(within(hero).getByText('92.3%')).toBeInTheDocument();
+    expect(within(hero).getByText('Pst.')).toBeInTheDocument();
+  });
+
+  it('shows dash when ytdPersistency is null', () => {
+    render(
+      <GapAnalysisPanel
+        hierarchy={baseHierarchy}
+        ytdTotals={baseYtd}
+        loading={false}
+        ytdPersistency={null}
+        persistencyFloor={90}
+      />
+    );
+    const hero = screen.getByTestId('commitment-hero');
+    expect(within(hero).getByText('—')).toBeInTheDocument();
+  });
+
+  it('flips hero to warning tone when persistency is below floor', () => {
+    render(
+      <GapAnalysisPanel
+        hierarchy={baseHierarchy}
+        ytdTotals={baseYtd}
+        loading={false}
+        ytdPersistency={0.82}
+        persistencyFloor={90}
+      />
+    );
+    const hero = screen.getByTestId('commitment-hero');
+    expect(hero.className).toMatch(/warning/);
+  });
+
+  it('does not flip hero to warning when persistency meets the floor', () => {
+    render(
+      <GapAnalysisPanel
+        hierarchy={baseHierarchy}
+        ytdTotals={baseYtd}
+        loading={false}
+        ytdPersistency={0.92}
+        persistencyFloor={90}
+      />
+    );
+    const hero = screen.getByTestId('commitment-hero');
+    expect(hero.className).not.toMatch(/warning/);
+  });
 });
