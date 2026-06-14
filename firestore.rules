@@ -497,7 +497,8 @@ service cloud.firestore {
           (isSignedIn() && isAgent() && getTenantId() == tenantId && goalId == request.auth.uid)
           || (canManage(tenantId) && (
             getRole() != 'unit_manager'
-            || callerUnitId(tenantId) == get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(goalId)).data.unitId
+            || (callerUnitId(tenantId) != null
+                && callerUnitId(tenantId) == get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(goalId)).data.unitId)
           ));
       }
 
