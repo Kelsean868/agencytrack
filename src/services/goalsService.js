@@ -132,7 +132,7 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
   if (hasPersonal) {
     const [mins, agentSnap, existingSnap] = await Promise.all([
       getCompanyMinimums(tenantId),
-      getDoc(doc(db, `tenants/${tenantId}/users/${agentId}`)).catch(() => null),
+      getDoc(doc(db, `tenants/${tenantId}/users/${agentId}`)),
       getDoc(ref),
     ]);
     const contractStartDate = agentSnap?.exists() ? agentSnap.data().contractStartDate : null;

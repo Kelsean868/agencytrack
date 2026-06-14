@@ -488,6 +488,29 @@ describe('setGoals — cascade-floor (agent personal commitment vs locked target
     expect(err.message).toMatch(/TTD 300,000/);
     expect(err.message).toMatch(/manager locked target/i);
   });
+
+  it('propagates agent-doc read error instead of silently using flat fallback', async () => {
+    // A Firestore error on the agent doc must NOT silently fall back to the 200k
+    // flat floor — a tenure-based floor could be higher than 200k, and swallowing
+    // the error would allow a below-floor commitment to be written. Surface the error.
+    mockGetDoc.mockImplementation((ref) => {
+      const path = ref?.__ref ?? '';
+      if (path === 'tenants/t1/users/a1') {
+        return Promise.reject(new Error('Missing or insufficient permissions.'));
+      }
+      const docs = {
+        'tenants/t1/config/companyMinimums': { annualAPI: 200000, annualApps: 42, persistency: 90 },
+        'tenants/t1/goals/a1': {},
+      };
+      const data = docs[path];
+      return Promise.resolve({ exists: () => data !== undefined, data: () => data });
+    });
+    mockSetDoc.mockResolvedValue(undefined);
+    await expect(
+      setGoals('t1', 'a1', { personalAnnualAPI: 150000 }, 'a1', 'Agent'),
+    ).rejects.toThrow(/Missing or insufficient permissions/);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
 });
 
 // ── getGoals ──────────────────────────────────────────────────────────────────
