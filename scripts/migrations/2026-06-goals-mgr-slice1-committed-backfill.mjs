@@ -40,7 +40,8 @@ const args     = process.argv.slice(2);
 const DRY_RUN  = !args.includes('--apply');
 const YEAR     = (() => {
   const y = args.find((a) => a.startsWith('--year='));
-  return y ? parseInt(y.split('=')[1], 10) : 2026;
+  const parsed = y ? parseInt(y.split('=')[1], 10) : 2026;
+  return Number.isInteger(parsed) ? parsed : 2026;
 })();
 const TENANT_FILTER = (() => {
   const t = args.find((a) => a.startsWith('--tenant='));
@@ -95,7 +96,12 @@ async function processTenant(tenantId) {
 
   const counts = { skipped: 0, would: 0, applied: 0 };
   for (const userDoc of usersSnap.docs) {
-    await processAgent(tenantId, userDoc.id, counts);
+    try {
+      await processAgent(tenantId, userDoc.id, counts);
+    } catch (err) {
+      console.error(`  Error processing agent ${userDoc.id}:`, err.message);
+      counts.skipped++;
+    }
   }
 
   console.log(`  Agents checked: ${usersSnap.size}`);

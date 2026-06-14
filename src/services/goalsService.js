@@ -109,7 +109,7 @@ export async function setGoals(tenantId, agentId, data, setBy, setByName) {
   // targetLocked: true  → binding floor; agent's personal commitment must be ≥ this target.
   // targetLocked: false → recommended only; does not constrain the agent's personal commitment.
   if ('targetAnnualAPI' in data || 'targetWeeklyAPI' in data) {
-    payload.targetLocked            = data.targetLocked === true;
+    if ('targetLocked' in data) payload.targetLocked = data.targetLocked === true;
     payload.targetAnnualAPI         = p(data.targetAnnualAPI);
     payload.targetAnnualApps        = p(data.targetAnnualApps);
     payload.targetAnnualPersistency = p(data.targetAnnualPersistency);
@@ -205,7 +205,7 @@ export async function setUnitGoals(tenantId, unitId, year, targets, meta) {
     unitId, year, tenantId,
     api:  p(targets.api),
     apps: p(targets.apps),
-    locked:    meta.locked === true,
+    locked:    meta?.locked === true,
     setBy:     meta.setBy,
     setByName: meta.setByName,
     setByRole: meta.setByRole,
@@ -232,7 +232,7 @@ export async function setBranchGoals(tenantId, year, targets, meta) {
     year, tenantId,
     api:  p(targets.api),
     apps: p(targets.apps),
-    locked:    meta.locked === true,
+    locked:    meta?.locked === true,
     setBy:     meta.setBy,
     setByName: meta.setByName,
     setAt:     serverTimestamp(),
@@ -258,7 +258,7 @@ export async function setSalesManagerGoals(tenantId, smUid, year, targets, meta)
     smUid, year, tenantId,
     api:  p(targets.api),
     apps: p(targets.apps),
-    locked:    meta.locked === true,
+    locked:    meta?.locked === true,
     setBy:     meta.setBy,
     setByName: meta.setByName,
     setAt:     serverTimestamp(),

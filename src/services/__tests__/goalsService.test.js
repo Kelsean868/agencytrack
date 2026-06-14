@@ -393,10 +393,10 @@ describe('setGoals — targetLocked field', () => {
     mockSetDoc.mockResolvedValue(undefined);
   });
 
-  it('writes targetLocked: false by default when not provided', async () => {
+  it('does NOT write targetLocked when not provided in data (preserves existing flag)', async () => {
     await setGoals('t1', 'a1', { targetAnnualAPI: 200000, targetWeeklyAPI: 3800 }, 'mgr', 'Mgr');
     const [, payload] = mockSetDoc.mock.calls[0];
-    expect(payload.targetLocked).toBe(false);
+    expect('targetLocked' in payload).toBe(false);
   });
 
   it('writes targetLocked: true when data.targetLocked is true', async () => {
