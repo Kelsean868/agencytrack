@@ -91,7 +91,7 @@ function AgentRiskCard({ name, statusList }) {
         {counts.far_off > 0 && (
           <span
             className="inline-flex items-center text-[10px] font-bold tracking-wide font-mono px-2 py-1 rounded-full"
-            style={{ color: 'var(--color-text-faint)', background: 'var(--color-surface-muted)' }}
+            style={{ color: 'var(--color-text-muted)', background: 'var(--color-surface-muted)' }}
           >
             ◯ {counts.far_off} far off
           </span>
