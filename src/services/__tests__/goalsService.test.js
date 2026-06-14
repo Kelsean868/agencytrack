@@ -22,6 +22,9 @@ import {
   getCompanyMinimums, setCompanyMinimums, getGoalHierarchy,
   getSalesManagerGoals, setSalesManagerGoals, getSalesManagerUid,
   setGoals,
+  getGoals,
+  getUnitGoals, setUnitGoals,
+  getBranchGoals, setBranchGoals,
 } from '../goalsService';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
 import { DEFAULT_TENURE_API_FLOORS } from '../../utils/tenureFloors';
@@ -484,5 +487,190 @@ describe('setGoals — cascade-floor (agent personal commitment vs locked target
     const err = await setGoals('t1', 'a1', { personalAnnualAPI: 250000 }, 'a1', 'Agent').catch((e) => e);
     expect(err.message).toMatch(/TTD 300,000/);
     expect(err.message).toMatch(/manager locked target/i);
+  });
+});
+
+// ── getGoals ──────────────────────────────────────────────────────────────────
+
+describe('getGoals', () => {
+  it('returns doc data when the goals doc exists', async () => {
+    const data = { personalAnnualAPI: 240000, personalAnnualApps: 42 };
+    mockGetDoc.mockResolvedValueOnce({ exists: () => true, data: () => data });
+    const result = await getGoals('t1', 'agent1');
+    expect(result).toEqual(data);
+    expect(mockGetDoc).toHaveBeenCalledWith({ __ref: 'tenants/t1/goals/agent1' });
+  });
+
+  it('returns null when the goals doc does not exist', async () => {
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    const result = await getGoals('t1', 'agent1');
+    expect(result).toBeNull();
+  });
+});
+
+// ── getUnitGoals ──────────────────────────────────────────────────────────────
+
+describe('getUnitGoals', () => {
+  it('returns doc data when the unit goals doc exists', async () => {
+    const data = { unitId: 'u1', year: 2026, api: 500000, apps: 84 };
+    mockGetDoc.mockResolvedValueOnce({ exists: () => true, data: () => data });
+    const result = await getUnitGoals('t1', 'u1', 2026);
+    expect(result).toEqual(data);
+    expect(mockGetDoc).toHaveBeenCalledWith({ __ref: 'tenants/t1/unitGoals/u1_2026' });
+  });
+
+  it('returns null when the unit goals doc does not exist', async () => {
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    const result = await getUnitGoals('t1', 'u1', 2026);
+    expect(result).toBeNull();
+  });
+});
+
+// ── setUnitGoals ──────────────────────────────────────────────────────────────
+
+describe('setUnitGoals', () => {
+  it('writes to the correct doc path with parsed payload', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setUnitGoals('t1', 'u1', 2026,
+      { api: '500000', apps: '84' },
+      { locked: true, setBy: 'mgr1', setByName: 'Manager', setByRole: 'branch_manager' },
+    );
+    expect(mockSetDoc).toHaveBeenCalledWith(
+      { __ref: 'tenants/t1/unitGoals/u1_2026' },
+      expect.objectContaining({
+        unitId: 'u1',
+        year: 2026,
+        tenantId: 't1',
+        api: 500000,
+        apps: 84,
+        locked: true,
+        setBy: 'mgr1',
+        setByName: 'Manager',
+        setByRole: 'branch_manager',
+        setAt: '__SERVER_TIMESTAMP__',
+      }),
+    );
+  });
+
+  it('defaults locked to false when meta.locked is absent', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setUnitGoals('t1', 'u1', 2026,
+      { api: 500000, apps: 84 },
+      { setBy: 'mgr1', setByName: 'Manager', setByRole: 'unit_manager' },
+    );
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect(payload.locked).toBe(false);
+  });
+
+  it('omits optional activity fields when zero or absent', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setUnitGoals('t1', 'u1', 2026,
+      { api: 500000, apps: 84, ffiConducted: 0, ciConducted: 0, dials: 0 },
+      { setBy: 'mgr1', setByName: 'Manager', setByRole: 'unit_manager' },
+    );
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect(payload).not.toHaveProperty('ffiConducted');
+    expect(payload).not.toHaveProperty('ciConducted');
+    expect(payload).not.toHaveProperty('dials');
+  });
+
+  it('includes optional activity fields when non-zero', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setUnitGoals('t1', 'u1', 2026,
+      { api: 500000, apps: 84, ffiConducted: 20, ciConducted: 15, dials: 50 },
+      { setBy: 'mgr1', setByName: 'Manager', setByRole: 'branch_manager' },
+    );
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect(payload.ffiConducted).toBe(20);
+    expect(payload.ciConducted).toBe(15);
+    expect(payload.dials).toBe(50);
+  });
+
+  it('coerces string numeric values via parseFloat', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setUnitGoals('t1', 'u1', 2026,
+      { api: '480000', apps: '72' },
+      { setBy: 'mgr1', setByName: 'Manager', setByRole: 'unit_manager' },
+    );
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect(payload.api).toBe(480000);
+    expect(payload.apps).toBe(72);
+  });
+});
+
+// ── getBranchGoals ────────────────────────────────────────────────────────────
+
+describe('getBranchGoals', () => {
+  it('returns doc data when the branch goals doc exists', async () => {
+    const data = { year: 2026, tenantId: 't1', api: 1200000, apps: 200 };
+    mockGetDoc.mockResolvedValueOnce({ exists: () => true, data: () => data });
+    const result = await getBranchGoals('t1', 2026);
+    expect(result).toEqual(data);
+    expect(mockGetDoc).toHaveBeenCalledWith({ __ref: 'tenants/t1/branchGoals/2026' });
+  });
+
+  it('returns null when the branch goals doc does not exist', async () => {
+    mockGetDoc.mockResolvedValueOnce({ exists: () => false });
+    const result = await getBranchGoals('t1', 2026);
+    expect(result).toBeNull();
+  });
+});
+
+// ── setBranchGoals ────────────────────────────────────────────────────────────
+
+describe('setBranchGoals', () => {
+  it('writes to the correct doc path with parsed payload', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setBranchGoals('t1', 2026,
+      { api: '1200000', apps: '200' },
+      { locked: true, setBy: 'bm1', setByName: 'Branch Manager' },
+    );
+    expect(mockSetDoc).toHaveBeenCalledWith(
+      { __ref: 'tenants/t1/branchGoals/2026' },
+      expect.objectContaining({
+        year: 2026,
+        tenantId: 't1',
+        api: 1200000,
+        apps: 200,
+        locked: true,
+        setBy: 'bm1',
+        setByName: 'Branch Manager',
+        setAt: '__SERVER_TIMESTAMP__',
+      }),
+    );
+  });
+
+  it('defaults locked to false when meta.locked is absent', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setBranchGoals('t1', 2026,
+      { api: 1200000, apps: 200 },
+      { setBy: 'bm1', setByName: 'Branch Manager' },
+    );
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect(payload.locked).toBe(false);
+  });
+
+  it('omits optional activity fields when zero', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setBranchGoals('t1', 2026,
+      { api: 1200000, apps: 200, ffiConducted: 0, ciConducted: 0, dials: 0 },
+      { setBy: 'bm1', setByName: 'Branch Manager' },
+    );
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect(payload).not.toHaveProperty('ffiConducted');
+    expect(payload).not.toHaveProperty('ciConducted');
+    expect(payload).not.toHaveProperty('dials');
+  });
+
+  it('includes optional activity fields when non-zero', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setBranchGoals('t1', 2026,
+      { api: 1200000, apps: 200, ffiConducted: 40, ciConducted: 30, dials: 100 },
+      { setBy: 'bm1', setByName: 'Branch Manager' },
+    );
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect(payload.ffiConducted).toBe(40);
+    expect(payload.ciConducted).toBe(30);
+    expect(payload.dials).toBe(100);
   });
 });
