@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { commitPlan, BelowApiFloorError, BelowAppsFloorError, AvgPolicyMissingError } from '../commitPlanService';
+import { commitPlan, BelowApiFloorError, BelowAppsFloorError, AvgPolicyMissingError, BelowLockedTargetError } from '../commitPlanService';
 
 // Hoisted so they can be referenced inside vi.mock() factory callbacks.
 const {
@@ -282,6 +282,82 @@ describe('commitPlan — transaction / guard errors', () => {
       commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
     ).rejects.toThrow('Network error');
 
+    expect(mockRunTransaction).not.toHaveBeenCalled();
+  });
+});
+
+describe('commitPlan — BelowLockedTargetError (Slice 2 enforcement)', () => {
+  function withLockedGoals({ targetLocked, targetAnnualAPI, targetAnnualApps }) {
+    mockGetDoc.mockImplementation((ref) => {
+      if (String(ref).includes('/goals/')) {
+        return Promise.resolve({
+          exists: () => true,
+          data: () => ({
+            playgroundAvgPolicyAPI: 12000,
+            targetLocked,
+            targetAnnualAPI,
+            targetAnnualApps,
+          }),
+        });
+      }
+      return Promise.resolve({ exists: () => true, data: () => ({ contractStartDate: null }) });
+    });
+  }
+
+  it('throws BelowLockedTargetError when api is below the locked targetAnnualAPI', async () => {
+    withLockedGoals({ targetLocked: true, targetAnnualAPI: 300000, targetAnnualApps: 0 });
+
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
+    ).rejects.toBeInstanceOf(BelowLockedTargetError);
+  });
+
+  it('carries field, lockedTarget, and actual on BelowLockedTargetError (API)', async () => {
+    withLockedGoals({ targetLocked: true, targetAnnualAPI: 300000, targetAnnualApps: 0 });
+
+    const err = await commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }).catch((e) => e);
+    expect(err).toBeInstanceOf(BelowLockedTargetError);
+    expect(err.field).toBe('Annual API');
+    expect(err.lockedTarget).toBe(300000);
+    expect(err.actual).toBe(250000);
+  });
+
+  it('passes at exactly the locked target (boundary)', async () => {
+    withLockedGoals({ targetLocked: true, targetAnnualAPI: 250000, targetAnnualApps: 0 });
+
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('does NOT throw when targetLocked is false (recommended — non-binding)', async () => {
+    withLockedGoals({ targetLocked: false, targetAnnualAPI: 300000, targetAnnualApps: 0 });
+
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('does NOT throw when targetLocked is absent', async () => {
+    mockGetDoc.mockImplementation((ref) => {
+      if (String(ref).includes('/goals/')) {
+        return Promise.resolve({
+          exists: () => true,
+          data: () => ({ playgroundAvgPolicyAPI: 12000 }),
+        });
+      }
+      return Promise.resolve({ exists: () => true, data: () => ({ contractStartDate: null }) });
+    });
+
+    await expect(
+      commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('does not call runTransaction when locked API check fails', async () => {
+    withLockedGoals({ targetLocked: true, targetAnnualAPI: 300000, targetAnnualApps: 0 });
+
+    await commitPlan('tid', 'uid', 2026, { annualAPI: 250000, annualApps: 50 }).catch(() => {});
     expect(mockRunTransaction).not.toHaveBeenCalled();
   });
 });

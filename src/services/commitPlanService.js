@@ -40,6 +40,20 @@ export class AvgPolicyMissingError extends Error {
   }
 }
 
+export class BelowLockedTargetError extends Error {
+  constructor(field, lockedTarget, actual) {
+    super(
+      `${field} (${typeof actual === 'number' ? actual.toLocaleString() : actual}) is below ` +
+      `the manager-locked target (${typeof lockedTarget === 'number' ? lockedTarget.toLocaleString() : lockedTarget}). ` +
+      `Raise your plan to meet or exceed your locked target.`
+    );
+    this.name  = 'BelowLockedTargetError';
+    this.field        = field;
+    this.lockedTarget = lockedTarget;
+    this.actual       = actual;
+  }
+}
+
 /**
  * Atomic, floor-enforced commit transaction for Game Plan Step 4.
  *
@@ -82,6 +96,18 @@ export async function commitPlan(tenantId, uid, year, { annualAPI, annualApps })
 
   if (api < floor) {
     throw new BelowApiFloorError(floor, api);
+  }
+
+  // If the manager set a locked target, the committed plan must meet or exceed it.
+  // A recommended target (targetLocked: false/absent) is advisory — does not constrain here.
+  if (goalsSnap.exists()) {
+    const gd = goalsSnap.data();
+    if (gd.targetLocked === true) {
+      const lockedAPI  = parseFloat(gd.targetAnnualAPI)  || 0;
+      const lockedApps = parseFloat(gd.targetAnnualApps) || 0;
+      if (lockedAPI  > 0 && api  < lockedAPI)  throw new BelowLockedTargetError('Annual API',  lockedAPI,  api);
+      if (lockedApps > 0 && apps < lockedApps) throw new BelowLockedTargetError('Annual Apps', lockedApps, apps);
+    }
   }
 
   if (avgPolicyAPI === null) {

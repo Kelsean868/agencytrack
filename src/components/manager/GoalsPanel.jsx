@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { AlertTriangle, ChevronDown, ChevronUp } from 'lucide-react';
+import { AlertTriangle, ChevronDown, ChevronUp, Lock, Lightbulb, CheckCircle2 } from 'lucide-react';
+import RecommendLockDrawer from '../goals/RecommendLockDrawer';
 import SaveButton from '../ui/SaveButton';
 import TabPills from '../ui/TabPills';
 import Avatar from '../ui/Avatar';
@@ -39,6 +40,7 @@ function agentAnnualFloor(agent, mins) {
   });
 }
 const ZERO_YTD = { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 };
+const STATUS_ORDER = { unset: 0, below: 1, above: 2 };
 
 function emptyGoals() {
   return {
@@ -124,6 +126,64 @@ function StatusChip({ status }) {
   );
 }
 
+function CommittedBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-success/15 text-success-ink">
+      <CheckCircle2 size={10} />
+      Game Plan committed
+    </span>
+  );
+}
+
+function LockedBadge({ locked }) {
+  if (locked === true) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary dark:text-primary-dark">
+        <Lock size={10} />
+        Locked
+      </span>
+    );
+  }
+  if (locked === false) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-warning/10 text-warning-ink">
+        <Lightbulb size={10} />
+        Suggested
+      </span>
+    );
+  }
+  return null;
+}
+
+function LockToggle({ locked, onChange }) {
+  return (
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={() => onChange(false)}
+        className={`flex-1 h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+          !locked
+            ? 'bg-warning/10 border-warning/40 text-warning-ink'
+            : 'bg-transparent border-border text-ink-muted'
+        }`}
+      >
+        <Lightbulb size={16} /> Recommend
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange(true)}
+        className={`flex-1 h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
+          locked
+            ? 'bg-primary/10 border-primary/40 text-primary dark:text-primary-dark'
+            : 'bg-transparent border-border text-ink-muted'
+        }`}
+      >
+        <Lock size={16} /> Lock
+      </button>
+    </div>
+  );
+}
+
 // ── Unit / Branch Goals form ─────────────────────────────────────────────────
 
 function GoalLevelForm({ value, onChange }) {
@@ -164,6 +224,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
   const [selectedUnit, setSelectedUnit] = useState(isUnitManager ? unitId : (units[0]?.id ?? ''));
   const [form, setForm]     = useState({ api: '', apps: '', ffiConducted: '', ciConducted: '', dials: '' });
   const [existing, setExisting] = useState(null);
+  const [locked, setLocked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
   const [loadingGoals, setLoadingGoals] = useState(false);
@@ -177,6 +238,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
     getUnitGoals(tenantId, selectedUnit, currentYear)
       .then((g) => {
         setExisting(g);
+        setLocked(g?.locked === true);
         setForm({
           api:          g?.api          ?? '',
           apps:         g?.apps         ?? '',
@@ -201,6 +263,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
         setBy:     user.uid,
         setByName: userProfile?.name ?? userProfile?.email ?? 'Manager',
         setByRole: role,
+        locked,
       });
       const updated = await getUnitGoals(tenantId, selectedUnit, currentYear);
       setExisting(updated);
@@ -252,6 +315,19 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
               {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
             </p>
           )}
+          <LockToggle locked={locked} onChange={setLocked} />
+          {locked && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/8 border border-primary/25 dark:bg-primary-dark/10 dark:border-primary-dark/30 text-sm text-primary dark:text-primary-dark">
+              <Lock size={15} className="mt-0.5 shrink-0" />
+              Agents' commitments must meet or exceed this unit target.
+            </div>
+          )}
+          {!locked && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-warning-ink">
+              <Lightbulb size={15} className="mt-0.5 shrink-0" />
+              Suggested target — a guide, not a binding commitment.
+            </div>
+          )}
           <GoalLevelForm value={form} onChange={setForm} />
           {saveError && (
             <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">
@@ -271,6 +347,7 @@ function BranchGoalsTab({ userProfile }) {
 
   const [form, setForm]     = useState({ api: '', apps: '', ffiConducted: '', ciConducted: '', dials: '' });
   const [existing, setExisting] = useState(null);
+  const [locked, setLocked] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -284,6 +361,7 @@ function BranchGoalsTab({ userProfile }) {
     getBranchGoals(tenantId, currentYear)
       .then((g) => {
         setExisting(g);
+        setLocked(g?.locked === true);
         setForm({
           api:          g?.api          ?? '',
           apps:         g?.apps         ?? '',
@@ -307,6 +385,7 @@ function BranchGoalsTab({ userProfile }) {
       await setBranchGoals(tenantId, currentYear, form, {
         setBy:     user.uid,
         setByName: userProfile?.name ?? userProfile?.email ?? 'Manager',
+        locked,
       });
       const updated = await getBranchGoals(tenantId, currentYear);
       setExisting(updated);
@@ -335,6 +414,19 @@ function BranchGoalsTab({ userProfile }) {
               {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
             </p>
           )}
+          <LockToggle locked={locked} onChange={setLocked} />
+          {locked && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/8 border border-primary/25 dark:bg-primary-dark/10 dark:border-primary-dark/30 text-sm text-primary dark:text-primary-dark">
+              <Lock size={15} className="mt-0.5 shrink-0" />
+              Units and agents must commit to totals that meet or exceed this branch target.
+            </div>
+          )}
+          {!locked && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-warning-ink">
+              <Lightbulb size={15} className="mt-0.5 shrink-0" />
+              Suggested target — a guide, not a binding commitment.
+            </div>
+          )}
           <GoalLevelForm value={form} onChange={setForm} />
           {saveError && (
             <div className="p-3 rounded-lg bg-danger/10 border border-danger/30 text-sm text-danger-ink">
@@ -355,6 +447,7 @@ function SalesManagerGoalsTab({ userProfile }) {
   const [form, setForm]         = useState({ api: '', apps: '', ffiConducted: '', ciConducted: '', dials: '' });
   const [existing, setExisting] = useState(null);
   const [smUid, setSmUid]       = useState(null);
+  const [locked, setLocked]     = useState(false);
   const [saving, setSaving]     = useState(false);
   const [savedAt, setSavedAt]   = useState(null);
   const [loading, setLoading]   = useState(true);
@@ -378,6 +471,7 @@ function SalesManagerGoalsTab({ userProfile }) {
       })
       .then((g) => {
         setExisting(g);
+        setLocked(g?.locked === true);
         setForm({
           api:          g?.api          ?? '',
           apps:         g?.apps         ?? '',
@@ -401,6 +495,7 @@ function SalesManagerGoalsTab({ userProfile }) {
       await setSalesManagerGoals(tenantId, smUid, currentYear, form, {
         setBy:     user.uid,
         setByName: userProfile?.name ?? userProfile?.email ?? 'Manager',
+        locked,
       });
       const updated = await getSalesManagerGoals(tenantId, smUid, currentYear);
       setExisting(updated);
@@ -429,6 +524,19 @@ function SalesManagerGoalsTab({ userProfile }) {
               Last set by {existing.setByName}
               {existing.setAt && ` · ${formatDateDisplay(existing.setAt.toDate?.().toISOString?.().slice(0, 10) ?? '')}`}
             </p>
+          )}
+          <LockToggle locked={locked} onChange={setLocked} />
+          {locked && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/8 border border-primary/25 dark:bg-primary-dark/10 dark:border-primary-dark/30 text-sm text-primary dark:text-primary-dark">
+              <Lock size={15} className="mt-0.5 shrink-0" />
+              Branch targets must align to meet or exceed this company-wide target.
+            </div>
+          )}
+          {!locked && (
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-warning/10 border border-warning/30 text-sm text-warning-ink">
+              <Lightbulb size={15} className="mt-0.5 shrink-0" />
+              Suggested target — a guide, not a binding commitment.
+            </div>
           )}
           <GoalLevelForm value={form} onChange={setForm} />
           {saveError && (
@@ -498,16 +606,18 @@ function SelfTab() {
 function AgentGoalRow({
   agent, goalsDoc, editValues, minimums,
   isExpanded, onToggle,
-  onField, onSave,
+  onField, onSave, onSetTarget,
   isSaving, savedAt, hasSaveError,
 }) {
   const agentLabel = agent.name ?? agent.displayName ?? agent.email ?? agent.id;
   const annualAPIFloor = agentAnnualFloor(agent, minimums);
   const status = getAgentStatus(goalsDoc, minimums, annualAPIFloor);
   const formId = `agent-goal-form-${agent.id}`;
+  const isCommitted = goalsDoc?.gamePlanCommitted === true;
+  const targetLocked = goalsDoc?.targetLocked;
+  const hasManagerTarget = (parseFloat(goalsDoc?.targetAnnualAPI) || 0) > 0;
 
-  // Collapsed-row summary. 'Not set' agents get the mock's hint copy; the
-  // others get a compact targets-saved summary.
+  // Collapsed-row summary.
   let summary;
   if (status === 'unset') {
     summary = `Tap to set ${new Date().getFullYear()} targets · Default = company minimums`;
@@ -550,6 +660,8 @@ function AgentGoalRow({
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-ink truncate">{agentLabel}</span>
             <StatusChip status={status} />
+            {isCommitted && <CommittedBadge />}
+            {hasManagerTarget && <LockedBadge locked={targetLocked} />}
           </div>
           {summary && <p className="text-xs text-ink-muted mt-0.5 truncate">{summary}</p>}
         </div>
@@ -560,6 +672,30 @@ function AgentGoalRow({
 
       {isExpanded && (
         <div id={formId} className="flex flex-col gap-4">
+          {/* Manager target row */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              {hasManagerTarget ? (
+                <span className="text-xs text-ink-muted">
+                  Manager target: <span className="font-semibold text-ink">{formatCurrency(parseFloat(goalsDoc?.targetAnnualAPI) || 0)}</span>
+                  {targetLocked === true && <span className="ml-1 text-primary dark:text-primary-dark font-semibold">(locked)</span>}
+                  {targetLocked === false && <span className="ml-1 text-warning-ink font-semibold">(suggested)</span>}
+                </span>
+              ) : (
+                <span className="text-xs text-ink-muted italic">No manager target set</span>
+              )}
+            </div>
+            {onSetTarget && (
+              <button
+                type="button"
+                onClick={onSetTarget}
+                className="h-9 px-4 rounded-lg text-xs font-semibold border border-primary/40 text-primary dark:text-primary-dark hover:bg-primary/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 shrink-0"
+              >
+                {hasManagerTarget ? 'Edit target' : 'Set target'}
+              </button>
+            )}
+          </div>
+
           {hasEditWarning && (
             <div className="flex flex-wrap gap-2">
               {apiWarn  && <BelowFloorWarning label="Annual API" />}
@@ -674,6 +810,9 @@ function AgentGoalsTab() {
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState('');
   const [partialLoadWarning, setPartialLoadWarning] = useState(false);
+  // Drawer state for set-manager-target flow
+  const [drawerAgent, setDrawerAgent] = useState(null);
+  const [drawerSaving, setDrawerSaving] = useState(false);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -767,6 +906,45 @@ function AgentGoalsTab() {
     }
   };
 
+  const handleDrawerSave = async (targetValues, targetLocked) => {
+    if (!drawerAgent || !tenantId) return;
+    setDrawerSaving(true);
+    try {
+      const managerName = userProfile?.name ?? userProfile?.email ?? 'Manager';
+      await setGoals(
+        tenantId,
+        drawerAgent.id,
+        {
+          targetAnnualAPI:         targetValues.targetAnnualAPI,
+          targetAnnualApps:        targetValues.targetAnnualApps,
+          targetAnnualPersistency: targetValues.targetAnnualPersistency,
+          targetWeeklyAPI:         targetValues.targetWeeklyAPI,
+          targetLocked,
+        },
+        user.uid,
+        managerName,
+      );
+      const updated = await getGoals(tenantId, drawerAgent.id);
+      setGoalsMap((prev) => ({ ...prev, [drawerAgent.id]: updated }));
+    } finally {
+      setDrawerSaving(false);
+    }
+    // RecommendLockDrawer calls onClose after this resolves
+  };
+
+  const mins = minimums ?? FALLBACK_MINIMUMS;
+
+  // Exception-first ordering: unset → below-floor → above-floor.
+  // Hoisted above early returns so useMemo is not called conditionally.
+  const sortedAgents = useMemo(() => (
+    [...agents].sort((a, b) => {
+      const fa = agentAnnualFloor(a, mins);
+      const fb = agentAnnualFloor(b, mins);
+      return (STATUS_ORDER[getAgentStatus(goalsMap[a.id], mins, fa)] ?? 0) -
+             (STATUS_ORDER[getAgentStatus(goalsMap[b.id], mins, fb)] ?? 0);
+    })
+  ), [agents, goalsMap, mins]);
+
   if (loading) {
     return (
       <div className="flex flex-col gap-4">
@@ -791,7 +969,8 @@ function AgentGoalsTab() {
     );
   }
 
-  const mins = minimums ?? FALLBACK_MINIMUMS;
+  const drawerGoalsDoc = drawerAgent ? goalsMap[drawerAgent.id] : null;
+  const drawerFloor = drawerAgent ? agentAnnualFloor(drawerAgent, mins) : 200000;
 
   return (
     <div className="flex flex-col gap-4">
@@ -808,7 +987,7 @@ function AgentGoalsTab() {
         </div>
       )}
 
-      {agents.map((agent) => (
+      {sortedAgents.map((agent) => (
         <AgentGoalRow
           key={agent.id}
           agent={agent}
@@ -819,11 +998,29 @@ function AgentGoalsTab() {
           onToggle={() => handleToggle(agent.id)}
           onField={(field, value) => handleField(agent.id, field, value)}
           onSave={() => handleSave(agent)}
+          onSetTarget={() => setDrawerAgent(agent)}
           isSaving={savingId === agent.id}
           savedAt={savedAtMap[agent.id] ?? null}
           hasSaveError={saveErrorId === agent.id}
         />
       ))}
+
+      <RecommendLockDrawer
+        open={drawerAgent !== null}
+        onClose={() => setDrawerAgent(null)}
+        agentName={drawerAgent?.name ?? drawerAgent?.email ?? ''}
+        initial={{
+          targetAnnualAPI:         drawerGoalsDoc?.targetAnnualAPI         ?? '',
+          targetAnnualApps:        drawerGoalsDoc?.targetAnnualApps        ?? '',
+          targetAnnualPersistency: drawerGoalsDoc?.targetAnnualPersistency ?? '',
+          targetWeeklyAPI:         drawerGoalsDoc?.targetWeeklyAPI         ?? '',
+          targetLocked:            drawerGoalsDoc?.targetLocked,
+        }}
+        annualAPIFloor={drawerFloor}
+        minimums={mins}
+        onSave={handleDrawerSave}
+        saving={drawerSaving}
+      />
     </div>
   );
 }
