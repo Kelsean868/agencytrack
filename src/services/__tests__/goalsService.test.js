@@ -562,10 +562,22 @@ describe('setUnitGoals', () => {
     expect(payload.locked).toBe(false);
   });
 
-  it('omits optional activity fields when zero or absent', async () => {
+  it('omits optional activity fields when zero', async () => {
     mockSetDoc.mockResolvedValue(undefined);
     await setUnitGoals('t1', 'u1', 2026,
       { api: 500000, apps: 84, ffiConducted: 0, ciConducted: 0, dials: 0 },
+      { setBy: 'mgr1', setByName: 'Manager', setByRole: 'unit_manager' },
+    );
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect(payload).not.toHaveProperty('ffiConducted');
+    expect(payload).not.toHaveProperty('ciConducted');
+    expect(payload).not.toHaveProperty('dials');
+  });
+
+  it('omits optional activity fields when absent from input', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setUnitGoals('t1', 'u1', 2026,
+      { api: 500000, apps: 84 },
       { setBy: 'mgr1', setByName: 'Manager', setByRole: 'unit_manager' },
     );
     const payload = mockSetDoc.mock.calls[0][1];
@@ -654,6 +666,18 @@ describe('setBranchGoals', () => {
     mockSetDoc.mockResolvedValue(undefined);
     await setBranchGoals('t1', 2026,
       { api: 1200000, apps: 200, ffiConducted: 0, ciConducted: 0, dials: 0 },
+      { setBy: 'bm1', setByName: 'Branch Manager' },
+    );
+    const payload = mockSetDoc.mock.calls[0][1];
+    expect(payload).not.toHaveProperty('ffiConducted');
+    expect(payload).not.toHaveProperty('ciConducted');
+    expect(payload).not.toHaveProperty('dials');
+  });
+
+  it('omits optional activity fields when absent from input', async () => {
+    mockSetDoc.mockResolvedValue(undefined);
+    await setBranchGoals('t1', 2026,
+      { api: 1200000, apps: 200 },
       { setBy: 'bm1', setByName: 'Branch Manager' },
     );
     const payload = mockSetDoc.mock.calls[0][1];
