@@ -34,7 +34,7 @@ export default function NeedsActionBanner({ onLog, title = "You haven't logged t
       <button
         type="button"
         onClick={onLog}
-        className="shrink-0 inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-lg bg-warning text-white text-xs font-bold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning"
+        className="shrink-0 inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-lg bg-warning text-white dark:text-[--color-bg] text-xs font-bold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning"
       >
         Log today
         <ArrowRight size={13} aria-hidden="true" />
