@@ -347,7 +347,9 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 
 ---
 
-## 28968bb latent-flake audit — 12 remaining files (banked 2026-06-11, MEDIUM)
+## 28968bb latent-flake audit — 12 remaining files (banked 2026-06-11, MEDIUM) — **RESOLVED 2026-06-14**
+
+**Status: RESOLVED (2026-06-14).** Global `asyncUtilTimeout: 5000` (test-setup.js:12) covers all naked-waitFor cases. Named logic-bug fixes shipped: DailyEntryModal (`not.toBeDisabled()` wait at lines 114/127, PR #563), CompliancePanel.nudge (`userEvent.setup()` + `CHIP_WAIT` + tripwire, PR #563). WizardFormV2RetirementR1 and AwardsRulesetPanel covered by global timeout. Suite 3031/3031 consistently green — audit complete.
 
 **Source:** CI suite flakiness Phase 1 diagnosis (fix/ci-suite-flakiness PR #563). `28968bb` (gemini-batch-a, "RTL anti-patterns in 13 test files") touched 13 files. CompliancePanel.nudge and DailyEntryModal (2 of the 13) had verifiable regressions that were fixed in that PR. The other **11 files** received similar act()-stripping or RTL refactoring and may have had their own intentional timing guards stripped.
 
