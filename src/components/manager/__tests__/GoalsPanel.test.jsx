@@ -45,6 +45,18 @@ vi.mock('../../../context/AuthContext', () => ({
 vi.mock('../../goals/CommissionPlayground', () => ({
   default: () => <div data-testid="commission-playground" />,
 }));
+vi.mock('../../goals/RecommendLockDrawer', () => ({
+  default: ({ open, onClose, agentName, onSave, saving }) =>
+    open ? (
+      <div data-testid="recommend-lock-drawer" data-agent={agentName}>
+        <button onClick={onClose}>drawer-close</button>
+        <button onClick={() => onSave({ targetAnnualAPI: 300000, targetAnnualApps: 50, targetAnnualPersistency: 92, targetWeeklyAPI: '' }, true)}>
+          drawer-save-locked
+        </button>
+        {saving && <span>saving</span>}
+      </div>
+    ) : null,
+}));
 vi.mock('../../goals/GapAnalysisPanel', () => ({
   default: ({ title, hierarchy }) => (
     <div data-testid="gap-analysis-panel" data-title={title} data-has-hierarchy={hierarchy ? 'yes' : 'no'}>
@@ -265,6 +277,90 @@ describe('GoalsPanel', () => {
         expect(tenantId).toBe('tenant-1');
         expect(agentId).toBe('agent-below');
         expect(managerUid).toBe('mgr-1');
+      });
+    });
+  });
+
+  describe('Agent sub-tab — Slice 2 features', () => {
+    async function gotoAgentTab() {
+      render(<GoalsPanel />);
+      await screen.findByRole('tab', { name: 'Agent' });
+      fireEvent.click(screen.getByRole('tab', { name: 'Agent' }));
+      await screen.findByText('Alice Above');
+    }
+
+    it('renders agents in exception-first order: unset → below → above', async () => {
+      await gotoAgentTab();
+      // Query all agent-row toggle buttons (they have aria-expanded attr)
+      const toggleBtns = screen
+        .getAllByRole('button')
+        .filter((b) => b.hasAttribute('aria-expanded'));
+      const names = toggleBtns.map((b) => b.textContent);
+      const carolIdx = names.findIndex((t) => /carol unset/i.test(t));
+      const bobIdx   = names.findIndex((t) => /bob below/i.test(t));
+      const aliceIdx = names.findIndex((t) => /alice above/i.test(t));
+      expect(carolIdx).toBeLessThan(bobIdx);
+      expect(bobIdx).toBeLessThan(aliceIdx);
+    });
+
+    it('shows "Game Plan committed" badge for agents with gamePlanCommitted:true', async () => {
+      hoisted.getGoals.mockImplementation((_tenantId, agentId) => {
+        const base = goalsByAgentId(agentId);
+        if (agentId === 'agent-above') return Promise.resolve({ ...base, gamePlanCommitted: true });
+        return Promise.resolve(base);
+      });
+      await gotoAgentTab();
+      expect(screen.getByText(/Game Plan committed/i)).toBeInTheDocument();
+    });
+
+    it('does not show committed badge when gamePlanCommitted is absent', async () => {
+      await gotoAgentTab();
+      expect(screen.queryByText(/Game Plan committed/i)).not.toBeInTheDocument();
+    });
+
+    it('shows "Set target" or "Edit target" button for auto-expanded rows', async () => {
+      await gotoAgentTab();
+      // Bob is auto-expanded (below-floor). His mock goalsDoc has targetAnnualAPI=180000,
+      // so hasManagerTarget=true → label is "Edit target".
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: /(set|edit) target/i })).toBeInTheDocument();
+      });
+    });
+
+    it('opens RecommendLockDrawer with correct agent name when target button is clicked', async () => {
+      await gotoAgentTab();
+      const setTargetBtn = screen.getByRole('button', { name: /(set|edit) target/i });
+      fireEvent.click(setTargetBtn);
+      await waitFor(() => {
+        const drawer = screen.getByTestId('recommend-lock-drawer');
+        expect(drawer).toBeInTheDocument();
+        expect(drawer.getAttribute('data-agent')).toBe('Bob Below');
+      });
+    });
+
+    it('calls setGoals with targetLocked when drawer save fires', async () => {
+      await gotoAgentTab();
+      fireEvent.click(screen.getByRole('button', { name: /(set|edit) target/i }));
+      await screen.findByTestId('recommend-lock-drawer');
+      await act(async () => fireEvent.click(screen.getByRole('button', { name: /drawer-save-locked/i })));
+      await waitFor(() => {
+        expect(hoisted.setGoals).toHaveBeenCalledWith(
+          'tenant-1',
+          'agent-below',
+          expect.objectContaining({ targetLocked: true, targetAnnualAPI: 300000 }),
+          'mgr-1',
+          'Mgr Name',
+        );
+      });
+    });
+
+    it('closes the drawer when drawer-close is clicked', async () => {
+      await gotoAgentTab();
+      fireEvent.click(screen.getByRole('button', { name: /(set|edit) target/i }));
+      await screen.findByTestId('recommend-lock-drawer');
+      fireEvent.click(screen.getByRole('button', { name: /drawer-close/i }));
+      await waitFor(() => {
+        expect(screen.queryByTestId('recommend-lock-drawer')).not.toBeInTheDocument();
       });
     });
   });
