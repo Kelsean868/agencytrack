@@ -1,6 +1,5 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Target, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { computeGapAnalysis } from '../../utils/gapAnalysis';
 import { formatCurrency } from '../../utils/formatters';
 import { statusToken } from '../../lib/policyStatusTokens';
 
@@ -47,8 +46,8 @@ function CommitmentHero({ personal, ytdTotals, belowFloor }) {
   const ytdApi     = ytdTotals?.api  ?? 0;
   const ytdApps    = ytdTotals?.apps ?? 0;
 
-  const apiPct  = apiTarget  > 0 ? Math.min(100, Math.round((ytdApi  / apiTarget)  * 100)) : null;
-  const appsPct = appsTarget > 0 ? Math.min(100, Math.round((ytdApps / appsTarget) * 100)) : null;
+  const apiPct  = apiTarget  > 0 ? Math.max(0, Math.min(100, Math.round((ytdApi  / apiTarget)  * 100))) : null;
+  const appsPct = appsTarget > 0 ? Math.max(0, Math.min(100, Math.round((ytdApps / appsTarget) * 100))) : null;
 
   const containerCls = belowFloor
     ? 'bg-warning-tint border border-warning/30 dark:bg-surface-raised dark:border-warning/50'
@@ -131,7 +130,7 @@ function OrgContextStrip({ hierarchy }) {
 // Company Floor full-detail row with YTD progress bar.
 function FloorRow({ floorApi, ytdApi }) {
   if (!floorApi) return null;
-  const pct = Math.min(100, Math.round((ytdApi / floorApi) * 100));
+  const pct = Math.max(0, Math.min(100, Math.round((ytdApi / floorApi) * 100)));
   const gap = floorApi - ytdApi;
 
   return (
@@ -205,13 +204,6 @@ export default function GapAnalysisPanel({
   error = null,
   title = 'Goal Hierarchy',
 }) {
-  // Kept for CareerPortal / GoalsPanel compatibility — other surfaces still consume
-  // computeGapAnalysis rows; the Goals tab renders the new chrome above.
-  const _rows = useMemo(
-    () => computeGapAnalysis(hierarchy, ytdTotals),
-    [hierarchy, ytdTotals]
-  );
-
   const ytdApi      = ytdTotals?.api ?? 0;
   const hasPersonal = Boolean(hierarchy?.personal?.api);
   const belowFloor  =
