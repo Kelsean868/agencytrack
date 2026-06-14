@@ -488,10 +488,18 @@ service cloud.firestore {
       match /goals/{goalId} {
         allow read:  if canManage(tenantId) ||
           (isSignedIn() && isAgent() && getTenantId() == tenantId && goalId == request.auth.uid);
-        // Agents can write their own goal doc (personal commitment + playground fields).
-        // CareerPortal calls setGoals() directly client-side; no CF path exists.
-        allow write: if canManage(tenantId) ||
-          (isSignedIn() && isAgent() && getTenantId() == tenantId && goalId == request.auth.uid);
+        // goalId == agentId (UID) always — service writes `goals/{agentId}`.
+        // Agents write their own commitment; managers write target fields.
+        // SEC-4 pattern: unit_manager scoped to own-unit agents only
+        // (cross-doc unitId lookup, same as users write gate).
+        // branch_manager, sales_manager, tenant_admin, platform_admin: unrestricted.
+        allow write: if
+          (isSignedIn() && isAgent() && getTenantId() == tenantId && goalId == request.auth.uid)
+          || (canManage(tenantId) && (
+            getRole() != 'unit_manager'
+            || (callerUnitId(tenantId) != null
+                && callerUnitId(tenantId) == get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(goalId)).data.unitId)
+          ));
       }
 
       match /notifications/{notificationId} {
