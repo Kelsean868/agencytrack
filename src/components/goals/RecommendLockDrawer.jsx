@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useId } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import { X, Lock, Lightbulb, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import useFocusTrap from '../../hooks/useFocusTrap';
@@ -67,6 +67,7 @@ export default function RecommendLockDrawer({
   const [weeklyApi, setWeeklyApi] = useState(initial.targetWeeklyAPI     ?? '');
   const [error, setError]     = useState('');
   const dialogRef = useFocusTrap({ onEscape: onClose, escapeDisabled: !open || saving });
+  const triggerElRef = useRef(null);
 
   // Re-seed whenever the drawer opens with new initial values.
   useEffect(() => {
@@ -77,6 +78,22 @@ export default function RecommendLockDrawer({
       setPers(initial.targetAnnualPersistency ?? '');
       setWeeklyApi(initial.targetWeeklyAPI   ?? '');
       setError('');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Focus management for always-mounted pattern (useFocusTrap's mount-effect fires
+  // when open=false so dialogRef is null; this effect re-runs on open change instead).
+  useEffect(() => {
+    if (open) {
+      triggerElRef.current = document.activeElement;
+      const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+      const first = dialogRef.current?.querySelector(FOCUSABLE);
+      first?.focus();
+    } else {
+      const el = triggerElRef.current;
+      triggerElRef.current = null;
+      el?.focus();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);

@@ -114,9 +114,9 @@ async function legManagerUI() {
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-    const capture = captureConsoleAndNetwork(await context.newPage().then(() => context.pages()[0]));
     await setupBypassSession(context, PREVIEW_URL, BYPASS_TOKEN);
     const page = await context.newPage();
+    const capture = captureConsoleAndNetwork(page);
 
     // Login as branch manager
     await page.goto(`${PREVIEW_URL}/login`, { waitUntil: 'domcontentloaded' });
@@ -235,7 +235,7 @@ async function legManagerUI() {
       report('L5c drawer closes on Cancel', drawerClosed);
     }
 
-    console.log(formatCaptureReport({ consoleMessages: [], networkFailures: [] }));
+    console.log(formatCaptureReport(capture));
   } catch (err) {
     report('L1-L5 manager UI', false, String(err));
   } finally {
