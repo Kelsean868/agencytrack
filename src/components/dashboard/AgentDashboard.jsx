@@ -296,7 +296,7 @@ export default function AgentDashboard() {
   }, [allSubmissions, thisYear]);
 
   const ytdPersistency = useMemo(
-    () => persistency.length > 0 ? persistency[persistency.length - 1].persistency : null,
+    () => persistency[persistency.length - 1]?.persistency ?? null,
     [persistency],
   );
 

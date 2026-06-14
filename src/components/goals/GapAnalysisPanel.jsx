@@ -225,7 +225,7 @@ export default function GapAnalysisPanel({
     (hasPersonal &&
       hierarchy?.companyFloor?.api != null &&
       hierarchy.personal.api < hierarchy.companyFloor.api) ||
-    (ytdPersistency !== null && ytdPersistency * 100 < persistencyFloor);
+    (ytdPersistency !== null && parseFloat((ytdPersistency * 100).toFixed(1)) < persistencyFloor);
 
   // ── Loading ──────────────────────────────────────────────────────────────────
   if (loading) {
