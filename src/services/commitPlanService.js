@@ -109,7 +109,7 @@ export async function commitPlan(tenantId, uid, year, { annualAPI, annualApps })
 
     const now = serverTimestamp();
 
-    tx.set(goalsRef, { personalAnnualAPI: api, personalAnnualApps: apps }, { merge: true });
+    tx.set(goalsRef, { personalAnnualAPI: api, personalAnnualApps: apps, gamePlanCommitted: true }, { merge: true });
     tx.update(yearPlanRef, { status: 'committed', committedAt: now });
 
     if (monthlySnap.exists()) {
