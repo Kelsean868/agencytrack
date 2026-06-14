@@ -36,7 +36,7 @@ function loadEnv() {
 }
 loadEnv();
 
-const PREVIEW_URL  = process.env.SMOKE_PREVIEW_URL ?? process.argv[2] ?? 'https://agencytrack-git-feat-money-need-d23650-kyron-marchan-s-projects.vercel.app';
+const PREVIEW_URL  = process.env.SMOKE_PREVIEW_URL ?? process.argv[2] ?? 'https://agencytrack.vercel.app';
 const BYPASS_TOKEN = process.env.VERCEL_BYPASS_TOKEN;
 const AGENT_EMAIL  = process.env.A11Y_AGENT_EMAIL;
 const AGENT_PASS   = process.env.A11Y_AGENT_PASSWORD;

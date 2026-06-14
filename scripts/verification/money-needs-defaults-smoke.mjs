@@ -28,7 +28,7 @@ import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { chromium } from 'playwright';
-import { setupBypassSession } from './lib/walk-helpers.mjs';
+import { setupBypassSession, loginAs } from './lib/walk-helpers.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const YEAR = 2026;
@@ -156,16 +156,6 @@ const SUBCALC_ITEMS = [
   'Sou-sou',
 ];
 
-async function loginAs(page, email, password) {
-  await page.goto(`${PREVIEW_URL}/login`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('input[type="email"]', { timeout: 10000 });
-  await page.fill('input[type="email"]', email);
-  await page.fill('input[type="password"]', password);
-  await page.click('button[type="submit"]');
-  // Use textContent length as mobile-safe login confirmation (sidebar tabs are CSS-hidden at 390px)
-  await page.waitForFunction(() => document.body.textContent.length > 200, { timeout: 20000 });
-}
-
 async function navigateToMoneyNeeds(page, isMobile = false) {
   if (isMobile) {
     // Mobile: money-needs may be under the "More" drawer
@@ -269,7 +259,7 @@ try {
     await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
     const page = await ctx.newPage();
     wireCapture(page);
-    await loginAs(page, AGENT_EMAIL, AGENT_PASS);
+    await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
     report('Light — dashboard loaded', await page.locator('[data-testid^="agent-tab-"]').count() > 0);
 
     const tabReached = await navigateToMoneyNeeds(page);
@@ -296,7 +286,7 @@ try {
     await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
     const page = await ctx.newPage();
     wireCapture(page);
-    await loginAs(page, AGENT_EMAIL, AGENT_PASS);
+    await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
 
     await page.evaluate(() => {
       document.documentElement.classList.add('dark');
@@ -329,7 +319,7 @@ try {
     await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
     const page = await ctx.newPage();
     wireCapture(page);
-    await loginAs(page, AGENT_EMAIL, AGENT_PASS);
+    await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
     report('Mobile — dashboard loaded', await page.locator('[data-testid^="agent-tab-"]').count() > 0);
 
     const tabReached = await navigateToMoneyNeeds(page, true);

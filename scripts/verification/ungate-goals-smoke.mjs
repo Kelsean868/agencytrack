@@ -19,7 +19,7 @@ import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { chromium } from 'playwright';
-import { setupBypassSession } from './lib/walk-helpers.mjs';
+import { setupBypassSession, loginAs } from './lib/walk-helpers.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -53,16 +53,6 @@ function report(label, ok, detail = '') {
   RESULTS.push(line);
   console.log(line);
   if (ok) passed++; else failed++;
-}
-
-async function loginAs(page, email, password) {
-  await page.goto(`${PREVIEW_URL}/login`, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('input[type="email"]', { timeout: 15000 });
-  await page.fill('input[type="email"]', email);
-  await page.fill('input[type="password"]', password);
-  await page.click('button[type="submit"]');
-  await page.waitForFunction(() => document.body.textContent.length > 200, { timeout: 25000 });
-  await page.waitForTimeout(1000);
 }
 
 async function navigateToGoals(page, isMobile = false) {
@@ -142,7 +132,7 @@ try {
     await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
     const page = await ctx.newPage();
     wireCapture(page, consoleErrors);
-    await loginAs(page, AGENT_EMAIL, AGENT_PASS);
+    await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
     report('Agent light — dashboard loaded', await page.locator('[data-testid^="agent-tab-"]').count() > 0);
 
     const tabReached = await navigateToGoals(page);
@@ -173,7 +163,7 @@ try {
     await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
     const page = await ctx.newPage();
     wireCapture(page, consoleErrors);
-    await loginAs(page, AGENT_EMAIL, AGENT_PASS);
+    await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
 
     await page.evaluate(() => {
       document.documentElement.classList.add('dark');
@@ -206,7 +196,7 @@ try {
     await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
     const page = await ctx.newPage();
     wireCapture(page, consoleErrors);
-    await loginAs(page, MANAGER_EMAIL, MANAGER_PASS);
+    await loginAs(page, PREVIEW_URL, MANAGER_EMAIL, MANAGER_PASS);
 
     // Manager dashboard uses sidebar nav — wait for it to render
     await page.waitForTimeout(1000);
@@ -238,7 +228,7 @@ try {
     await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
     const page = await ctx.newPage();
     wireCapture(page, consoleErrors);
-    await loginAs(page, AGENT_EMAIL, AGENT_PASS);
+    await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
     report('Mobile — dashboard loaded', (await page.evaluate(() => document.body.textContent.length)) > 200);
     await page.screenshot({ path: join(SCREENSHOTS_DIR, 'goals-ungate-mobile-pre-nav.png') });
 

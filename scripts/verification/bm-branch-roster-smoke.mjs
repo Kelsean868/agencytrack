@@ -20,7 +20,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import {
   setupBypassSession,
-  waitForFirebaseReady,
+  loginAs,
   safeLog,
   installGlobalTimeout,
   finishSmoke,
@@ -31,17 +31,19 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT  = join(__dir, '..', '..');
 
 function loadEnv() {
-  const raw = readFileSync(join(ROOT, '.env.local'), 'utf8');
-  const env = {};
-  for (const line of raw.split('\n')) {
-    const m = line.match(/^([A-Z0-9_]+)=([^\r\n]*)/);
-    if (m) env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
-  }
-  return env;
+  try {
+    const raw = readFileSync(join(ROOT, '.env.local'), 'utf8');
+    const env = {};
+    for (const line of raw.split('\n')) {
+      const m = line.match(/^([A-Z0-9_]+)=([^\r\n]*)/);
+      if (m) env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
+    }
+    return env;
+  } catch { return {}; }
 }
 const E = loadEnv();
 
-const PROD_URL = 'https://agencytrack.vercel.app';
+const PROD_URL = E.SMOKE_PREVIEW_URL ?? process.argv[2] ?? 'https://agencytrack.vercel.app';
 
 // ── Firebase REST helpers ────────────────────────────────────────────────────
 
@@ -74,14 +76,6 @@ async function firestoreList(idToken, collPath) {
 }
 
 // ── Playwright helpers ───────────────────────────────────────────────────────
-
-async function loginAs(page, email, password) {
-  await page.fill('input[type="email"]', email);
-  await page.fill('input[type="password"]', password);
-  await page.click('button[type="submit"]');
-  await waitForFirebaseReady(page);
-  await page.waitForTimeout(1500);
-}
 
 async function navigateToMasterSheet(page) {
   const bottomNav = page.locator('[data-testid="bottomnav-mastersheet"]');
@@ -123,9 +117,7 @@ async function main() {
       await setupBypassSession(ctx, PROD_URL, E.VERCEL_BYPASS_TOKEN);
       const page = await ctx.newPage();
 
-      await page.goto(PROD_URL, { waitUntil: 'domcontentloaded' });
-      await waitForFirebaseReady(page);
-      await loginAs(page, bmEmail, E.A11Y_BRANCH_MANAGER_PASSWORD);
+      await loginAs(page, PROD_URL, bmEmail, E.A11Y_BRANCH_MANAGER_PASSWORD);
       safeLog(`[${stamp()}]   BM logged in`);
 
       await navigateToMasterSheet(page);
