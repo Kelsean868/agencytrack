@@ -76,7 +76,7 @@ const FIXTURE_USERS = [
   { id: 'a3', role: 'agent',         name: 'Gamma',  unitId: 'u2', provisioning: false },
   { id: 'a4', role: 'agent',         name: 'Delta',  unitId: 'u2', provisioning: false },
   { id: 'a5', role: 'agent',         name: 'Epsilon', unitId: null, provisioning: false },
-  { id: 'm1', role: 'unit_manager',  name: 'UM',     unitId: 'm1' }, // ignored
+  { id: 'm1', role: 'unit_manager',  name: 'UM',     unitId: 'm1' }, // visible (flag absent, no subs → ranked at $0)
   { id: 'a9', role: 'agent',         name: 'Stub',   unitId: 'u1', provisioning: true }, // ignored
 ];
 
@@ -258,7 +258,7 @@ describe('ESM ≡ CJS — rankAgentsByApi', () => {
 
 function runSrcPipeline(allSubmissions, allUsers, period, refDate) {
   const agents = (allUsers || []).filter(
-    (u) => u.role === 'agent' && u.provisioning !== true
+    (u) => u.hiddenFromLeaderboard !== true && u.provisioning !== true
   );
   const agentTotals = agents.map((u) => {
     const ownSubs = (allSubmissions || []).filter(
