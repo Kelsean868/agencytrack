@@ -302,7 +302,7 @@ export default function ManagerAwardsPanel({
           <GroupHeader
             label="◯ Just starting · under 30%"
             count={groups.justStarting.length}
-            accentStyle={{ color: 'var(--color-text-faint)' }}
+            accentStyle={{ color: 'var(--color-text-muted)' }}
           />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {groups.justStarting.map((a) => (

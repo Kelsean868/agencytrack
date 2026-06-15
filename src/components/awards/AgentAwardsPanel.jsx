@@ -200,7 +200,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
 
       {justStarting.length > 0 && (
         <div>
-          <GroupHeader label="◯ Just starting · under 30%" count={justStarting.length} accentStyle={{ color: 'var(--color-text-faint)' }} />
+          <GroupHeader label="◯ Just starting · under 30%" count={justStarting.length} accentStyle={{ color: 'var(--color-text-muted)' }} />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {justStarting.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAwardId(a.id)} />)}
           </div>
