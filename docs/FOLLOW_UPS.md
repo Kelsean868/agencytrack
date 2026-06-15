@@ -20,7 +20,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel absent from GoalsPanel (banked PR #TBD, 2026-06-15, LOW)
+## Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel absent from GoalsPanel (banked PR #641, 2026-06-15, LOW)
 
 **Phase 1.5 recon finding:** `GoalsPanel.jsx` (manager Goals tab, `src/components/manager/GoalsPanel.jsx`) renders `CommissionPlayground` (L567) and `GapAnalysisPanel` (L1081) — so a producing manager CAN set their personal commitment and view their gap analysis. However, `DerivedIncomePanel` and `AwardsReachPanel` are **not surfaced** in `GoalsPanel`. A producing manager cannot see their income estimate or award reach from the manager dashboard today.
 
@@ -34,7 +34,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Awards reach pins — Firestore persistence for cross-device sync (banked PR #TBD, 2026-06-15, LOW)
+## Awards reach pins — Firestore persistence for cross-device sync (banked PR #641, 2026-06-15, LOW)
 
 `AwardsReachPanel` stores pinned aspirational awards in `localStorage` (key `agencytrack-award-pins`). This is per-device — pins set on a mobile phone are not visible on a desktop browser.
 
