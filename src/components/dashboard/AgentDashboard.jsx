@@ -156,7 +156,7 @@ export default function AgentDashboard() {
 
   // Show welcome screen on first login (agents only)
   useEffect(() => {
-    if (userProfile && userProfile.hasSeenWelcome === false && role === 'agent') {
+    if (userProfile && userProfile.hasSeenWelcome === false && !userProfile.onboardingComplete && role === 'agent') {
       setShowWelcome(true);
     }
   }, [userProfile, role]);
