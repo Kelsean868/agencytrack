@@ -31,9 +31,10 @@ import ManagerOverviewTab from '../ManagerOverviewTab';
 
 describe('ManagerOverviewTab — Submit Weekly Report wizard gate (Slice 2.1a)', () => {
   it('renders button for unit_manager when onSubmitReport is provided', () => {
+    const managerRole = 'unit_manager';
     render(
       <ManagerOverviewTab
-        role="unit_manager"
+        role={managerRole}
         userProfile={{}}
         tenantId="t1"
         onSubmitReport={() => {}}
