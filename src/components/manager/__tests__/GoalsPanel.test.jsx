@@ -16,11 +16,21 @@ const hoisted = vi.hoisted(() => ({
   setSalesManagerGoals:  vi.fn(),
   getSalesManagerUid:    vi.fn(),
   getGoalHierarchy:      vi.fn(),
+  getAgentSubmissions:   vi.fn(),
+  getSettlements:        vi.fn(),
   authRef:               { current: { user: { uid: 'mgr-1' }, userProfile: { unitId: 'unit-1', name: 'Mgr Name' }, role: 'branch_manager', tenantId: 'tenant-1' } },
 }));
 
 vi.mock('../../../services/managerService', () => ({
   getTenantUsers: (...args) => hoisted.getTenantUsers(...args),
+}));
+
+vi.mock('../../../services/submissionService', () => ({
+  getAgentSubmissions: (...args) => hoisted.getAgentSubmissions(...args),
+}));
+
+vi.mock('../../../services/settlementService', () => ({
+  getSettlements: (...args) => hoisted.getSettlements(...args),
 }));
 
 vi.mock('../../../services/goalsService', () => ({
@@ -58,15 +68,69 @@ vi.mock('../../goals/RecommendLockDrawer', () => ({
     ) : null,
 }));
 vi.mock('../../goals/GapAnalysisPanel', () => ({
-  default: ({ title, hierarchy }) => (
-    <div data-testid="gap-analysis-panel" data-title={title} data-has-hierarchy={hierarchy ? 'yes' : 'no'}>
+  default: ({ title, hierarchy, ytdTotals }) => (
+    <div
+      data-testid="gap-analysis-panel"
+      data-title={title}
+      data-has-hierarchy={hierarchy ? 'yes' : 'no'}
+      data-ytd-api={ytdTotals?.api ?? 0}
+    >
       Gap Analysis Panel
+    </div>
+  ),
+}));
+
+vi.mock('../../goals/DerivedIncomePanel', () => ({
+  default: ({ ytdTotals, commissionRate, loading }) => (
+    <div
+      data-testid="derived-income-panel"
+      data-ytd-api={ytdTotals?.api ?? 0}
+      data-commission-rate={commissionRate ?? 'none'}
+      data-loading={loading ? 'true' : 'false'}
+    >
+      DerivedIncomePanel
+    </div>
+  ),
+}));
+
+vi.mock('../../goals/AwardsReachPanel', () => ({
+  default: ({ submissions }) => (
+    <div
+      data-testid="awards-reach-panel"
+      data-sub-count={submissions?.length ?? 0}
+    >
+      AwardsReachPanel
+    </div>
+  ),
+}));
+
+vi.mock('../../goals/MdrtTracker', () => ({
+  default: ({ ytdTotals, loading }) => (
+    <div
+      data-testid="mdrt-tracker"
+      data-ytd-api={ytdTotals?.api ?? 0}
+      data-loading={loading ? 'true' : 'false'}
+    >
+      MdrtTracker
     </div>
   ),
 }));
 
 // Pure helpers — let real implementations through.
 import GoalsPanel from '../GoalsPanel';
+
+const THIS_YEAR = new Date().getFullYear();
+
+// Known-value submission: totalProductionCredit=48000, apps=8 → predictable ytdTotals.
+const OWN_SUBMISSION = {
+  status: 'submitted',
+  weekStarting: `${THIS_YEAR}-01-05`,
+  totalProductionCredit: 48000,
+  applicationsSold: '8',
+  ffiConducted: '3',
+  ciConducted: '2',
+  totalTelAttempts: '30',
+};
 
 const MINIMUMS = { annualAPI: 200000, annualApps: 42, persistency: 90 };
 
@@ -117,6 +181,8 @@ describe('GoalsPanel', () => {
       unitTarget:         { api: 600000,  apps: 120, ffiConducted: null, ciConducted: null, dials: null },
       personal:           { api: 250000,  apps: 48,  ffiConducted: null, ciConducted: null, dials: null },
     });
+    hoisted.getAgentSubmissions.mockResolvedValue([OWN_SUBMISSION]);
+    hoisted.getSettlements.mockResolvedValue([]);
     setRole('branch_manager');
   });
 
@@ -362,6 +428,85 @@ describe('GoalsPanel', () => {
       await waitFor(() => {
         expect(screen.queryByTestId('recommend-lock-drawer')).not.toBeInTheDocument();
       });
+    });
+  });
+
+  describe('portfolio panels — producing-manager gate', () => {
+    it('renders all three panels in Self tab for branch_manager', async () => {
+      setRole('branch_manager');
+      render(<GoalsPanel />);
+      await waitFor(() => {
+        expect(screen.getByTestId('derived-income-panel')).toBeInTheDocument();
+        expect(screen.getByTestId('awards-reach-panel')).toBeInTheDocument();
+        expect(screen.getByTestId('mdrt-tracker')).toBeInTheDocument();
+      });
+    });
+
+    it('renders all three panels in Self tab for unit_manager', async () => {
+      setRole('unit_manager');
+      render(<GoalsPanel />);
+      await waitFor(() => {
+        expect(screen.getByTestId('derived-income-panel')).toBeInTheDocument();
+        expect(screen.getByTestId('awards-reach-panel')).toBeInTheDocument();
+        expect(screen.getByTestId('mdrt-tracker')).toBeInTheDocument();
+      });
+    });
+
+    it('hides all three panels for sales_manager', async () => {
+      setRole('sales_manager');
+      render(<GoalsPanel />);
+      // Wait for the Self tab to fully render (gap-analysis-panel is always present)
+      await screen.findByTestId('gap-analysis-panel');
+      expect(screen.queryByTestId('derived-income-panel')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('awards-reach-panel')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('mdrt-tracker')).not.toBeInTheDocument();
+    });
+
+    it('hides all three panels for tenant_admin', async () => {
+      setRole('tenant_admin');
+      render(<GoalsPanel />);
+      await screen.findByTestId('gap-analysis-panel');
+      expect(screen.queryByTestId('derived-income-panel')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('awards-reach-panel')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('mdrt-tracker')).not.toBeInTheDocument();
+    });
+
+    it('feeds own submission ytdTotals to DerivedIncomePanel and MdrtTracker', async () => {
+      setRole('branch_manager');
+      render(<GoalsPanel />);
+      // OWN_SUBMISSION has totalProductionCredit=48000 — ytdTotals.api must be 48000.
+      await waitFor(() => {
+        const derived = screen.getByTestId('derived-income-panel');
+        expect(derived.getAttribute('data-ytd-api')).toBe('48000');
+        const mdrt = screen.getByTestId('mdrt-tracker');
+        expect(mdrt.getAttribute('data-ytd-api')).toBe('48000');
+      });
+    });
+
+    it('feeds own submissions array to AwardsReachPanel', async () => {
+      setRole('branch_manager');
+      render(<GoalsPanel />);
+      await waitFor(() => {
+        const panel = screen.getByTestId('awards-reach-panel');
+        expect(panel.getAttribute('data-sub-count')).toBe('1');
+      });
+    });
+
+    it('feeds real ytdTotals to GapAnalysisPanel (not zeros)', async () => {
+      setRole('branch_manager');
+      render(<GoalsPanel />);
+      await waitFor(() => {
+        const gap = screen.getByTestId('gap-analysis-panel');
+        expect(gap.getAttribute('data-ytd-api')).toBe('48000');
+      });
+    });
+
+    it('does NOT call getAgentSubmissions for sales_manager', async () => {
+      setRole('sales_manager');
+      hoisted.getAgentSubmissions.mockClear();
+      render(<GoalsPanel />);
+      await screen.findByTestId('gap-analysis-panel');
+      expect(hoisted.getAgentSubmissions).not.toHaveBeenCalled();
     });
   });
 });

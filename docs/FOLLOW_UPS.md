@@ -20,19 +20,13 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel + MdrtTracker absent from GoalsPanel (sharpened PR #643, 2026-06-15 — banked PR #641, LOW)
+## ~~Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel + MdrtTracker absent from GoalsPanel~~ (CLOSED — **PR #TBD, `{SHA}`**, 2026-06-15)
 
-**Phase 1.5 recon finding:** `GoalsPanel.jsx` (manager Goals tab, `src/components/manager/GoalsPanel.jsx`) renders `CommissionPlayground` (L567) and `GapAnalysisPanel` (L1081) — so a producing manager CAN set their personal commitment and view their gap analysis. However, `DerivedIncomePanel`, `AwardsReachPanel`, and `MdrtTracker` are **not surfaced** in `GoalsPanel`. A producing manager cannot see their income estimate, award reach, or MDRT/COT/TOT progress from the manager dashboard today.
+~~**Phase 1.5 recon finding:** `GoalsPanel.jsx` (manager Goals tab, `src/components/manager/GoalsPanel.jsx`) renders `CommissionPlayground` (L567) and `GapAnalysisPanel` (L1081) — so a producing manager CAN set their personal commitment and view their gap analysis. However, `DerivedIncomePanel`, `AwardsReachPanel`, and `MdrtTracker` are **not surfaced** in `GoalsPanel`. A producing manager cannot see their income estimate, award reach, or MDRT/COT/TOT progress from the manager dashboard today.~~
 
-**Concrete plan (sharpened post-v3.3):** One role-agnostic slice — mount `DerivedIncomePanel` + `AwardsReachPanel` + `MdrtTracker` in `GoalsPanel.jsx` below `GapAnalysisPanel`. Display-only; all three components are already role-agnostic and accept production data as props (same mount shape as the agent Goals tab). **Tier-B candidate** (no rules/CF/schema/money — display and localStorage only). This is the precursor slice the Tier-2 cockpit absorbs.
+~~**Concrete plan (sharpened post-v3.3):** One role-agnostic slice — mount `DerivedIncomePanel` + `AwardsReachPanel` + `MdrtTracker` in `GoalsPanel.jsx` below `GapAnalysisPanel`. Display-only; all three components are already role-agnostic and accept production data as props (same mount shape as the agent Goals tab). **Tier-B candidate** (no rules/CF/schema/money — display and localStorage only). This is the precursor slice the Tier-2 cockpit absorbs.~~
 
-**Income-method MDRT (future add):** `MdrtTracker` uses `ytdTotals.api` as proxy for MDRT-eligible premium (indicative). A future slice could add income-method tracking (blended commission income vs MDRT income threshold) — deferred until the income-method qualification is in scope.
-
-**Why deferred:** Brief scope-locks the agent Goals tab only. No rules/schema change needed — all three panels are display-only and reuse already-loaded data.
-
-**Ties to:** Tier-2 manager cockpit arc. Implement when the producing-manager personal-performance surface is explicitly scoped.
-
-**Severity:** LOW (producing managers can still view goals via the agent dashboard; this is a UX convenience, not a data correctness issue).
+**Resolved:** All three panels mounted in `GoalsPanel.jsx` SelfTab behind `isProducing` (`role === 'unit_manager' || role === 'branch_manager'`) gate. Adds `getAgentSubmissions` + `getSettlements` fetches and canonical `ytdTotals` useMemo (same formula as AgentDashboard). Fixes `GapAnalysisPanel` ZERO_YTD placeholder → real ytdTotals. GapAnalysis data isolation confirmed: ytdTotals feeds only `CommitmentHero` (personal layer) + `FloorRow` (floor bar); team layers remain hierarchy-only. Tier-2 manager cockpit arc absorbs this surface when it lands.
 
 ---
 
@@ -45,6 +39,18 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 **Why deferred:** localStorage is acceptable for v1 (pins are aspirational, low-stakes). Cross-device sync requires a `firestore.rules` change + `hasOnly` allowlist update → BUILD-AND-HOLD, not Tier-B. Not worth the overhead until pilot agents explicitly ask for it.
 
 **Severity:** LOW (per-device pins are a minor inconvenience for agents who switch devices; no data loss, just re-pinning needed).
+
+---
+
+## CommissionPlayground `submissions={[]}` in manager GoalsPanel — pure rate-calculator vs live data (banked PR #TBD, 2026-06-15, LOW)
+
+`GoalsPanel.jsx` passes `submissions={[]}` (empty array) to `CommissionPlayground` alongside `isManagerSelf={true}`. The component also receives an `isProducing` flag. The empty-array pass appears intentional (the `isManagerSelf` prop suggests the playground is treated as a pure blended-rate calculator for managers, not a live-data explorer), but it was never explicitly confirmed in the brief.
+
+**Action:** Confirm whether `CommissionPlayground` for managers should receive the manager's own `allSubmissions` (same set fetched in this PR) — allowing real production figures to seed the calculator's baseline — or remain a blank-slate rate calculator. If the former, wire `submissions={allSubmissions}` in GoalsPanel; update tests. If the latter, add a comment to GoalsPanel clarifying the intent so it's not mistaken for a bug.
+
+**Why deferred:** The `isManagerSelf={true}` prop is a strong signal the empty-array behavior is intentional; changing it is a product judgment call, not a Tier-B display fix. Scope was locked per dispatcher authorization during the manager goal-portfolio catch-up PR.
+
+**Severity:** LOW (managers can still reach CommissionPlayground via the Self tab; only the seeded-from-real-data baseline is missing if the intentional interpretation is wrong).
 
 ---
 
