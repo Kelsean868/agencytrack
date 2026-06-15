@@ -29,12 +29,25 @@ vi.mock('../TeamMedalsPanel',    () => ({ default: () => null }));
 
 import ManagerOverviewTab from '../ManagerOverviewTab';
 
-describe('ManagerOverviewTab — Submit Weekly Report wizard gate (Slice 2.1a)', () => {
+describe('ManagerOverviewTab — Submit Weekly Report wizard gate (Slice 2.1a + 2.1b)', () => {
   it('renders button for unit_manager when onSubmitReport is provided', () => {
     const managerRole = 'unit_manager';
     render(
       <ManagerOverviewTab
         role={managerRole}
+        userProfile={{}}
+        tenantId="t1"
+        onSubmitReport={() => {}}
+      />
+    );
+    expect(screen.getByRole('button', { name: /submit weekly report/i })).toBeInTheDocument();
+  });
+
+  it('renders button for branch_manager when onSubmitReport is provided (Slice 2.1b)', () => {
+    const bmRole = 'branch_manager';
+    render(
+      <ManagerOverviewTab
+        role={bmRole}
         userProfile={{}}
         tenantId="t1"
         onSubmitReport={() => {}}

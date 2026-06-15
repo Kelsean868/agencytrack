@@ -251,6 +251,30 @@ describe('rankAgentsByApi', () => {
     expect(carol.rank).toBe(3);
     expect(carol.rankWithinUnit).toBe(2); // second in u1
   });
+
+  it('sentinel __branch_direct__ maps to "none" bucket — no phantom unit (Slice 2.1b)', () => {
+    // BM's submission has unitId === '__branch_direct__' (sentinel).
+    // It must land in the same 'none' group as null-unitId agents, not create
+    // a phantom '__branch_direct__' bucket that would give it an isolated rankWithinUnit.
+    const SENTINEL = '__branch_direct__';
+    const agents = [
+      { agentId: 'bm1', agentName: 'Branch Mgr', unitId: SENTINEL, totals: { totalApi: 500, totalApps: 3 } },
+      { agentId: 'a1',  agentName: 'Agent One',  unitId: null,     totals: { totalApi: 300, totalApps: 2 } },
+      { agentId: 'a2',  agentName: 'Agent Two',  unitId: 'unit-1', totals: { totalApi: 200, totalApps: 1 } },
+    ];
+    const ranked = rankAgentsByApi(agents);
+    const bm = ranked.find((e) => e.agentId === 'bm1');
+    const a1 = ranked.find((e) => e.agentId === 'a1');
+    const a2 = ranked.find((e) => e.agentId === 'a2');
+
+    // bm1 has highest API overall
+    expect(bm.rank).toBe(1);
+    // bm1 and a1 share the 'none' bucket — bm1 ranks first, a1 second
+    expect(bm.rankWithinUnit).toBe(1);
+    expect(a1.rankWithinUnit).toBe(2); // would be 1 if they were in separate buckets
+    // a2 in its own real unit
+    expect(a2.rankWithinUnit).toBe(1);
+  });
 });
 
 // ── computeUnitAggregates ─────────────────────────────────────────────────────

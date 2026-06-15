@@ -67,9 +67,12 @@ export function useBranchOverview(role, userProfile, tenantId) {
 
   const inScopeAgentCount = complianceScopeIds.size;
 
-  // Production scope: agents + unit managers — drives teamYTDAPI and production sparklines
+  // Production scope: agents + unit managers + branch managers — drives teamYTDAPI and sparklines.
+  // BMs added in Slice 2.1b: BM personal production rolls into branch totals (sentinel unitId).
   const productionScopeIds = useMemo(() => {
-    const producers = users.filter((u) => u.role === 'agent' || u.role === 'unit_manager');
+    const producers = users.filter(
+      (u) => u.role === 'agent' || u.role === 'unit_manager' || u.role === 'branch_manager'
+    );
     if (role === 'unit_manager' && unitId) {
       return new Set(producers.filter((u) => u.unitId === unitId).map((u) => u.id));
     }

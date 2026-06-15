@@ -23,7 +23,7 @@ async function getBranchProducerIds(tenantId, branchId) {
     where('branchId', '==', branchId)
   ));
   return snap.docs
-    .filter((d) => d.data().role === 'agent' || d.data().role === 'unit_manager')
+    .filter((d) => ['agent', 'unit_manager', 'branch_manager'].includes(d.data().role))
     .map((d) => d.id);
 }
 
