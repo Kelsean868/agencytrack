@@ -396,36 +396,49 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 
 **Fontshare CDN failures in console** — pre-existing; Fontshare blocks headless browser requests in Playwright. Not a bug. Falls back to system fonts in test env; production font-loading is browser-native.
 
-### Find A — NotificationBell badge dark mode (HIGH, cosmetic)
+### Find A — NotificationBell badge dark mode (HIGH, cosmetic) — ✅ RESOLVED PR #636 (`8984508`)
+**RESOLVED:** Added `dark:text-[--color-bg]` to badge span at `src/components/ui/NotificationBell.jsx:19`. Near-black `--color-bg` text on `#d96b5d` danger bg in dark mode. Prod smoke PASS.  
 **Node:** `span.absolute.top-1\.5.right-1\.5 bg-danger text-white text-[10px] font-bold` (10px bold, in `src/components/ui/NotificationBell.jsx:19`)  
 **Contrast:** white on `#d96b5d` (dark mode danger) = **3.38:1** (requires 4.5:1 for small text)  
 **Surfaces:** every dark-mode page that has the bell badge (all agent + manager routes with unread notifications)  
 **Light mode:** passes — light danger is darker, meets threshold  
 **Fix:** The dark danger token (`--color-danger` dark = `#d96b5d`) is too light for white text. Options: (a) use `text-[--color-bg]` (near-black) instead of `text-white` in dark mode, or (b) deepen `--color-danger` dark token. Standalone XS PR.
 
-### Find B — NeedsActionBanner CTA button dark mode (MEDIUM)
+### Find B — NeedsActionBanner CTA button dark mode (MEDIUM) — ✅ RESOLVED PR #628 (`042c45f`)
+**RESOLVED:** `dark:text-[--color-bg]` added to `bg-warning` button at `src/components/dashboard/HomeV2/NeedsActionBanner.jsx:37` in the consolidated PR #628 fill (Goals Slice 2 hardening batch). Confirmed present in source at time of PR #636.  
 **Node:** `button.bg-warning.text-white.gap-1\.5` in `src/components/dashboard/HomeV2/NeedsActionBanner.jsx:37`  
 **Contrast:** white on `#e8b53e` (dark warning) = **1.89:1** (requires 4.5:1)  
 **Surface:** agent dashboard dark mode when needs-action state is active  
 **Light mode:** passes  
 **Fix:** Pair with `dark:bg-warning-dark` if a deeper token exists, or use `dark:text-[--color-text]` + `dark:bg-warning/30` pattern. Same root as D6 (`bg-primary text-white` missing dark). Standalone XS PR.
 
-### Find C — Award card tier chips (MEDIUM, both themes)
+### Find C — Award card tier chips (MEDIUM, both themes) — ✅ RESOLVED PR #636 (`8984508`)
+**RESOLVED:** `awardPrimitives.jsx:169` AwardCard `accentColor` ternary changed from `'var(--color-text-muted)'` → `'var(--color-text)'` for locked/NOT STARTED state. Inline style on chip resolved via JS variable, not Tailwind class. Prod smoke PASS.  
 **Node:** `button[data-testid="award-card-*"] .text-[9px].shrink-0.py-1` — tier/status label chips on award cards. `text-ink-muted` (#a8a39c light / #8a8074 dark) on `bg-surface-raised` (`#f0efe9` light / `#1f1b16` dark).  
 **Contrast:** 2.17:1 (light) / 4.41:1 (dark, barely below 4.5) for 9px bold text  
 **Surface:** Manager Awards panel (award card grid below MonthlyBonusHero) — not touched by S3  
 **Fix:** Bump chip label to `text-ink` (darker); 9px bold is below AA small-text requirement regardless of measured ratio. Or increase font-size to 11px+ which upgrades to "large text" (3:1 required). Audit `ManagerAwardsPanel.jsx` award card chip labels. Standalone XS PR.
 
-### Find D — BM at-risk agent cards text (MEDIUM, both themes)
+### Find D — BM at-risk agent cards text (MEDIUM, both themes) — ✅ RESOLVED PR #636 (`8984508`)
+**RESOLVED:** `BmAtRiskPanel.jsx` lines 60 and 187 changed `text-ink-muted` → `text-ink` on 10px count labels ("N awards tracked" + "N agents"). Line 187 was a Gemini IMPLEMENT in-PR extension (same category, mechanical). Prod smoke PASS.  
 **Node:** `bm-at-risk-agent-card` `.flex-wrap.gap-2.items-center` — `text-ink-muted` (similar tokens) at 10px bold on `bg-surface-raised`. 2.17:1 (light) / 4.41:1 (dark).  
 **Surface:** Manager Awards panel → PersRealityBar at-risk section — not in S3 scope  
 **Fix:** Same pattern as Find C — bump to `text-ink` or increase font-size. Standalone XS PR (can combine with Find C).
 
-### Find E — `text-ink-muted/60` in BranchManagerProductionView (LOW)
+### Find E — `text-ink-muted/60` in BranchManagerProductionView (LOW) — ✅ RESOLVED PR #623 (`e0ac355`)
+**RESOLVED:** `ProductionTable.jsx:33` `text-ink-muted/60` → `text-ink-muted` (redundant `/60` opacity removed) in PR #623 (axe finds C/D/E contrast, GREEN-CHANNEL). Confirmed no `/60` pattern present in `BranchManagerProductionView.jsx` at time of PR #636 verification.  
 **Node:** `.text-ink-muted\/60` — 60%-opacity muted text in the production table rows (not the hero section)  
 **Contrast:** 2.5:1 (light) / 3.55:1 (dark) — both fail 4.5:1  
 **Surface:** Manager Production Report table rows — not touched by S3  
 **Fix:** Remove `/60` opacity modifier; `text-ink-muted` without opacity modifier passes. Verify visual intent. Standalone 1-liner.
+
+### Find F — GroupHeader `var(--color-text-faint)` eyebrow labels (LOW, light mode only)
+**Node:** `<p class="text-xs font-bold tracking-widest font-mono uppercase" style="color: var(--color-text-faint)">` — GroupHeader eyebrow labels in `src/components/awards/awardPrimitives.jsx` (via `style={accentStyle}` prop passed from callers).  
+**Contrast:** `var(--color-text-faint)` in light mode fails serious color-contrast (confirmed by axe in prod smoke for PR #636). Dark mode passes.  
+**Surface:** Manager Awards panel — `GroupHeader` sections (eyebrow label + count pill) for award groups (Qualified / In Contention / locked state headers).  
+**Light mode:** FAIL (serious axe violation). **Dark mode:** PASS.  
+**Discovered:** PR #636 prod smoke — pre-existing on both main and PR branch; NOT introduced by PR #636.  
+**Fix:** The `GroupHeader` component accepts `accentStyle` as a prop. Callers passing `color: 'var(--color-text-faint)'` need to be updated to use a higher-contrast token (e.g. `var(--color-text-muted)` or `var(--color-text)`). Audit all `GroupHeader` call sites in `ManagerAwardsPanel.jsx` and `AgentAwardsPanel.jsx` for faint-color accentStyle values. Standalone XS PR.
 
 ---
 
