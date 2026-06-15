@@ -1352,11 +1352,15 @@ exports.onSubmissionWrite = functions.firestore
       try {
         const userSnap = await admin.firestore()
           .doc(`tenants/${tenantId}/users/${agentId}`).get();
-        const ud = userSnap.data() ?? {};
-        isTestAccount       = ud.isTestAccount       === true;
-        userRole            = ud.role                ?? 'agent';
-        appearOnLeaderboard = ud.appearOnLeaderboard === true;
-        isProvisioning      = ud.provisioning        === true;
+        if (userSnap.exists) {
+          const ud = userSnap.data() ?? {};
+          isTestAccount       = ud.isTestAccount       === true;
+          userRole            = ud.role                ?? 'agent';
+          appearOnLeaderboard = ud.appearOnLeaderboard === true;
+          isProvisioning      = ud.provisioning        === true;
+        } else {
+          userRole = 'unknown'; // no doc → not a participant; self-healing delete below
+        }
       } catch { /* fail-open: transient read error defaults to permissive */ }
 
       if (isTestAccount) {

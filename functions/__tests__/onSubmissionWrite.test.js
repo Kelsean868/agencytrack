@@ -38,7 +38,7 @@ const { onSubmissionWrite } = require('../index');
 
 // ── Mock builders ─────────────────────────────────────────────────────────────
 
-function makeAdminMock({ isTestAccount = false, userDoc = null } = {}) {
+function makeAdminMock({ isTestAccount = false, userDoc = null, exists = true } = {}) {
   const setFn    = jest.fn().mockResolvedValue({});
   const deleteFn = jest.fn().mockResolvedValue({});
 
@@ -48,7 +48,7 @@ function makeAdminMock({ isTestAccount = false, userDoc = null } = {}) {
     if (path.includes('/users/')) {
       return {
         get: jest.fn().mockResolvedValue({
-          exists: true,
+          exists,
           data: () => resolvedUserDoc,
         }),
       };
@@ -161,5 +161,15 @@ describe('onSubmissionWrite — participation gate (Slice 2.0)', () => {
 
     expect(setFn).toHaveBeenCalledTimes(1);
     expect(deleteFn).not.toHaveBeenCalled();
+  });
+
+  test('non-existent user document: skips leaderboard write and deletes any existing entry', async () => {
+    const { setFn, deleteFn } = makeAdminMock({ exists: false });
+    const change = makeChange(BASE_SUBMISSION);
+
+    await onSubmissionWrite.run(change, context);
+
+    expect(setFn).not.toHaveBeenCalled();
+    expect(deleteFn).toHaveBeenCalledTimes(1);
   });
 });
