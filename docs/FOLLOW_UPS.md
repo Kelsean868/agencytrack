@@ -54,7 +54,7 @@ Prod/preview smokes must verify the target SHA is the live deployed build before
 
 **Seen:** PR #643 prod-smoke first run — `leg-light-render` FAIL while `leg-dark-render` PASS 10 seconds later (Vercel still deploying when the light leg ran). Clean 5/5 on re-run 55 seconds after merge.
 
-**Upgrade path:** At smoke start, poll Vercel deployment status and wait until the deployed commit SHA matches the expected squash SHA before any assertion leg. Alternatively, stamp `index.html` with the git SHA at build time (`VITE_COMMIT_SHA`) and check `window.COMMIT_SHA` via `page.evaluate()` before the first leg.
+**Upgrade path:** At smoke start, poll Vercel deployment status and wait until the deployed commit SHA matches the expected target SHA (feature branch HEAD SHA for preview smokes; squash SHA for prod smokes) before any assertion leg. Alternatively, stamp `index.html` with the git SHA at build time (`VITE_COMMIT_SHA`) and check `window.COMMIT_SHA` via `page.evaluate()` before the first leg.
 
 **Why deferred:** Re-run is a reliable manual mitigation; fix requires Vercel API integration or a build-time env-var stamp — non-trivial. One occurrence in ~40 smokes. Revisit if false-fails become a pattern.
 
