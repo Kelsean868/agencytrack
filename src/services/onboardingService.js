@@ -8,18 +8,25 @@ import { updateUserProfile } from './userService';
 export async function saveWizardMoneyNeeds(tenantId, uid, year, { monthly }) {
   const existing = await createMoneyNeeds(tenantId, uid, year);
 
-  const monthlyAmt = parseFloat(monthly) || 0;
+  const monthlyAmt    = parseFloat(monthly) || 0;
+  const existingGroup = existing.expenseGroups?.livingExpenses ?? { lineItems: [], subCalculatorRefs: [] };
+
+  // Upsert the wizard item — preserve any other items already in the group
+  const otherItems = (existingGroup.lineItems ?? []).filter((i) => i.id !== 'wiz-income-target');
+  const wizItem = {
+    id:               'wiz-income-target',
+    label:            'Monthly income target',
+    amount:           monthlyAmt,
+    frequency:        'M',
+    annualizedAmount: monthlyAmt * 12,
+    isCustom:         true,
+  };
+  const mergedItems = [...otherItems, wizItem];
+
   const updatedGroup = {
-    lineItems: [{
-      id:               'wiz-income-target',
-      label:            'Monthly income target',
-      amount:           monthlyAmt,
-      frequency:        'M',
-      annualizedAmount: monthlyAmt * 12,
-      isCustom:         true,
-    }],
-    subCalculatorRefs: [],
-    groupAnnualTotal:  monthlyAmt * 12,
+    ...existingGroup,
+    lineItems:        mergedItems,
+    groupAnnualTotal: mergedItems.reduce((sum, i) => sum + (i.annualizedAmount ?? 0), 0),
   };
 
   const fullGroups = {

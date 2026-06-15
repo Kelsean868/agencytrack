@@ -40,6 +40,7 @@ export default function OnboardingWizard() {
   const [year] = useState(() => new Date().getFullYear());
 
   function deriveInitialStep() {
+    if (!user?.uid) return STEP_WELCOME;
     const identityDone = !!(userProfile?.agentNumber || userProfile?.dateOfBirth);
     if (!identityDone) {
       // No identity yet — use localStorage pointer or start from Welcome

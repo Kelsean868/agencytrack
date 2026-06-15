@@ -9,14 +9,18 @@ export default function WizardGoals({ tenantId, uid, unitId, onNext, onSkip }) {
 
   useEffect(() => {
     if (!tenantId || !uid) return;
+    let active = true;
     const year = new Date().getFullYear();
     getGoalHierarchy(tenantId, unitId ?? null, year, uid)
-      .then(setHierarchy)
+      .then((h)  => { if (active) setHierarchy(h); })
       .catch((err) => {
         console.error('[WizardGoals] getGoalHierarchy:', err);
-        setLoadErr('Could not load your plan — tap Continue to keep going.');
-        setHierarchy(null);
+        if (active) {
+          setLoadErr('Could not load your plan — tap Continue to keep going.');
+          setHierarchy(null);
+        }
       });
+    return () => { active = false; };
   }, [tenantId, uid, unitId]);
 
   const loading = hierarchy === undefined;
