@@ -131,7 +131,7 @@ export default function MdrtTracker({ ytdTotals, loading }) {
     () =>
       TIERS.map((t) => ({
         ...t,
-        progress: Math.min(100, Math.round((ytdAPI / t.threshold) * 100)),
+        progress: Math.max(0, Math.min(100, Math.round((ytdAPI / t.threshold) * 100))),
         gap:      Math.max(0, t.threshold - ytdAPI),
         met:      ytdAPI >= t.threshold,
       })),
