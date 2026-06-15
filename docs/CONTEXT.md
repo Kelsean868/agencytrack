@@ -33,6 +33,16 @@ These are settled across all future sessions. If a session audit surfaces a reas
 - **`onboardingComplete` is NOT write-once:** the owner may set or clear it; a manager may also reset it (re-triggers the wizard on next login).
 - **No real-time collision check in v1:** Uniqueness is manager-review-reconciled; a CF-based check is banked as a MEDIUM follow-up (FOLLOW_UPS.md § Onboarding identity).
 
+### Onboarding tenure — `contractDate` / `monthsAtTatil` / `monthsInIndustry` write-once (Slice 1, PR #TBD)
+
+- **Three new fields added to owner write-once arm and manager correction arm:** `contractDate` (YYYY-MM-DD string), `monthsAtTatil` (number), `monthsInIndustry` (number). Same pilot-relaxation rationale as `agentNumber`/`dateOfBirth` — managers are slow to provide this data; agents self-enter during onboarding.
+- **`contractDate` is a NEW field, not `contractStartDate`:** `doCreateUser` CF stamps `contractStartDate = ''` (empty string) on all agent docs at creation; a null-based write-once guard on that field would always fail since `'' ≠ null`. `contractDate` starts absent for all users, keeping the null guard clean. `contractStartDate` remains the manager-provisioned creation field; the manager-confirm FU reconciles the two.
+- **Stakes are higher than DOB:** `monthsAtTatil` feeds `newBsAward` eligibility (`≤ 18`); `monthsInIndustry` feeds `rookieAward` eligibility (`≤ 18`). Both consumed granularly across awardsEngine, yearPlanProjection, AwardProjectionStrip, YearPlanModal, AgentReportDocument — a wrong value shifts tenure band → career floor + award eligibility.
+- **`monthsAtTatil` stored at save time (Slice 2):** computed from `contractDate` when the agent saves in the wizard; drifts over time. Manager-confirm reconciliation surface (near-term FU) is the correction path.
+- **`monthsInIndustry` stored at save time (Slice 2):** derived from `contractDate` for "Tatil is first company" agents; agent-entered (validated ≥ Tatil tenure, sanity-capped) for experienced agents. Boundary aligned to `≤ 18` eligible guard.
+- **27/27 emulator tests PASS** (12 new tenure cases + 15 original identity cases) — `tests/rules/users-onboarding.rules.test.mjs`.
+- **Manager-confirm FU:** near-term surface for managers to confirm/correct self-entered tenure — see FOLLOW_UPS.md § Onboarding tenure manager confirmation.
+
 ### Multi-tenancy (SEC-9, shipped PR #16; holder retired in SEC-9b)
 
 - `tenantId` is sourced from auth claims at runtime and exposed via `useAuth().tenantId` in all React components.

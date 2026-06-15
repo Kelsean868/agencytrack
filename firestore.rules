@@ -175,6 +175,8 @@ service cloud.firestore {
                   'name', 'phone', 'bio',
                   'unitId', 'unitName',
                   'agentNumber', 'contractStartDate', 'dateOfBirth',
+                  // onboarding tenure — self-entered; manager corrects here
+                  'contractDate', 'monthsAtTatil', 'monthsInIndustry',
                   'canConfirmSettlements',
                   // manager-editable license fields; no CF/claim mirror
                   'licenseStatus', 'cbttExamPassedDate', 'cbttExtensionGranted', 'licenseProfile',
@@ -200,13 +202,15 @@ service cloud.firestore {
               && request.resource.data.diff(resource.data).affectedKeys()
                    .hasOnly(['appearOnLeaderboard'])
           )
-          // Onboarding write-once: owner sets agentNumber / dateOfBirth (write-once; pilot
-          // relaxation — manager corrects via canManage arm) and onboardingComplete.
+          // Onboarding write-once: owner sets agentNumber / dateOfBirth / contractDate /
+          // monthsAtTatil / monthsInIndustry (write-once; pilot relaxation — manager corrects
+          // via canManage arm) and onboardingComplete.
           // Whitelist prevents role / tenantId laundering in the same update.
           || (isSignedIn()
               && request.auth.uid == userId
               && request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['agentNumber', 'dateOfBirth', 'onboardingComplete'])
+                   .hasOnly(['agentNumber', 'dateOfBirth', 'onboardingComplete',
+                             'contractDate', 'monthsAtTatil', 'monthsInIndustry'])
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['agentNumber'])
                   || (resource.data.get('agentNumber', null) == null
                       && request.resource.data.agentNumber is string
@@ -217,6 +221,16 @@ service cloud.firestore {
                       && request.resource.data.dateOfBirth != ''))
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['onboardingComplete'])
                   || request.resource.data.onboardingComplete is bool)
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['contractDate'])
+                  || (resource.data.get('contractDate', null) == null
+                      && request.resource.data.contractDate is string
+                      && request.resource.data.contractDate != ''))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['monthsAtTatil'])
+                  || (resource.data.get('monthsAtTatil', null) == null
+                      && request.resource.data.monthsAtTatil is number))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['monthsInIndustry'])
+                  || (resource.data.get('monthsInIndustry', null) == null
+                      && request.resource.data.monthsInIndustry is number))
           );
         allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
       }
