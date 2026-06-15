@@ -432,13 +432,30 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 **Surface:** Manager Production Report table rows — not touched by S3  
 **Fix:** Remove `/60` opacity modifier; `text-ink-muted` without opacity modifier passes. Verify visual intent. Standalone 1-liner.
 
-### Find F — GroupHeader `var(--color-text-faint)` eyebrow labels (LOW, light mode only)
-**Node:** `<p class="text-xs font-bold tracking-widest font-mono uppercase" style="color: var(--color-text-faint)">` — GroupHeader eyebrow labels in `src/components/awards/awardPrimitives.jsx` (via `style={accentStyle}` prop passed from callers).  
-**Contrast:** `var(--color-text-faint)` in light mode fails serious color-contrast (confirmed by axe in prod smoke for PR #636). Dark mode passes.  
-**Surface:** Manager Awards panel — `GroupHeader` sections (eyebrow label + count pill) for award groups (Qualified / In Contention / locked state headers).  
-**Light mode:** FAIL (serious axe violation). **Dark mode:** PASS.  
-**Discovered:** PR #636 prod smoke — pre-existing on both main and PR branch; NOT introduced by PR #636.  
-**Fix:** The `GroupHeader` component accepts `accentStyle` as a prop. Callers passing `color: 'var(--color-text-faint)'` need to be updated to use a higher-contrast token (e.g. `var(--color-text-muted)` or `var(--color-text)`). Audit all `GroupHeader` call sites in `ManagerAwardsPanel.jsx` and `AgentAwardsPanel.jsx` for faint-color accentStyle values. Standalone XS PR.
+### Find F — GroupHeader `var(--color-text-faint)` eyebrow labels — ✅ RESOLVED PR #637 (`4c2148c`)
+
+**RESOLVED:** `AgentAwardsPanel.jsx:203` + `ManagerAwardsPanel.jsx:305` — `color: 'var(--color-text-faint)'` → `color: 'var(--color-text-muted)'`. Axe preview smoke 4/4 PASS (Awards light: 0 serious violations). Prod smoke 4/4 PASS. GREEN-CHANNEL, 2026-06-15.
+
+---
+
+## GroupHeader count-pill background — `${accentStyle.color}20` CSS-variable concatenation (Gemini PR #637, banked 2026-06-15, LOW)
+
+`awardPrimitives.jsx:150` renders the count pill as:
+```jsx
+style={{ background: `${accentStyle.color}20`, color: accentStyle.color }}
+```
+
+Appending `20` (hex alpha) to a CSS variable reference (`var(--color-gold)20`, `var(--color-primary)20`, `var(--color-text-muted)20`) produces invalid CSS — the browser ignores the background property and the pill renders with no background color. Pre-existing across all three group-header variants; not introduced by PR #637.
+
+**Fix shape:** Replace the hex-alpha concatenation with `color-mix()`:
+```jsx
+background: `color-mix(in srgb, ${accentStyle.color} 12%, transparent)`
+```
+or pass a separate `accentBg` prop from callers (if named CSS vars are used instead of inline CSS-variable references).
+
+**Why deferred:** Pill background is decorative (no text on it — the `color` property is only on the outer `<p>` element, which is what the axe violation targeted). No color-contrast axe violation from this. OUT-OF-SCOPE for PR #637's 2-line text-color fix. Standalone XS PR.
+
+**Severity:** LOW (visual polish — pill has no background in current state for all CSS-variable-based group headers).
 
 ---
 
