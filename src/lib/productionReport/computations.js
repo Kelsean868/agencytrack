@@ -162,7 +162,7 @@ export function rankAgentsByApi(agentTotalsArray) {
   // Assign rank within each unit
   const unitGroups = {};
   for (const entry of ranked) {
-    const uid = entry.unitId ?? 'none';
+    const uid = (entry.unitId && entry.unitId !== '__branch_direct__') ? entry.unitId : 'none';
     if (!unitGroups[uid]) unitGroups[uid] = [];
     unitGroups[uid].push(entry);
   }

@@ -151,4 +151,46 @@ describe('useBranchOverview — production scope split (Slice 2.1a)', () => {
       expect(result.current.kpiData.compliance).toEqual([50]); // 1/2 agents submitted
     });
   });
+
+  // ── branch_manager (Slice 2.1b) ───────────────────────────────────────────
+  // Validates that a BM's own personal submission (with sentinel unitId) is
+  // included in teamYTDAPI via productionScopeIds, while BM stays excluded
+  // from the compliance denominator (agents-only).
+  describe('branch_manager role — Slice 2.1b (BM personal production roll-up)', () => {
+    const BM_ID = 'bm1';
+    const users = [
+      { id: BM_ID, role: 'branch_manager' },
+      { id: 'um1', role: 'unit_manager',  unitId: 'um1' },
+      { id: 'a1',  role: 'agent',         unitId: 'um1' },
+      { id: 'a2',  role: 'agent',         unitId: 'um1' },
+    ];
+
+    beforeEach(() => { getTenantUsers.mockResolvedValue(users); });
+
+    it('BM personal submission is included in teamYTDAPI', async () => {
+      getAllYTDSubmissions.mockResolvedValue([
+        mkSub(BM_ID, 600),
+        mkSub('um1',  400),
+        mkSub('a1',   200),
+      ]);
+
+      const { result } = renderHook(() =>
+        useBranchOverview('branch_manager', {}, 'tenant-1')
+      );
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.teamYTDAPI).toBe(1200); // BM 600 + um1 400 + a1 200
+    });
+
+    it('BM is NOT counted in inScopeAgentCount (compliance denominator stays agents-only)', async () => {
+      getAllYTDSubmissions.mockResolvedValue([mkSub(BM_ID, 600)]);
+
+      const { result } = renderHook(() =>
+        useBranchOverview('branch_manager', {}, 'tenant-1')
+      );
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.inScopeAgentCount).toBe(2); // a1 + a2 only — BM excluded
+    });
+  });
 });
