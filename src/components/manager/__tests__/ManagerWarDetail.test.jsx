@@ -117,16 +117,12 @@ describe('ManagerWarDetail — rendering', () => {
     expect(screen.getByLabelText(/joint field work count: 0/i)).toBeInTheDocument();
   });
 
-  it('shows personal production section when personalApi + personalApps are present', () => {
+  it('never renders personal production section regardless of warData fields (regression guard)', () => {
+    // Even if legacy WAR docs carry personalApi/personalApps, the section must not render.
     renderDetail({ personalApi: 1500.5, personalApps: 2 });
-    expect(screen.getByText(/personal production/i)).toBeInTheDocument();
-    expect(screen.getByText('Personal API (TTD)')).toBeInTheDocument();
-    expect(screen.getByText('Personal Applications')).toBeInTheDocument();
-  });
-
-  it('does NOT show personal production when fields are absent', () => {
-    renderDetail({ personalApi: undefined, personalApps: undefined });
     expect(screen.queryByText(/personal production/i)).not.toBeInTheDocument();
+    expect(screen.queryByText('Personal API (TTD)')).not.toBeInTheDocument();
+    expect(screen.queryByText('Personal Applications')).not.toBeInTheDocument();
   });
 });
 

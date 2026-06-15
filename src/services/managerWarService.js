@@ -23,11 +23,10 @@ export function warDocId(managerId, weekStart) {
   return `${managerId}_${weekStart}`;
 }
 
-function sanitizeWar(data, isProducingManager = false, storedJfwCount = 0) {
-  const float = (v) => parseFloat(v ?? 0) || 0;
-  const int   = (v) => parseInt(v ?? 0, 10) || 0;
+function sanitizeWar(data, storedJfwCount = 0) {
+  const int = (v) => parseInt(v ?? 0, 10) || 0;
 
-  const result = {
+  return {
     oneOnOnesConducted:   int(data.oneOnOnesConducted),
     namesSourced:         int(data.namesSourced),
     interviewsConducted:  int(data.interviewsConducted),
@@ -41,13 +40,6 @@ function sanitizeWar(data, isProducingManager = false, storedJfwCount = 0) {
     // On create (storedJfwCount=0) this equals 0, satisfying the create rule.
     jfwCount:             storedJfwCount,
   };
-
-  if (isProducingManager) {
-    result.personalApi  = float(data.personalApi);
-    result.personalApps = int(data.personalApps);
-  }
-
-  return result;
 }
 
 function warMeta(managerId, managerName, tenantId, weekStart, managerMeta) {
@@ -75,7 +67,7 @@ export async function saveWarDraft(tenantId, managerId, managerName, weekStart, 
     {
       ...createdAt,
       ...warMeta(managerId, managerName, tenantId, weekStart, managerMeta),
-      ...sanitizeWar(data, managerMeta.isProducingManager, storedJfwCount),
+      ...sanitizeWar(data, storedJfwCount),
       status:    'draft',
       updatedAt: serverTimestamp(),
     },
@@ -92,7 +84,7 @@ export async function submitWar(tenantId, managerId, managerName, weekStart, dat
   await setDoc(ref, {
     ...createdAt,
     ...warMeta(managerId, managerName, tenantId, weekStart, managerMeta),
-    ...sanitizeWar(data, managerMeta.isProducingManager, storedJfwCount),
+    ...sanitizeWar(data, storedJfwCount),
     status:      'submitted',
     updatedAt:   serverTimestamp(),
     submittedAt: serverTimestamp(),

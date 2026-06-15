@@ -47,10 +47,9 @@ const MANAGER_ID  = 'um1';
 const WEEK_START  = '2026-05-17'; // confirmed Sunday
 const NON_SUNDAY  = '2026-05-18'; // Monday
 const MANAGER_META = {
-  managerRole:        'unit_manager',
-  branchId:           'branch-a',
-  unitId:             'um1',
-  isProducingManager: false,
+  managerRole: 'unit_manager',
+  branchId:    'branch-a',
+  unitId:      'um1',
 };
 
 const FORM_DATA = {
@@ -152,22 +151,14 @@ describe('saveWarDraft', () => {
     expect(payload.createdAt).toBeUndefined();
   });
 
-  it('omits personalApi/personalApps when isProducingManager is false', async () => {
+  it('never writes personalApi/personalApps regardless of input (regression guard)', async () => {
     hoisted.mockSetDoc.mockResolvedValue(undefined);
-    await saveWarDraft(TENANT_ID, MANAGER_ID, 'Test UM', WEEK_START, FORM_DATA, MANAGER_META);
+    // Even if stale data with those fields is passed in, sanitizeWar must not write them.
+    await saveWarDraft(TENANT_ID, MANAGER_ID, 'Test UM', WEEK_START,
+      { ...FORM_DATA, personalApi: '1500.50', personalApps: '2' }, MANAGER_META);
     const [, payload] = hoisted.mockSetDoc.mock.calls[0];
     expect(payload.personalApi).toBeUndefined();
     expect(payload.personalApps).toBeUndefined();
-  });
-
-  it('includes personalApi/personalApps when isProducingManager is true', async () => {
-    hoisted.mockSetDoc.mockResolvedValue(undefined);
-    const meta = { ...MANAGER_META, isProducingManager: true };
-    await saveWarDraft(TENANT_ID, MANAGER_ID, 'Test UM', WEEK_START,
-      { ...FORM_DATA, personalApi: '1500.50', personalApps: '2' }, meta);
-    const [, payload] = hoisted.mockSetDoc.mock.calls[0];
-    expect(payload.personalApi).toBe(1500.5);
-    expect(payload.personalApps).toBe(2);
   });
 
   it('sets attendanceCount null when unitMeetingHeld is false', async () => {
