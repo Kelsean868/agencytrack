@@ -61,6 +61,20 @@ export async function updateUserFields(tenantId, uid, fields) {
   });
 }
 
+/**
+ * setAppearOnLeaderboard(tenantId, uid, appear)
+ *
+ * Writes ONLY appearOnLeaderboard — BM self opt-in for the production
+ * leaderboard. Must NOT be bundled with MANAGER_EDITABLE_FIELDS writes;
+ * the rules hasOnly check is strict per field.
+ */
+export async function setAppearOnLeaderboard(tenantId, uid, appear) {
+  if (!tenantId) throw new Error('tenantId is required.');
+  if (!uid) throw new Error('uid is required.');
+  const docRef = doc(db, `tenants/${tenantId}/users/${uid}`);
+  await updateDoc(docRef, { appearOnLeaderboard: Boolean(appear) });
+}
+
 // PR-4b: claim-keyed fields that flow through the updateUser CF, NOT through
 // updateUserFields. Kept separate from MANAGER_EDITABLE_FIELDS because the
 // CF performs server-side validation + claim+doc atomicity that direct

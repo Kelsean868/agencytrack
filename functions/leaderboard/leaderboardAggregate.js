@@ -266,8 +266,18 @@ function groupByBranch(submissions, users) {
   // agentId → branchId map (built from the SINGLE already-loaded users array;
   // no per-agent get() — see loadInputs).
   const branchByAgent = new Map();
+  // Role-gated inclusion: agents + UMs always appear; BMs only when
+  // appearOnLeaderboard === true (self opt-in); SM/TA/PA never.
+  const isParticipant = (u) =>
+    (u.role === 'agent' ||
+     u.role === 'unit_manager' ||
+     (u.role === 'branch_manager' && u.appearOnLeaderboard === true)) &&
+    u.provisioning !== true &&
+    u.isTestAccount !== true &&
+    !!u.branchId;
+
   for (const u of users) {
-    if (u.role === 'agent' && u.provisioning !== true && u.isTestAccount !== true && u.branchId) {
+    if (isParticipant(u)) {
       branchByAgent.set(u.id, u.branchId);
     }
   }
@@ -279,12 +289,9 @@ function groupByBranch(submissions, users) {
     return byBranch.get(b);
   };
 
-  // Bucket each active agent into its branch (so empty-production agents still appear)
+  // Bucket all visible users into their branch using the same role-gated filter.
   for (const u of users) {
-    if (u.role === 'agent' && u.provisioning !== true && u.isTestAccount !== true && u.branchId) {
-      ensure(u.branchId).users.push(u);
-    } else if (u.role === 'unit_manager' && u.branchId) {
-      // UMs only included so rankForLeaderboard's unit-name resolution works
+    if (isParticipant(u)) {
       ensure(u.branchId).users.push(u);
     }
   }

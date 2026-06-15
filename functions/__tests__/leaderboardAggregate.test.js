@@ -266,35 +266,34 @@ describe('buildLeaderboardDoc', () => {
     expect(doc.week[0].unitName).toBeNull();
   });
 
-  test('UM is NOT ranked, but agent unitName still resolves from the UM doc', () => {
-    // branchUsers contains both agents and the UM. The UM is in the array
-    // for unit-name resolution only — rankForLeaderboard filters to agents.
+  test('UM IS always ranked (role-gated, no flag needed); unitName resolves; UM submissions count for UM only', () => {
+    // Phase 1: inclusion is role-gated. UMs always appear alongside agents.
+    // A submission attributed to the UM uid is credited to the UM.
     const users = [
       mkAgent('a1', 'Alpha', 'south', 'u1'),
       mkAgent('a2', 'Beta',  'south', 'u1'),
       mkUM('u1', 'UM South', 'south'),
     ];
-    // Even if a "submission" attributed to the UM existed, it must not be ranked.
     const subs = [
-      mkSub('s1', 'a1', WK_SUN, 100),
-      mkSub('s2', 'a2', WK_SUN, 200),
-      mkSub('sUM', 'u1', WK_SUN, 9999), // bait: huge value attributed to UM uid
+      mkSub('s1',  'a1', WK_SUN, 100),
+      mkSub('s2',  'a2', WK_SUN, 200),
+      mkSub('sUM', 'u1', WK_SUN, 9999), // UM submission — credited to UM, not agents
     ];
     const doc = buildLeaderboardDoc(subs, users, REF);
 
-    // Assertion 1: UM is absent from every period's ranking
+    // Assertion 1: UM IS ranked (always, by role) and its submission counted
     for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
       const ids = doc[periodKey].map((e) => e.agentId);
-      expect(ids).not.toContain('u1');                       // UM NOT ranked
-      expect(ids.sort()).toEqual(['a1', 'a2']);              // ONLY agents
+      expect(ids).toContain('u1');
+      expect(ids.sort()).toEqual(['a1', 'a2', 'u1']);
     }
+    expect(doc.week.find((e) => e.agentId === 'u1').periodApi).toBe(9999);
 
-    // Assertion 2: Agent unitName still resolves to the UM's display name
+    // Assertion 2: Agent unitName still resolves from the UM doc
     expect(doc.week.find((e) => e.agentId === 'a1').unitName).toBe('Unit u1');
     expect(doc.week.find((e) => e.agentId === 'a2').unitName).toBe('Unit u1');
 
-    // Assertion 3: The UM-baited submission's API value did NOT contaminate
-    // any agent's ranking (a1 has 100, a2 has 200 — the 9999 is dropped)
+    // Assertion 3: UM submission did NOT inflate agents' individual API totals
     expect(doc.week.find((e) => e.agentId === 'a2').periodApi).toBe(200);
     expect(doc.week.find((e) => e.agentId === 'a1').periodApi).toBe(100);
   });
@@ -358,14 +357,16 @@ describe('computeAndWriteLeaderboards', () => {
 
     await computeAndWriteLeaderboards('T', REF);
     const southOp = mockBatch.ops.find((op) => op.data.week.some((e) => e.agentId === 'a1'));
-    expect(southOp.data.week).toHaveLength(2);
-    // Within south: a2 (200) > a1 (100)
+    expect(southOp.data.week).toHaveLength(3);
+    // Within south: a2 (200) > a1 (100) > UM u1 (0, no submissions)
     expect(southOp.data.week[0].agentId).toBe('a2');
     expect(southOp.data.week[1].agentId).toBe('a1');
+    expect(southOp.data.week[2].agentId).toBe('u1');
 
     const northOp = mockBatch.ops.find((op) => op.data.week.some((e) => e.agentId === 'a3'));
-    expect(northOp.data.week).toHaveLength(1);
+    expect(northOp.data.week).toHaveLength(2);
     expect(northOp.data.week[0].agentId).toBe('a3');
+    expect(northOp.data.week[1].agentId).toBe('u2');
   });
 
   test('empty inputs → 0 leaderboards docs, but champions doc still written (P5-prep: honest empty payload)', async () => {
@@ -519,8 +520,11 @@ describe('isTestAccount filter', () => {
 
     await computeAndWriteLeaderboards('T', REF);
     const leaderboardOp = mockBatch.ops.find((op) => Array.isArray(op.data.week));
-    expect(leaderboardOp.data.week).toHaveLength(1);
-    expect(leaderboardOp.data.week[0].agentId).toBe('real');
+    // UM u1 now ranked (hiddenFromLeaderboard absent = visible); test account still absent
+    expect(leaderboardOp.data.week).toHaveLength(2);
+    const weekIds = leaderboardOp.data.week.map((e) => e.agentId);
+    expect(weekIds).not.toContain('test');
+    expect(weekIds).toContain('real');
   });
 
   test('computeWeeklyChampions: test-account agent NOT a champion candidate', () => {
@@ -1127,5 +1131,80 @@ describe('computeAndWriteLeaderboards — P5-prep wiring', () => {
       expect(entry).toBeDefined();          // agent is ranked
       expect(entry.periodApi).toBeGreaterThan(0); // submission was counted
     }
+  });
+});
+
+// ── appearOnLeaderboard opt-in (BM role-gated) ───────────────────────────────
+//
+// Phase 1 of the producing-manager spec: inclusion is role-gated.
+// Agents and UMs always appear. BMs appear only when appearOnLeaderboard===true
+// (self opt-in). SM/TA/PA are never included regardless of flag value.
+describe('leaderboardAggregate — appearOnLeaderboard opt-in (BM role-gated)', () => {
+  beforeEach(() => {
+    Object.keys(firestoreData).forEach((k) => delete firestoreData[k]);
+    mockBatch.ops = [];
+  });
+
+  test('BM with appearOnLeaderboard:true is included alongside agents and UM', async () => {
+    firestoreData['tenants/T/submissions'] = [
+      mkSub('s1', 'a1', WK_SUN, 300),
+      mkSub('sbm', 'bm1', WK_SUN, 500),
+    ];
+    firestoreData['tenants/T/users'] = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      mkUM('u1', 'UM South', 'south'),
+      { id: 'bm1', role: 'branch_manager', name: 'BM', branchId: 'south', appearOnLeaderboard: true },
+    ];
+
+    await computeAndWriteLeaderboards('T', REF);
+    const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
+    expect(lbOps).toHaveLength(1);
+
+    const bmEntry    = lbOps[0].data.week.find((e) => e.agentId === 'bm1');
+    const agentEntry = lbOps[0].data.week.find((e) => e.agentId === 'a1');
+    expect(bmEntry).toBeDefined();
+    expect(bmEntry.periodApi).toBe(500);
+    expect(agentEntry).toBeDefined();
+    expect(agentEntry.periodApi).toBe(300);
+  });
+
+  test('BM without appearOnLeaderboard is excluded by default', async () => {
+    firestoreData['tenants/T/submissions'] = [
+      mkSub('s1', 'a1', WK_SUN, 300),
+      mkSub('sbm', 'bm1', WK_SUN, 9999), // BM submission — must not appear
+    ];
+    firestoreData['tenants/T/users'] = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      mkUM('u1', 'UM South', 'south'),
+      { id: 'bm1', role: 'branch_manager', name: 'BM', branchId: 'south' }, // flag absent
+    ];
+
+    await computeAndWriteLeaderboards('T', REF);
+    const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
+
+    const bmEntry = lbOps[0].data.week.find((e) => e.agentId === 'bm1');
+    expect(bmEntry).toBeUndefined();
+
+    // Agent unaffected; BM submission not credited to anyone
+    const agentEntry = lbOps[0].data.week.find((e) => e.agentId === 'a1');
+    expect(agentEntry.periodApi).toBe(300);
+  });
+
+  test('SM with appearOnLeaderboard:true is still excluded (flag is BM-only)', async () => {
+    firestoreData['tenants/T/submissions'] = [
+      mkSub('s1', 'a1', WK_SUN, 400),
+      mkSub('ssm', 'sm1', WK_SUN, 9999),
+    ];
+    firestoreData['tenants/T/users'] = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      mkUM('u1', 'UM South', 'south'),
+      { id: 'sm1', role: 'sales_manager', name: 'SM', branchId: 'south', appearOnLeaderboard: true },
+    ];
+
+    await computeAndWriteLeaderboards('T', REF);
+    const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
+
+    const smEntry = lbOps[0].data.week.find((e) => e.agentId === 'sm1');
+    expect(smEntry).toBeUndefined();
   });
 });

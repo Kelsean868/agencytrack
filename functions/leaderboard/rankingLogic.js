@@ -205,9 +205,14 @@ function rankForLeaderboard(allSubmissions, allUsers, period, referenceDate) {
   const submissions = allSubmissions || [];
   const users       = allUsers || [];
 
-  // Active agents only (excludes managers, provisioning stubs).
+  // Role-gated inclusion: agent/UM always; BM opt-in (appearOnLeaderboard===true);
+  // SM/TA/PA never. Provisioning stubs excluded (also filtered upstream).
   const agents = users.filter(
-    (u) => u.role === 'agent' && u.provisioning !== true
+    (u) =>
+      (u.role === 'agent' ||
+       u.role === 'unit_manager' ||
+       (u.role === 'branch_manager' && u.appearOnLeaderboard === true)) &&
+      u.provisioning !== true
   );
 
   const agentTotals = agents.map((u) => {

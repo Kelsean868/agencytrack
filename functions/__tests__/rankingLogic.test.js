@@ -256,23 +256,26 @@ describe('rankAgentsByApi', () => {
 // ── rankForLeaderboard — composition ─────────────────────────────────────────
 
 describe('rankForLeaderboard', () => {
-  test('ranks active agents only, excludes managers + provisioning stubs', () => {
+  test('role-gated inclusion: agents/UMs always ranked; BM opt-in; provisioning stubs excluded', () => {
     const users = [
       mkAgent('a1', 'Alpha', 'u1'),
       mkAgent('a2', 'Beta',  'u1'),
-      { id: 'm1', role: 'unit_manager', name: 'UM' },
+      { id: 'm1', role: 'unit_manager', name: 'UM' },               // always ranked
       { id: 'a9', role: 'agent', name: 'Stub', unitId: 'u1', provisioning: true },
     ];
     const subs = [
       mkSub('a1', '2026-05-10', 200),
       mkSub('a2', '2026-05-10', 100),
-      mkSub('m1', '2026-05-10', 500), // ignored — not an agent
+      mkSub('m1', '2026-05-10', 500), // UM ranked (always, by role); 500 > 200 > 100
       mkSub('a9', '2026-05-10', 900), // ignored — provisioning stub
     ];
     const result = rankForLeaderboard(subs, users, 'week', REF);
-    expect(result.map((r) => r.agentId)).toEqual(['a1', 'a2']);
-    expect(result[0].periodApi).toBe(200);
-    expect(result[1].periodApi).toBe(100);
+    expect(result.map((r) => r.agentId)).toEqual(['m1', 'a1', 'a2']);
+    expect(result[0].periodApi).toBe(500);
+    expect(result[1].periodApi).toBe(200);
+    expect(result[2].periodApi).toBe(100);
+    // Provisioning stub excluded even with 900 API
+    expect(result.find((r) => r.agentId === 'a9')).toBeUndefined();
   });
 
   test('zero-API agents are ranked (not excluded)', () => {

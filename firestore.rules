@@ -192,7 +192,14 @@ service cloud.firestore {
                  .hasOnly(['hasSeenWelcome', 'photoURL', 'bio', 'phone',
                            'loggingMode', 'dailyNudgeTime', 'updatedAt', 'email',
                            'licenseProfile'])
-            ));
+            ))
+          // appearOnLeaderboard: BM self opt-in only. UM/SM/TA/agent cannot set.
+          || (isSignedIn()
+              && request.auth.uid == userId
+              && getRole() == 'branch_manager'
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['appearOnLeaderboard'])
+          );
         allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
       }
 
