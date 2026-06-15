@@ -722,6 +722,10 @@ Banked: PR #217 (d84a752).
 
 - Dispatch Orchestrator (sibling folder, not this repo; see `docs/orchestrator/README.md`): local Python tool that runs the dispatch workflow headlessly - Phase 0 gate -> `claude -p` (opusplan) -> full-transcript capture -> hard-stop pause. v1 supports `--resume` (Phase 2+ after lock) and `--build` (Edit/Write); writes confined to feature branches, never main; PR-open pauses for manual merge. Post-merge fill stays manual (v2 planned). Digests in its `logs/` are the rule-banking source; `cost-ledger.json` tracks burn.
 
+- **CC model tier per brief.** Every brief carries a suggested tier — operator overrides at will: **Tier-A** mechanical / test / docs → Haiku or Sonnet; **Tier-B** feature-from-brief (standard build) → Sonnet; **Tier-C** net-new / cross-cutting / ambiguous surface → Opus (via `opusplan` profile).
+
+- **Persona-review section in net-new/complex briefs.** Briefs for new collections, auth surfaces, or cross-cutting changes include a persona-review checklist before the Decisions-locked section. Standard lenses: tenant-isolation/data-integrity · role/permissions · money-correctness · operator-legibility · a11y/contrast · pilot-ops/reversibility · maintainability.
+
 ---
 
 ## Banked patterns (also from 2026-05-14 session)

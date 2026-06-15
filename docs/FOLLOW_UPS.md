@@ -48,6 +48,20 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Smoke hardening — confirm deployed SHA before asserting (banked PR #643, 2026-06-15, LOW)
+
+Prod/preview smokes must verify the target SHA is the live deployed build before running assertions. Without this, a Vercel propagation delay causes a false-fail: the smoke starts before deployment finishes, assertions fail, and the real pass only appears on a re-run.
+
+**Seen:** PR #643 prod-smoke first run — `leg-light-render` FAIL while `leg-dark-render` PASS 10 seconds later (Vercel still deploying when the light leg ran). Clean 5/5 on re-run 55 seconds after merge.
+
+**Upgrade path:** At smoke start, poll Vercel deployment status and wait until the deployed commit SHA matches the expected target SHA (feature branch HEAD SHA for preview smokes; squash SHA for prod smokes) before any assertion leg. Alternatively, stamp `index.html` with the git SHA at build time (`VITE_COMMIT_SHA`) and check `window.COMMIT_SHA` via `page.evaluate()` before the first leg.
+
+**Why deferred:** Re-run is a reliable manual mitigation; fix requires Vercel API integration or a build-time env-var stamp — non-trivial. One occurrence in ~40 smokes. Revisit if false-fails become a pattern.
+
+**Severity:** LOW (re-run resolves; no auto-revert was triggered; strike counter unchanged).
+
+---
+
 ## Rule 21 reviewer replacement — choose + install before 2026-07-17 (banked PR #607, HIGH)
 
 Consumer Gemini Code Assist on GitHub is deprecated 2026-06-18 (no new installs) and shut down 2026-07-17 (all code review ends). The Rule 21 post-merge backstop added in PR #607 closes the timing gap for the interim, but a replacement reviewer must be chosen and installed before the shut-down date.
@@ -60,6 +74,8 @@ Consumer Gemini Code Assist on GitHub is deprecated 2026-06-18 (no new installs)
 **Recommendation:** Make B3 the always-on floor so Rule 21 degrades gracefully when a reviewer is down, then add B1 (if eligibility confirmed) or B2 as the independent layer on top.
 
 **First step:** Verify B1 eligibility for a standard github.com personal/public repo. If ineligible → decide B2 vs. B3-only.
+
+**Leading successor (banked 2026-06-15):** Opus reviewer subagent (workflow review) — structured multi-lens review via CC Workflow tool, no external dependency. Viable interim while a permanent drop-in replacement is chosen.
 
 **Severity:** HIGH — hard deadline 2026-07-17; after that the Rule 21 pre-merge poll has no reviewer and the backstop catches nothing.
 
