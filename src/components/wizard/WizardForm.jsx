@@ -198,6 +198,7 @@ const BRANCH_DIRECT_UNIT = '__branch_direct__';
 
 export default function WizardForm({ onClose, initialWeek }) {
   const { user, userProfile, tenantId, role } = useAuth();
+  const targetUnitId = role === 'branch_manager' ? BRANCH_DIRECT_UNIT : (userProfile?.unitId ?? null);
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
   const [screen, setScreen]             = useState(initialWeek ? 'step' : 'date');
   const [weekStarting, setWeekStarting] = useState(initialWeek ?? '');
@@ -282,7 +283,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     setSaving(true);
     setStickyError(false);     // legitimate replacement — clear sticky before new attempt
     try {
-      await saveDraft(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0, role === 'branch_manager' ? BRANCH_DIRECT_UNIT : (userProfile?.unitId ?? null));
+      await saveDraft(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0, targetUnitId);
       consecutiveFailures.current = 0;
       setSaveEscalated(false);
       clearTimeout(savedTimer.current);
@@ -367,7 +368,7 @@ export default function WizardForm({ onClose, initialWeek }) {
     }
     setSubmitting(true);
     try {
-      await submitReport(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0, role === 'branch_manager' ? BRANCH_DIRECT_UNIT : (userProfile?.unitId ?? null));
+      await submitReport(tenantId, user.uid, agentName, weekStarting, formData, userProfile?.commissionRate ?? 0, targetUnitId);
       setEarnedPoints(computePoints(sanitize(formData, userProfile?.commissionRate ?? 0)));
       setDraftStatus('submitted');
       setScreen('done');
