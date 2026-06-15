@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Trophy, Pin, PinOff } from 'lucide-react';
 import { computeAgentAwards } from '../../utils/awardsEngine';
 import { formatCurrency } from '../../utils/formatters';
@@ -12,7 +12,11 @@ function readPins() {
 }
 
 function writePins(pins) {
-  localStorage.setItem(PINS_KEY, JSON.stringify(pins));
+  try {
+    localStorage.setItem(PINS_KEY, JSON.stringify(pins));
+  } catch (e) {
+    console.error('Failed to write award pins to localStorage:', e);
+  }
 }
 
 // Primary gap display: first unmet production criterion (not persistency)
@@ -28,7 +32,10 @@ function gapText(award) {
   const gap = Math.max(0, c.target - c.current);
   if (gap === 0) return null;
   if (c.unit === 'TTD') return `${formatCurrency(gap)} more API needed`;
-  if (c.unit === 'apps') return `${Math.ceil(gap)} more ${gap === 1 ? 'app' : 'apps'} needed`;
+  if (c.unit === 'apps') {
+    const ceiledGap = Math.ceil(gap);
+    return `${ceiledGap} more ${ceiledGap === 1 ? 'app' : 'apps'} needed`;
+  }
   return null;
 }
 
@@ -115,6 +122,16 @@ export default function AwardsReachPanel({
     [confirmedSettlements, submissions, agentProfile, now],
   );
 
+  // Remove stale pin IDs whose award no longer exists in the current ruleset / year
+  useEffect(() => {
+    if (Object.keys(awards).length === 0) return;
+    const sanitized = pins.filter((id) => id in awards);
+    if (sanitized.length !== pins.length) {
+      setPins(sanitized);
+      writePins(sanitized);
+    }
+  }, [awards, pins]);
+
   // Nearest 2 unearned awards by highest progressPercent (i.e. closest to threshold)
   const nearest = useMemo(
     () =>
@@ -134,15 +151,17 @@ export default function AwardsReachPanel({
     (submissions ?? []).length === 0 && (confirmedSettlements ?? []).length === 0;
 
   function togglePin(awardId) {
-    setPins((prev) => {
-      const next = prev.includes(awardId)
-        ? prev.filter((id) => id !== awardId)
-        : prev.length < MAX_PINS
-        ? [...prev, awardId]
-        : prev;
-      writePins(next);
-      return next;
-    });
+    const isPinned = pins.includes(awardId);
+    let nextPins;
+    if (isPinned) {
+      nextPins = pins.filter((id) => id !== awardId);
+    } else if (pins.length < MAX_PINS) {
+      nextPins = [...pins, awardId];
+    } else {
+      return;
+    }
+    setPins(nextPins);
+    writePins(nextPins);
   }
 
   if (hasNoProduction) {
