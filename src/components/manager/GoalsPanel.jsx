@@ -1106,14 +1106,19 @@ export default function GoalsPanel() {
 
   useEffect(() => {
     if (!isProducing || !user?.uid || !tenantId) return;
+    let cancelled = false;
     setOwnDataLoading(true);
     Promise.all([
       getAgentSubmissions(tenantId, user.uid).catch(() => []),
       getSettlements(tenantId, user.uid, thisYear).catch(() => []),
     ]).then(([subs, setts]) => {
+      if (cancelled) return;
       setAllSubmissions(subs);
       setSettlements(setts);
-    }).catch(console.error).finally(() => setOwnDataLoading(false));
+    }).catch(console.error).finally(() => {
+      if (!cancelled) setOwnDataLoading(false);
+    });
+    return () => { cancelled = true; };
   }, [isProducing, user?.uid, tenantId, thisYear]);
 
   const ytdTotals = useMemo(() => {
