@@ -20,7 +20,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel + MdrtTracker absent from GoalsPanel (sharpened PR #TBD/v3.3, 2026-06-15 — banked PR #641, LOW)
+## Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel + MdrtTracker absent from GoalsPanel (sharpened PR #643, 2026-06-15 — banked PR #641, LOW)
 
 **Phase 1.5 recon finding:** `GoalsPanel.jsx` (manager Goals tab, `src/components/manager/GoalsPanel.jsx`) renders `CommissionPlayground` (L567) and `GapAnalysisPanel` (L1081) — so a producing manager CAN set their personal commitment and view their gap analysis. However, `DerivedIncomePanel`, `AwardsReachPanel`, and `MdrtTracker` are **not surfaced** in `GoalsPanel`. A producing manager cannot see their income estimate, award reach, or MDRT/COT/TOT progress from the manager dashboard today.
 
