@@ -209,10 +209,14 @@ service cloud.firestore {
                    .hasOnly(['agentNumber', 'dateOfBirth', 'onboardingComplete'])
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['agentNumber'])
                   || (resource.data.get('agentNumber', null) == null
-                      && request.resource.data.agentNumber is string))
+                      && request.resource.data.agentNumber is string
+                      && request.resource.data.agentNumber != ''))
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['dateOfBirth'])
                   || (resource.data.get('dateOfBirth', null) == null
-                      && request.resource.data.dateOfBirth is string))
+                      && request.resource.data.dateOfBirth is string
+                      && request.resource.data.dateOfBirth != ''))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['onboardingComplete'])
+                  || request.resource.data.onboardingComplete is bool)
           );
         allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
       }

@@ -20,6 +20,9 @@
  *  10.  Cross-user write blocked                       → DENY
  *  11.  canManage (BM) corrects agentNumber            → ALLOW
  *  12.  canManage (BM) resets onboardingComplete       → ALLOW
+ *  13.  Owner sets agentNumber to empty string         → DENY  (Gemini #3)
+ *  14.  Owner sets dateOfBirth to empty string         → DENY  (Gemini #3)
+ *  15.  Owner sets onboardingComplete to non-bool      → DENY  (Gemini #2)
  *
  * Note: hasOnly enforcement relies on diff().affectedKeys().
  * Deny tests write values that DIFFER from the seeded doc so the key
@@ -207,6 +210,31 @@ async function main() {
   await t('12. canManage (BM) resets onboardingComplete → ALLOW', async () => {
     const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
     await assertSucceeds(updateDoc(userRef(db, AGENT_B), { onboardingComplete: false, updatedAt: new Date().toISOString() }));
+  });
+
+  console.log('\nType + empty-string guards (Gemini findings #2 and #3):');
+
+  // Reset agent-a to blank for empty-string tests
+  await testEnv.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(userRef(ctx.firestore(), AGENT_A), {
+      uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
+      name: 'Agent A', active: true,
+    });
+  });
+
+  await t('13. Owner sets agentNumber to empty string → DENY', async () => {
+    const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
+    await assertFails(updateDoc(userRef(db, AGENT_A), { agentNumber: '' }));
+  });
+
+  await t('14. Owner sets dateOfBirth to empty string → DENY', async () => {
+    const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
+    await assertFails(updateDoc(userRef(db, AGENT_A), { dateOfBirth: '' }));
+  });
+
+  await t('15. Owner sets onboardingComplete to non-bool (string) → DENY', async () => {
+    const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
+    await assertFails(updateDoc(userRef(db, AGENT_A), { onboardingComplete: 'yes' }));
   });
 
   // ── Summary ──────────────────────────────────────────────────────────────────
