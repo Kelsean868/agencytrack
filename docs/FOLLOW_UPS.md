@@ -313,9 +313,9 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 
 ---
 
-## ~~Producing-manager production pipeline — personalApi/personalApps attribution~~ (banked 2026-06-09, MEDIUM post-pilot — **RETIRED by Slice 2.2, PR {TBD}**)
+## ~~Producing-manager production pipeline — personalApi/personalApps attribution~~ (banked 2026-06-09, MEDIUM post-pilot — **RETIRED by Slice 2.2, PR #639, `e048515`**)
 
-**Retired:** `personalApi`/`personalApps` fields removed from `ManagerWarTab` form, `managerWarService.sanitizeWar`, and `ManagerWarDetail` in producing-mgr Slice 2.2. Production scan confirmed 0/10 docs in `tatillife_south/managerWeeklyReports` carried these fields — no data loss. `set-producing-manager.mjs` maintenance script deleted. `isProducingManager` flag and its gating logic removed from all three consumers. Producing-manager production pipeline decision deferred to a future track (product call needed: separate manager production board vs. leaderboard integration vs. branch-rollup-only).
+**Retired:** `personalApi`/`personalApps` fields removed from `ManagerWarTab` form, `managerWarService.sanitizeWar`, and `ManagerWarDetail` in producing-mgr Slice 2.2. Production scan confirmed 0/10 docs in `tatillife_south/managerWeeklyReports` carried these fields — no data loss. `set-producing-manager.mjs` maintenance script deleted. `isProducingManager` flag and its gating logic removed from all three consumers (PR #639, `e048515`). Producing-manager production pipeline decision deferred to a future track (product call needed: separate manager production board vs. leaderboard integration vs. branch-rollup-only).
 
 ~~**Source:** Manager self-production audit (2026-06-09). `managerWarService.js` stores `personalApi` and `personalApps` fields on `managerWeeklyReports` docs when `isProducingManager === true` on the user profile. These fields are written to Firestore but have **no downstream consumer** — no CF, hook, or service reads them for leaderboard aggregation, branch rollups, or manager overview. The `isProducingManager` flag exists on user profiles but is not settable via any UI (no form field in UserManagementPanel or ProfileScreen).~~
 
@@ -2230,9 +2230,9 @@ Banked: I3a PR [#271](https://github.com/Kelsean868/agencytrack/pull/271) (`032e
 
 ---
 
-## ~~I1.x — `isProducingManager` setter (admin-set or self-service — policy TBD)~~ (LOW, banked 2026-05-21 — **RETIRED by Slice 2.2, PR {TBD}**)
+## ~~I1.x — `isProducingManager` setter (admin-set or self-service — policy TBD)~~ (LOW, banked 2026-05-21 — **RETIRED by Slice 2.2, PR #639, `e048515`**)
 
-**Retired:** The `isProducingManager` flag and the personal-production sub-panel it gated were removed from `ManagerWarTab`, `managerWarService`, and `ManagerWarDetail` in producing-mgr Slice 2.2 (PR {TBD}). No setter is needed — the concept was retired rather than implemented. Producing-manager production pipeline decision deferred to a future track (see retired producing-manager pipeline FU above).
+**Retired:** The `isProducingManager` flag and the personal-production sub-panel it gated were removed from `ManagerWarTab`, `managerWarService`, and `ManagerWarDetail` in producing-mgr Slice 2.2 (PR #639, `e048515`). No setter is needed — the concept was retired rather than implemented. Producing-manager production pipeline decision deferred to a future track (see retired producing-manager pipeline FU above).
 
 ~~**Scope:** `ManagerWarTab.jsx` reads `userProfile.isProducingManager` to gate the personal-production sub-panel (Personal API TTD + Personal Applications). The field does not exist on any user doc — the panel ships dormant. No setter is built in I1.1 (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254)).~~
 
