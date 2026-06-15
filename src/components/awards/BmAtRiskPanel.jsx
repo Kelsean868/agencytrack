@@ -184,7 +184,7 @@ export default function BmAtRiskPanel({
               Agent Award Risk View
             </p>
             <span
-              className="text-[10px] font-mono tracking-wide text-ink-muted"
+              className="text-[10px] font-mono tracking-wide text-ink"
               data-testid="bm-at-risk-total"
             >
               {agentRows.length} agent{agentRows.length === 1 ? '' : 's'}
