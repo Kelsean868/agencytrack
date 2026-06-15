@@ -1,22 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { saveOnboardingIdentity, markOnboardingComplete } from '../../services/userService';
-import WizardWelcome from './steps/WizardWelcome';
-import WizardIdentity from './steps/WizardIdentity';
+import { saveWizardMoneyNeeds, saveWizardGamePlan, saveWizardProfile } from '../../services/onboardingService';
+import WizardWelcome    from './steps/WizardWelcome';
+import WizardIdentity   from './steps/WizardIdentity';
 import WizardCompletion from './steps/WizardCompletion';
+import WizardMoneyNeeds from './steps/WizardMoneyNeeds';
+import WizardGamePlan   from './steps/WizardGamePlan';
+import WizardGoals      from './steps/WizardGoals';
+import WizardProfile    from './steps/WizardProfile';
 
-// Step IDs — Slice C inserts content steps between IDENTITY and COMPLETION.
-// Only content steps (between Welcome and Completion) appear in the stepper indicator.
-const STEP_WELCOME    = 0;
-const STEP_IDENTITY   = 1;
-const STEP_COMPLETION = 2;
-const TOTAL_STEPS     = 3;
+// Step IDs
+const STEP_WELCOME      = 0;
+const STEP_IDENTITY     = 1;
+const STEP_MONEY_NEEDS  = 2;
+const STEP_GAME_PLAN    = 3;
+const STEP_GOALS        = 4;
+const STEP_PROFILE      = 5;
+const STEP_COMPLETION   = 6;
+const TOTAL_STEPS       = 7;
 
-// Content steps shown in the stepper (excludes Welcome + Completion frame screens)
-const CONTENT_STEP_COUNT = 1; // identity; Slice C adds more
+// Content steps (shown in stepper; excludes Welcome + Completion frame screens)
+const CONTENT_STEP_COUNT = 5;
 function contentStepIndex(step) {
-  // Returns 1-based index within content steps, or null if not a content step
-  if (step === STEP_IDENTITY) return 1;
+  if (step === STEP_IDENTITY)    return 1;
+  if (step === STEP_MONEY_NEEDS) return 2;
+  if (step === STEP_GAME_PLAN)   return 3;
+  if (step === STEP_GOALS)       return 4;
+  if (step === STEP_PROFILE)     return 5;
   return null;
 }
 
@@ -25,22 +36,37 @@ const LS_KEY = (uid) => `agencytrack-onboarding-step-${uid}`;
 export default function OnboardingWizard() {
   const { user, userProfile, tenantId, refreshProfile } = useAuth();
 
-  // Resume: if any identity field was saved, jump straight to completion
+  // Stable year for the current onboarding session
+  const [year] = useState(() => new Date().getFullYear());
+
   function deriveInitialStep() {
-    if (userProfile?.agentNumber || userProfile?.dateOfBirth) return STEP_COMPLETION;
+    if (!user?.uid) return STEP_WELCOME;
+    const identityDone = !!(userProfile?.agentNumber || userProfile?.dateOfBirth);
+    if (!identityDone) {
+      // No identity yet — use localStorage pointer or start from Welcome
+      try {
+        const saved = parseInt(localStorage.getItem(LS_KEY(user?.uid)), 10);
+        if (!isNaN(saved) && saved >= STEP_WELCOME && saved < TOTAL_STEPS) return saved;
+      } catch (e) {
+        console.error('[OnboardingWizard] Failed to read from localStorage:', e);
+      }
+      return STEP_WELCOME;
+    }
+    // Identity done — try localStorage for a content-step checkpoint
     try {
       const saved = parseInt(localStorage.getItem(LS_KEY(user?.uid)), 10);
-      if (!isNaN(saved) && saved >= STEP_WELCOME && saved < TOTAL_STEPS) return saved;
+      if (!isNaN(saved) && saved > STEP_IDENTITY && saved < STEP_COMPLETION) return saved;
     } catch (e) {
       console.error('[OnboardingWizard] Failed to read from localStorage:', e);
     }
-    return STEP_WELCOME;
+    // Identity done but no content checkpoint → first content step after identity
+    return STEP_MONEY_NEEDS;
   }
 
-  const [step, setStep] = useState(deriveInitialStep);
-  const [saving, setSaving] = useState(false);
+  const [step,       setStep]       = useState(deriveInitialStep);
+  const [saving,     setSaving]     = useState(false);
   const [completing, setCompleting] = useState(false);
-  const [saveError, setSaveError] = useState(null);
+  const [saveError,  setSaveError]  = useState(null);
 
   // Persist step pointer for cross-device resume
   useEffect(() => {
@@ -61,15 +87,15 @@ export default function OnboardingWizard() {
     setStep((s) => Math.max(s - 1, STEP_WELCOME));
   }
 
-  // Skip current step — advance without writing
   function skip() {
     if (step === STEP_WELCOME) {
-      // Skip all setup → jump to completion immediately
       setStep(STEP_COMPLETION);
     } else {
       advance();
     }
   }
+
+  // ── Step handlers ─────────────────────────────────────────────────────────────
 
   async function handleIdentitySave({ agentNumber, dateOfBirth }) {
     setSaving(true);
@@ -85,16 +111,56 @@ export default function OnboardingWizard() {
     }
   }
 
+  async function handleMoneyNeedsSave(data) {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await saveWizardMoneyNeeds(tenantId, user.uid, year, data);
+      advance();
+    } catch (err) {
+      console.error('[OnboardingWizard] saveWizardMoneyNeeds:', err);
+      setSaveError(err.message ?? 'Could not save — please check your connection and try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleGamePlanSave(data) {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await saveWizardGamePlan(tenantId, user.uid, year, userProfile?.name ?? '', data);
+      advance();
+    } catch (err) {
+      console.error('[OnboardingWizard] saveWizardGamePlan:', err);
+      setSaveError(err.message ?? 'Could not save — please check your connection and try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleProfileSave(data) {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await saveWizardProfile(tenantId, user.uid, data);
+      advance();
+    } catch (err) {
+      console.error('[OnboardingWizard] saveWizardProfile:', err);
+      setSaveError(err.message ?? 'Could not save — please check your connection and try again.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function handleEnterApp() {
     setCompleting(true);
     try {
       await markOnboardingComplete(tenantId, user.uid);
-      // Refresh profile so AppRoot exits wizard gate immediately
       await refreshProfile();
     } catch (err) {
       console.error('[OnboardingWizard] markOnboardingComplete:', err);
       setSaveError('Could not complete setup — please check your connection and try again.');
-      // Best-effort: refresh anyway so the user isn't trapped
       await refreshProfile().catch(() => {});
     } finally {
       setCompleting(false);
@@ -157,6 +223,49 @@ export default function OnboardingWizard() {
           <WizardIdentity
             userProfile={userProfile}
             onSave={handleIdentitySave}
+            onSkip={skip}
+            saving={saving}
+          />
+        )}
+
+        {step === STEP_MONEY_NEEDS && (
+          <WizardMoneyNeeds
+            tenantId={tenantId}
+            uid={user?.uid}
+            year={year}
+            onSave={handleMoneyNeedsSave}
+            onSkip={skip}
+            saving={saving}
+          />
+        )}
+
+        {step === STEP_GAME_PLAN && (
+          <WizardGamePlan
+            tenantId={tenantId}
+            uid={user?.uid}
+            userName={userProfile?.name ?? ''}
+            onSave={handleGamePlanSave}
+            onSkip={skip}
+            saving={saving}
+          />
+        )}
+
+        {step === STEP_GOALS && (
+          <WizardGoals
+            tenantId={tenantId}
+            uid={user?.uid}
+            unitId={userProfile?.unitId ?? null}
+            onNext={advance}
+            onSkip={skip}
+          />
+        )}
+
+        {step === STEP_PROFILE && (
+          <WizardProfile
+            tenantId={tenantId}
+            uid={user?.uid}
+            userProfile={userProfile}
+            onSave={handleProfileSave}
             onSkip={skip}
             saving={saving}
           />

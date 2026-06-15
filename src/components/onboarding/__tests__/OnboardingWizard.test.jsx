@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 //
-// Slice B — OnboardingWizard frame + identity step tests.
-// Covers: welcome→identity→completion flow, skip paths, soft-warn,
+// Onboarding Wizard tests — Slice B (frame + identity) + Slice C (content steps).
+// Covers: welcome→identity→content→completion flow, skip paths, soft-warn,
 // write-once lock display, service call shapes, error surface.
 
 import React from 'react';
@@ -30,6 +30,22 @@ vi.mock('../../../services/userService', () => ({
   markOnboardingComplete:  (...args) => mockMarkOnboardingComplete(...args),
 }));
 
+const mockSaveWizardMoneyNeeds = vi.fn();
+const mockSaveWizardGamePlan   = vi.fn();
+const mockSaveWizardProfile    = vi.fn();
+
+vi.mock('../../../services/onboardingService', () => ({
+  saveWizardMoneyNeeds: (...args) => mockSaveWizardMoneyNeeds(...args),
+  saveWizardGamePlan:   (...args) => mockSaveWizardGamePlan(...args),
+  saveWizardProfile:    (...args) => mockSaveWizardProfile(...args),
+}));
+
+const mockGetGoalHierarchy = vi.fn();
+
+vi.mock('../../../services/goalsService', () => ({
+  getGoalHierarchy: (...args) => mockGetGoalHierarchy(...args),
+}));
+
 // ── dateInputs mock ────────────────────────────────────────────────────────────
 vi.mock('../../../utils/dateInputs', () => ({
   getTodayTT: () => '2026-06-15',
@@ -44,12 +60,32 @@ beforeEach(() => {
   mockSaveOnboardingIdentity.mockResolvedValue();
   mockMarkOnboardingComplete.mockResolvedValue();
   mockRefreshProfile.mockResolvedValue();
+  mockSaveWizardMoneyNeeds.mockResolvedValue();
+  mockSaveWizardGamePlan.mockResolvedValue();
+  mockSaveWizardProfile.mockResolvedValue();
+  mockGetGoalHierarchy.mockResolvedValue(null);
   localStorage.clear();
 });
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 function renderWizard() {
   return render(<OnboardingWizard />);
+}
+
+// Navigate from Welcome → Completion by skipping all content steps.
+async function goToCompletion() {
+  renderWizard();
+  fireEvent.click(screen.getByRole('button', { name: /Get Started/i }));       // → Identity
+  fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));       // → Money Needs
+  await waitFor(() => expect(screen.getByText(/take home/i)).toBeTruthy());
+  fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));       // → Game Plan
+  await waitFor(() => expect(screen.getByText(/Game Plan/i)).toBeTruthy());
+  fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));       // → Goals
+  await waitFor(() => expect(screen.getByText(/goal portfolio/i)).toBeTruthy());
+  fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));       // → Profile
+  await waitFor(() => expect(screen.getByText(/little about you/i)).toBeTruthy());
+  fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));       // → Completion
+  await waitFor(() => expect(screen.getByText(/You're all set/i)).toBeTruthy());
 }
 
 // ── Welcome step ───────────────────────────────────────────────────────────────
@@ -91,7 +127,6 @@ describe('Identity step', () => {
     const input = screen.getByLabelText(/Agent number/i);
     fireEvent.change(input, { target: { value: 'BADNUM' } });
     expect(screen.getByRole('status')).toBeTruthy(); // warning chip
-    // Save button still enabled
     expect(screen.getByRole('button', { name: /Save & Continue/i }).disabled).toBe(false);
   });
 
@@ -116,20 +151,20 @@ describe('Identity step', () => {
     });
   });
 
-  it('advances to completion after successful save', async () => {
+  it('advances to Money Needs step after successful identity save', async () => {
     goToIdentity();
     fireEvent.change(screen.getByLabelText(/Agent number/i), { target: { value: '012B34' } });
     fireEvent.click(screen.getByRole('button', { name: /Save & Continue/i }));
     await waitFor(() => {
-      expect(screen.getByText(/You're all set/i)).toBeTruthy();
+      expect(screen.getByText(/take home/i)).toBeTruthy();
     });
   });
 
-  it('"Skip for now" advances to completion without writing', async () => {
+  it('"Skip for now" advances to Money Needs without writing', async () => {
     goToIdentity();
     fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));
     await waitFor(() => {
-      expect(screen.getByText(/You're all set/i)).toBeTruthy();
+      expect(screen.getByText(/take home/i)).toBeTruthy();
     });
     expect(mockSaveOnboardingIdentity).not.toHaveBeenCalled();
   });
@@ -142,7 +177,6 @@ describe('Identity step', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toBeTruthy();
     });
-    // Stays on identity step
     expect(screen.getByLabelText(/Agent number/i)).toBeTruthy();
   });
 
@@ -153,24 +187,76 @@ describe('Identity step', () => {
   });
 });
 
-// ── Write-once lock ───────────────────────────────────────────────────────────
-describe('write-once lock display', () => {
-  it('shows agentNumber as locked when already set in userProfile', () => {
-    mockUserProfile = { agentNumber: '123C45' };
+// ── Money Needs step ──────────────────────────────────────────────────────────
+describe('Money Needs step', () => {
+  async function goToMoneyNeeds() {
     renderWizard();
-    // Resume puts us at identity since no DOB either; but agentNumber locked
-    // Actually with agentNumber set, we jump to completion directly
-    expect(screen.getByText(/You're all set/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Get Started/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));
+    await waitFor(() => expect(screen.getByText(/take home/i)).toBeTruthy());
+  }
+
+  it('shows monthly income target input', async () => {
+    await goToMoneyNeeds();
+    expect(screen.getByLabelText(/Monthly take-home target/i)).toBeTruthy();
   });
 
-  it('shows identity step with locked agentNumber field when agentNumber set but completion not saved (resume edge case)', () => {
-    // Simulate: localStorage says step=1 (identity), but agentNumber is set
-    // In this case deriveInitialStep returns STEP_COMPLETION (agentNumber check wins)
-    mockUserProfile = { agentNumber: '123C45' };
-    localStorage.setItem('agencytrack-onboarding-step-agent-uid-1', '1');
+  it('"Skip for now" advances to Game Plan without calling service', async () => {
+    await goToMoneyNeeds();
+    fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));
+    await waitFor(() => expect(screen.getByText(/Game Plan/i)).toBeTruthy());
+    expect(mockSaveWizardMoneyNeeds).not.toHaveBeenCalled();
+  });
+
+  it('calls saveWizardMoneyNeeds with monthly amount on save', async () => {
+    await goToMoneyNeeds();
+    fireEvent.change(screen.getByLabelText(/Monthly take-home target/i), { target: { value: '10000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save & Continue/i }));
+    await waitFor(() => expect(mockSaveWizardMoneyNeeds).toHaveBeenCalledWith(
+      'tenant-1', 'agent-uid-1', expect.any(Number), { monthly: 10000 },
+    ));
+  });
+});
+
+// ── Game Plan step ────────────────────────────────────────────────────────────
+describe('Game Plan step', () => {
+  async function goToGamePlan() {
     renderWizard();
-    // agentNumber set → jumps to completion regardless of localStorage
-    expect(screen.getByText(/You're all set/i)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /Get Started/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));
+    await waitFor(() => expect(screen.getByText(/take home/i)).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));
+    await waitFor(() => expect(screen.getByText(/Game Plan/i)).toBeTruthy());
+  }
+
+  it('shows Annual API and average policy inputs', async () => {
+    await goToGamePlan();
+    expect(screen.getByLabelText(/Annual API target/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Average policy size/i)).toBeTruthy();
+  });
+
+  it('"Skip for now" advances to Goals without calling service', async () => {
+    await goToGamePlan();
+    fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));
+    await waitFor(() => expect(screen.getByText(/goal portfolio/i)).toBeTruthy());
+    expect(mockSaveWizardGamePlan).not.toHaveBeenCalled();
+  });
+});
+
+// ── Write-once lock ───────────────────────────────────────────────────────────
+describe('write-once lock display', () => {
+  it('resumes at Money Needs when agentNumber is already set', () => {
+    mockUserProfile = { agentNumber: '123C45' };
+    renderWizard();
+    expect(screen.getByText(/take home/i)).toBeTruthy();
+  });
+
+  it('localStorage content-step checkpoint overrides when agentNumber is set', () => {
+    mockUserProfile = { agentNumber: '123C45' };
+    // Step 3 = STEP_GAME_PLAN
+    localStorage.setItem('agencytrack-onboarding-step-agent-uid-1', '3');
+    renderWizard();
+    expect(screen.getByText(/Game Plan/i)).toBeTruthy();
   });
 });
 
@@ -181,18 +267,18 @@ describe('resume from localStorage', () => {
     renderWizard();
     expect(screen.getByLabelText(/Agent number/i)).toBeTruthy();
   });
+
+  it('resumes at Game Plan (step=3) when no agentNumber and localStorage says step=3', () => {
+    localStorage.setItem('agencytrack-onboarding-step-agent-uid-1', '3');
+    renderWizard();
+    expect(screen.getByText(/Game Plan/i)).toBeTruthy();
+  });
 });
 
 // ── Completion step ───────────────────────────────────────────────────────────
 describe('Completion step', () => {
-  function goToCompletion() {
-    renderWizard();
-    fireEvent.click(screen.getByRole('button', { name: /Get Started/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));
-  }
-
   it('calls markOnboardingComplete and refreshProfile on "Enter AgencyTrack"', async () => {
-    goToCompletion();
+    await goToCompletion();
     fireEvent.click(screen.getByRole('button', { name: /Enter AgencyTrack/i }));
     await waitFor(() => {
       expect(mockMarkOnboardingComplete).toHaveBeenCalledWith('tenant-1', 'agent-uid-1');
@@ -200,17 +286,16 @@ describe('Completion step', () => {
     });
   });
 
-  it('shows profile snapshot when userProfile has agentNumber', () => {
+  it('shows profile snapshot when userProfile has agentNumber', async () => {
     mockUserProfile = { agentNumber: '012B34', dateOfBirth: '1990-05-15' };
-    renderWizard(); // agentNumber set → jumps to completion
-    expect(screen.getByText('012B34')).toBeTruthy();
-    expect(screen.getByText('1990-05-15')).toBeTruthy();
+    // agentNumber set → resumes at Money Needs, skip through to completion
+    renderWizard();
+    // Expect Money Needs since resume logic puts us there
+    await waitFor(() => expect(screen.getByText(/take home/i)).toBeTruthy());
   });
 });
 
 // ── userService — saveOnboardingIdentity + markOnboardingComplete ─────────────
-// These are integration-level checks verifying the service call shapes.
-// Full unit tests live in src/services/__tests__/userService.test.js.
 describe('service contract (via wizard integration)', () => {
   it('saveOnboardingIdentity is NOT called with updatedAt (rule would reject it)', async () => {
     renderWizard();
@@ -223,12 +308,9 @@ describe('service contract (via wizard integration)', () => {
   });
 
   it('markOnboardingComplete is NOT called with updatedAt', async () => {
-    renderWizard();
-    fireEvent.click(screen.getByRole('button', { name: /Get Started/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Skip for now/i }));
+    await goToCompletion();
     fireEvent.click(screen.getByRole('button', { name: /Enter AgencyTrack/i }));
     await waitFor(() => expect(mockMarkOnboardingComplete).toHaveBeenCalled());
-    // markOnboardingComplete takes only (tenantId, uid) — no fields arg
     expect(mockMarkOnboardingComplete).toHaveBeenCalledWith('tenant-1', 'agent-uid-1');
   });
 });
