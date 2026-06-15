@@ -1342,16 +1342,42 @@ exports.onSubmissionWrite = functions.firestore
     if (!agentId) return;
 
     try {
-      // ── Test-account guard ────────────────────────────────────────────────
-      // Fail-open: a transient read error defaults to non-test-account
-      // so real users' leaderboard writes are not blocked by a flaky read.
-      let isTestAccount = false;
+      // ── Test-account + participation guard ───────────────────────────────
+      // One user-doc read covers both guards. Fail-open on transient errors:
+      // both guards default to permissive so real users' writes are never blocked.
+      let isTestAccount       = false;
+      let userRole            = 'agent';
+      let appearOnLeaderboard = false;
+      let isProvisioning      = false;
       try {
         const userSnap = await admin.firestore()
           .doc(`tenants/${tenantId}/users/${agentId}`).get();
-        isTestAccount = userSnap.data()?.isTestAccount === true;
-      } catch { /* fail-open: transient read error defaults to non-test-account */ }
+        const ud = userSnap.data() ?? {};
+        isTestAccount       = ud.isTestAccount       === true;
+        userRole            = ud.role                ?? 'agent';
+        appearOnLeaderboard = ud.appearOnLeaderboard === true;
+        isProvisioning      = ud.provisioning        === true;
+      } catch { /* fail-open: transient read error defaults to permissive */ }
+
       if (isTestAccount) {
+        await admin.firestore().doc(`tenants/${tenantId}/leaderboard/${agentId}`)
+          .delete().catch(() => {});
+        return;
+      }
+
+      // ── Participation gate ────────────────────────────────────────────────
+      // CF-local parity with leaderboardAggregate.js:271 — keep in sync when
+      // that definition changes. branchId check omitted here (writes
+      // leaderboard/{agentId} directly, not branch-bucketed).
+      // Participants: agent (always), unit_manager (always),
+      //               branch_manager only when appearOnLeaderboard === true.
+      // Non-participants: sales_manager, tenant_admin, platform_admin, provisioning.
+      const isParticipant =
+        !isProvisioning &&
+        (userRole === 'agent' ||
+         userRole === 'unit_manager' ||
+         (userRole === 'branch_manager' && appearOnLeaderboard));
+      if (!isParticipant) {
         await admin.firestore().doc(`tenants/${tenantId}/leaderboard/${agentId}`)
           .delete().catch(() => {});
         return;

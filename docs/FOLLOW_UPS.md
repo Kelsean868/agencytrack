@@ -5,6 +5,21 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Producing-manager Slice 2.0 — post-deploy smoke (banked PR #{TBD}, HIGH — run immediately after `firebase deploy --only functions`)
+
+CF gamification gate (`isParticipant` in `onSubmissionWrite`) cannot be verified before the CF deploys. Run this smoke immediately after `firebase deploy --only functions` for Slice 2.0.
+
+**Acceptance criteria (3 legs):**
+1. **Non-participant leg:** File a test submission as a SM or TA account → confirm NO `leaderboard/{uid}` doc is written (Firestore Console or REST read); confirm any existing doc is deleted.
+2. **Non-opted-in BM leg:** File a test submission as a BM with `appearOnLeaderboard !== true` → same assertion.
+3. **Participant leg:** File a test submission as an agent or UM → confirm `leaderboard/{uid}` IS written with correct `points`/`level`/`badges`.
+
+**Pre-requisites:** CF deployed from `origin/main` HEAD after Slice 2.0 merge. Test accounts available for SM/TA and agent/UM roles.
+
+**Severity:** HIGH — without this leg, the gamification gate is unproven in production and Slice 2.1 routing (which first allows manager submissions) ships on unverified CF behavior.
+
+---
+
 ## Rule 21 reviewer replacement — choose + install before 2026-07-17 (banked PR #607, HIGH)
 
 Consumer Gemini Code Assist on GitHub is deprecated 2026-06-18 (no new installs) and shut down 2026-07-17 (all code review ends). The Rule 21 post-merge backstop added in PR #607 closes the timing gap for the interim, but a replacement reviewer must be chosen and installed before the shut-down date.
