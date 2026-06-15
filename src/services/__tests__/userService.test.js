@@ -37,6 +37,8 @@ import {
   callUpdateUser,
   resendInvite,
   getInviteLink,
+  saveOnboardingIdentity,
+  markOnboardingComplete,
   MANAGER_EDITABLE_FIELDS,
   CLAIM_KEYED_FIELDS,
 } from '../userService';
@@ -324,5 +326,79 @@ describe('userService.getInviteLink', () => {
     });
     hoisted.mockCallable.mockRejectedValueOnce(cfErr);
     await expect(getInviteLink('target-uid')).rejects.toBe(cfErr);
+  });
+});
+
+// ── Slice B onboarding write-once functions ───────────────────────────────────
+
+describe('userService.saveOnboardingIdentity', () => {
+  beforeEach(() => {
+    hoisted.mockUpdateDoc.mockReset();
+    hoisted.mockUpdateDoc.mockResolvedValue();
+  });
+
+  it('writes agentNumber and dateOfBirth WITHOUT updatedAt', async () => {
+    await saveOnboardingIdentity('tenant-1', 'uid-1', {
+      agentNumber: '012B34',
+      dateOfBirth: '1990-05-15',
+    });
+    expect(hoisted.mockUpdateDoc).toHaveBeenCalledTimes(1);
+    const [ref, payload] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(ref.__ref).toBe('tenants/tenant-1/users/uid-1');
+    expect(payload).toEqual({ agentNumber: '012B34', dateOfBirth: '1990-05-15' });
+    expect(payload).not.toHaveProperty('updatedAt');
+  });
+
+  it('writes only agentNumber when dateOfBirth is omitted', async () => {
+    await saveOnboardingIdentity('tenant-1', 'uid-1', { agentNumber: '012B34' });
+    const [, payload] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(payload).toEqual({ agentNumber: '012B34' });
+  });
+
+  it('writes only dateOfBirth when agentNumber is omitted', async () => {
+    await saveOnboardingIdentity('tenant-1', 'uid-1', { dateOfBirth: '1990-05-15' });
+    const [, payload] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(payload).toEqual({ dateOfBirth: '1990-05-15' });
+  });
+
+  it('does not call updateDoc when both fields are absent', async () => {
+    await saveOnboardingIdentity('tenant-1', 'uid-1', {});
+    expect(hoisted.mockUpdateDoc).not.toHaveBeenCalled();
+  });
+
+  it('throws when tenantId is missing', async () => {
+    await expect(saveOnboardingIdentity(null, 'uid-1', { agentNumber: 'x' }))
+      .rejects.toThrow(/tenantId and uid are required/);
+  });
+
+  it('throws when uid is missing', async () => {
+    await expect(saveOnboardingIdentity('tenant-1', null, { agentNumber: 'x' }))
+      .rejects.toThrow(/tenantId and uid are required/);
+  });
+});
+
+describe('userService.markOnboardingComplete', () => {
+  beforeEach(() => {
+    hoisted.mockUpdateDoc.mockReset();
+    hoisted.mockUpdateDoc.mockResolvedValue();
+  });
+
+  it('writes only { onboardingComplete: true } without updatedAt', async () => {
+    await markOnboardingComplete('tenant-1', 'uid-1');
+    expect(hoisted.mockUpdateDoc).toHaveBeenCalledTimes(1);
+    const [ref, payload] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(ref.__ref).toBe('tenants/tenant-1/users/uid-1');
+    expect(payload).toEqual({ onboardingComplete: true });
+    expect(payload).not.toHaveProperty('updatedAt');
+  });
+
+  it('throws when tenantId is missing', async () => {
+    await expect(markOnboardingComplete(null, 'uid-1'))
+      .rejects.toThrow(/tenantId and uid are required/);
+  });
+
+  it('throws when uid is missing', async () => {
+    await expect(markOnboardingComplete('tenant-1', null))
+      .rejects.toThrow(/tenantId and uid are required/);
   });
 });

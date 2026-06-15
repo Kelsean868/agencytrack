@@ -8,6 +8,7 @@ import EmailVerificationHandler from './components/auth/EmailVerificationHandler
 import AgentDashboard from './components/dashboard/AgentDashboard';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
 import TenantAdminDashboard from './components/dashboard/TenantAdminDashboard';
+import OnboardingWizard from './components/onboarding/OnboardingWizard';
 import ToastProvider from './components/ui/ToastProvider';
 
 // Tenant Admin gets a dedicated dashboard surface from B5 forward — the
@@ -85,7 +86,7 @@ const ProvisioningScreen = () => (
 );
 
 function AppRoot() {
-  const { role, loading, isAuthenticated } = useAuth();
+  const { role, loading, isAuthenticated, userProfile } = useAuth();
 
   // Firebase auth action links (password reset) land here with ?mode=resetPassword&oobCode=…
   // Intercept before auth/role logic so the handler renders for unauthenticated users.
@@ -104,7 +105,12 @@ function AppRoot() {
   if (role === 'platform_admin') return <PlatformAdminStubScreen />;
   if (role === 'tenant_admin') return <TenantAdminDashboard />;
   if (MANAGER_ROLES.has(role)) return <ManagerDashboard />;
-  if (role === 'agent') return <AgentDashboard />;
+  if (role === 'agent') {
+    // Guard: userProfile null after loading means provisioning delay — show spinner
+    if (!userProfile) return <ProvisioningScreen />;
+    if (!userProfile.onboardingComplete) return <OnboardingWizard />;
+    return <AgentDashboard />;
+  }
   // Authenticated but role not resolved — claims propagation delay on first login.
   return <ProvisioningScreen />;
 }

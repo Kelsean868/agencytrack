@@ -133,7 +133,19 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  const value = { user, userProfile, role, tenantId, loading, isAuthenticated: !!user };
+  async function refreshProfile() {
+    if (!user) return;
+    const tid = tenantId;
+    if (!tid) return;
+    try {
+      const snap = await getDoc(doc(db, `tenants/${tid}/users/${user.uid}`));
+      if (snap.exists()) setUserProfile(snap.data());
+    } catch (err) {
+      console.error('[AgencyTrack] refreshProfile failed:', err);
+    }
+  }
+
+  const value = { user, userProfile, role, tenantId, loading, isAuthenticated: !!user, refreshProfile };
 
   return (
     <AuthContext.Provider value={value}>

@@ -131,6 +131,29 @@ export async function resendInvite(uid) {
   return result.data;
 }
 
+/**
+ * saveOnboardingIdentity — write-once identity fields (Slice A rule arm).
+ * Must NOT include updatedAt — the rule hasOnly(['agentNumber','dateOfBirth','onboardingComplete'])
+ * would reject any additional key.
+ */
+export async function saveOnboardingIdentity(tenantId, uid, { agentNumber, dateOfBirth } = {}) {
+  if (!tenantId || !uid) throw new Error('tenantId and uid are required.');
+  const fields = {};
+  if (agentNumber) fields.agentNumber = agentNumber;
+  if (dateOfBirth) fields.dateOfBirth = dateOfBirth; // YYYY-MM-DD string
+  if (Object.keys(fields).length === 0) return;
+  await updateDoc(doc(db, `tenants/${tenantId}/users/${uid}`), fields);
+}
+
+/**
+ * markOnboardingComplete — sets onboardingComplete: true on the user doc.
+ * Same write-once rule arm; no updatedAt.
+ */
+export async function markOnboardingComplete(tenantId, uid) {
+  if (!tenantId || !uid) throw new Error('tenantId and uid are required.');
+  await updateDoc(doc(db, `tenants/${tenantId}/users/${uid}`), { onboardingComplete: true });
+}
+
 export async function getInviteLink(uid) {
   if (!uid) throw new Error('uid is required.');
   const fns = getFunctions();
