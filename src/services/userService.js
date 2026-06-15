@@ -69,6 +69,7 @@ export async function updateUserFields(tenantId, uid, fields) {
  * the rules hasOnly check is strict per field.
  */
 export async function setAppearOnLeaderboard(tenantId, uid, appear) {
+  if (!tenantId) throw new Error('tenantId is required.');
   if (!uid) throw new Error('uid is required.');
   const docRef = doc(db, `tenants/${tenantId}/users/${uid}`);
   await updateDoc(docRef, { appearOnLeaderboard: Boolean(appear) });
