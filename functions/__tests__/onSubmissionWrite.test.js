@@ -38,16 +38,18 @@ const { onSubmissionWrite } = require('../index');
 
 // ── Mock builders ─────────────────────────────────────────────────────────────
 
-function makeAdminMock({ isTestAccount = false } = {}) {
+function makeAdminMock({ isTestAccount = false, userDoc = null, exists = true } = {}) {
   const setFn    = jest.fn().mockResolvedValue({});
   const deleteFn = jest.fn().mockResolvedValue({});
+
+  const resolvedUserDoc = userDoc ?? (isTestAccount ? { isTestAccount: true } : {});
 
   const docFn = jest.fn().mockImplementation((path) => {
     if (path.includes('/users/')) {
       return {
         get: jest.fn().mockResolvedValue({
-          exists: true,
-          data: () => (isTestAccount ? { isTestAccount: true } : {}),
+          exists,
+          data: () => resolvedUserDoc,
         }),
       };
     }
@@ -122,5 +124,52 @@ describe('onSubmissionWrite — isTestAccount guard', () => {
 
     expect(setFn).toHaveBeenCalledTimes(1);
     expect(deleteFn).not.toHaveBeenCalled();
+  });
+});
+
+describe('onSubmissionWrite — participation gate (Slice 2.0)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  test.each([
+    ['sales_manager',  { role: 'sales_manager' }],
+    ['tenant_admin',   { role: 'tenant_admin' }],
+    ['platform_admin', { role: 'platform_admin' }],
+    ['branch_manager without opt-in', { role: 'branch_manager', appearOnLeaderboard: false }],
+    ['branch_manager with no appearOnLeaderboard field', { role: 'branch_manager' }],
+    ['provisioning account', { role: 'agent', provisioning: true }],
+  ])('%s: skips leaderboard write and deletes any existing entry', async (_label, doc) => {
+    const { setFn, deleteFn } = makeAdminMock({ userDoc: doc });
+    const change = makeChange(BASE_SUBMISSION);
+
+    await onSubmissionWrite.run(change, context);
+
+    expect(setFn).not.toHaveBeenCalled();
+    expect(deleteFn).toHaveBeenCalledTimes(1);
+  });
+
+  test.each([
+    ['agent',                         { role: 'agent' }],
+    ['unit_manager',                  { role: 'unit_manager' }],
+    ['branch_manager opted-in',       { role: 'branch_manager', appearOnLeaderboard: true }],
+  ])('%s: writes leaderboard doc', async (_label, doc) => {
+    const { setFn, deleteFn } = makeAdminMock({ userDoc: doc });
+    const change = makeChange(BASE_SUBMISSION);
+
+    await onSubmissionWrite.run(change, context);
+
+    expect(setFn).toHaveBeenCalledTimes(1);
+    expect(deleteFn).not.toHaveBeenCalled();
+  });
+
+  test('non-existent user document: skips leaderboard write and deletes any existing entry', async () => {
+    const { setFn, deleteFn } = makeAdminMock({ exists: false });
+    const change = makeChange(BASE_SUBMISSION);
+
+    await onSubmissionWrite.run(change, context);
+
+    expect(setFn).not.toHaveBeenCalled();
+    expect(deleteFn).toHaveBeenCalledTimes(1);
   });
 });
