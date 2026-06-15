@@ -254,7 +254,9 @@ Firebase sends a `mode=recoverEmail` action link to the **old** email address au
 
 ---
 
-## ManagerDashboard "Submit Report" → WizardForm path (banked 2026-06-09, MEDIUM post-pilot)
+## ~~ManagerDashboard "Submit Report" → WizardForm path~~ (banked 2026-06-09, MEDIUM post-pilot — **SUPERSEDED**)
+
+**Superseded by producing-mgr Slice 2.0 (CF `isParticipant` gate, PR #633) + Slice 2.1a (UM-only routing gate, PR #634).** Slice 2.0 excludes all non-opted-in manager UIDs from `leaderboard/{uid}` writes at the CF level. Slice 2.1a gates `onSubmitReport` to UM-only in `ManagerDashboard` — BM/SM/TA no longer see the "Submit Report" button. Option A (wire to `ManagerWarTab`) remains the clean long-term fix but is no longer a correctness blocker. Paired `leaderboardAggregate.js` FU also superseded.
 
 **Source:** Manager self-production audit (2026-06-09). `ManagerDashboard.jsx` has a "Submit Report" button (`onSubmitReport={() => setShowWizard(true)}`) that renders the full agent `WizardForm`. The `submissions` collection `allow create` passes for `canManage()` callers, so a manager submitting via this path writes a doc to `submissions` with their UID as `agentId`. That doc is then picked up by the leaderboard CF and branch rollups (no role filter in either pipeline), polluting the agent leaderboard and submission counts.
 
@@ -299,7 +301,9 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 
 ---
 
-## leaderboardAggregate.js — enforce non-agent UID filter (banked 2026-06-09, MEDIUM post-pilot)
+## ~~leaderboardAggregate.js — enforce non-agent UID filter~~ (banked 2026-06-09, MEDIUM post-pilot — **SUPERSEDED**)
+
+**Superseded by producing-mgr Slice 2.0 (CF `isParticipant` gate, PR #633).** `onSubmissionWrite` now excludes all non-participant manager UIDs before any aggregate write, so `leaderboardAggregate.js` only sees clean agent submissions. A defensive role-filter inside the aggregate remains a good hardening idea long-term but is no longer a correctness gap.
 
 **Source:** Manager self-production audit (2026-06-09). `functions/leaderboard/leaderboardAggregate.js` contains a comment "Skip submissions from non-agent uids (UMs etc.) — defensive" but the actual skip guard is not enforced in code. The CF queries `submissions` with no role filter; any submission with a manager UID as `agentId` (possible via the WizardForm path — see FU above) is included in the leaderboard aggregate.
 
@@ -309,17 +313,29 @@ Recommendation: Option A. Track I is already built; the WizardForm path is an ov
 
 ---
 
-## Producing-manager production pipeline — personalApi/personalApps attribution (banked 2026-06-09, MEDIUM post-pilot)
+## ~~Producing-manager production pipeline — personalApi/personalApps attribution~~ (banked 2026-06-09, MEDIUM post-pilot — **RETIRED by Slice 2.2, PR {TBD}**)
 
-**Source:** Manager self-production audit (2026-06-09). `managerWarService.js` stores `personalApi` and `personalApps` fields on `managerWeeklyReports` docs when `isProducingManager === true` on the user profile. These fields are written to Firestore but have **no downstream consumer** — no CF, hook, or service reads them for leaderboard aggregation, branch rollups, or manager overview. The `isProducingManager` flag exists on user profiles but is not settable via any UI (no form field in UserManagementPanel or ProfileScreen).
+**Retired:** `personalApi`/`personalApps` fields removed from `ManagerWarTab` form, `managerWarService.sanitizeWar`, and `ManagerWarDetail` in producing-mgr Slice 2.2. Production scan confirmed 0/10 docs in `tatillife_south/managerWeeklyReports` carried these fields — no data loss. `set-producing-manager.mjs` maintenance script deleted. `isProducingManager` flag and its gating logic removed from all three consumers. Producing-manager production pipeline decision deferred to a future track (product call needed: separate manager production board vs. leaderboard integration vs. branch-rollup-only).
 
-**Context:** Per Kyron, all Tatil Life managers produce. The `personalApi`/`personalApps` fields in the WAR form are the intended capture mechanism but are currently orphaned.
+~~**Source:** Manager self-production audit (2026-06-09). `managerWarService.js` stores `personalApi` and `personalApps` fields on `managerWeeklyReports` docs when `isProducingManager === true` on the user profile. These fields are written to Firestore but have **no downstream consumer** — no CF, hook, or service reads them for leaderboard aggregation, branch rollups, or manager overview. The `isProducingManager` flag exists on user profiles but is not settable via any UI (no form field in UserManagementPanel or ProfileScreen).~~
 
-**Action (post-pilot):** Two sub-tasks:
-1. **UI — `isProducingManager` toggle:** Add a boolean field to the Edit User form (tenant_admin + BM writable) so managers can be flagged as producing managers. Until set, the WAR production fields remain hidden (current behavior is correct default).
-2. **Pipeline — personalApi aggregation:** Write a CF or client-side aggregation that reads `managerWeeklyReports.personalApi` for producing managers and feeds it into the appropriate surface. Decision needed: does manager production appear on the agent leaderboard (mixed), a separate manager production board, or branch rollup totals only? Product call for Kyron before implementation.
+~~**Context:** Per Kyron, all Tatil Life managers produce. The `personalApi`/`personalApps` fields in the WAR form are the intended capture mechanism but are currently orphaned.~~
 
-**Severity:** MEDIUM (relevant to all Tatil managers; blocks accurate production tracking for producing managers post-pilot).
+~~**Action (post-pilot):** Two sub-tasks:~~
+~~1. **UI — `isProducingManager` toggle:** Add a boolean field to the Edit User form (tenant_admin + BM writable) so managers can be flagged as producing managers. Until set, the WAR production fields remain hidden (current behavior is correct default).~~
+~~2. **Pipeline — personalApi aggregation:** Write a CF or client-side aggregation that reads `managerWeeklyReports.personalApi` for producing managers and feeds it into the appropriate surface. Decision needed: does manager production appear on the agent leaderboard (mixed), a separate manager production board, or branch rollup totals only? Product call for Kyron before implementation.~~
+
+~~**Severity:** MEDIUM (relevant to all Tatil managers; blocks accurate production tracking for producing managers post-pilot).~~
+
+---
+
+## `managerWeeklyReports` — `validWarWrite()` hasAll-only, no hasOnly guard (banked 2026-06-15, LOW)
+
+**Source:** producing-mgr Slice 2.2 Phase 1 audit. `firestore.rules:963–988` `validWarWrite()` uses `d.keys().hasAll([...])` (required-fields list only) but has **no `hasOnly` restriction** — a manager can write arbitrary extra keys to their own WAR doc without rule rejection. The required-fields list does not include `personalApi`/`personalApps`, confirming those fields were never rule-enforced; they were client-side only.
+
+**Action:** Add a `hasOnly([...all-canonical-fields...])` check alongside the existing `hasAll` in `validWarWrite()` to lock the WAR schema and prevent future field drift. The canonical field list is well-defined (activity + recruiting fields, `jfwCount`, metadata). Low risk during the pilot — the WAR form is the only write path for this collection and carries no security-sensitive fields. A holistic hasOnly lock is the correct long-term posture for any collection with a well-defined schema.
+
+**Severity:** LOW (schema unenforced; WAR is manager-self-write only; no security fields at risk).
 
 ---
 
@@ -2214,19 +2230,13 @@ Banked: I3a PR [#271](https://github.com/Kelsean868/agencytrack/pull/271) (`032e
 
 ---
 
-## I1.x — `isProducingManager` setter (admin-set or self-service — policy TBD) (LOW, banked 2026-05-21)
+## ~~I1.x — `isProducingManager` setter (admin-set or self-service — policy TBD)~~ (LOW, banked 2026-05-21 — **RETIRED by Slice 2.2, PR {TBD}**)
 
-**Scope:** `ManagerWarTab.jsx` reads `userProfile.isProducingManager` to gate the personal-production sub-panel (Personal API TTD + Personal Applications). The field does not exist on any user doc — the panel ships dormant. No setter is built in I1.1 (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254)).
+**Retired:** The `isProducingManager` flag and the personal-production sub-panel it gated were removed from `ManagerWarTab`, `managerWarService`, and `ManagerWarDetail` in producing-mgr Slice 2.2 (PR {TBD}). No setter is needed — the concept was retired rather than implemented. Producing-manager production pipeline decision deferred to a future track (see retired producing-manager pipeline FU above).
 
-**Action (when policy is decided):**
+~~**Scope:** `ManagerWarTab.jsx` reads `userProfile.isProducingManager` to gate the personal-production sub-panel (Personal API TTD + Personal Applications). The field does not exist on any user doc — the panel ships dormant. No setter is built in I1.1 (PR [#254](https://github.com/Kelsean868/agencytrack/pull/254)).~~
 
-1. **Policy decision (dispatcher):** who can set `isProducingManager`? Options: (A) admin-only — extend `EditUserDrawer` with a toggle, restricted to `tenant_admin`/`platform_admin`; (B) self-service — toggle on `ProfileScreen` or `ManagerWarTab` itself; (C) manager-set — branch_manager or sales_manager sets it for their reports.
-2. **Implementation:** once policy is locked, implement the setter in `EditUserDrawer` or `ProfileScreen` per Option A/B/C and extend the users-collection rules to allow the write from the authorized role tier.
-3. **Smoke leg:** verify that toggling the flag on a manager's user doc causes the personal-production sub-panel to appear/disappear on next `ManagerWarTab` render.
-
-**Priority:** **LOW**. No user-visible impact until the field is set. The dormant panel means the feature is invisible, not broken.
-
-Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6fa6b5`).
+~~Banked: I1.1 PR [#254](https://github.com/Kelsean868/agencytrack/pull/254) (`a6fa6b5`).~~
 
 ---
 

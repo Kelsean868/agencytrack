@@ -19,8 +19,6 @@ const DEFAULT_FORM = {
   unitMeetingHeld:      false,
   attendanceCount:      0,
   dashboardReviewDone:  false,
-  personalApi:          0,
-  personalApps:         0,
 };
 
 export default function ManagerWarTab() {
@@ -45,14 +43,12 @@ export default function ManagerWarTab() {
   const savedTimer = useRef(null);
   const doSave     = useRef(null);
 
-  const isProducingManager = Boolean(userProfile?.isProducingManager);
-  const managerName        = userProfile?.name ?? userProfile?.email ?? '';
+  const managerName = userProfile?.name ?? userProfile?.email ?? '';
 
   const managerMeta = {
-    managerRole:        role,
-    branchId:           userProfile?.branchId ?? null,
-    unitId:             userProfile?.unitId   ?? null,
-    isProducingManager,
+    managerRole: role,
+    branchId:    userProfile?.branchId ?? null,
+    unitId:      userProfile?.unitId   ?? null,
   };
 
   // Load (or reset) WAR when week changes
@@ -298,33 +294,6 @@ export default function ManagerWarTab() {
           disabled={isSubmitted}
         />
       </div>
-
-      {/* Personal production — dormant until isProducingManager is set on the user doc */}
-      {isProducingManager && (
-        <div className="bg-card rounded-2xl p-5 space-y-5">
-          <div>
-            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Personal Production
-            </h3>
-            <p className="text-xs text-text-muted mt-1">
-              Tracked separately — never included in unit totals.
-            </p>
-          </div>
-          <NumericField
-            label="Personal API (TTD)"
-            value={form.personalApi}
-            onChange={handleChange('personalApi')}
-            disabled={isSubmitted}
-            step="0.01"
-          />
-          <NumericField
-            label="Personal Applications"
-            value={form.personalApps}
-            onChange={handleChange('personalApps')}
-            disabled={isSubmitted}
-          />
-        </div>
-      )}
 
       {/* JFW — read-only count from joint-call logs (I1.2) */}
       <div className="bg-card-raised rounded-2xl p-4 flex items-center gap-3 min-h-[44px]">

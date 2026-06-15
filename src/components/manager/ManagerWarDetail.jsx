@@ -24,7 +24,7 @@ export default function ManagerWarDetail({ warData, onBack, resolvedStds }) {
     oneOnOnesConducted, namesSourced, interviewsConducted,
     recruitsInFirstWeeks, trainingSessions, trainingTopic,
     unitMeetingHeld, attendanceCount, dashboardReviewDone,
-    jfwCount, personalApi, personalApps,
+    jfwCount,
   } = warData;
 
   const stds = resolvedStds ?? {};
@@ -35,7 +35,6 @@ export default function ManagerWarDetail({ warData, onBack, resolvedStds }) {
         || (viewerRole === 'branch_manager' && viewerProfile?.branchId === branchId));
 
   const roleLabel = getRoleLabel(managerRole);
-  const hasPersonalProduction = personalApi != null && personalApps != null;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
@@ -102,22 +101,6 @@ export default function ManagerWarDetail({ warData, onBack, resolvedStds }) {
         )}
         <ReadOnlyToggle label="Planning & Dashboard Review Done" checked={Boolean(dashboardReviewDone)} expected={stds.dashboardReviewDone} />
       </div>
-
-      {/* Personal production — only when fields are present on the WAR doc */}
-      {hasPersonalProduction && (
-        <div className="bg-card rounded-2xl p-5 space-y-5">
-          <div>
-            <h3 className="text-xs font-semibold text-text-muted uppercase tracking-wider">
-              Personal Production
-            </h3>
-            <p className="text-xs text-text-muted mt-1">
-              Tracked separately — never included in unit totals.
-            </p>
-          </div>
-          <ReadOnlyField label="Personal API (TTD)"    value={personalApi} />
-          <ReadOnlyField label="Personal Applications" value={personalApps} />
-        </div>
-      )}
 
       {/* JFW — stored value from I1.3a CF */}
       <div className="bg-card-raised rounded-2xl p-4 flex items-center gap-3 min-h-[44px]">

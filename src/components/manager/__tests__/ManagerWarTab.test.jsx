@@ -122,10 +122,13 @@ describe('ManagerWarTab — initial render', () => {
     expect(screen.getByRole('checkbox', { name: /dashboard review done/i })).toBeInTheDocument();
   });
 
-  it('does NOT render personal production panel when isProducingManager is false', async () => {
+  it('never renders personal production panel regardless of userProfile.isProducingManager (regression guard)', async () => {
+    // Default profile: no isProducingManager flag.
     renderTab();
     await flushMount();
     expect(screen.queryByText(/personal production/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/personal api/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/personal applications/i)).not.toBeInTheDocument();
   });
 
   it('renders the Submit Report button for a new (non-submitted) report', async () => {
