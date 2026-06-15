@@ -48,6 +48,7 @@ import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
+import MdrtTracker from '../goals/MdrtTracker';
 
 // Sidebar nav items for the agent role. Mirrors the live dashboard tabs
 // 1:1 — no fabricated items (per kickoff Decisions: "mirrors the existing
@@ -691,6 +692,12 @@ export default function AgentDashboard() {
               submissions={allSubmissions}
               confirmedSettlements={settlements}
               agentProfile={userProfile}
+            />
+          </div>
+          <div className="mt-4 border-t border-border pt-4">
+            <MdrtTracker
+              ytdTotals={ytdTotals}
+              loading={loading}
             />
           </div>
         </>
