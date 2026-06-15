@@ -25,11 +25,15 @@ const LS_KEY = (uid) => `agencytrack-onboarding-step-${uid}`;
 export default function OnboardingWizard() {
   const { user, userProfile, tenantId, refreshProfile } = useAuth();
 
-  // Resume: if identity already saved, jump straight to completion
+  // Resume: if any identity field was saved, jump straight to completion
   function deriveInitialStep() {
-    if (userProfile?.agentNumber) return STEP_COMPLETION;
-    const saved = parseInt(localStorage.getItem(LS_KEY(user?.uid)), 10);
-    if (!isNaN(saved) && saved >= STEP_WELCOME && saved < TOTAL_STEPS) return saved;
+    if (userProfile?.agentNumber || userProfile?.dateOfBirth) return STEP_COMPLETION;
+    try {
+      const saved = parseInt(localStorage.getItem(LS_KEY(user?.uid)), 10);
+      if (!isNaN(saved) && saved >= STEP_WELCOME && saved < TOTAL_STEPS) return saved;
+    } catch (e) {
+      console.error('[OnboardingWizard] Failed to read from localStorage:', e);
+    }
     return STEP_WELCOME;
   }
 
@@ -41,7 +45,11 @@ export default function OnboardingWizard() {
   // Persist step pointer for cross-device resume
   useEffect(() => {
     if (user?.uid && step > STEP_WELCOME && step < STEP_COMPLETION) {
-      localStorage.setItem(LS_KEY(user.uid), String(step));
+      try {
+        localStorage.setItem(LS_KEY(user.uid), String(step));
+      } catch (e) {
+        console.error('[OnboardingWizard] Failed to write to localStorage:', e);
+      }
     }
   }, [step, user?.uid]);
 
@@ -85,6 +93,7 @@ export default function OnboardingWizard() {
       await refreshProfile();
     } catch (err) {
       console.error('[OnboardingWizard] markOnboardingComplete:', err);
+      setSaveError('Could not complete setup — please check your connection and try again.');
       // Best-effort: refresh anyway so the user isn't trapped
       await refreshProfile().catch(() => {});
     } finally {

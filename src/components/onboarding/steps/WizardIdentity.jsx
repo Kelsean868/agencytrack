@@ -19,7 +19,7 @@ export default function WizardIdentity({ userProfile, onSave, onSkip, saving }) 
   function handleAgentNumberChange(e) {
     const v = e.target.value.toUpperCase();
     setAgentNumber(v);
-    setFormatWarn(v.length > 0 && !AGENT_NUM_RE.test(v));
+    setFormatWarn(v.length === 6 && !AGENT_NUM_RE.test(v));
   }
 
   function handleSubmit(e) {

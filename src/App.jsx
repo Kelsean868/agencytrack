@@ -106,8 +106,9 @@ function AppRoot() {
   if (role === 'tenant_admin') return <TenantAdminDashboard />;
   if (MANAGER_ROLES.has(role)) return <ManagerDashboard />;
   if (role === 'agent') {
-    // Show onboarding wizard until the agent has completed setup
-    if (userProfile && !userProfile.onboardingComplete) return <OnboardingWizard />;
+    // Guard: userProfile null after loading means provisioning delay — show spinner
+    if (!userProfile) return <ProvisioningScreen />;
+    if (!userProfile.onboardingComplete) return <OnboardingWizard />;
     return <AgentDashboard />;
   }
   // Authenticated but role not resolved — claims propagation delay on first login.
