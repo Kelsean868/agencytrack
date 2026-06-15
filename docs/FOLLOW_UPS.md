@@ -6,7 +6,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
-## Onboarding tenure — manager confirmation surface (banked PR #TBD, 2026-06-15, HIGH — near-term)
+## Onboarding tenure — manager confirmation surface (banked PR #649, 2026-06-15, HIGH — near-term)
 
 Agents self-enter `contractStartDate`, `monthsAtTatil`, and `monthsInIndustry` during onboarding (Slice 1 rule + Slice 2 wizard fields). Both drive award eligibility gates (`rookieAward` ≤ 18 months in industry; `newBsAward` ≤ 18 months at Tatil) and career floors. A wrong self-entry shifts the agent's tenure band.
 
