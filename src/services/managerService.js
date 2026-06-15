@@ -15,6 +15,18 @@ async function getBranchAgentIds(tenantId, branchId) {
     .map((d) => d.id);
 }
 
+// Fetches agent + unit_manager UIDs for a branch (production scope).
+// Used by getAllYTDSubmissions to include UM personal production in branch totals.
+async function getBranchProducerIds(tenantId, branchId) {
+  const snap = await getDocs(query(
+    collection(db, `tenants/${tenantId}/users`),
+    where('branchId', '==', branchId)
+  ));
+  return snap.docs
+    .filter((d) => d.data().role === 'agent' || d.data().role === 'unit_manager')
+    .map((d) => d.id);
+}
+
 export async function getWeeklySubmissions(tenantId, weekStarting) {
   const { claims } = await auth.currentUser.getIdTokenResult();
 
@@ -93,9 +105,9 @@ export async function getAllYTDSubmissions(tenantId) {
   }
 
   if (claims.role === 'branch_manager' && claims.branchId) {
-    const agentIds = await getBranchAgentIds(tenantId, claims.branchId);
-    if (agentIds.length === 0) return [];
-    const branchSet = new Set(agentIds);
+    const producerIds = await getBranchProducerIds(tenantId, claims.branchId);
+    if (producerIds.length === 0) return [];
+    const branchSet = new Set(producerIds);
     const q = query(
       collection(db, `tenants/${tenantId}/submissions`),
       where('weekStarting', '>=', `${year}-01-01`),
