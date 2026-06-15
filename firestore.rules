@@ -175,8 +175,8 @@ service cloud.firestore {
                   'name', 'phone', 'bio',
                   'unitId', 'unitName',
                   'agentNumber', 'contractStartDate', 'dateOfBirth',
-                  // onboarding tenure — self-entered; manager corrects here
-                  'contractDate', 'monthsAtTatil', 'monthsInIndustry',
+                  // onboarding tenure — self-entered; manager corrects here (contractStartDate already in list above)
+                  'monthsAtTatil', 'monthsInIndustry',
                   'canConfirmSettlements',
                   // manager-editable license fields; no CF/claim mirror
                   'licenseStatus', 'cbttExamPassedDate', 'cbttExtensionGranted', 'licenseProfile',
@@ -202,7 +202,7 @@ service cloud.firestore {
               && request.resource.data.diff(resource.data).affectedKeys()
                    .hasOnly(['appearOnLeaderboard'])
           )
-          // Onboarding write-once: owner sets agentNumber / dateOfBirth / contractDate /
+          // Onboarding write-once: owner sets agentNumber / dateOfBirth / contractStartDate /
           // monthsAtTatil / monthsInIndustry (write-once; pilot relaxation — manager corrects
           // via canManage arm) and onboardingComplete.
           // Whitelist prevents role / tenantId laundering in the same update.
@@ -210,7 +210,7 @@ service cloud.firestore {
               && request.auth.uid == userId
               && request.resource.data.diff(resource.data).affectedKeys()
                    .hasOnly(['agentNumber', 'dateOfBirth', 'onboardingComplete',
-                             'contractDate', 'monthsAtTatil', 'monthsInIndustry'])
+                             'contractStartDate', 'monthsAtTatil', 'monthsInIndustry'])
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['agentNumber'])
                   || (resource.data.get('agentNumber', null) == null
                       && request.resource.data.agentNumber is string
@@ -221,16 +221,18 @@ service cloud.firestore {
                       && request.resource.data.dateOfBirth != ''))
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['onboardingComplete'])
                   || request.resource.data.onboardingComplete is bool)
-              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['contractDate'])
-                  || (resource.data.get('contractDate', null) == null
-                      && request.resource.data.contractDate is string
-                      && request.resource.data.contractDate != ''))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['contractStartDate'])
+                  || (resource.data.get('contractStartDate', '') == ''
+                      && request.resource.data.contractStartDate is string
+                      && request.resource.data.contractStartDate != ''))
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['monthsAtTatil'])
                   || (resource.data.get('monthsAtTatil', null) == null
-                      && request.resource.data.monthsAtTatil is number))
+                      && request.resource.data.monthsAtTatil is int
+                      && request.resource.data.monthsAtTatil >= 0))
               && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['monthsInIndustry'])
                   || (resource.data.get('monthsInIndustry', null) == null
-                      && request.resource.data.monthsInIndustry is number))
+                      && request.resource.data.monthsInIndustry is int
+                      && request.resource.data.monthsInIndustry >= 0))
           );
         allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
       }

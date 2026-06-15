@@ -7,7 +7,7 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (27 cases):
+ * Test matrix (29 cases):
  *   ── Original identity fields (agentNumber / dateOfBirth / onboardingComplete) ──
  *   1.  Owner sets agentNumber (field absent)          → ALLOW
  *   2.  Owner cannot change agentNumber once set       → DENY
@@ -25,19 +25,21 @@
  *  14.  Owner sets dateOfBirth to empty string         → DENY  (Gemini #3)
  *  15.  Owner sets onboardingComplete to non-bool      → DENY  (Gemini #2)
  *
- *   ── Tenure fields (contractDate / monthsAtTatil / monthsInIndustry) ──
- *  16.  Owner sets contractDate (field absent)         → ALLOW
- *  17.  Owner cannot change contractDate once set      → DENY
+ *   ── Tenure fields (contractStartDate / monthsAtTatil / monthsInIndustry) ──
+ *  16.  Owner sets contractStartDate (field == '')     → ALLOW
+ *  17.  Owner cannot change contractStartDate once set → DENY
  *  18.  Owner sets monthsAtTatil (field absent)        → ALLOW
  *  19.  Owner cannot change monthsAtTatil once set     → DENY
  *  20.  Owner sets monthsInIndustry (field absent)     → ALLOW
  *  21.  Owner cannot change monthsInIndustry once set  → DENY
  *  22.  Owner sets all three tenure fields together    → ALLOW
- *  23.  canManage (BM) corrects contractDate           → ALLOW
+ *  23.  canManage (BM) corrects contractStartDate      → ALLOW
  *  24.  canManage (BM) corrects monthsAtTatil + monthsInIndustry → ALLOW
- *  25.  Owner sets contractDate to empty string        → DENY
+ *  25.  Owner sets contractStartDate to empty string   → DENY
  *  26.  Owner sets monthsAtTatil to non-number         → DENY
  *  27.  Owner sets monthsInIndustry to non-number      → DENY
+ *  28.  Owner sets monthsAtTatil to negative           → DENY  (>= 0)
+ *  29.  Owner sets monthsAtTatil to float (14.5)       → DENY  (is int)
  *
  * Note: hasOnly enforcement relies on diff().affectedKeys().
  * Deny tests write values that DIFFER from the seeded doc so the key
@@ -75,10 +77,10 @@ async function seedDocs(testEnv) {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
 
-    // agent-a: no identity fields set (blank slate for write-once tests)
+    // agent-a: CF-stamped blank slate (contractStartDate: '' mimics doCreateUser output)
     await setDoc(userRef(db, AGENT_A), {
       uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
-      name: 'Agent A', active: true,
+      name: 'Agent A', active: true, contractStartDate: '',
     });
 
     // agent-b: agentNumber + dateOfBirth already set (for immutability tests)
@@ -92,7 +94,7 @@ async function seedDocs(testEnv) {
     await setDoc(userRef(db, AGENT_C), {
       uid: AGENT_C, role: 'agent', tenantId: TENANT_ID,
       name: 'Agent C', active: true,
-      contractDate: '2024-03-01', monthsAtTatil: 14, monthsInIndustry: 14,
+      contractStartDate: '2024-03-01', monthsAtTatil: 14, monthsInIndustry: 14,
     });
 
     // bm1: branch manager for canManage tests
@@ -260,26 +262,26 @@ async function main() {
     await assertFails(updateDoc(userRef(db, AGENT_A), { onboardingComplete: 'yes' }));
   });
 
-  // ── Tenure fields (contractDate / monthsAtTatil / monthsInIndustry) ──────────
+  // ── Tenure fields (contractStartDate / monthsAtTatil / monthsInIndustry) ──────
   console.log('\nTenure fields — write-once:');
 
-  // Reset agent-a to blank slate for tenure field tests
+  // Reset agent-a: contractStartDate: '' mimics CF-stamped state (field exists but empty)
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(userRef(ctx.firestore(), AGENT_A), {
       uid: AGENT_A, role: 'agent', tenantId: TENANT_ID,
-      name: 'Agent A', active: true,
+      name: 'Agent A', active: true, contractStartDate: '',
     });
   });
 
-  await t('16. Owner sets contractDate (field absent) → ALLOW', async () => {
+  await t('16. Owner sets contractStartDate (field == \'\') → ALLOW', async () => {
     const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
-    await assertSucceeds(updateDoc(userRef(db, AGENT_A), { contractDate: '2024-01-15' }));
+    await assertSucceeds(updateDoc(userRef(db, AGENT_A), { contractStartDate: '2024-01-15' }));
   });
 
-  await t('17. Owner cannot change contractDate once set → DENY', async () => {
-    // agent-c has contractDate: '2024-03-01' from seed; write a different value
+  await t('17. Owner cannot change contractStartDate once set → DENY', async () => {
+    // agent-c has contractStartDate: '2024-03-01' from seed; write a different value
     const db = testEnv.authenticatedContext(AGENT_C, authToken('agent')).firestore();
-    await assertFails(updateDoc(userRef(db, AGENT_C), { contractDate: '2023-01-01' }));
+    await assertFails(updateDoc(userRef(db, AGENT_C), { contractStartDate: '2023-01-01' }));
   });
 
   // Reset agent-a blank for monthsAtTatil test
@@ -331,17 +333,17 @@ async function main() {
   await t('22. Owner sets all three tenure fields in one write → ALLOW', async () => {
     const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
     await assertSucceeds(updateDoc(userRef(db, AGENT_A), {
-      contractDate: '2024-06-01', monthsAtTatil: 12, monthsInIndustry: 36,
+      contractStartDate: '2024-06-01', monthsAtTatil: 12, monthsInIndustry: 36,
     }));
   });
 
   console.log('\ncanManage correction arm — tenure fields:');
 
-  await t('23. canManage (BM) corrects contractDate → ALLOW', async () => {
+  await t('23. canManage (BM) corrects contractStartDate → ALLOW', async () => {
     const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
-    // agent-c has contractDate set; BM can override via canManage arm
+    // agent-c has contractStartDate set; BM can override via canManage arm
     await assertSucceeds(updateDoc(userRef(db, AGENT_C), {
-      contractDate: '2024-04-01', updatedAt: new Date().toISOString(),
+      contractStartDate: '2024-04-01', updatedAt: new Date().toISOString(),
     }));
   });
 
@@ -362,9 +364,9 @@ async function main() {
     });
   });
 
-  await t('25. Owner sets contractDate to empty string → DENY', async () => {
+  await t('25. Owner sets contractStartDate to empty string → DENY', async () => {
     const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
-    await assertFails(updateDoc(userRef(db, AGENT_A), { contractDate: '' }));
+    await assertFails(updateDoc(userRef(db, AGENT_A), { contractStartDate: '' }));
   });
 
   await t('26. Owner sets monthsAtTatil to non-number (string) → DENY', async () => {
@@ -375,6 +377,16 @@ async function main() {
   await t('27. Owner sets monthsInIndustry to non-number (string) → DENY', async () => {
     const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
     await assertFails(updateDoc(userRef(db, AGENT_A), { monthsInIndustry: '24' }));
+  });
+
+  await t('28. Owner sets monthsAtTatil to negative (-1) → DENY', async () => {
+    const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
+    await assertFails(updateDoc(userRef(db, AGENT_A), { monthsAtTatil: -1 }));
+  });
+
+  await t('29. Owner sets monthsAtTatil to float (14.5) → DENY (is int)', async () => {
+    const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
+    await assertFails(updateDoc(userRef(db, AGENT_A), { monthsAtTatil: 14.5 }));
   });
 
   // ── Summary ──────────────────────────────────────────────────────────────────

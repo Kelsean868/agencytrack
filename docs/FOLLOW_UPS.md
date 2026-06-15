@@ -6,13 +6,11 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
-## Onboarding tenure — manager confirmation/reconciliation surface (banked PR #TBD, 2026-06-15, HIGH — near-term)
+## Onboarding tenure — manager confirmation surface (banked PR #TBD, 2026-06-15, HIGH — near-term)
 
-Agents self-enter `contractDate`, `monthsAtTatil`, and `monthsInIndustry` during onboarding (Slice 1 rule + Slice 2 wizard fields). Both drive award eligibility gates (`rookieAward` ≤ 18 months in industry; `newBsAward` ≤ 18 months at Tatil) and career floors. A wrong self-entry shifts the agent's tenure band.
+Agents self-enter `contractStartDate`, `monthsAtTatil`, and `monthsInIndustry` during onboarding (Slice 1 rule + Slice 2 wizard fields). Both drive award eligibility gates (`rookieAward` ≤ 18 months in industry; `newBsAward` ≤ 18 months at Tatil) and career floors. A wrong self-entry shifts the agent's tenure band.
 
-**Required surface:** Managers see the agent's self-entered `contractDate` / `monthsAtTatil` / `monthsInIndustry` and can confirm or correct each value. The manager arm already allows writes to these fields (added in Slice 1). The UI is the outstanding piece.
-
-**Reconciliation also needed:** `contractDate` (agent self-entry) vs `contractStartDate` (CF-provisioned at account creation). The confirm surface should resolve which value is authoritative and keep them in sync.
+**Required surface:** Managers see the agent's self-entered `contractStartDate` / `monthsAtTatil` / `monthsInIndustry` and can confirm or correct each value. The manager arm already allows writes to these fields (added in Slice 1). The UI is the outstanding piece.
 
 **Why near-term, not distant:** These fields gate award eligibility and career floors. If a pilot agent self-enters an incorrect contract date during onboarding, the error propagates to every award projection and career milestone until a manager corrects it. Prioritize before the pilot cohort reaches their first award evaluation period.
 
