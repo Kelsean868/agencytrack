@@ -275,6 +275,23 @@ describe('AwardsReachPanel — role-agnostic', () => {
     expect(screen.getByTestId('awards-reach-panel')).toBeInTheDocument();
   });
 
+  it('veteran (120 months) never surfaces rookie_of_year or new_bs_award in nearest', () => {
+    const veteranProfile = { monthsInIndustry: 120, monthsAtTatil: 120, isBdoDso: false };
+    const { container } = render(
+      <AwardsReachPanel
+        submissions={[]}
+        confirmedSettlements={[SETTLEMENT_JUNE]}
+        agentProfile={veteranProfile}
+        currentDate={FIXED_DATE}
+      />,
+    );
+    const cardIds = [...container.querySelectorAll('[data-award-id]')].map((el) =>
+      el.getAttribute('data-award-id'),
+    );
+    expect(cardIds).not.toContain('rookie_of_year');
+    expect(cardIds).not.toContain('new_bs_award');
+  });
+
   it('computes nearest award identically for manager and agent shapes with same production', () => {
     const agentResult = render(
       <AwardsReachPanel
