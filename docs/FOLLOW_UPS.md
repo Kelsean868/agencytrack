@@ -20,7 +20,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## ~~Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel + MdrtTracker absent from GoalsPanel~~ (CLOSED — **PR #TBD, `{SHA}`**, 2026-06-15)
+## ~~Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel + MdrtTracker absent from GoalsPanel~~ (CLOSED — **PR #645, `53a485e`**, 2026-06-15)
 
 ~~**Phase 1.5 recon finding:** `GoalsPanel.jsx` (manager Goals tab, `src/components/manager/GoalsPanel.jsx`) renders `CommissionPlayground` (L567) and `GapAnalysisPanel` (L1081) — so a producing manager CAN set their personal commitment and view their gap analysis. However, `DerivedIncomePanel`, `AwardsReachPanel`, and `MdrtTracker` are **not surfaced** in `GoalsPanel`. A producing manager cannot see their income estimate, award reach, or MDRT/COT/TOT progress from the manager dashboard today.~~
 
@@ -42,7 +42,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## CommissionPlayground `submissions={[]}` in manager GoalsPanel — pure rate-calculator vs live data (banked PR #TBD, 2026-06-15, LOW)
+## CommissionPlayground `submissions={[]}` in manager GoalsPanel — pure rate-calculator vs live data (banked PR #645, 2026-06-15, LOW)
 
 `GoalsPanel.jsx` passes `submissions={[]}` (empty array) to `CommissionPlayground` alongside `isManagerSelf={true}`. The component also receives an `isProducing` flag. The empty-array pass appears intentional (the `isManagerSelf` prop suggests the playground is treated as a pure blended-rate calculator for managers, not a live-data explorer), but it was never explicitly confirmed in the brief.
 
