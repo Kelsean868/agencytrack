@@ -7,7 +7,7 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (29 cases):
+ * Test matrix (32 cases):
  *   ── Original identity fields (agentNumber / dateOfBirth / onboardingComplete) ──
  *   1.  Owner sets agentNumber (field absent)          → ALLOW
  *   2.  Owner cannot change agentNumber once set       → DENY
@@ -40,6 +40,9 @@
  *  27.  Owner sets monthsInIndustry to non-number      → DENY
  *  28.  Owner sets monthsAtTatil to negative           → DENY  (>= 0)
  *  29.  Owner sets monthsAtTatil to float (14.5)       → DENY  (is int)
+ *  30.  canManage (BM) corrects monthsAtTatil alone    → ALLOW (correction path)
+ *  31.  Owner sets monthsInIndustry to negative (-1)   → DENY  (>= 0)
+ *  32.  Owner sets monthsInIndustry to float (14.5)    → DENY  (is int)
  *
  * Note: hasOnly enforcement relies on diff().affectedKeys().
  * Deny tests write values that DIFFER from the seeded doc so the key
@@ -354,6 +357,14 @@ async function main() {
     }));
   });
 
+  await t('30. canManage (BM) corrects monthsAtTatil alone after owner set → ALLOW', async () => {
+    // agent-c now has monthsAtTatil: 15 (set by test 24); BM corrects just this field
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
+    await assertSucceeds(updateDoc(userRef(db, AGENT_C), {
+      monthsAtTatil: 16, updatedAt: new Date().toISOString(),
+    }));
+  });
+
   console.log('\nType + empty-string guards — tenure fields:');
 
   // Reset agent-a blank for type-guard tests
@@ -387,6 +398,16 @@ async function main() {
   await t('29. Owner sets monthsAtTatil to float (14.5) → DENY (is int)', async () => {
     const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
     await assertFails(updateDoc(userRef(db, AGENT_A), { monthsAtTatil: 14.5 }));
+  });
+
+  await t('31. Owner sets monthsInIndustry to negative (-1) → DENY', async () => {
+    const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
+    await assertFails(updateDoc(userRef(db, AGENT_A), { monthsInIndustry: -1 }));
+  });
+
+  await t('32. Owner sets monthsInIndustry to float (14.5) → DENY (is int)', async () => {
+    const db = testEnv.authenticatedContext(AGENT_A, authToken('agent')).firestore();
+    await assertFails(updateDoc(userRef(db, AGENT_A), { monthsInIndustry: 14.5 }));
   });
 
   // ── Summary ──────────────────────────────────────────────────────────────────
