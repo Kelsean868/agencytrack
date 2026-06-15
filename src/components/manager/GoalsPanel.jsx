@@ -6,7 +6,12 @@ import TabPills from '../ui/TabPills';
 import Avatar from '../ui/Avatar';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import CommissionPlayground from '../goals/CommissionPlayground';
+import DerivedIncomePanel from '../goals/DerivedIncomePanel';
+import AwardsReachPanel from '../goals/AwardsReachPanel';
+import MdrtTracker from '../goals/MdrtTracker';
 import { getTenantUsers } from '../../services/managerService';
+import { getAgentSubmissions } from '../../services/submissionService';
+import { getSettlements } from '../../services/settlementService';
 import {
   getGoals, setGoals, getCompanyMinimums,
   getUnitGoals, setUnitGoals,
@@ -16,6 +21,7 @@ import {
 } from '../../services/goalsService';
 import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, formatDateDisplay, getUnitDisplayName } from '../../utils/formatters';
+import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 import {
   resolveAnnualAPIFloor,
   FLAT_ANNUAL_API_FALLBACK,
@@ -39,7 +45,6 @@ function agentAnnualFloor(agent, mins) {
     fallback: FLAT_ANNUAL_API_FALLBACK,
   });
 }
-const ZERO_YTD = { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 };
 const STATUS_ORDER = { unset: 0, below: 1, above: 2 };
 
 function emptyGoals() {
@@ -551,8 +556,8 @@ function SalesManagerGoalsTab({ userProfile }) {
   );
 }
 
-// ── Self sub-tab — manager's personal commitment + Commission Playground ────
-function SelfTab() {
+// ── Self sub-tab — manager's personal commitment + portfolio panels (UM/BM) ─
+function SelfTab({ allSubmissions, confirmedSettlements, ytdTotals, ownDataLoading, hierarchyLoading, hierarchy, isProducing, commissionRate }) {
   const { user, userProfile, tenantId } = useAuth();
   const [managerGoals, setManagerGoals] = useState(null);
   const displayName = userProfile?.name ?? userProfile?.email ?? 'Manager';
@@ -598,6 +603,32 @@ function SelfTab() {
           </p>
         )}
       </div>
+
+      {isProducing && (
+        <>
+          <div className="border-t border-border pt-4">
+            <DerivedIncomePanel
+              hierarchy={hierarchy}
+              ytdTotals={ytdTotals}
+              commissionRate={commissionRate}
+              loading={hierarchyLoading || ownDataLoading}
+            />
+          </div>
+          <div className="border-t border-border pt-4">
+            <AwardsReachPanel
+              submissions={allSubmissions}
+              confirmedSettlements={confirmedSettlements}
+              agentProfile={userProfile}
+            />
+          </div>
+          <div className="border-t border-border pt-4">
+            <MdrtTracker
+              ytdTotals={ytdTotals}
+              loading={ownDataLoading}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -1033,6 +1064,9 @@ export default function GoalsPanel() {
   const [hierarchy, setHierarchy] = useState(null);
   const [hierarchyLoading, setHierarchyLoading] = useState(true);
   const [hierarchyError, setHierarchyError] = useState(null);
+  const [allSubmissions, setAllSubmissions] = useState([]);
+  const [settlements, setSettlements] = useState([]);
+  const [ownDataLoading, setOwnDataLoading] = useState(false);
 
   // sales_manager joins the manager-role list per the org-hierarchy memory.
   // Bundled fix for a pre-existing gap surfaced during M4 discovery.
@@ -1046,6 +1080,8 @@ export default function GoalsPanel() {
     role === 'sales_manager' ||
     role === 'tenant_admin' ||
     role === 'platform_admin';
+  const isProducing = role === 'unit_manager' || role === 'branch_manager';
+  const thisYear = new Date().getFullYear();
 
   useEffect(() => {
     getTenantUsers(tenantId).then(setAllUsers).catch(console.error);
@@ -1068,6 +1104,33 @@ export default function GoalsPanel() {
       .finally(() => setHierarchyLoading(false));
   }, [user?.uid, tenantId, userProfile?.unitId]);
 
+  useEffect(() => {
+    if (!isProducing || !user?.uid || !tenantId) return;
+    setOwnDataLoading(true);
+    Promise.all([
+      getAgentSubmissions(tenantId, user.uid).catch(() => []),
+      getSettlements(tenantId, user.uid, thisYear).catch(() => []),
+    ]).then(([subs, setts]) => {
+      setAllSubmissions(subs);
+      setSettlements(setts);
+    }).catch(console.error).finally(() => setOwnDataLoading(false));
+  }, [isProducing, user?.uid, tenantId, thisYear]);
+
+  const ytdTotals = useMemo(() => {
+    const yearSubs = allSubmissions.filter(
+      (s) => s.status === 'submitted' && s.weekStarting?.startsWith(String(thisYear))
+    );
+    return yearSubs.reduce((acc, s) => {
+      const f = extractFields(s);
+      acc.api          += extractTotalProductionCredit(s);
+      acc.apps         += parseFloat(f.applicationsSold) || 0;
+      acc.ffiConducted += parseFloat(f.ffiConducted)     || 0;
+      acc.ciConducted  += parseFloat(f.ciConducted)      || 0;
+      acc.dials        += parseFloat(f.totalTelAttempts)  || 0;
+      return acc;
+    }, { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 });
+  }, [allSubmissions, thisYear]);
+
   const tabs = useMemo(() => [
     { id: 'self',   label: 'Self'   },
     { id: 'agents', label: 'Agent'  },
@@ -1080,7 +1143,7 @@ export default function GoalsPanel() {
     <div className="flex flex-col gap-4">
       <GapAnalysisPanel
         hierarchy={hierarchy}
-        ytdTotals={ZERO_YTD}
+        ytdTotals={ytdTotals}
         loading={hierarchyLoading}
         error={hierarchyError}
         title="Goal Cascade"
@@ -1088,7 +1151,18 @@ export default function GoalsPanel() {
 
       <TabPills tabs={tabs} activeId={subTab} onChange={setSubTab} />
 
-      {subTab === 'self'   && <SelfTab />}
+      {subTab === 'self'   && (
+        <SelfTab
+          allSubmissions={allSubmissions}
+          confirmedSettlements={settlements}
+          ytdTotals={ytdTotals}
+          ownDataLoading={ownDataLoading}
+          hierarchyLoading={hierarchyLoading}
+          hierarchy={hierarchy}
+          isProducing={isProducing}
+          commissionRate={parseFloat(userProfile?.commissionRate) || null}
+        />
+      )}
       {subTab === 'agents' && <AgentGoalsTab />}
       {subTab === 'unit'   && canSeeUnit     && <UnitGoalsTab          role={role} userProfile={userProfile} allUsers={allUsers} />}
       {subTab === 'branch' && canSeeBranch   && <BranchGoalsTab        userProfile={userProfile} />}
