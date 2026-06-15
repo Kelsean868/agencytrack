@@ -6,6 +6,18 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Onboarding identity — CF-based agentNumber uniqueness check (banked PR #646, 2026-06-15, MEDIUM)
+
+The v1 onboarding write-once rule lets an agent self-enter `agentNumber` once (when null/absent), but does NOT verify uniqueness across the tenant roster. Collisions are reconciled by manager review.
+
+**Upgrade path:** A callable Cloud Function that accepts `{tenantId, agentNumber}` and returns `{unique: bool}` after a tenant-scoped Admin SDK query (`where agentNumber == candidate`). Surface as a soft warning in the wizard identity step — not a hard block, consistent with the v1 "soft-validation" design decision. CF uses Admin SDK and bypasses rules; no rules change needed for the check itself.
+
+**Why deferred:** Real-time uniqueness requires either a cross-roster read (permission-blocked for an agent reading peers' docs under current rules) or a callable CF. CF approach is clean but expands the gated surface. Tatil agent numbers are authoritative from the company system — collisions are rare; manager correction is the safe fallback for the pilot.
+
+**Severity:** MEDIUM (collisions violate a data integrity assumption; low probability in the pilot cohort; manager correction is reliable).
+
+---
+
 ## Plan-lens UM compliance — do UMs commit weekly plans? (banked PR #640, 2026-06-15, LOW)
 
 **CompliancePanel plan lens:** The current plan-lens exception list ("Haven't committed a plan") is agents-only. When UMs become mandatory filers at `UM_MANDATORY_FILING_CUTOFF = '2026-06-14'`, do they also commit weekly plans? If yes, the plan-lens roster and exception list must include UMs for post-cutoff weeks (mirroring the filing-lens cutoff guard). If no, the plan lens stays agents-only regardless of the selected week.

@@ -174,11 +174,11 @@ service cloud.firestore {
                 .hasOnly([
                   'name', 'phone', 'bio',
                   'unitId', 'unitName',
-                  'agentNumber', 'contractStartDate',
+                  'agentNumber', 'contractStartDate', 'dateOfBirth',
                   'canConfirmSettlements',
                   // manager-editable license fields; no CF/claim mirror
                   'licenseStatus', 'cbttExamPassedDate', 'cbttExtensionGranted', 'licenseProfile',
-                  'updatedAt', 'updatedBy'
+                  'updatedAt', 'updatedBy', 'onboardingComplete'
                 ])
           ) || (isSignedIn()
             && request.auth.uid == userId
@@ -199,6 +199,20 @@ service cloud.firestore {
               && getRole() == 'branch_manager'
               && request.resource.data.diff(resource.data).affectedKeys()
                    .hasOnly(['appearOnLeaderboard'])
+          )
+          // Onboarding write-once: owner sets agentNumber / dateOfBirth (write-once; pilot
+          // relaxation — manager corrects via canManage arm) and onboardingComplete.
+          // Whitelist prevents role / tenantId laundering in the same update.
+          || (isSignedIn()
+              && request.auth.uid == userId
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['agentNumber', 'dateOfBirth', 'onboardingComplete'])
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['agentNumber'])
+                  || (resource.data.get('agentNumber', null) == null
+                      && request.resource.data.agentNumber is string))
+              && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['dateOfBirth'])
+                  || (resource.data.get('dateOfBirth', null) == null
+                      && request.resource.data.dateOfBirth is string))
           );
         allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
       }
