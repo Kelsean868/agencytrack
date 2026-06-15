@@ -6,7 +6,7 @@ import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import { parseDateOnlyTT } from '../../utils/dateInputs';
 import { cbttComplianceFlag } from '../../utils/cbttCompliance';
-import { classifyWeek, onTimeStreak } from '../../utils/complianceDerive';
+import { classifyWeek, onTimeStreak, UM_MANDATORY_FILING_CUTOFF } from '../../utils/complianceDerive';
 import { sendComplianceNudge, getNudgeRecords, NUDGE_TYPE, PLAN_NUDGE_TYPE } from '../../services/nudgeService';
 import { getWeeklyPlan } from '../../services/weeklyPlanService';
 import { unlockSubmission } from '../../services/unlockService';
@@ -111,7 +111,10 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       .then((results) => {
         const userList = results[results.length - 1];
         const subsByWeek = results.slice(0, weeks.length);
-        setUsers(userList.filter((u) => u.role === 'agent'));
+        setUsers(userList.filter((u) =>
+          u.role === 'agent' ||
+          (u.role === 'unit_manager' && selectedWeek >= UM_MANDATORY_FILING_CUTOFF)
+        ));
         setWeekData(weeks.map((w, i) => ({ weekStart: w, subs: subsByWeek[i] })));
         setLoaded(true);
       })
@@ -138,15 +141,20 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
     const weeks = weekData.map((d) => d.weekStart);
     return users
       .map((u) => {
-        const perWeek = weeks.map((w) => ({ weekStart: w, submission: byAgentWeek[u.id]?.[w] ?? null }));
+        const allPerWeek = weeks.map((w) => ({ weekStart: w, submission: byAgentWeek[u.id]?.[w] ?? null }));
+        // UM streak window begins at the cutoff — pre-cutoff weeks are not misses.
+        const perWeek = u.role === 'unit_manager'
+          ? allPerWeek.filter((e) => e.weekStart >= UM_MANDATORY_FILING_CUTOFF)
+          : allPerWeek;
         const current = byAgentWeek[u.id]?.[selectedWeek] ?? null;
         const status  = classifyWeek(current, selectedWeek);
-        const lastFiled = perWeek.find((e) => e.submission?.status === 'submitted')?.weekStart ?? null;
+        const lastFiled = allPerWeek.find((e) => e.submission?.status === 'submitted')?.weekStart ?? null;
         return {
           id:        u.id,
           name:      u.name ?? u.email ?? u.id,
           unit:      u.unitName ?? '',
           unitId:    u.unitId ?? null,
+          role:      u.role,
           status,
           submittedAt: current?.submittedAt ?? null,
           submission: current,
@@ -171,11 +179,14 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
 
   const exceptions = useMemo(() => roster.filter((r) => r.status === 'not-in'), [roster]);
 
+  // Plan lens stays agents-only regardless of UM cutoff (filing lens only — Phase 3).
+  const agentRoster = useMemo(() => roster.filter((r) => r.role === 'agent'), [roster]);
+
   // ── Plan adoption (S3) — locked deterministic-ID get-fan-out, no list/index ────
   // For each roster agent, GET weeklyPlans/{uid}_{weekStart}; absent (or a denied
   // out-of-scope GET) = not committed. The #471 uplineCanReadPlan rule authorizes
   // UM/BM/SM/TA reads and returns clean not-found for an in-scope agent with no plan.
-  const rosterUids = useMemo(() => roster.map((r) => r.id), [roster]);
+  const rosterUids = useMemo(() => agentRoster.map((r) => r.id), [agentRoster]);
   const rosterKey  = rosterUids.join(',');
 
   useEffect(() => {
@@ -193,16 +204,16 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   }, [rosterKey, selectedWeek, tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const planCounts = useMemo(() => {
-    const total = roster.length;
-    const committed = roster.reduce((acc, r) => acc + (plans[r.id] ? 1 : 0), 0);
+    const total = agentRoster.length;
+    const committed = agentRoster.reduce((acc, r) => acc + (plans[r.id] ? 1 : 0), 0);
     return { committed, notCommitted: total - committed, total };
-  }, [roster, plans]);
+  }, [agentRoster, plans]);
 
   // Gated on plansLoaded so we never flash "everyone not committed" (or fan out
   // cooldown reads over the whole roster) before the plan GETs resolve.
   const planExceptions = useMemo(
-    () => (plansLoaded ? roster.filter((r) => !plans[r.id]) : []),
-    [roster, plans, plansLoaded],
+    () => (plansLoaded ? agentRoster.filter((r) => !plans[r.id]) : []),
+    [agentRoster, plans, plansLoaded],
   );
 
   // ── Active lens selection ─────────────────────────────────────────────────────

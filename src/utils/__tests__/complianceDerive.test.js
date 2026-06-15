@@ -1,10 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import {
+  UM_MANDATORY_FILING_CUTOFF,
   filingDeadline,
   isOnTime,
   classifyWeek,
   onTimeStreak,
 } from '../complianceDerive';
+
+describe('UM_MANDATORY_FILING_CUTOFF', () => {
+  it('is pinned to the arc launch Sunday 2026-06-14', () => {
+    expect(UM_MANDATORY_FILING_CUTOFF).toBe('2026-06-14');
+  });
+});
 
 // weekStart is the covered week's Sunday. Deadline = following Sun 23:59:59 AST
 // = (weekStart + 8d) 03:59:59 UTC. For weekStart '2026-11-22' (a Sunday), the

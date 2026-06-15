@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 //
 // Slice 2.1a — production scope split in useBranchOverview.
+// Phase 3 — UM mandatory filing (cutoff-conditional compliance).
 // Asserts:
 //   1. UM personal submission is included in teamYTDAPI (production scope).
-//   2. UM is NOT counted in inScopeAgentCount (compliance denominator stays agents-only).
-//   3. kpiData.compliance uses agents-only numerator and denominator.
-//   4. BM sees all branch UMs in teamYTDAPI, agents-only compliance denom.
+//   2. inScopeAgentCount stays agents-only always (used for goal fallback, never gains UMs).
+//   3. kpiData.compliance is agents-only for pre-cutoff weeks (historical preserved).
+//   4. kpiData.compliance includes UMs for weeks >= UM_MANDATORY_FILING_CUTOFF.
+//   5. BM sees all branch UMs in teamYTDAPI, agents-only compliance denom.
 
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -38,10 +40,15 @@ vi.mock('../../components/gamification/BadgeGrid', () => ({
 import { getAllYTDSubmissions, getTenantUsers } from '../../services/managerService';
 import { useBranchOverview } from '../useBranchOverview';
 
-const WEEK = '2026-06-08';
+const WEEK      = '2026-06-08'; // pre-cutoff (< 2026-06-14)
+const WEEK_POST = '2026-06-14'; // cutoff boundary — UMs enter compliance scope (>= inclusive)
 
 function mkSub(agentId, api) {
   return { agentId, weekStarting: WEEK, _api: api };
+}
+
+function mkSubW(agentId, api, week) {
+  return { agentId, weekStarting: week, _api: api };
 }
 
 describe('useBranchOverview — production scope split (Slice 2.1a)', () => {
@@ -90,7 +97,8 @@ describe('useBranchOverview — production scope split (Slice 2.1a)', () => {
       expect(result.current.inScopeAgentCount).toBe(2); // a1 + a2 only
     });
 
-    it('kpiData.compliance uses agents-only numerator and denominator', async () => {
+    it('pre-cutoff week: kpiData.compliance uses agents-only numerator and denominator (historical preserved)', async () => {
+      // WEEK = '2026-06-08' < cutoff '2026-06-14'
       // UM submitted + a1 submitted; a2 did NOT submit
       getAllYTDSubmissions.mockResolvedValue([
         mkSub(UM_ID, 500),
@@ -102,7 +110,7 @@ describe('useBranchOverview — production scope split (Slice 2.1a)', () => {
       );
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      // 1 agent submitted (a1) out of 2 agents (a1 + a2) → 50%
+      // 1 agent filed (a1) out of 2 agents (a1 + a2) → 50% — UM excluded despite filing
       expect(result.current.kpiData.compliance).toEqual([50]);
     });
   });
@@ -135,8 +143,8 @@ describe('useBranchOverview — production scope split (Slice 2.1a)', () => {
       expect(result.current.teamYTDAPI).toBe(1000); // um1+um2+a1+a2
     });
 
-    it('uses agents-only count for compliance denominator', async () => {
-      // Only um1 + a1 submitted; a2 did not
+    it('pre-cutoff week: uses agents-only count for compliance denominator (historical preserved)', async () => {
+      // WEEK = '2026-06-08' < cutoff — Only um1 + a1 submitted; a2 did not
       getAllYTDSubmissions.mockResolvedValue([
         mkSub('um1', 400),
         mkSub('a1',  200),
@@ -147,8 +155,8 @@ describe('useBranchOverview — production scope split (Slice 2.1a)', () => {
       );
       await waitFor(() => expect(result.current.loading).toBe(false));
 
-      expect(result.current.inScopeAgentCount).toBe(2); // a1 + a2
-      expect(result.current.kpiData.compliance).toEqual([50]); // 1/2 agents submitted
+      expect(result.current.inScopeAgentCount).toBe(2); // a1 + a2 — agents only
+      expect(result.current.kpiData.compliance).toEqual([50]); // 1/2 agents filed; UM excluded
     });
   });
 
@@ -191,6 +199,71 @@ describe('useBranchOverview — production scope split (Slice 2.1a)', () => {
       await waitFor(() => expect(result.current.loading).toBe(false));
 
       expect(result.current.inScopeAgentCount).toBe(2); // a1 + a2 only — BM excluded
+    });
+  });
+
+  // ── Phase 3 — UM mandatory filing (cutoff-conditional) ──────────────────────
+  describe('Phase 3 — UM mandatory filing (cutoff-conditional compliance)', () => {
+    const UM_ID = 'um-1';
+    const unitId = UM_ID;
+    const userProfile = { unitId };
+
+    // Minimal fixture: UM + 2 agents in one unit (no cross-unit noise).
+    const users = [
+      { id: UM_ID, role: 'unit_manager', unitId },
+      { id: 'a1',  role: 'agent',        unitId },
+      { id: 'a2',  role: 'agent',        unitId },
+    ];
+
+    beforeEach(() => { getTenantUsers.mockResolvedValue(users); });
+
+    it('pre-cutoff week: UM excluded from compliance numerator and denominator (historical preserved)', async () => {
+      // UM filed for WEEK (pre-cutoff) — should NOT be counted
+      getAllYTDSubmissions.mockResolvedValue([
+        mkSub(UM_ID, 500), // weekStarting: WEEK = '2026-06-08' < cutoff
+        mkSub('a1',  200),
+      ]);
+
+      const { result } = renderHook(() =>
+        useBranchOverview('unit_manager', userProfile, 'tenant-1')
+      );
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      // 1 agent filed (a1) out of 2 agents (a1 + a2) → 50%; UM excluded despite filing
+      expect(result.current.kpiData.compliance).toEqual([50]);
+      expect(result.current.inScopeAgentCount).toBe(2);
+    });
+
+    it('post-cutoff boundary (2026-06-14, >= inclusive): non-filing UM in denominator lowers %', async () => {
+      // UM did NOT file; a1 filed → 1 out of 3 (a1 + a2 + UM) → 33%
+      getAllYTDSubmissions.mockResolvedValue([
+        mkSubW('a1', 200, WEEK_POST),
+      ]);
+
+      const { result } = renderHook(() =>
+        useBranchOverview('unit_manager', userProfile, 'tenant-1')
+      );
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.kpiData.compliance).toEqual([33]);
+      // inScopeAgentCount stays agents-only — used for teamAnnualGoal fallback, never gains UMs
+      expect(result.current.inScopeAgentCount).toBe(2);
+    });
+
+    it('post-cutoff: filing UM counts toward numerator (increases %)', async () => {
+      // UM filed + a1 filed; a2 did not → 2 out of 3 (a1 + a2 + UM) → 67%
+      getAllYTDSubmissions.mockResolvedValue([
+        mkSubW(UM_ID, 500, WEEK_POST),
+        mkSubW('a1',  200, WEEK_POST),
+      ]);
+
+      const { result } = renderHook(() =>
+        useBranchOverview('unit_manager', userProfile, 'tenant-1')
+      );
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.kpiData.compliance).toEqual([67]);
+      expect(result.current.inScopeAgentCount).toBe(2); // agents-only unchanged
     });
   });
 });

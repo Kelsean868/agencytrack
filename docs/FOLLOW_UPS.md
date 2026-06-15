@@ -6,6 +6,20 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Plan-lens UM compliance — do UMs commit weekly plans? (banked PR #TBD, 2026-06-15, LOW)
+
+**CompliancePanel plan lens:** The current plan-lens exception list ("Haven't committed a plan") is agents-only. When UMs become mandatory filers at `UM_MANDATORY_FILING_CUTOFF = '2026-06-14'`, do they also commit weekly plans? If yes, the plan-lens roster and exception list must include UMs for post-cutoff weeks (mirroring the filing-lens cutoff guard). If no, the plan lens stays agents-only regardless of the selected week.
+
+**Deferred from:** Producing-manager Phase 3 (PR #TBD) — Phase 3 scopes to the **filing lens only**. Plan lens unchanged.
+
+**Decision needed:** Product call — does the UM role require a weekly plan commitment, or is their compliance obligation filing-only?
+
+**Ties to:** Manager-cockpit arc (WAR v2, planner S4b). Resolve before that arc ships if plan-lens UM inclusion is desired.
+
+**Severity:** LOW (plan lens is operational; the filing lens covers the Phase 3 deliverable in full).
+
+---
+
 ## Rule 21 reviewer replacement — choose + install before 2026-07-17 (banked PR #607, HIGH)
 
 Consumer Gemini Code Assist on GitHub is deprecated 2026-06-18 (no new installs) and shut down 2026-07-17 (all code review ends). The Rule 21 post-merge backstop added in PR #607 closes the timing gap for the interim, but a replacement reviewer must be chosen and installed before the shut-down date.
