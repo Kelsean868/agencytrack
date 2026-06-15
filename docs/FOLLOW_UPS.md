@@ -20,6 +20,32 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel absent from GoalsPanel (banked PR #TBD, 2026-06-15, LOW)
+
+**Phase 1.5 recon finding:** `GoalsPanel.jsx` (manager Goals tab, `src/components/manager/GoalsPanel.jsx`) renders `CommissionPlayground` (L567) and `GapAnalysisPanel` (L1081) — so a producing manager CAN set their personal commitment and view their gap analysis. However, `DerivedIncomePanel` and `AwardsReachPanel` are **not surfaced** in `GoalsPanel`. A producing manager cannot see their income estimate or award reach from the manager dashboard today.
+
+**What's missing:** Surface `DerivedIncomePanel` + `AwardsReachPanel` in `GoalsPanel.jsx` below `GapAnalysisPanel`, gated on the user being a producing manager (or always-visible — dispatcher decides). Both components are already role-agnostic and accept production data as props.
+
+**Why deferred:** Brief scope-locks the agent Goals tab only. Surfacing these panels on the manager dashboard is a separate slice (Tier-2 cockpit direction). No rules/schema change needed — both panels are display-only and reuse already-loaded data.
+
+**Ties to:** Tier-2 manager cockpit arc. Implement when the producing-manager personal-performance surface is explicitly scoped.
+
+**Severity:** LOW (producing managers can still view their goals via the agent dashboard if they log in as an agent-equivalent; cockpit gap is a UX convenience, not a data correctness issue).
+
+---
+
+## Awards reach pins — Firestore persistence for cross-device sync (banked PR #TBD, 2026-06-15, LOW)
+
+`AwardsReachPanel` stores pinned aspirational awards in `localStorage` (key `agencytrack-award-pins`). This is per-device — pins set on a mobile phone are not visible on a desktop browser.
+
+**Upgrade path:** Store pins in `tenants/{tid}/users/{uid}` as a `awardPins: string[]` field. Write on toggle via `userService.updateUserProfile` (already exists). Read on mount via `useAuth().userProfile`. Rules: `userSelf` write already allows profile updates; `awardPins` needs to be in the `hasOnly` allowlist.
+
+**Why deferred:** localStorage is acceptable for v1 (pins are aspirational, low-stakes). Cross-device sync requires a `firestore.rules` change + `hasOnly` allowlist update → BUILD-AND-HOLD, not Tier-B. Not worth the overhead until pilot agents explicitly ask for it.
+
+**Severity:** LOW (per-device pins are a minor inconvenience for agents who switch devices; no data loss, just re-pinning needed).
+
+---
+
 ## Rule 21 reviewer replacement — choose + install before 2026-07-17 (banked PR #607, HIGH)
 
 Consumer Gemini Code Assist on GitHub is deprecated 2026-06-18 (no new installs) and shut down 2026-07-17 (all code review ends). The Rule 21 post-merge backstop added in PR #607 closes the timing gap for the interim, but a replacement reviewer must be chosen and installed before the shut-down date.
