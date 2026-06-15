@@ -19,6 +19,10 @@
 
 import { parseDateOnlyTT } from './dateInputs';
 
+// UMs become mandatory filers from this Sunday onward (>= inclusive).
+// Operator-adjustable: set to the real pilot go-live Sunday if it differs.
+export const UM_MANDATORY_FILING_CUTOFF = '2026-06-14';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**

@@ -32,8 +32,10 @@ vi.mock('../../../hooks/useToast', () => ({ default: () => ({ show: hoisted.show
 vi.mock('../CoachingNotesModal', () => ({ default: () => null }));
 vi.mock('../../submissions/SubmissionViewer', () => ({ default: () => <div data-testid="submission-viewer" /> }));
 
-const WEEK = '2026-06-07'; // Sunday
-const ON_TIME = new Date('2026-06-08T12:00:00Z');
+const WEEK      = '2026-06-07'; // Sunday (pre-cutoff)
+const WEEK_POST = '2026-06-14'; // cutoff boundary Sunday (>= inclusive)
+const ON_TIME   = new Date('2026-06-08T12:00:00Z');
+const ON_TIME_POST = new Date('2026-06-15T12:00:00Z');
 
 // agentA: submitted + plan  → filing OK,    plan committed
 // agentB: NOT submitted + plan → filing not-in, plan committed
@@ -51,6 +53,18 @@ function renderPanel() {
   return render(<CompliancePanel selectedWeek={WEEK} setSelectedWeek={() => {}} />);
 }
 
+function renderPanelPost() {
+  return render(<CompliancePanel selectedWeek={WEEK_POST} setSelectedWeek={() => {}} />);
+}
+
+// UM fixture — one agent + one UM (no plan tests needed here, so getWeeklyPlan → null)
+const USERS_WITH_UM = [
+  { id: 'agentA', name: 'Ann Agent',  role: 'agent',        unitId: 'u1' },
+  { id: 'umA',    name: 'Uma Manager', role: 'unit_manager', unitId: 'u1', unitName: 'Unit 1' },
+];
+const SUB_A_POST  = { id: 'subApost',  agentId: 'agentA', status: 'submitted', weekStarting: WEEK_POST, submittedAt: ON_TIME_POST };
+const SUB_UM_POST = { id: 'subUMpost', agentId: 'umA',    status: 'submitted', weekStarting: WEEK_POST, submittedAt: ON_TIME_POST };
+
 beforeEach(() => {
   vi.clearAllMocks();
   hoisted.useAuth.mockReturnValue({
@@ -66,6 +80,81 @@ beforeEach(() => {
   hoisted.getWeeklyPlan.mockImplementation((_t, uid) =>
     Promise.resolve(uid === 'agentA' || uid === 'agentB' ? { id: `${uid}_${WEEK}`, agentId: uid } : null));
   hoisted.sendComplianceNudge.mockResolvedValue({ success: true });
+});
+
+// ── Phase 3 — UM mandatory filing (cutoff-conditional) ────────────────────────
+describe('CompliancePanel — Phase 3 UM mandatory filing', () => {
+  // Shared UM-fixture beforeEach builder
+  function setupUM({ week, subs }) {
+    vi.clearAllMocks();
+    hoisted.useAuth.mockReturnValue({
+      tenantId: 'T',
+      user: { uid: 'mgr1', displayName: 'Mgr' },
+      userProfile: { name: 'Mgr One', role: 'branch_manager', branchName: 'South Branch' },
+      role: 'branch_manager',
+    });
+    hoisted.getWeeklySubmissions.mockImplementation((_t, w) =>
+      Promise.resolve(w === week ? subs : []));
+    hoisted.getTenantUsers.mockResolvedValue(USERS_WITH_UM);
+    hoisted.getNudgeRecords.mockResolvedValue({});
+    hoisted.getWeeklyPlan.mockResolvedValue(null);
+    hoisted.sendComplianceNudge.mockResolvedValue({ success: true });
+  }
+
+  describe('post-cutoff week (selectedWeek >= 2026-06-14)', () => {
+    beforeEach(() => setupUM({ week: WEEK_POST, subs: [SUB_A_POST] }));
+
+    test('non-filing UM appears in "Haven\'t filed" exception list', async () => {
+      renderPanelPost();
+      await screen.findByTestId('compliance-reality-bar');
+      const rows = screen.getAllByTestId('compliance-exception-row');
+      expect(rows.map((r) => r.getAttribute('data-uid'))).toContain('umA');
+    });
+
+    test('reality bar total counts UM in denominator — 1 filed of 2 → 50%', async () => {
+      renderPanelPost();
+      const filed = await screen.findByTestId('compliance-stat-filed');
+      expect(filed).toHaveAttribute('data-value', '1 / 2 · 50%');
+    });
+
+    test('filing UM clears the exception list (all-clear shown)', async () => {
+      hoisted.getWeeklySubmissions.mockImplementation((_t, w) =>
+        Promise.resolve(w === WEEK_POST ? [SUB_A_POST, SUB_UM_POST] : []));
+      renderPanelPost();
+      await screen.findByTestId('compliance-reality-bar');
+      expect(await screen.findByTestId('compliance-all-clear')).toBeInTheDocument();
+    });
+  });
+
+  describe('pre-cutoff week (selectedWeek < 2026-06-14) — historical preserved', () => {
+    beforeEach(() => setupUM({ week: WEEK, subs: [] }));
+
+    test('UM NOT in roster — only agentA present (umA excluded, pre-cutoff)', async () => {
+      renderPanel(); // WEEK = '2026-06-07' (pre-cutoff)
+      await screen.findByTestId('compliance-reality-bar');
+      // Only agentA in scope — 1 roster row, umA absent from both roster and exception list
+      const rosterRows = screen.getAllByTestId('compliance-roster-row');
+      expect(rosterRows).toHaveLength(1);
+      const exceptionRows = screen.queryAllByTestId('compliance-exception-row');
+      expect(exceptionRows.map((r) => r.getAttribute('data-uid'))).not.toContain('umA');
+    });
+  });
+
+  describe('UM streak starts at the cutoff — no pre-cutoff miss', () => {
+    beforeEach(() =>
+      // umA filed WEEK_POST (the cutoff week); all prior weeks return empty
+      setupUM({ week: WEEK_POST, subs: [SUB_UM_POST] })
+    );
+
+    test('umA filed cutoff week only — streak shows "1 wk" (pre-cutoff gaps not counted)', async () => {
+      renderPanelPost();
+      await screen.findByTestId('compliance-reality-bar');
+      const rosterRows = await screen.findAllByTestId('compliance-roster-row');
+      const umARow = rosterRows.find((r) => r.textContent.includes('Uma Manager'));
+      expect(umARow).toBeTruthy();
+      expect(umARow).toHaveTextContent('1 wk');
+    });
+  });
 });
 
 describe('CompliancePanel — S3 plan-adoption lens', () => {

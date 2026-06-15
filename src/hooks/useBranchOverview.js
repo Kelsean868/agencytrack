@@ -4,6 +4,7 @@ import { getBranchGoals, getUnitGoals, getCompanyMinimums } from '../services/go
 import { extractFields, extractTotalProductionCredit } from '../utils/extractFields';
 import { buildManagerActivityEvents } from '../utils/buildManagerActivityEvents';
 import { computeEarnedBadges, BADGE_KEY_ORDER } from '../components/gamification/BadgeGrid';
+import { UM_MANDATORY_FILING_CUTOFF } from '../utils/complianceDerive';
 
 /**
  * useBranchOverview — composing hook for the M2 Manager Overview hero.
@@ -56,7 +57,8 @@ export function useBranchOverview(role, userProfile, tenantId) {
       .finally(() => setLoading(false));
   }, [tenantId, role, unitId, year]);
 
-  // Compliance scope: agents only — denominator for submission-rate KPI
+  // Compliance scope: agents only — drives inScopeAgentCount (goal fallback) and
+  // the pre-cutoff denominator. Never includes UMs or BMs.
   const complianceScopeIds = useMemo(() => {
     const agents = users.filter((u) => u.role === 'agent');
     if (role === 'unit_manager' && unitId) {
@@ -66,6 +68,15 @@ export function useBranchOverview(role, userProfile, tenantId) {
   }, [users, role, unitId]);
 
   const inScopeAgentCount = complianceScopeIds.size;
+
+  // UMs who become mandatory filers at the cutoff. Role-scoped same as agents.
+  const umComplianceScopeIds = useMemo(() => {
+    const ums = users.filter((u) => u.role === 'unit_manager');
+    if (role === 'unit_manager' && unitId) {
+      return new Set(ums.filter((u) => u.unitId === unitId).map((u) => u.id));
+    }
+    return new Set(ums.map((u) => u.id));
+  }, [users, role, unitId]);
 
   // Production scope: agents + unit managers + branch managers — drives teamYTDAPI and sparklines.
   // BMs added in Slice 2.1b: BM personal production rolls into branch totals (sentinel unitId).
@@ -92,11 +103,11 @@ export function useBranchOverview(role, userProfile, tenantId) {
     [ytdSubs, productionScopeIds]
   );
 
-  // Compliance submissions (agents only) — drives submission-rate KPI
-  const complianceScopedSubs = useMemo(
-    () => ytdSubs.filter((s) => complianceScopeIds.has(s.agentId ?? s.userId ?? '')),
-    [ytdSubs, complianceScopeIds]
-  );
+  // Compliance submissions (agents + UMs) — kpiData loop filters per-week by cutoff.
+  const complianceScopedSubs = useMemo(() => {
+    const allIds = new Set([...complianceScopeIds, ...umComplianceScopeIds]);
+    return ytdSubs.filter((s) => allIds.has(s.agentId ?? s.userId ?? ''));
+  }, [ytdSubs, complianceScopeIds, umComplianceScopeIds]);
 
   // Team YTD API — includes UM personal production
   const teamYTDAPI = useMemo(
@@ -127,12 +138,25 @@ export function useBranchOverview(role, userProfile, tenantId) {
     const api        = [];
     const apps       = [];
     const ffi        = [];
-    const denom      = inScopeAgentCount || 1;
+
+    // Pre-compute merged set for post-cutoff weeks (agents + UMs).
+    const allComplianceIds = new Set([...complianceScopeIds, ...umComplianceScopeIds]);
+    const umCount = umComplianceScopeIds.size;
 
     last4Weeks.forEach((week) => {
       const prodWeekSubs = productionScopedSubs.filter((s) => s.weekStarting === week);
       const compWeekSubs = complianceScopedSubs.filter((s) => s.weekStarting === week);
-      const submittedIds = new Set(compWeekSubs.map((s) => s.agentId ?? s.userId ?? ''));
+
+      // Per-week scope: agents always + UMs iff week >= cutoff (historical preserved).
+      const umInScope = week >= UM_MANDATORY_FILING_CUTOFF;
+      const weekScope = umInScope ? allComplianceIds : complianceScopeIds;
+      const denom = (inScopeAgentCount + (umInScope ? umCount : 0)) || 1;
+
+      const submittedIds = new Set(
+        compWeekSubs
+          .filter((s) => weekScope.has(s.agentId ?? s.userId ?? ''))
+          .map((s) => s.agentId ?? s.userId ?? '')
+      );
       compliance.push(Math.round((submittedIds.size / denom) * 100));
       api.push(prodWeekSubs.reduce((sum, s) => sum + extractTotalProductionCredit(s), 0));
       apps.push(prodWeekSubs.reduce((sum, s) => sum + (parseFloat(extractFields(s).applicationsSold) || 0), 0));
@@ -140,7 +164,7 @@ export function useBranchOverview(role, userProfile, tenantId) {
     });
 
     return { compliance, api, apps, ffi };
-  }, [productionScopedSubs, complianceScopedSubs, last4Weeks, inScopeAgentCount]);
+  }, [productionScopedSubs, complianceScopedSubs, last4Weeks, inScopeAgentCount, complianceScopeIds, umComplianceScopeIds]);
 
   // Activity feed events (last 14 days)
   const activityEvents = useMemo(

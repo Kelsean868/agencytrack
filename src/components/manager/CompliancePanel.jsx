@@ -6,7 +6,7 @@ import { getLastNSundays } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import { parseDateOnlyTT } from '../../utils/dateInputs';
 import { cbttComplianceFlag } from '../../utils/cbttCompliance';
-import { classifyWeek, onTimeStreak } from '../../utils/complianceDerive';
+import { classifyWeek, onTimeStreak, UM_MANDATORY_FILING_CUTOFF } from '../../utils/complianceDerive';
 import { sendComplianceNudge, getNudgeRecords, NUDGE_TYPE, PLAN_NUDGE_TYPE } from '../../services/nudgeService';
 import { getWeeklyPlan } from '../../services/weeklyPlanService';
 import { unlockSubmission } from '../../services/unlockService';
@@ -111,7 +111,10 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
       .then((results) => {
         const userList = results[results.length - 1];
         const subsByWeek = results.slice(0, weeks.length);
-        setUsers(userList.filter((u) => u.role === 'agent'));
+        setUsers(userList.filter((u) =>
+          u.role === 'agent' ||
+          (u.role === 'unit_manager' && selectedWeek >= UM_MANDATORY_FILING_CUTOFF)
+        ));
         setWeekData(weeks.map((w, i) => ({ weekStart: w, subs: subsByWeek[i] })));
         setLoaded(true);
       })
@@ -138,10 +141,14 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
     const weeks = weekData.map((d) => d.weekStart);
     return users
       .map((u) => {
-        const perWeek = weeks.map((w) => ({ weekStart: w, submission: byAgentWeek[u.id]?.[w] ?? null }));
+        const allPerWeek = weeks.map((w) => ({ weekStart: w, submission: byAgentWeek[u.id]?.[w] ?? null }));
+        // UM streak window begins at the cutoff — pre-cutoff weeks are not misses.
+        const perWeek = u.role === 'unit_manager'
+          ? allPerWeek.filter((e) => e.weekStart >= UM_MANDATORY_FILING_CUTOFF)
+          : allPerWeek;
         const current = byAgentWeek[u.id]?.[selectedWeek] ?? null;
         const status  = classifyWeek(current, selectedWeek);
-        const lastFiled = perWeek.find((e) => e.submission?.status === 'submitted')?.weekStart ?? null;
+        const lastFiled = allPerWeek.find((e) => e.submission?.status === 'submitted')?.weekStart ?? null;
         return {
           id:        u.id,
           name:      u.name ?? u.email ?? u.id,
