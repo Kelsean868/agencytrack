@@ -57,7 +57,7 @@ function AgentRiskCard({ name, statusList }) {
           )}
           <span className="text-sm font-bold text-ink truncate">{name}</span>
         </div>
-        <span className="text-[10px] text-ink-muted font-mono tracking-wide shrink-0">
+        <span className="text-[10px] text-ink font-mono tracking-wide shrink-0">
           {totalTracked} award{totalTracked === 1 ? '' : 's'} tracked
         </span>
       </div>
@@ -184,7 +184,7 @@ export default function BmAtRiskPanel({
               Agent Award Risk View
             </p>
             <span
-              className="text-[10px] font-mono tracking-wide text-ink-muted"
+              className="text-[10px] font-mono tracking-wide text-ink"
               data-testid="bm-at-risk-total"
             >
               {agentRows.length} agent{agentRows.length === 1 ? '' : 's'}
