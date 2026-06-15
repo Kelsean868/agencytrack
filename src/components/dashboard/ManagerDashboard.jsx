@@ -236,7 +236,7 @@ export default function ManagerDashboard() {
             role={role}
             userProfile={userProfile}
             tenantId={tenantId}
-            onSubmitReport={() => setShowWizard(true)}
+            onSubmitReport={role === 'unit_manager' ? () => setShowWizard(true) : undefined}
           />
         )}
 

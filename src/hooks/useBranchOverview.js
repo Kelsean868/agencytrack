@@ -56,8 +56,8 @@ export function useBranchOverview(role, userProfile, tenantId) {
       .finally(() => setLoading(false));
   }, [tenantId, role, unitId, year]);
 
-  // In-scope agent IDs
-  const inScopeAgentIds = useMemo(() => {
+  // Compliance scope: agents only — denominator for submission-rate KPI
+  const complianceScopeIds = useMemo(() => {
     const agents = users.filter((u) => u.role === 'agent');
     if (role === 'unit_manager' && unitId) {
       return new Set(agents.filter((u) => u.unitId === unitId).map((u) => u.id));
@@ -65,7 +65,16 @@ export function useBranchOverview(role, userProfile, tenantId) {
     return new Set(agents.map((u) => u.id));
   }, [users, role, unitId]);
 
-  const inScopeAgentCount = inScopeAgentIds.size;
+  const inScopeAgentCount = complianceScopeIds.size;
+
+  // Production scope: agents + unit managers — drives teamYTDAPI and production sparklines
+  const productionScopeIds = useMemo(() => {
+    const producers = users.filter((u) => u.role === 'agent' || u.role === 'unit_manager');
+    if (role === 'unit_manager' && unitId) {
+      return new Set(producers.filter((u) => u.unitId === unitId).map((u) => u.id));
+    }
+    return new Set(producers.map((u) => u.id));
+  }, [users, role, unitId]);
 
   // agentId → display name
   const userMap = useMemo(() => {
@@ -74,16 +83,22 @@ export function useBranchOverview(role, userProfile, tenantId) {
     return map;
   }, [users]);
 
-  // Submissions for in-scope agents only
-  const scopedSubs = useMemo(
-    () => ytdSubs.filter((s) => inScopeAgentIds.has(s.agentId ?? s.userId ?? '')),
-    [ytdSubs, inScopeAgentIds]
+  // Production submissions (agents + UMs) — drives teamYTDAPI and production sparklines
+  const productionScopedSubs = useMemo(
+    () => ytdSubs.filter((s) => productionScopeIds.has(s.agentId ?? s.userId ?? '')),
+    [ytdSubs, productionScopeIds]
   );
 
-  // Team YTD API
+  // Compliance submissions (agents only) — drives submission-rate KPI
+  const complianceScopedSubs = useMemo(
+    () => ytdSubs.filter((s) => complianceScopeIds.has(s.agentId ?? s.userId ?? '')),
+    [ytdSubs, complianceScopeIds]
+  );
+
+  // Team YTD API — includes UM personal production
   const teamYTDAPI = useMemo(
-    () => scopedSubs.reduce((sum, s) => sum + extractTotalProductionCredit(s), 0),
-    [scopedSubs]
+    () => productionScopedSubs.reduce((sum, s) => sum + extractTotalProductionCredit(s), 0),
+    [productionScopedSubs]
   );
 
   // Team Annual Goal — branch/unit goal, fallback to company floor × agent count
@@ -99,9 +114,9 @@ export function useBranchOverview(role, userProfile, tenantId) {
 
   // Last 4 unique submission weeks (oldest → newest) for KPI sparklines
   const last4Weeks = useMemo(() => {
-    const weeks = [...new Set(scopedSubs.map((s) => s.weekStarting).filter(Boolean))];
+    const weeks = [...new Set(productionScopedSubs.map((s) => s.weekStarting).filter(Boolean))];
     return weeks.sort((a, b) => b.localeCompare(a)).slice(0, 4).reverse();
-  }, [scopedSubs]);
+  }, [productionScopedSubs]);
 
   // KPI 4-element arrays: compliance (%), api (TTD), apps (count), ffi (count)
   const kpiData = useMemo(() => {
@@ -112,29 +127,30 @@ export function useBranchOverview(role, userProfile, tenantId) {
     const denom      = inScopeAgentCount || 1;
 
     last4Weeks.forEach((week) => {
-      const weekSubs      = scopedSubs.filter((s) => s.weekStarting === week);
-      const submittedIds  = new Set(weekSubs.map((s) => s.agentId ?? s.userId ?? ''));
+      const prodWeekSubs = productionScopedSubs.filter((s) => s.weekStarting === week);
+      const compWeekSubs = complianceScopedSubs.filter((s) => s.weekStarting === week);
+      const submittedIds = new Set(compWeekSubs.map((s) => s.agentId ?? s.userId ?? ''));
       compliance.push(Math.round((submittedIds.size / denom) * 100));
-      api.push(weekSubs.reduce((sum, s) => sum + extractTotalProductionCredit(s), 0));
-      apps.push(weekSubs.reduce((sum, s) => sum + (parseFloat(extractFields(s).applicationsSold) || 0), 0));
-      ffi.push(weekSubs.reduce((sum, s) => sum + (parseFloat(extractFields(s).ffiConducted) || 0), 0));
+      api.push(prodWeekSubs.reduce((sum, s) => sum + extractTotalProductionCredit(s), 0));
+      apps.push(prodWeekSubs.reduce((sum, s) => sum + (parseFloat(extractFields(s).applicationsSold) || 0), 0));
+      ffi.push(prodWeekSubs.reduce((sum, s) => sum + (parseFloat(extractFields(s).ffiConducted) || 0), 0));
     });
 
     return { compliance, api, apps, ffi };
-  }, [scopedSubs, last4Weeks, inScopeAgentCount]);
+  }, [productionScopedSubs, complianceScopedSubs, last4Weeks, inScopeAgentCount]);
 
   // Activity feed events (last 14 days)
   const activityEvents = useMemo(
-    () => buildManagerActivityEvents(scopedSubs, userMap, new Date()),
-    [scopedSubs, userMap]
+    () => buildManagerActivityEvents(productionScopedSubs, userMap, new Date()),
+    [productionScopedSubs, userMap]
   );
 
   // Team badge counts: { key, count } sorted by count desc, top 8
   const badgeCounts = useMemo(() => {
-    if (scopedSubs.length === 0) return [];
+    if (productionScopedSubs.length === 0) return [];
 
     const byAgent = {};
-    scopedSubs.forEach((s) => {
+    productionScopedSubs.forEach((s) => {
       const aid = s.agentId ?? s.userId ?? '';
       if (!aid) return;
       (byAgent[aid] = byAgent[aid] ?? []).push(s);
@@ -152,7 +168,7 @@ export function useBranchOverview(role, userProfile, tenantId) {
       .sort((a, b) => (counts[b] ?? 0) - (counts[a] ?? 0))
       .slice(0, 8)
       .map((key) => ({ key, count: counts[key] }));
-  }, [scopedSubs]);
+  }, [productionScopedSubs]);
 
   return {
     loading,

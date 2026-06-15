@@ -48,9 +48,11 @@ export default function ManagerOverviewTab({ role, userProfile, tenantId, onSubm
         <TeamMedalsPanel badgeCounts={badgeCounts} loading={loading} />
       </div>
 
-      <button className="btn-primary w-full" onClick={onSubmitReport}>
-        Submit Weekly Report
-      </button>
+      {onSubmitReport && (
+        <button className="btn-primary w-full" onClick={onSubmitReport}>
+          Submit Weekly Report
+        </button>
+      )}
     </div>
   );
 }
