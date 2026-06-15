@@ -46,6 +46,7 @@ import { COMING_SOON_TABS } from '../../config/comingSoonTabs';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
+import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 
 // Sidebar nav items for the agent role. Mirrors the live dashboard tabs
 // 1:1 — no fabricated items (per kickoff Decisions: "mirrors the existing
@@ -667,14 +668,24 @@ export default function AgentDashboard() {
 
       {/* ── GOALS TAB ── */}
       {activeTab === 'goals' && (
-        <GapAnalysisPanel
-          hierarchy={hierarchy}
-          ytdTotals={ytdTotals}
-          loading={hierarchyLoading}
-          error={hierarchyError}
-          ytdPersistency={ytdPersistency}
-          persistencyFloor={companyMinimums?.persistency ?? 90}
-        />
+        <>
+          <GapAnalysisPanel
+            hierarchy={hierarchy}
+            ytdTotals={ytdTotals}
+            loading={hierarchyLoading}
+            error={hierarchyError}
+            ytdPersistency={ytdPersistency}
+            persistencyFloor={companyMinimums?.persistency ?? 90}
+          />
+          <div className="mt-4 border-t border-border pt-4">
+            <DerivedIncomePanel
+              hierarchy={hierarchy}
+              ytdTotals={ytdTotals}
+              commissionRate={parseFloat(userProfile?.commissionRate) || null}
+              loading={hierarchyLoading}
+            />
+          </div>
+        </>
       )}
 
       {/* ── COMMISSION TAB ── */}
