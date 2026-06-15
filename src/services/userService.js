@@ -62,16 +62,16 @@ export async function updateUserFields(tenantId, uid, fields) {
 }
 
 /**
- * setLeaderboardVisibility(tenantId, uid, hidden)
+ * setAppearOnLeaderboard(tenantId, uid, appear)
  *
- * Writes ONLY hiddenFromLeaderboard — uses its own rules arm (branch-bounded
- * for BM, self-allowed for SM/TA). Must NOT be bundled with MANAGER_EDITABLE_FIELDS
- * writes; the rules hasOnly check is strict per field set.
+ * Writes ONLY appearOnLeaderboard — BM self opt-in for the production
+ * leaderboard. Must NOT be bundled with MANAGER_EDITABLE_FIELDS writes;
+ * the rules hasOnly check is strict per field.
  */
-export async function setLeaderboardVisibility(tenantId, uid, hidden) {
+export async function setAppearOnLeaderboard(tenantId, uid, appear) {
   if (!uid) throw new Error('uid is required.');
   const docRef = doc(db, `tenants/${tenantId}/users/${uid}`);
-  await updateDoc(docRef, { hiddenFromLeaderboard: Boolean(hidden) });
+  await updateDoc(docRef, { appearOnLeaderboard: Boolean(appear) });
 }
 
 // PR-4b: claim-keyed fields that flow through the updateUser CF, NOT through

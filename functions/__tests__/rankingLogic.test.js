@@ -256,17 +256,17 @@ describe('rankAgentsByApi', () => {
 // ── rankForLeaderboard — composition ─────────────────────────────────────────
 
 describe('rankForLeaderboard', () => {
-  test('excludes provisioning stubs; visibility by flag (not role) — UMs ranked when hiddenFromLeaderboard absent', () => {
+  test('role-gated inclusion: agents/UMs always ranked; BM opt-in; provisioning stubs excluded', () => {
     const users = [
       mkAgent('a1', 'Alpha', 'u1'),
       mkAgent('a2', 'Beta',  'u1'),
-      { id: 'm1', role: 'unit_manager', name: 'UM' },            // flag absent → visible
+      { id: 'm1', role: 'unit_manager', name: 'UM' },               // always ranked
       { id: 'a9', role: 'agent', name: 'Stub', unitId: 'u1', provisioning: true },
     ];
     const subs = [
       mkSub('a1', '2026-05-10', 200),
       mkSub('a2', '2026-05-10', 100),
-      mkSub('m1', '2026-05-10', 500), // UM ranked (flag absent = visible); 500 > 200 > 100
+      mkSub('m1', '2026-05-10', 500), // UM ranked (always, by role); 500 > 200 > 100
       mkSub('a9', '2026-05-10', 900), // ignored — provisioning stub
     ];
     const result = rankForLeaderboard(subs, users, 'week', REF);

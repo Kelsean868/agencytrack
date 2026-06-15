@@ -193,20 +193,12 @@ service cloud.firestore {
                            'loggingMode', 'dailyNudgeTime', 'updatedAt', 'email',
                            'licenseProfile'])
             ))
-          // hiddenFromLeaderboard (a): BM/SM/TA writes on others — BM branch-bounded.
-          || (isSignedIn()
-              && canManage(tenantId)
-              && getRole() in ['branch_manager', 'sales_manager', 'tenant_admin']
-              && (getRole() != 'branch_manager' || callerBranchId(tenantId) == resource.data.branchId)
-              && request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['hiddenFromLeaderboard'])
-          )
-          // hiddenFromLeaderboard (b): BM/SM/TA self-write (agents and UMs cannot self-hide).
+          // appearOnLeaderboard: BM self opt-in only. UM/SM/TA/agent cannot set.
           || (isSignedIn()
               && request.auth.uid == userId
-              && getRole() in ['branch_manager', 'sales_manager', 'tenant_admin']
+              && getRole() == 'branch_manager'
               && request.resource.data.diff(resource.data).affectedKeys()
-                   .hasOnly(['hiddenFromLeaderboard'])
+                   .hasOnly(['appearOnLeaderboard'])
           );
         allow delete: if canManage(tenantId) && getRole() != 'unit_manager';
       }

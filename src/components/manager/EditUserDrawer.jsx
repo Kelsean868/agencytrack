@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Loader2, X, AlertTriangle } from 'lucide-react';
 import { getUnitManagers } from '../../services/agentManagementService';
 import { listBranches } from '../../services/branchService';
@@ -6,7 +6,7 @@ import {
   updateUserFields,
   callUpdateUser,
   MANAGER_EDITABLE_FIELDS,
-  setLeaderboardVisibility,
+  setAppearOnLeaderboard,
 } from '../../services/userService';
 import { getRoleLabel, getUnitDisplayName } from '../../utils/formatters';
 import Avatar from '../ui/Avatar';
@@ -124,9 +124,9 @@ export default function EditUserDrawer({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pendingConfirm, setPendingConfirm] = useState(null);
-  const [hiddenFromLb, setHiddenFromLb] = useState(Boolean(user?.hiddenFromLeaderboard));
-  const [hiddenSaving, setHiddenSaving] = useState(false);
-  const [hiddenError, setHiddenError] = useState(null);
+  const [appearOnLb, setAppearOnLb] = useState(Boolean(user?.appearOnLeaderboard));
+  const [appearSaving, setAppearSaving] = useState(false);
+  const [appearError, setAppearError] = useState(null);
 
   const firstFieldRef = useRef(null);
 
@@ -486,18 +486,18 @@ export default function EditUserDrawer({
     await runSave(pr4Diff, cfUpdates, null);
   }
 
-  async function handleToggleHiddenFromLb(e) {
+  async function handleToggleAppearOnLb(e) {
     const next = e.target.checked;
-    setHiddenFromLb(next);
-    setHiddenSaving(true);
-    setHiddenError(null);
+    setAppearOnLb(next);
+    setAppearSaving(true);
+    setAppearError(null);
     try {
-      await setLeaderboardVisibility(tenantId, user.uid ?? user.id, next);
+      await setAppearOnLeaderboard(tenantId, user.uid ?? user.id, next);
     } catch (err) {
-      setHiddenFromLb(!next);
-      setHiddenError(err?.message ?? 'Failed to update visibility');
+      setAppearOnLb(!next);
+      setAppearError(err?.message ?? 'Failed to update leaderboard setting');
     } finally {
-      setHiddenSaving(false);
+      setAppearSaving(false);
     }
   }
 
@@ -756,36 +756,36 @@ export default function EditUserDrawer({
             </label>
           )}
 
-          {['branch_manager', 'sales_manager', 'tenant_admin'].includes(callerRole) && (
+          {callerRole === 'branch_manager' && (user.uid ?? user.id) === (callerProfile?.uid ?? callerProfile?.id) && (
             <div className="flex flex-col gap-2 pt-3 border-t border-border">
               <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
                 Leaderboard
               </p>
               <label
-                htmlFor="edit-user-hidden-from-lb"
+                htmlFor="edit-user-appear-on-lb"
                 className={`flex items-start gap-3 px-3 py-3 rounded-xl border border-border transition-colors ${
-                  hiddenSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:bg-border/20'
+                  appearSaving ? 'opacity-60 cursor-wait' : 'cursor-pointer hover:bg-border/20'
                 }`}
               >
                 <input
-                  id="edit-user-hidden-from-lb"
+                  id="edit-user-appear-on-lb"
                   type="checkbox"
-                  checked={hiddenFromLb}
-                  disabled={hiddenSaving}
-                  onChange={handleToggleHiddenFromLb}
+                  checked={appearOnLb}
+                  disabled={appearSaving}
+                  onChange={handleToggleAppearOnLb}
                   className="mt-0.5 w-4 h-4 accent-primary"
                 />
                 <span className="flex-1 text-sm font-semibold text-ink">
-                  Hide from leaderboard
+                  Appear on my branch leaderboard
                   <span className="block text-[11px] font-normal text-ink-muted leading-snug mt-0.5">
-                    {hiddenSaving
+                    {appearSaving
                       ? 'Saving…'
-                      : "Hidden individuals won’t appear on the production leaderboard."}
+                      : 'Opt in to appear alongside your agents on the branch production leaderboard.'}
                   </span>
                 </span>
               </label>
-              {hiddenError && (
-                <p className="text-[11px] text-danger-ink px-1" role="alert">{hiddenError}</p>
+              {appearError && (
+                <p className="text-[11px] text-danger-ink px-1" role="alert">{appearError}</p>
               )}
             </div>
           )}

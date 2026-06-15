@@ -266,10 +266,9 @@ describe('buildLeaderboardDoc', () => {
     expect(doc.week[0].unitName).toBeNull();
   });
 
-  test('UM IS ranked by default (hiddenFromLeaderboard absent); unitName resolves; UM submissions count for UM only', () => {
-    // Phase 1: inclusion is driven by hiddenFromLeaderboard (false/absent = visible),
-    // NOT by role. UMs appear alongside agents. A submission attributed to the UM uid
-    // (as will happen once Phase 2 wizard routing ships) is credited to the UM.
+  test('UM IS always ranked (role-gated, no flag needed); unitName resolves; UM submissions count for UM only', () => {
+    // Phase 1: inclusion is role-gated. UMs always appear alongside agents.
+    // A submission attributed to the UM uid is credited to the UM.
     const users = [
       mkAgent('a1', 'Alpha', 'south', 'u1'),
       mkAgent('a2', 'Beta',  'south', 'u1'),
@@ -282,7 +281,7 @@ describe('buildLeaderboardDoc', () => {
     ];
     const doc = buildLeaderboardDoc(subs, users, REF);
 
-    // Assertion 1: UM IS ranked (flag absent = visible) and its submission counted
+    // Assertion 1: UM IS ranked (always, by role) and its submission counted
     for (const periodKey of ['week', 'mtd', 'qtd', 'ytd']) {
       const ids = doc[periodKey].map((e) => e.agentId);
       expect(ids).toContain('u1');
@@ -1135,79 +1134,77 @@ describe('computeAndWriteLeaderboards — P5-prep wiring', () => {
   });
 });
 
-// ── hiddenFromLeaderboard flag-based filtering ────────────────────────────────
+// ── appearOnLeaderboard opt-in (BM role-gated) ───────────────────────────────
 //
-// Phase 1 of the producing-manager spec: leaderboard inclusion is driven by
-// hiddenFromLeaderboard (default false/absent = visible), NOT by role.
-// UMs appear by default; anyone with the flag set to true is excluded.
-describe('leaderboardAggregate — hiddenFromLeaderboard flag', () => {
+// Phase 1 of the producing-manager spec: inclusion is role-gated.
+// Agents and UMs always appear. BMs appear only when appearOnLeaderboard===true
+// (self opt-in). SM/TA/PA are never included regardless of flag value.
+describe('leaderboardAggregate — appearOnLeaderboard opt-in (BM role-gated)', () => {
   beforeEach(() => {
-    // Reset shared mutable state between tests.
     Object.keys(firestoreData).forEach((k) => delete firestoreData[k]);
     mockBatch.ops = [];
   });
 
-  test('UM with flag absent is included in weekly ranking alongside agents', async () => {
+  test('BM with appearOnLeaderboard:true is included alongside agents and UM', async () => {
     firestoreData['tenants/T/submissions'] = [
       mkSub('s1', 'a1', WK_SUN, 300),
+      mkSub('sbm', 'bm1', WK_SUN, 500),
     ];
     firestoreData['tenants/T/users'] = [
       mkAgent('a1', 'Alpha', 'south', 'u1'),
       mkUM('u1', 'UM South', 'south'),
+      { id: 'bm1', role: 'branch_manager', name: 'BM', branchId: 'south', appearOnLeaderboard: true },
     ];
 
-    const result = await computeAndWriteLeaderboards('T', REF);
-    expect(result.branchCount).toBe(1);
+    await computeAndWriteLeaderboards('T', REF);
     const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
     expect(lbOps).toHaveLength(1);
 
-    // Both agent and UM visible; UM has 0 production until Phase 2 wizard routing.
+    const bmEntry    = lbOps[0].data.week.find((e) => e.agentId === 'bm1');
     const agentEntry = lbOps[0].data.week.find((e) => e.agentId === 'a1');
-    const umEntry    = lbOps[0].data.week.find((e) => e.agentId === 'u1');
+    expect(bmEntry).toBeDefined();
+    expect(bmEntry.periodApi).toBe(500);
     expect(agentEntry).toBeDefined();
-    expect(umEntry).toBeDefined();
     expect(agentEntry.periodApi).toBe(300);
-    expect(umEntry.periodApi).toBe(0);
   });
 
-  test('agent with hiddenFromLeaderboard:true is excluded from ranking and submission not counted', async () => {
+  test('BM without appearOnLeaderboard is excluded by default', async () => {
     firestoreData['tenants/T/submissions'] = [
-      mkSub('s1', 'a1', WK_SUN, 500),
-      mkSub('s2', 'a2', WK_SUN, 200), // a2 is hidden — submission must not be counted
-    ];
-    firestoreData['tenants/T/users'] = [
-      mkAgent('a1', 'Visible', 'south', 'u1'),
-      { ...mkAgent('a2', 'Hidden', 'south', 'u1'), hiddenFromLeaderboard: true },
-      mkUM('u1', 'UM South', 'south'),
-    ];
-
-    await computeAndWriteLeaderboards('T', REF);
-    const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
-
-    const visibleEntry = lbOps[0].data.week.find((e) => e.agentId === 'a1');
-    expect(visibleEntry).toBeDefined();
-    expect(visibleEntry.periodApi).toBe(500);
-
-    const hiddenEntry = lbOps[0].data.week.find((e) => e.agentId === 'a2');
-    expect(hiddenEntry).toBeUndefined();
-  });
-
-  test('UM with hiddenFromLeaderboard:true is excluded from ranking', async () => {
-    firestoreData['tenants/T/submissions'] = [
-      mkSub('s1', 'a1', WK_SUN, 400),
+      mkSub('s1', 'a1', WK_SUN, 300),
+      mkSub('sbm', 'bm1', WK_SUN, 9999), // BM submission — must not appear
     ];
     firestoreData['tenants/T/users'] = [
       mkAgent('a1', 'Alpha', 'south', 'u1'),
-      { ...mkUM('u1', 'UM Hidden', 'south'), hiddenFromLeaderboard: true },
+      mkUM('u1', 'UM South', 'south'),
+      { id: 'bm1', role: 'branch_manager', name: 'BM', branchId: 'south' }, // flag absent
     ];
 
     await computeAndWriteLeaderboards('T', REF);
     const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
 
-    const agentEntry = lbOps[0].data.week.find((e) => e.agentId === 'a1');
-    expect(agentEntry).toBeDefined();
+    const bmEntry = lbOps[0].data.week.find((e) => e.agentId === 'bm1');
+    expect(bmEntry).toBeUndefined();
 
-    const umEntry = lbOps[0].data.week.find((e) => e.agentId === 'u1');
-    expect(umEntry).toBeUndefined();
+    // Agent unaffected; BM submission not credited to anyone
+    const agentEntry = lbOps[0].data.week.find((e) => e.agentId === 'a1');
+    expect(agentEntry.periodApi).toBe(300);
+  });
+
+  test('SM with appearOnLeaderboard:true is still excluded (flag is BM-only)', async () => {
+    firestoreData['tenants/T/submissions'] = [
+      mkSub('s1', 'a1', WK_SUN, 400),
+      mkSub('ssm', 'sm1', WK_SUN, 9999),
+    ];
+    firestoreData['tenants/T/users'] = [
+      mkAgent('a1', 'Alpha', 'south', 'u1'),
+      mkUM('u1', 'UM South', 'south'),
+      { id: 'sm1', role: 'sales_manager', name: 'SM', branchId: 'south', appearOnLeaderboard: true },
+    ];
+
+    await computeAndWriteLeaderboards('T', REF);
+    const lbOps = mockBatch.ops.filter((op) => Array.isArray(op.data.week));
+
+    const smEntry = lbOps[0].data.week.find((e) => e.agentId === 'sm1');
+    expect(smEntry).toBeUndefined();
   });
 });
