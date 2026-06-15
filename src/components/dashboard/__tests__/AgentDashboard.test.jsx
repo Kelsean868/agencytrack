@@ -124,6 +124,7 @@ vi.mock('../../daily/DailyFAB',                       () => ({ default: () => nu
 vi.mock('../../agent/PolicyLedgerPanel',              () => ({ default: () => React.createElement('div', { 'data-testid': 'policy-ledger-panel' }) }));
 vi.mock('../../agent/MoneyNeedsPanel',                () => ({ default: () => React.createElement('div', { 'data-testid': 'money-needs-panel' }) }));
 vi.mock('../../goals/GapAnalysisPanel',               () => ({ default: () => React.createElement('div', { 'data-testid': 'gap-analysis-panel' }) }));
+vi.mock('../../goals/AwardsReachPanel',               () => ({ default: () => null }));
 
 import AgentDashboard from '../AgentDashboard';
 
