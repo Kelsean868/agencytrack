@@ -20,17 +20,19 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel absent from GoalsPanel (banked PR #641, 2026-06-15, LOW)
+## Manager goals-tab cockpit gap — DerivedIncomePanel + AwardsReachPanel + MdrtTracker absent from GoalsPanel (sharpened PR #TBD/v3.3, 2026-06-15 — banked PR #641, LOW)
 
-**Phase 1.5 recon finding:** `GoalsPanel.jsx` (manager Goals tab, `src/components/manager/GoalsPanel.jsx`) renders `CommissionPlayground` (L567) and `GapAnalysisPanel` (L1081) — so a producing manager CAN set their personal commitment and view their gap analysis. However, `DerivedIncomePanel` and `AwardsReachPanel` are **not surfaced** in `GoalsPanel`. A producing manager cannot see their income estimate or award reach from the manager dashboard today.
+**Phase 1.5 recon finding:** `GoalsPanel.jsx` (manager Goals tab, `src/components/manager/GoalsPanel.jsx`) renders `CommissionPlayground` (L567) and `GapAnalysisPanel` (L1081) — so a producing manager CAN set their personal commitment and view their gap analysis. However, `DerivedIncomePanel`, `AwardsReachPanel`, and `MdrtTracker` are **not surfaced** in `GoalsPanel`. A producing manager cannot see their income estimate, award reach, or MDRT/COT/TOT progress from the manager dashboard today.
 
-**What's missing:** Surface `DerivedIncomePanel` + `AwardsReachPanel` in `GoalsPanel.jsx` below `GapAnalysisPanel`, gated on the user being a producing manager (or always-visible — dispatcher decides). Both components are already role-agnostic and accept production data as props.
+**Concrete plan (sharpened post-v3.3):** One role-agnostic slice — mount `DerivedIncomePanel` + `AwardsReachPanel` + `MdrtTracker` in `GoalsPanel.jsx` below `GapAnalysisPanel`. Display-only; all three components are already role-agnostic and accept production data as props (same mount shape as the agent Goals tab). **Tier-B candidate** (no rules/CF/schema/money — display and localStorage only). This is the precursor slice the Tier-2 cockpit absorbs.
 
-**Why deferred:** Brief scope-locks the agent Goals tab only. Surfacing these panels on the manager dashboard is a separate slice (Tier-2 cockpit direction). No rules/schema change needed — both panels are display-only and reuse already-loaded data.
+**Income-method MDRT (future add):** `MdrtTracker` uses `ytdTotals.api` as proxy for MDRT-eligible premium (indicative). A future slice could add income-method tracking (blended commission income vs MDRT income threshold) — deferred until the income-method qualification is in scope.
+
+**Why deferred:** Brief scope-locks the agent Goals tab only. No rules/schema change needed — all three panels are display-only and reuse already-loaded data.
 
 **Ties to:** Tier-2 manager cockpit arc. Implement when the producing-manager personal-performance surface is explicitly scoped.
 
-**Severity:** LOW (producing managers can still view their goals via the agent dashboard if they log in as an agent-equivalent; cockpit gap is a UX convenience, not a data correctness issue).
+**Severity:** LOW (producing managers can still view goals via the agent dashboard; this is a UX convenience, not a data correctness issue).
 
 ---
 
