@@ -154,6 +154,7 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
           name:      u.name ?? u.email ?? u.id,
           unit:      u.unitName ?? '',
           unitId:    u.unitId ?? null,
+          role:      u.role,
           status,
           submittedAt: current?.submittedAt ?? null,
           submission: current,
@@ -178,11 +179,14 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
 
   const exceptions = useMemo(() => roster.filter((r) => r.status === 'not-in'), [roster]);
 
+  // Plan lens stays agents-only regardless of UM cutoff (filing lens only — Phase 3).
+  const agentRoster = useMemo(() => roster.filter((r) => r.role === 'agent'), [roster]);
+
   // ── Plan adoption (S3) — locked deterministic-ID get-fan-out, no list/index ────
   // For each roster agent, GET weeklyPlans/{uid}_{weekStart}; absent (or a denied
   // out-of-scope GET) = not committed. The #471 uplineCanReadPlan rule authorizes
   // UM/BM/SM/TA reads and returns clean not-found for an in-scope agent with no plan.
-  const rosterUids = useMemo(() => roster.map((r) => r.id), [roster]);
+  const rosterUids = useMemo(() => agentRoster.map((r) => r.id), [agentRoster]);
   const rosterKey  = rosterUids.join(',');
 
   useEffect(() => {
@@ -200,16 +204,16 @@ export default function CompliancePanel({ selectedWeek, setSelectedWeek }) {
   }, [rosterKey, selectedWeek, tenantId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const planCounts = useMemo(() => {
-    const total = roster.length;
-    const committed = roster.reduce((acc, r) => acc + (plans[r.id] ? 1 : 0), 0);
+    const total = agentRoster.length;
+    const committed = agentRoster.reduce((acc, r) => acc + (plans[r.id] ? 1 : 0), 0);
     return { committed, notCommitted: total - committed, total };
-  }, [roster, plans]);
+  }, [agentRoster, plans]);
 
   // Gated on plansLoaded so we never flash "everyone not committed" (or fan out
   // cooldown reads over the whole roster) before the plan GETs resolve.
   const planExceptions = useMemo(
-    () => (plansLoaded ? roster.filter((r) => !plans[r.id]) : []),
-    [roster, plans, plansLoaded],
+    () => (plansLoaded ? agentRoster.filter((r) => !plans[r.id]) : []),
+    [agentRoster, plans, plansLoaded],
   );
 
   // ── Active lens selection ─────────────────────────────────────────────────────

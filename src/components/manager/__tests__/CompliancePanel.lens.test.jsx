@@ -101,6 +101,25 @@ describe('CompliancePanel — Phase 3 UM mandatory filing', () => {
     hoisted.sendComplianceNudge.mockResolvedValue({ success: true });
   }
 
+  describe('plan lens stays agents-only post-cutoff (filing lens only — Phase 3)', () => {
+    beforeEach(() => setupUM({ week: WEEK_POST, subs: [SUB_A_POST] }));
+
+    test('plan lens denominator = 1 agent only, NOT 2 (agent + UM)', async () => {
+      // agentA has a plan (getWeeklyPlan → non-null for agentA); umA has none.
+      hoisted.getWeeklyPlan.mockImplementation((_t, uid) =>
+        Promise.resolve(uid === 'agentA' ? { id: `agentA_${WEEK_POST}` } : null));
+      renderPanelPost();
+      await screen.findByTestId('compliance-reality-bar');
+      await waitFor(() => expect(screen.getByTestId('compliance-lens-plan')).toHaveTextContent('no plan'));
+      fireEvent.click(screen.getByTestId('compliance-lens-plan'));
+      // agentA committed → 1/1 agents (umA excluded from plan lens).
+      const committed = await screen.findByTestId('compliance-stat-committed');
+      expect(committed).toHaveAttribute('data-value', '1 / 1 · 100%');
+      // No exceptions (agentA committed; umA excluded).
+      expect(screen.getByTestId('compliance-all-clear')).toBeInTheDocument();
+    });
+  });
+
   describe('post-cutoff week (selectedWeek >= 2026-06-14)', () => {
     beforeEach(() => setupUM({ week: WEEK_POST, subs: [SUB_A_POST] }));
 
