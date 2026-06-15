@@ -5,7 +5,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Producing-manager Slice 2.0 — post-deploy smoke (banked PR #{TBD}, HIGH — run immediately after `firebase deploy --only functions`)
+## Producing-manager Slice 2.0 — post-deploy smoke (banked PR #633 `3bc06c9`, HIGH — run immediately after `firebase deploy --only functions`)
 
 CF gamification gate (`isParticipant` in `onSubmissionWrite`) cannot be verified before the CF deploys. Run this smoke immediately after `firebase deploy --only functions` for Slice 2.0.
 
