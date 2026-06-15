@@ -57,7 +57,7 @@ function AgentRiskCard({ name, statusList }) {
           )}
           <span className="text-sm font-bold text-ink truncate">{name}</span>
         </div>
-        <span className="text-[10px] text-ink-muted font-mono tracking-wide shrink-0">
+        <span className="text-[10px] text-ink font-mono tracking-wide shrink-0">
           {totalTracked} award{totalTracked === 1 ? '' : 's'} tracked
         </span>
       </div>

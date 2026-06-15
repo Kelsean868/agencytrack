@@ -166,7 +166,7 @@ export function AwardCard({ award, onClick }) {
   const accentColor =
     isQualified  ? 'var(--color-gold)' :
     isContention ? 'var(--color-primary)' :
-                   'var(--color-text-muted)';
+                   'var(--color-text)';
   const pillBg =
     isQualified  ? 'var(--color-gold-tint)' :
     isContention ? 'var(--color-primary-tint)' :
