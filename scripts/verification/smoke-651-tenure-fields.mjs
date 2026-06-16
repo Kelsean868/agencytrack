@@ -233,25 +233,25 @@ async function runDarkLeg(browser) {
     await loginAsAgent(page, BASE_URL, AGENT_EMAIL, AGENT_PASS);
     await page.waitForSelector('[data-testid="onboarding-wizard"]', { timeout: 45_000 });
 
-    // Navigate back to identity step (localStorage should point to Money Needs after leg 1)
-    const backBtn = await page.waitForSelector('button:has-text("← Back")', { timeout: 10_000 }).catch(() => null);
-    if (backBtn) {
-      await backBtn.click();
-      const identityLabel = await page.waitForSelector('label[for="wizard-contract-date"]', { timeout: 10_000 }).catch(() => null);
-      if (!identityLabel) {
-        record('identity-dark-check', false, 'identity step did not appear after back navigation in dark mode');
-        return;
-      }
-      const contractInput = await page.$('#wizard-contract-date');
-      const isLocked = !contractInput;
-      record('identity-dark-locked', isLocked,
-        isLocked
-          ? 'contract date locked display present in dark mode'
-          : 'WARNING: contract date shows as input — tenure may not have been written (run light leg first)');
-    } else {
-      record('identity-dark-check', false, 'Back button not found — unexpected wizard state in dark mode');
+    // Fresh browser context → no localStorage. After leg 1 wrote tenure fields but not
+    // agentNumber/dateOfBirth, deriveInitialStep returns STEP_WELCOME. Navigate to Identity.
+    const getStartedBtn = await page.$('button:has-text("Get Started")');
+    if (getStartedBtn) await getStartedBtn.click();
+
+    // Identity step should now show (tenure fields locked, others still editable)
+    const identityLabel = await page.waitForSelector('label[for="wizard-contract-date"]', { timeout: 10_000 }).catch(() => null);
+    if (!identityLabel) {
+      record('identity-dark-check', false, 'identity step did not appear in dark mode after Get Started');
       return;
     }
+
+    // Contract date should be locked (written in leg 1)
+    const contractInput = await page.$('#wizard-contract-date');
+    const isLocked = !contractInput;
+    record('identity-dark-locked', isLocked,
+      isLocked
+        ? 'contract date locked display present in dark mode'
+        : 'WARNING: contract date shows as input — tenure may not have been written (run light leg first)');
 
     const report = formatCaptureReport(capture);
     const errors = capture.consoleMessages.filter(m => m.type === 'error');
