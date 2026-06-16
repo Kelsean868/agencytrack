@@ -30,6 +30,20 @@ The v1 onboarding write-once rule lets an agent self-enter `agentNumber` once (w
 
 ---
 
+## Onboarding tenure — rule-level cross-field floor: `monthsInIndustry >= monthsAtTatil` (banked PR #651, 2026-06-15, LOW)
+
+The client enforces `parsedIndustryMonths >= monthsAtTatilComputed` in `WizardIdentity.jsx:52` before allowing Save. `saveOnboardingIdentity` passes only validated values. The Firestore rule arm validates each tenure field individually (`is int && >= 0`) but does **not** cross-check `monthsInIndustry >= monthsAtTatil` in the same write.
+
+**Gap:** A future write path (or client bug) could write `{monthsAtTatil: 20, monthsInIndustry: 10}`. The rule accepts both (valid ints >= 0 individually); no cross-field rejection occurs. The manager-confirm surface (HIGH FU above) is the correction path, but the rules layer has no defense-in-depth guard.
+
+**Fix shape:** Add to the owner write-once arm: `request.resource.data.monthsInIndustry >= request.resource.data.monthsAtTatil`, guarded by `hasAll(['monthsAtTatil','monthsInIndustry'])` so partial writes (contract date only, no months) are not blocked. Client floor stays primary gate; rule is defense-in-depth only. Bundle with the manager-confirm surface slice — both touch the same rule arm.
+
+**Why deferred:** Client floor + manager-confirm covers the operational case. Cross-field Firestore rules constraints require careful `hasAll` guard to avoid blocking partial writes. Not a standalone PR — bundle with the manager-confirm surface slice.
+
+**Severity:** LOW (client floor is the primary gate; no known write path bypasses it; manager-confirm is the correction fallback).
+
+---
+
 ## Plan-lens UM compliance — do UMs commit weekly plans? (banked PR #640, 2026-06-15, LOW)
 
 **CompliancePanel plan lens:** The current plan-lens exception list ("Haven't committed a plan") is agents-only. When UMs become mandatory filers at `UM_MANDATORY_FILING_CUTOFF = '2026-06-14'`, do they also commit weekly plans? If yes, the plan-lens roster and exception list must include UMs for post-cutoff weeks (mirroring the filing-lens cutoff guard). If no, the plan lens stays agents-only regardless of the selected week.
