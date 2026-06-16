@@ -7,23 +7,26 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (23 cases):
+ * Test matrix (26 cases):
  *   allow get
  *     1. Agent reads own submission → ALLOW
  *     2. Agent reads another agent's submission → DENY
- *     3. BM reads any in-tenant submission → ALLOW
+ *     3. BM reads own-branch submission → ALLOW
  *     4. UM reads submission where unitId == callerUid → ALLOW
  *     5. UM reads submission where unitId != callerUid → DENY
  *     6. Kiosk reads submission → ALLOW
  *     7. Cross-tenant auth → DENY
  *
  *   allow list (CRITICAL — `canAccessOwn` arm was dropped in SHAKEDOWN-002B
- *               regression; restored in hotfix PR #298)
+ *               regression; restored in hotfix PR #298; BM isolated in Slice 2)
  *     8.  Agent self-list (agentId == uid query) → ALLOW
  *     9.  Agent lists another agent's docs → DENY
- *    10.  BM lists all in-tenant → ALLOW
+ *    10.  BM unconstrained list (no branchId filter) → DENY (crafted-query bypass closed)
  *    11.  UM lists own-unit docs (unitId == callerUid resource) → ALLOW
  *    12.  UM sees cross-unit doc → DENY
+ *    24.  BM lists own-branch submissions (branchId filter) → ALLOW
+ *    25.  BM reads other-branch submission (get) → DENY
+ *    26.  BM crafted query targets other-branch (branchId filter != own branch) → DENY
  *
  *   allow create
  *    13. Agent creates own submission with matching branchId → ALLOW
@@ -80,6 +83,7 @@ const AGENT_X   = 'agent-x';  // cross-tenant
 const SUB_DRAFT_ID     = 'sub-draft-agent1';    // agent1's draft
 const SUB_SUBMITTED_ID = 'sub-submitted-agent1'; // agent1's submitted
 const SUB_AGENT2_ID    = 'sub-agent2';           // agent2's doc (different unit)
+const SUB_BRANCH_B_ID  = 'sub-branch-b';         // submission from a different branch
 
 function authToken(role, tenantId = TENANT_ID, extra = {}) {
   return { role, tenantId, ...extra };
@@ -110,6 +114,19 @@ function submittedDoc(agentId, unitId) {
   return { ...draftDoc(agentId, unitId), status: 'submitted' };
 }
 
+function branchBDoc(agentId) {
+  return {
+    agentId,
+    unitId:       null,
+    branchId:     'branch-b',   // different branch from BM_ID's claim ('branch-a')
+    tenantId:     TENANT_ID,
+    status:       'submitted',
+    weekStarting: '2026-05-19',
+    apiSold:      0,
+    applicationsSold: 0,
+  };
+}
+
 async function seedDocs(testEnv) {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
@@ -127,6 +144,7 @@ async function seedDocs(testEnv) {
     await setDoc(subRef(db, SUB_DRAFT_ID),     draftDoc(AGENT1_ID, UM_ID));
     await setDoc(subRef(db, SUB_SUBMITTED_ID), submittedDoc(AGENT1_ID, UM_ID));
     await setDoc(subRef(db, SUB_AGENT2_ID),    submittedDoc(AGENT2_ID, 'um2'));
+    await setDoc(subRef(db, SUB_BRANCH_B_ID),  branchBDoc('agent-b2'));
   });
 }
 
@@ -172,8 +190,8 @@ async function main() {
     await assertFails(getDoc(subRef(db, SUB_AGENT2_ID)));
   });
 
-  await t('3. BM reads any in-tenant submission → ALLOW', async () => {
-    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
+  await t('3. BM reads own-branch submission → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager', TENANT_ID, { branchId: 'branch-a' })).firestore();
     await assertSucceeds(getDoc(subRef(db, SUB_DRAFT_ID)));
   });
 
@@ -218,9 +236,12 @@ async function main() {
     await assertFails(getDocs(q));
   });
 
-  await t('10. BM lists all in-tenant submissions → ALLOW', async () => {
-    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
-    await assertSucceeds(getDocs(collection(db, `tenants/${TENANT_ID}/submissions`)));
+  await t('10. BM unconstrained list (no branchId filter) → DENY (crafted-query bypass closed)', async () => {
+    // BM has branchId claim but issues no where('branchId') constraint — Firestore cannot
+    // guarantee every result passes the branch-isolation rule → query DENIED.
+    // This is the closure proof: denormalization + this rule closes the bypass.
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager', TENANT_ID, { branchId: 'branch-a' })).firestore();
+    await assertFails(getDocs(collection(db, `tenants/${TENANT_ID}/submissions`)));
   });
 
   await t('11. UM own-unit list (unitId == callerUid resource) → ALLOW', async () => {
@@ -237,6 +258,32 @@ async function main() {
     const q  = query(
       collection(db, `tenants/${TENANT_ID}/submissions`),
       where('unitId', '==', 'um2'),
+    );
+    await assertFails(getDocs(q));
+  });
+
+  await t('24. BM lists own-branch submissions (branchId filter) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager', TENANT_ID, { branchId: 'branch-a' })).firestore();
+    const q  = query(
+      collection(db, `tenants/${TENANT_ID}/submissions`),
+      where('branchId', '==', 'branch-a'),
+    );
+    await assertSucceeds(getDocs(q));
+  });
+
+  await t('25. BM reads other-branch submission (get) → DENY', async () => {
+    // SUB_BRANCH_B_ID has branchId='branch-b'; BM token has branchId='branch-a'.
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager', TENANT_ID, { branchId: 'branch-a' })).firestore();
+    await assertFails(getDoc(subRef(db, SUB_BRANCH_B_ID)));
+  });
+
+  await t('26. BM crafted query targets other-branch (branchId filter != own branch) → DENY', async () => {
+    // BM tries to list submissions of another branch by explicitly filtering for it —
+    // rule checks resource.data.branchId == token.branchId ('branch-b' != 'branch-a') → DENY.
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager', TENANT_ID, { branchId: 'branch-a' })).firestore();
+    const q  = query(
+      collection(db, `tenants/${TENANT_ID}/submissions`),
+      where('branchId', '==', 'branch-b'),
     );
     await assertFails(getDocs(q));
   });
@@ -335,7 +382,7 @@ async function main() {
 
   // ── Summary ───────────────────────────────────────────────────────────────
   await testEnv.cleanup();
-  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed  (expected 23)`);
+  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed  (expected 26)`);
 
   if (failed > 0) process.exit(1);
 }

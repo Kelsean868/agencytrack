@@ -3,30 +3,6 @@ import {
 } from 'firebase/firestore';
 import { db, auth } from '../firebase';
 
-// Fetches agent UIDs for a branch. Single-field query (no composite index).
-// Role filter applied client-side to avoid requiring a (branchId, role) index.
-async function getBranchAgentIds(tenantId, branchId) {
-  const snap = await getDocs(query(
-    collection(db, `tenants/${tenantId}/users`),
-    where('branchId', '==', branchId)
-  ));
-  return snap.docs
-    .filter((d) => d.data().role === 'agent')
-    .map((d) => d.id);
-}
-
-// Fetches agent + unit_manager UIDs for a branch (production scope).
-// Used by getAllYTDSubmissions to include UM personal production in branch totals.
-async function getBranchProducerIds(tenantId, branchId) {
-  const snap = await getDocs(query(
-    collection(db, `tenants/${tenantId}/users`),
-    where('branchId', '==', branchId)
-  ));
-  return snap.docs
-    .filter((d) => ['agent', 'unit_manager', 'branch_manager'].includes(d.data().role))
-    .map((d) => d.id);
-}
-
 export async function getWeeklySubmissions(tenantId, weekStarting) {
   const { claims } = await auth.currentUser.getIdTokenResult();
 
@@ -42,17 +18,13 @@ export async function getWeeklySubmissions(tenantId, weekStarting) {
   }
 
   if (claims.role === 'branch_manager' && claims.branchId) {
-    const agentIds = await getBranchAgentIds(tenantId, claims.branchId);
-    if (agentIds.length === 0) return [];
-    const branchSet = new Set(agentIds);
     const q = query(
       collection(db, `tenants/${tenantId}/submissions`),
+      where('branchId', '==', claims.branchId),
       where('weekStarting', '==', weekStarting)
     );
     const snap = await getDocs(q);
-    return snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((s) => branchSet.has(s.agentId ?? s.userId ?? ''));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   }
 
   // TA / PA: full query.
@@ -105,19 +77,15 @@ export async function getAllYTDSubmissions(tenantId) {
   }
 
   if (claims.role === 'branch_manager' && claims.branchId) {
-    const producerIds = await getBranchProducerIds(tenantId, claims.branchId);
-    if (producerIds.length === 0) return [];
-    const branchSet = new Set(producerIds);
     const q = query(
       collection(db, `tenants/${tenantId}/submissions`),
+      where('branchId', '==', claims.branchId),
+      where('status', '==', 'submitted'),
       where('weekStarting', '>=', `${year}-01-01`),
-      where('weekStarting', '<=', `${year}-12-31`),
-      where('status', '==', 'submitted')
+      where('weekStarting', '<=', `${year}-12-31`)
     );
     const snap = await getDocs(q);
-    return snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .filter((s) => branchSet.has(s.agentId ?? s.userId ?? ''));
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
   }
 
   // TA / PA: full query.

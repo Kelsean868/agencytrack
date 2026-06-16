@@ -261,23 +261,33 @@ service cloud.firestore {
         //       queries must include where('unitId','==',callerUid); rule enforces
         //       this, closing the partial defense-in-depth gap from SHAKEDOWN-002B.
         //       BM/TA/PA retain full visibility.
+        // Slice 2 (submission-branchid): BM arm restricted to own-branch docs.
+        // TA/SM/PA: unrestricted (canManage + not BM/UM).
+        // UM: own-unit only (resource.data.unitId == uid).
+        // BM: own-branch only (resource.data.branchId == token.branchId).
+        // For `allow list`, Firestore evaluates the rule against each potential
+        // result doc — a BM query without where('branchId','==',claim) cannot
+        // guarantee every result satisfies the rule → Firestore DENIES the query.
+        // This closes the crafted-query bypass (the point of denormalization).
         allow get: if kioskCanRead(tenantId)
           || canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
-               getRole() != 'unit_manager'
-               || resource.data.unitId == request.auth.uid
+               (getRole() != 'unit_manager' && getRole() != 'branch_manager')
+               || (getRole() == 'unit_manager' && resource.data.unitId == request.auth.uid)
+               || (getRole() == 'branch_manager' && resource.data.branchId == request.auth.token.branchId)
              ));
         // list: canAccessOwn restored after the SHAKEDOWN-002B read->get/list split
         //       dropped it. resource.data.agentId IS evaluable in list evaluation, so
         //       an agent self-list query — which MUST be constrained
         //       where('agentId','==',uid) — is allowed; any broader/unconstrained agent
         //       query is denied because the other clauses are false for an agent caller.
-        //       UM unit-scope clause below is unchanged.
+        //       UM unit-scope clause and BM branch-scope clause mirror the get rule.
         allow list: if kioskCanRead(tenantId)
           || canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
-               getRole() != 'unit_manager'
-               || resource.data.unitId == request.auth.uid
+               (getRole() != 'unit_manager' && getRole() != 'branch_manager')
+               || (getRole() == 'unit_manager' && resource.data.unitId == request.auth.uid)
+               || (getRole() == 'branch_manager' && resource.data.branchId == request.auth.token.branchId)
              ));
         allow create: if canManage(tenantId)
           || (canAccessOwn(tenantId, request.resource.data.agentId)
