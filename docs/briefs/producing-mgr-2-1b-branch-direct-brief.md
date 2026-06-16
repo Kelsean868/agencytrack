@@ -1,3 +1,9 @@
+> **CLOSED / SUPERSEDED — 2026-06-16**
+> - **(a) Branch roll-up:** superseded by Slice 2. Branch total is now the `branchId` query (`getAllYTDSubmissions` BM path); `getBranchProducerIds` extension was never needed. BM's own submission appears in the branch total automatically via `branchId`.
+> - **(b) Sentinel:** already live at `WizardForm.jsx:201` (`BRANCH_DIRECT_UNIT = '__branch_direct__'`). Recon (2026-06-16) confirmed sentinel coverage is complete — the two other write paths (loggingModeService, sundayDailyToWeekly cron) are agents-only and BMs cannot reach them.
+> - The `unitId` gap in the cron (absent field on new drafts) was a **separate agent-side issue**, not a BM sentinel gap — fixed in the same session (`sundayDailyToWeekly.js` cron fix PR).
+> - This brief is kept as a record; no further work required.
+
 # Producing-Manager Slice 2.1b — BM branch-direct routing + roll-up
 
 Build-and-hold. Frontend + client-service (like 2.1a) → auto-deploys on merge; post-merge smoke,
