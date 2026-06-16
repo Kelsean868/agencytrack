@@ -3,14 +3,10 @@
  *
  * Legs:
  *   asset-200        /icons.svg serves HTTP 200 via bypass context
- *   light-sidebar    sidebar img[src="/icons.svg"] visible in light mode
- *   light-no-errors  no console errors in light mode
- *   dark-sidebar     same in dark mode
- *   dark-no-errors   no console errors in dark mode
- *
- * WelcomeScreen visual check omitted — requires Firestore reset of
- * hasSeenWelcome; asset-200 covers the brief's "asset request 200, no 404"
- * requirement for that surface.
+ *   wizard-light     WizardWelcome step shows img[src="/icons.svg"] — light mode
+ *   wizard-dark      same — dark mode
+ *   sidebar-light    sidebar-brand-mark img visible — light mode (branch manager)
+ *   sidebar-dark     same — dark mode
  *
  * Run:
  *   node scripts/verification/smoke-650-logo.mjs
@@ -42,10 +38,13 @@ const req = (k) => {
   return v;
 };
 
-const TOKEN  = req('VERCEL_BYPASS_TOKEN');
-// Use branch manager — has completed onboarding, sees ManagerDashboard + Sidebar
-const AGENT_EMAIL = req('A11Y_BRANCH_MANAGER_EMAIL');
-const AGENT_PASS  = req('A11Y_BRANCH_MANAGER_PASSWORD');
+const TOKEN        = req('VERCEL_BYPASS_TOKEN');
+// A11Y agent is onboarding-reset (smoke-648) → loads straight into WizardWelcome
+const AGENT_EMAIL  = req('A11Y_AGENT_EMAIL');
+const AGENT_PASS   = req('A11Y_AGENT_PASSWORD');
+// Branch manager has completed onboarding → sees ManagerDashboard + Sidebar
+const MGR_EMAIL    = req('A11Y_BRANCH_MANAGER_EMAIL');
+const MGR_PASS     = req('A11Y_BRANCH_MANAGER_PASSWORD');
 
 const PREVIEW_HOST = 'agencytrack-git-feat-agencytrack-logo-kyron-marchan-s-projects.vercel.app';
 const BASE_URL     = resolveSmokeBaseUrl({ defaultHost: PREVIEW_HOST });
@@ -57,10 +56,10 @@ const record = (leg, passed, detail) => {
   console.log(`[${stamp()}]  ${passed ? '✓' : '✗'}  ${leg}: ${detail}`);
 };
 
-const clearGlobalTimeout = installGlobalTimeout(120_000, () => finishSmoke(results));
+const clearGlobalTimeout = installGlobalTimeout(180_000, () => finishSmoke(results));
 
-// ── per-theme run ─────────────────────────────────────────────────────────────
-async function runTheme(browser, theme) {
+// ── wizard legs (A11Y agent — onboarding-reset, goes straight to wizard) ─────
+async function runWizardTheme(browser, theme) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   await setupBypassSession(context, BASE_URL, TOKEN);
   await setTheme(context, theme);
@@ -69,33 +68,71 @@ async function runTheme(browser, theme) {
   const capture = captureConsoleAndNetwork(page);
 
   try {
-    // Login
     await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('input[type="email"]', { timeout: 20_000 });
     await page.fill('input[type="email"]', AGENT_EMAIL);
     await page.fill('input[type="password"]', AGENT_PASS);
     await page.click('button[type="submit"]');
 
-    // Wait for nav — 45s to cover Firebase init + possible WelcomeScreen overlay
+    // Onboarding-reset agent skips sidebar — wait for the wizard container instead
+    const wizardEl = await page.waitForSelector('[data-testid="onboarding-wizard"]', {
+      timeout: 45_000,
+    }).catch(() => null);
+
+    if (!wizardEl) {
+      record(`wizard-${theme}`, false, 'onboarding-wizard container never appeared — login or init failed');
+    } else {
+      // Assert brand mark img is present in the wizard's welcome step
+      const imgHandle = await page.$('[data-testid="onboarding-wizard"] img[src="/icons.svg"]');
+      const present = !!imgHandle;
+      record(`wizard-${theme}`, present, present
+        ? 'WizardWelcome img[src="/icons.svg"] present'
+        : 'MISSING — img[src="/icons.svg"] not found in onboarding-wizard');
+    }
+
+    const report = formatCaptureReport(capture);
+    const errors = capture.consoleMessages.filter(m => m.type === 'error');
+    record(`wizard-${theme}-no-errors`, errors.length === 0,
+      errors.length === 0 ? 'no console errors' : `${errors.length} error(s): ${errors.map(e => e.text).slice(0, 2).join('; ')}`);
+    if (report) console.log(report);
+  } finally {
+    await context.close();
+  }
+}
+
+// ── sidebar legs (branch manager — completed onboarding, sees sidebar) ────────
+async function runSidebarTheme(browser, theme) {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await setupBypassSession(context, BASE_URL, TOKEN);
+  await setTheme(context, theme);
+
+  const page = await context.newPage();
+  const capture = captureConsoleAndNetwork(page);
+
+  try {
+    await page.goto(`${BASE_URL}/`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('input[type="email"]', { timeout: 20_000 });
+    await page.fill('input[type="email"]', MGR_EMAIL);
+    await page.fill('input[type="password"]', MGR_PASS);
+    await page.click('button[type="submit"]');
+
     const navEl = await page.waitForSelector('nav[aria-label="Primary navigation"]', {
       timeout: 45_000,
     }).catch(() => null);
 
     if (!navEl) {
-      record(`${theme}-sidebar`, false, 'nav never appeared — login or init failed');
+      record(`sidebar-${theme}`, false, 'nav never appeared — login or init failed');
     } else {
-      // Check sidebar brand-mark img
       const imgHandle = await page.$('.sidebar-brand-mark img[src="/icons.svg"]');
       const visible = imgHandle ? await imgHandle.isVisible() : false;
-      record(`${theme}-sidebar`, visible, visible
+      record(`sidebar-${theme}`, visible, visible
         ? 'sidebar-brand-mark img[src="/icons.svg"] visible'
         : 'MISSING — img[src="/icons.svg"] not found in sidebar-brand-mark');
     }
 
-    // Console errors
     const report = formatCaptureReport(capture);
     const errors = capture.consoleMessages.filter(m => m.type === 'error');
-    record(`${theme}-no-errors`, errors.length === 0,
+    record(`sidebar-${theme}-no-errors`, errors.length === 0,
       errors.length === 0 ? 'no console errors' : `${errors.length} error(s): ${errors.map(e => e.text).slice(0, 2).join('; ')}`);
     if (report) console.log(report);
   } finally {
@@ -124,8 +161,13 @@ async function main() {
       await assetContext.close();
     }
 
-    await runTheme(browser, 'light');
-    await runTheme(browser, 'dark');
+    // Wizard legs — A11Y agent (onboarding-reset, loads straight into wizard)
+    await runWizardTheme(browser, 'light');
+    await runWizardTheme(browser, 'dark');
+
+    // Sidebar legs — branch manager (completed onboarding, sees sidebar)
+    await runSidebarTheme(browser, 'light');
+    await runSidebarTheme(browser, 'dark');
   } finally {
     await browser.close();
   }
