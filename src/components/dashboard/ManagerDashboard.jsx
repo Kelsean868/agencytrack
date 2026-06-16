@@ -2,7 +2,7 @@
 // (Vite supports automatic JSX transform but vitest does not always apply it).
 // Touched here in Track J P5 because the new ManagerDashboardLeaderboardTab
 // test mounts <ManagerDashboard /> directly.
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
@@ -120,6 +120,14 @@ export default function ManagerDashboard() {
       .catch(console.error);
   }, [tenantId]);
 
+  // Pull-to-refresh — enabled on data-feed tabs only.
+  // Game Plan is an agent-only surface so no exclusion needed here.
+  const [ptrRevision, setPtrRevision] = useState(0);
+  const PTR_MANAGER_TABS = new Set(['overview', 'mastersheet', 'leaderboard', 'policy-ledger']);
+  const onPullRefresh = useCallback(() => {
+    setPtrRevision((r) => r + 1);
+  }, []);
+
   const filteredNavItems = useMemo(
     () => NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role)),
     [role]
@@ -231,10 +239,12 @@ export default function ManagerDashboard() {
       topbarCrumb={roleLabel}
       topbarActions={topbarActions}
       onSignOut={handleSignOut}
+      onPullRefresh={PTR_MANAGER_TABS.has(activeTab) ? onPullRefresh : undefined}
     >
         {/* ── Overview ── */}
         {activeTab === 'overview' && (
           <ManagerOverviewTab
+            key={ptrRevision}
             role={role}
             userProfile={userProfile}
             tenantId={tenantId}
@@ -264,7 +274,7 @@ export default function ManagerDashboard() {
         )}
 
         {activeTab === 'mastersheet' && (
-          <MasterSheet selectedWeek={selectedWeek} setSelectedWeek={setSelectedWeek} />
+          <MasterSheet key={ptrRevision} selectedWeek={selectedWeek} setSelectedWeek={setSelectedWeek} />
         )}
 
         {activeTab === 'compliance' && (
@@ -291,17 +301,17 @@ export default function ManagerDashboard() {
                              orphaned. Regression-guarded by tests. */}
         {activeTab === 'leaderboard' && (
           (role === 'unit_manager' || role === 'branch_manager')
-            ? <ProductionLeaderboardSurface />
+            ? <ProductionLeaderboardSurface key={ptrRevision} />
             : role === 'sales_manager'
-              ? <SmLeaderboardView />
-              : <Leaderboard />
+              ? <SmLeaderboardView key={ptrRevision} />
+              : <Leaderboard key={ptrRevision} />
         )}
 
         {activeTab === 'agent-of-month' && <AgentOfMonthTab />}
 
         {activeTab === 'kiosk' && <KioskModeTab />}
 
-        {activeTab === 'policy-ledger' && (role === 'unit_manager' || role === 'branch_manager') && <PolicyLedgerPanel />}
+        {activeTab === 'policy-ledger' && (role === 'unit_manager' || role === 'branch_manager') && <PolicyLedgerPanel key={ptrRevision} />}
 
         {activeTab === 'profile' && <ProfileScreen />}
     </Shell>
