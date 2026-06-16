@@ -15,7 +15,7 @@ const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const BIO_MAX   = 200;
 
 export default function ProfileScreen() {
-  const { user, userProfile, role, tenantId } = useAuth();
+  const { user, userProfile, role, tenantId, branchId } = useAuth();
 
   const [displayName,     setDisplayName]     = useState(userProfile?.name ?? '');
   const [phone,           setPhone]           = useState(userProfile?.phone ?? '');
@@ -134,7 +134,8 @@ export default function ProfileScreen() {
           user.uid,
           agentName,
           userProfile?.commissionRate ?? 0,
-          userProfile?.unitId ?? null
+          userProfile?.unitId ?? null,
+          branchId
         );
         if (result.aggregated) {
           setModeMessage({

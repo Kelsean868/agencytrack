@@ -24,6 +24,7 @@ export function AuthProvider({ children }) {
   const [userProfile, setUserProfile] = useState(null);
   const [role, setRole] = useState(null);
   const [tenantId, setTenantId] = useState(null);
+  const [branchId, setBranchId] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,6 +47,7 @@ export function AuthProvider({ children }) {
 
         const claimTenantId = tokenResult.claims.tenantId ?? null;
         const claimRole     = tokenResult.claims.role     ?? null;
+        const claimBranchId = tokenResult.claims.branchId ?? null;
 
         // If claims reveal a different tenantId than the cache (e.g. after a
         // cross-tenant role change), re-read from the canonical path.
@@ -94,6 +96,7 @@ export function AuthProvider({ children }) {
         setUserProfile(profile);
         setTenantId(resolvedTenantId);
         setRole(resolvedRole);
+        setBranchId(claimBranchId ?? profile?.branchId ?? null);
 
         // Lazy email sync: verifyBeforeUpdateEmail changes the Firebase Auth
         // email only after the user clicks the verification link. On the next
@@ -127,6 +130,7 @@ export function AuthProvider({ children }) {
         setUserProfile(null);
         setRole(null);
         setTenantId(null);
+        setBranchId(null);
       }
       setLoading(false);
     });
@@ -145,7 +149,7 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const value = { user, userProfile, role, tenantId, loading, isAuthenticated: !!user, refreshProfile };
+  const value = { user, userProfile, role, tenantId, branchId, loading, isAuthenticated: !!user, refreshProfile };
 
   return (
     <AuthContext.Provider value={value}>
