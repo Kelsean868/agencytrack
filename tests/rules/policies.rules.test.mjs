@@ -756,6 +756,15 @@ async function main() {
     )
   );
 
+  // SELF-ONLY INVARIANT — DENY: UM cannot body-edit another user's submitted policy.
+  // policy-b1 has agentId='agent-b' (unit um-b); um-a is in unit um-a → DENY.
+  await run('producing-mgr Arm A DENY: UM body-edits another user policy (self-only)', false, () =>
+    updateDoc(
+      doc(umADb, 'tenants', TENANT_ID, 'policies', 'policy-b1'),
+      { ownerName: 'UM Hijack' }
+    )
+  );
+
   // Arm B — ALLOW: BM can transition own policy through legal status change.
   // policy-pm-bm is in 'submitted' status after the body-edit above (Arm A preserves status).
   await run('producing-mgr Arm B ALLOW: BM transitions own policy submitted→rated', true, () =>
@@ -770,6 +779,15 @@ async function main() {
   await run('producing-mgr Arm B DENY: BM transitions another user policy (self-only)', false, () =>
     updateDoc(
       doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-b1'),
+      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200 }
+    )
+  );
+
+  // SELF-ONLY INVARIANT — DENY: UM cannot transition another user's policy.
+  // policy-b1 has agentId='agent-b' (unit um-b); um-a is in unit um-a → DENY.
+  await run('producing-mgr Arm B DENY: UM transitions another user policy (self-only)', false, () =>
+    updateDoc(
+      doc(umADb, 'tenants', TENANT_ID, 'policies', 'policy-b1'),
       { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200 }
     )
   );
