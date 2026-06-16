@@ -774,6 +774,44 @@ async function main() {
     )
   );
 
+  // ── PRODUCING MANAGER HISTORY ARM ──
+  // Verifies the history agent-arm fix: (isAgent() || isProducingManager()).
+  // BM and UM must be able to write history entries on their OWN policies
+  // (agentId == auth.uid AND parent policy agentId == auth.uid).
+  const BM_HISTORY = {
+    fromStatus:    'submitted',
+    toStatus:      'rated',
+    changedFields: { status: 'rated', ratedPremium: 1200 },
+    actorUid:      'bm-a',
+    actorRole:     'branch_manager',
+    agentId:       'bm-a',
+    unitId:        'um-a',
+    at:            Timestamp.now(),
+  };
+
+  await run('producing-mgr HISTORY ALLOW: BM creates history on own policy', true, () =>
+    addDoc(
+      collection(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-pm-bm', 'history'),
+      BM_HISTORY
+    )
+  );
+
+  await run('producing-mgr HISTORY ALLOW: UM creates history on own policy', true, () =>
+    addDoc(
+      collection(umADb, 'tenants', TENANT_ID, 'policies', 'policy-pm-um', 'history'),
+      { ...BM_HISTORY, actorUid: 'um-a', actorRole: 'unit_manager', agentId: 'um-a' }
+    )
+  );
+
+  // Self-only invariant: BM cannot write a history entry on another user's policy.
+  // policy-a1.agentId == 'agent-a' != 'bm-a' → parent-policy get() check fails → DENY.
+  await run('producing-mgr HISTORY DENY: BM creates history on another user policy (self-only)', false, () =>
+    addDoc(
+      collection(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1', 'history'),
+      { ...BM_HISTORY, agentId: 'bm-a' }
+    )
+  );
+
   // ── Results ──
   await testEnv.cleanup();
 

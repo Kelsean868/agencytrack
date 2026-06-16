@@ -431,7 +431,7 @@ service cloud.firestore {
           // closed — parent-policy agentId must match the caller, preventing an
           // agent from writing orphan history docs under another agent's policy).
           allow create: if isSignedIn()
-            && isAgent()
+            && (isAgent() || isProducingManager())
             && getTenantId() == tenantId
             && request.resource.data.actorUid == request.auth.uid
             && request.resource.data.agentId == request.auth.uid

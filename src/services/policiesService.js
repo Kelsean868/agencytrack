@@ -155,7 +155,7 @@ export async function transitionPolicyStatus(tenantId, agentProfile, policyId, c
     toStatus:      newStatus,
     changedFields,
     actorUid:      agentProfile.uid,
-    actorRole:     'agent',
+    actorRole:     agentProfile.role ?? 'agent',
     agentId:       agentProfile.uid,
     unitId:        agentProfile.unitId ?? null,
     at:            serverTimestamp(),
