@@ -97,11 +97,11 @@ export default function OnboardingWizard() {
 
   // ── Step handlers ─────────────────────────────────────────────────────────────
 
-  async function handleIdentitySave({ agentNumber, dateOfBirth }) {
+  async function handleIdentitySave({ agentNumber, dateOfBirth, contractStartDate, monthsAtTatil, monthsInIndustry }) {
     setSaving(true);
     setSaveError(null);
     try {
-      await saveOnboardingIdentity(tenantId, user.uid, { agentNumber, dateOfBirth });
+      await saveOnboardingIdentity(tenantId, user.uid, { agentNumber, dateOfBirth, contractStartDate, monthsAtTatil, monthsInIndustry });
       advance();
     } catch (err) {
       console.error('[OnboardingWizard] saveOnboardingIdentity:', err);

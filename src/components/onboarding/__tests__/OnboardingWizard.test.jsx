@@ -49,6 +49,15 @@ vi.mock('../../../services/goalsService', () => ({
 // ── dateInputs mock ────────────────────────────────────────────────────────────
 vi.mock('../../../utils/dateInputs', () => ({
   getTodayTT: () => '2026-06-15',
+  // Parse YYYY-MM-DD as TT-local midnight (same as real implementation)
+  parseDateOnlyTT: (s) => new Date(`${s}T04:00:00Z`),
+  // Independent implementation mirroring computeMonthsFromDate; today fixed to 2026-06-15
+  computeMonthsFromDate: (dateStr) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    let months = (2026 - y) * 12 + (6 - m);
+    if (15 < d) months--;
+    return Math.max(0, months);
+  },
 }));
 
 import OnboardingWizard from '../OnboardingWizard';
@@ -184,6 +193,81 @@ describe('Identity step', () => {
     goToIdentity();
     fireEvent.click(screen.getByRole('button', { name: /← Back/i }));
     expect(screen.getByText(/Welcome to AgencyTrack/i)).toBeTruthy();
+  });
+
+  // ── Tenure fields (Slice 2) ────────────────────────────────────────────────
+
+  it('shows contract date input on identity step', () => {
+    goToIdentity();
+    expect(screen.getByLabelText(/Contract start date/i)).toBeTruthy();
+  });
+
+  it('shows first-company question when contract date is entered', () => {
+    goToIdentity();
+    fireEvent.change(screen.getByLabelText(/Contract start date/i), { target: { value: '2024-12-15' } });
+    expect(screen.getByText(/Is Tatil Life your first company/i)).toBeTruthy();
+  });
+
+  it('shows derived months hint when "Yes" is selected', () => {
+    goToIdentity();
+    fireEvent.change(screen.getByLabelText(/Contract start date/i), { target: { value: '2024-12-15' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Yes$/ }));
+    expect(screen.getByTestId('wizard-derived-months')).toBeTruthy();
+  });
+
+  it('calls saveOnboardingIdentity with tenure fields on first-company (Yes) save', async () => {
+    goToIdentity();
+    fireEvent.change(screen.getByLabelText(/Contract start date/i), { target: { value: '2024-12-15' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Yes$/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Save & Continue/i }));
+    await waitFor(() => {
+      expect(mockSaveOnboardingIdentity).toHaveBeenCalledWith(
+        'tenant-1',
+        'agent-uid-1',
+        expect.objectContaining({
+          contractStartDate: '2024-12-15',
+          monthsAtTatil:     18,
+          monthsInIndustry:  18,
+        }),
+      );
+    });
+    const [, , payload] = mockSaveOnboardingIdentity.mock.calls[0];
+    expect(payload).not.toHaveProperty('updatedAt');
+  });
+
+  it('shows industry months input when "No" is selected', () => {
+    goToIdentity();
+    fireEvent.change(screen.getByLabelText(/Contract start date/i), { target: { value: '2024-12-15' } });
+    fireEvent.click(screen.getByRole('button', { name: /^No$/ }));
+    expect(screen.getByLabelText(/Total months as an insurance agent/i)).toBeTruthy();
+  });
+
+  it('calls saveOnboardingIdentity with entered industry months on seasoned (No) save', async () => {
+    goToIdentity();
+    fireEvent.change(screen.getByLabelText(/Contract start date/i), { target: { value: '2024-12-15' } });
+    fireEvent.click(screen.getByRole('button', { name: /^No$/ }));
+    fireEvent.change(screen.getByLabelText(/Total months as an insurance agent/i), { target: { value: '36' } });
+    fireEvent.click(screen.getByRole('button', { name: /Save & Continue/i }));
+    await waitFor(() => {
+      expect(mockSaveOnboardingIdentity).toHaveBeenCalledWith(
+        'tenant-1',
+        'agent-uid-1',
+        expect.objectContaining({
+          contractStartDate: '2024-12-15',
+          monthsAtTatil:     18,
+          monthsInIndustry:  36,
+        }),
+      );
+    });
+  });
+
+  it('Save button disabled until first-company question answered', () => {
+    goToIdentity();
+    fireEvent.change(screen.getByLabelText(/Contract start date/i), { target: { value: '2024-12-15' } });
+    // No Yes/No answer yet — canSave should be false despite hasContractDateEntry = true
+    expect(screen.getByRole('button', { name: /Save & Continue/i }).disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: /^Yes$/ }));
+    expect(screen.getByRole('button', { name: /Save & Continue/i }).disabled).toBe(false);
   });
 });
 

@@ -375,6 +375,54 @@ describe('userService.saveOnboardingIdentity', () => {
     await expect(saveOnboardingIdentity('tenant-1', null, { agentNumber: 'x' }))
       .rejects.toThrow(/tenantId and uid are required/);
   });
+
+  it('writes contractStartDate + monthsAtTatil + monthsInIndustry WITHOUT updatedAt', async () => {
+    await saveOnboardingIdentity('tenant-1', 'uid-1', {
+      contractStartDate: '2024-12-15',
+      monthsAtTatil:     18,
+      monthsInIndustry:  18,
+    });
+    expect(hoisted.mockUpdateDoc).toHaveBeenCalledTimes(1);
+    const [ref, payload] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(ref.__ref).toBe('tenants/tenant-1/users/uid-1');
+    expect(payload).toEqual({ contractStartDate: '2024-12-15', monthsAtTatil: 18, monthsInIndustry: 18 });
+    expect(payload).not.toHaveProperty('updatedAt');
+  });
+
+  it('writes tenure fields alongside agentNumber when all provided', async () => {
+    await saveOnboardingIdentity('tenant-1', 'uid-1', {
+      agentNumber:       '012B34',
+      contractStartDate: '2024-12-15',
+      monthsAtTatil:     18,
+      monthsInIndustry:  36,
+    });
+    const [, payload] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(payload).toEqual({
+      agentNumber:       '012B34',
+      contractStartDate: '2024-12-15',
+      monthsAtTatil:     18,
+      monthsInIndustry:  36,
+    });
+  });
+
+  it('includes monthsAtTatil = 0 (typeof check, not falsy filter)', async () => {
+    await saveOnboardingIdentity('tenant-1', 'uid-1', {
+      contractStartDate: '2026-06-15',
+      monthsAtTatil:     0,
+      monthsInIndustry:  0,
+    });
+    const [, payload] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(payload.monthsAtTatil).toBe(0);
+    expect(payload.monthsInIndustry).toBe(0);
+  });
+
+  it('does not include tenure fields when not provided', async () => {
+    await saveOnboardingIdentity('tenant-1', 'uid-1', { agentNumber: '012B34' });
+    const [, payload] = hoisted.mockUpdateDoc.mock.calls[0];
+    expect(payload).not.toHaveProperty('contractStartDate');
+    expect(payload).not.toHaveProperty('monthsAtTatil');
+    expect(payload).not.toHaveProperty('monthsInIndustry');
+  });
 });
 
 describe('userService.markOnboardingComplete', () => {
