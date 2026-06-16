@@ -18,6 +18,10 @@
  *                     to prevent wrong-UID mistakes.
  *   --tenant <id>     Tenant ID (e.g. 'tatillife_south').
  *
+ * Optional flags:
+ *   --name <name>     Display name written to the Firestore doc. Falls back to
+ *                     the Auth record's displayName if omitted.
+ *
  * Sample invocations:
  *   # Dry-run first — review output before writing:
  *   node functions/scripts/seed-first-tenant-admin.cjs \
@@ -68,6 +72,7 @@ function getFlag(flag) {
 const targetUid    = getFlag('--uid');
 const targetEmail  = getFlag('--email');
 const targetTenant = getFlag('--tenant');
+const targetName   = getFlag('--name');
 
 if (!isDryRun && !isApply) {
   console.error('Error: must pass --dry-run or --apply');
@@ -149,9 +154,12 @@ if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
   const currentDoc = docSnap.exists ? docSnap.data() : null;
   console.log('\nCurrent Firestore doc:', currentDoc ? JSON.stringify(currentDoc) : '(does not exist)');
 
+  const resolvedName = targetName ?? userRecord.displayName ?? null;
+
   const upsertPayload = {
     uid:            targetUid,
     email:          targetEmail,
+    name:           resolvedName,
     role:           TENANT_ADMIN_ROLE,
     tenantId:       targetTenant,
     branchId:       DEFAULT_BRANCH_ID,
@@ -160,7 +168,7 @@ if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
     updatedAt:      admin.firestore.FieldValue.serverTimestamp(),
   };
   console.log('Upsert payload:  ', JSON.stringify({ ...upsertPayload, updatedAt: '<serverTimestamp>' }));
-  console.log('  (set with merge:true — existing fields like "name", "email", "createdAt" are preserved)');
+  console.log('  (set with merge:true — existing fields like "createdAt" are preserved)');
 
   if (isDryRun) {
     console.log('\n[DRY-RUN] No writes performed. Re-run with --apply to proceed.');
@@ -186,6 +194,7 @@ if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
   const finalDoc    = (await docRef.get()).data() ?? {};
 
   console.log('\n─── Verification ───');
+  console.log(`  name:           doc=${finalDoc.name}`);
   console.log(`  role:           claim=${finalClaims.role} | doc=${finalDoc.role}`);
   console.log(`  tenantId:       claim=${finalClaims.tenantId} | doc=${finalDoc.tenantId}`);
   console.log(`  branchId:       claim=${finalClaims.branchId} | doc=${finalDoc.branchId}`);
