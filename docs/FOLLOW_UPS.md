@@ -6,6 +6,20 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Policy ledger producing-manager write — UM Arm A + Arm B other-owner DENY emulator cases (banked PR #652, 2026-06-16, LOW)
+
+The emulator suite (`tests/rules/policies.rules.test.mjs`) includes self-only DENY cases for BM on Arm A (body-edit) and Arm B (status-transition), but no equivalent UM case for those two arms. The rule predicate is identical for both roles (`resource.data.agentId == request.auth.uid`), so the BM cases cover the same code path. This is a coverage gap, not a correctness gap.
+
+**Fix shape:** Add to `tests/rules/policies.rules.test.mjs`:
+- `producing-mgr Arm A DENY: UM body-edits another user policy (self-only)` — `umADb` context, targets `policy-b1` (`agentId: 'agent-b'`) → DENY.
+- `producing-mgr Arm B DENY: UM transitions another user policy (self-only)` — `umADb` context, targets `policy-b1` → DENY.
+
+Both use existing seed docs and the already-defined `umADb` context. Net new: 2 test cases, zero rule changes.
+
+**Severity:** LOW (BM DENY already proves the same predicate; UM case is belt-and-suspenders coverage only).
+
+---
+
 ## Onboarding tenure — manager confirmation surface (banked PR #649, 2026-06-15, HIGH — near-term)
 
 Agents self-enter `contractStartDate`, `monthsAtTatil`, and `monthsInIndustry` during onboarding (Slice 1 rule + Slice 2 wizard fields). Both drive award eligibility gates (`rookieAward` ≤ 18 months in industry; `newBsAward` ≤ 18 months at Tatil) and career floors. A wrong self-entry shifts the agent's tenure band.
