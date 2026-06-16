@@ -4,13 +4,13 @@ import { ChevronRight } from 'lucide-react';
 export default function WizardWelcome({ onNext, onSkip }) {
   return (
     <div className="flex flex-col items-center text-center max-w-sm mx-auto gap-8 py-8 px-6">
-      {/* Icon */}
-      <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center">
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-primary">
-          <path d="M3 3h18v18H3z" strokeLinejoin="round" />
-          <path d="M3 9h18M9 21V9" strokeLinejoin="round" />
-        </svg>
-      </div>
+      <img
+        src="/icons.svg"
+        alt="AgencyTrack"
+        width="112"
+        height="112"
+        className="w-28 h-28 dark:ring-1 dark:ring-white/10 rounded-[22px]"
+      />
 
       {/* Copy */}
       <div className="flex flex-col gap-3">
