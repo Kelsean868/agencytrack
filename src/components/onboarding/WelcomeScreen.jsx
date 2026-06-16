@@ -68,6 +68,8 @@ export default function WelcomeScreen({ onComplete }) {
           <img
             src="/icons.svg"
             alt="AgencyTrack"
+            width="112"
+            height="112"
             className="w-28 h-28 dark:ring-1 dark:ring-white/10 rounded-[22px]"
           />
         </div>
