@@ -123,6 +123,7 @@ async function runAggregation({ tenantId, weekStarting, db, logger = console }) 
           userId: agent.id,
           agentId: agent.id,
           agentName: agent.name || agent.email || agent.id,
+          unitId: agent.unitId ?? null,
           branchId: agent.branchId ?? null,
           weekStarting,
           status: 'draft',
