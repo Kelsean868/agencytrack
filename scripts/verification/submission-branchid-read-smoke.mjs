@@ -14,11 +14,16 @@
  *   - Branch-B submissions absent from BM-A weekly/YTD query (requires indexes + rule deploy)
  *   - Read-rule enforcement (PERMISSION_DENIED on unconstrained BM query) (requires rule deploy)
  *
- * Post-merge verification sequence (dispatcher action):
- *   1. Vercel deploy lands (frontend branchId query live) — wait for preview → prod promotion
- *   2. Deploy composite indexes: firebase deploy --only firestore:indexes
- *      Wait for status "Enabled" in Firebase Console → Firestore → Indexes → Composite
- *   3. THEN deploy read rule: firebase deploy --only firestore:rules
+ * Deploy sequence (load-bearing — dispatcher/human action per Rule 19):
+ *   1. Deploy composite indexes FIRST (from feature branch, pre-merge, additive-safe):
+ *        firebase deploy --only firestore:indexes
+ *      Wait for status "Enabled" in Firebase Console → Firestore → Indexes → Composite.
+ *      Rationale: the BM branchId queries go live on merge-deploy; without the indexes
+ *      already Enabled, they return "requires an index" in the window between merge and
+ *      index build completion.
+ *   2. Merge PR → Vercel deploy (BM branchId query live, indexes already ready)
+ *   3. THEN deploy read rule (MUST be last — rule stricter than live query denies it):
+ *        firebase deploy --only firestore:rules
  *   4. Run submission-branchid-liveverify.mjs to confirm rule enforcement in production
  *
  * Usage:
