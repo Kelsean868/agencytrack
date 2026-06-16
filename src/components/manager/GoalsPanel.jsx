@@ -9,6 +9,7 @@ import CommissionPlayground from '../goals/CommissionPlayground';
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
+import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
 import { getTenantUsers } from '../../services/managerService';
 import { getAgentSubmissions } from '../../services/submissionService';
 import { getSettlements } from '../../services/settlementService';
@@ -626,6 +627,9 @@ function SelfTab({ allSubmissions, confirmedSettlements, ytdTotals, ownDataLoadi
               ytdTotals={ytdTotals}
               loading={ownDataLoading}
             />
+          </div>
+          <div className="border-t border-border pt-4">
+            <PolicyLedgerPanel />
           </div>
         </>
       )}
