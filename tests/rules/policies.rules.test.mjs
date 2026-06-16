@@ -7,6 +7,8 @@ import {
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'agencytrack-2a610';
 const TENANT_ID = 'policies-rules-test-tenant';
+const [EMU_HOST, EMU_PORT_STR] = (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:9090').split(':');
+const EMU_PORT = parseInt(EMU_PORT_STR ?? '9090', 10);
 
 let testEnv;
 const results = [];
@@ -72,8 +74,8 @@ async function main() {
     projectId: PROJECT_ID,
     firestore: {
       rules: readFileSync('firestore.rules', 'utf8'),
-      host: 'localhost',
-      port: 8080,
+      host: EMU_HOST,
+      port: EMU_PORT,
     },
   });
 
@@ -154,6 +156,21 @@ async function main() {
       ...VALID_PAYLOAD,
       status: 'rated',
       ratedPremium: 1200,
+    });
+    // Producing-manager write tests — submitted policies owned by BM and UM directly.
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-pm-bm`).set({
+      ...VALID_PAYLOAD,
+      agentId:   'bm-a',
+      unitId:    'um-a',
+      branchId:  'bm-a',
+      createdBy: 'bm-a',
+    });
+    await db.doc(`tenants/${TENANT_ID}/policies/policy-pm-um`).set({
+      ...VALID_PAYLOAD,
+      agentId:   'um-a',
+      unitId:    'um-a',
+      branchId:  'bm-a',
+      createdBy: 'um-a',
     });
   });
 
@@ -678,6 +695,120 @@ async function main() {
         socialPlatform: 'facebook',
         agentId:        'tampered-id',  // different value → diff sees it → hasOnly denies
       }
+    )
+  );
+
+  // ── PRODUCING MANAGER WRITE (policy-ledger-mgr-write) ──
+  // CREATE — ALLOW: BM and UM can create their own policies (agentId == auth.uid).
+  await run('producing-mgr CREATE ALLOW: BM creates own policy', true, () =>
+    addDoc(collection(bmADb, 'tenants', TENANT_ID, 'policies'), {
+      ...VALID_PAYLOAD, agentId: 'bm-a', createdBy: 'bm-a',
+    })
+  );
+
+  await run('producing-mgr CREATE ALLOW: UM creates own policy', true, () =>
+    addDoc(collection(umADb, 'tenants', TENANT_ID, 'policies'), {
+      ...VALID_PAYLOAD, agentId: 'um-a', createdBy: 'um-a',
+    })
+  );
+
+  // SELF-ONLY INVARIANT — DENY: producing manager cannot write another user's policy.
+  await run('producing-mgr CREATE DENY: BM with another agentId (self-only invariant)', false, () =>
+    addDoc(collection(bmADb, 'tenants', TENANT_ID, 'policies'), {
+      ...VALID_PAYLOAD, agentId: 'agent-a', createdBy: 'bm-a',
+    })
+  );
+
+  await run('producing-mgr CREATE DENY: UM with another agentId (self-only invariant)', false, () =>
+    addDoc(collection(umADb, 'tenants', TENANT_ID, 'policies'), {
+      ...VALID_PAYLOAD, agentId: 'agent-a', createdBy: 'um-a',
+    })
+  );
+
+  // Non-producing role — DENY: tenant_admin cannot create a policy entry.
+  await run('producing-mgr CREATE DENY: tenant_admin (non-producing role)', false, () =>
+    addDoc(collection(taDb, 'tenants', TENANT_ID, 'policies'), {
+      ...VALID_PAYLOAD, agentId: 'ta-1', createdBy: 'ta-1',
+    })
+  );
+
+  // Arm A — ALLOW: BM and UM can body-edit their own submitted policies.
+  await run('producing-mgr Arm A ALLOW: BM body-edits own submitted policy', true, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-pm-bm'),
+      { ownerName: 'BM Client Updated', proposedAPI: 5000, dateWritten: yesterday, sourceOfProspect: 'referral' }
+    )
+  );
+
+  await run('producing-mgr Arm A ALLOW: UM body-edits own submitted policy', true, () =>
+    updateDoc(
+      doc(umADb, 'tenants', TENANT_ID, 'policies', 'policy-pm-um'),
+      { ownerName: 'UM Client Updated', proposedAPI: 5000, dateWritten: yesterday, sourceOfProspect: 'referral' }
+    )
+  );
+
+  // SELF-ONLY INVARIANT — DENY: BM cannot body-edit another user's submitted policy.
+  // policy-b1 has agentId='agent-b', status='submitted' (untouched by prior tests).
+  await run('producing-mgr Arm A DENY: BM body-edits another user policy (self-only)', false, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-b1'),
+      { ownerName: 'BM Hijack' }
+    )
+  );
+
+  // Arm B — ALLOW: BM can transition own policy through legal status change.
+  // policy-pm-bm is in 'submitted' status after the body-edit above (Arm A preserves status).
+  await run('producing-mgr Arm B ALLOW: BM transitions own policy submitted→rated', true, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-pm-bm'),
+      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200 }
+    )
+  );
+
+  // SELF-ONLY INVARIANT — DENY: BM cannot transition another user's policy.
+  // policy-b1 has agentId='agent-b', status='submitted'.
+  await run('producing-mgr Arm B DENY: BM transitions another user policy (self-only)', false, () =>
+    updateDoc(
+      doc(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-b1'),
+      { status: 'rated', statusUpdatedAt: Timestamp.now(), ratedPremium: 1200 }
+    )
+  );
+
+  // ── PRODUCING MANAGER HISTORY ARM ──
+  // Verifies the history agent-arm fix: (isAgent() || isProducingManager()).
+  // BM and UM must be able to write history entries on their OWN policies
+  // (agentId == auth.uid AND parent policy agentId == auth.uid).
+  const BM_HISTORY = {
+    fromStatus:    'submitted',
+    toStatus:      'rated',
+    changedFields: { status: 'rated', ratedPremium: 1200 },
+    actorUid:      'bm-a',
+    actorRole:     'branch_manager',
+    agentId:       'bm-a',
+    unitId:        'um-a',
+    at:            Timestamp.now(),
+  };
+
+  await run('producing-mgr HISTORY ALLOW: BM creates history on own policy', true, () =>
+    addDoc(
+      collection(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-pm-bm', 'history'),
+      BM_HISTORY
+    )
+  );
+
+  await run('producing-mgr HISTORY ALLOW: UM creates history on own policy', true, () =>
+    addDoc(
+      collection(umADb, 'tenants', TENANT_ID, 'policies', 'policy-pm-um', 'history'),
+      { ...BM_HISTORY, actorUid: 'um-a', actorRole: 'unit_manager', agentId: 'um-a' }
+    )
+  );
+
+  // Self-only invariant: BM cannot write a history entry on another user's policy.
+  // policy-a1.agentId == 'agent-a' != 'bm-a' → parent-policy get() check fails → DENY.
+  await run('producing-mgr HISTORY DENY: BM creates history on another user policy (self-only)', false, () =>
+    addDoc(
+      collection(bmADb, 'tenants', TENANT_ID, 'policies', 'policy-a1', 'history'),
+      { ...BM_HISTORY, agentId: 'bm-a' }
     )
   );
 
