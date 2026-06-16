@@ -287,44 +287,37 @@ describe('managerService.getWeeklySubmissions — branch and unit scoping', () =
     expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(1);
   });
 
-  it('branch_manager with branchId: prefetches branch agents then filters submissions', async () => {
+  it('branch_manager with branchId: single getDocs — where(branchId) + where(weekStarting)', async () => {
     hoisted.mockCurrentUser = {
       uid: 'bm-uid-001',
       getIdTokenResult: () => Promise.resolve({ claims: { role: 'branch_manager', branchId: 'branch-001' } }),
     };
-    // First getDocs: getBranchAgentIds — 2 agents in branch
     hoisted.mockGetDocs.mockResolvedValueOnce(makeSnap(
-      makeDoc('agent-a', { role: 'agent', branchId: 'branch-001' }),
-      makeDoc('agent-b', { role: 'agent', branchId: 'branch-001' }),
-    ));
-    // Second getDocs: weekly submissions — one from a different branch
-    hoisted.mockGetDocs.mockResolvedValueOnce(makeSnap(
-      makeDoc('sub-1', { agentId: 'agent-a', weekStarting: '2026-01-05', status: 'submitted' }),
-      makeDoc('sub-2', { agentId: 'agent-b', weekStarting: '2026-01-05', status: 'submitted' }),
-      makeDoc('sub-3', { agentId: 'agent-x', weekStarting: '2026-01-05', status: 'submitted' }),
+      makeDoc('sub-1', { agentId: 'agent-a', branchId: 'branch-001', weekStarting: '2026-01-05' }),
+      makeDoc('sub-2', { agentId: 'agent-b', branchId: 'branch-001', weekStarting: '2026-01-05' }),
     ));
 
     const subs = await getWeeklySubmissions('tenant1', '2026-01-05');
 
-    expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(2);
+    // Single query — no user pre-fetch
+    expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(1);
     expect(hoisted.mockWhere).toHaveBeenCalledWith('branchId', '==', 'branch-001');
-    // Other-branch agent filtered out
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('weekStarting', '==', '2026-01-05');
     expect(subs).toHaveLength(2);
-    expect(subs.map((s) => s.id)).not.toContain('sub-3');
   });
 
-  it('branch_manager: returns [] immediately when branch has no agents', async () => {
+  it('branch_manager with branchId: returns [] when query returns empty', async () => {
     hoisted.mockCurrentUser = {
       uid: 'bm-uid-001',
       getIdTokenResult: () => Promise.resolve({ claims: { role: 'branch_manager', branchId: 'branch-empty' } }),
     };
-    hoisted.mockGetDocs.mockResolvedValueOnce(makeSnap()); // no agents
+    hoisted.mockGetDocs.mockResolvedValueOnce(makeSnap()); // empty result from Firestore
 
     const subs = await getWeeklySubmissions('tenant1', '2026-01-05');
 
     expect(subs).toEqual([]);
-    // Early return — no second getDocs for submissions
     expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(1);
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('branchId', '==', 'branch-empty');
   });
 
   it('branch_manager without branchId claim: falls through to full tenant query', async () => {
@@ -361,14 +354,12 @@ describe('managerService.getWeeklySubmissions — branch and unit scoping', () =
       getIdTokenResult: () => Promise.resolve({ claims: { role: 'branch_manager', branchId: 'branch-001' } }),
     };
     hoisted.mockGetDocs.mockResolvedValueOnce(makeSnap(
-      makeDoc('agent-a', { role: 'agent', branchId: 'branch-001' }),
-    ));
-    hoisted.mockGetDocs.mockResolvedValueOnce(makeSnap(
-      makeDoc('sub-xyz', { agentId: 'agent-a', weekStarting: '2026-01-05' }),
+      makeDoc('sub-xyz', { agentId: 'agent-a', branchId: 'branch-001', weekStarting: '2026-01-05' }),
     ));
 
     const subs = await getWeeklySubmissions('tenant1', '2026-01-05');
 
+    expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(1);
     expect(subs[0].id).toBe('sub-xyz');
     expect(subs[0].agentId).toBe('agent-a');
   });
@@ -435,40 +426,37 @@ describe('managerService.getAllYTDSubmissions — branch and unit scoping', () =
     expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(1);
   });
 
-  it('branch_manager with branchId: prefetches branch agents then filters YTD submissions', async () => {
+  it('branch_manager with branchId: single getDocs — where(branchId) + date range + status', async () => {
     hoisted.mockCurrentUser = {
       uid: 'bm-uid-001',
       getIdTokenResult: () => Promise.resolve({ claims: { role: 'branch_manager', branchId: 'branch-001' } }),
     };
-    // First getDocs: getBranchAgentIds
     hoisted.mockGetDocs.mockResolvedValueOnce(makeSnap(
-      makeDoc('agent-a', { role: 'agent', branchId: 'branch-001' }),
-    ));
-    // Second getDocs: YTD submissions — includes one from another branch
-    hoisted.mockGetDocs.mockResolvedValueOnce(makeSnap(
-      makeDoc('sub-1', { agentId: 'agent-a', weekStarting: '2026-03-02', status: 'submitted' }),
-      makeDoc('sub-2', { agentId: 'agent-x', weekStarting: '2026-03-02', status: 'submitted' }),
+      makeDoc('sub-1', { agentId: 'agent-a', branchId: 'branch-001', weekStarting: '2026-03-02', status: 'submitted' }),
+      makeDoc('sub-2', { agentId: 'agent-b', branchId: 'branch-001', weekStarting: '2026-04-06', status: 'submitted' }),
     ));
 
     const subs = await getAllYTDSubmissions('tenant1');
 
-    expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(2);
+    // Single query — no user pre-fetch
+    expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(1);
     expect(hoisted.mockWhere).toHaveBeenCalledWith('branchId', '==', 'branch-001');
-    expect(subs).toHaveLength(1);
-    expect(subs[0].id).toBe('sub-1');
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('status', '==', 'submitted');
+    expect(subs).toHaveLength(2);
   });
 
-  it('branch_manager: returns [] immediately when branch has no agents', async () => {
+  it('branch_manager with branchId: returns [] when query returns empty', async () => {
     hoisted.mockCurrentUser = {
       uid: 'bm-uid-001',
       getIdTokenResult: () => Promise.resolve({ claims: { role: 'branch_manager', branchId: 'branch-empty' } }),
     };
-    hoisted.mockGetDocs.mockResolvedValueOnce(makeSnap()); // no agents
+    hoisted.mockGetDocs.mockResolvedValueOnce(makeSnap()); // empty result from Firestore
 
     const subs = await getAllYTDSubmissions('tenant1');
 
     expect(subs).toEqual([]);
     expect(hoisted.mockGetDocs).toHaveBeenCalledTimes(1);
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('branchId', '==', 'branch-empty');
   });
 
   it('branch_manager without branchId claim: falls through to full tenant query', async () => {
