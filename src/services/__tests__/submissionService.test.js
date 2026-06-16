@@ -42,6 +42,38 @@ beforeEach(() => {
   hoisted.mockSetDoc.mockResolvedValue(undefined);
 });
 
+describe('submissionService.saveDraft — branchId in write payload', () => {
+  it('stamps branchId when provided', async () => {
+    await saveDraft('t1', 'uid-a', 'Agent A', '2026-01-05', {}, 0, 'um-uid-001', 'branch-a');
+
+    const [, payload] = hoisted.mockSetDoc.mock.calls[0];
+    expect(payload).toMatchObject({ branchId: 'branch-a' });
+  });
+
+  it('defaults branchId to null when omitted (backward-compat caller)', async () => {
+    await saveDraft('t1', 'uid-a', 'Agent A', '2026-01-05', {}, 0, 'um-uid-001');
+
+    const [, payload] = hoisted.mockSetDoc.mock.calls[0];
+    expect(payload).toMatchObject({ branchId: null });
+  });
+});
+
+describe('submissionService.submitReport — branchId in write payload', () => {
+  it('stamps branchId when provided', async () => {
+    await submitReport('t1', 'uid-a', 'Agent A', '2026-01-05', {}, 0, 'um-uid-001', 'branch-a');
+
+    const [, payload] = hoisted.mockSetDoc.mock.calls[0];
+    expect(payload).toMatchObject({ branchId: 'branch-a' });
+  });
+
+  it('defaults branchId to null when omitted (backward-compat caller)', async () => {
+    await submitReport('t1', 'uid-a', 'Agent A', '2026-01-05', {}, 0, 'um-uid-001');
+
+    const [, payload] = hoisted.mockSetDoc.mock.calls[0];
+    expect(payload).toMatchObject({ branchId: null });
+  });
+});
+
 describe('submissionService.saveDraft — unitId in write payload', () => {
   it('includes unitId in the setDoc payload', async () => {
     await saveDraft('t1', 'uid-a', 'Agent A', '2026-01-05', {}, 0, 'um-uid-001');
@@ -236,8 +268,8 @@ describe('submissionService.sanitize — social & content fields (FU HIGH fix)',
   });
 });
 
-describe('loggingModeService.aggregateCurrentWeekDaily — unitId in write payload', () => {
-  it('includes unitId in the setDoc payload when daily entries exist', async () => {
+describe('loggingModeService.aggregateCurrentWeekDaily — unitId + branchId in write payload', () => {
+  it('includes unitId and branchId in the setDoc payload when daily entries exist', async () => {
     getDailyEntriesForWeek.mockResolvedValueOnce([
       { qualifiedApproaches: 1 },
     ]);
@@ -245,11 +277,11 @@ describe('loggingModeService.aggregateCurrentWeekDaily — unitId in write paylo
     const { getDoc } = await import('firebase/firestore');
     getDoc.mockResolvedValueOnce({ exists: () => true, data: () => ({ status: 'draft' }) });
 
-    await aggregateCurrentWeekDaily('t1', 'uid-a', 'Agent A', 0, 'um-uid-001');
+    await aggregateCurrentWeekDaily('t1', 'uid-a', 'Agent A', 0, 'um-uid-001', 'branch-a');
 
     expect(hoisted.mockSetDoc).toHaveBeenCalledTimes(1);
     const [, payload] = hoisted.mockSetDoc.mock.calls[0];
-    expect(payload).toMatchObject({ unitId: 'um-uid-001' });
+    expect(payload).toMatchObject({ unitId: 'um-uid-001', branchId: 'branch-a' });
   });
 
   it('accepts null unitId', async () => {
@@ -257,13 +289,13 @@ describe('loggingModeService.aggregateCurrentWeekDaily — unitId in write paylo
     const { getDoc } = await import('firebase/firestore');
     getDoc.mockResolvedValueOnce({ exists: () => false });
 
-    await aggregateCurrentWeekDaily('t1', 'uid-a', 'Agent A', 0, null);
+    await aggregateCurrentWeekDaily('t1', 'uid-a', 'Agent A', 0, null, 'branch-a');
 
     const [, payload] = hoisted.mockSetDoc.mock.calls[0];
-    expect(payload).toMatchObject({ unitId: null });
+    expect(payload).toMatchObject({ unitId: null, branchId: 'branch-a' });
   });
 
-  it('defaults unitId to null when omitted', async () => {
+  it('defaults unitId and branchId to null when omitted', async () => {
     getDailyEntriesForWeek.mockResolvedValueOnce([{ qualifiedApproaches: 1 }]);
     const { getDoc } = await import('firebase/firestore');
     getDoc.mockResolvedValueOnce({ exists: () => false });
@@ -271,13 +303,13 @@ describe('loggingModeService.aggregateCurrentWeekDaily — unitId in write paylo
     await aggregateCurrentWeekDaily('t1', 'uid-a', 'Agent A', 0);
 
     const [, payload] = hoisted.mockSetDoc.mock.calls[0];
-    expect(payload).toMatchObject({ unitId: null });
+    expect(payload).toMatchObject({ unitId: null, branchId: null });
   });
 
   it('no-op (no setDoc) when there are no daily entries', async () => {
     getDailyEntriesForWeek.mockResolvedValueOnce([]);
 
-    const result = await aggregateCurrentWeekDaily('t1', 'uid-a', 'Agent A', 0, 'um-uid-001');
+    const result = await aggregateCurrentWeekDaily('t1', 'uid-a', 'Agent A', 0, 'um-uid-001', 'branch-a');
 
     expect(hoisted.mockSetDoc).not.toHaveBeenCalled();
     expect(result.aggregated).toBe(false);

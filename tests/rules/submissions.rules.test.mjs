@@ -7,7 +7,7 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (21 cases):
+ * Test matrix (23 cases):
  *   allow get
  *     1. Agent reads own submission → ALLOW
  *     2. Agent reads another agent's submission → DENY
@@ -26,15 +26,17 @@
  *    12.  UM sees cross-unit doc → DENY
  *
  *   allow create
- *    13. Agent creates own submission (agentId == uid) → ALLOW
+ *    13. Agent creates own submission with matching branchId → ALLOW
  *    14. Agent creates submission for another agent → DENY
- *    15. BM creates submission → ALLOW
+ *    15. BM creates submission (canManage path, no branchId constraint) → ALLOW
+ *    22. Agent creates own submission with forged branchId → DENY
  *
  *   allow update
- *    16. Agent updates own draft submission → ALLOW
+ *    16. Agent updates own draft submission with matching branchId → ALLOW
  *    17. Agent updates own non-draft (submitted) → DENY
  *    18. BM updates any submission → ALLOW
  *    19. Agent updates another agent's draft → DENY
+ *    23. Agent updates own draft with forged branchId → DENY
  *
  *   allow delete
  *    20. BM delete → DENY
@@ -79,8 +81,8 @@ const SUB_DRAFT_ID     = 'sub-draft-agent1';    // agent1's draft
 const SUB_SUBMITTED_ID = 'sub-submitted-agent1'; // agent1's submitted
 const SUB_AGENT2_ID    = 'sub-agent2';           // agent2's doc (different unit)
 
-function authToken(role, tenantId = TENANT_ID) {
-  return { role, tenantId };
+function authToken(role, tenantId = TENANT_ID, extra = {}) {
+  return { role, tenantId, ...extra };
 }
 
 function userRef(db, uid, tenantId = TENANT_ID) {
@@ -242,32 +244,51 @@ async function main() {
   // ── allow create ──────────────────────────────────────────────────────────
   console.log('\nallow create:');
 
-  await t('13. Agent creates own submission (agentId == uid) → ALLOW', async () => {
-    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+  await t('13. Agent creates own submission with matching branchId → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(
+      AGENT1_ID, authToken('agent', TENANT_ID, { branchId: 'branch-a' })
+    ).firestore();
     await assertSucceeds(
       setDoc(subRef(db, 'new-agent1-sub'), draftDoc(AGENT1_ID, UM_ID)),
     );
   });
 
   await t("14. Agent creates submission for another agent → DENY", async () => {
-    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    const db = testEnv.authenticatedContext(
+      AGENT1_ID, authToken('agent', TENANT_ID, { branchId: 'branch-a' })
+    ).firestore();
     await assertFails(
       setDoc(subRef(db, 'new-agent2-by-agent1'), draftDoc(AGENT2_ID, 'um2')),
     );
   });
 
-  await t('15. BM creates submission → ALLOW', async () => {
+  await t('15. BM creates submission (canManage path, no branchId constraint) → ALLOW', async () => {
     const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager')).firestore();
     await assertSucceeds(
       setDoc(subRef(db, 'bm-created-sub'), draftDoc(AGENT1_ID, UM_ID)),
     );
   });
 
+  await t('22. Agent creates own submission with forged branchId → DENY', async () => {
+    const db = testEnv.authenticatedContext(
+      AGENT1_ID, authToken('agent', TENANT_ID, { branchId: 'branch-a' })
+    ).firestore();
+    await assertFails(
+      setDoc(subRef(db, 'new-agent1-forged'), {
+        ...draftDoc(AGENT1_ID, UM_ID),
+        branchId: 'branch-b',   // forged — does not match token branchId 'branch-a'
+      }),
+    );
+  });
+
   // ── allow update ──────────────────────────────────────────────────────────
   console.log('\nallow update:');
 
-  await t('16. Agent updates own draft submission → ALLOW', async () => {
-    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+  await t('16. Agent updates own draft submission with matching branchId → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(
+      AGENT1_ID, authToken('agent', TENANT_ID, { branchId: 'branch-a' })
+    ).firestore();
+    // updateDoc merges; request.resource.data.branchId comes from the existing doc ('branch-a')
     await assertSucceeds(updateDoc(subRef(db, SUB_DRAFT_ID), { apiSold: 5000 }));
   });
 
@@ -282,9 +303,21 @@ async function main() {
   });
 
   await t("19. Agent updates another agent's draft → DENY", async () => {
-    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    const db = testEnv.authenticatedContext(
+      AGENT1_ID, authToken('agent', TENANT_ID, { branchId: 'branch-a' })
+    ).firestore();
     // agent2's sub is submitted but test is about ownership, not status
     await assertFails(updateDoc(subRef(db, SUB_AGENT2_ID), { apiSold: 1 }));
+  });
+
+  await t('23. Agent updates own draft with forged branchId → DENY', async () => {
+    const db = testEnv.authenticatedContext(
+      AGENT1_ID, authToken('agent', TENANT_ID, { branchId: 'branch-b' })  // token has wrong branch
+    ).firestore();
+    // The existing draft doc has branchId 'branch-a'; token says 'branch-b'
+    // request.resource.data.branchId resolves to 'branch-a' (existing field, not overwritten)
+    // 'branch-a' != 'branch-b' → DENY
+    await assertFails(updateDoc(subRef(db, SUB_DRAFT_ID), { apiSold: 999 }));
   });
 
   // ── allow delete ──────────────────────────────────────────────────────────
@@ -302,7 +335,8 @@ async function main() {
 
   // ── Summary ───────────────────────────────────────────────────────────────
   await testEnv.cleanup();
-  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed`);
+  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed  (expected 23)`);
+
   if (failed > 0) process.exit(1);
 }
 

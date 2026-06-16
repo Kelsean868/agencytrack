@@ -279,9 +279,13 @@ service cloud.firestore {
                getRole() != 'unit_manager'
                || resource.data.unitId == request.auth.uid
              ));
-        allow create: if canManage(tenantId) || canAccessOwn(tenantId, request.resource.data.agentId);
-        allow update: if canManage(tenantId) ||
-          (canAccessOwn(tenantId, resource.data.agentId) && resource.data.status == 'draft');
+        allow create: if canManage(tenantId)
+          || (canAccessOwn(tenantId, request.resource.data.agentId)
+              && request.resource.data.branchId == request.auth.token.branchId);
+        allow update: if canManage(tenantId)
+          || (canAccessOwn(tenantId, resource.data.agentId)
+              && resource.data.status == 'draft'
+              && request.resource.data.branchId == request.auth.token.branchId);
         allow delete: if false;
       }
 
