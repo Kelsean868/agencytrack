@@ -6,7 +6,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
-  Activity, UserPlus, ClipboardCheck,
+  Activity, UserPlus, ClipboardCheck, BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -39,6 +39,7 @@ import MonthlyRecruitingTab from '../manager/MonthlyRecruitingTab';
 import PolicyReconciliationPanel from '../manager/PolicyReconciliationPanel';
 import { MANAGER_COMING_SOON_TABS } from '../../config/comingSoonTabs';
 import GoalsPanel from '../manager/GoalsPanel';
+import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -70,6 +71,7 @@ const NAV_ITEMS = [
   // the access-denied state for uncredentialled callers.
   { id: 'policy-reconciliation', label: 'Policy Reconciliation', tabId: 'policy-reconciliation', Icon: ClipboardCheck },
   { id: 'leaderboard', label: 'Leaderboard',  tabId: 'leaderboard', Icon: Star,          sectionLabel: 'Tools' },
+  { id: 'policy-ledger', label: 'Policy Ledger', tabId: 'policy-ledger', Icon: BookOpen, roles: ['unit_manager', 'branch_manager'] },
   // E6: agent of the month — branch_manager+ only (unit_manager excluded)
   { id: 'agent-of-month', label: 'Agent of Month', tabId: 'agent-of-month', Icon: Trophy, roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
   // E5: kiosk tab — branch_manager+ only (unit_manager excluded)
@@ -298,6 +300,8 @@ export default function ManagerDashboard() {
         {activeTab === 'agent-of-month' && <AgentOfMonthTab />}
 
         {activeTab === 'kiosk' && <KioskModeTab />}
+
+        {activeTab === 'policy-ledger' && (role === 'unit_manager' || role === 'branch_manager') && <PolicyLedgerPanel />}
 
         {activeTab === 'profile' && <ProfileScreen />}
     </Shell>
