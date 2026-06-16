@@ -6,6 +6,21 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## GoalsPanel SelfTab unmount loses in-progress PolicyLedgerPanel entries (banked PR #653, 2026-06-16, LOW-MED)
+
+`PolicyLedgerPanel` is now the first SelfTab form. When a producing manager switches away from the Self sub-tab and back, `SelfTab` unmounts and remounts — any in-progress "New Policy" form entry is lost. The same is true for all future forms added to SelfTab.
+
+**Fix shape:** Solve once at the `GoalsPanel` level rather than per-panel:
+- **CSS visibility approach:** render all sub-tabs simultaneously, show/hide with `display: none` / `display: contents` based on `subTab === id`. No unmount/remount; state persists across switches.
+- **Lifted state approach:** hoist policy-form draft state into GoalsPanel and pass down via props. More surgical but must be repeated for each new SelfTab form.
+- CSS visibility is the simpler, more future-proof choice.
+
+**Scope:** `src/components/manager/GoalsPanel.jsx` — the `TabPills` conditional rendering block (lines ~1159–1175). Zero rules / service changes.
+
+**Why LOW-MED:** Agents using AgentDashboard's policy ledger do not face this (no sub-tabs in AgentDashboard). Producing managers switching sub-tabs mid-entry lose their draft — real UX friction once the pilot cohort uses the feature regularly. Not a data-loss issue (nothing is written until Save). LOW-MED until pilot feedback confirms frequency.
+
+---
+
 ## Policy ledger producing-manager write — UM Arm A + Arm B other-owner DENY emulator cases (banked PR #652, 2026-06-16, LOW)
 
 The emulator suite (`tests/rules/policies.rules.test.mjs`) includes self-only DENY cases for BM on Arm A (body-edit) and Arm B (status-transition), but no equivalent UM case for those two arms. The rule predicate is identical for both roles (`resource.data.agentId == request.auth.uid`), so the BM cases cover the same code path. This is a coverage gap, not a correctness gap.
