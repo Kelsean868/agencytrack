@@ -41,3 +41,22 @@ export function parseDateOnlyTT(s) {
 export function getTodayTT() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Port_of_Spain' }).format(new Date());
 }
+
+/**
+ * computeMonthsFromDate — whole months elapsed from a YYYY-MM-DD date to today (TT).
+ *
+ * Uses TT-local midnight for both endpoints (parseDateOnlyTT) so the result
+ * matches TT calendar months, not UTC months.
+ *
+ * @param {string} dateStr — "YYYY-MM-DD" start date
+ * @returns {number} — whole months elapsed, minimum 0
+ */
+export function computeMonthsFromDate(dateStr) {
+  const start = parseDateOnlyTT(dateStr);
+  const today = parseDateOnlyTT(getTodayTT());
+  const yearDiff  = today.getUTCFullYear() - start.getUTCFullYear();
+  const monthDiff = today.getUTCMonth()    - start.getUTCMonth();
+  let months = yearDiff * 12 + monthDiff;
+  if (today.getUTCDate() < start.getUTCDate()) months--;
+  return Math.max(0, months);
+}

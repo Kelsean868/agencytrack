@@ -132,15 +132,23 @@ export async function resendInvite(uid) {
 }
 
 /**
- * saveOnboardingIdentity — write-once identity fields (Slice A rule arm).
- * Must NOT include updatedAt — the rule hasOnly(['agentNumber','dateOfBirth','onboardingComplete'])
+ * saveOnboardingIdentity — write-once identity fields (Slice A/B rule arm).
+ * Must NOT include updatedAt — the rule hasOnly(['agentNumber','dateOfBirth',
+ * 'contractStartDate','monthsAtTatil','monthsInIndustry','onboardingComplete'])
  * would reject any additional key.
  */
-export async function saveOnboardingIdentity(tenantId, uid, { agentNumber, dateOfBirth } = {}) {
+export async function saveOnboardingIdentity(
+  tenantId,
+  uid,
+  { agentNumber, dateOfBirth, contractStartDate, monthsAtTatil, monthsInIndustry } = {},
+) {
   if (!tenantId || !uid) throw new Error('tenantId and uid are required.');
   const fields = {};
   if (agentNumber) fields.agentNumber = agentNumber;
   if (dateOfBirth) fields.dateOfBirth = dateOfBirth; // YYYY-MM-DD string
+  if (contractStartDate) fields.contractStartDate = contractStartDate; // YYYY-MM-DD string
+  if (typeof monthsAtTatil    === 'number') fields.monthsAtTatil    = monthsAtTatil;
+  if (typeof monthsInIndustry === 'number') fields.monthsInIndustry = monthsInIndustry;
   if (Object.keys(fields).length === 0) return;
   await updateDoc(doc(db, `tenants/${tenantId}/users/${uid}`), fields);
 }
