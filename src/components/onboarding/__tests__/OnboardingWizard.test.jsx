@@ -49,6 +49,8 @@ vi.mock('../../../services/goalsService', () => ({
 // ── dateInputs mock ────────────────────────────────────────────────────────────
 vi.mock('../../../utils/dateInputs', () => ({
   getTodayTT: () => '2026-06-15',
+  // Parse YYYY-MM-DD as TT-local midnight (same as real implementation)
+  parseDateOnlyTT: (s) => new Date(`${s}T04:00:00Z`),
   // Independent implementation mirroring computeMonthsFromDate; today fixed to 2026-06-15
   computeMonthsFromDate: (dateStr) => {
     const [y, m, d] = dateStr.split('-').map(Number);

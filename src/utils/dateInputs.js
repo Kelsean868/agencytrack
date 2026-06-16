@@ -52,11 +52,15 @@ export function getTodayTT() {
  * @returns {number} — whole months elapsed, minimum 0
  */
 export function computeMonthsFromDate(dateStr) {
-  const start = parseDateOnlyTT(dateStr);
-  const today = parseDateOnlyTT(getTodayTT());
-  const yearDiff  = today.getUTCFullYear() - start.getUTCFullYear();
-  const monthDiff = today.getUTCMonth()    - start.getUTCMonth();
-  let months = yearDiff * 12 + monthDiff;
-  if (today.getUTCDate() < start.getUTCDate()) months--;
-  return Math.max(0, months);
+  try {
+    const start = parseDateOnlyTT(dateStr);
+    const today = parseDateOnlyTT(getTodayTT());
+    const yearDiff  = today.getUTCFullYear() - start.getUTCFullYear();
+    const monthDiff = today.getUTCMonth()    - start.getUTCMonth();
+    let months = yearDiff * 12 + monthDiff;
+    if (today.getUTCDate() < start.getUTCDate()) months--;
+    return Math.max(0, months);
+  } catch {
+    return 0;
+  }
 }

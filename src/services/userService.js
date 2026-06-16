@@ -147,8 +147,8 @@ export async function saveOnboardingIdentity(
   if (agentNumber) fields.agentNumber = agentNumber;
   if (dateOfBirth) fields.dateOfBirth = dateOfBirth; // YYYY-MM-DD string
   if (contractStartDate) fields.contractStartDate = contractStartDate; // YYYY-MM-DD string
-  if (typeof monthsAtTatil    === 'number') fields.monthsAtTatil    = monthsAtTatil;
-  if (typeof monthsInIndustry === 'number') fields.monthsInIndustry = monthsInIndustry;
+  if (typeof monthsAtTatil    === 'number' && !isNaN(monthsAtTatil))    fields.monthsAtTatil    = monthsAtTatil;
+  if (typeof monthsInIndustry === 'number' && !isNaN(monthsInIndustry)) fields.monthsInIndustry = monthsInIndustry;
   if (Object.keys(fields).length === 0) return;
   await updateDoc(doc(db, `tenants/${tenantId}/users/${uid}`), fields);
 }

@@ -90,6 +90,9 @@ async function loginAsAgent(page, baseUrl, email, pass) {
 
 async function waitForIdentityStep(page) {
   await page.waitForSelector('[data-testid="onboarding-wizard"]', { timeout: 45_000 });
+  // If on Welcome screen, click "Get Started" to advance to Identity
+  const getStartedBtn = await page.$('button:has-text("Get Started")');
+  if (getStartedBtn) await getStartedBtn.click();
   // Identity step has the "Contract start date" label
   return page.waitForSelector('label[for="wizard-contract-date"]', { timeout: 20_000 }).catch(() => null);
 }

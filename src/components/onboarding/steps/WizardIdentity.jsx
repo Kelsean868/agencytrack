@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { AlertTriangle, Lock, ChevronRight } from 'lucide-react';
-import { getTodayTT, computeMonthsFromDate } from '../../../utils/dateInputs';
+import { getTodayTT, computeMonthsFromDate, parseDateOnlyTT } from '../../../utils/dateInputs';
 
 // Soft-validation: 3 digits + 1 letter + 2 digits (e.g. 012B34)
 const AGENT_NUM_RE = /^\d{3}[A-Za-z]\d{2}$/;
@@ -11,8 +11,8 @@ export default function WizardIdentity({ userProfile, onSave, onSkip, saving }) 
   const lockedDob              = userProfile?.dateOfBirth || null;
   const lockedContractDate     = (userProfile?.contractStartDate && userProfile.contractStartDate !== '')
     ? userProfile.contractStartDate : null;
-  const lockedMonthsAtTatil    = typeof userProfile?.monthsAtTatil    === 'number' ? userProfile.monthsAtTatil    : null;
-  const lockedMonthsInIndustry = typeof userProfile?.monthsInIndustry === 'number' ? userProfile.monthsInIndustry : null;
+  const lockedMonthsAtTatil    = typeof userProfile?.monthsAtTatil    === 'number' && !isNaN(userProfile.monthsAtTatil)    ? userProfile.monthsAtTatil    : null;
+  const lockedMonthsInIndustry = typeof userProfile?.monthsInIndustry === 'number' && !isNaN(userProfile.monthsInIndustry) ? userProfile.monthsInIndustry : null;
 
   const [agentNumber,    setAgentNumber]    = useState(lockedAgentNumber || '');
   const [dob,            setDob]            = useState(lockedDob || '');
@@ -29,6 +29,18 @@ export default function WizardIdentity({ userProfile, onSave, onSkip, saving }) 
     setFormatWarn(v.length === 6 && !AGENT_NUM_RE.test(v));
   }
 
+  const isContractDateValid = useMemo(() => {
+    if (!contractDate) return false;
+    try {
+      const d       = parseDateOnlyTT(contractDate);
+      const minDate = parseDateOnlyTT('1980-01-01');
+      const todayDate = parseDateOnlyTT(today);
+      return d >= minDate && d <= todayDate;
+    } catch {
+      return false;
+    }
+  }, [contractDate, today]);
+
   const monthsAtTatilComputed = useMemo(
     () => (contractDate ? computeMonthsFromDate(contractDate) : 0),
     [contractDate],
@@ -40,7 +52,7 @@ export default function WizardIdentity({ userProfile, onSave, onSkip, saving }) 
     && parsedIndustryMonths >= monthsAtTatilComputed
     && parsedIndustryMonths <= MAX_INDUSTRY_MONTHS;
 
-  const hasContractDateEntry = contractDate.length > 0 && !lockedContractDate;
+  const hasContractDateEntry = contractDate.length > 0 && !lockedContractDate && isContractDateValid;
   const tenureBlockComplete  = !hasContractDateEntry
     || (isFirstCompany !== null && (isFirstCompany === true || industryMonthsValid));
 
