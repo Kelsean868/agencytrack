@@ -266,7 +266,7 @@ function NoSeedState({ onDismiss }) {
 
 // ── Main modal ────────────────────────────────────────────────────────────────
 
-export default function YearPlanModal({ onClose, moneyNeedsWorksheet, avgPolicyAPI = null }) {
+export default function YearPlanModal({ onClose, onAfterSave, moneyNeedsWorksheet, avgPolicyAPI = null }) {
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
   const commissionRate = parseFloat(user?.commissionRate) || 35;
@@ -440,6 +440,7 @@ export default function YearPlanModal({ onClose, moneyNeedsWorksheet, avgPolicyA
     setSaveError('');
     try {
       await saveYearPlan(tenantId, uid, year, lines, licenseProfile);
+      onAfterSave?.();
       onClose();
     } catch {
       setSaveError('Save failed — check your connection and try again.');
