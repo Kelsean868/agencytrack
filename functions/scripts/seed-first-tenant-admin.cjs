@@ -160,7 +160,7 @@ if (process.env.FIREBASE_AUTH_EMULATOR_HOST) {
   // displayName). Writing name:null leaves the tenant-admin doc with a blank
   // name in every manager/leaderboard surface that reads it; force the operator
   // to supply one explicitly rather than silently persisting a null.
-  if (isApply && (resolvedName == null || String(resolvedName).trim() === '')) {
+  if (isApply && (!resolvedName || !resolvedName.trim())) {
     console.error(
       '\nError: could not resolve a display name for the tenant-admin doc.\n' +
       '  No --name flag was passed and the Auth user has no displayName.\n' +
