@@ -10,7 +10,7 @@
  *   node scripts/verification/seed-smoke-tenant-emulator-verify.cjs
  */
 
-const { execSync, spawnSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const path  = require('path');
 const admin = require('../../functions/node_modules/firebase-admin');
 
@@ -44,7 +44,7 @@ function deepEqual(a, b) {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
-admin.initializeApp({ projectId: 'agencytrack-2a610' });
+admin.initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? 'agencytrack-2a610' });
 const db   = admin.firestore();
 const auth = admin.auth();
 

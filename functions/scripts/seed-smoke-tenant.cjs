@@ -141,7 +141,7 @@ const isEmulator = !!(process.env.FIREBASE_AUTH_EMULATOR_HOST || process.env.FIR
 
 if (isEmulator) {
   console.log('[seed] Emulator mode — skipping key file');
-  admin.initializeApp({ projectId: 'agencytrack-2a610' });
+  admin.initializeApp({ projectId: process.env.GCLOUD_PROJECT ?? 'agencytrack-2a610' });
 } else {
   const keyPath = path.join(__dirname, '..', 'service-account-key.json');
   if (!fs.existsSync(keyPath)) {
@@ -187,7 +187,6 @@ function buildUserDoc(def, uid, umUid) {
     email:        env[def.emailKey],
     branchId:     BRANCH_ID,
     active:       true,
-    provisioning: true,
     createdAt:    admin.firestore.FieldValue.serverTimestamp(),
     createdBy:    SEED_ACTOR,
   };
