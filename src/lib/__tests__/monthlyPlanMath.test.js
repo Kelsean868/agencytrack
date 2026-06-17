@@ -7,6 +7,8 @@ import {
   bucketActualsByMonth,
   monthlyPace,
   ytdDelta,
+  recoveryPace,
+  absorbShortfall,
 } from '../monthlyPlanMath';
 
 // ── seedEvenSplit ─────────────────────────────────────────────────────────────
@@ -273,5 +275,136 @@ describe('ytdDelta', () => {
     const targets = [10000, 10000, 10000, 10000];
     // currentMonthIndex = 2 → only indices 0,1 counted
     expect(ytdDelta(actuals, targets, 2)).toBe(-10000);
+  });
+});
+
+// ── recoveryPace ──────────────────────────────────────────────────────────────
+
+describe('recoveryPace', () => {
+  it('no completed months (January) → pacePerMonth === anchor/12', () => {
+    const actuals = Array(12).fill(0);
+    const result = recoveryPace(1200000, actuals, 0);
+    expect(result.pacePerMonth).toBe(100000); // 1200000 / 12
+    expect(result.isStretch).toBe(false);
+  });
+
+  it('behind on settled months → pace > original', () => {
+    // 5 months completed with 300k actual vs 500k target; need to catch up
+    const actuals = [50000, 50000, 50000, 50000, 50000, 0, 0, 0, 0, 0, 0, 0];
+    const anchor = 1200000;
+    const result = recoveryPace(anchor, actuals, 5);
+    // settled = 250k; needed = 950k; remaining = 7 months
+    // pace = 950k / 7 ≈ 135714.29
+    expect(result.settledToDate).toBe(250000);
+    expect(result.stillNeeded).toBe(950000);
+    expect(result.remainingCount).toBe(7);
+    expect(result.pacePerMonth).toBeGreaterThan(100000);
+    expect(result.originalPerMonth).toBe(100000);
+  });
+
+  it('ahead on settled months → pace < original', () => {
+    // 3 months completed with 350k actual vs 300k target
+    const actuals = [120000, 120000, 120000, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const anchor = 1200000;
+    const result = recoveryPace(anchor, actuals, 3);
+    // settled = 360k; needed = 840k; remaining = 9 months
+    // pace = 840k / 9 ≈ 93333.33
+    expect(result.settledToDate).toBe(360000);
+    expect(result.pacePerMonth).toBeLessThan(100000);
+  });
+
+  it('currentMonthIndex === 11 → remainingCount === 1, pace === anchor − settled', () => {
+    const actuals = [50000, 50000, 50000, 50000, 50000, 50000,
+                     50000, 50000, 50000, 50000, 50000, 0];
+    const anchor = 600000;
+    const result = recoveryPace(anchor, actuals, 11);
+    expect(result.remainingCount).toBe(1);
+    expect(result.settledToDate).toBe(550000);
+    expect(result.pacePerMonth).toBe(50000); // 600k - 550k
+  });
+
+  it('isStretch flips correctly at 1.5× threshold', () => {
+    const originalPerMonth = 100000;
+    const anchor = originalPerMonth * 12; // 1.2M
+    const threshold = originalPerMonth * 1.5; // 150k
+
+    // Just below threshold — not a stretch
+    const actuals1 = Array(12).fill(0);
+    actuals1[0] = anchor - (threshold * 11 - 1); // Just enough that pace < 150k
+    const result1 = recoveryPace(anchor, actuals1, 1);
+    if (result1.pacePerMonth < threshold) {
+      expect(result1.isStretch).toBe(false);
+    }
+
+    // Well above threshold — is a stretch
+    const actuals2 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const result2 = recoveryPace(anchor, actuals2, 0); // January → all 12 months remaining
+    expect(result2.pacePerMonth).toBe(100000); // even split, not a stretch
+    expect(result2.isStretch).toBe(false);
+  });
+});
+
+// ── absorbShortfall ───────────────────────────────────────────────────────────
+
+describe('absorbShortfall', () => {
+  it('completed months re-based to actuals', () => {
+    const targets = [90000, 100000, 110000, 100000, 100000, 100000,
+                     100000, 100000, 100000, 100000, 100000, 100000];
+    const actuals = [85000, 95000, 105000, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const result = absorbShortfall(targets, 1200000, actuals, 3);
+    expect(result[0]).toBe(85000);  // re-based to actual
+    expect(result[1]).toBe(95000);  // re-based to actual
+    expect(result[2]).toBe(105000); // re-based to actual
+  });
+
+  it('remaining months set to pacePerMonth', () => {
+    const targets = [90000, 100000, 110000, 100000, 100000, 100000,
+                     100000, 100000, 100000, 100000, 100000, 100000];
+    const actuals = [85000, 95000, 105000, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const result = absorbShortfall(targets, 1200000, actuals, 3);
+    // settled = 285k; needed = 915k; remaining = 9 months
+    // pace = 915k / 9 ≈ 101666.67
+    const expectedPace = 101666.67;
+    for (let i = 3; i < 11; i++) {
+      expect(result[i]).toBeCloseTo(expectedPace, 1);
+    }
+  });
+
+  it('sum of result === anchorAPI exactly (rounding invariant)', () => {
+    const targets = [90000, 100000, 110000, 100000, 100000, 100000,
+                     100000, 100000, 100000, 100000, 100000, 100000];
+    const actuals = [85000, 95000, 105000, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const anchor = 1200000;
+    const result = absorbShortfall(targets, anchor, actuals, 3);
+    const sum = result.reduce((s, v) => s + v, 0);
+    expect(parseFloat(sum.toFixed(2))).toBe(anchor);
+  });
+
+  it('settled month with actual 0 re-bases to 0', () => {
+    const targets = Array(12).fill(100000);
+    const actuals = [0, 100000, 100000, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const result = absorbShortfall(targets, 1200000, actuals, 3);
+    expect(result[0]).toBe(0);
+  });
+
+  it('screenshot scenario: 5 completed @ 0, anchor ≈ 1.2M', () => {
+    // Agent has 0 in first 5 months; needs to catch up in remaining 7 months
+    const targets = Array(12).fill(100000);
+    const actuals = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const anchor = 1185714; // Typical annual
+    const result = absorbShortfall(targets, anchor, actuals, 5);
+
+    // First 5 months re-based to 0
+    for (let i = 0; i < 5; i++) {
+      expect(result[i]).toBe(0);
+    }
+
+    // Remaining 7 months (5-11) spread the full anchor
+    const remainingSum = result.slice(5).reduce((s, v) => s + v, 0);
+    expect(parseFloat(remainingSum.toFixed(2))).toBe(anchor);
+
+    // Total should equal anchor
+    const totalSum = result.reduce((s, v) => s + v, 0);
+    expect(parseFloat(totalSum.toFixed(2))).toBe(anchor);
   });
 });

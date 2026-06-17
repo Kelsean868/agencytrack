@@ -199,3 +199,98 @@ export function ytdDelta(actualByMonth, targets, currentMonthIndex) {
   }
   return parseFloat(delta.toFixed(2));
 }
+
+// ── Recovery & Catch-up ───────────────────────────────────────────────────────
+
+const RECOVERY_STRETCH_MULTIPLE = 1.5;
+
+/**
+ * recoveryPace — pace readout for catch-up planning.
+ *
+ * Settled months are those with indices < currentMonthIndex (completed).
+ * Remaining months are currentMonthIndex through 11 (current + future).
+ *
+ * @param {number} anchorAPI — full TTD annual target
+ * @param {number[]} actualByMonth — from bucketActualsByMonth
+ * @param {number} currentMonthIndex — 0-based
+ * @returns {{
+ *   settledToDate: number,
+ *   stillNeeded: number,
+ *   remainingCount: number,
+ *   pacePerMonth: number,
+ *   originalPerMonth: number,
+ *   isStretch: boolean
+ * }}
+ */
+export function recoveryPace(anchorAPI, actualByMonth, currentMonthIndex) {
+  const anchor = parseFloat(anchorAPI) || 0;
+  const actuals = actualByMonth || [];
+
+  const completed = [];
+  for (let i = 0; i < currentMonthIndex; i++) completed.push(i);
+
+  const settledToDate = completed.reduce(
+    (s, i) => s + (parseFloat(actuals[i]) || 0),
+    0,
+  );
+  const settledToDateRounded = parseFloat(settledToDate.toFixed(2));
+
+  const remainingCount = 12 - currentMonthIndex;
+  const stillNeeded = Math.max(0, anchor - settledToDateRounded);
+  const pacePerMonth = remainingCount > 0
+    ? parseFloat((stillNeeded / remainingCount).toFixed(2))
+    : 0;
+  const originalPerMonth = parseFloat((anchor / 12).toFixed(2));
+  const isStretch = pacePerMonth > originalPerMonth * RECOVERY_STRETCH_MULTIPLE;
+
+  return {
+    settledToDate: settledToDateRounded,
+    stillNeeded: parseFloat(stillNeeded.toFixed(2)),
+    remainingCount,
+    pacePerMonth,
+    originalPerMonth,
+    isStretch,
+  };
+}
+
+/**
+ * absorbShortfall — re-base settled months to actuals, re-spread remainder.
+ *
+ * Returns a new targets array where:
+ * - Settled months (indices < currentMonthIndex) = actualByMonth[i]
+ * - Remaining months (indices >= currentMonthIndex) = pacePerMonth (from recoveryPace)
+ * - Last remaining month set exactly so Σ targets === anchorAPI
+ *
+ * @param {number[]} targets — current plan targets
+ * @param {number} anchorAPI — full TTD annual target
+ * @param {number[]} actualByMonth — from bucketActualsByMonth
+ * @param {number} currentMonthIndex — 0-based
+ * @returns {number[12]}
+ */
+export function absorbShortfall(targets, anchorAPI, actualByMonth, currentMonthIndex) {
+  const anchor = parseFloat(anchorAPI) || 0;
+  const t = (targets || []).map((v) => parseFloat(v) || 0);
+  const actuals = actualByMonth || [];
+
+  const pace = recoveryPace(anchor, actuals, currentMonthIndex);
+  const { pacePerMonth } = pace;
+
+  const next = [...t];
+
+  // Re-base settled months to actuals
+  for (let i = 0; i < currentMonthIndex; i++) {
+    next[i] = parseFloat((parseFloat(actuals[i]) || 0).toFixed(2));
+  }
+
+  // Spread pacePerMonth across remaining months
+  for (let i = currentMonthIndex; i < 12; i++) {
+    next[i] = pacePerMonth;
+  }
+
+  // Last remaining month set exactly so Σ === anchor
+  const lastIdx = 11;
+  const sumWithoutLast = next.reduce((s, v, i) => (i === lastIdx ? s : s + v), 0);
+  next[lastIdx] = parseFloat((anchor - sumWithoutLast).toFixed(2));
+
+  return next;
+}
