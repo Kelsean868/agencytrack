@@ -11,6 +11,7 @@ import AgentDashboard from './components/dashboard/AgentDashboard';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
 import TenantAdminDashboard from './components/dashboard/TenantAdminDashboard';
 import ToastProvider from './components/ui/ToastProvider';
+import ReloadPrompt from './components/ui/ReloadPrompt';
 
 // Tenant Admin gets a dedicated dashboard surface from B5 forward — the
 // company config write path lives there. The remaining manager-tier roles
@@ -119,6 +120,7 @@ export default function App() {
   return (
     <ToastProvider>
       <AppRoot />
+      <ReloadPrompt />
       <Analytics />
       <SpeedInsights />
     </ToastProvider>
