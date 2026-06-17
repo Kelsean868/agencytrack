@@ -269,15 +269,15 @@ The original "Organize your money needs" Excel sheet listed 10 Loans/Debt rows w
 
 ---
 
-## ~~Restore smoke-harness tenant-admin account~~ (SUPERSEDED — PR #{TBD} `chore/seed-smoke-tenant`)
+## ~~Restore smoke-harness tenant-admin account~~ (SUPERSEDED — PR #674 `3730035` `chore/seed-smoke-tenant`)
 
 **Status:** SUPERSEDED. Rather than recreating accounts in `tatillife_south` (which polluted production leaderboards), this was addressed by provisioning a fully isolated `tatillife_smoke` tenant via `functions/scripts/seed-smoke-tenant.cjs`. All 6 A11Y role tiers are reprovisioned there on operator run (`node functions/scripts/seed-smoke-tenant.cjs --apply`). See post-prod-run verification FU below.
 
 ---
 
-## tatillife_smoke tenant — post-prod-run live verification (banked PR #{TBD}, HIGH until run)
+## tatillife_smoke tenant — post-prod-run live verification (banked PR #674 `3730035`, HIGH until run)
 
-**Source:** PR #{TBD} (`chore/seed-smoke-tenant`) Phase 4 placeholder — emulator gates pass; production run is operator-executed after merge.
+**Source:** PR #674 (`3730035`, `chore/seed-smoke-tenant`) Phase 4 placeholder — emulator gates pass; production run is operator-executed after merge.
 
 **Action (operator — one-time, after PR merge):**
 1. Add `A11Y_TENANT_ID=tatillife_smoke` to `.env.local` (if not present).
