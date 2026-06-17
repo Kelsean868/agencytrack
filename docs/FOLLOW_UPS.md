@@ -345,6 +345,33 @@ The original "Organize your money needs" Excel sheet listed 10 Loans/Debt rows w
 
 ---
 
+## seed-smoke-data — production seed + live #677 assertion proof (banked PR #TBD `{TBD}`, HIGH until run)
+
+**Source:** PR #TBD (`{TBD}`, `chore/seed-smoke-data`) Phase 4 deferred-verification (Rule 13). Emulator gates all pass (dry-run + apply + south-guard + idempotency — `scripts/verification/seed-smoke-data-emulator-verify.cjs`). The LIVE proof that #677's per-month-figure assertion un-skips needs production data CC cannot seed.
+
+**Precondition (operator):** the `tatillife_smoke` accounts must already exist — run `seed-smoke-tenant.cjs --apply` first (FU above). Distinct-email path: smoke roles use plus-aliases of kelsean@gmail.com so kelsean@gmail.com itself stays in `tatillife_south`, untouched. **Confirm kelsean@gmail.com's claim is `tatillife_south` before seeding** (the earlier seed-smoke-tenant run's email is unverified — if it re-claimed kelsean into `tatillife_smoke`, restore the south claim first).
+
+**Action (operator — one-time, after PR merge):**
+1. Ensure `functions/service-account-key.json` is present.
+2. `node functions/scripts/seed-smoke-data.cjs --dry-run` (preview), then `--apply`.
+3. Re-run the #677 smoke against the smoke-agent preview:
+   `SMOKE_PREVIEW_URL=<preview> node scripts/verification/gameplan-cascade-step3-smoke.mjs`
+   **Deferred acceptance criteria (verbatim — must now PASS, no longer skip):**
+   - **S3-c-distinct:** Step 3 figure ≠ Step 2 figure (per-month ≠ annual).
+   - **S3-c-ratio:** Step 3 ≈ Step 2 / 12 (within ±1 TTD).
+   - **S3-d:** YTD badge ("behind" / "ahead" / "on pace") renders.
+   The smoke's no-data `else` branch was converted skip→fail, so an unseeded monthly plan fails loudly instead of silently skipping.
+
+**Roster spread seeded:** 4 synthetic agents (`smoke_roster_1..4`, no Auth) with descending settled API (800k / 450k / 180k / 60k) + varied persistency / contractStartDate / % of goal — the data substrate for future #4-sorting / leaderboard smokes.
+
+**Out of scope (Brief 2):** `leaderboards/{smoke_branch}` aggregate is cron-generated and `tatillife_south`-bound — it does NOT auto-populate for the smoke tenant. seed-smoke-data writes the SOURCE production data (submissions / settlements / goals / persistency) only; a `recomputeLeaderboardOnDemand({tenantId:'tatillife_smoke'})` step is required when leaderboard-surface smokes are retargeted.
+
+**Falsification anchor:** If step 3 shows the assertions still skipping after `--apply`, the doc-shape assumption (`yearPlan.lines.targetAPI` / `monthlyPlan.anchorAPI` / `status:'committed'`) is wrong — halt, do not bank, re-audit `GamePlanV2/index.jsx` derivation.
+
+**Severity:** HIGH until the live run completes; CLOSED once S3-c / S3-d PASS against a seeded preview.
+
+---
+
 ## #547 deferred-verify: branch dropdown verified live via provisioning (banked 2026-06-10, LOW)
 
 **Source:** PR #547 smoke waiver (Rule 13). Smoke blocked by deleted harness account (see above FU).
