@@ -1,4 +1,5 @@
 import React from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import { useAuth } from './context/AuthContext';
 import { auth } from './firebase';
 import { signOut } from 'firebase/auth';
@@ -117,6 +118,7 @@ export default function App() {
   return (
     <ToastProvider>
       <AppRoot />
+      <Analytics />
     </ToastProvider>
   );
 }
