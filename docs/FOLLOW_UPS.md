@@ -254,15 +254,27 @@ The original "Organize your money needs" Excel sheet listed 10 Loans/Debt rows w
 
 ---
 
-## Restore smoke-harness tenant-admin account (banked 2026-06-10, HIGH)
+## ~~Restore smoke-harness tenant-admin account~~ (SUPERSEDED — PR #{TBD} `chore/seed-smoke-tenant`)
 
-**Source:** PR #547 smoke waiver — pilot cleanup deleted `kelsean+tenantadmin@gmail.com` (uid `4GeeZbhZBwdtGOLoJoggf4MQo142`), the dedicated tenant_admin test account used by A11Y smoke harness (`A11Y_TENANT_ADMIN_EMAIL`).
+**Status:** SUPERSEDED. Rather than recreating accounts in `tatillife_south` (which polluted production leaderboards), this was addressed by provisioning a fully isolated `tatillife_smoke` tenant via `functions/scripts/seed-smoke-tenant.cjs`. All 6 A11Y role tiers are reprovisioned there on operator run (`node functions/scripts/seed-smoke-tenant.cjs --apply`). See post-prod-run verification FU below.
 
-**Impact:** All tenant_admin-perspective smokes are blocked until a dedicated test tenant_admin is reseeded. Any smoke that logs in as tenant_admin and navigates to Users/Branches/Config tabs will fail at login with a Firebase Auth 400 + `nav-profile` timeout.
+---
 
-**Action:** Create a new dedicated smoke tenant_admin (e.g. `kelsean+tenantadmin-2@gmail.com`) via `functions/scripts/seed-first-tenant-admin.cjs` (requires `service-account-key.json` — see archived-key FU). Update `A11Y_TENANT_ADMIN_EMAIL` / `A11Y_TENANT_ADMIN_PASSWORD` in `.env.local`. Re-run `branch-dropdown-smoke.mjs` to verify the harness is restored.
+## tatillife_smoke tenant — post-prod-run live verification (banked PR #{TBD}, HIGH until run)
 
-**Severity:** HIGH — blocks smoke coverage for any tenant_admin surface.
+**Source:** PR #{TBD} (`chore/seed-smoke-tenant`) Phase 4 placeholder — emulator gates pass; production run is operator-executed after merge.
+
+**Action (operator — one-time, after PR merge):**
+1. Add `A11Y_TENANT_ID=tatillife_smoke` to `.env.local` (if not present).
+2. `node functions/scripts/seed-smoke-tenant.cjs --apply` (from repo root; `service-account-key.json` required in `functions/`).
+3. Re-run `scripts/verification/app-host-portal-migration-smoke.mjs` against PR #672 preview — the BM account now resolves to `tatillife_smoke`; confirm the rejected-credential blocker clears and all legs pass.
+4. Confirm claims route correctly: sign in as each A11Y role in the app, verify the tenant tab / dashboard resolves to "Smoke Test Tenant" (not `tatillife_south`).
+
+**Isolation invariant:** `tatillife_smoke` accounts must never write to `leaderboards/` or `leaderboard/` in `tatillife_south` — the scheduled aggregation (`TENANT_ID='tatillife_south'` in `functions/index.js:42`) does not run for the smoke tenant. Use `recomputeLeaderboardOnDemand({tenantId:'tatillife_smoke'})` when leaderboard-dependent smokes are later retargeted (Brief 2 territory).
+
+**Falsification anchor:** If step 4 shows the app still routing to `tatillife_south` (or an `auth/unauthorized-domain` error), the claim-propagation assumption is wrong — halt, do not bank, investigate.
+
+**Severity:** HIGH until the live run completes; drops to CLOSED once steps 1–4 are verified.
 
 ---
 
