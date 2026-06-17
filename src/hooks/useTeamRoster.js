@@ -60,7 +60,7 @@ export function useTeamRoster(tenantId, period = DEFAULT_PERIOD) {
         const agentIds       = members.map((m) => m.id);
 
         // Settlements — all for the containing year; assembly matches to month
-        const settlementList = await getSettlementsForUnit(tenantId, agentIds, settlementYear);
+        const settlementList = (await getSettlementsForUnit(tenantId, agentIds, settlementYear)) ?? [];
         const settlementsByAgent = new Map();
         for (const s of settlementList) {
           if (!settlementsByAgent.has(s.agentId)) settlementsByAgent.set(s.agentId, []);
