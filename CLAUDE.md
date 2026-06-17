@@ -3,7 +3,7 @@
 ## What This App Is
 Insurance sales activity tracking SaaS for Tatil Life, Trinidad & Tobago.
 Agents submit weekly reports. Managers review them. Built to scale to multiple companies.
-Firebase project: agencytrack-2a610 | Hosted: agencytrack.vercel.app | Repo: github.com/Kelsean868/agencytrack
+Firebase project: agencytrack-2a610 | App: portal.agencytrack.app | Marketing: agencytrack.app | Repo: github.com/Kelsean868/agencytrack
 
 ## Commands
 - `npm run dev` — Start dev server at localhost:5173

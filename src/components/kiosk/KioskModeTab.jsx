@@ -5,8 +5,9 @@ import { Copy, ExternalLink, Trash2, Plus, RefreshCw } from 'lucide-react';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
+import { APP_URL } from '../../constants/brand';
 
-const KIOSK_BASE = 'https://agencytrack.vercel.app/kiosk';
+const KIOSK_BASE = `${APP_URL}/kiosk`;
 
 function kioskUrl(tenantId, tokenId) {
   return `${KIOSK_BASE}/${tenantId}/${tokenId}`;

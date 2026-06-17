@@ -200,7 +200,16 @@ One-shot script (`functions/scripts/`) to provision a roster CSV in dependency o
 
 **Status:** RESOLVED. `functions/lib/config.js` now exports `APP_URL = 'https://agencytrack.vercel.app'`; `doCreateUser` (`continueUrl`) and `resendInviteEmail` (`url`) both repointed to it. Shipped as `fix(email): centralize APP_URL to functions/lib/config.js` in PR #579 (`16e2996`, HUMAN-MERGE, 2026-06-12).
 
-**Portal sub-step (LOW):** When `portal.agencytrack.app` is attached, update `APP_URL` in `functions/lib/config.js` to the portal domain — one-line change. Rides the portal-attachment work; no standalone PR needed.
+**Portal sub-step — ACTIONED by PR #{TBD} (`{TBD}`, HUMAN-MERGE).** Migrated the app host to `https://portal.agencytrack.app` across all functional source and collapsed it to **two canonical constants** — `src/constants/brand.js` (frontend) + `functions/lib/config.js` (backend). The frontend literals in `src/services/authService.js` (email-change continueUrl) and `src/components/kiosk/KioskModeTab.jsx` (`KIOSK_BASE`) now import `APP_URL` from `constants/brand`. Bootstrap script `functions/scripts/seed-platform-admin.cjs:189` intentionally retains the old literal (out of scope per the migration brief's `scripts/` carve-out; operator-run only).
+
+> **⚠️ MERGE-gated, not just deploy-gated:** merging ships the portal URLs to the frontend immediately via Vercel. Do NOT merge until `portal.agencytrack.app` is live, serving the app, and in Firebase Authorized domains (runbook Phase A). Then `firebase deploy --only functions` right after merge to keep frontend/backend in agreement.
+
+> **Post-deploy verification (placeholder — dispatcher fills after deploy):**
+> - [ ] Invite email `continueUrl` resolves to `portal.agencytrack.app` — `{TBD}`
+> - [ ] Password-reset `url` resolves to `portal.agencytrack.app` — `{TBD}`
+> - [ ] Email-change confirmation `continueUrl` resolves to `portal.agencytrack.app` — `{TBD}`
+> - [ ] Compliance-nudge email `appUrl` resolves to `portal.agencytrack.app` — `{TBD}`
+> - [ ] Kiosk token URL renders/loads on `portal.agencytrack.app/kiosk/...` — `{TBD}`
 
 ---
 
