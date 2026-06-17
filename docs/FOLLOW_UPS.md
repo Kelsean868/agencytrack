@@ -6,15 +6,15 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
-## SW navigation strategy — NetworkFirst app shell (Option B) (banked PR #TBD sw-version-update-prompt, 2026-06-17, LOW)
+## SW navigation strategy — NetworkFirst app shell (Option B) (banked PR #673 sw-version-update-prompt, 2026-06-17, LOW)
 
-The prompt-to-reload work (PR #TBD) fixes the latent staleness by letting the user tap to update when a new deploy is detected. It does **not** eliminate the brief stale-then-tap window: on the first load after a deploy the service worker still serves the precached app shell (`index.html`) cache-first, so the agent sees the prior bundle until they tap **Update**.
+The prompt-to-reload work (PR #673) fixes the latent staleness by letting the user tap to update when a new deploy is detected. It does **not** eliminate the brief stale-then-tap window: on the first load after a deploy the service worker still serves the precached app shell (`index.html`) cache-first, so the agent sees the prior bundle until they tap **Update**.
 
 **Option B (zero-lag):** switch navigations from the precache cache-first `NavigationRoute` to a **NetworkFirst** strategy — drop `html` from `workbox.globPatterns` and add a runtime `NetworkFirst` rule for navigation requests (fall back to cache when offline). An online login then always fetches fresh `index.html` from Vercel (whose default `must-revalidate` on HTML is already correct), so no stale beat and no forced reload.
 
 **Why deferred:** requires offline-fallback validation (the precache shell currently guarantees offline boot; a NetworkFirst shell must prove the offline fallback path still serves a usable app). The prompt-to-reload fix is the lower-risk pilot-unblocker; Option B is the polish pass if zero-lag is ever wanted.
 
-**Scope:** `vite.config.js` workbox block only (`globPatterns` + `runtimeCaching`). No component changes. Verify with the same two-version + offline protocol as PR #TBD.
+**Scope:** `vite.config.js` workbox block only (`globPatterns` + `runtimeCaching`). No component changes. Verify with the same two-version + offline protocol as PR #673.
 
 **Severity:** LOW — prompt-to-reload already closes the "stale for hours" gap; this only removes the few-seconds stale-then-tap window.
 
