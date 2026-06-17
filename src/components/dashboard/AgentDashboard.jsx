@@ -178,7 +178,7 @@ export default function AgentDashboard() {
     if (!user?.uid || !tenantId) return;
     setLoading(true);
     setSubmissionsError(null);
-    Promise.all([
+    return Promise.all([
       getDraft(tenantId, user.uid, currentWeek).catch(() => null),
       getAgentSubmissions(tenantId, user.uid).catch((err) => {
         setSubmissionsError(err?.code === 'permission-denied' ? 'permission-denied' : 'load-error');
