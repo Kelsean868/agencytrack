@@ -1,5 +1,6 @@
 import React from 'react';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useAuth } from './context/AuthContext';
 import { auth } from './firebase';
 import { signOut } from 'firebase/auth';
@@ -119,6 +120,7 @@ export default function App() {
     <ToastProvider>
       <AppRoot />
       <Analytics />
+      <SpeedInsights />
     </ToastProvider>
   );
 }
