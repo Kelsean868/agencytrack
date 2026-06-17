@@ -34,7 +34,12 @@ export default defineConfig({
     ...(isTest ? [firebaseTestStubPlugin] : []),
     react({ jsxRuntime: 'automatic' }),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt' (not 'autoUpdate'): the waiting SW genuinely waits for an explicit
+      // user tap before activating. SKIP_WAITING is driven by vite-plugin-pwa's
+      // virtual module (updateSW(true) in ReloadPrompt), NOT force-set in workbox —
+      // this avoids the lost-work footgun on explicit-save surfaces (Monthly Plan
+      // "Save draft", daily-entry "Save"). Offline precache is unchanged.
+      registerType: 'prompt',
       includeAssets: ['icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'AgencyTrack',
