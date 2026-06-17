@@ -7,7 +7,7 @@ const TIER_TOTAL = 5;
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const BADGES = {
-  first_submission: { label: 'First Step',     Icon: Target,      desc: 'Submitted your first report',                   gradient: 'medal-3', tier: 1 },
+  first_submission: { label: 'First Steps',    Icon: Target,      desc: 'Submitted your first report',                   gradient: 'medal-3', tier: 1 },
   streak_4:         { label: 'On a Roll',      Icon: Flame,       desc: '4 consecutive weeks submitted',                 gradient: 'medal-3', tier: 1 },
   streak_8:         { label: 'Committed',      Icon: Zap,         desc: '8 consecutive weeks submitted',                 gradient: 'medal-3', tier: 2 },
   streak_13:        { label: 'Quarter Strong', Icon: Crown,       desc: '13 consecutive weeks submitted',                gradient: 'medal-2', tier: 3 },
