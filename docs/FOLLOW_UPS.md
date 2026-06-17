@@ -411,11 +411,16 @@ Firebase sends a `mode=recoverEmail` action link to the **old** email address au
 
 ---
 
-## branch_manager query scoping — BMs see entire tenant, not their branch (banked 2026-06-09, MEDIUM post-pilot)
+## ~~branch_manager query scoping — BMs see entire tenant, not their branch~~ (banked 2026-06-09 — **CLOSED PR #TBD**)
+
+**CLOSED.** All four functions now carry the BM `where('branchId','==',claims.branchId)` arm:
+- `getTenantUsers` (`managerService.js`) — already had BM arm pre-PR.
+- `getWeeklySubmissions` + `getAllYTDSubmissions` (`managerService.js`) — fixed in PR #655.
+- `getAllUsers` (`agentManagementService.js`) — fixed in PR #TBD (`fix/bm-user-roster-query`). This was also causing a hard permission-denied for BM callers because `firestore.rules:153-156` enforces `resource.data.branchId == callerBranchId(tenantId)` and Firestore rejects any list query that can't guarantee the per-doc predicate.
+
+**Lesson banked:** A `list` rule that references `resource.data.X` requires a matching client-side `where('X','==',value)` constraint — Firestore denies unfiltered queries when the rule's per-doc check can't be statically satisfied. The silent-catch pattern in `loadUsers` masked this; the fix also surfaces load errors as a distinct UI state.
 
 **Source:** Branch-direct agent support audit (2026-06-09). `managerService.js` `getTenantUsers()` and `getAllUsers()` in `agentManagementService.js` both run `q = col` (unfiltered collection) for all non-`unit_manager` callers. No `branchId` filter is applied. A `branch_manager` currently sees every user and every submission in the entire tenant. Same applies to `getWeeklySubmissions()` and `getAllYTDSubmissions()` — no `branchId` clause for BM callers.
-
-**Action (post-pilot):** Add `where('branchId', '==', callerBranchId)` to the branch_manager arm of `getTenantUsers`, `getAllUsers`, `getWeeklySubmissions`, `getAllYTDSubmissions`. Requires callerBranchId to be available in the call context (it is — BM claims carry `branchId`). Firestore rules will also need matching composite indexes (`branchId + weekStarting`) if not already present. Scope audit: any manager surface that currently relies on tenant-wide visibility (e.g. leaderboard cross-branch views for Sales Manager role) must be verified not to regress. **Defer until after pilot — scoping change affects manager views and needs full smoke.**
 
 **Severity:** MEDIUM (data scoping correctness; no security breach since rules still enforce tenant isolation, but BMs see more data than they should).
 
