@@ -110,13 +110,20 @@ async function run() {
     if (monthlyFilled) {
       safeLog('[S3] Monthly plan is filled — extracting figures for ratio check...');
 
-      // Extract Step 2 annual figure
+      // Extract the bold FIGURE element from each rung — NOT the whole section
+      // text. The section text begins with the "Step N ·" label (whose digit
+      // parseCurrency would otherwise grab) and, for Step 3, also contains the
+      // YTD badge ("TTD 25,000 ahead"). The committed figure is the unique
+      // `font-display text-xl font-extrabold` div per rung (label = font-mono,
+      // badge = font-mono, empty-state = font-sans), so scope to that.
+      const FIGURE = '.font-display.text-xl.font-extrabold';
       const step2Section = cascade.locator(':scope >> text=Step 2 · Year Plan').locator('..');
-      const step2Text = await step2Section.textContent().catch(() => '');
-      const step2Amount = parseCurrency(step2Text);
-
-      // Extract Step 3 per-month figure (the large bold number in step 3 area)
-      const step3Amount = parseCurrency(step3Text);
+      const step2Amount = parseCurrency(
+        await step2Section.locator(FIGURE).first().textContent().catch(() => ''),
+      );
+      const step3Amount = parseCurrency(
+        await step3Section.locator(FIGURE).first().textContent().catch(() => ''),
+      );
 
       safeLog('[S3] Step 2 figure extracted (annual)');
       safeLog('[S3] Step 3 figure extracted (per-month)');
