@@ -68,7 +68,7 @@ const SEED_ACTOR = 'seed-smoke-data';
 
 // Year defaults to the current calendar year (what the app's GamePlan reads via
 // new Date().getFullYear()); override with A11Y_SMOKE_YEAR for deterministic CI.
-const YEAR = Number(env.A11Y_SMOKE_YEAR) || new Date().getFullYear();
+const YEAR = Number(process.env.A11Y_SMOKE_YEAR ?? env.A11Y_SMOKE_YEAR) || new Date().getFullYear();
 const CURRENT_MONTH_INDEX = new Date().getMonth(); // 0-based; completed = [0, CMI)
 
 // Smoke agent annual plan: 4 product lines summing to YEAR_TOTAL. anchorAPI on
@@ -210,7 +210,7 @@ function buildSubmission(uid, name, unitId, weekStarting, api) {
 // Resolve smoke account uids (seed-smoke-tenant must have run first)
 // ─────────────────────────────────────────────────────────────────────────────
 async function resolveUid(emailKey, label) {
-  const email = env[emailKey];
+  const email = process.env[emailKey] ?? env[emailKey];
   if (!email) {
     console.error(`[seed-smoke-data] ABORT: ${emailKey} not set in .env.local (needed for ${label}).`);
     process.exit(1);

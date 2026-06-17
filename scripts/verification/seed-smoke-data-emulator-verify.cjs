@@ -21,9 +21,9 @@ const admin = require('../../functions/node_modules/firebase-admin');
 const { loadEnv } = require('../lib/loadEnv.cjs');
 const env = loadEnv(path.resolve(__dirname, '../../.env.local'));
 
-const TENANT_ID = env.A11Y_TENANT_ID ?? 'tatillife_smoke';
+const TENANT_ID = process.env.A11Y_TENANT_ID ?? env.A11Y_TENANT_ID ?? 'tatillife_smoke';
 const BRANCH_ID = 'smoke_branch';
-const YEAR = Number(env.A11Y_SMOKE_YEAR) || new Date().getFullYear();
+const YEAR = Number(process.env.A11Y_SMOKE_YEAR ?? env.A11Y_SMOKE_YEAR) || new Date().getFullYear();
 const YEAR_TOTAL = 1_200_000;
 const ROSTER_UIDS = ['smoke_roster_1', 'smoke_roster_2', 'smoke_roster_3', 'smoke_roster_4'];
 
@@ -50,7 +50,7 @@ function runScript(script, extraEnv = {}) {
 
 async function verifyAgent(label) {
   console.log(`\n── ${label}: smoke agent Game Plan ──`);
-  const agent = await auth.getUserByEmail(env.A11Y_AGENT_EMAIL);
+  const agent = await auth.getUserByEmail(process.env.A11Y_AGENT_EMAIL ?? env.A11Y_AGENT_EMAIL);
   const uid = agent.uid;
   const base = `tenants/${TENANT_ID}/users/${uid}`;
 
@@ -93,7 +93,7 @@ async function verifyAgent(label) {
 
 async function verifyRoster(label) {
   console.log(`\n── ${label}: roster spread ──`);
-  const um = await auth.getUserByEmail(env.A11Y_UNIT_MANAGER_EMAIL);
+  const um = await auth.getUserByEmail(process.env.A11Y_UNIT_MANAGER_EMAIL ?? env.A11Y_UNIT_MANAGER_EMAIL);
   for (const ruid of ROSTER_UIDS) {
     const u = await db.doc(`tenants/${TENANT_ID}/users/${ruid}`).get();
     assert(u.exists, `roster user ${ruid} exists`);

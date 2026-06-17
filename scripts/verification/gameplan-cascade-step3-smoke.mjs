@@ -50,6 +50,7 @@ const t = createRunTracker({ ssDir: SS_DIR });
 // ── Helper: extract numeric value from a TTD currency string ──────────────────
 // e.g. "TTD 98,809.52" → 98809.52; "TTD 1,185,714.29" → 1185714.29
 function parseCurrency(text) {
+  if (!text) return NaN;
   const m = text.replace(/,/g, '').match(/[\d.]+/);
   return m ? parseFloat(m[0]) : NaN;
 }
