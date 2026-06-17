@@ -11,6 +11,10 @@
   },
   "emulators": {
     "singleProjectMode": false,
+    "auth": {
+      "host": "127.0.0.1",
+      "port": 9099
+    },
     "firestore": {
       "host": "127.0.0.1",
       "port": 9090
