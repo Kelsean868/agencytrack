@@ -121,20 +121,35 @@ describe('agentManagementService.getAllUsers — SHAKEDOWN-002 unit scoping', ()
     expect(users).toHaveLength(1);
   });
 
-  it('branch_manager: no where filter — getDocs receives bare collection', async () => {
+  it('branch_manager without branchId: early return [] — no Firestore query', async () => {
+    // A BM whose claims lack branchId must never hit Firestore (would permission-deny).
     hoisted.mockCurrentUser = {
       uid: 'bm-uid-001',
       getIdTokenResult: () => Promise.resolve({ claims: { role: 'branch_manager' } }),
     };
-    hoisted.mockGetDocs.mockResolvedValue(makeSnap(
-      makeDoc('agent-a', { name: 'Agent A', unitId: 'um-uid-001' }),
-      makeDoc('agent-b', { name: 'Agent B', unitId: 'um-uid-002' }),
-    ));
 
     const users = await getAllUsers('tenant1');
 
     expect(hoisted.mockWhere).not.toHaveBeenCalled();
-    expect(hoisted.mockGetDocs).toHaveBeenCalledWith('__col__');
+    expect(hoisted.mockGetDocs).not.toHaveBeenCalled();
+    expect(users).toHaveLength(0);
+  });
+
+  it('branch_manager with branchId: applies where("branchId","==",branchId) filter', async () => {
+    hoisted.mockCurrentUser = {
+      uid: 'bm-uid-001',
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'branch_manager', branchId: 'branch-a' } }),
+    };
+    hoisted.mockGetDocs.mockResolvedValue(makeSnap(
+      makeDoc('agent-a', { name: 'Agent A', branchId: 'branch-a' }),
+      makeDoc('agent-b', { name: 'Agent B', branchId: 'branch-a' }),
+    ));
+
+    const users = await getAllUsers('tenant1');
+
+    expect(hoisted.mockWhere).toHaveBeenCalledWith('branchId', '==', 'branch-a');
+    expect(hoisted.mockQuery).toHaveBeenCalledWith('__col__', '__where__');
+    expect(hoisted.mockGetDocs).toHaveBeenCalledWith('__query__');
     expect(users).toHaveLength(2);
   });
 
@@ -169,7 +184,7 @@ describe('agentManagementService.getAllUsers — SHAKEDOWN-002 unit scoping', ()
   it('inactive docs excluded by default; included when includeInactive:true', async () => {
     hoisted.mockCurrentUser = {
       uid: 'bm-uid-001',
-      getIdTokenResult: () => Promise.resolve({ claims: { role: 'branch_manager' } }),
+      getIdTokenResult: () => Promise.resolve({ claims: { role: 'branch_manager', branchId: 'branch-a' } }),
     };
     hoisted.mockGetDocs.mockResolvedValue(makeSnap(
       makeDoc('agent-a', { name: 'Agent A' }),

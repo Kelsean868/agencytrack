@@ -45,10 +45,17 @@ export async function getAllUsers(tenantId, { includeInactive = false } = {}) {
   const callerUid = auth.currentUser.uid;
 
   // SHAKEDOWN-002: unit_manager callers see only their own unit's agents.
-  // Other manager roles retain full branch/tenant visibility.
+  // branch_manager callers see only their own branch — required by the list
+  // rule (firestore.rules:153-156) which rejects any unfiltered BM query.
+  // A BM without a branchId claim would fall to the unfiltered col and get
+  // permission-denied; guard it with an early empty return instead.
+  // Other manager roles retain full tenant visibility.
+  if (claims.role === 'branch_manager' && !claims.branchId) return [];
   const col = collection(db, `tenants/${tenantId}/users`);
   const q = claims.role === 'unit_manager'
     ? query(col, where('unitId', '==', callerUid))
+    : claims.role === 'branch_manager'
+    ? query(col, where('branchId', '==', claims.branchId))
     : col;
 
   const snap = await getDocs(q);

@@ -357,6 +357,7 @@ export default function UserManagementPanel() {
 
   const [users, setUsers]               = useState([]);
   const [loading, setLoading]           = useState(true);
+  const [loadError, setLoadError]       = useState(false);
   const [showDrawer, setShowDrawer]     = useState(false);
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [showBulkImportGoals, setShowBulkImportGoals] = useState(false);
@@ -377,12 +378,15 @@ export default function UserManagementPanel() {
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const list = await getAllUsers(tenantId, { includeInactive: showInactive });
       list.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
       setUsers(list);
     } catch (err) {
       console.error('[UserManagementPanel] loadUsers:', err);
+      setLoadError(true);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
@@ -575,6 +579,18 @@ export default function UserManagementPanel() {
           {[0, 1, 2].map((i) => (
             <div key={i} className="h-14 rounded-xl bg-border/30 animate-pulse" />
           ))}
+        </div>
+      ) : loadError ? (
+        <div className="card text-center py-10 flex flex-col items-center gap-3">
+          <AlertTriangle size={40} className="text-danger-ink" />
+          <p className="text-sm text-ink-muted italic">Couldn&apos;t load users — check your connection and try again.</p>
+          <button
+            type="button"
+            onClick={loadUsers}
+            className="text-xs font-medium text-primary underline underline-offset-2"
+          >
+            Retry
+          </button>
         </div>
       ) : users.length === 0 ? (
         <div className="card text-center py-10 flex flex-col items-center gap-3">
