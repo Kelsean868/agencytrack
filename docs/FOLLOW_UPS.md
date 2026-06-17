@@ -6,6 +6,49 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## MonthlyPlanModal — Gemini hardening pass (banked PR #671, 2026-06-17, LOW-MED)
+
+5 findings from the Gemini review of PR #671 (`24a6457`). PR already merged — bank as follow-up.
+
+**1. HIGH — `currentMonthIndex` not year-aware (`MonthlyPlanModal.jsx`).**
+`currentMonthIndex` is computed from `getTodayTT()` month only, ignoring the `year` prop. Opening the modal for a past year (e.g. 2025 when today is 2026) yields today's month index, allowing edits of "settled" months and producing wrong YTD/recovery-pace values. Fix:
+```javascript
+const currentMonthIndex =
+  year < todayYear ? 12 :
+  year > todayYear ? 0 :
+  getTodayTT().getMonth(); // existing logic for current year
+```
+
+**2. HIGH — `actuals` not memoized (`MonthlyPlanModal.jsx`).**
+`bucketActualsByMonth(submissions, year)` is called on every render; every keystroke in a target field triggers a re-render and reprocesses all submissions. Wrap in `useMemo`:
+```javascript
+const actuals = useMemo(() => bucketActualsByMonth(submissions, year), [submissions, year]);
+```
+
+**3. MEDIUM — Reuse `ytdDelta` for `isBehindOnSettled` (`MonthlyPlanModal.jsx`).**
+`isBehindOnSettled` is computed via a manual loop over settled months. `ytdDelta(actuals, targets, currentMonthIndex)` already performs this calculation. Simplify:
+```javascript
+const isBehindOnSettled = targets && currentMonthIndex > 0 && ytdDelta(actuals, targets, currentMonthIndex) < -0.01;
+```
+
+**4. MEDIUM — Simplify `settledToDate` calculation (`monthlyPlanMath.js`).**
+The intermediate `completed` array + reduce can be replaced with a single slice+reduce:
+```javascript
+const settledToDate = actuals.slice(0, currentMonthIndex).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+```
+
+**5. MEDIUM — Conditional test assertions allow false positives (`monthlyPlanMath.test.js`).**
+`if (result.pacePerMonth < threshold)` guards around `expect(result.isStretch).toBe(false)` mean the assertion is silently skipped when the condition is false. Assert unconditionally:
+```javascript
+expect(result1.pacePerMonth).toBeLessThan(threshold);
+expect(result1.isStretch).toBe(false);
+```
+
+**Scope:** `src/lib/monthlyPlanMath.js` + `src/components/agent/MonthlyPlanModal.jsx` + `src/lib/__tests__/monthlyPlanMath.test.js`. Pure-frontend; no rules/CF/index changes.
+
+---
+
+
 ## SW navigation strategy — NetworkFirst app shell (Option B) (banked PR #673 sw-version-update-prompt, 2026-06-17, LOW)
 
 The prompt-to-reload work (PR #673) fixes the latent staleness by letting the user tap to update when a new deploy is detected. It does **not** eliminate the brief stale-then-tap window: on the first load after a deploy the service worker still serves the precached app shell (`index.html`) cache-first, so the agent sees the prior bundle until they tap **Update**.
