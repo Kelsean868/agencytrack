@@ -107,7 +107,7 @@ export default function PlanCascade({
           </div>
           <div className="mt-1 flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-xs text-ink-muted">Annual target split into 12 months</div>
+              <div className="text-xs text-ink-muted">Per-month target</div>
               {monthlyPlanFilled && (
                 <div
                   className={`mt-1 font-mono text-[9px] font-bold ${
@@ -129,7 +129,7 @@ export default function PlanCascade({
             </div>
             <div className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight text-ink">
               {monthlyPlanFilled
-                ? formatCurrency(monthlyPlanTotal)
+                ? formatCurrency(monthlyPlanTotal / 12)
                 : <span className="font-sans text-sm font-medium text-ink-muted">Set in your plan</span>}
             </div>
           </div>

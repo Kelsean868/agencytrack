@@ -174,9 +174,9 @@ describe('PlanCascade — flag ON, monthly plan filled', () => {
         monthlyYtdDelta={5000}
       />
     );
-    // Monthly total rendered
-    const matches = screen.getAllByText(/120,000/);
-    expect(matches.length).toBeGreaterThanOrEqual(1);
+    // Step 2 still shows the annual figure; step 3 shows per-month (120000 / 12 = 10,000)
+    expect(screen.getAllByText(/120,000/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/10,000/)).toBeInTheDocument();
     // YTD badge shown with ahead indicator
     expect(screen.getByTestId('monthly-ytd-badge')).toBeInTheDocument();
     expect(screen.getByTestId('monthly-ytd-badge').textContent).toMatch(/ahead/);
