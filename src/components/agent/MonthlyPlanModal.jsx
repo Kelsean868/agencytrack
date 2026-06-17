@@ -24,7 +24,7 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
  *   submissions   — agent's submissions (hub-loaded, reused for actuals bucketing)
  *   year          — current plan year
  */
-export default function MonthlyPlanModal({ onClose, yearPlanAPI = 0, submissions = [], year, avgPolicyAPI = null }) {
+export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0, submissions = [], year, avgPolicyAPI = null }) {
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
 
@@ -123,12 +123,13 @@ export default function MonthlyPlanModal({ onClose, yearPlanAPI = 0, submissions
     try {
       await saveMonthlyPlan(tenantId, uid, year, targets, split);
       onClose();
+      onAfterSave?.();
     } catch {
       setSaveError('Save failed — check your connection and try again.');
     } finally {
       setSaving(false);
     }
-  }, [canSave, tenantId, uid, year, targets, split, onClose]);
+  }, [canSave, tenantId, uid, year, targets, split, onClose, onAfterSave]);
 
   const currentPace = phase === 'allocating' && targets
     ? monthlyPace(targets[currentMonthIndex], year, currentMonthIndex, actuals[currentMonthIndex], todayTT, avgPolicyAPI ?? undefined)
@@ -240,8 +241,10 @@ export default function MonthlyPlanModal({ onClose, yearPlanAPI = 0, submissions
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-ink-muted">Split across</p>
-                  <p className="text-sm font-semibold text-ink">12 months</p>
+                  <p className="text-xs text-ink-muted">Per month avg</p>
+                  <p className="font-display text-lg font-extrabold text-ink">
+                    {formatCurrency(Math.round(yearPlanAPI / 12))}
+                  </p>
                 </div>
               </div>
 
