@@ -206,7 +206,6 @@ export default function LoginScreen() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 className="input pr-12"
-                placeholder=""
               />
               {/* Track J — password reveal toggle (UI-only). Toggles the
                   input's `type` between password/text without touching the
