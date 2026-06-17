@@ -1156,7 +1156,8 @@ export default function GoalsPanel() {
 
       <TabPills tabs={tabs} activeId={subTab} onChange={setSubTab} />
 
-      {subTab === 'self'   && (
+      {/* Always mounted so in-progress form state survives sub-tab switches. */}
+      <div className={subTab !== 'self' ? 'hidden' : undefined}>
         <SelfTab
           allSubmissions={allSubmissions}
           confirmedSettlements={settlements}
@@ -1167,7 +1168,7 @@ export default function GoalsPanel() {
           isProducing={isProducing}
           commissionRate={parseFloat(userProfile?.commissionRate) || null}
         />
-      )}
+      </div>
       {subTab === 'agents' && <AgentGoalsTab />}
       {subTab === 'unit'   && canSeeUnit     && <UnitGoalsTab          role={role} userProfile={userProfile} allUsers={allUsers} />}
       {subTab === 'branch' && canSeeBranch   && <BranchGoalsTab        userProfile={userProfile} />}
