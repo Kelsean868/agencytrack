@@ -345,9 +345,11 @@ The original "Organize your money needs" Excel sheet listed 10 Loans/Debt rows w
 
 ---
 
-## seed-smoke-data — production seed + live #677 assertion proof (banked PR #TBD `{TBD}`, HIGH until run)
+## ~~seed-smoke-data — production seed + live #677 assertion proof~~ (RESOLVED — PR #679 `15c04cb`; smoke fix #680 `83fc20d`)
 
-**Source:** PR #TBD (`{TBD}`, `chore/seed-smoke-data`) Phase 4 deferred-verification (Rule 13). Emulator gates all pass (dry-run + apply + south-guard + idempotency — `scripts/verification/seed-smoke-data-emulator-verify.cjs`). The LIVE proof that #677's per-month-figure assertion un-skips needs production data CC cannot seed.
+**Status:** RESOLVED 2026-06-17. Operator authorized the prod run; CC executed `seed-smoke-tenant --apply` (6 plus-alias accounts) + `seed-smoke-data --apply` (agent committed Game Plan 1.2M / monthly 100k + 4-agent roster) into `tatillife_smoke`. The #677 smoke then ran **6/6 PASS against production** (`portal.agencytrack.app`): S3-c-distinct (100k ≠ 1.2M), **S3-c-ratio diff 0.00**, S3-d "+TTD 25,000 ahead" (exact seeded delta). Running the smoke surfaced a latent extraction bug (parseCurrency read the "Step N" label digit) — fixed in **#680** (`83fc20d`, scope to `.font-display.text-xl.font-extrabold` figure). `kelsean@gmail.com` untouched (every smoke account is a plus-alias). No further action.
+
+**Source:** PR #679 (`15c04cb`, `chore/seed-smoke-data`) Phase 4 deferred-verification (Rule 13). Emulator gates all passed (dry-run + apply + south-guard + idempotency — `scripts/verification/seed-smoke-data-emulator-verify.cjs`).
 
 **Precondition (operator):** the `tatillife_smoke` accounts must already exist — run `seed-smoke-tenant.cjs --apply` first (FU above). Distinct-email path: smoke roles use plus-aliases of kelsean@gmail.com so kelsean@gmail.com itself stays in `tatillife_south`, untouched. **Confirm kelsean@gmail.com's claim is `tatillife_south` before seeding** (the earlier seed-smoke-tenant run's email is unverified — if it re-claimed kelsean into `tatillife_smoke`, restore the south claim first).
 
@@ -368,7 +370,7 @@ The original "Organize your money needs" Excel sheet listed 10 Loans/Debt rows w
 
 **Falsification anchor:** If step 3 shows the assertions still skipping after `--apply`, the doc-shape assumption (`yearPlan.lines.targetAPI` / `monthlyPlan.anchorAPI` / `status:'committed'`) is wrong — halt, do not bank, re-audit `GamePlanV2/index.jsx` derivation.
 
-**Severity:** HIGH until the live run completes; CLOSED once S3-c / S3-d PASS against a seeded preview.
+**Severity:** ~~HIGH until the live run completes~~ → **CLOSED** — S3-c / S3-d PASS 6/6 against production (2026-06-17).
 
 ---
 
