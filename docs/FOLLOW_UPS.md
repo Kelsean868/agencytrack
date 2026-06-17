@@ -6,6 +6,19 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Update-button reload — event-driven hardening (banked PR #681 review, 2026-06-17, LOW)
+
+Current `ReloadPrompt.jsx` `handleUpdate` uses a fixed 500ms `setTimeout` fallback after `updateSW(true)`. The root cause (no `clientsClaim` → `controllerchange` never fires) is known and documented. The fallback works but is timing-based.
+
+**Hardening target:** replace the timeout with an event-driven reload — listen for the waiting SW's `statechange` event and reload when it hits `'activated'`, with a long fallback timeout (e.g. 5–10s) in case `statechange` never fires.
+
+**Trigger:** pull forward only if users report "clicked Update twice" or "nothing happened after clicking Update." Until then the 500ms fallback is reliable and the risk is low.
+
+**Severity:** LOW — current fallback works correctly in all tested conditions. This is belt-and-suspenders hardening.
+
+---
+
+
 ## MonthlyPlanModal — Gemini hardening pass (banked PR #671, 2026-06-17, LOW-MED)
 
 5 findings from the Gemini review of PR #671 (`24a6457`). PR already merged — bank as follow-up.
