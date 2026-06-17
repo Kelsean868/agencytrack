@@ -191,7 +191,7 @@ export default function LoginScreen() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               className="input"
-              placeholder="you@tatillife.com"
+              placeholder="you@youremail.com"
             />
           </div>
 
@@ -206,7 +206,6 @@ export default function LoginScreen() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 className="input pr-12"
-                placeholder="••••••••"
               />
               {/* Track J — password reveal toggle (UI-only). Toggles the
                   input's `type` between password/text without touching the
