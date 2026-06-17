@@ -57,13 +57,10 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024, // 4 MiB (bundle exceeds 2 MiB default)
-        runtimeCaching: [
-          {
-            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: { cacheName: 'firestore-cache', networkTimeoutSeconds: 5 },
-          },
-        ],
+        // No runtimeCaching: Firestore's Listen/channel is a long-lived SSE stream that
+        // NetworkFirst cannot cache and times out at 5s, dropping every realtime listener.
+        // Firestore offline is handled by persistentLocalCache in src/firebase.js — SW has
+        // no role in the Firestore request path.
       },
     }),
   ],
