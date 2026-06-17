@@ -8,7 +8,6 @@ import EmailVerificationHandler from './components/auth/EmailVerificationHandler
 import AgentDashboard from './components/dashboard/AgentDashboard';
 import ManagerDashboard from './components/dashboard/ManagerDashboard';
 import TenantAdminDashboard from './components/dashboard/TenantAdminDashboard';
-import OnboardingWizard from './components/onboarding/OnboardingWizard';
 import ToastProvider from './components/ui/ToastProvider';
 
 // Tenant Admin gets a dedicated dashboard surface from B5 forward — the
@@ -108,7 +107,6 @@ function AppRoot() {
   if (role === 'agent') {
     // Guard: userProfile null after loading means provisioning delay — show spinner
     if (!userProfile) return <ProvisioningScreen />;
-    if (!userProfile.onboardingComplete) return <OnboardingWizard />;
     return <AgentDashboard />;
   }
   // Authenticated but role not resolved — claims propagation delay on first login.

@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import MobileBottomNav from './MobileBottomNav';
+import { usePullToRefresh } from '../../hooks/usePullToRefresh';
 
 /**
  * Desktop sidebar shell + mobile bottom-nav (Design System v2 — B4).
@@ -34,8 +35,12 @@ export default function Shell({
   topbarCrumb,
   topbarActions,
   onSignOut,
+  onPullRefresh,
   children,
 }) {
+  const mainRef = useRef(null);
+  const ptrState = usePullToRefresh(mainRef, onPullRefresh ?? null);
+
   const [collapsed, setCollapsed] = useState(() => {
     if (typeof document === 'undefined') return false;
     return document.documentElement.classList.contains('sidebar-collapsed');
@@ -71,7 +76,17 @@ export default function Shell({
           crumb={topbarCrumb}
           actions={topbarActions}
         />
-        <main className="shell-content">{children}</main>
+        <main ref={mainRef} className="shell-content">
+          {(ptrState === 'pulling' || ptrState === 'refreshing') && (
+            <div className="flex justify-center pt-3 pb-1" aria-live="polite" aria-label="Refreshing content">
+              <div
+                className={`w-6 h-6 rounded-full border-2 border-primary dark:border-primary-dark border-t-transparent ${ptrState === 'refreshing' ? 'animate-spin' : 'opacity-50'}`}
+                aria-hidden="true"
+              />
+            </div>
+          )}
+          {children}
+        </main>
       </div>
       <MobileBottomNav
         items={bottomNavItems}

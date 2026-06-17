@@ -178,7 +178,7 @@ export default function AgentDashboard() {
     if (!user?.uid || !tenantId) return;
     setLoading(true);
     setSubmissionsError(null);
-    Promise.all([
+    return Promise.all([
       getDraft(tenantId, user.uid, currentWeek).catch(() => null),
       getAgentSubmissions(tenantId, user.uid).catch((err) => {
         setSubmissionsError(err?.code === 'permission-denied' ? 'permission-denied' : 'load-error');
@@ -201,6 +201,16 @@ export default function AgentDashboard() {
   }, [user?.uid, tenantId, currentWeek, thisYear]);
 
   useEffect(() => { loadCoreData(); }, [loadCoreData]);
+
+  // Pull-to-refresh — enabled on data-feed tabs only.
+  // Explicitly excluded: game-plan, money-needs, and all planning/tool tabs
+  // where an accidental pull mid-entry could feel disruptive.
+  const [ptrRevision, setPtrRevision] = useState(0);
+  const PTR_AGENT_TABS = new Set(['dashboard', 'production-leaderboard', 'policy-ledger']);
+  const onPullRefresh = useCallback(() => {
+    if (activeTab === 'dashboard') return loadCoreData();
+    setPtrRevision((r) => r + 1);
+  }, [activeTab, loadCoreData]);
 
   // S3b — fetch committed plan + daily docs for the Standard drawer. Each
   // degrades gracefully (null plan / empty docs) so a fetch error never blocks
@@ -480,6 +490,7 @@ export default function AgentDashboard() {
         return `${displayName} · ${weekday} ${date} · Week ${weekNum}`;
       })()}
       onSignOut={handleSignOut}
+      onPullRefresh={PTR_AGENT_TABS.has(activeTab) ? onPullRefresh : undefined}
     >
       {/* Daily entry FAB — visible on all agent tabs when daily/hybrid mode.
           Hidden when the modal/wizard takes full-screen (those branches return
@@ -644,6 +655,7 @@ export default function AgentDashboard() {
       {/* ── POLICY LEDGER TAB ── */}
       {activeTab === 'policy-ledger' && (
         <PolicyLedgerPanel
+          key={ptrRevision}
           initialForm={prefillPolicy}
           onPrefillConsumed={() => setPrefillPolicy(null)}
           initialFilter={policyLedgerFilter}
@@ -735,7 +747,7 @@ export default function AgentDashboard() {
       {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}
 
       {/* ── LEADERBOARD TAB (Track J P6 — production-based, nav-driven) ── */}
-      {activeTab === 'production-leaderboard' && <ProductionLeaderboardSurface />}
+      {activeTab === 'production-leaderboard' && <ProductionLeaderboardSurface key={ptrRevision} />}
 
       {/* ── PROFILE TAB ── */}
       {activeTab === 'profile' && <ProfileScreen />}
