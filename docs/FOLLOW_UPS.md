@@ -454,12 +454,12 @@ Firebase sends a `mode=recoverEmail` action link to the **old** email address au
 
 ---
 
-## ~~branch_manager query scoping — BMs see entire tenant, not their branch~~ (banked 2026-06-09 — **CLOSED PR #TBD**)
+## ~~branch_manager query scoping — BMs see entire tenant, not their branch~~ (banked 2026-06-09 — **CLOSED PR #676 (`25c2bf1`)**)
 
 **CLOSED.** All four functions now carry the BM `where('branchId','==',claims.branchId)` arm:
 - `getTenantUsers` (`managerService.js`) — already had BM arm pre-PR.
 - `getWeeklySubmissions` + `getAllYTDSubmissions` (`managerService.js`) — fixed in PR #655.
-- `getAllUsers` (`agentManagementService.js`) — fixed in PR #TBD (`fix/bm-user-roster-query`). This was also causing a hard permission-denied for BM callers because `firestore.rules:153-156` enforces `resource.data.branchId == callerBranchId(tenantId)` and Firestore rejects any list query that can't guarantee the per-doc predicate.
+- `getAllUsers` (`agentManagementService.js`) — fixed in PR #676 (`25c2bf1`, `fix/bm-user-roster-query`). This was also causing a hard permission-denied for BM callers because `firestore.rules:153-156` enforces `resource.data.branchId == callerBranchId(tenantId)` and Firestore rejects any list query that can't guarantee the per-doc predicate.
 
 **Lesson banked:** A `list` rule that references `resource.data.X` requires a matching client-side `where('X','==',value)` constraint — Firestore denies unfiltered queries when the rule's per-doc check can't be statically satisfied. The silent-catch pattern in `loadUsers` masked this; the fix also surfaces load errors as a distinct UI state.
 
