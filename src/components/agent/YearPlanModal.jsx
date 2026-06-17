@@ -440,8 +440,8 @@ export default function YearPlanModal({ onClose, onAfterSave, moneyNeedsWorkshee
     setSaveError('');
     try {
       await saveYearPlan(tenantId, uid, year, lines, licenseProfile);
-      onAfterSave?.();
       onClose();
+      onAfterSave?.();
     } catch {
       setSaveError('Save failed — check your connection and try again.');
     } finally {

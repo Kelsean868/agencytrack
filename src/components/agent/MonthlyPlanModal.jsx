@@ -122,8 +122,8 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
     setSaveError('');
     try {
       await saveMonthlyPlan(tenantId, uid, year, targets, split);
-      onAfterSave?.();
       onClose();
+      onAfterSave?.();
     } catch {
       setSaveError('Save failed — check your connection and try again.');
     } finally {
