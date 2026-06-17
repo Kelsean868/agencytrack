@@ -147,7 +147,7 @@ export function GroupHeader({ label, count, accentStyle = {} }) {
       </p>
       <span
         className="text-xs font-bold font-mono px-2 py-0.5 rounded-full"
-        style={{ background: `${accentStyle.color}20`, color: accentStyle.color }}
+        style={{ background: `color-mix(in srgb, ${accentStyle.color} 12%, transparent)`, color: accentStyle.color }}
       >
         {count}
       </span>
