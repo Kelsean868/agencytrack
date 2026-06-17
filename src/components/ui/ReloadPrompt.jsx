@@ -26,38 +26,45 @@ const UPDATE_POLL_INTERVAL_MS = 60 * 60 * 1000; // 60 min
 export default function ReloadPrompt() {
   const [needRefresh, setNeedRefresh] = useState(false);
   const updateSWRef = useRef(null);
-  const teardownRef = useRef(null);
 
   useEffect(() => {
+    // onRegisteredSW resolves asynchronously — guard against the component
+    // unmounting before it fires, else the interval/listeners it sets up would
+    // never be cleaned up. Closure-scoped handles are cleaned directly in the
+    // effect teardown.
+    let isMounted = true;
+    let intervalId = null;
+    let checkForUpdate = null;
+
     const updateSW = registerSW({
       onNeedRefresh() {
-        setNeedRefresh(true);
+        if (isMounted) setNeedRefresh(true);
       },
       onRegisteredSW(swUrl, registration) {
-        if (!registration) return;
+        if (!registration || !isMounted) return;
         // Periodic poll so long-open sessions notice deploys.
-        const interval = setInterval(() => {
+        intervalId = setInterval(() => {
           registration.update().catch(() => {});
         }, UPDATE_POLL_INTERVAL_MS);
         // Also check when the tab regains focus / becomes visible.
-        const checkForUpdate = () => {
+        checkForUpdate = () => {
           if (document.visibilityState === 'visible') {
             registration.update().catch(() => {});
           }
         };
         window.addEventListener('focus', checkForUpdate);
         document.addEventListener('visibilitychange', checkForUpdate);
-        teardownRef.current = () => {
-          clearInterval(interval);
-          window.removeEventListener('focus', checkForUpdate);
-          document.removeEventListener('visibilitychange', checkForUpdate);
-        };
       },
     });
     updateSWRef.current = updateSW;
 
     return () => {
-      teardownRef.current?.();
+      isMounted = false;
+      if (intervalId) clearInterval(intervalId);
+      if (checkForUpdate) {
+        window.removeEventListener('focus', checkForUpdate);
+        document.removeEventListener('visibilitychange', checkForUpdate);
+      }
     };
   }, []);
 
