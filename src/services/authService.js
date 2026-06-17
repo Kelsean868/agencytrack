@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
+import { APP_URL } from '../constants/brand';
 
 export async function signIn(email, password) {
   return signInWithEmailAndPassword(auth, email, password);
@@ -45,7 +46,7 @@ export async function requestEmailUpdate(user, currentPassword, newEmail, tenant
   const credential = EmailAuthProvider.credential(user.email, currentPassword);
   await reauthenticateWithCredential(user, credential);
   await verifyBeforeUpdateEmail(user, newEmail, {
-    url: 'https://agencytrack.vercel.app',
+    url: APP_URL,
   });
   await addDoc(collection(db, 'auditAdminEmailUpdates'), {
     uid: user.uid,
