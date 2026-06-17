@@ -6,7 +6,7 @@ import {
 } from '../../services/monthlyPlanService';
 import {
   balanceDelta, autoDistributeRemainder, seedEvenSplit,
-  monthEditable, bucketActualsByMonth, monthlyPace, ytdDelta,
+  monthEditable, bucketActualsByMonth, monthlyPace, ytdDelta, recoveryPace, absorbShortfall,
 } from '../../lib/monthlyPlanMath';
 import { getTodayTT } from '../../utils/dateInputs';
 import { formatCurrency } from '../../utils/formatters';
@@ -91,6 +91,19 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
   const delta = targets ? balanceDelta(targets, yearPlanAPI) : 0;
   const canSave = phase === 'allocating' && targets !== null && delta === 0 && !saving;
 
+  // Compute whether we're behind on settled months (for Absorb button enable state)
+  let isBehindOnSettled = false;
+  if (targets && currentMonthIndex > 0) {
+    let settledActuals = 0;
+    let settledTargets = 0;
+    for (let i = 0; i < currentMonthIndex; i++) {
+      settledActuals += parseFloat(actuals[i]) || 0;
+      settledTargets += parseFloat(targets[i]) || 0;
+    }
+    isBehindOnSettled = settledActuals < settledTargets - 0.01; // epsilon for float comparison
+  }
+  const canAbsorb = phase === 'allocating' && targets !== null && isBehindOnSettled;
+
   const handleFieldChange = useCallback((i, val) => {
     setTargets((prev) => { const next = [...prev]; next[i] = val; return next; });
     setSplit('custom');
@@ -108,6 +121,12 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
     setSplit('even');
     setSaveError('');
   }, [yearPlanAPI]);
+
+  const handleAbsorbShortfall = useCallback(() => {
+    if (!targets) return;
+    setTargets(absorbShortfall(targets, yearPlanAPI, actuals, currentMonthIndex));
+    setSaveError('');
+  }, [targets, yearPlanAPI, actuals, currentMonthIndex]);
 
   const handleResyncAnchor = useCallback(() => {
     setTargets(seedEvenSplit(yearPlanAPI));
@@ -137,6 +156,9 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
   const ytd = phase === 'allocating' && targets
     ? ytdDelta(actuals, targets, currentMonthIndex)
     : 0;
+  const recovery = phase === 'allocating' && targets
+    ? recoveryPace(yearPlanAPI, actuals, currentMonthIndex)
+    : null;
 
   const deltaAbs = Math.abs(delta);
   const balanceLabel =
@@ -277,7 +299,7 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
               />
 
               {/* Readouts row */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 {/* To-finish */}
                 <div className="rounded-xl border border-border bg-card px-4 py-3">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
@@ -335,6 +357,40 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
                       : 'No completed months yet'}
                   </p>
                 </div>
+
+                {/* Recovery pace */}
+                {recovery && (
+                  <div
+                    className={`rounded-xl border px-4 py-3 ${
+                      recovery.isStretch
+                        ? 'border-amber-400/40 bg-amber-50 dark:bg-amber-900/20'
+                        : 'border-border bg-card'
+                    }`}
+                  >
+                    <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+                      Recovery pace
+                    </p>
+                    <p
+                      className={`mt-1 font-display text-base font-extrabold ${
+                        recovery.isStretch
+                          ? 'text-amber-700 dark:text-amber-300'
+                          : 'text-ink'
+                      }`}
+                    >
+                      {formatCurrency(recovery.pacePerMonth)}
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-ink-muted">
+                      {recovery.remainingCount > 0
+                        ? `Needed across ${recovery.remainingCount} remaining month${recovery.remainingCount === 1 ? '' : 's'}`
+                        : 'No months remaining'}
+                    </p>
+                    {recovery.isStretch && (
+                      <p className="mt-1 text-[10px] font-semibold text-amber-700 dark:text-amber-300">
+                        This is a stretch — consider resetting your annual.
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Month target grid */}
@@ -367,9 +423,27 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
                     type="button"
                     onClick={handleAutoDistribute}
                     disabled={delta === 0}
+                    title={delta === 0 ? 'Already balanced — nothing to distribute.' : undefined}
+                    aria-disabled={delta === 0}
                     className="min-h-[36px] rounded-lg border border-border bg-surface px-3 text-xs font-semibold text-ink-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
                     Auto-distribute
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAbsorbShortfall}
+                    disabled={!canAbsorb}
+                    title={
+                      !canAbsorb
+                        ? currentMonthIndex === 0
+                          ? 'No settled months yet.'
+                          : "You're on or ahead of pace — nothing to absorb."
+                        : undefined
+                    }
+                    aria-disabled={!canAbsorb}
+                    className="min-h-[36px] rounded-lg border border-border bg-surface px-3 text-xs font-semibold text-ink-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  >
+                    Absorb shortfall
                   </button>
                   <button
                     type="button"
