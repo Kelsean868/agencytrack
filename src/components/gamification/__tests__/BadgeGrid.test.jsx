@@ -37,7 +37,7 @@ describe('BadgeGrid — rendering', () => {
   it('earned badge does not carry locked aria-label', () => {
     const subs = [{ status: 'submitted', referralCalls: 0, followUpCalls: 0, coldCalls: 0, applicationsSold: 0, weekStarting: '2026-01-05' }];
     render(<BadgeGrid submissions={subs} />);
-    const firstStepEl = screen.getByText('First Step').closest('[class*="badge-item"]');
+    const firstStepEl = screen.getByText('First Steps').closest('[class*="badge-item"]');
     expect(firstStepEl).not.toHaveAttribute('aria-label');
   });
 

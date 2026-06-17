@@ -7,15 +7,15 @@ const TIER_TOTAL = 5;
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const BADGES = {
-  first_submission: { label: 'First Step',     Icon: Target,      desc: 'Submitted your first report',                   gradient: 'medal-3', tier: 1 },
+  first_submission: { label: 'First Steps',    Icon: Target,      desc: 'Submitted your first report',                   gradient: 'medal-3', tier: 1 },
   streak_4:         { label: 'On a Roll',      Icon: Flame,       desc: '4 consecutive weeks submitted',                 gradient: 'medal-3', tier: 1 },
-  streak_8:         { label: 'Consistent',     Icon: Zap,         desc: '8 consecutive weeks submitted',                 gradient: 'medal-3', tier: 2 },
-  streak_13:        { label: 'Unstoppable',    Icon: Crown,       desc: '13 consecutive weeks submitted',                gradient: 'medal-2', tier: 3 },
+  streak_8:         { label: 'Committed',      Icon: Zap,         desc: '8 consecutive weeks submitted',                 gradient: 'medal-3', tier: 2 },
+  streak_13:        { label: 'Quarter Strong', Icon: Crown,       desc: '13 consecutive weeks submitted',                gradient: 'medal-2', tier: 3 },
   mdrt_pace:        { label: 'MDRT Pace',      Icon: Star,        desc: 'On track for MDRT (50%+ of $500k by mid-year)', gradient: 'medal-1', tier: 3 },
   mdrt_qualified:   { label: 'MDRT Qualified', Icon: Trophy,      desc: 'Achieved MDRT threshold ($500k API)',           gradient: 'medal-4', tier: 5 },
-  top_apps_week:    { label: 'App Machine',    Icon: CheckCircle, desc: '5+ applications in a single week',              gradient: 'medal-3', tier: 2 },
+  top_apps_week:    { label: 'Closer',         Icon: CheckCircle, desc: '5+ applications in a single week',              gradient: 'medal-3', tier: 2 },
   big_week:         { label: 'Big Week',       Icon: TrendingUp,  desc: 'Over $20,000 API in a single week',             gradient: 'medal-2', tier: 3 },
-  century_dials:    { label: 'Dialler',        Icon: Zap,         desc: '100+ dials in a single week',                   gradient: 'medal-5', tier: 2 },
+  century_dials:    { label: 'Century',        Icon: Zap,         desc: '100+ dials in a single week',                   gradient: 'medal-5', tier: 2 },
   dial_king:        { label: 'Dial King',      Icon: Phone,       desc: 'Highest dials in unit that week',               gradient: 'medal-6', tier: 3 },
   sharpshooter:     { label: 'Sharpshooter',   Icon: Target,      desc: 'Closing ratio > 80% for a week',                gradient: 'medal-1', tier: 4 },
   mdrt_bound:       { label: 'MDRT Bound',     Icon: Crown,       desc: 'YTD API crosses 50% of MDRT threshold',         gradient: 'medal-5', tier: 4 },
