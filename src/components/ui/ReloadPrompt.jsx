@@ -72,6 +72,10 @@ export default function ReloadPrompt() {
 
   const handleUpdate = () => {
     updateSWRef.current?.(true);
+    // Without clientsClaim (intentionally absent — prompt mode), the new SW won't
+    // claim this page after SKIP_WAITING, so the controllerchange event vite-plugin-pwa
+    // listens to never fires. Reload explicitly so the user always lands on the new version.
+    setTimeout(() => window.location.reload(), 500);
   };
 
   return (
