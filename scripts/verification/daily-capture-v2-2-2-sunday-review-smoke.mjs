@@ -47,7 +47,11 @@ const E = loadEnv();
 const PREVIEW_URL = resolvePreviewUrl();
 const RUN_TS = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
 const SHOTS_DIR = join(__dir, `${RUN_TS}-dcv2-p22-screenshots`);
-const VP = { width: 390, height: 844 };
+// Pin the browser to Trinidad time so getMostRecentSunday() (browser-local, used
+// by aggregateCurrentWeekDaily) agrees with getTodayTT()/getSundayOf() (TT) under
+// the faked clock — i.e. replicate a real Trinidad agent. Without this the two
+// diverge and on-save aggregation keys to a different week than the daily doc.
+const CTX = { viewport: { width: 390, height: 844 }, timezoneId: 'America/Port_of_Spain' };
 
 const results = [];
 const pass = (s, n = '') => { results.push({ status: 'PASS' }); console.log(`  ✓ ${s}${n ? ` — ${n}` : ''}`); };
@@ -89,8 +93,25 @@ async function deleteWeekDailyDocs(db, tid, uid, weekStarting) {
 }
 const draftRef = (db, tid, uid, ws) => doc(db, `tenants/${tid}/submissions/${uid}_${ws}`);
 async function readDraft(db, tid, uid, ws) {
-  const snap = await getDoc(draftRef(db, tid, uid, ws));
-  return snap.exists() ? snap.data() : null;
+  // A `get` on a non-existent submission is DENIED by rules (resource is null →
+  // canAccessOwn(resource.data.agentId) can't evaluate), so treat any error as
+  // "no draft" rather than letting it throw.
+  try {
+    const snap = await getDoc(draftRef(db, tid, uid, ws));
+    return snap.exists() ? snap.data() : null;
+  } catch { return null; }
+}
+/**
+ * Reset the weekly draft to a clean, rule-valid baseline. submissions are
+ * `allow delete: if false`, so the draft can't be deleted — overwrite it
+ * (merge:false) to zero out activity + drop any stale manual fields between runs.
+ */
+async function resetDraft(db, tid, uid, ws, branchId) {
+  await setDoc(draftRef(db, tid, uid, ws), {
+    userId: uid, agentId: uid, agentName: 'A11y', branchId,
+    weekStarting: ws, status: 'draft',
+    prospectingLettersSent: 0, ffiConducted: 0, aggregatedFromDaily: false,
+  }).catch(() => {});
 }
 
 // ─── In-page helpers ──────────────────────────────────────────────────────────
@@ -139,7 +160,7 @@ async function shoot(page, name) {
 
 async function buildAndMerge(browser, db, tid, uid, { buildDay, W }) {
   console.log(`\n── BUILD+MERGE (faked weekday ${buildDay}, week W=${W}) ──`);
-  const ctx = await browser.newContext({ viewport: VP });
+  const ctx = await browser.newContext(CTX);
   try {
     await setupBypassSession(ctx, PREVIEW_URL, E.VERCEL_BYPASS_TOKEN);
     await setTheme(ctx, 'light');
@@ -192,7 +213,7 @@ async function buildAndMerge(browser, db, tid, uid, { buildDay, W }) {
 
 async function review(browser, theme, { reviewSunday, W }) {
   console.log(`\n── REVIEW theme=${theme} (faked Sunday ${reviewSunday}, completed week=${W}) ──`);
-  const ctx = await browser.newContext({ viewport: VP });
+  const ctx = await browser.newContext(CTX);
   const errs = [];
   try {
     await setupBypassSession(ctx, PREVIEW_URL, E.VERCEL_BYPASS_TOKEN);
@@ -267,19 +288,22 @@ async function main() {
   console.log(`Target: ${PREVIEW_URL}`);
   const { fb, auth, db } = initFb();
   const { reviewSunday, W, buildDay } = computeDates();
-  let browser, tid, uid;
+  let browser, tid, uid, claimBranchId = null;
   try {
     const cred = await signInWithEmailAndPassword(auth, E.A11Y_AGENT_EMAIL, E.A11Y_AGENT_PASSWORD);
     uid = cred.user.uid;
-    tid = await resolveTenantId(cred.user);
+    const tok = await cred.user.getIdTokenResult(true);
+    tid = tok.claims?.tenantId ?? null;
+    claimBranchId = tok.claims?.branchId ?? null;   // rule compares the write to THIS
     if (!tid) throw new Error('tenantId unresolved');
-    pass('sdk-signin', `tid=${tid.slice(0, 6)}… uid=${uid.slice(0, 6)}…`);
+    pass('sdk-signin', `tid=${tid.slice(0, 6)}… uid=${uid.slice(0, 6)}… branch=${claimBranchId}`);
     console.log(`  reviewSunday=${reviewSunday}  W=${W}  buildDay=${buildDay}`);
 
-    // Pre-clean week W (daily docs + draft) for a deterministic build.
+    // Pre-clean week W for a deterministic build: delete daily docs, and RESET
+    // the draft to a zeroed baseline (submissions can't be deleted by rule).
     const delDocs = await deleteWeekDailyDocs(db, tid, uid, W);
-    await deleteDoc(draftRef(db, tid, uid, W)).catch(() => {});
-    pass('pre-clean', `deleted ${delDocs} daily doc(s) + draft for ${W}`);
+    await resetDraft(db, tid, uid, W, claimBranchId);
+    pass('pre-clean', `deleted ${delDocs} daily doc(s) + reset draft for ${W}`);
 
     browser = await chromium.launch({ headless: true });
     await buildAndMerge(browser, db, tid, uid, { buildDay, W });
@@ -290,7 +314,7 @@ async function main() {
     if (browser) await browser.close().catch(() => {});
     if (tid && uid) {
       await deleteWeekDailyDocs(db, tid, uid, W).catch(() => {});
-      await deleteDoc(draftRef(db, tid, uid, W)).catch(() => {});
+      await resetDraft(db, tid, uid, W, claimBranchId);
       console.log('  post-clean done');
     }
     try { await signOut(auth); } catch {}
