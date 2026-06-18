@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { X, Plus, Loader2, Check, Minus } from 'lucide-react';
+import { X, Plus, Loader2, Check, Minus, Flame } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   saveDailyEntry,
@@ -16,7 +16,12 @@ import {
 } from '../../lib/schema/weeklyReport.computations';
 import { MIN_PPP_INCREASE } from '../../lib/schema/weeklyReport';
 import { formatCurrency } from '../../utils/formatters';
-import { deriveCountStripChips } from './DailyCaptureV2.helpers';
+import {
+  deriveCountStripChips,
+  computeDayPoints,
+  deriveWeekStripDays,
+  computeStreak,
+} from './DailyCaptureV2.helpers';
 
 // ── Local helpers ──────────────────────────────────────────────────────────
 
@@ -26,20 +31,24 @@ function weekdayLong(dateStr) {
 }
 
 function isoWeekNumber(dateStr) {
-  // Sunday-anchored week number (week containing Jan 1 = week 1).
   const d = new Date(dateStr + 'T12:00:00Z');
   const start = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
   const diffDays = Math.floor((d - start) / 86400000);
   return Math.ceil((diffDays + start.getUTCDay() + 1) / 7);
 }
 
-const intOrZero = (v) => parseInt(v, 10) || 0;
+function formatDateShort(dateStr) {
+  const d = new Date(dateStr + 'T12:00:00Z');
+  return d.toLocaleDateString('en-TT', { weekday: 'long', day: 'numeric', month: 'short' });
+}
+
+const intOrZero   = (v) => parseInt(v, 10) || 0;
 const floatOrZero = (v) => parseFloat(v) || 0;
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 
 function Stepper({ value, onChange, ariaLabel, allowDecimal = false }) {
-  const v = allowDecimal ? floatOrZero(value) : intOrZero(value);
+  const v    = allowDecimal ? floatOrZero(value) : intOrZero(value);
   const step = allowDecimal ? 0.5 : 1;
   const handle = (next) => {
     if (next < 0) return;
@@ -107,7 +116,7 @@ function StepperRow({ label, name, value, onChange, allowDecimal = false }) {
 
 function MoneyRow({ label, name, value, onChange }) {
   const id = `dcv2-${name}-money`;
-  const v = floatOrZero(value);
+  const v  = floatOrZero(value);
   return (
     <div className="flex items-center justify-between gap-3 py-2">
       <label htmlFor={id} className="text-sm text-ink flex-1">
@@ -135,23 +144,55 @@ function MoneyRow({ label, name, value, onChange }) {
   );
 }
 
+/** Hours stepper row with Half / Full / Long quick-chip buttons. */
+function QuickChipRow({ label, name, value, onChange }) {
+  const v = floatOrZero(value);
+  const CHIPS = [
+    { label: 'Half', hours: 4 },
+    { label: 'Full', hours: 8 },
+    { label: 'Long', hours: 10 },
+  ];
+  return (
+    <div className="py-2">
+      <div className="flex items-center justify-between gap-3 mb-2">
+        <span className="text-sm text-ink flex-1">{label}</span>
+        <Stepper
+          value={v}
+          onChange={(n) => onChange(name, n)}
+          ariaLabel={label}
+          allowDecimal
+        />
+      </div>
+      <div className="flex gap-2">
+        {CHIPS.map((c) => (
+          <button
+            key={c.label}
+            type="button"
+            onClick={() => onChange(name, c.hours)}
+            className={`flex-1 h-9 rounded-lg text-xs font-semibold border transition-colors ${
+              v === c.hours
+                ? 'bg-primary dark:bg-primary-dark text-white border-primary dark:border-primary-dark'
+                : 'bg-card-raised border-border text-ink-muted hover:border-primary/40 hover:text-primary'
+            }`}
+            aria-label={`${label} ${c.label} (${c.hours}h)`}
+            aria-pressed={v === c.hours}
+          >
+            {c.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function GroupCard({ accent, title, filledCount, totalCount, headerRight, children }) {
-  const dotClass =
-    accent === 'gold'
-      ? 'bg-warning'
-      : 'bg-primary';
-  const borderClass =
-    accent === 'gold'
-      ? 'border-warning/30'
-      : 'border-primary/20';
+  const dotClass    = accent === 'gold' ? 'bg-warning' : 'bg-primary';
+  const borderClass = accent === 'gold' ? 'border-warning/30' : 'border-primary/20';
   return (
     <div className={`rounded-xl bg-card border ${borderClass} p-4`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span
-            className={`w-2.5 h-2.5 rounded-full ${dotClass}`}
-            aria-hidden="true"
-          />
+          <span className={`w-2.5 h-2.5 rounded-full ${dotClass}`} aria-hidden="true" />
           <h2 className="text-sm font-semibold text-ink">{title}</h2>
         </div>
         {headerRight != null ? (
@@ -200,114 +241,253 @@ function CountStrip({ chips, loading }) {
   );
 }
 
+/** Horizontal Mon–Sat day selector for back-fill navigation. */
+function WeekStrip({ days, selectedDate, onSelect }) {
+  return (
+    <div
+      data-testid="dcv2-week-strip"
+      className="grid grid-cols-6 gap-1 mt-3"
+      role="group"
+      aria-label="Select day"
+    >
+      {days.map((day) => {
+        const isSelected = day.date === selectedDate;
+        const tappable   = !day.isFuture;
+        let chipClass =
+          'flex flex-col items-center rounded-lg px-1 py-1.5 text-center border transition-colors ';
+
+        if (isSelected) {
+          chipClass += 'bg-primary dark:bg-primary-dark text-white border-primary dark:border-primary-dark';
+        } else if (day.isToday) {
+          chipClass += 'bg-card border-primary/60 text-ink ring-1 ring-primary/40';
+        } else if (day.isLogged) {
+          chipClass += 'bg-card-raised border-border text-ink';
+        } else if (day.isOff) {
+          chipClass += 'bg-card border-border/40 text-ink-muted opacity-50';
+        } else if (day.isFuture) {
+          chipClass += 'bg-card border-border/30 text-ink-muted opacity-40';
+        } else {
+          // missing — past, not logged
+          chipClass += 'bg-card border-warning/40 text-ink-muted';
+        }
+
+        return (
+          <button
+            key={day.date}
+            type="button"
+            disabled={!tappable}
+            onClick={() => tappable && onSelect(day.date)}
+            aria-pressed={isSelected}
+            aria-label={`${day.label} ${day.dayNum}${day.isLogged ? ' — logged' : day.isFuture ? ' — upcoming' : day.isOff ? ' — off' : ' — missing'}`}
+            className={`${chipClass} min-h-[44px]`}
+            data-testid={`dcv2-strip-day-${day.date}`}
+          >
+            <span className="text-[10px] font-semibold uppercase">{day.label}</span>
+            <span className="text-sm font-bold leading-tight">{day.dayNum}</span>
+            {day.isLogged && !isSelected && (
+              <span className="w-1 h-1 mt-0.5 rounded-full bg-primary dark:bg-primary-dark" aria-hidden="true" />
+            )}
+            {!day.isLogged && !isSelected && !day.isFuture && !day.isOff && (
+              <span className="w-1 h-1 mt-0.5 rounded-full bg-warning" aria-hidden="true" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Sunday "Review day" confirmation view — aggregated read-only summary. */
+function SundayConfirmView({ weekDocs, onClose }) {
+  const total = weekDocs.length;
+  const apps  = weekDocs.reduce((s, d) => s + intOrZero(d.newBusiness?.apps), 0);
+  const api   = weekDocs.reduce((s, d) => s + floatOrZero(d.newBusiness?.api), 0);
+  const ffi   = weekDocs.reduce((s, d) => s + intOrZero(d.ffiConducted), 0);
+  const ci    = weekDocs.reduce((s, d) => s + intOrZero(d.ciConducted), 0);
+  const dials = weekDocs.reduce((s, d) => s + intOrZero(d.dials), 0);
+
+  const rows = [
+    { label: 'Days logged', value: total, unit: '/5' },
+    { label: 'Dials', value: dials },
+    { label: 'FFIs conducted', value: ffi },
+    { label: 'CIs conducted', value: ci },
+    { label: 'Apps written', value: apps },
+    { label: 'API (TTD)', value: formatCurrency(api), raw: true },
+  ];
+
+  return (
+    <div className="flex-1 flex flex-col items-center justify-start px-4 py-6 max-w-lg mx-auto w-full">
+      <div className="w-full rounded-xl bg-card border border-primary/20 p-5 mb-4">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="w-2.5 h-2.5 rounded-full bg-primary" aria-hidden="true" />
+          <h2 className="text-sm font-semibold text-ink">Your week from daily logs</h2>
+          <span className="ml-auto text-xs text-primary font-semibold">✓ from daily</span>
+        </div>
+        <div className="flex flex-col divide-y divide-border/50">
+          {rows.map((r) => (
+            <div key={r.label} className="flex items-center justify-between py-2">
+              <span className="text-sm text-ink-muted">{r.label}</span>
+              <span className="text-sm font-semibold text-ink">
+                {r.value}{r.unit ?? ''}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="w-full rounded-xl bg-card-raised border border-border p-4 text-center">
+        <p className="text-sm text-ink-muted leading-relaxed">
+          Open the <span className="font-semibold text-primary">Weekly Wizard</span> to add ratings,
+          next-week targets, and submit your report.
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-3 h-11 px-6 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-sm transition-colors hover:bg-primary/90 dark:hover:bg-primary"
+        >
+          Close &amp; open wizard
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────
 
 export default function DailyCaptureV2({ onClose }) {
   const { user, userProfile, tenantId } = useAuth();
-  const agentName = userProfile?.name ?? userProfile?.email ?? '';
-  const today = useMemo(() => getTodayTT(), []);
+  const agentName  = userProfile?.name ?? userProfile?.email ?? '';
+  const today      = useMemo(() => getTodayTT(), []);
   const weekStarting = useMemo(() => getSundayOf(today), [today]);
+  const isTodaySunday = useMemo(() => {
+    const d = new Date(today + 'T12:00:00Z');
+    return d.getUTCDay() === 0;
+  }, [today]);
 
-  const [data, setData] = useState(() =>
+  // Selected date for back-fill; defaults to today.
+  const [selectedDate, setSelectedDate] = useState(today);
+
+  const [data, setData]         = useState(() =>
     createEmptyDailyEntry(today, user?.uid ?? '', agentName)
   );
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState(null);
-  const [error, setError] = useState('');
-  const [pppExpanded, setPppExpanded] = useState(false);
-  const [reflectionExpanded, setReflectionExpanded] = useState(false);
-  const [chips, setChips] = useState({ appr: 0, ffi: 0, ci: 0, apps: 0 });
-  const [chipsLoading, setChipsLoading] = useState(true);
+  const [loading, setLoading]   = useState(true);
+  const [saving, setSaving]     = useState(false);
+  const [savedAt, setSavedAt]   = useState(null);
+  const [error, setError]       = useState('');
 
-  // Initial load — today's entry (if any).
+  // Collapsible section toggles
+  const [pppExpanded,        setPppExpanded]        = useState(false);
+  const [socialExpanded,     setSocialExpanded]     = useState(false);
+  const [interviewsExpanded, setInterviewsExpanded] = useState(false);
+  const [deliveryExpanded,   setDeliveryExpanded]   = useState(false);
+  const [reflectionExpanded, setReflectionExpanded] = useState(false);
+
+  // Week-level state (for strip + chips)
+  const [weekDocs,      setWeekDocs]      = useState([]);
+  const [chipsLoading,  setChipsLoading]  = useState(true);
+
+  // ── Load entry for selectedDate whenever it changes ──────────────────────
   useEffect(() => {
     if (!user?.uid) return;
     setLoading(true);
-    getDailyEntry(tenantId, user.uid, today)
+    setError('');
+    setSavedAt(null);
+    // Reset to empty for the new date, then overlay with any saved data.
+    setData(createEmptyDailyEntry(selectedDate, user.uid, agentName));
+    // Collapse optional sections until we know if they have data.
+    setPppExpanded(false);
+    setSocialExpanded(false);
+    setInterviewsExpanded(false);
+    setDeliveryExpanded(false);
+    setReflectionExpanded(false);
+
+    let active = true;
+    getDailyEntry(tenantId, user.uid, selectedDate)
       .then((existing) => {
+        if (!active) return;
         if (existing) {
           setData((prev) => ({ ...prev, ...existing }));
           if (
             existing.pppIncreases?.apps > 0 ||
             existing.pppIncreases?.apiIncrease > 0 ||
             existing.lumpsums?.grossAmount > 0
-          ) {
-            setPppExpanded(true);
-          }
+          ) setPppExpanded(true);
           if (
-            existing.hoursWorked != null ||
-            existing.wins ||
-            existing.blockers
-          ) {
+            existing.socialPostsTotal > 0 ||
+            existing.socialEngagementTotal > 0 ||
+            existing.socialInboxEnquiries > 0 ||
+            existing.namesFromSocial > 0
+          ) setSocialExpanded(true);
+          if (
+            existing.newCIBooked > 0 ||
+            existing.oldCIBooked > 0 ||
+            existing.ciConducted > 0 ||
+            existing.solutionPresentations > 0
+          ) setInterviewsExpanded(true);
+          if (
+            existing.policiesDelivered > 0 ||
+            existing.serviceContacts > 0
+          ) setDeliveryExpanded(true);
+          if (existing.hoursWorked != null || existing.wins || existing.blockers) {
             setReflectionExpanded(true);
           }
         }
       })
       .catch((e) => {
+        if (!active) return;
         console.error('Failed to load daily entry:', e);
-        setError('Could not load today — your save will overwrite.');
+        setError('Could not load entry — your save will overwrite.');
       })
-      .finally(() => setLoading(false));
-  }, [user?.uid, today, tenantId]);
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [user?.uid, selectedDate, tenantId, agentName]);
 
-  // Count-strip read — on mount, and after a successful save.
-  const refreshChips = useCallback(async () => {
+  // ── Week-level read: chips + strip ───────────────────────────────────────
+  const refreshWeekDocs = useCallback(async () => {
     if (!user?.uid) return;
     setChipsLoading(true);
     try {
-      const weekDocs = await getDailyEntriesForWeek(tenantId, user.uid, weekStarting);
-      setChips(deriveCountStripChips(weekDocs));
+      const docs = await getDailyEntriesForWeek(tenantId, user.uid, weekStarting);
+      setWeekDocs(docs);
     } catch (e) {
-      console.error('Count-strip read failed:', e);
+      console.error('Week docs read failed:', e);
     } finally {
       setChipsLoading(false);
     }
   }, [tenantId, user?.uid, weekStarting]);
 
-  useEffect(() => {
-    refreshChips();
-  }, [refreshChips]);
+  useEffect(() => { refreshWeekDocs(); }, [refreshWeekDocs]);
 
-  // Field setters.
-  const handleChange = (name, value) => {
-    setData((prev) => ({ ...prev, [name]: value }));
-  };
-  const nbChange = (field, value) => {
-    setData((prev) => ({ ...prev, newBusiness: { ...prev.newBusiness, [field]: value } }));
-  };
-  const pppChange = (field, value) => {
-    setData((prev) => ({
-      ...prev,
-      pppIncreases: { ...prev.pppIncreases, [field]: value },
-    }));
-  };
-  const lmpsChange = (field, value) => {
-    setData((prev) => ({ ...prev, lumpsums: { ...prev.lumpsums, [field]: value } }));
-  };
+  // ── Derived ───────────────────────────────────────────────────────────────
+  const chips     = useMemo(() => deriveCountStripChips(weekDocs), [weekDocs]);
+  const stripDays = useMemo(() => deriveWeekStripDays(weekDocs, today, weekStarting), [weekDocs, today, weekStarting]);
+  const streak    = useMemo(() => computeStreak(weekDocs, today), [weekDocs, today]);
+  const dayPoints = useMemo(() => computeDayPoints(data), [data]);
 
-  // Derived: per-day production credit (display only).
-  const lmpsGross = floatOrZero(data.lumpsums?.grossAmount);
-  const lmpsCredit = computeLumpsumCredit(lmpsGross);
+  // Production credit (header slot in Production card).
+  const lmpsGross      = floatOrZero(data.lumpsums?.grossAmount);
+  const lmpsCredit     = computeLumpsumCredit(lmpsGross);
   const lmpsCommission = computeLumpsumCommission(lmpsGross);
   const dayProductionCredit = computeTotalProductionCredit({
     newBusiness:  data.newBusiness ?? {},
     pppIncreases: data.pppIncreases ?? {},
     lumpsums:     { ...(data.lumpsums ?? {}), apiCredit: lmpsCredit },
   });
+  const pppApps       = intOrZero(data.pppIncreases?.apps);
+  const pppInc        = floatOrZero(data.pppIncreases?.apiIncrease);
+  const pppAvgPerApp  = pppApps > 0 ? pppInc / pppApps : null;
+  const pppWarn       = pppInc > 0 && pppAvgPerApp != null && !validatePppIncrease(pppAvgPerApp);
 
-  // PPP soft-warning (same rule as the v1 modal).
-  const pppApps = intOrZero(data.pppIncreases?.apps);
-  const pppInc = floatOrZero(data.pppIncreases?.apiIncrease);
-  const pppAvgPerApp = pppApps > 0 ? pppInc / pppApps : null;
-  const pppWarn = pppInc > 0 && pppAvgPerApp != null && !validatePppIncrease(pppAvgPerApp);
-
-  // {filled}/{total} counters — display-only, value > 0.
+  // Filled-field counters for GroupCard badges.
   const prospectingFilled =
+    (intOrZero(data.prospectingLettersSent) > 0 ? 1 : 0) +
+    (intOrZero(data.seminarsConducted) > 0 ? 1 : 0) +
+    (intOrZero(data.dials) > 0 ? 1 : 0) +
+    (intOrZero(data.telContacts) > 0 ? 1 : 0) +
+    (intOrZero(data.f2fAttempts) > 0 ? 1 : 0) +
     (intOrZero(data.qualifiedApproaches) > 0 ? 1 : 0) +
     (intOrZero(data.newNamesAdded) > 0 ? 1 : 0) +
-    (intOrZero(data.oldNamesWorked) > 0 ? 1 : 0) +
-    (intOrZero(data.serviceContacts) > 0 ? 1 : 0);
+    (intOrZero(data.oldNamesWorked) > 0 ? 1 : 0);
   const apptsFilled =
     (intOrZero(data.appointmentsSet) > 0 ? 1 : 0) +
     (intOrZero(data.ffisScheduled) > 0 ? 1 : 0) +
@@ -318,15 +498,31 @@ export default function DailyCaptureV2({ onClose }) {
     (intOrZero(data.ciConducted) > 0 ? 1 : 0) +
     (intOrZero(data.solutionPresentations) > 0 ? 1 : 0);
 
+  // ── Field setters ─────────────────────────────────────────────────────────
+  const handleChange = (name, value) =>
+    setData((prev) => ({ ...prev, [name]: value }));
+
+  const nbChange  = (field, value) =>
+    setData((prev) => ({ ...prev, newBusiness: { ...prev.newBusiness, [field]: value } }));
+  const pppChange = (field, value) =>
+    setData((prev) => ({ ...prev, pppIncreases: { ...prev.pppIncreases, [field]: value } }));
+  const lmpsChange = (field, value) =>
+    setData((prev) => ({ ...prev, lumpsums: { ...prev.lumpsums, [field]: value } }));
+  const spbChange  = (field, value) =>
+    setData((prev) => ({
+      ...prev,
+      socialPlatformBreakdown: { ...prev.socialPlatformBreakdown, [field]: value },
+    }));
+
+  // ── Save ──────────────────────────────────────────────────────────────────
   const handleSave = async () => {
     if (!user?.uid) return;
     setSaving(true);
     setError('');
     try {
-      await saveDailyEntry(tenantId, user.uid, agentName, today, data);
+      await saveDailyEntry(tenantId, user.uid, agentName, selectedDate, data);
       setSavedAt(new Date());
-      // Refresh the count strip so today's just-saved entry is reflected.
-      await refreshChips();
+      await refreshWeekDocs();
       setTimeout(() => onClose?.(), 600);
     } catch (e) {
       console.error('Save failed:', e);
@@ -336,6 +532,16 @@ export default function DailyCaptureV2({ onClose }) {
     }
   };
 
+  // ── Header label ──────────────────────────────────────────────────────────
+  const isBackfill = selectedDate !== today;
+
+  const titleText = isTodaySunday
+    ? 'Review week'
+    : isBackfill
+    ? `Back-fill — ${formatDateShort(selectedDate)}`
+    : 'Log Today';
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
       className="fixed inset-0 z-50 bg-bg flex flex-col"
@@ -344,13 +550,29 @@ export default function DailyCaptureV2({ onClose }) {
       aria-labelledby="dcv2-title"
       data-testid="daily-capture-v2"
     >
-      {/* Sticky header — Log Today + reduced WTD count strip */}
+      {/* ── Sticky header ── */}
       <header className="px-4 pt-4 pb-3 bg-bg shrink-0 border-b border-border/40">
         <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 id="dcv2-title" className="text-lg font-bold text-ink leading-tight">
-              Log Today
-            </h1>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 id="dcv2-title" className="text-lg font-bold text-ink leading-tight">
+                {titleText}
+              </h1>
+              {/* Mode pill */}
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                Daily
+              </span>
+              {/* Streak flame */}
+              {streak > 0 && (
+                <span
+                  className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-warning-ink"
+                  aria-label={`${streak}-day streak`}
+                >
+                  <Flame size={13} aria-hidden="true" />
+                  {streak}
+                </span>
+              )}
+            </div>
             <p className="text-[11px] font-mono uppercase tracking-widest text-ink-muted mt-0.5">
               {weekdayLong(today)} · WK {isoWeekNumber(today)}
             </p>
@@ -364,112 +586,147 @@ export default function DailyCaptureV2({ onClose }) {
             <X size={20} />
           </button>
         </div>
+
+        {/* Week strip — not shown when today is Sunday (no back-fill into the weekly report's day) */}
+        {!isTodaySunday && (
+          <WeekStrip
+            days={stripDays}
+            selectedDate={selectedDate}
+            onSelect={(date) => setSelectedDate(date)}
+          />
+        )}
+
+        {/* WTD count chips */}
         <CountStrip chips={chips} loading={chipsLoading} />
       </header>
 
-      {/* Body */}
+      {/* ── Body ── */}
       <main className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <Loader2 size={28} className="animate-spin text-primary" />
-            <p className="text-sm text-ink-muted mt-3">Loading today's entry…</p>
+            <p className="text-sm text-ink-muted mt-3">
+              {isBackfill ? 'Loading entry…' : "Loading today’s entry…"}
+            </p>
           </div>
+        ) : isTodaySunday ? (
+          chipsLoading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 size={28} className="animate-spin text-primary" />
+              <p className="text-sm text-ink-muted mt-3">Loading weekly summary…</p>
+            </div>
+          ) : (
+            <SundayConfirmView weekDocs={weekDocs} onClose={onClose} />
+          )
         ) : (
           <div className="px-4 py-4 max-w-lg mx-auto flex flex-col gap-4">
-            {/* Prospecting */}
+            {/* Back-fill banner */}
+            {isBackfill && (
+              <div
+                className="rounded-lg bg-warning/10 border border-warning/30 px-3 py-2 text-xs text-warning-ink font-medium"
+                role="status"
+              >
+                Back-filling {formatDateShort(selectedDate)} — save will write to that date.
+              </div>
+            )}
+
+            {/* ── Prospecting & outreach ── */}
             <GroupCard
               accent="teal"
-              title="Prospecting"
+              title="Prospecting &amp; outreach"
               filledCount={prospectingFilled}
-              totalCount={4}
+              totalCount={8}
             >
-              <StepperRow
-                label="Qualified approaches"
-                name="qualifiedApproaches"
-                value={data.qualifiedApproaches}
-                onChange={handleChange}
-              />
-              <StepperRow
-                label="New names added"
-                name="newNamesAdded"
-                value={data.newNamesAdded}
-                onChange={handleChange}
-              />
-              <StepperRow
-                label="Old names worked"
-                name="oldNamesWorked"
-                value={data.oldNamesWorked}
-                onChange={handleChange}
-              />
-              <StepperRow
-                label="Service contacts"
-                name="serviceContacts"
-                value={data.serviceContacts}
-                onChange={handleChange}
-              />
+              <StepperRow label="Prospecting letters sent"  name="prospectingLettersSent" value={data.prospectingLettersSent} onChange={handleChange} />
+              <StepperRow label="Seminars conducted"        name="seminarsConducted"       value={data.seminarsConducted}      onChange={handleChange} />
+              <StepperRow label="Dials (total calls)"       name="dials"                   value={data.dials}                  onChange={handleChange} />
+              <StepperRow label="Tel contacts (reached)"    name="telContacts"             value={data.telContacts}            onChange={handleChange} />
+              <StepperRow label="F2F attempts"              name="f2fAttempts"             value={data.f2fAttempts}            onChange={handleChange} />
+              <StepperRow label="Qualified approaches"      name="qualifiedApproaches"     value={data.qualifiedApproaches}    onChange={handleChange} />
+              <StepperRow label="New names added"           name="newNamesAdded"           value={data.newNamesAdded}          onChange={handleChange} />
+              <StepperRow label="Old names worked"          name="oldNamesWorked"          value={data.oldNamesWorked}         onChange={handleChange} />
+
+              {/* Social — collapsible sub-section */}
+              <div className="pt-3">
+                <button
+                  type="button"
+                  onClick={() => setSocialExpanded((v) => !v)}
+                  className="w-full min-h-[44px] flex items-center justify-between gap-2 text-sm font-semibold text-ink-muted hover:text-primary transition-colors"
+                  aria-expanded={socialExpanded}
+                  aria-controls="dcv2-social-body"
+                >
+                  <span>Social activity — optional</span>
+                  <span aria-hidden="true">{socialExpanded ? '▴' : '▾'}</span>
+                </button>
+                {socialExpanded && (
+                  <div id="dcv2-social-body" className="flex flex-col divide-y divide-border/50 mt-2">
+                    <StepperRow label="Posts / content published"  name="socialPostsTotal"       value={data.socialPostsTotal}       onChange={handleChange} />
+                    <StepperRow label="Engagement total"           name="socialEngagementTotal"  value={data.socialEngagementTotal}  onChange={handleChange} />
+                    <StepperRow label="Inbox enquiries"            name="socialInboxEnquiries"   value={data.socialInboxEnquiries}   onChange={handleChange} />
+                    <StepperRow label="Names from social"          name="namesFromSocial"        value={data.namesFromSocial}        onChange={handleChange} />
+                    {/* Platform breakdown */}
+                    <div className="pt-2 pb-1">
+                      <p className="text-xs font-semibold text-ink-muted mb-2 uppercase tracking-wider">Platform breakdown</p>
+                      <div className="flex flex-col divide-y divide-border/40">
+                        <StepperRow label="Facebook"  name="facebook"  value={data.socialPlatformBreakdown?.facebook  ?? 0} onChange={spbChange} />
+                        <StepperRow label="Instagram" name="instagram" value={data.socialPlatformBreakdown?.instagram ?? 0} onChange={spbChange} />
+                        <StepperRow label="WhatsApp"  name="whatsapp"  value={data.socialPlatformBreakdown?.whatsapp  ?? 0} onChange={spbChange} />
+                        <StepperRow label="LinkedIn"  name="linkedin"  value={data.socialPlatformBreakdown?.linkedin  ?? 0} onChange={spbChange} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </GroupCard>
 
-            {/* Appointments & FFI */}
+            {/* ── Appointments & FFI ── */}
             <GroupCard
               accent="teal"
-              title="Appointments & FFI"
+              title="Appointments &amp; FFI"
               filledCount={apptsFilled}
               totalCount={3}
             >
-              <StepperRow
-                label="Appointments set"
-                name="appointmentsSet"
-                value={data.appointmentsSet}
-                onChange={handleChange}
-              />
-              <StepperRow
-                label="FFIs scheduled"
-                name="ffisScheduled"
-                value={data.ffisScheduled}
-                onChange={handleChange}
-              />
-              <StepperRow
-                label="FFIs conducted"
-                name="ffiConducted"
-                value={data.ffiConducted}
-                onChange={handleChange}
-              />
+              <StepperRow label="Appointments set" name="appointmentsSet" value={data.appointmentsSet} onChange={handleChange} />
+              <StepperRow label="FFIs scheduled"   name="ffisScheduled"   value={data.ffisScheduled}   onChange={handleChange} />
+              <StepperRow label="FFIs conducted"   name="ffiConducted"    value={data.ffiConducted}    onChange={handleChange} />
             </GroupCard>
 
-            {/* Interviews */}
-            <GroupCard
-              accent="gold"
-              title="Interviews"
-              filledCount={interviewsFilled}
-              totalCount={4}
-            >
-              <StepperRow
-                label="New CIs booked"
-                name="newCIBooked"
-                value={data.newCIBooked}
-                onChange={handleChange}
-              />
-              <StepperRow
-                label="Old CIs booked"
-                name="oldCIBooked"
-                value={data.oldCIBooked}
-                onChange={handleChange}
-              />
-              <StepperRow
-                label="CIs conducted"
-                name="ciConducted"
-                value={data.ciConducted}
-                onChange={handleChange}
-              />
-              <StepperRow
-                label="Solution presentations"
-                name="solutionPresentations"
-                value={data.solutionPresentations}
-                onChange={handleChange}
-              />
-            </GroupCard>
+            {/* ── Interviews — collapsible ── */}
+            <div className="rounded-xl bg-card border border-warning/30 p-4">
+              <button
+                type="button"
+                onClick={() => setInterviewsExpanded((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 min-h-[44px]"
+                aria-expanded={interviewsExpanded}
+                aria-controls="dcv2-interviews-body"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-warning" aria-hidden="true" />
+                  <span className="text-sm font-semibold text-ink">Interviews</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-ink-muted">
+                    {interviewsFilled}/{4}
+                  </span>
+                  <span aria-hidden="true" className="text-ink-muted text-xs">
+                    {interviewsExpanded ? '▴' : '▾'}
+                  </span>
+                </div>
+              </button>
+              {interviewsExpanded && (
+                <div
+                  id="dcv2-interviews-body"
+                  className="flex flex-col divide-y divide-border/50 mt-2"
+                >
+                  <StepperRow label="New CIs booked"        name="newCIBooked"          value={data.newCIBooked}          onChange={handleChange} />
+                  <StepperRow label="Old CIs booked"        name="oldCIBooked"          value={data.oldCIBooked}          onChange={handleChange} />
+                  <StepperRow label="CIs conducted"         name="ciConducted"          value={data.ciConducted}          onChange={handleChange} />
+                  <StepperRow label="Solution presentations" name="solutionPresentations" value={data.solutionPresentations} onChange={handleChange} />
+                </div>
+              )}
+            </div>
 
-            {/* Production */}
+            {/* ── Production ── */}
             <GroupCard
               accent="gold"
               title="Production"
@@ -486,20 +743,11 @@ export default function DailyCaptureV2({ onClose }) {
                 )
               }
             >
-              <StepperRow
-                label="New business — apps"
-                name="apps"
-                value={data.newBusiness?.apps ?? 0}
-                onChange={nbChange}
-              />
-              <MoneyRow
-                label="New business — API"
-                name="api"
-                value={data.newBusiness?.api ?? 0}
-                onChange={nbChange}
-              />
+              <StepperRow label="New business — apps" name="apps" value={data.newBusiness?.apps ?? 0} onChange={nbChange} />
+              <StepperRow label="Lives sold"           name="livesSold" value={data.livesSold} onChange={handleChange} />
+              <MoneyRow   label="New business — API"  name="api"  value={data.newBusiness?.api  ?? 0} onChange={nbChange} />
 
-              {/* PPP / Lumpsums disclosure — collapsed by default */}
+              {/* PPP / Lumpsums optional disclosure */}
               <div className="pt-3">
                 <button
                   type="button"
@@ -513,24 +761,9 @@ export default function DailyCaptureV2({ onClose }) {
                 </button>
                 {pppExpanded && (
                   <div id="dcv2-ppp-body" className="flex flex-col divide-y divide-border/50 mt-2">
-                    <StepperRow
-                      label="PPP increases — apps"
-                      name="apps"
-                      value={data.pppIncreases?.apps ?? 0}
-                      onChange={pppChange}
-                    />
-                    <MoneyRow
-                      label="PPP — API increase"
-                      name="apiIncrease"
-                      value={data.pppIncreases?.apiIncrease ?? 0}
-                      onChange={pppChange}
-                    />
-                    <MoneyRow
-                      label="Lumpsum — gross"
-                      name="grossAmount"
-                      value={data.lumpsums?.grossAmount ?? 0}
-                      onChange={lmpsChange}
-                    />
+                    <StepperRow label="PPP increases — apps" name="apps"        value={data.pppIncreases?.apps ?? 0}        onChange={pppChange} />
+                    <MoneyRow   label="PPP — API increase"   name="apiIncrease" value={data.pppIncreases?.apiIncrease ?? 0} onChange={pppChange} />
+                    <MoneyRow   label="Lumpsum — gross"      name="grossAmount" value={data.lumpsums?.grossAmount ?? 0}     onChange={lmpsChange} />
                     {pppWarn && (
                       <p className="text-xs text-warning-ink font-medium py-2" role="status">
                         Average {formatCurrency(Math.round(pppAvgPerApp))} per app is below the {formatCurrency(MIN_PPP_INCREASE)} minimum.
@@ -540,15 +773,11 @@ export default function DailyCaptureV2({ onClose }) {
                       <div className="pt-2 pb-1 flex flex-col gap-1">
                         <div className="flex justify-between text-xs">
                           <span className="text-ink-muted">Lumpsum API credit (10%)</span>
-                          <span className="font-semibold text-primary">
-                            {formatCurrency(lmpsCredit)}
-                          </span>
+                          <span className="font-semibold text-primary">{formatCurrency(lmpsCredit)}</span>
                         </div>
                         <div className="flex justify-between text-xs">
                           <span className="text-ink-muted">Lumpsum commission (0.5%)</span>
-                          <span className="font-semibold text-primary">
-                            {formatCurrency(lmpsCommission)}
-                          </span>
+                          <span className="font-semibold text-primary">{formatCurrency(lmpsCommission)}</span>
                         </div>
                       </div>
                     )}
@@ -557,7 +786,47 @@ export default function DailyCaptureV2({ onClose }) {
               </div>
             </GroupCard>
 
-            {/* Reflection (D1) — disclosure + always-visible Note */}
+            {/* ── Delivery &amp; service — collapsible ── */}
+            <div className="rounded-xl bg-card border border-border/60 p-4">
+              <button
+                type="button"
+                onClick={() => setDeliveryExpanded((v) => !v)}
+                className="w-full flex items-center justify-between gap-3 min-h-[44px]"
+                aria-expanded={deliveryExpanded}
+                aria-controls="dcv2-delivery-body"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-primary" aria-hidden="true" />
+                  <span className="text-sm font-semibold text-ink">Delivery &amp; service</span>
+                </div>
+                <span aria-hidden="true" className="text-ink-muted text-xs">
+                  {deliveryExpanded ? '▴' : '▾'}
+                </span>
+              </button>
+              {deliveryExpanded && (
+                <div
+                  id="dcv2-delivery-body"
+                  className="flex flex-col divide-y divide-border/50 mt-2"
+                >
+                  <StepperRow label="Policies delivered" name="policiesDelivered" value={data.policiesDelivered} onChange={handleChange} />
+                  <StepperRow label="Service contacts"   name="serviceContacts"   value={data.serviceContacts}   onChange={handleChange} />
+                </div>
+              )}
+            </div>
+
+            {/* ── Hours ── */}
+            <div className="rounded-xl bg-card border border-border/60 p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="w-2.5 h-2.5 rounded-full bg-primary" aria-hidden="true" />
+                <h2 className="text-sm font-semibold text-ink">Hours</h2>
+              </div>
+              <div className="flex flex-col divide-y divide-border/50">
+                <QuickChipRow label="Office hours" name="officeHours" value={data.officeHours} onChange={handleChange} />
+                <QuickChipRow label="Field hours"  name="fieldHours"  value={data.fieldHours}  onChange={handleChange} />
+              </div>
+            </div>
+
+            {/* ── Reflection (optional) ── */}
             <div className="rounded-xl bg-card border border-border/60 p-4">
               <button
                 type="button"
@@ -578,16 +847,14 @@ export default function DailyCaptureV2({ onClose }) {
                     Optional journal — captured per day, not propagated to the weekly report.
                   </p>
                   <StepperRow
-                    label="Hours worked"
+                    label="Hours worked (total)"
                     name="hoursWorked"
                     value={data.hoursWorked ?? 0}
                     onChange={(_n, v) => handleChange('hoursWorked', v === 0 ? null : v)}
                     allowDecimal
                   />
                   <div className="flex flex-col gap-1">
-                    <label htmlFor="dcv2-wins" className="text-sm font-medium text-ink">
-                      Wins
-                    </label>
+                    <label htmlFor="dcv2-wins" className="text-sm font-medium text-ink">Wins</label>
                     <textarea
                       id="dcv2-wins"
                       rows={2}
@@ -598,9 +865,7 @@ export default function DailyCaptureV2({ onClose }) {
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label htmlFor="dcv2-blockers" className="text-sm font-medium text-ink">
-                      Blockers
-                    </label>
+                    <label htmlFor="dcv2-blockers" className="text-sm font-medium text-ink">Blockers</label>
                     <textarea
                       id="dcv2-blockers"
                       rows={2}
@@ -636,33 +901,55 @@ export default function DailyCaptureV2({ onClose }) {
         )}
       </main>
 
-      {/* Sticky save footer */}
-      <footer className="px-4 py-4 border-t border-border bg-card shrink-0">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || loading}
-          data-testid="dcv2-save"
-          className="w-full h-12 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-base hover:bg-primary/90 dark:hover:bg-primary transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-        >
-          {saving ? (
-            <>
-              <Loader2 size={18} className="animate-spin" /> Saving…
-            </>
-          ) : savedAt ? (
-            <>
-              <Check size={18} /> Saved
-            </>
-          ) : (
-            <>
-              Save today
-              <span className="text-[10px] font-mono uppercase tracking-widest opacity-80">
-                · Rolls into WK {isoWeekNumber(today)}
-              </span>
-            </>
+      {/* ── Sticky save footer — not shown in Sunday confirm view ── */}
+      {!isTodaySunday && (
+        <footer className="px-4 py-4 border-t border-border bg-card shrink-0">
+          {/* Points pill */}
+          {dayPoints > 0 && !loading && (
+            <div
+              data-testid="dcv2-points-pill"
+              className="flex items-center justify-center gap-1.5 mb-3"
+              aria-live="polite"
+              aria-label={`${dayPoints} points today`}
+            >
+              <span className="text-2xl font-bold text-primary tabular-nums">{dayPoints}</span>
+              <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">pts today</span>
+            </div>
           )}
-        </button>
-      </footer>
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || loading || !!savedAt}
+            data-testid="dcv2-save"
+            className="w-full h-12 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-base hover:bg-primary/90 dark:hover:bg-primary transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {saving ? (
+              <>
+                <Loader2 size={18} className="animate-spin" /> Saving…
+              </>
+            ) : savedAt ? (
+              <>
+                <Check size={18} /> Saved
+              </>
+            ) : isBackfill ? (
+              <>
+                Save back-fill
+                <span className="text-[10px] font-mono uppercase tracking-widest opacity-80">
+                  · {formatDateShort(selectedDate)}
+                </span>
+              </>
+            ) : (
+              <>
+                Save today
+                <span className="text-[10px] font-mono uppercase tracking-widest opacity-80">
+                  · Rolls into WK {isoWeekNumber(today)}
+                </span>
+              </>
+            )}
+          </button>
+        </footer>
+      )}
     </div>
   );
 }

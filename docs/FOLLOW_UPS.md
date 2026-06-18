@@ -37,6 +37,22 @@ Build the Option B daily-entry screen wired to the extended 1a/1b schema. Groupe
 
 ---
 
+## Daily Capture v2 Phase 2 — back-fill strip selected-state visual (banked PR #686, LOW)
+
+The smoke leg 2b back-fill assertion falls to `skip` because no reliable `aria-selected` or `data-selected` attribute is set on the selected strip day button. Add `aria-selected={isSelected}` to the strip day `<button>` in `WeekStrip` (`DailyCaptureV2.jsx`) so the smoke and screen-reader both get a machine-readable signal. Cosmetic only — selection still works.
+
+**Severity:** LOW — no user-visible regression; the selected ring (`ring-2`) is visible to sighted users. Smoke just can't assert it deterministically without the attribute.
+
+---
+
+## Daily Capture v2 Phase 2 — axe baseline re-sync vs fresh main (banked PR #686, LOW)
+
+The NO-NEW axe gate in `daily-capture-v2-2-ui-smoke.mjs` diffs against a baseline captured on a prior main deployment. Re-run `scripts/verification/axe-baseline-capture.mjs` (or equivalent) against a fresh main deploy after PR #686 merges to update `scripts/verification/axe-baseline.json`. Keeps the delta gate calibrated as main accumulates new pages.
+
+**Severity:** LOW — delta gate is still valid; stale baseline only risks false-positives (surfacing already-present violations as "new").
+
+---
+
 ## Daily Capture v2 Phase 3 — pace + working days (QUEUED — stacks on Phase 2, 2026-06-18, HIGH)
 
 `workingDaysPerWeek` on user doc (default 5, Profile UI toggle). `weeklyPointsFloor` via de-duplicated activity map (no ffi+ci double-count). `dailyPaceTarget` + `weekToDateTarget`. Wire pill ahead/on-pace/behind. Brief landed: `docs/briefs/brief-daily-capture-v2-3-pace.md`. Branch: `feat/daily-capture-v2-3-pace` off Phase 2 HEAD. **Waits on Phase 2 human merge.**
