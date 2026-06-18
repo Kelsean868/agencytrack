@@ -328,7 +328,7 @@ function SundayConfirmView({ weekDocs, onClose }) {
             <div key={r.label} className="flex items-center justify-between py-2">
               <span className="text-sm text-ink-muted">{r.label}</span>
               <span className="text-sm font-semibold text-ink">
-                {r.raw ? r.value : r.value}{r.unit ?? ''}
+                {r.value}{r.unit ?? ''}
               </span>
             </div>
           ))}
@@ -401,8 +401,10 @@ export default function DailyCaptureV2({ onClose }) {
     setDeliveryExpanded(false);
     setReflectionExpanded(false);
 
+    let active = true;
     getDailyEntry(tenantId, user.uid, selectedDate)
       .then((existing) => {
+        if (!active) return;
         if (existing) {
           setData((prev) => ({ ...prev, ...existing }));
           if (
@@ -432,10 +434,12 @@ export default function DailyCaptureV2({ onClose }) {
         }
       })
       .catch((e) => {
+        if (!active) return;
         console.error('Failed to load daily entry:', e);
         setError('Could not load entry — your save will overwrite.');
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
   }, [user?.uid, selectedDate, tenantId, agentName]);
 
   // ── Week-level read: chips + strip ───────────────────────────────────────
@@ -606,7 +610,14 @@ export default function DailyCaptureV2({ onClose }) {
             </p>
           </div>
         ) : isTodaySunday ? (
-          <SundayConfirmView weekDocs={weekDocs} onClose={onClose} />
+          chipsLoading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 size={28} className="animate-spin text-primary" />
+              <p className="text-sm text-ink-muted mt-3">Loading weekly summary…</p>
+            </div>
+          ) : (
+            <SundayConfirmView weekDocs={weekDocs} onClose={onClose} />
+          )
         ) : (
           <div className="px-4 py-4 max-w-lg mx-auto flex flex-col gap-4">
             {/* Back-fill banner */}
@@ -909,7 +920,7 @@ export default function DailyCaptureV2({ onClose }) {
           <button
             type="button"
             onClick={handleSave}
-            disabled={saving || loading}
+            disabled={saving || loading || !!savedAt}
             data-testid="dcv2-save"
             className="w-full h-12 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-base hover:bg-primary/90 dark:hover:bg-primary transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
