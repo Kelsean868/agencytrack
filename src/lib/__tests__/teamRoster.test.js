@@ -149,7 +149,7 @@ describe('assembleRosterRow', () => {
       goals: GOALS_WITH_TARGET,
     });
     expect(row.submittedAPI).toBe(20000);          // period only
-    expect(row.pctOfAnnualGoal).toBeCloseTo(0.225); // 45000 / 200000
+    expect(row.pctOfAnnualGoal).toBeCloseTo(22.5); // (45000 / 200000) ×100
   });
 
   it('reads issuedAPI and issuedApps from settlement', () => {
@@ -164,9 +164,9 @@ describe('assembleRosterRow', () => {
     expect(row.issuedApps).toBeNull();
   });
 
-  it('reads persistency from persistency record', () => {
+  it('reads persistency from persistency record (×100 to 0–100 scale)', () => {
     const row = assembleRosterRow({ member: MEMBER1, periodSubs: [], ytdSubs: [], settlement: null, persistencyRecord: PERSISTENCY_APR, goals: null });
-    expect(row.persistency).toBeCloseTo(0.94);
+    expect(row.persistency).toBeCloseTo(94); // stored decimal 0.94 ×100
   });
 
   it('nulls persistency when no record', () => {
@@ -207,6 +207,31 @@ describe('assembleRosterRow', () => {
     const row = assembleRosterRow({ member: MEMBER1, periodSubs: [], ytdSubs: [], ...noData });
     expect(row.submittedAPI).toBe(0);
     expect(row.submittedApps).toBe(0);
+  });
+
+  it('maps role unit_manager → "UM", everything else → null', () => {
+    const um = assembleRosterRow({ member: { id: 'u', role: 'unit_manager' }, periodSubs: [], ytdSubs: [], ...noData });
+    expect(um.role).toBe('UM');
+    const ag = assembleRosterRow({ member: { id: 'a', role: 'agent' }, periodSubs: [], ytdSubs: [], ...noData });
+    expect(ag.role).toBeNull();
+    const bm = assembleRosterRow({ member: { id: 'b', role: 'branch_manager' }, periodSubs: [], ytdSubs: [], ...noData });
+    expect(bm.role).toBeNull();
+    const none = assembleRosterRow({ member: { id: 'n' }, periodSubs: [], ytdSubs: [], ...noData });
+    expect(none.role).toBeNull();
+  });
+
+  it('unit prefers unitName, falls back to unitId, then null', () => {
+    const named = assembleRosterRow({ member: { id: 'u', unitName: 'S·02', unitId: 'uid-2' }, periodSubs: [], ytdSubs: [], ...noData });
+    expect(named.unit).toBe('S·02');
+    const idOnly = assembleRosterRow({ member: { id: 'u', unitId: 'uid-2' }, periodSubs: [], ytdSubs: [], ...noData });
+    expect(idOnly.unit).toBe('uid-2');
+    const neither = assembleRosterRow({ member: { id: 'u' }, periodSubs: [], ytdSubs: [], ...noData });
+    expect(neither.unit).toBeNull();
+  });
+
+  it('persistency 0 stays 0 (not nulled) after ×100', () => {
+    const row = assembleRosterRow({ member: MEMBER1, periodSubs: [], ytdSubs: [], settlement: null, persistencyRecord: { persistency: 0 }, goals: null });
+    expect(row.persistency).toBe(0);
   });
 });
 
@@ -254,7 +279,7 @@ describe('assembleRoster', () => {
   it('pctOfAnnualGoal uses full YTD even when period is a month', () => {
     // YTD for agent1: SUB_JAN(10k) + SUB_MAR(15k) + SUB_APR(20k) = 45k
     const [row] = callAssemble([MEMBER1], [SUB_JAN, SUB_MAR, SUB_APR]);
-    expect(row.pctOfAnnualGoal).toBeCloseTo(0.225); // 45000 / 200000
+    expect(row.pctOfAnnualGoal).toBeCloseTo(22.5); // (45000 / 200000) ×100
   });
 
   it('member without goal gets null pctOfAnnualGoal', () => {
@@ -262,9 +287,9 @@ describe('assembleRoster', () => {
     expect(row.pctOfAnnualGoal).toBeNull();
   });
 
-  it('persistency mapped from persistency record', () => {
+  it('persistency mapped from persistency record (×100 to 0–100 scale)', () => {
     const [row] = callAssemble([MEMBER1]);
-    expect(row.persistency).toBeCloseTo(0.94);
+    expect(row.persistency).toBeCloseTo(94); // stored decimal 0.94 ×100
   });
 
   it('member without persistency record gets null', () => {

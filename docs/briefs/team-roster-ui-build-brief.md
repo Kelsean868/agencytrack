@@ -2,7 +2,7 @@
 
 ## Context
 The Direction-1 roster (#4). CD's mockup is locked at
-`design_handoff_v2_app/Team_Performance_Roster_-_Build.html` — **read it as the design source of truth**
+`design_handoff_v2_app/mockups/Team Performance Roster - Build.html` — **read it as the design source of truth**
 (exact columns, group bands, persistency/goal cells, states, mobile card). The data-layer hook
 (`useTeamRoster`) is being built in parallel; **this brief builds the UI independently**, against a
 defined `RosterRow[]` interface + a **mock provider**, so it's reviewable standalone and does not depend

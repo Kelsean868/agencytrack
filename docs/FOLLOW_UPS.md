@@ -6,6 +6,23 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## South `branchId` submission backfill — conditional (banked PR #683, 2026-06-18, Tier-C if triggered)
+
+The BM Team Roster's submitted column comes from `getAllYTDSubmissions` → `where('branchId', '==', claims.branchId)`. Submissions written before `branchId` stamping are invisible to the BM view, so the column would under-count.
+
+**Diagnostic (read-only, operator-run):**
+```
+node functions/scripts/inspect-submission-branchid.cjs --tenant tatillife_south
+```
+Validated on `tatillife_smoke` in PR #683 (read-only; 13/13 carry `branchId` post-reseed). The script performs ZERO writes and is safe against production.
+
+**Trigger:** if the south scan reports any submissions WITHOUT `branchId`, scope a **separate Tier-C backfill brief** (dry-run → operator-reviewed → `--execute` with prod-write confirmation, mirroring `denormalize-submission-unitId.mjs`). If the scan shows 0 missing, no action — close this note.
+
+**Source:** PR #683 (team-roster verify). Inspection: `functions/scripts/inspect-submission-branchid.cjs`.
+
+---
+
+
 ## Update-button reload — event-driven hardening (banked PR #681 review, 2026-06-17, LOW)
 
 Current `ReloadPrompt.jsx` `handleUpdate` uses a fixed 500ms `setTimeout` fallback after `updateSW(true)`. The root cause (no `clientsClaim` → `controllerchange` never fires) is known and documented. The fallback works but is timing-based.
