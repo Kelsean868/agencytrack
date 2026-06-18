@@ -6,19 +6,22 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
-## South `branchId` submission backfill — conditional (banked PR #683, 2026-06-18, Tier-C if triggered)
+## ~~South `branchId` submission backfill — conditional~~ (RESOLVED — no backfill needed, 2026-06-18)
 
-The BM Team Roster's submitted column comes from `getAllYTDSubmissions` → `where('branchId', '==', claims.branchId)`. Submissions written before `branchId` stamping are invisible to the BM view, so the column would under-count.
+**Status:** RESOLVED. The operator-run read-only audit (`node functions/scripts/inspect-submission-branchid.cjs --tenant tatillife_south`) reported **7/7 south submissions carry `branchId`** (breakdown: `tatil_south` 3, plus two unit branches 2+2; 0 missing). The BM Team Roster's `getAllYTDSubmissions` → `where('branchId','==',claims.branchId)` will not under-count. No Tier-C backfill required. The read-only inspector (`functions/scripts/inspect-submission-branchid.cjs`) remains available if a future audit is wanted. Banked + resolved in PR #683 (team-roster verify).
 
-**Diagnostic (read-only, operator-run):**
-```
-node functions/scripts/inspect-submission-branchid.cjs --tenant tatillife_south
-```
-Validated on `tatillife_smoke` in PR #683 (read-only; 13/13 carry `branchId` post-reseed). The script performs ZERO writes and is safe against production.
+---
 
-**Trigger:** if the south scan reports any submissions WITHOUT `branchId`, scope a **separate Tier-C backfill brief** (dry-run → operator-reviewed → `--execute` with prod-write confirmation, mirroring `denormalize-submission-unitId.mjs`). If the scan shows 0 missing, no action — close this note.
 
-**Source:** PR #683 (team-roster verify). Inspection: `functions/scripts/inspect-submission-branchid.cjs`.
+## team-roster data layer (#682) — Gemini LOW robustness items (banked PR #683 post-merge, 2026-06-18, LOW)
+
+Gemini's review of the merged #682 (`1585373`) raised 4 items; `getSettlementsForUnit ?? []` is already in the hook (line ~63). Three LOW robustness items remain (PR merged — no in-PR fix):
+
+1. **`sortRows` (`src/lib/teamRoster.js`)** — use `== null` instead of `=== null` so `undefined` values also float to the bottom. In practice `assembleRosterRow` only ever emits a number or explicit `null`, so this is defensive-only.
+2. **`useTeamRoster(tenantId, period)` (`src/hooks/useTeamRoster.js`)** — `period = DEFAULT_PERIOD` default only applies for `undefined`; an explicit `null` would crash the `const { grain, value } = period` destructure. Use `period ?? DEFAULT_PERIOD`.
+3. **`useTeamRoster`** — guard `auth.currentUser` before `.getIdTokenResult()` (currently caught by the try/catch → `setError`, but an explicit guard is cleaner).
+
+**Severity:** LOW — all three are defensive hardening; no observed failure. Fold into the next roster touch.
 
 ---
 
