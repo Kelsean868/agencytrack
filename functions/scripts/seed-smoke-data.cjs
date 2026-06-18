@@ -391,10 +391,14 @@ async function main() {
       createdBy: SEED_ACTOR,
     }, { merge: true });
 
-    // goals (% of goal) — skipped for noGoal members so the roster's % column
-    // exercises the "—" (no committed target) fallback end-to-end.
-    if (!r.noGoal) {
-      await db.doc(`tenants/${TENANT_ID}/goals/${r.uid}`).set({
+    // goals (% of goal) — noGoal members get their goal doc DELETED (not just
+    // skipped) so the roster's % column shows the "—" (no committed target)
+    // fallback even on re-runs over a prior seed that wrote a goal here.
+    const goalRef = db.doc(`tenants/${TENANT_ID}/goals/${r.uid}`);
+    if (r.noGoal) {
+      await goalRef.delete();
+    } else {
+      await goalRef.set({
         agentId: r.uid,
         tenantId: TENANT_ID,
         personalAnnualAPI: r.goalAPI,

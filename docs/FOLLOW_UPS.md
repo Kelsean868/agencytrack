@@ -6,24 +6,19 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
-## seed-smoke-data — add E3 fields to persistency docs (banked PR #683, 2026-06-18, LOW)
+## South `branchId` submission backfill — conditional (banked PR #683, 2026-06-18, Tier-C if triggered)
 
-`functions/scripts/seed-smoke-data.cjs` seeds persistency docs without the E3 fields (`businessPlaced`, `notTakens`, `incPPPs`, `lumpsums100`, `lapses`, etc.). `isE3Doc()` in `persistencyService.js` filters these out → `persistencyRecord = null` → `PersBandCell` renders `pers-band-cell-empty`. This blocks band-color assertions in the roster smoke.
+The BM Team Roster's submitted column comes from `getAllYTDSubmissions` → `where('branchId', '==', claims.branchId)`. Submissions written before `branchId` stamping are invisible to the BM view, so the column would under-count.
 
-**Fix:** extend `seed-smoke-data.cjs`'s persistency write block to include plausible E3 field values (e.g. `businessPlaced: 10, notTakens: 1, incPPPs: 0, lumpsums100: 0, lapses: 0`) matching the existing seeded persistency percentages. After fix, the roster smoke can assert specific band colors (green ≥90%, amber 80–89%, red <80%).
+**Diagnostic (read-only, operator-run):**
+```
+node functions/scripts/inspect-submission-branchid.cjs --tenant tatillife_south
+```
+Validated on `tatillife_smoke` in PR #683 (read-only; 13/13 carry `branchId` post-reseed). The script performs ZERO writes and is safe against production.
 
-**Source:** PR #683 smoke session. `isE3Doc` in `src/services/persistencyService.js`; seed script at `functions/scripts/seed-smoke-data.cjs`.
+**Trigger:** if the south scan reports any submissions WITHOUT `branchId`, scope a **separate Tier-C backfill brief** (dry-run → operator-reviewed → `--execute` with prod-write confirmation, mirroring `denormalize-submission-unitId.mjs`). If the scan shows 0 missing, no action — close this note.
 
----
-
-
-## seed-smoke-data — stamp branchId on submissions (banked PR #683, 2026-06-18, LOW)
-
-`buildSubmission` in `functions/scripts/seed-smoke-data.cjs` does not set `branchId` on submission docs. The BM's `getAllYTDSubmissions` query filters `where('branchId', '==', claims.branchId)`, so returns 0 submissions for smoke roster members → `submittedAPI = 0` for all rows (no real YTD data in the table).
-
-**Fix:** add `branchId: member.branchId` (or the seeded branch constant) to the object returned by `buildSubmission`. After fix, `submittedAPI` reflects seeded activity and the API-submitted column shows non-zero values.
-
-**Source:** PR #683 smoke session. `buildSubmission` in `functions/scripts/seed-smoke-data.cjs`; query in `src/services/submissionService.js` `getAllYTDSubmissions`.
+**Source:** PR #683 (team-roster verify). Inspection: `functions/scripts/inspect-submission-branchid.cjs`.
 
 ---
 

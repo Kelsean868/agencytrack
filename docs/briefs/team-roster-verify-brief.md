@@ -8,8 +8,16 @@ closes all four on the same branch so the merge that follows is fully verified:
 2. The smoke seed lacks `branchId` on submissions → BM submitted production reads 0 → unverified.
 3. The smoke seed lacks E3 fields on persistency docs → `isE3Doc()` filters them → persistency null →
    band colors unverified.
-4. `pctOfAnnualGoal` is ×100'd at the page boundary while persistency is 0–100 from the hook → an
-   internally inconsistent row contract.
+4. `pctOfAnnualGoal` is ×100'd at the page boundary → an internally inconsistent row contract.
+   **CORRECTED at Phase-1 recon (the original wording below was wrong):** persistency is NOT
+   "0–100 from the hook." Production E3 persistency docs store a **decimal 0–1**
+   (`netSettled/grossSettled`; see `src/lib/persistency/calculations.js` — "never a percentage"),
+   which `assembleRosterRow` passed through unchanged. `PersBandCell` expects 0–100, so with real
+   data the persistency column rendered ~1% (danger) for every agent — a latent production bug that
+   the old null-filtered smoke masked. The fix (approved Option A) moves the ×100 into the lib for
+   **both** persistency and `pctOfAnnualGoal`, making the hook the single 0–100 scale boundary, and
+   seeds persistency as a faithful decimal so the smoke verifies the real scale path.
+   ~~`pctOfAnnualGoal` is ×100'd at the page boundary while persistency is 0–100 from the hook.~~
 
 ## Procedure note
 Work on the **existing `team-roster-ui` branch — do NOT cut a new branch.** PowerShell, no `&&`.
