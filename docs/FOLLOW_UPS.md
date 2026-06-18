@@ -6,6 +6,28 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## seed-smoke-data — add E3 fields to persistency docs (banked PR #683, 2026-06-18, LOW)
+
+`functions/scripts/seed-smoke-data.cjs` seeds persistency docs without the E3 fields (`businessPlaced`, `notTakens`, `incPPPs`, `lumpsums100`, `lapses`, etc.). `isE3Doc()` in `persistencyService.js` filters these out → `persistencyRecord = null` → `PersBandCell` renders `pers-band-cell-empty`. This blocks band-color assertions in the roster smoke.
+
+**Fix:** extend `seed-smoke-data.cjs`'s persistency write block to include plausible E3 field values (e.g. `businessPlaced: 10, notTakens: 1, incPPPs: 0, lumpsums100: 0, lapses: 0`) matching the existing seeded persistency percentages. After fix, the roster smoke can assert specific band colors (green ≥90%, amber 80–89%, red <80%).
+
+**Source:** PR #683 smoke session. `isE3Doc` in `src/services/persistencyService.js`; seed script at `functions/scripts/seed-smoke-data.cjs`.
+
+---
+
+
+## seed-smoke-data — stamp branchId on submissions (banked PR #683, 2026-06-18, LOW)
+
+`buildSubmission` in `functions/scripts/seed-smoke-data.cjs` does not set `branchId` on submission docs. The BM's `getAllYTDSubmissions` query filters `where('branchId', '==', claims.branchId)`, so returns 0 submissions for smoke roster members → `submittedAPI = 0` for all rows (no real YTD data in the table).
+
+**Fix:** add `branchId: member.branchId` (or the seeded branch constant) to the object returned by `buildSubmission`. After fix, `submittedAPI` reflects seeded activity and the API-submitted column shows non-zero values.
+
+**Source:** PR #683 smoke session. `buildSubmission` in `functions/scripts/seed-smoke-data.cjs`; query in `src/services/submissionService.js` `getAllYTDSubmissions`.
+
+---
+
+
 ## Update-button reload — event-driven hardening (banked PR #681 review, 2026-06-17, LOW)
 
 Current `ReloadPrompt.jsx` `handleUpdate` uses a fixed 500ms `setTimeout` fallback after `updateSW(true)`. The root cause (no `clientsClaim` → `controllerchange` never fires) is known and documented. The fallback works but is timing-based.
