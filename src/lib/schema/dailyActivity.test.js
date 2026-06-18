@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   createEmptyDailyEntry,
+  normalizeDailyEntry,
   getSundayOf,
   DAILY_ACTIVITY_VERSION,
 } from './dailyActivity.js';
@@ -17,6 +18,7 @@ describe('createEmptyDailyEntry', () => {
     expect(entry.agentId).toBe('agent-uid-1');
     expect(entry.agentName).toBe('Test Agent');
     expect(entry.weekStarting).toBe('2026-05-10'); // Sunday before Tue May 12
+    // existing fields
     expect(entry.qualifiedApproaches).toBe(0);
     expect(entry.appointmentsSet).toBe(0);
     expect(entry.ffisScheduled).toBe(0);
@@ -31,6 +33,24 @@ describe('createEmptyDailyEntry', () => {
     expect(entry.newNamesAdded).toBe(0);
     expect(entry.oldNamesWorked).toBe(0);
     expect(entry.serviceContacts).toBe(0);
+    // v2 1a new fields — prospecting & outreach
+    expect(entry.prospectingLettersSent).toBe(0);
+    expect(entry.seminarsConducted).toBe(0);
+    expect(entry.dials).toBe(0);
+    expect(entry.telContacts).toBe(0);
+    expect(entry.f2fAttempts).toBe(0);
+    // social
+    expect(entry.socialPostsTotal).toBe(0);
+    expect(entry.socialEngagementTotal).toBe(0);
+    expect(entry.socialInboxEnquiries).toBe(0);
+    expect(entry.namesFromSocial).toBe(0);
+    expect(entry.socialPlatformBreakdown).toEqual({ facebook: 0, instagram: 0, whatsapp: 0, linkedin: 0 });
+    // production & delivery
+    expect(entry.livesSold).toBe(0);
+    expect(entry.policiesDelivered).toBe(0);
+    // hours (production tracking)
+    expect(entry.officeHours).toBe(0);
+    expect(entry.fieldHours).toBe(0);
   });
 
   it('reflection fields default to null/empty (optional)', () => {
@@ -188,5 +208,103 @@ describe('aggregateDailyToWeekly', () => {
     const out = aggregateDailyToWeekly(null, 35);
     expect(out.qualifiedApproaches).toBe(0);
     expect(out.totalProductionCredit).toBe(0);
+  });
+});
+
+// ── normalizeDailyEntry ───────────────────────────────────────────────────────
+
+describe('normalizeDailyEntry', () => {
+  it('empty call → all numeric fields default to 0', () => {
+    const n = normalizeDailyEntry({});
+    expect(n.prospectingLettersSent).toBe(0);
+    expect(n.seminarsConducted).toBe(0);
+    expect(n.dials).toBe(0);
+    expect(n.telContacts).toBe(0);
+    expect(n.f2fAttempts).toBe(0);
+    expect(n.socialPostsTotal).toBe(0);
+    expect(n.socialEngagementTotal).toBe(0);
+    expect(n.socialInboxEnquiries).toBe(0);
+    expect(n.namesFromSocial).toBe(0);
+    expect(n.socialPlatformBreakdown).toEqual({ facebook: 0, instagram: 0, whatsapp: 0, linkedin: 0 });
+    expect(n.livesSold).toBe(0);
+    expect(n.policiesDelivered).toBe(0);
+    expect(n.officeHours).toBe(0);
+    expect(n.fieldHours).toBe(0);
+    expect(n.newBusiness).toEqual({ apps: 0, api: 0 });
+    expect(n.pppIncreases).toEqual({ apps: 0, apiIncrease: 0 });
+    expect(n.lumpsums).toEqual({ grossAmount: 0 });
+  });
+
+  it('no-arg call → same as empty object', () => {
+    const n = normalizeDailyEntry();
+    expect(n.dials).toBe(0);
+    expect(n.telContacts).toBe(0);
+  });
+
+  it('accepts valid numeric values', () => {
+    const n = normalizeDailyEntry({
+      prospectingLettersSent: 3,
+      dials: 42,
+      telContacts: 10,
+      f2fAttempts: 2,
+      socialPostsTotal: 5,
+      livesSold: 1,
+      policiesDelivered: 2,
+      officeHours: 4.5,
+      fieldHours: 3.5,
+      newBusiness: { apps: 2, api: 7500 },
+    });
+    expect(n.prospectingLettersSent).toBe(3);
+    expect(n.dials).toBe(42);
+    expect(n.telContacts).toBe(10);
+    expect(n.f2fAttempts).toBe(2);
+    expect(n.socialPostsTotal).toBe(5);
+    expect(n.livesSold).toBe(1);
+    expect(n.policiesDelivered).toBe(2);
+    expect(n.officeHours).toBe(4.5);
+    expect(n.fieldHours).toBe(3.5);
+    expect(n.newBusiness).toEqual({ apps: 2, api: 7500 });
+  });
+
+  it('coerces string numerics to numbers', () => {
+    const n = normalizeDailyEntry({
+      dials: '15',
+      telContacts: '7',
+      officeHours: '3.5',
+      fieldHours: '2.0',
+      livesSold: '2',
+      socialPlatformBreakdown: { facebook: '4', instagram: '1', whatsapp: '0', linkedin: '2' },
+    });
+    expect(n.dials).toBe(15);
+    expect(n.telContacts).toBe(7);
+    expect(n.officeHours).toBe(3.5);
+    expect(n.fieldHours).toBe(2);
+    expect(n.livesSold).toBe(2);
+    expect(n.socialPlatformBreakdown).toEqual({ facebook: 4, instagram: 1, whatsapp: 0, linkedin: 2 });
+  });
+
+  it('treats NaN / undefined / null / non-numeric strings as 0 (reject bad types)', () => {
+    const n = normalizeDailyEntry({
+      dials: undefined,
+      telContacts: null,
+      livesSold: NaN,
+      officeHours: 'abc',
+      fieldHours: {},
+      socialPostsTotal: [],
+      socialPlatformBreakdown: { facebook: undefined, instagram: null, whatsapp: NaN, linkedin: 'x' },
+    });
+    expect(n.dials).toBe(0);
+    expect(n.telContacts).toBe(0);
+    expect(n.livesSold).toBe(0);
+    expect(n.officeHours).toBe(0);
+    expect(n.fieldHours).toBe(0);
+    expect(n.socialPostsTotal).toBe(0);
+    expect(n.socialPlatformBreakdown).toEqual({ facebook: 0, instagram: 0, whatsapp: 0, linkedin: 0 });
+  });
+
+  it('handles missing nested objects gracefully (no socialPlatformBreakdown key)', () => {
+    const n = normalizeDailyEntry({ dials: 5 });
+    expect(n.socialPlatformBreakdown).toEqual({ facebook: 0, instagram: 0, whatsapp: 0, linkedin: 0 });
+    expect(n.newBusiness).toEqual({ apps: 0, api: 0 });
   });
 });
