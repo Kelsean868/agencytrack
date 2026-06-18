@@ -76,9 +76,9 @@ function SkeletonRow() {
   );
 }
 
-function MoneyCell({ value, dim, extraClass = '' }) {
+function MoneyCell({ value, extraClass = '' }) {
   const base = `px-3.5 py-3 border-b border-border text-right font-mono text-xs ${extraClass}`;
-  if (dim || value === null || value === undefined) {
+  if (value === null || value === undefined) {
     return <td className={`${base} text-ink-muted`}>—</td>;
   }
   return (
@@ -89,9 +89,9 @@ function MoneyCell({ value, dim, extraClass = '' }) {
   );
 }
 
-function NumCell({ value, dim, extraClass = '' }) {
+function NumCell({ value, extraClass = '' }) {
   const base = `px-3.5 py-3 border-b border-border text-right font-mono text-xs ${extraClass}`;
-  if (dim || value === null || value === undefined) {
+  if (value === null || value === undefined) {
     return <td className={`${base} text-ink-muted`}>—</td>;
   }
   return (
@@ -103,7 +103,6 @@ function NumCell({ value, dim, extraClass = '' }) {
 
 // ─── Mobile card (lg:hidden) ──────────────────────────────────────────────────
 function MobileCard({ row }) {
-  const dim = row.submittedAPI === null;
   return (
     <div
       className="bg-card border border-border rounded-xl p-3.5 mb-2.5"
@@ -127,10 +126,10 @@ function MobileCard({ row }) {
       {/* 2×2 production grid */}
       <div className="grid grid-cols-2 gap-2 mt-2.5">
         {[
-          { label: 'API sub',    val: dim ? null : row.submittedAPI, money: true },
-          { label: 'Apps sub',   val: dim ? null : row.submittedApps, money: false },
-          { label: 'API issued', val: dim ? null : row.issuedAPI,     money: true },
-          { label: 'Apps issued',val: dim ? null : row.issuedApps,    money: false },
+          { label: 'API sub',    val: row.submittedAPI,  money: true },
+          { label: 'Apps sub',   val: row.submittedApps, money: false },
+          { label: 'API issued', val: row.issuedAPI,     money: true },
+          { label: 'Apps issued',val: row.issuedApps,    money: false },
         ].map(({ label, val, money }) => (
           <div key={label} className="flex flex-col">
             <span className="font-mono text-[8px] font-bold tracking-widest uppercase text-ink-muted">{label}</span>
@@ -198,7 +197,7 @@ export default function TeamPerfRoster({ rows, sort, onSort, loading }) {
     );
   }
 
-  function renderBodyCell(col, row, dim) {
+  function renderBodyCell(col, row) {
     const tdBase = `px-0 py-0 border-b border-border ${colBorderClass(col)}`;
     const wrapTd = (content) => <td key={col.key} className={tdBase}>{content}</td>;
 
@@ -237,16 +236,16 @@ export default function TeamPerfRoster({ rows, sort, onSort, loading }) {
     }
 
     if (col.key === 'submittedAPI') {
-      return <MoneyCell key={col.key} value={row.submittedAPI} dim={dim} extraClass="border-l border-border" />;
+      return <MoneyCell key={col.key} value={row.submittedAPI} extraClass="border-l border-border" />;
     }
     if (col.key === 'submittedApps') {
-      return <NumCell key={col.key} value={row.submittedApps} dim={dim} />;
+      return <NumCell key={col.key} value={row.submittedApps} />;
     }
     if (col.key === 'issuedAPI') {
-      return <MoneyCell key={col.key} value={row.issuedAPI} dim={dim} extraClass="border-l border-border/60" />;
+      return <MoneyCell key={col.key} value={row.issuedAPI} extraClass="border-l border-border/60" />;
     }
     if (col.key === 'issuedApps') {
-      return <NumCell key={col.key} value={row.issuedApps} dim={dim} />;
+      return <NumCell key={col.key} value={row.issuedApps} />;
     }
 
     if (col.key === 'persistency') {
@@ -358,11 +357,10 @@ export default function TeamPerfRoster({ rows, sort, onSort, loading }) {
               )}
 
               {!loading && rows.map((row, i) => {
-                const dim = row.submittedAPI === null;
                 const zebra = i % 2 === 1 ? 'bg-card-raised/40' : '';
                 return (
                   <tr key={row.id} className={`group ${zebra}`} data-testid={`roster-row-${row.id}`}>
-                    {COLS.map((col) => renderBodyCell(col, row, dim))}
+                    {COLS.map((col) => renderBodyCell(col, row))}
                   </tr>
                 );
               })}

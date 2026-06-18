@@ -17,7 +17,7 @@ export default function GoalHeatCell({ pctOfAnnualGoal }) {
   }
   const pace = paceRatio();
   const ahead = pctOfAnnualGoal >= pace * 100;
-  const fillWidth = Math.min(pctOfAnnualGoal, 100);
+  const fillWidth = Math.max(0, Math.min(pctOfAnnualGoal, 100));
   const paceLeft = Math.round(pace * 100);
 
   return (

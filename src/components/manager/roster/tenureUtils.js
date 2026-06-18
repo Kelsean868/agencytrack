@@ -3,6 +3,7 @@ const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov
 export function formatTenureStr(contractDate, now = new Date()) {
   if (!contractDate) return null;
   const d = new Date(contractDate);
+  if (isNaN(d.getTime())) return null;
   let months = (now.getFullYear() - d.getFullYear()) * 12 + (now.getMonth() - d.getMonth());
   if (now.getDate() < d.getDate()) months -= 1;
   if (months < 0) months = 0;
