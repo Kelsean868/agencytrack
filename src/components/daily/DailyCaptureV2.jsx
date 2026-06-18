@@ -7,6 +7,7 @@ import {
   getDailyEntriesForWeek,
 } from '../../services/dailyActivityService';
 import { createEmptyDailyEntry, getSundayOf } from '../../lib/schema/dailyActivity';
+import { getDraft } from '../../services/submissionService';
 import { getTodayTT } from '../../utils/dateInputs';
 import {
   computeLumpsumCredit,
@@ -298,7 +299,7 @@ function WeekStrip({ days, selectedDate, onSelect }) {
 }
 
 /** Sunday "Review day" confirmation view — aggregated read-only summary. */
-function SundayConfirmView({ weekDocs, onClose }) {
+function SundayConfirmView({ weekDocs, onClose, submitted, onReviewSubmit }) {
   const total = weekDocs.length;
   const apps  = weekDocs.reduce((s, d) => s + intOrZero(d.newBusiness?.apps), 0);
   const api   = weekDocs.reduce((s, d) => s + floatOrZero(d.newBusiness?.api), 0);
@@ -336,17 +337,53 @@ function SundayConfirmView({ weekDocs, onClose }) {
       </div>
 
       <div className="w-full rounded-xl bg-card-raised border border-border p-4 text-center">
-        <p className="text-sm text-ink-muted leading-relaxed">
-          Open the <span className="font-semibold text-primary">Weekly Wizard</span> to add ratings,
-          next-week targets, and submit your report.
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-3 h-11 px-6 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-sm transition-colors hover:bg-primary/90 dark:hover:bg-primary"
-        >
-          Close &amp; open wizard
-        </button>
+        {submitted ? (
+          <>
+            <p className="text-sm text-ink-muted leading-relaxed">
+              Your weekly report is <span className="font-semibold text-primary">submitted</span>.
+              Nothing more to do this week.
+            </p>
+            <button
+              type="button"
+              disabled
+              className="mt-3 h-11 px-6 rounded-xl bg-card border border-border text-ink-muted font-semibold text-sm inline-flex items-center justify-center gap-1.5 cursor-default"
+            >
+              <Check size={16} aria-hidden="true" />
+              Submitted
+            </button>
+          </>
+        ) : onReviewSubmit ? (
+          <>
+            <p className="text-sm text-ink-muted leading-relaxed">
+              Open the <span className="font-semibold text-primary">Weekly Wizard</span> to add ratings,
+              next-week targets, and submit your report.
+            </p>
+            <button
+              type="button"
+              onClick={onReviewSubmit}
+              className="mt-3 h-11 px-6 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-sm transition-colors hover:bg-primary/90 dark:hover:bg-primary"
+            >
+              Review &amp; submit
+            </button>
+          </>
+        ) : (
+          // Defensive fallback when no deep-link handler is wired (no production
+          // caller hits this — AgentDashboard always passes onReviewSubmit): keep
+          // the label honest so the CTA never claims "Review" while only closing.
+          <>
+            <p className="text-sm text-ink-muted leading-relaxed">
+              Open the <span className="font-semibold text-primary">Weekly Wizard</span> to add ratings,
+              next-week targets, and submit your report.
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-3 h-11 px-6 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-sm transition-colors hover:bg-primary/90 dark:hover:bg-primary"
+            >
+              Close &amp; open wizard
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
@@ -354,7 +391,7 @@ function SundayConfirmView({ weekDocs, onClose }) {
 
 // ── Main component ─────────────────────────────────────────────────────────
 
-export default function DailyCaptureV2({ onClose }) {
+export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   const { user, userProfile, tenantId } = useAuth();
   const agentName  = userProfile?.name ?? userProfile?.email ?? '';
   const today      = useMemo(() => getTodayTT(), []);
@@ -457,6 +494,23 @@ export default function DailyCaptureV2({ onClose }) {
   }, [tenantId, user?.uid, weekStarting]);
 
   useEffect(() => { refreshWeekDocs(); }, [refreshWeekDocs]);
+
+  // ── Sunday-only: is this week's weekly report already submitted? ──────────
+  // Drives the SundayConfirmView CTA (deep-link "Review & submit" vs disabled
+  // "Submitted"). Keyed on DCv2's own TT-anchored weekStarting so the status
+  // always matches the week the agent is reviewing. Only reads on Sunday.
+  const [weeklySubmitted, setWeeklySubmitted] = useState(false);
+  useEffect(() => {
+    // Reset first so a uid/tenant/week change can't surface the prior week's
+    // status while the new getDraft resolves (Gemini #1).
+    setWeeklySubmitted(false);
+    if (!isTodaySunday || !tenantId || !user?.uid) return;
+    let active = true;
+    getDraft(tenantId, user.uid, weekStarting)
+      .then((draft) => { if (active) setWeeklySubmitted(draft?.status === 'submitted'); })
+      .catch(() => { if (active) setWeeklySubmitted(false); });
+    return () => { active = false; };
+  }, [isTodaySunday, tenantId, user?.uid, weekStarting]);
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const chips     = useMemo(() => deriveCountStripChips(weekDocs), [weekDocs]);
@@ -616,7 +670,12 @@ export default function DailyCaptureV2({ onClose }) {
               <p className="text-sm text-ink-muted mt-3">Loading weekly summary…</p>
             </div>
           ) : (
-            <SundayConfirmView weekDocs={weekDocs} onClose={onClose} />
+            <SundayConfirmView
+              weekDocs={weekDocs}
+              onClose={onClose}
+              submitted={weeklySubmitted}
+              onReviewSubmit={onReviewSubmit ? () => onReviewSubmit(weekStarting) : undefined}
+            />
           )
         ) : (
           <div className="px-4 py-4 max-w-lg mx-auto flex flex-col gap-4">
