@@ -77,6 +77,16 @@ The **non-deep-link** wizard entry (AgentDashboard bottom-nav "submit" → `setS
 
 ---
 
+## Daily Capture v2 — aggregate-on-save could be non-blocking (Gemini #1, banked PR #{TBD}, LOW)
+
+Phase 2.2 wires `aggregateCurrentWeekDaily` into DCv2 `handleSave` **awaited** (after the daily doc persists, before the 600ms `onClose`). Per the brief self-critique ("confirm it's **awaited** and failure-isolated") this is deliberate — the await guarantees the completed-week draft is built before the modal closes, so the immediately-subsequent Sunday review / deep-link reads a current draft deterministically. Gemini (#688) flags that on a slow field connection the await adds the aggregation's read-7 + write latency to the modal-close delay.
+
+**Action (if pursued):** make the aggregation fire-and-forget (`.catch`-guarded, not awaited) so the modal closes promptly; the draft builds in the background. Requires updating `daily-capture-v2-2-2-sunday-review-smoke.mjs` to **poll** `readDraft` (the draft is no longer guaranteed built at modal-detach) instead of reading once.
+
+**Severity:** LOW — current behavior is correct (log persists first, failure-isolated); this is a field-UX latency optimization. Decide whether the determinism (awaited) or the snappier close (fire-and-forget) is preferred.
+
+---
+
 ## Daily Capture v2 Phase 3 — pace + working days (QUEUED — stacks on Phase 2, 2026-06-18, HIGH)
 
 `workingDaysPerWeek` on user doc (default 5, Profile UI toggle). `weeklyPointsFloor` via de-duplicated activity map (no ffi+ci double-count). `dailyPaceTarget` + `weekToDateTarget`. Wire pill ahead/on-pace/behind. Brief landed: `docs/briefs/brief-daily-capture-v2-3-pace.md`. Branch: `feat/daily-capture-v2-3-pace` off Phase 2 HEAD. **Waits on Phase 2 human merge.**

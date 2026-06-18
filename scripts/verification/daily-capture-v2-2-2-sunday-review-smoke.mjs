@@ -120,10 +120,16 @@ async function forceDate(context, iso) {
   const ms = new Date(`${iso}T12:00:00Z`).getTime();
   await context.addInitScript((m) => {
     const RealDate = Date;
-    const FakeDate = class extends RealDate {
-      constructor(...a) { if (a.length === 0) super(m); else super(...a); }
-      static now() { return m; }
-    };
+    // Function (not class) override so a bare `Date()` call (valid JS — returns
+    // a string, no `new`) doesn't throw "Class constructor cannot be invoked".
+    function FakeDate(...args) {
+      if (!(this instanceof FakeDate)) return new RealDate(m).toString();
+      return args.length ? new RealDate(...args) : new RealDate(m);
+    }
+    FakeDate.prototype = RealDate.prototype;
+    FakeDate.now = () => m;
+    FakeDate.parse = RealDate.parse;
+    FakeDate.UTC = RealDate.UTC;
     Date = FakeDate;
   }, ms);
 }
