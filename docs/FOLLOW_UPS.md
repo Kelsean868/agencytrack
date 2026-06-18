@@ -53,7 +53,7 @@ The NO-NEW axe gate in `daily-capture-v2-2-ui-smoke.mjs` diffs against a baselin
 
 ---
 
-## Daily Capture v2 Phase 2.1 — manual Sunday live-prefill check (DEFERRED-VERIFICATION, banked PR #{TBD}, Rule 13)
+## Daily Capture v2 Phase 2.1 — manual Sunday live-prefill check (DEFERRED-VERIFICATION, banked PR #687 `4a12532`, Rule 13)
 
 The Phase 2.1 forced-date smoke (`daily-capture-v2-2-1-sunday-submit-smoke.mjs`) fakes the clock to the most-recent Sunday and proves the new code: SundayConfirmView renders, "Review & submit" is present (or "Submitted" when the week is already submitted), and the click deep-links into the wizard **on the step screen** (= `initialWeek` honored). What it canNOT prove pre-21st: a backward-faked week has **no cron-aggregated weekly draft**, so the wizard opens at the correct week but **empty**. The brief's headline acceptance — *"the wizard opens pre-filled with the aggregated week"* — therefore needs a REAL Sunday.
 
