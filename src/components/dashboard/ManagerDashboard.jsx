@@ -6,7 +6,7 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
-  Activity, UserPlus, ClipboardCheck, BookOpen,
+  Activity, UserPlus, ClipboardCheck, BookOpen, LayoutList,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -37,6 +37,7 @@ import ManagerWarTab from '../manager/ManagerWarTab';
 import TeamWarsTab from '../manager/TeamWarsTab';
 import MonthlyRecruitingTab from '../manager/MonthlyRecruitingTab';
 import PolicyReconciliationPanel from '../manager/PolicyReconciliationPanel';
+import TeamPerfRosterPage from '../manager/roster/TeamPerfRosterPage';
 import { MANAGER_COMING_SOON_TABS } from '../../config/comingSoonTabs';
 import GoalsPanel from '../manager/GoalsPanel';
 import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
@@ -63,6 +64,7 @@ const NAV_ITEMS = [
   { id: 'mastersheet', label: 'Master Sheet', tabId: 'mastersheet', Icon: ClipboardList },
   { id: 'compliance',  label: 'Compliance',   tabId: 'compliance',  Icon: CheckCircle2 },
   { id: 'persistency', label: 'Persistency',  tabId: 'persistency', Icon: TrendingUp,    sectionLabel: 'Operations', testId: 'tab-persistency' },
+  { id: 'team-perf',  label: 'Team Roster',  tabId: 'team-perf',  Icon: LayoutList },
   { id: 'goals',       label: 'Goals',        tabId: 'goals',       Icon: Award },
   { id: 'settlements',           label: 'Settlements',          tabId: 'settlements',           Icon: FileCheck },
   // H2a: Policy Reconciliation — manager confirms settled policies. Visibility gated
@@ -282,6 +284,8 @@ export default function ManagerDashboard() {
         )}
 
         {activeTab === 'persistency' && <PersistencyTab />}
+
+        {activeTab === 'team-perf' && <TeamPerfRosterPage />}
 
         {activeTab === 'goals' && <GoalsPanel />}
 
