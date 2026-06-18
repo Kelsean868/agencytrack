@@ -352,7 +352,7 @@ function SundayConfirmView({ weekDocs, onClose, submitted, onReviewSubmit }) {
               Submitted
             </button>
           </>
-        ) : (
+        ) : onReviewSubmit ? (
           <>
             <p className="text-sm text-ink-muted leading-relaxed">
               Open the <span className="font-semibold text-primary">Weekly Wizard</span> to add ratings,
@@ -360,10 +360,27 @@ function SundayConfirmView({ weekDocs, onClose, submitted, onReviewSubmit }) {
             </p>
             <button
               type="button"
-              onClick={onReviewSubmit ?? onClose}
+              onClick={onReviewSubmit}
               className="mt-3 h-11 px-6 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-sm transition-colors hover:bg-primary/90 dark:hover:bg-primary"
             >
               Review &amp; submit
+            </button>
+          </>
+        ) : (
+          // Defensive fallback when no deep-link handler is wired (no production
+          // caller hits this — AgentDashboard always passes onReviewSubmit): keep
+          // the label honest so the CTA never claims "Review" while only closing.
+          <>
+            <p className="text-sm text-ink-muted leading-relaxed">
+              Open the <span className="font-semibold text-primary">Weekly Wizard</span> to add ratings,
+              next-week targets, and submit your report.
+            </p>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-3 h-11 px-6 rounded-xl bg-primary dark:bg-primary-dark text-white font-semibold text-sm transition-colors hover:bg-primary/90 dark:hover:bg-primary"
+            >
+              Close &amp; open wizard
             </button>
           </>
         )}
@@ -484,6 +501,9 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   // always matches the week the agent is reviewing. Only reads on Sunday.
   const [weeklySubmitted, setWeeklySubmitted] = useState(false);
   useEffect(() => {
+    // Reset first so a uid/tenant/week change can't surface the prior week's
+    // status while the new getDraft resolves (Gemini #1).
+    setWeeklySubmitted(false);
     if (!isTodaySunday || !tenantId || !user?.uid) return;
     let active = true;
     getDraft(tenantId, user.uid, weekStarting)
