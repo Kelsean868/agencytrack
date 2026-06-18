@@ -22,7 +22,8 @@ import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firest
 import { db } from '../firebase';
 import { getDailyEntriesForWeek, saveDailyEntry } from './dailyActivityService';
 import { aggregateDailyToWeekly } from '../lib/schema/dailyActivity.aggregator';
-import { getMostRecentSunday } from '../utils/dateHelpers';
+import { getSundayOf } from '../lib/schema/dailyActivity';
+import { getTodayTT } from '../utils/dateInputs';
 
 function submissionRef(tenantId, uid, weekStarting) {
   return doc(db, `tenants/${tenantId}/submissions/${uid}_${weekStarting}`);
@@ -68,7 +69,11 @@ export function draftHasContent(draft) {
  * Returns { aggregated: true|false, count: <num daily entries> }.
  */
 export async function aggregateCurrentWeekDaily(tenantId, uid, agentName, commissionRate, unitId = null, branchId = null) {
-  const weekStarting = getMostRecentSunday();
+  // TT-anchored to match the daily docs' weekStarting (getSundayOf of the TT
+  // date), NOT browser-local getMostRecentSunday — otherwise an off-TZ agent
+  // would aggregate into a different-week draft than the daily entries they
+  // just logged. On the DCv2 hot path this runs after every save.
+  const weekStarting = getSundayOf(getTodayTT());
   const dailies = await getDailyEntriesForWeek(tenantId, uid, weekStarting);
   if (dailies.length === 0) return { aggregated: false, count: 0, weekStarting };
 
@@ -110,7 +115,10 @@ export async function aggregateCurrentWeekDaily(tenantId, uid, agentName, commis
  * Returns { catchUp: true|false, weekStarting }.
  */
 export async function catchUpWeeklyToDaily(tenantId, uid, agentName, today) {
-  const weekStarting = getMostRecentSunday();
+  // TT-anchored (matches the daily docs + aggregateCurrentWeekDaily), NOT
+  // browser-local getMostRecentSunday — an off-TZ agent must convert the same
+  // week's draft they've been logging into.
+  const weekStarting = getSundayOf(getTodayTT());
   const ref = submissionRef(tenantId, uid, weekStarting);
   const snap = await getDoc(ref);
   if (!snap.exists()) return { catchUp: false, weekStarting, reason: 'no-draft' };
