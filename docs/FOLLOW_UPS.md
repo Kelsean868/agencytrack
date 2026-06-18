@@ -53,9 +53,9 @@ The NO-NEW axe gate in `daily-capture-v2-2-ui-smoke.mjs` diffs against a baselin
 
 ---
 
-## ~~Daily Capture v2 Phase 2.1 — manual Sunday live-prefill check (DEFERRED-VERIFICATION, banked PR #687 `4a12532`, Rule 13)~~ — SUPERSEDED by Phase 2.2 (PR #{TBD})
+## ~~Daily Capture v2 Phase 2.1 — manual Sunday live-prefill check (DEFERRED-VERIFICATION, banked PR #687 `4a12532`, Rule 13)~~ — SUPERSEDED by Phase 2.2 (PR #688)
 
-**SUPERSEDED 2026-06-18 by Phase 2.2 (`fix/daily-capture-v2-2-2-sunday-review-live-draft`, PR #{TBD}).** The deferral existed because (a) on Sunday DCv2 targeted the *empty* week-starting-today, and (b) the weekly draft only populated at the Sunday 23:00 cron. Phase 2.2 fixes both: Sunday-conditional week-targeting (completed week) + aggregate-on-save (draft stays current as the agent logs). The Phase 2.2 **end-to-end seeded smoke** proves the non-empty aggregated summary AND the pre-filled wizard on a forced Sunday — closing this check at merge rather than deferring to a manual real-Sunday run. Original deferral retained below for trail.
+**SUPERSEDED 2026-06-18 by Phase 2.2 (`fix/daily-capture-v2-2-2-sunday-review-live-draft`, PR #688 `b15f06f`).** The deferral existed because (a) on Sunday DCv2 targeted the *empty* week-starting-today, and (b) the weekly draft only populated at the Sunday 23:00 cron. Phase 2.2 fixes both: Sunday-conditional week-targeting (completed week) + aggregate-on-save (draft stays current as the agent logs). The Phase 2.2 **end-to-end seeded smoke** proves the non-empty aggregated summary AND the pre-filled wizard on a forced Sunday — closing this check at merge rather than deferring to a manual real-Sunday run. Original deferral retained below for trail.
 
 The Phase 2.1 forced-date smoke (`daily-capture-v2-2-1-sunday-submit-smoke.mjs`) fakes the clock to the most-recent Sunday and proves the new code: SundayConfirmView renders, "Review & submit" is present (or "Submitted" when the week is already submitted), and the click deep-links into the wizard **on the step screen** (= `initialWeek` honored). What it canNOT prove pre-21st: a backward-faked week has **no cron-aggregated weekly draft**, so the wizard opens at the correct week but **empty**. The brief's headline acceptance — *"the wizard opens pre-filled with the aggregated week"* — therefore needs a REAL Sunday.
 
@@ -67,7 +67,7 @@ The Phase 2.1 forced-date smoke (`daily-capture-v2-2-1-sunday-submit-smoke.mjs`)
 
 ---
 
-## Daily Capture v2 — wizard direct-entry default carries the Sunday edge (banked PR #{TBD}, LOW)
+## Daily Capture v2 — wizard direct-entry default carries the Sunday edge (banked PR #688, LOW)
 
 The **non-deep-link** wizard entry (AgentDashboard bottom-nav "submit" → `setShowWizard(true)` with no `wizardWeek`) opens `WizardForm` on the date-picker screen, defaulting `localWeekChoice` to `getLastNSundaysForDropdown(1)[0]` — the current (Sunday-starting, **empty**) week on a Sunday. Unlike the DCv2 deep-link (fixed in Phase 2.2 to target the completed week), this is **user-correctable** — the dropdown lists the last 6 Sundays incl. the completed one. Out of Phase 2.2 scope (Decision #5): it lives in a different module (`WizardForm` / `getLastNSundaysForDropdown`) and a default change affects **all** wizard entry incl. weekly-only agents.
 
@@ -77,7 +77,7 @@ The **non-deep-link** wizard entry (AgentDashboard bottom-nav "submit" → `setS
 
 ---
 
-## Daily Capture v2 — aggregate-on-save could be non-blocking (Gemini #1, banked PR #{TBD}, LOW)
+## Daily Capture v2 — aggregate-on-save could be non-blocking (Gemini #1, banked PR #688, LOW)
 
 Phase 2.2 wires `aggregateCurrentWeekDaily` into DCv2 `handleSave` **awaited** (after the daily doc persists, before the 600ms `onClose`). Per the brief self-critique ("confirm it's **awaited** and failure-isolated") this is deliberate — the await guarantees the completed-week draft is built before the modal closes, so the immediately-subsequent Sunday review / deep-link reads a current draft deterministically. Gemini (#688) flags that on a slow field connection the await adds the aggregation's read-7 + write latency to the modal-close delay.
 
@@ -87,7 +87,7 @@ Phase 2.2 wires `aggregateCurrentWeekDaily` into DCv2 `handleSave` **awaited** (
 
 ---
 
-## ProfileScreen.todayLocalDate — catch-up entry dated browser-local, not TT (banked PR #{TBD}, LOW)
+## ProfileScreen.todayLocalDate — catch-up entry dated browser-local, not TT (banked PR #688, LOW)
 
 Phase 2.2 TT-anchored both `loggingModeService` write paths (`aggregateCurrentWeekDaily` + `catchUpWeeklyToDaily`) — their `weekStarting` keys are now `getSundayOf(getTodayTT())`. But `catchUpWeeklyToDaily(…, today)` still dates the carried-over catch-up daily entry by its `today` arg, which `ProfileScreen.todayLocalDate()` computes from **browser-local** `new Date()` (`getFullYear/getMonth/getDate`). For a TT agent (browser = AST = TT) `todayLocalDate()` == `getTodayTT()`, so the catch-up entry's own `weekStarting` (`getSundayOf(today)`) matches the converted draft's week. For an **off-TZ agent at a day boundary** the catch-up entry could be dated a day off → land in a different week than the draft it converted.
 
@@ -97,7 +97,7 @@ Phase 2.2 TT-anchored both `loggingModeService` write paths (`aggregateCurrentWe
 
 ---
 
-## getMostRecentSunday peripheral read/display selectors — browser-local week (banked PR #{TBD}, LOW)
+## getMostRecentSunday peripheral read/display selectors — browser-local week (banked PR #688, LOW)
 
 After Phase 2.2, **no daily/draft-write path** uses browser-local `getMostRecentSunday()` (both `loggingModeService` writers are TT-anchored). The remaining call sites are **read/display week selectors** only: `AgentDashboard.jsx:141` (`currentWeek` — loads `currentWeekSub` + wizard-default week; the wizard direct-entry Sunday-edge is separately banked), `ManagerDashboard.jsx:99` (`selectedWeek` — team-view selector), `kiosk/panels/CompliancePanel.jsx:17` (compliance display week), `productionReport/UnitManagerProductionView.jsx:26` (`currentWeek` — report view). An off-TZ viewer could see/select a non-TT-canonical week, but none of these WRITE — they only choose what to display, and all are user-correctable via week pickers.
 
