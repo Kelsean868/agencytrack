@@ -435,3 +435,39 @@ describe('computeStreak (pure)', () => {
     expect(computeStreak(docs, WEDNESDAY)).toBe(1);
   });
 });
+
+// ─── SundayConfirmView — component path ──────────────────────────────────────
+
+describe('SundayConfirmView (component path)', () => {
+  // 2026-06-21T12:00:00Z = Sunday 08:00 TT — isTodaySunday flips to true.
+
+  it('renders weekly summary (not daily entry form) when today is Sunday', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-21T12:00:00Z') });
+    hoisted.getDailyEntriesForWeek.mockResolvedValue([
+      { date: '2026-06-15', dials: 5, ffiConducted: 1 },
+      { date: '2026-06-16', dials: 3, ffiConducted: 0 },
+    ]);
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    await waitFor(() => {
+      expect(screen.getByText(/your week from daily logs/i)).toBeInTheDocument();
+    });
+    // "Days logged" row: 2 docs → "2/5"
+    expect(screen.getByText('2/5')).toBeInTheDocument();
+    // Normal daily entry Save button is NOT rendered on Sunday
+    expect(screen.queryByTestId('dcv2-save')).not.toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  it('CTA "Close & open wizard" calls onClose', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-21T12:00:00Z') });
+    hoisted.getDailyEntriesForWeek.mockResolvedValue([]);
+    const onClose = vi.fn();
+    render(<DailyCaptureV2 onClose={onClose} />);
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /open wizard/i })).toBeInTheDocument()
+    );
+    fireEvent.click(screen.getByRole('button', { name: /open wizard/i }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+});

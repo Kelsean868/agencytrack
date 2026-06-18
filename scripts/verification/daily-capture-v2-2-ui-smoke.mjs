@@ -263,10 +263,22 @@ async function smokeBody(page, theme, { today, weekStarting, backFillDate, db, t
       fail(`[${theme}] doc-persisted`, `ffi=${savedDoc.ffiConducted} api=${savedDoc.newBusiness?.api}`);
     }
 
-    // Points pill visible on reload (the loaded doc has points).
-    const pillAfterReload = await page.locator('[data-testid="dcv2-points-pill"]').count();
-    if (pillAfterReload > 0) pass(`[${theme}] points-pill-visible-after-reload`);
-    else fail(`[${theme}] points-pill-visible-after-reload`, 'dcv2-points-pill not found');
+    // Points pill visible on reload and VALUE == computePoints(smoke inputs).
+    // ffi=1(5pt) + ci=1(10pt) + apps=1(25pt) + api=5000(floor(5000/1000)*1=5pt) = 45 pts.
+    const EXPECTED_PTS = 45;
+    const pillLocator = page.locator('[data-testid="dcv2-points-pill"]');
+    const pillAfterReload = await pillLocator.count();
+    if (pillAfterReload > 0) {
+      pass(`[${theme}] points-pill-visible-after-reload`);
+      const pillAriaLabel = await pillLocator.getAttribute('aria-label').catch(() => null);
+      if (pillAriaLabel === `${EXPECTED_PTS} points today`) {
+        pass(`[${theme}] points-pill-value`, `"${pillAriaLabel}"`);
+      } else {
+        fail(`[${theme}] points-pill-value`, `expected "${EXPECTED_PTS} points today" got "${pillAriaLabel}"`);
+      }
+    } else {
+      fail(`[${theme}] points-pill-visible-after-reload`, 'dcv2-points-pill not found');
+    }
 
     // API input pre-populates.
     const apiVal = await page.getByLabel('New business — API (TTD)', { exact: false }).inputValue();
