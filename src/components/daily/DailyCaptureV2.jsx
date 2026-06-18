@@ -8,6 +8,7 @@ import {
 } from '../../services/dailyActivityService';
 import { createEmptyDailyEntry, getSundayOf } from '../../lib/schema/dailyActivity';
 import { getDraft } from '../../services/submissionService';
+import { aggregateCurrentWeekDaily } from '../../services/loggingModeService';
 import { getTodayTT } from '../../utils/dateInputs';
 import {
   computeLumpsumCredit,
@@ -392,14 +393,29 @@ function SundayConfirmView({ weekDocs, onClose, submitted, onReviewSubmit }) {
 // ── Main component ─────────────────────────────────────────────────────────
 
 export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
-  const { user, userProfile, tenantId } = useAuth();
+  const { user, userProfile, tenantId, branchId } = useAuth();
   const agentName  = userProfile?.name ?? userProfile?.email ?? '';
   const today      = useMemo(() => getTodayTT(), []);
-  const weekStarting = useMemo(() => getSundayOf(today), [today]);
   const isTodaySunday = useMemo(() => {
     const d = new Date(today + 'T12:00:00Z');
     return d.getUTCDay() === 0;
   }, [today]);
+  // Mon–Sat: the current logging week. Sunday is the review/submit day, so it
+  // targets the COMPLETED (prior) week the agent logged — mirroring
+  // sundayDailyToWeekly.js::resolveWeekToAggregate (getSundayOf then −7).
+  // `getSundayOf(Sunday)` returns that same Sunday (the empty just-starting
+  // week), which is why Sunday must subtract a week. (Declared after
+  // isTodaySunday — it is now a dependency.)
+  const weekStarting = useMemo(() => {
+    const currentSunday = getSundayOf(today);
+    if (!isTodaySunday) return currentSunday;
+    const d = new Date(currentSunday + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() - 7);
+    const yyyy = d.getUTCFullYear();
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }, [today, isTodaySunday]);
 
   // Selected date for back-fill; defaults to today.
   const [selectedDate, setSelectedDate] = useState(today);
@@ -574,9 +590,30 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
     setSaving(true);
     setError('');
     try {
+      // Daily doc MUST persist first (Decision #4).
       await saveDailyEntry(tenantId, user.uid, agentName, selectedDate, data);
       setSavedAt(new Date());
       await refreshWeekDocs();
+      // Best-effort: recompute the current week's weekly DRAFT from the daily
+      // entries so the Sunday review + #687 deep-link wizard are pre-filled
+      // before the Sunday 23:00 cron. aggregateCurrentWeekDaily merges (rollup
+      // has no ratings/targets keys) so manual draft fields are preserved, and
+      // keys on getMostRecentSunday — which is the correct current week on the
+      // Mon–Sat save path (saves never happen on Sunday; the form is hidden).
+      // Failure-isolated (Decision #4): a thrown aggregation must NOT fail the
+      // log — swallow, don't propagate.
+      try {
+        await aggregateCurrentWeekDaily(
+          tenantId,
+          user.uid,
+          agentName,
+          userProfile?.commissionRate ?? 0,
+          userProfile?.unitId ?? null,
+          branchId ?? null,
+        );
+      } catch (aggErr) {
+        console.error('Weekly-draft aggregation after save failed (daily log saved):', aggErr);
+      }
       setTimeout(() => onClose?.(), 600);
     } catch (e) {
       console.error('Save failed:', e);

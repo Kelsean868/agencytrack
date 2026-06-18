@@ -9,6 +9,7 @@ const hoisted = vi.hoisted(() => ({
   saveDailyEntry: vi.fn(),
   getDailyEntriesForWeek: vi.fn(),
   getDraft: vi.fn(),
+  aggregateCurrentWeekDaily: vi.fn(),
 }));
 
 vi.mock('../../../context/AuthContext', () => ({ useAuth: hoisted.useAuth }));
@@ -19,6 +20,9 @@ vi.mock('../../../services/dailyActivityService', () => ({
 }));
 vi.mock('../../../services/submissionService', () => ({
   getDraft: hoisted.getDraft,
+}));
+vi.mock('../../../services/loggingModeService', () => ({
+  aggregateCurrentWeekDaily: hoisted.aggregateCurrentWeekDaily,
 }));
 
 import DailyCaptureV2 from '../DailyCaptureV2';
@@ -41,6 +45,7 @@ beforeEach(() => {
   hoisted.saveDailyEntry.mockResolvedValue(undefined);
   hoisted.getDailyEntriesForWeek.mockResolvedValue([]);
   hoisted.getDraft.mockResolvedValue(null);
+  hoisted.aggregateCurrentWeekDaily.mockResolvedValue({ aggregated: true });
 });
 
 // ─── deriveCountStripChips — pure ────────────────────────────────────────────
@@ -446,7 +451,7 @@ describe('computeStreak (pure)', () => {
 describe('SundayConfirmView (component path)', () => {
   // 2026-06-21T12:00:00Z = Sunday 08:00 TT — isTodaySunday flips to true.
 
-  it('renders weekly summary (not daily entry form) when today is Sunday', async () => {
+  it('renders the COMPLETED (prior) week summary when today is Sunday', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-21T12:00:00Z') });
     hoisted.getDailyEntriesForWeek.mockResolvedValue([
       { date: '2026-06-15', dials: 5, ffiConducted: 1 },
@@ -456,6 +461,9 @@ describe('SundayConfirmView (component path)', () => {
     await waitFor(() => {
       expect(screen.getByText(/your week from daily logs/i)).toBeInTheDocument();
     });
+    // Sunday 2026-06-21 targets the COMPLETED week starting 2026-06-14, NOT the
+    // empty week starting 2026-06-21 (Phase 2.2 week-targeting fix).
+    expect(hoisted.getDailyEntriesForWeek).toHaveBeenCalledWith('tenant1', 'agent1', '2026-06-14');
     // "Days logged" row: 2 docs → "2/5"
     expect(screen.getByText('2/5')).toBeInTheDocument();
     // Normal daily entry Save button is NOT rendered on Sunday
@@ -463,7 +471,7 @@ describe('SundayConfirmView (component path)', () => {
     vi.useRealTimers();
   });
 
-  it('CTA "Review & submit" deep-links to the wizard for the current week', async () => {
+  it('CTA "Review & submit" deep-links to the wizard for the COMPLETED week', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-21T12:00:00Z') });
     hoisted.getDailyEntriesForWeek.mockResolvedValue([]);
     const onReviewSubmit = vi.fn();
@@ -472,9 +480,22 @@ describe('SundayConfirmView (component path)', () => {
       expect(screen.getByRole('button', { name: /review & submit/i })).toBeInTheDocument()
     );
     fireEvent.click(screen.getByRole('button', { name: /review & submit/i }));
-    // weekStarting = getSundayOf(getTodayTT()) — 2026-06-21 is already Sunday TT.
+    // Sunday 2026-06-21 → completed week 2026-06-14 (prior Sunday), not today's.
     expect(onReviewSubmit).toHaveBeenCalledTimes(1);
-    expect(onReviewSubmit).toHaveBeenCalledWith('2026-06-21');
+    expect(onReviewSubmit).toHaveBeenCalledWith('2026-06-14');
+    vi.useRealTimers();
+  });
+
+  it('weekday targets the CURRENT logging week (no −7)', async () => {
+    // Wednesday 2026-06-24 → getSundayOf = 2026-06-21 (current week), unchanged.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-24T12:00:00Z') });
+    hoisted.getDailyEntriesForWeek.mockResolvedValue([]);
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(hoisted.getDailyEntriesForWeek).toHaveBeenCalledWith('tenant1', 'agent1', '2026-06-21')
+    );
+    // Mon–Sat shows the daily form, not the Sunday summary.
+    expect(screen.queryByText(/your week from daily logs/i)).not.toBeInTheDocument();
     vi.useRealTimers();
   });
 
@@ -489,6 +510,40 @@ describe('SundayConfirmView (component path)', () => {
     expect(screen.queryByRole('button', { name: /review & submit/i })).not.toBeInTheDocument();
     fireEvent.click(submittedBtn);
     expect(onReviewSubmit).not.toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+});
+
+// ─── Aggregate-on-save (weekly-draft currency) ──────────────────────────────
+
+describe('aggregate-on-save (Phase 2.2)', () => {
+  // Wednesday 2026-06-17 — weekday: the daily entry form (with Save) is shown.
+  it('recomputes the weekly draft after a successful daily save', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-17T12:00:00Z') });
+    render(<DailyCaptureV2 onClose={vi.fn()} />);
+    const save = await screen.findByTestId('dcv2-save');
+    fireEvent.click(save);
+    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(hoisted.aggregateCurrentWeekDaily).toHaveBeenCalledTimes(1));
+    // Daily doc persists FIRST, then the draft recompute runs.
+    expect(hoisted.saveDailyEntry.mock.invocationCallOrder[0])
+      .toBeLessThan(hoisted.aggregateCurrentWeekDaily.mock.invocationCallOrder[0]);
+    vi.useRealTimers();
+  });
+
+  it('isolates aggregation failure — the daily log still succeeds (no error surfaced)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-17T12:00:00Z') });
+    hoisted.aggregateCurrentWeekDaily.mockRejectedValue(new Error('agg boom'));
+    const onClose = vi.fn();
+    render(<DailyCaptureV2 onClose={onClose} />);
+    const save = await screen.findByTestId('dcv2-save');
+    fireEvent.click(save);
+    await waitFor(() => expect(hoisted.saveDailyEntry).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(hoisted.aggregateCurrentWeekDaily).toHaveBeenCalledTimes(1));
+    // The thrown aggregation must NOT surface a save error (Decision #4).
+    expect(screen.queryByText(/save failed/i)).not.toBeInTheDocument();
+    // And the post-save close still fires (save treated as successful).
+    await waitFor(() => expect(onClose).toHaveBeenCalled(), { timeout: 2000 });
     vi.useRealTimers();
   });
 });

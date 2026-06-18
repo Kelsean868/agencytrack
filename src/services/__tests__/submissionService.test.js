@@ -284,6 +284,29 @@ describe('loggingModeService.aggregateCurrentWeekDaily — unitId + branchId in 
     expect(payload).toMatchObject({ unitId: 'um-uid-001', branchId: 'branch-a' });
   });
 
+  it('writes with { merge: true } and no ratings/targets keys — manual draft fields survive a recompute', async () => {
+    getDailyEntriesForWeek.mockResolvedValueOnce([{ qualifiedApproaches: 2 }]);
+    const { getDoc } = await import('firebase/firestore');
+    // Existing draft already carries manual ratings + next-week targets.
+    getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ status: 'draft', selfRating: 4, nextWeekTargets: { api: 50000 } }),
+    });
+
+    await aggregateCurrentWeekDaily('t1', 'uid-a', 'Agent A', 0, null, null);
+
+    expect(hoisted.mockSetDoc).toHaveBeenCalledTimes(1);
+    const [, payload, options] = hoisted.mockSetDoc.mock.calls[0];
+    // merge:true is what preserves un-written fields in Firestore.
+    expect(options).toEqual({ merge: true });
+    // The recompute payload must NOT carry ratings/targets keys — if it did,
+    // merge:true would overwrite (clobber) the agent's manual entries.
+    expect(payload).not.toHaveProperty('selfRating');
+    expect(payload).not.toHaveProperty('nextWeekTargets');
+    // It only restamps activity rollup + status/identity bookkeeping.
+    expect(payload).toMatchObject({ status: 'draft', totalProductionCredit: 0 });
+  });
+
   it('accepts null unitId', async () => {
     getDailyEntriesForWeek.mockResolvedValueOnce([{ qualifiedApproaches: 1 }]);
     const { getDoc } = await import('firebase/firestore');

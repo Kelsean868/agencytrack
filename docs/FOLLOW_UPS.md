@@ -53,7 +53,9 @@ The NO-NEW axe gate in `daily-capture-v2-2-ui-smoke.mjs` diffs against a baselin
 
 ---
 
-## Daily Capture v2 Phase 2.1 — manual Sunday live-prefill check (DEFERRED-VERIFICATION, banked PR #687 `4a12532`, Rule 13)
+## ~~Daily Capture v2 Phase 2.1 — manual Sunday live-prefill check (DEFERRED-VERIFICATION, banked PR #687 `4a12532`, Rule 13)~~ — SUPERSEDED by Phase 2.2 (PR #{TBD})
+
+**SUPERSEDED 2026-06-18 by Phase 2.2 (`fix/daily-capture-v2-2-2-sunday-review-live-draft`, PR #{TBD}).** The deferral existed because (a) on Sunday DCv2 targeted the *empty* week-starting-today, and (b) the weekly draft only populated at the Sunday 23:00 cron. Phase 2.2 fixes both: Sunday-conditional week-targeting (completed week) + aggregate-on-save (draft stays current as the agent logs). The Phase 2.2 **end-to-end seeded smoke** proves the non-empty aggregated summary AND the pre-filled wizard on a forced Sunday — closing this check at merge rather than deferring to a manual real-Sunday run. Original deferral retained below for trail.
 
 The Phase 2.1 forced-date smoke (`daily-capture-v2-2-1-sunday-submit-smoke.mjs`) fakes the clock to the most-recent Sunday and proves the new code: SundayConfirmView renders, "Review & submit" is present (or "Submitted" when the week is already submitted), and the click deep-links into the wizard **on the step screen** (= `initialWeek` honored). What it canNOT prove pre-21st: a backward-faked week has **no cron-aggregated weekly draft**, so the wizard opens at the correct week but **empty**. The brief's headline acceptance — *"the wizard opens pre-filled with the aggregated week"* — therefore needs a REAL Sunday.
 
@@ -62,6 +64,16 @@ The Phase 2.1 forced-date smoke (`daily-capture-v2-2-1-sunday-submit-smoke.mjs`)
 **Why deferred (Rule 13 env gap):** the live aggregated-prefill is only reachable on a real Sunday with real cron-aggregated data; the forced-date smoke + component test cover everything else (deep-link wiring, exact week value, submitted-state reflection, a11y). The exact deep-link week value is pinned by the component test (`onReviewSubmit` called with the Sunday `weekStarting`).
 
 **Severity:** LOW — the deep-link wiring and submitted-state are live-verified by the smoke; only the prefill-content sub-assertion awaits a real Sunday. The wizard's `getDraft(weekStarting)` prefill path itself shipped + was verified in Phase 1b (#685).
+
+---
+
+## Daily Capture v2 — wizard direct-entry default carries the Sunday edge (banked PR #{TBD}, LOW)
+
+The **non-deep-link** wizard entry (AgentDashboard bottom-nav "submit" → `setShowWizard(true)` with no `wizardWeek`) opens `WizardForm` on the date-picker screen, defaulting `localWeekChoice` to `getLastNSundaysForDropdown(1)[0]` — the current (Sunday-starting, **empty**) week on a Sunday. Unlike the DCv2 deep-link (fixed in Phase 2.2 to target the completed week), this is **user-correctable** — the dropdown lists the last 6 Sundays incl. the completed one. Out of Phase 2.2 scope (Decision #5): it lives in a different module (`WizardForm` / `getLastNSundaysForDropdown`) and a default change affects **all** wizard entry incl. weekly-only agents.
+
+**Action (if pursued):** make the wizard's default week Sunday-aware (default to the completed week on Sunday) OR confirm the picker default is acceptable since it's correctable. Decide before relying on the direct-entry path for the Sunday submit flow.
+
+**Severity:** LOW — correctable via the picker; the primary Sunday flow (DCv2 → "Review & submit") is fixed in Phase 2.2.
 
 ---
 
