@@ -43,7 +43,7 @@ Build the Option B daily-entry screen wired to the extended 1a/1b schema. Groupe
 
 ---
 
-## ~~Daily Capture "dials / calls" field~~ (RESOLVED — Phase 1a adds `dials` field, PR #TBD, 2026-06-18)
+## ~~Daily Capture "dials / calls" field~~ (RESOLVED — Phase 1a adds `dials` field, PR #684, 2026-06-18)
 
 Resolved by Daily Capture v2 Phase 1a: `dials: 0` added to `dailyActivity.js` schema. The S3a pace row for calls will gain a daily source once Phase 1b aggregates `dials` into the weekly draft and Phase 3 wires pace. `PACE_METRIC_META.callsMade.hasDailySource` in `planVariance.js` will need updating in 1b/2. Original FU body preserved below for context.
 
@@ -1208,7 +1208,7 @@ the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeek
 
 ---
 
-## ~~Daily Capture "dials / calls" field~~ (RESOLVED — `dials` field added in Phase 1a PR #TBD; `planVariance.js` update deferred to 1b/2; banked from Weekly Planner v2 Slice 3a)
+## ~~Daily Capture "dials / calls" field~~ (RESOLVED — `dials` field added in Phase 1a PR #684; `planVariance.js` update deferred to 1b/2; banked from Weekly Planner v2 Slice 3a)
 
 **Context.** The S3a pace rows give every committed metric a mid-week actual **except calls** — Daily Capture (`src/components/daily/DailyCaptureV2.jsx`, `src/lib/schema/dailyActivity.js`) has **no dials/calls field**, so the calls row renders the honest hatched "weekly only · no daily pace" state until the weekly report is submitted (when the 5-component sum resolves). Contacts is fine (resolves to `qualifiedApproaches`, which Daily Capture does capture).
 
