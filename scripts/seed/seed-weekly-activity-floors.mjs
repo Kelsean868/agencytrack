@@ -47,7 +47,7 @@ const TENANT  = 'tatillife_south';
 // the utility module — keep these in sync when changing floors.
 const APPENDIX_A_FLOORS = Object.freeze({
   callsMade:             60,
-  contactsMade:          40,
+  telContacts:           40,
   appointmentsScheduled: 20,
   interviewsKept:        15,
   factFindsCompleted:    10,

@@ -17,6 +17,20 @@ Extend `functions/aggregators/sundayDailyToWeekly.js` + `src/services/loggingMod
 
 ---
 
+## CONTRACT: remove `weeklyActivityFloors.contactsMade` from companyMinimums (LOW — after #685 merges + verified)
+
+**Context:** PR #685 (Daily Capture v2 Phase 1b) EXPANDS `companyMinimums.weeklyActivityFloors` by adding `telContacts` alongside the existing `contactsMade` key (EXPAND-only migration script: `scripts/seed/migrate-floors-contactsMade-to-telContacts.mjs`). The expand-only pattern avoids breaking pre-merge reads of `contactsMade`. After #685 is merged and verified in production, `contactsMade` is dead weight in every tenant's floors doc.
+
+**Action:** Run a targeted removal against `tatillife_south` and `tatillife_smoke`:
+```js
+ref.update({ 'weeklyActivityFloors.contactsMade': admin.firestore.FieldValue.delete() })
+```
+Verify the key is gone and `telContacts` is intact. Update (or delete) the migration script to reflect post-removal state.
+
+**Priority:** LOW — no user-visible impact while `contactsMade` sits alongside `telContacts` (code ignores it after #685). Safe to close in any subsequent seed/migration cleanup PR. Do not bundle with new feature work.
+
+---
+
 ## Daily Capture v2 Phase 2 — Option B daily-entry UI (QUEUED — stacks on 1b, 2026-06-18, HIGH)
 
 Build the Option B daily-entry screen wired to the extended 1a/1b schema. Grouped card with collapsible sections, week strip, back-fill, raw-points pill (no pace), streak flame, Sunday confirm view. Brief landed: `docs/briefs/brief-daily-capture-v2-2-ui.md`. Branch: `feat/daily-capture-v2-2-ui` off 1b HEAD. **Waits on 1b human merge.**
