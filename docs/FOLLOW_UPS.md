@@ -6,6 +6,37 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Daily Capture v2 Phase 1b — aggregator extension + distinct `telContacts` (QUEUED — stacks on 1a, 2026-06-18, HIGH)
+
+Extend `functions/aggregators/sundayDailyToWeekly.js` + `src/services/loggingModeService.aggregateCurrentWeekDaily` to Σ all 1a daily fields into their weekly targets. Add distinct `telContacts` as a real weekly Step 3 field (switch `extractFields` from `qualifiedApproaches` fallback; update floor mapping). Branch: `feat/daily-capture-v2-1b-aggregator` off `feat/daily-capture-v2-1a-schema` HEAD. Brief landed: `docs/briefs/brief-daily-capture-v2-1b-aggregator.md`. **Waits on 1a human merge.**
+
+**Open items carried from 1a Phase 0:**
+- `dials` → 4-call-type weekly split: Phase 1a brief confirmed daily `dials` is a single total. 1b decides whether to bypass `computeProspectingCallsActual()` (use as the week's dial total directly for daily-originated weeks) or distribute proportionally. Lean: bypass the split — flag to dispatcher if `computeProspectingCallsActual` double-counts.
+- `telContacts` mapping: 1b switches `extractFields.js:86` from `qualifiedApproaches` fallback to direct `telContacts` field. Floor `contactsMade` → `telContacts` rename in `weeklyActivityFloors.js`. Check `planVariance.js` for proxy reads.
+- Tradeshow open item: daily `seminarsConducted` covers step-2 seminars; step-2 also has `tradeshowsAttended`. If daily logging needs a distinct tradeshow count, add `tradeshowsAttended` to 1a (additive, no brief rewrite needed) OR fold it into 1b schema touch. Dispatcher to decide before 1b dispatch.
+
+---
+
+## Daily Capture v2 Phase 2 — Option B daily-entry UI (QUEUED — stacks on 1b, 2026-06-18, HIGH)
+
+Build the Option B daily-entry screen wired to the extended 1a/1b schema. Grouped card with collapsible sections, week strip, back-fill, raw-points pill (no pace), streak flame, Sunday confirm view. Brief landed: `docs/briefs/brief-daily-capture-v2-2-ui.md`. Branch: `feat/daily-capture-v2-2-ui` off 1b HEAD. **Waits on 1b human merge.**
+
+---
+
+## Daily Capture v2 Phase 3 — pace + working days (QUEUED — stacks on Phase 2, 2026-06-18, HIGH)
+
+`workingDaysPerWeek` on user doc (default 5, Profile UI toggle). `weeklyPointsFloor` via de-duplicated activity map (no ffi+ci double-count). `dailyPaceTarget` + `weekToDateTarget`. Wire pill ahead/on-pace/behind. Brief landed: `docs/briefs/brief-daily-capture-v2-3-pace.md`. Branch: `feat/daily-capture-v2-3-pace` off Phase 2 HEAD. **Waits on Phase 2 human merge.**
+
+---
+
+## ~~Daily Capture "dials / calls" field~~ (RESOLVED — Phase 1a adds `dials` field, PR #TBD, 2026-06-18)
+
+Resolved by Daily Capture v2 Phase 1a: `dials: 0` added to `dailyActivity.js` schema. The S3a pace row for calls will gain a daily source once Phase 1b aggregates `dials` into the weekly draft and Phase 3 wires pace. `PACE_METRIC_META.callsMade.hasDailySource` in `planVariance.js` will need updating in 1b/2. Original FU body preserved below for context.
+
+~~**Context.** The S3a pace rows give every committed metric a mid-week actual **except calls** — Daily Capture has **no dials/calls field**, so the calls row renders the honest hatched "weekly only · no daily pace" state.~~ RESOLVED.
+
+---
+
 ## ~~South `branchId` submission backfill — conditional~~ (RESOLVED — no backfill needed, 2026-06-18)
 
 **Status:** RESOLVED. The operator-run read-only audit (`node functions/scripts/inspect-submission-branchid.cjs --tenant tatillife_south`) reported **7/7 south submissions carry `branchId`** (breakdown: `tatil_south` 3, plus two unit branches 2+2; 0 missing). The BM Team Roster's `getAllYTDSubmissions` → `where('branchId','==',claims.branchId)` will not under-count. No Tier-C backfill required. The read-only inspector (`functions/scripts/inspect-submission-branchid.cjs`) remains available if a future audit is wanted. Banked + resolved in PR #683 (team-roster verify).
@@ -1163,7 +1194,7 @@ the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeek
 
 ---
 
-## Daily Capture "dials / calls" field (MEDIUM, banked from Weekly Planner v2 Slice 3a)
+## ~~Daily Capture "dials / calls" field~~ (RESOLVED — `dials` field added in Phase 1a PR #TBD; `planVariance.js` update deferred to 1b/2; banked from Weekly Planner v2 Slice 3a)
 
 **Context.** The S3a pace rows give every committed metric a mid-week actual **except calls** — Daily Capture (`src/components/daily/DailyCaptureV2.jsx`, `src/lib/schema/dailyActivity.js`) has **no dials/calls field**, so the calls row renders the honest hatched "weekly only · no daily pace" state until the weekly report is submitted (when the 5-component sum resolves). Contacts is fine (resolves to `qualifiedApproaches`, which Daily Capture does capture).
 
