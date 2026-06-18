@@ -64,6 +64,7 @@ const env = loadEnv(path.resolve(__dirname, '../../.env.local'));
 // arriving from EITHER source.
 const TENANT_ID = process.env.A11Y_TENANT_ID ?? env.A11Y_TENANT_ID ?? 'tatillife_smoke';
 const BRANCH_ID = 'smoke_branch';
+const UNIT_NAME = 'Smoke Unit';
 const SEED_ACTOR = 'seed-smoke-data';
 
 // Year defaults to the current calendar year (what the app's GamePlan reads via
@@ -111,12 +112,19 @@ if (isDryRun && isApply) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Varied roster — 4 synthetic agents (no Auth). Deterministic uids so re-runs
 // overwrite the same docs. Descending settled API gives clear leaderboard spread.
+//
+// persistencyPct is the human-readable percentage; it is written to the
+// persistency doc as a DECIMAL (÷100) via buildE3Persistency() — faithful to
+// production, where persistency = netSettled/grossSettled is a decimal in [0,1+]
+// (see src/lib/persistency/calculations.js). The roster's PersBandCell then
+// ×100's it back (via assembleRosterRow) to render the 0–100 band.
+//   noGoal: true  → no goals doc written → exercises the "—" (% of goal) path.
 // ─────────────────────────────────────────────────────────────────────────────
 const ROSTER = [
-  { uid: 'smoke_roster_1', name: 'Smoke Roster One',   contractStartDate: '2020-01-01', goalAPI: 700_000, settledAPI: 800_000, settledApps: 66, submittedAPI: 95_000, persistency: 95 },
-  { uid: 'smoke_roster_2', name: 'Smoke Roster Two',   contractStartDate: '2022-03-15', goalAPI: 600_000, settledAPI: 450_000, settledApps: 38, submittedAPI: 60_000, persistency: 88 },
-  { uid: 'smoke_roster_3', name: 'Smoke Roster Three', contractStartDate: '2024-06-01', goalAPI: 500_000, settledAPI: 180_000, settledApps: 15, submittedAPI: 30_000, persistency: 76 },
-  { uid: 'smoke_roster_4', name: 'Smoke Roster Four',  contractStartDate: '2025-09-10', goalAPI: 400_000, settledAPI:  60_000, settledApps:  5, submittedAPI: 12_000, persistency: 64 },
+  { uid: 'smoke_roster_1', name: 'Smoke Roster One',   contractStartDate: '2020-01-01', goalAPI: 700_000, settledAPI: 800_000, settledApps: 66, submittedAPI: 95_000, persistencyPct: 95 },
+  { uid: 'smoke_roster_2', name: 'Smoke Roster Two',   contractStartDate: '2022-03-15', goalAPI: 600_000, settledAPI: 450_000, settledApps: 38, submittedAPI: 60_000, persistencyPct: 88 },
+  { uid: 'smoke_roster_3', name: 'Smoke Roster Three', contractStartDate: '2024-06-01', goalAPI: 500_000, settledAPI: 180_000, settledApps: 15, submittedAPI: 30_000, persistencyPct: 76 },
+  { uid: 'smoke_roster_4', name: 'Smoke Roster Four',  contractStartDate: '2025-09-10', goalAPI: 400_000, settledAPI:  60_000, settledApps:  5, submittedAPI: 12_000, persistencyPct: 64, noGoal: true },
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -187,12 +195,15 @@ function completedMonthIndices() {
 
 // A flat-V2 submission doc (mirrors seed-weekly-floors-test-submission shape).
 // totalProductionCredit is the field extractTotalProductionCredit reads first.
+// branchId is stamped so the BM's getAllYTDSubmissions (where branchId == claims.
+// branchId) returns these — without it the BM submitted column reads 0.
 function buildSubmission(uid, name, unitId, weekStarting, api) {
   return {
     userId:       uid,
     agentId:      uid,
     agentName:    `${name} [smoke-data ${YEAR}]`,
     unitId:       unitId ?? null,
+    branchId:     BRANCH_ID,
     weekStarting,
     status:       'submitted',
     version:      2,
@@ -203,6 +214,28 @@ function buildSubmission(uid, name, unitId, weekStarting, api) {
     totalCommission:       parseFloat((api * 0.35).toFixed(2)),
     updatedAt:   ts(),
     submittedAt: ts(),
+  };
+}
+
+// Builds an E3-shaped persistency doc body whose six business-input fields make
+// isE3Doc() pass AND derive (netSettled/grossSettled) to the target decimal.
+// gross fixed at 100 → lapses = round((1−P)×100); persistency stored as DECIMAL
+// (production shape — the roster ×100's it for display).
+function buildE3Persistency(targetPct) {
+  const targetDecimal = targetPct / 100;
+  const grossSettled = 100;
+  const lapses = Math.round((1 - targetDecimal) * grossSettled);
+  const netSettled = grossSettled - lapses;
+  return {
+    businessPlaced: grossSettled, // gross = (BP − NT) + incPPPs + lumpsums100×0.1
+    notTakens: 0,
+    incPPPs: 0,
+    lumpsums100: 0,
+    lapses,
+    reinstatements: 0,
+    grossSettled,
+    netSettled,
+    persistency: netSettled / grossSettled, // DECIMAL in [0,1] — production shape
   };
 }
 
@@ -257,7 +290,8 @@ async function main() {
     console.log(`    submissions             ${completedMonthIndices().length} (one per completed month)`);
     console.log(`  Roster (${ROSTER.length} synthetic agents under smoke UM):`);
     for (const r of ROSTER) {
-      console.log(`    ${r.uid}: settledAPI=${r.settledAPI} apps=${r.settledApps} persistency=${r.persistency} goal=${r.goalAPI} contract=${r.contractStartDate}`);
+      const e3 = buildE3Persistency(r.persistencyPct);
+      console.log(`    ${r.uid}: settledAPI=${r.settledAPI} apps=${r.settledApps} persistencyPct=${r.persistencyPct} (decimal=${e3.persistency}) goal=${r.noGoal ? 'NONE (— path)' : r.goalAPI} unitName=${UNIT_NAME} contract=${r.contractStartDate}`);
     }
     console.log('\n[dry-run complete — no writes performed]');
     return;
@@ -346,6 +380,7 @@ async function main() {
       name: r.name,
       branchId: BRANCH_ID,
       unitId: umUid,
+      unitName: UNIT_NAME,
       agentNumber: '',
       contractStartDate: r.contractStartDate,
       active: true,
@@ -356,16 +391,19 @@ async function main() {
       createdBy: SEED_ACTOR,
     }, { merge: true });
 
-    // goals (% of goal)
-    await db.doc(`tenants/${TENANT_ID}/goals/${r.uid}`).set({
-      agentId: r.uid,
-      tenantId: TENANT_ID,
-      personalAnnualAPI: r.goalAPI,
-      personalAnnualApps: Math.round(r.goalAPI / AVG_POLICY_API),
-      playgroundAvgPolicyAPI: AVG_POLICY_API,
-      gamePlanCommitted: true,
-      updatedAt: ts(),
-    }, { merge: true });
+    // goals (% of goal) — skipped for noGoal members so the roster's % column
+    // exercises the "—" (no committed target) fallback end-to-end.
+    if (!r.noGoal) {
+      await db.doc(`tenants/${TENANT_ID}/goals/${r.uid}`).set({
+        agentId: r.uid,
+        tenantId: TENANT_ID,
+        personalAnnualAPI: r.goalAPI,
+        personalAnnualApps: Math.round(r.goalAPI / AVG_POLICY_API),
+        playgroundAvgPolicyAPI: AVG_POLICY_API,
+        gamePlanCommitted: true,
+        updatedAt: ts(),
+      }, { merge: true });
+    }
 
     // submissions (submitted API) — two completed months, or current if none completed
     const subMonths = completedMonthIndices().slice(-2);
@@ -387,22 +425,25 @@ async function main() {
       periodType: 'monthly',
       settledAPI: r.settledAPI,
       settledApps: r.settledApps,
-      persistency: r.persistency,
+      persistency: r.persistencyPct,
       notes: 'smoke-data seed',
       confirmedBy: SEED_ACTOR,
       confirmedByName: 'Seed Smoke Data',
       confirmedAt: ts(),
     }, { merge: true });
 
-    // persistency doc (monthly %) — current month
+    // persistency doc (monthly) — current month. E3-shaped (passes isE3Doc) with
+    // persistency stored as a DECIMAL (production shape); the roster ×100's it.
     const monthNum = CURRENT_MONTH_INDEX + 1;
+    const monthKey = `${YEAR}-${String(monthNum).padStart(2, '0')}`;
     await db.doc(`tenants/${TENANT_ID}/persistency/${r.uid}_${YEAR}_${String(monthNum).padStart(2, '0')}`).set({
       agentId: r.uid,
       agentName: r.name,
       tenantId: TENANT_ID,
       year: YEAR,
       month: monthNum,
-      persistency: r.persistency,
+      monthKey,
+      ...buildE3Persistency(r.persistencyPct),
       enteredBy: SEED_ACTOR,
       enteredAt: ts(),
     }, { merge: true });

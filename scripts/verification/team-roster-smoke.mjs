@@ -49,12 +49,17 @@ const E = loadEnv();
 const PREVIEW_HOST = 'agencytrack-git-team-roster-ui-kyron-marchan-s-projects.vercel.app';
 const PREVIEW_URL  = `https://${PREVIEW_HOST}`;
 
-// Seeded roster members (from seed-smoke-data.cjs ROSTER array)
-const EXPECTED_NAMES = [
-  'Smoke Roster One',
-  'Smoke Roster Two',
-  'Smoke Roster Three',
-  'Smoke Roster Four',
+// Seeded roster members (from seed-smoke-data.cjs ROSTER array). Each value is
+// asserted through the real production path:
+//   - money: formatMoney() in TeamPerfRoster.jsx (≥1000 → `${round(n/1000)}K`)
+//   - persBand: PersBandCell colour for the decimal→×100 persistency
+//       0.95→95 ≥90 success · 0.88→88 ≥80 warning · 0.76→76 <80 danger · 0.64→64 danger
+//   - goalPct: round(ytdAPI/goal ×100); roster_4 has NO goal doc → "—" fallback
+const EXPECTED = [
+  { uid: 'smoke_roster_1', name: 'Smoke Roster One',   submittedMoney: '95K', issuedMoney: '800K', persBand: 'text-success-ink', persPct: '95%', goalPct: '14%', hasGoal: true },
+  { uid: 'smoke_roster_2', name: 'Smoke Roster Two',   submittedMoney: '60K', issuedMoney: '450K', persBand: 'text-warning-ink', persPct: '88%', goalPct: '10%', hasGoal: true },
+  { uid: 'smoke_roster_3', name: 'Smoke Roster Three', submittedMoney: '30K', issuedMoney: '180K', persBand: 'text-danger-ink',  persPct: '76%', goalPct: '6%',  hasGoal: true },
+  { uid: 'smoke_roster_4', name: 'Smoke Roster Four',  submittedMoney: '12K', issuedMoney: '60K',  persBand: 'text-danger-ink',  persPct: '64%', goalPct: null, hasGoal: false },
 ];
 
 const results = [];
@@ -143,43 +148,66 @@ async function runBmLeg(browser, theme) {
       fail(`${label}: team-perf-roster container not found`);
     }
 
-    // ── Seeded members present ────────────────────────────────────────────────
-    // Scope to desktop rows only — `team-perf-roster` also contains lg:hidden
-    // mobile cards with the same text, causing Playwright strict-mode violations
-    // on isVisible(). domTextCount checks DOM presence regardless of visibility.
-    for (const name of EXPECTED_NAMES) {
-      const cnt = await domTextCount(page, '[data-testid^="roster-row-"]', name);
-      if (cnt > 0) {
-        pass(`${label}: "${name}" in desktop roster`);
+    // ── Per-member real-value assertions ──────────────────────────────────────
+    // Every check is scoped to [data-testid="roster-row-<uid>"] so the lg:hidden
+    // mobile cards (same text) never cause Playwright strict-mode dual-matches,
+    // and so per-member values can't bleed across rows. Covers: name · submitted
+    // money · issued money · persistency band colour + value (decimal→×100 path)
+    // · % of goal (incl. the "—" no-goal fallback).
+    for (const m of EXPECTED) {
+      const rowSel = `[data-testid="roster-row-${m.uid}"]`;
+
+      // name present in its desktop row
+      if (await domTextCount(page, rowSel, m.name) > 0) {
+        pass(`${label}: "${m.name}" in desktop roster`);
       } else {
-        fail(`${label}: "${name}" not found in roster`);
+        fail(`${label}: "${m.name}" not found in roster`);
       }
-    }
 
-    // ── Persistency column renders ────────────────────────────────────────────
-    // Seeded persistency docs lack E3 fields (businessPlaced/notTakens/etc.) so
-    // isE3Doc() filters them out → PersBandCell receives null → pers-band-cell-empty.
-    // We verify the column renders (band cell present) but cannot assert colors
-    // until seed-smoke-data.cjs is updated to write E3-format docs (see FU below).
-    // FU: add E3 fields to ROSTER persistency seed so band-color assertions can run.
-    const persCells = await page
-      .locator('[data-testid^="roster-row-"] [data-testid^="pers-band-cell"]').count();
-    if (persCells >= 4) {
-      pass(`${label}: ≥4 persistency column cells rendered (got ${persCells})`);
-    } else {
-      fail(`${label}: expected ≥4 persistency column cells, got ${persCells}`);
-    }
+      // submitted + issued production money (no longer 0 — branchId now stamped)
+      if (await domTextCount(page, rowSel, m.submittedMoney) > 0) {
+        pass(`${label}: ${m.name} submitted = TTD ${m.submittedMoney}`);
+      } else {
+        fail(`${label}: ${m.name} submitted ${m.submittedMoney} not found`);
+      }
+      if (await domTextCount(page, rowSel, m.issuedMoney) > 0) {
+        pass(`${label}: ${m.name} issued = TTD ${m.issuedMoney}`);
+      } else {
+        fail(`${label}: ${m.name} issued ${m.issuedMoney} not found`);
+      }
 
-    // ── Goal column renders (populated or empty) ──────────────────────────────
-    // ^= matches both "goal-heat-cell" (populated) and "goal-heat-cell-empty".
-    // Checked here (before grain switch) to avoid asserting during skeleton reload.
-    // FU: once seed data issues are fixed, assert ≥4 non-empty goal-heat-cell.
-    const goalCellCnt = await page
-      .locator('[data-testid^="roster-row-"] [data-testid^="goal-heat-cell"]').count();
-    if (goalCellCnt >= 4) {
-      pass(`${label}: ≥4 goal column cells rendered (got ${goalCellCnt})`);
-    } else {
-      fail(`${label}: expected ≥4 goal column cells, got ${goalCellCnt}`);
+      // persistency band colour (decimal→×100 scale verification) + value
+      const bandSel = `${rowSel} [data-testid="pers-band-cell"]`;
+      const bandColour = await page.locator(`${bandSel} .${m.persBand}`).count();
+      if (bandColour >= 1) {
+        pass(`${label}: ${m.name} persistency band ${m.persBand} (${m.persPct})`);
+      } else {
+        fail(`${label}: ${m.name} expected band ${m.persBand} for ${m.persPct}, none found`);
+      }
+      if (await domTextCount(page, bandSel, m.persPct) > 0) {
+        pass(`${label}: ${m.name} persistency reads ${m.persPct}`);
+      } else {
+        fail(`${label}: ${m.name} persistency value ${m.persPct} not found`);
+      }
+
+      // % of annual goal — populated value, or "—" fallback for the no-goal member
+      if (m.hasGoal) {
+        const goalSel = `${rowSel} [data-testid="goal-heat-cell"]`;
+        const goalOk = (await page.locator(goalSel).count()) === 1
+          && (await domTextCount(page, goalSel, m.goalPct)) > 0;
+        if (goalOk) {
+          pass(`${label}: ${m.name} % of goal = ${m.goalPct}`);
+        } else {
+          fail(`${label}: ${m.name} % of goal ${m.goalPct} not found`);
+        }
+      } else {
+        const emptyCount = await page.locator(`${rowSel} [data-testid="goal-heat-cell-empty"]`).count();
+        if (emptyCount === 1) {
+          pass(`${label}: ${m.name} % of goal shows "—" (no committed target)`);
+        } else {
+          fail(`${label}: ${m.name} expected "—" goal fallback, got ${emptyCount} empty cells`);
+        }
+      }
     }
 
     // ── Sort click re-orders ──────────────────────────────────────────────────
@@ -205,8 +233,8 @@ async function runBmLeg(browser, theme) {
     }
 
     // ── Period grain switch — roster survives without crash ───────────────────
-    // Persistency column assertions are deferred (seed data lacks E3 fields).
-    // This leg just verifies the hook/page re-fetches and re-renders cleanly.
+    // Verifies the hook/page re-fetches and re-renders cleanly on grain change.
+    // (Per-member value assertions run above on the default year grain.)
     const monthPill = page.getByTestId('grain-month');
     if (await monthPill.isVisible({ timeout: 3000 }).catch(() => false)) {
       await monthPill.click();

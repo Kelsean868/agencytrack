@@ -13,16 +13,12 @@ export default function TeamPerfRosterPage() {
 
   const { rows, loading, error } = useTeamRoster(tenantId, period);
 
-  // useTeamRoster returns pctOfAnnualGoal as a 0–1 fraction (computePctOfGoal: ytdAPI / goal);
-  // GoalHeatCell and MobileCard both expect 0–100. memberId is the hook's identifier;
-  // the UI table uses row.id for React keys and data-testid attributes.
+  // useTeamRoster returns persistency and pctOfAnnualGoal already on the 0–100
+  // scale the RosterRow UI contract expects (the ×100 lives in assembleRosterRow,
+  // the single scale boundary). memberId is the hook's identifier; the UI table
+  // uses row.id for React keys and data-testid attributes.
   const mappedRows = useMemo(
-    () =>
-      rows.map((r) => ({
-        ...r,
-        id: r.memberId,
-        pctOfAnnualGoal: r.pctOfAnnualGoal !== null ? r.pctOfAnnualGoal * 100 : null,
-      })),
+    () => rows.map((r) => ({ ...r, id: r.memberId })),
     [rows]
   );
 

@@ -312,15 +312,12 @@ describe('TeamPerfRoster', () => {
 
 // ─── TeamPerfRosterPage integration ───────────────────────────────────────────
 describe('TeamPerfRosterPage', () => {
-  // Simulate hook's return shape: memberId (not id), pctOfAnnualGoal as 0–1 fraction.
-  // The page maps memberId→id and multiplies pctOfAnnualGoal×100 before rendering.
+  // Simulate hook's return shape: memberId (not id), persistency + pctOfAnnualGoal
+  // already on the 0–100 scale (the ×100 lives in assembleRosterRow now). The page
+  // only maps memberId→id — no scale conversion at the boundary.
   beforeEach(() => {
     mockUseTeamRoster.mockReturnValue({
-      rows: MOCK_ROWS.map((r) => ({
-        ...r,
-        memberId: r.id,
-        pctOfAnnualGoal: r.pctOfAnnualGoal !== null ? r.pctOfAnnualGoal / 100 : null,
-      })),
+      rows: MOCK_ROWS.map((r) => ({ ...r, memberId: r.id })),
       loading: false,
       error: null,
     });

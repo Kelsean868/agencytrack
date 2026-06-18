@@ -57,16 +57,26 @@ export function assembleRosterRow({ member, periodSubs, ytdSubs, settlement, per
   const submittedApps = periodSubs.reduce((sum, s) => sum + (extractFields(s).applicationsSold || 0), 0);
   const ytdAPI        = ytdSubs.reduce((sum, s) => sum + extractTotalProductionCredit(s), 0);
 
+  // Both persistency and pctOfAnnualGoal are returned on a 0–100 scale (the
+  // RosterRow UI contract — PersBandCell/GoalHeatCell expect 0–100). Persistency
+  // docs store a decimal 0–1 (netSettled/grossSettled; see lib/persistency/
+  // calculations.js — "never a percentage"); computePctOfGoal returns a fraction.
+  // We ×100 both here so the hook is the single scale boundary. null stays null.
+  const persRaw = persistencyRecord?.persistency;
+  const pctFrac = computePctOfGoal(ytdAPI, goals?.personalAnnualAPI ?? null);
+
   return {
     memberId:        member.id,
     name:            member.displayName ?? member.name ?? member.email ?? member.id,
+    role:            member.role === 'unit_manager' ? 'UM' : null,
+    unit:            member.unitName ?? member.unitId ?? null,
     contractDate:    member.contractStartDate ?? null,
     submittedAPI,
     submittedApps,
     issuedAPI:       settlement?.settledAPI  ?? null,
     issuedApps:      settlement?.settledApps ?? null,
-    persistency:     persistencyRecord?.persistency ?? null,
-    pctOfAnnualGoal: computePctOfGoal(ytdAPI, goals?.personalAnnualAPI ?? null),
+    persistency:     persRaw == null ? null : persRaw * 100,
+    pctOfAnnualGoal: pctFrac === null ? null : pctFrac * 100,
   };
 }
 
