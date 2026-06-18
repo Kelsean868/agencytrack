@@ -83,7 +83,7 @@ export function extractFields(d) {
       seminarTradeshowCalls:       p(d.seminarTradeshowCalls),
       serviceCalls:                p(d.serviceCalls),
       // telContacts: real field as of v2 Phase 1b; qualifiedApproaches fallback for legacy docs
-      telContacts:                 p(d.telContacts || d.qualifiedApproaches),
+      telContacts:                 p(d.telContacts ?? d.qualifiedApproaches),
       appointmentsSet:             p(d.appointmentsSet),
       qualifiedApproaches:         p(d.qualifiedApproaches),
       ffisScheduled:               p(d.ffisScheduled),
