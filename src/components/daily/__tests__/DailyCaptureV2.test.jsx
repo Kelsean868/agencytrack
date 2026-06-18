@@ -8,6 +8,7 @@ const hoisted = vi.hoisted(() => ({
   getDailyEntry: vi.fn(),
   saveDailyEntry: vi.fn(),
   getDailyEntriesForWeek: vi.fn(),
+  getDraft: vi.fn(),
 }));
 
 vi.mock('../../../context/AuthContext', () => ({ useAuth: hoisted.useAuth }));
@@ -15,6 +16,9 @@ vi.mock('../../../services/dailyActivityService', () => ({
   getDailyEntry: hoisted.getDailyEntry,
   saveDailyEntry: hoisted.saveDailyEntry,
   getDailyEntriesForWeek: hoisted.getDailyEntriesForWeek,
+}));
+vi.mock('../../../services/submissionService', () => ({
+  getDraft: hoisted.getDraft,
 }));
 
 import DailyCaptureV2 from '../DailyCaptureV2';
@@ -36,6 +40,7 @@ beforeEach(() => {
   hoisted.getDailyEntry.mockResolvedValue(null);
   hoisted.saveDailyEntry.mockResolvedValue(undefined);
   hoisted.getDailyEntriesForWeek.mockResolvedValue([]);
+  hoisted.getDraft.mockResolvedValue(null);
 });
 
 // ─── deriveCountStripChips — pure ────────────────────────────────────────────
@@ -458,16 +463,32 @@ describe('SundayConfirmView (component path)', () => {
     vi.useRealTimers();
   });
 
-  it('CTA "Close & open wizard" calls onClose', async () => {
+  it('CTA "Review & submit" deep-links to the wizard for the current week', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-21T12:00:00Z') });
     hoisted.getDailyEntriesForWeek.mockResolvedValue([]);
-    const onClose = vi.fn();
-    render(<DailyCaptureV2 onClose={onClose} />);
+    const onReviewSubmit = vi.fn();
+    render(<DailyCaptureV2 onClose={vi.fn()} onReviewSubmit={onReviewSubmit} />);
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /open wizard/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /review & submit/i })).toBeInTheDocument()
     );
-    fireEvent.click(screen.getByRole('button', { name: /open wizard/i }));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: /review & submit/i }));
+    // weekStarting = getSundayOf(getTodayTT()) — 2026-06-21 is already Sunday TT.
+    expect(onReviewSubmit).toHaveBeenCalledTimes(1);
+    expect(onReviewSubmit).toHaveBeenCalledWith('2026-06-21');
+    vi.useRealTimers();
+  });
+
+  it('reflects the already-submitted week: disabled "Submitted", no deep-link', async () => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-21T12:00:00Z') });
+    hoisted.getDailyEntriesForWeek.mockResolvedValue([]);
+    hoisted.getDraft.mockResolvedValue({ status: 'submitted' });
+    const onReviewSubmit = vi.fn();
+    render(<DailyCaptureV2 onClose={vi.fn()} onReviewSubmit={onReviewSubmit} />);
+    const submittedBtn = await screen.findByRole('button', { name: /submitted/i });
+    expect(submittedBtn).toBeDisabled();
+    expect(screen.queryByRole('button', { name: /review & submit/i })).not.toBeInTheDocument();
+    fireEvent.click(submittedBtn);
+    expect(onReviewSubmit).not.toHaveBeenCalled();
     vi.useRealTimers();
   });
 });

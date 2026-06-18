@@ -53,6 +53,18 @@ The NO-NEW axe gate in `daily-capture-v2-2-ui-smoke.mjs` diffs against a baselin
 
 ---
 
+## Daily Capture v2 Phase 2.1 — manual Sunday live-prefill check (DEFERRED-VERIFICATION, banked PR #{TBD}, Rule 13)
+
+The Phase 2.1 forced-date smoke (`daily-capture-v2-2-1-sunday-submit-smoke.mjs`) fakes the clock to the most-recent Sunday and proves the new code: SundayConfirmView renders, "Review & submit" is present (or "Submitted" when the week is already submitted), and the click deep-links into the wizard **on the step screen** (= `initialWeek` honored). What it canNOT prove pre-21st: a backward-faked week has **no cron-aggregated weekly draft**, so the wizard opens at the correct week but **empty**. The brief's headline acceptance — *"the wizard opens pre-filled with the aggregated week"* — therefore needs a REAL Sunday.
+
+**Manual check (run on a real Sunday — first natural window 2026-06-21, TT):** as a real agent with daily entries logged for the current week, on Sunday open Daily Capture → confirm SundayConfirmView shows the aggregated totals → tap **"Review & submit"** → confirm the weekly wizard opens **pre-filled with the aggregated figures** for the current week (not an empty form), then navigate to the ratings step and submit. Both themes if convenient.
+
+**Why deferred (Rule 13 env gap):** the live aggregated-prefill is only reachable on a real Sunday with real cron-aggregated data; the forced-date smoke + component test cover everything else (deep-link wiring, exact week value, submitted-state reflection, a11y). The exact deep-link week value is pinned by the component test (`onReviewSubmit` called with the Sunday `weekStarting`).
+
+**Severity:** LOW — the deep-link wiring and submitted-state are live-verified by the smoke; only the prefill-content sub-assertion awaits a real Sunday. The wizard's `getDraft(weekStarting)` prefill path itself shipped + was verified in Phase 1b (#685).
+
+---
+
 ## Daily Capture v2 Phase 3 — pace + working days (QUEUED — stacks on Phase 2, 2026-06-18, HIGH)
 
 `workingDaysPerWeek` on user doc (default 5, Profile UI toggle). `weeklyPointsFloor` via de-duplicated activity map (no ffi+ci double-count). `dailyPaceTarget` + `weekToDateTarget`. Wire pill ahead/on-pace/behind. Brief landed: `docs/briefs/brief-daily-capture-v2-3-pace.md`. Branch: `feat/daily-capture-v2-3-pace` off Phase 2 HEAD. **Waits on Phase 2 human merge.**

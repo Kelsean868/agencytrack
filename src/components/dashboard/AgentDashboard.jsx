@@ -466,6 +466,10 @@ export default function AgentDashboard() {
           setShowDailyModal(false);
           refreshDailyEntry();
         }}
+        onReviewSubmit={(week) => {
+          setShowDailyModal(false);
+          openWizardForWeek(week);
+        }}
       />
     );
   }
