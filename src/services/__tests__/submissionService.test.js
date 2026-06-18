@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll, afterEach } from 'vitest';
 
 const hoisted = vi.hoisted(() => ({
   mockSetDoc: vi.fn(),
@@ -336,5 +336,36 @@ describe('loggingModeService.aggregateCurrentWeekDaily — unitId + branchId in 
 
     expect(hoisted.mockSetDoc).not.toHaveBeenCalled();
     expect(result.aggregated).toBe(false);
+  });
+});
+
+describe('aggregateCurrentWeekDaily — TT-anchored week key (TZ-invariance regression guard)', () => {
+  // Force a non-TT system zone so a system-local `new Date()` basis would resolve
+  // a DIFFERENT week than TT at the boundary instant below. getTodayTT() uses an
+  // explicit `Intl … America/Port_of_Spain` and is unaffected by process.env.TZ.
+  // Node re-reads process.env.TZ on subsequent Date operations.
+  const ORIG_TZ = globalThis.process.env.TZ;
+  beforeAll(() => { globalThis.process.env.TZ = 'UTC'; });
+  afterAll(() => { globalThis.process.env.TZ = ORIG_TZ; });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('keys the draft on the TT week, not a system-local Date basis', async () => {
+    // 2026-06-14T02:00:00Z = Sat 2026-06-13 22:00 in Trinidad (UTC-4), but
+    // Sun 2026-06-14 in UTC. TT-anchored → getTodayTT()='2026-06-13' →
+    // getSundayOf → week starting Sun '2026-06-07'. A system-local (UTC) basis
+    // → '2026-06-14'. This breaks if the aggregator key ever reverts off
+    // getSundayOf(getTodayTT()) to getMostRecentSunday()/local new Date().
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-14T02:00:00Z'));
+
+    getDailyEntriesForWeek.mockResolvedValueOnce([{ qualifiedApproaches: 1 }]);
+    const { getDoc } = await import('firebase/firestore');
+    getDoc.mockResolvedValueOnce({ exists: () => false });
+
+    await aggregateCurrentWeekDaily('t1', 'uid-a', 'Agent A', 0, null, null);
+
+    const [, payload] = hoisted.mockSetDoc.mock.calls[0];
+    expect(payload.weekStarting).toBe('2026-06-07');       // TT week
+    expect(payload.weekStarting).not.toBe('2026-06-14');   // system-local (UTC) week — the bug
   });
 });

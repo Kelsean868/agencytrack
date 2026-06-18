@@ -24,7 +24,6 @@ import { getDailyEntriesForWeek, saveDailyEntry } from './dailyActivityService';
 import { aggregateDailyToWeekly } from '../lib/schema/dailyActivity.aggregator';
 import { getSundayOf } from '../lib/schema/dailyActivity';
 import { getTodayTT } from '../utils/dateInputs';
-import { getMostRecentSunday } from '../utils/dateHelpers';
 
 function submissionRef(tenantId, uid, weekStarting) {
   return doc(db, `tenants/${tenantId}/submissions/${uid}_${weekStarting}`);
@@ -116,7 +115,10 @@ export async function aggregateCurrentWeekDaily(tenantId, uid, agentName, commis
  * Returns { catchUp: true|false, weekStarting }.
  */
 export async function catchUpWeeklyToDaily(tenantId, uid, agentName, today) {
-  const weekStarting = getMostRecentSunday();
+  // TT-anchored (matches the daily docs + aggregateCurrentWeekDaily), NOT
+  // browser-local getMostRecentSunday — an off-TZ agent must convert the same
+  // week's draft they've been logging into.
+  const weekStarting = getSundayOf(getTodayTT());
   const ref = submissionRef(tenantId, uid, weekStarting);
   const snap = await getDoc(ref);
   if (!snap.exists()) return { catchUp: false, weekStarting, reason: 'no-draft' };

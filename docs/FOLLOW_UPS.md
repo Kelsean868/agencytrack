@@ -87,13 +87,23 @@ Phase 2.2 wires `aggregateCurrentWeekDaily` into DCv2 `handleSave` **awaited** (
 
 ---
 
-## loggingModeService.catchUpWeeklyToDaily — same browser-local week key (banked PR #{TBD}, LOW)
+## ProfileScreen.todayLocalDate — catch-up entry dated browser-local, not TT (banked PR #{TBD}, LOW)
 
-Phase 2.2 TT-anchored `aggregateCurrentWeekDaily` (the hot path — runs on every DCv2 save) from `getMostRecentSunday()` → `getSundayOf(getTodayTT())`. Its sibling `catchUpWeeklyToDaily` (`loggingModeService.js`, the weekly→daily mode-switch handoff) still keys its draft lookup on `getMostRecentSunday()` (browser-local) — the identical off-TZ pattern. Left out of the Phase 2.2 fix scope (the dispatcher's finding named `aggregateCurrentWeekDaily`; `catchUpWeeklyToDaily` is mode-switch-only via ProfileScreen, not a hot path).
+Phase 2.2 TT-anchored both `loggingModeService` write paths (`aggregateCurrentWeekDaily` + `catchUpWeeklyToDaily`) — their `weekStarting` keys are now `getSundayOf(getTodayTT())`. But `catchUpWeeklyToDaily(…, today)` still dates the carried-over catch-up daily entry by its `today` arg, which `ProfileScreen.todayLocalDate()` computes from **browser-local** `new Date()` (`getFullYear/getMonth/getDate`). For a TT agent (browser = AST = TT) `todayLocalDate()` == `getTodayTT()`, so the catch-up entry's own `weekStarting` (`getSundayOf(today)`) matches the converted draft's week. For an **off-TZ agent at a day boundary** the catch-up entry could be dated a day off → land in a different week than the draft it converted.
 
-**Action (if pursued):** TT-anchor `catchUpWeeklyToDaily`'s `weekStarting` the same way (`getSundayOf(getTodayTT())`), so an off-TZ agent switching weekly→daily reads the correct week's draft to carry over. Confirm the catch-up entry `today` param (caller passes `todayLocalDate()`) is also TT-consistent.
+**Action (if pursued):** make `ProfileScreen.todayLocalDate()` return `getTodayTT()` (or pass `getTodayTT()` into `catchUpWeeklyToDaily`) so the catch-up entry date is TT-consistent with its week key. Check `todayLocalDate`'s other uses in ProfileScreen first.
 
-**Severity:** LOW — mode-switch-only, not the hot path; an off-TZ agent only hits it when toggling logging mode mid-week.
+**Severity:** LOW — mode-switch-only AND off-TZ AND day-boundary (triple-edge); a real Trinidad agent never hits it.
+
+---
+
+## getMostRecentSunday peripheral read/display selectors — browser-local week (banked PR #{TBD}, LOW)
+
+After Phase 2.2, **no daily/draft-write path** uses browser-local `getMostRecentSunday()` (both `loggingModeService` writers are TT-anchored). The remaining call sites are **read/display week selectors** only: `AgentDashboard.jsx:141` (`currentWeek` — loads `currentWeekSub` + wizard-default week; the wizard direct-entry Sunday-edge is separately banked), `ManagerDashboard.jsx:99` (`selectedWeek` — team-view selector), `kiosk/panels/CompliancePanel.jsx:17` (compliance display week), `productionReport/UnitManagerProductionView.jsx:26` (`currentWeek` — report view). An off-TZ viewer could see/select a non-TT-canonical week, but none of these WRITE — they only choose what to display, and all are user-correctable via week pickers.
+
+**Action (if pursued):** migrate these display selectors to a TT-anchored helper (`getSundayOf(getTodayTT())`) for cross-TZ consistency, or confirm the picker-correctable behavior is acceptable. Lowest priority — display-only, no data-integrity impact.
+
+**Severity:** LOW — read/display only; no draft or daily write keys on these.
 
 ---
 
