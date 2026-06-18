@@ -21,7 +21,7 @@ import SuggestedWeekCard from '../SuggestedWeekCard';
 
 const WEEK_START = '2026-06-07';
 const FLOORS = {
-  callsMade: 60, contactsMade: 40, factFindsCompleted: 10,
+  callsMade: 60, telContacts: 40, factFindsCompleted: 10,
   closingInterviewsKept: 10, applicationsSubmitted: 1,
 };
 // ≥8 submitted weeks → derived mode → planning enabled.
@@ -31,8 +31,8 @@ const derivedSubmissions = Array.from({ length: 8 }, (_, i) => ({
 const committedPlan = {
   id: 'agent-1_2026-06-07',
   agentId: 'agent-1',
-  targets: { callsMade: 50, contactsMade: 40, factFindsCompleted: 12, closingInterviewsKept: 6, applicationsSubmitted: 2 },
-  provenance: { callsMade: 'agent', contactsMade: 'floor', factFindsCompleted: 'agent', closingInterviewsKept: 'derived', applicationsSubmitted: 'derived' },
+  targets: { callsMade: 50, telContacts: 40, factFindsCompleted: 12, closingInterviewsKept: 6, applicationsSubmitted: 2 },
+  provenance: { callsMade: 'agent', telContacts: 'floor', factFindsCompleted: 'agent', closingInterviewsKept: 'derived', applicationsSubmitted: 'derived' },
   committedAt: { toDate: () => new Date('2026-06-08T12:00:00Z') },
 };
 
@@ -53,7 +53,7 @@ function renderDaily(extra = {}) {
       onCommit={vi.fn()}
       committedPlan={committedPlan}
       weekStart={WEEK_START}
-      dailyDocs={[{ qualifiedApproaches: 40, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 } }]}
+      dailyDocs={[{ telContacts: 40, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 } }]}
       {...extra}
     />,
   );
@@ -68,7 +68,7 @@ describe('SuggestedWeekCard — Slice 3a pace rows (mid-week / daily source)', (
 
   it('renders all five pace rows', () => {
     renderDaily();
-    ['callsMade', 'contactsMade', 'factFindsCompleted', 'closingInterviewsKept', 'applicationsSubmitted'].forEach((k) => {
+    ['callsMade', 'telContacts', 'factFindsCompleted', 'closingInterviewsKept', 'applicationsSubmitted'].forEach((k) => {
       expect(screen.getByTestId(`pace-row-${k}`)).toBeInTheDocument();
     });
   });
@@ -82,7 +82,7 @@ describe('SuggestedWeekCard — Slice 3a pace rows (mid-week / daily source)', (
 
   it('daily-sourced metrics show actuals from the aggregate', () => {
     renderDaily();
-    expect(screen.getByTestId('pace-actual-contactsMade')).toHaveTextContent('40');
+    expect(screen.getByTestId('pace-actual-telContacts')).toHaveTextContent('40');
     expect(screen.getByTestId('pace-actual-factFindsCompleted')).toHaveTextContent('6');
     expect(screen.getByTestId('pace-actual-applicationsSubmitted')).toHaveTextContent('2');
   });
@@ -104,10 +104,10 @@ describe('SuggestedWeekCard — Slice 3a pace rows (mid-week / daily source)', (
     expect(within(committed).getByText(/committed/i)).toBeInTheDocument();
   });
 
-  it('contacts row carries the honest "qualified approaches" clarifier', () => {
+  it('contacts row is telContacts (real field, no proxy clarifier as of v2 Phase 1b)', () => {
     renderDaily();
-    const row = screen.getByTestId('pace-row-contactsMade');
-    expect(within(row).getByText(/qualified approaches/i)).toBeInTheDocument();
+    const row = screen.getByTestId('pace-row-telContacts');
+    expect(row).toBeInTheDocument();
   });
 });
 
@@ -158,7 +158,7 @@ describe('SuggestedWeekCard — Slice 3a renders under dark theme', () => {
           onCommit={vi.fn()}
           committedPlan={committedPlan}
           weekStart={WEEK_START}
-          dailyDocs={[{ qualifiedApproaches: 40, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 } }]}
+          dailyDocs={[{ telContacts: 40, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 } }]}
         />
       </div>,
     );

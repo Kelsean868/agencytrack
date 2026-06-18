@@ -82,8 +82,8 @@ export function extractFields(d) {
       coldCalls:                   p(d.coldCalls),
       seminarTradeshowCalls:       p(d.seminarTradeshowCalls),
       serviceCalls:                p(d.serviceCalls),
-      // telContacts not saved directly; qualifiedApproaches is best available proxy
-      telContacts:                 p(d.telContacts || d.qualifiedApproaches),
+      // telContacts: real field as of v2 Phase 1b; qualifiedApproaches fallback for legacy docs
+      telContacts:                 p(d.telContacts ?? d.qualifiedApproaches),
       appointmentsSet:             p(d.appointmentsSet),
       qualifiedApproaches:         p(d.qualifiedApproaches),
       ffisScheduled:               p(d.ffisScheduled),

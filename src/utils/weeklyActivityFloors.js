@@ -3,7 +3,7 @@
 import { computeProspectingCallsActual } from './planVariance';
 export const DEFAULT_WEEKLY_ACTIVITY_FLOORS = Object.freeze({
   callsMade:             60,
-  contactsMade:          40,
+  telContacts:           40,
   appointmentsScheduled: 20,
   interviewsKept:        15,
   factFindsCompleted:    10,
@@ -14,12 +14,10 @@ export const DEFAULT_WEEKLY_ACTIVITY_FLOORS = Object.freeze({
   referralsNewLeads:     100,
 });
 
-// Display order + presentation metadata. Row #2 carries a footnote because
-// telContacts resolves to qualifiedApproaches via the existing extractFields
-// fallback until a true telephone-contacts wizard field exists.
+// Display order + presentation metadata.
 export const WEEKLY_ACTIVITY_FLOOR_ROWS = Object.freeze([
   { key: 'callsMade',             label: 'Prospecting calls',      isCurrency: false },
-  { key: 'contactsMade',          label: 'Contacts Made',          isCurrency: false, footnote: 'Currently uses qualified approaches as a proxy until a dedicated telephone-contacts field exists.' },
+  { key: 'telContacts',           label: 'Contacts Made',          isCurrency: false },
   { key: 'appointmentsScheduled', label: 'Appointments Scheduled', isCurrency: false },
   { key: 'interviewsKept',        label: 'Interviews Kept',        isCurrency: false },
   { key: 'factFindsCompleted',    label: 'Fact Finds Completed',   isCurrency: false },
@@ -46,19 +44,19 @@ export function floorStatus(expected, actual) {
 // Per the corrected brief mapping:
 //   #1  callsMade (Prospecting calls) → computeProspectingCallsActual 4-sum
 //                              (referral+followUp+cold+seminarTradeshow; no serviceCalls)
-//   #2  contactsMade         → telContacts       (resolves to qualifiedApproaches via fallback)
+//   #2  telContacts           → fields.telContacts (real wizard field as of v2 Phase 1b)
 //   #3  appointmentsScheduled → appointmentsSet
-//   #4  interviewsKept       → ffiConducted + ciConducted
-//   #5  factFindsCompleted   → ffiConducted
+//   #4  interviewsKept        → ffiConducted + ciConducted
+//   #5  factFindsCompleted    → ffiConducted
 //   #6  closingInterviewsKept → ciConducted
 //   #7  applicationsSubmitted → applicationsSold
-//   #8  clientsSold          → livesSold
-//   #9  api                  → apiSold
-//   #10 referralsNewLeads    → totalNewNames     (derived 7-sum)
+//   #8  clientsSold           → livesSold
+//   #9  api                   → apiSold
+//   #10 referralsNewLeads     → totalNewNames     (derived 7-sum)
 export function deriveWeeklyFloorActuals(fields) {
   if (!fields) {
     return {
-      callsMade: 0, contactsMade: 0, appointmentsScheduled: 0,
+      callsMade: 0, telContacts: 0, appointmentsScheduled: 0,
       interviewsKept: 0, factFindsCompleted: 0, closingInterviewsKept: 0,
       applicationsSubmitted: 0, clientsSold: 0, api: 0, referralsNewLeads: 0,
     };
@@ -67,7 +65,7 @@ export function deriveWeeklyFloorActuals(fields) {
   const ci  = parseFloat(fields.ciConducted)  || 0;
   return {
     callsMade:             computeProspectingCallsActual(fields),
-    contactsMade:          parseFloat(fields.telContacts)      || 0,
+    telContacts:           parseFloat(fields.telContacts)      || 0,
     appointmentsScheduled: parseFloat(fields.appointmentsSet)  || 0,
     interviewsKept:        ffi + ci,
     factFindsCompleted:    ffi,

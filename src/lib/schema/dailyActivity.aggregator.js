@@ -40,6 +40,7 @@ export function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
   const entries = Array.isArray(dailyEntries) ? dailyEntries : [];
 
   const sumInt     = (key)      => entries.reduce((acc, e) => acc + i(e?.[key]), 0);
+  const sumFloat   = (key)      => entries.reduce((acc, e) => acc + p(e?.[key]), 0);
   const sumPath    = (key, sub) => entries.reduce((acc, e) => acc + p(e?.[key]?.[sub]), 0);
   const sumPathInt = (key, sub) => entries.reduce((acc, e) => acc + i(e?.[key]?.[sub]), 0);
 
@@ -81,6 +82,30 @@ export function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
     namesFromOther:  sumInt('newNamesAdded'),
     oldNamesPool:    sumInt('oldNamesWorked'),
     serviceContacts: sumInt('serviceContacts'),
+
+    // v2 1a daily fields — prospecting & outreach
+    prospectingLettersSent: sumInt('prospectingLettersSent'),
+    seminarsConducted:      sumInt('seminarsConducted'),
+    dials:                  sumInt('dials'),
+    telContacts:            sumInt('telContacts'),
+    f2fAttempts:            sumInt('f2fAttempts'),
+    // Social (live platform shape)
+    socialPostsTotal:      sumInt('socialPostsTotal'),
+    socialEngagementTotal: sumInt('socialEngagementTotal'),
+    socialInboxEnquiries:  sumInt('socialInboxEnquiries'),
+    namesFromSocial:       sumInt('namesFromSocial'),
+    socialPlatformBreakdown: {
+      facebook:  sumPathInt('socialPlatformBreakdown', 'facebook'),
+      instagram: sumPathInt('socialPlatformBreakdown', 'instagram'),
+      whatsapp:  sumPathInt('socialPlatformBreakdown', 'whatsapp'),
+      linkedin:  sumPathInt('socialPlatformBreakdown', 'linkedin'),
+    },
+    // Production & delivery
+    livesSold:         sumInt('livesSold'),
+    policiesDelivered: sumInt('policiesDelivered'),
+    // Hours (production tracking, distinct from reflection hoursWorked)
+    officeHours: sumFloat('officeHours'),
+    fieldHours:  sumFloat('fieldHours'),
 
     aggregatedFromDaily: true,
   };

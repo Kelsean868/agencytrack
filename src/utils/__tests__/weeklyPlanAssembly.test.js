@@ -8,7 +8,7 @@ import {
 
 const FLOORS = {
   callsMade: 100,
-  contactsMade: 40,
+  telContacts: 40,
   factFindsCompleted: 8,
   closingInterviewsKept: 5,
   applicationsSubmitted: 3,
@@ -21,14 +21,14 @@ describe('weeklyPlanAssembly — assembleSuggestion', () => {
 
     expect(targets).toEqual({
       callsMade: 150,
-      contactsMade: 40,            // floor
+      telContacts: 40,            // floor
       factFindsCompleted: 8,       // floor
       closingInterviewsKept: 12,
       applicationsSubmitted: 6,
     });
     expect(provenance).toEqual({
       callsMade: 'derived',
-      contactsMade: 'floor',
+      telContacts: 'floor',
       factFindsCompleted: 'floor',
       closingInterviewsKept: 'derived',
       applicationsSubmitted: 'derived',
@@ -62,7 +62,7 @@ describe('weeklyPlanAssembly — assembleSuggestion', () => {
   it('missing floor keys fall back to 0 (no NaN)', () => {
     const { targets } = assembleSuggestion({ mode: 'floor' }, { callsMade: 100 });
     expect(targets.callsMade).toBe(100);
-    expect(targets.contactsMade).toBe(0);
+    expect(targets.telContacts).toBe(0);
     PLAN_METRIC_KEYS.forEach((k) => expect(Number.isFinite(targets[k])).toBe(true));
   });
 });
@@ -86,8 +86,8 @@ describe('weeklyPlanAssembly — stepTarget', () => {
     expect(next.targets.callsMade).toBe(121);
     expect(next.provenance.callsMade).toBe('agent');
     // other keys untouched
-    expect(next.targets.contactsMade).toBe(40);
-    expect(next.provenance.contactsMade).toBe('floor');
+    expect(next.targets.telContacts).toBe(40);
+    expect(next.provenance.telContacts).toBe('floor');
   });
 
   it('decrements above the floor and flips to agent', () => {

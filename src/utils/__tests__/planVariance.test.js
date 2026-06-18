@@ -38,15 +38,15 @@ describe('computeProspectingCallsActual — 4-sum (no serviceCalls, ratified 202
 const WEEK_START = '2026-06-07';
 
 const FLOORS = {
-  callsMade: 60, contactsMade: 40, factFindsCompleted: 10,
+  callsMade: 60, telContacts: 40, factFindsCompleted: 10,
   closingInterviewsKept: 10, applicationsSubmitted: 1,
 };
 
 // A committed plan mirroring the annotation's worked example
 // (FLOOR/PLAN: apps 1/2, CIs 10/6, FFI 10/12, calls 60/50, contacts 40/40).
 const PLAN = {
-  targets: { callsMade: 50, contactsMade: 40, factFindsCompleted: 12, closingInterviewsKept: 6, applicationsSubmitted: 2 },
-  provenance: { callsMade: 'agent', contactsMade: 'floor', factFindsCompleted: 'agent', closingInterviewsKept: 'derived', applicationsSubmitted: 'derived' },
+  targets: { callsMade: 50, telContacts: 40, factFindsCompleted: 12, closingInterviewsKept: 6, applicationsSubmitted: 2 },
+  provenance: { callsMade: 'agent', telContacts: 'floor', factFindsCompleted: 'agent', closingInterviewsKept: 'derived', applicationsSubmitted: 'derived' },
 };
 
 // A v2 flat submission (extractFields flat arm; version 2 → newBusiness.apps).
@@ -66,18 +66,18 @@ describe('planVariance — constants', () => {
   });
   it('exposes the five plan metric keys in order', () => {
     expect(PLAN_METRIC_KEYS).toEqual([
-      'callsMade', 'contactsMade', 'factFindsCompleted', 'closingInterviewsKept', 'applicationsSubmitted',
+      'callsMade', 'telContacts', 'factFindsCompleted', 'closingInterviewsKept', 'applicationsSubmitted',
     ]);
   });
   it('only callsMade lacks a daily source', () => {
     expect(PACE_METRIC_META.callsMade.hasDailySource).toBe(false);
-    expect(PACE_METRIC_META.contactsMade.hasDailySource).toBe(true);
+    expect(PACE_METRIC_META.telContacts.hasDailySource).toBe(true);
     expect(PACE_METRIC_META.factFindsCompleted.hasDailySource).toBe(true);
     expect(PACE_METRIC_META.closingInterviewsKept.hasDailySource).toBe(true);
     expect(PACE_METRIC_META.applicationsSubmitted.hasDailySource).toBe(true);
   });
-  it('contacts carries the honest qualified-approaches clarifier', () => {
-    expect(PACE_METRIC_META.contactsMade.clarifier).toBe('qualified approaches');
+  it('telContacts has no clarifier (real field as of v2 Phase 1b, not a proxy)', () => {
+    expect(PACE_METRIC_META.telContacts.clarifier).toBeNull();
   });
 });
 
@@ -118,7 +118,7 @@ describe('computeWeeklyActuals — prospecting calls 4-sum (no serviceCalls)', (
   });
   it('maps contacts→qualifiedApproaches, FFI→ffiConducted, CI→ciConducted, apps→newBusiness.apps', () => {
     const a = computeWeeklyActuals(v2Submission());
-    expect(a.contactsMade).toBe(40);
+    expect(a.telContacts).toBe(40);
     expect(a.factFindsCompleted).toBe(8);
     expect(a.closingInterviewsKept).toBe(5);
     expect(a.applicationsSubmitted).toBe(3); // v2 nested newBusiness.apps via extractFields
@@ -126,19 +126,19 @@ describe('computeWeeklyActuals — prospecting calls 4-sum (no serviceCalls)', (
   it('handles a null/empty submission without throwing', () => {
     const a = computeWeeklyActuals(null);
     expect(a).toEqual({
-      callsMade: 0, contactsMade: 0, factFindsCompleted: 0, closingInterviewsKept: 0, applicationsSubmitted: 0,
+      callsMade: 0, telContacts: 0, factFindsCompleted: 0, closingInterviewsKept: 0, applicationsSubmitted: 0,
     });
   });
 });
 
 describe('aggregateDailyActuals — sums daily-sourced metrics, calls is null', () => {
-  it('sums qualifiedApproaches/ffiConducted/ciConducted/newBusiness.apps across docs', () => {
+  it('sums telContacts/ffiConducted/ciConducted/newBusiness.apps across docs', () => {
     const docs = [
-      { qualifiedApproaches: 10, ffiConducted: 2, ciConducted: 1, newBusiness: { apps: 1 } },
-      { qualifiedApproaches: 15, ffiConducted: 3, ciConducted: 2, newBusiness: { apps: 0 } },
+      { telContacts: 10, ffiConducted: 2, ciConducted: 1, newBusiness: { apps: 1 } },
+      { telContacts: 15, ffiConducted: 3, ciConducted: 2, newBusiness: { apps: 0 } },
     ];
     const a = aggregateDailyActuals(docs);
-    expect(a.contactsMade).toBe(25);
+    expect(a.telContacts).toBe(25);
     expect(a.factFindsCompleted).toBe(5);
     expect(a.closingInterviewsKept).toBe(3);
     expect(a.applicationsSubmitted).toBe(1);
@@ -148,9 +148,9 @@ describe('aggregateDailyActuals — sums daily-sourced metrics, calls is null', 
   });
   it('empty / non-array input yields zeros and null calls', () => {
     expect(aggregateDailyActuals([])).toEqual({
-      callsMade: null, contactsMade: 0, factFindsCompleted: 0, closingInterviewsKept: 0, applicationsSubmitted: 0,
+      callsMade: null, telContacts: 0, factFindsCompleted: 0, closingInterviewsKept: 0, applicationsSubmitted: 0,
     });
-    expect(aggregateDailyActuals(undefined).contactsMade).toBe(0);
+    expect(aggregateDailyActuals(undefined).telContacts).toBe(0);
   });
   it('tolerates docs missing newBusiness', () => {
     expect(aggregateDailyActuals([{ qualifiedApproaches: 4 }]).applicationsSubmitted).toBe(0);
@@ -228,7 +228,7 @@ describe('buildPaceRows — source switch + provenance chip', () => {
   it('daily source: no submission → daily aggregate + "mid-week · daily capture" chip', () => {
     const result = buildPaceRows({
       committedPlan: PLAN, weekSubmission: null,
-      dailyDocs: [{ qualifiedApproaches: 20, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 } }],
+      dailyDocs: [{ telContacts: 20, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 } }],
       floors: FLOORS, weekStart: WEEK_START, todayTT: '2026-06-11', // Thu → elapsed 4
     });
     expect(result.source).toBe('daily');
@@ -241,7 +241,7 @@ describe('buildPaceRows — source switch + provenance chip', () => {
 describe('buildPaceRows — no-daily-source (hatched calls) state', () => {
   const result = buildPaceRows({
     committedPlan: PLAN, weekSubmission: null,
-    dailyDocs: [{ qualifiedApproaches: 20, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 } }],
+    dailyDocs: [{ telContacts: 20, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 } }],
     floors: FLOORS, weekStart: WEEK_START, todayTT: '2026-06-11',
   });
   it('callsMade mid-week is hatched: null actual, null variance, no pace marker', () => {
@@ -252,8 +252,8 @@ describe('buildPaceRows — no-daily-source (hatched calls) state', () => {
     expect(calls.showPace).toBe(false);
     expect(calls.fillPct).toBe(0);
   });
-  it('contactsMade mid-week resolves from the daily aggregate (qualified approaches)', () => {
-    const contacts = result.rows.find((r) => r.key === 'contactsMade');
+  it('telContacts mid-week resolves from the daily aggregate (telContacts real field)', () => {
+    const contacts = result.rows.find((r) => r.key === 'telContacts');
     expect(contacts.noDailySource).toBe(false);
     expect(contacts.actual).toBe(20);
     expect(contacts.showPace).toBe(true);
@@ -264,7 +264,7 @@ describe('buildPaceRows — track render percentages', () => {
   // Thu (elapsed 4) mid-week, daily aggregate matching the annotation worked example.
   const result = buildPaceRows({
     committedPlan: PLAN, weekSubmission: null,
-    dailyDocs: [{ qualifiedApproaches: 40, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 } }],
+    dailyDocs: [{ telContacts: 40, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 } }],
     floors: FLOORS, weekStart: WEEK_START, todayTT: '2026-06-11',
   });
   const row = (k) => result.rows.find((r) => r.key === k);
@@ -299,7 +299,7 @@ describe('buildPaceRows — floor-above-plan renders clamped, no special state',
   });
   it('floor at or above plan clamps to the cap (CIs floor 10 / plan 6 → 100%)', () => {
     expect(row('closingInterviewsKept').floorPct).toBe(100);
-    expect(row('contactsMade').floorPct).toBe(100); // floor 40 / plan 40 → 100%
+    expect(row('telContacts').floorPct).toBe(100); // floor 40 / plan 40 → 100%
   });
   it('carries plan, floor and provenance through for each row', () => {
     expect(row('callsMade').plan).toBe(50);

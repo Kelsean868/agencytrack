@@ -123,6 +123,7 @@ const INITIAL_DATA = {
   seminarTradeshowCalls:        0,
   serviceCalls:                 0,
   // Step 3 — approaches & FFI
+  telContacts:                  0,
   qualifiedApproaches:          0,
   appointmentsSet:              0,
   ffisScheduled:                0,

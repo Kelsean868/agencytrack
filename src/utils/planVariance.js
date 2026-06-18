@@ -23,8 +23,8 @@
  *                        daily  = NONE — Daily Capture has no calls/dials field, so the
  *                                   calls row is the hatched "weekly only · no daily pace"
  *                                   state mid-week and only resolves once submitted.
- *   contactsMade         weekly = qualifiedApproaches (telContacts is a read-time alias)
- *                        daily  = qualifiedApproaches
+ *   telContacts          weekly = telContacts (real wizard field as of v2 Phase 1b)
+ *                        daily  = telContacts (Phase 1a daily field)
  *   factFindsCompleted   weekly = ffiConducted          daily = ffiConducted
  *   closingInterviewsKept weekly = ciConducted          daily = ciConducted
  *   applicationsSubmitted weekly = newBusiness.apps (via extractFields v2 arm)
@@ -59,7 +59,7 @@ export const PACE_ON_TRACK_FRACTION = 0.9;
 // marks which metrics Daily Capture can supply mid-week.
 export const PACE_METRIC_META = Object.freeze({
   callsMade:             { label: 'Prospecting calls', clarifier: null,               hasDailySource: false },
-  contactsMade:          { label: 'Contacts made', clarifier: 'qualified approaches', hasDailySource: true  },
+  telContacts:           { label: 'Contacts made', clarifier: null,                  hasDailySource: true  },
   factFindsCompleted:    { label: 'Fact-finds',    clarifier: null,                  hasDailySource: true  },
   closingInterviewsKept: { label: 'CIs kept',      clarifier: null,                  hasDailySource: true  },
   applicationsSubmitted: { label: 'Applications',  clarifier: null,                  hasDailySource: true  },
@@ -144,7 +144,7 @@ export function computeWeeklyActuals(submission) {
   const f = extractFields(submission) ?? {};
   return {
     callsMade: computeProspectingCallsActual(f),
-    contactsMade:          num(f.qualifiedApproaches),
+    telContacts:           num(f.telContacts),
     factFindsCompleted:    num(f.ffiConducted),
     closingInterviewsKept: num(f.ciConducted),
     applicationsSubmitted: num(f.applicationsSold),
@@ -162,14 +162,14 @@ export function aggregateDailyActuals(dailyDocs) {
   const docs = Array.isArray(dailyDocs) ? dailyDocs : [];
   const acc = {
     callsMade:             null, // no daily source — hatched
-    contactsMade:          0,
+    telContacts:           0,
     factFindsCompleted:    0,
     closingInterviewsKept: 0,
     applicationsSubmitted: 0,
   };
   for (const d of docs) {
     if (!d) continue;
-    acc.contactsMade          += num(d.qualifiedApproaches);
+    acc.telContacts            += num(d.telContacts);
     acc.factFindsCompleted    += num(d.ffiConducted);
     acc.closingInterviewsKept += num(d.ciConducted);
     acc.applicationsSubmitted += num(d.newBusiness?.apps);

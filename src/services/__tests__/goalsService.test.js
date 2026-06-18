@@ -74,7 +74,7 @@ describe('getCompanyMinimums — weeklyActivityFloors defaults', () => {
 
     const result = await getCompanyMinimums('tenant1');
     expect(result.weeklyActivityFloors.callsMade).toBe(100);
-    expect(result.weeklyActivityFloors.contactsMade).toBe(40);
+    expect(result.weeklyActivityFloors.telContacts).toBe(40);
     expect(result.weeklyActivityFloors.api).toBe(4800);
   });
 
@@ -209,7 +209,7 @@ describe('setCompanyMinimums — preserves weeklyActivityFloors via merge', () =
 describe('setCompanyMinimums — weeklyActivityFloors validation and write (Track E b)', () => {
   const VALID_FLOORS = {
     callsMade: 60,
-    contactsMade: 40,
+    telContacts: 40,
     appointmentsScheduled: 20,
     interviewsKept: 15,
     factFindsCompleted: 10,
