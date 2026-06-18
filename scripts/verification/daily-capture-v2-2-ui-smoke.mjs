@@ -263,18 +263,27 @@ async function smokeBody(page, theme, { today, weekStarting, backFillDate, db, t
       fail(`[${theme}] doc-persisted`, `ffi=${savedDoc.ffiConducted} api=${savedDoc.newBusiness?.api}`);
     }
 
-    // Points pill visible on reload and VALUE == computePoints(smoke inputs).
-    // ffi=1(5pt) + ci=1(10pt) + apps=1(25pt) + api=5000(floor(5000/1000)*1=5pt) = 45 pts.
-    const EXPECTED_PTS = 45;
+    // Points pill visible on reload and VALUE == computePoints(savedDoc fields).
+    // Computed dynamically from savedDoc (dark theme accumulates on light's doc, so
+    // the expected value differs per theme — hardcoding 45 would mis-fail dark).
+    // Scoring mirrors computeDayPoints → computePoints for the fields the smoke writes:
+    //   ffi * 5  +  ci * 10  +  floor(apps) * 25  +  floor(api/1000) * 1
+    const _n = (v) => Math.max(0, parseFloat(v) || 0);
+    const _expectedPts = savedDoc
+      ? Math.floor(_n(savedDoc.ffiConducted))             * 5
+        + Math.floor(_n(savedDoc.ciConducted))            * 10
+        + Math.floor(_n(savedDoc.newBusiness?.apps))      * 25
+        + Math.floor(_n(savedDoc.newBusiness?.api) / 1000) * 1
+      : 0;
     const pillLocator = page.locator('[data-testid="dcv2-points-pill"]');
     const pillAfterReload = await pillLocator.count();
     if (pillAfterReload > 0) {
       pass(`[${theme}] points-pill-visible-after-reload`);
       const pillAriaLabel = await pillLocator.getAttribute('aria-label').catch(() => null);
-      if (pillAriaLabel === `${EXPECTED_PTS} points today`) {
+      if (pillAriaLabel === `${_expectedPts} points today`) {
         pass(`[${theme}] points-pill-value`, `"${pillAriaLabel}"`);
       } else {
-        fail(`[${theme}] points-pill-value`, `expected "${EXPECTED_PTS} points today" got "${pillAriaLabel}"`);
+        fail(`[${theme}] points-pill-value`, `expected "${_expectedPts} points today" got "${pillAriaLabel}"`);
       }
     } else {
       fail(`[${theme}] points-pill-visible-after-reload`, 'dcv2-points-pill not found');
