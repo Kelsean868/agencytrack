@@ -8,7 +8,10 @@
  * parallel display sum that mirrors aggregator's sumInt over the same keys.)
  */
 
-const intOrZero = (v) => parseInt(v, 10) || 0;
+import { computePoints } from '../../lib/computePoints';
+
+const intOrZero  = (v) => parseInt(v, 10) || 0;
+const floatOrZero = (v) => parseFloat(v) || 0;
 
 function sumIntsAcross(entries, key) {
   return entries.reduce((acc, e) => acc + intOrZero(e?.[key]), 0);
@@ -31,4 +34,106 @@ export function deriveCountStripChips(weekDocs) {
     ci:   sumIntsAcross(entries, 'ciConducted'),
     apps: sumPathIntsAcross(entries, 'newBusiness', 'apps'),
   };
+}
+
+/**
+ * Map a daily entry to the field shape expected by computePoints, then score it.
+ *
+ * computePoints expects weekly-report field names; daily uses a simplified schema.
+ * Key mappings:
+ *   daily.dials (single total)     → coldCalls bucket (feeds the dials accumulator)
+ *   daily.newBusiness.{apps,api}   → applicationsSold, apiSold (version=1 path)
+ *   daily.newNamesAdded            → namesFromOther
+ *   daily.serviceContacts          → serviceCalls
+ *
+ * @param {object} entry - daily activity entry (from Firestore or UI state)
+ * @returns {number} integer point total for this day
+ */
+export function computeDayPoints(entry) {
+  if (!entry) return 0;
+  return computePoints({
+    ...entry,
+    // dials: single daily total → coldCalls bucket; zero out the other call types
+    coldCalls:             floatOrZero(entry.dials),
+    referralCalls:         0,
+    followUpCalls:         0,
+    seminarTradeshowCalls: 0,
+    // production: version=1 flat key names
+    applicationsSold: intOrZero(entry.newBusiness?.apps),
+    apiSold:          floatOrZero(entry.newBusiness?.api),
+    // names
+    namesFromOther: intOrZero(entry.newNamesAdded),
+    // service
+    serviceCalls: intOrZero(entry.serviceContacts),
+  });
+}
+
+/**
+ * Derive Mon–Sat week-strip day descriptors for the current week.
+ *
+ * @param {Array<object>} weekDocs    - dailyActivity docs for the current week
+ * @param {string}        today       - 'YYYY-MM-DD' in TT timezone
+ * @param {string}        weekStarting - 'YYYY-MM-DD' (the Sunday that opens the week)
+ * @returns {Array<{date,label,dayNum,isToday,isPast,isFuture,isLogged,isOff}>}
+ *   6 items: Mon(+1) … Sat(+6) relative to weekStarting
+ */
+export function deriveWeekStripDays(weekDocs, today, weekStarting) {
+  const entries  = Array.isArray(weekDocs) ? weekDocs : [];
+  const docDates = new Set(entries.map((d) => d.date));
+  const todayD   = new Date(today + 'T12:00:00Z');
+  const weekStartD = new Date(weekStarting + 'T12:00:00Z');
+  const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(weekStartD);
+    d.setUTCDate(d.getUTCDate() + i + 1); // i=0 → Mon, i=5 → Sat
+    const yyyy = d.getUTCFullYear();
+    const mm   = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd   = String(d.getUTCDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    return {
+      date:     dateStr,
+      label:    DAY_LABELS[d.getUTCDay()],
+      dayNum:   d.getUTCDate(),
+      isToday:  dateStr === today,
+      isPast:   d < todayD,
+      isFuture: d > todayD,
+      isLogged: docDates.has(dateStr),
+      isOff:    d.getUTCDay() === 6, // Saturday
+    };
+  });
+}
+
+/**
+ * Count the current logging streak (consecutive non-Sunday days with saved entries,
+ * counting backward from today; today is included when already logged).
+ *
+ * @param {Array<object>} weekDocs - dailyActivity docs for the current week
+ * @param {string}        today    - 'YYYY-MM-DD' in TT timezone
+ * @returns {number}
+ */
+export function computeStreak(weekDocs, today) {
+  const entries  = Array.isArray(weekDocs) ? weekDocs : [];
+  const docDates = new Set(entries.map((d) => d.date));
+  const todayD   = new Date(today + 'T12:00:00Z');
+
+  // If today is already logged, start counting from today; else start from yesterday.
+  const startOffset = docDates.has(today) ? 0 : 1;
+  let streak = 0;
+
+  for (let i = startOffset; i < startOffset + 6; i++) {
+    const d = new Date(todayD);
+    d.setUTCDate(d.getUTCDate() - i);
+    if (d.getUTCDay() === 0) continue; // skip Sundays (off/confirm day)
+    const yyyy = d.getUTCFullYear();
+    const mm   = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd   = String(d.getUTCDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    if (docDates.has(dateStr)) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  return streak;
 }
