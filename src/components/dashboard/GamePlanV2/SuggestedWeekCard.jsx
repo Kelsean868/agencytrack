@@ -45,7 +45,7 @@ import { getTodayTT } from '../../../utils/dateInputs';
 // note above). Order mirrors the build annotation's floor state.
 const FLOOR_METRICS = [
   { key: 'callsMade',             label: 'Prospecting calls' },
-  { key: 'contactsMade',          label: 'Contacts' },
+  { key: 'telContacts',           label: 'Contacts' },
   { key: 'factFindsCompleted',    label: 'FFIs' },
   { key: 'closingInterviewsKept', label: 'CIs' },
   { key: 'applicationsSubmitted', label: 'Apps' },

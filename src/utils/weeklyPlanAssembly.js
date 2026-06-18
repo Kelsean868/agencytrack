@@ -12,7 +12,7 @@
 
 export const PLAN_METRIC_KEYS = [
   'callsMade',
-  'contactsMade',
+  'telContacts',
   'factFindsCompleted',
   'closingInterviewsKept',
   'applicationsSubmitted',

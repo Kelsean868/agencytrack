@@ -20,15 +20,15 @@ const sparseSubmissions = Array.from({ length: 3 }, (_, i) => ({
 }));
 
 const FLOORS = {
-  callsMade: 100, contactsMade: 40, factFindsCompleted: 8,
+  callsMade: 100, telContacts: 40, factFindsCompleted: 8,
   closingInterviewsKept: 5, applicationsSubmitted: 3,
 };
 
 const committedPlan = {
   id: 'agent-1_2026-06-07',
   agentId: 'agent-1',
-  targets: { callsMade: 120, contactsMade: 45, factFindsCompleted: 8, closingInterviewsKept: 6, applicationsSubmitted: 4 },
-  provenance: { callsMade: 'agent', contactsMade: 'agent', factFindsCompleted: 'floor', closingInterviewsKept: 'derived', applicationsSubmitted: 'derived' },
+  targets: { callsMade: 120, telContacts: 45, factFindsCompleted: 8, closingInterviewsKept: 6, applicationsSubmitted: 4 },
+  provenance: { callsMade: 'agent', telContacts: 'agent', factFindsCompleted: 'floor', closingInterviewsKept: 'derived', applicationsSubmitted: 'derived' },
   committedAt: { toDate: () => new Date('2026-06-04T12:00:00Z') },
 };
 
@@ -47,7 +47,7 @@ describe('SuggestedWeekCard — Slice 2 planning (gated on onCommit)', () => {
     expect(screen.queryByText(/read-only/i)).not.toBeInTheDocument(); // planning enabled
     fireEvent.click(screen.getByTestId('plan-this-week'));
     const edit = screen.getByTestId('weekly-plan-edit');
-    ['callsMade', 'contactsMade', 'factFindsCompleted', 'closingInterviewsKept', 'applicationsSubmitted'].forEach((k) => {
+    ['callsMade', 'telContacts', 'factFindsCompleted', 'closingInterviewsKept', 'applicationsSubmitted'].forEach((k) => {
       expect(within(edit).getByTestId(`plan-step-${k}-value`)).toBeInTheDocument();
     });
   });
@@ -66,12 +66,12 @@ describe('SuggestedWeekCard — Slice 2 planning (gated on onCommit)', () => {
       <SuggestedWeekCard committedAnnualAPI={120000} submissions={sparseSubmissions} floors={FLOORS} onCommit={vi.fn()} />,
     );
     fireEvent.click(screen.getByTestId('plan-this-week'));
-    // contactsMade seeds at its floor (40) → decrement disabled.
-    expect(screen.getByTestId('plan-step-contactsMade-dec')).toBeDisabled();
-    expect(screen.getByTestId('plan-step-contactsMade-value')).toHaveTextContent('40');
-    fireEvent.click(screen.getByTestId('plan-step-contactsMade-inc'));
-    expect(screen.getByTestId('plan-step-contactsMade-value')).toHaveTextContent('41');
-    expect(screen.getByTestId('plan-step-contactsMade-dec')).toBeEnabled();
+    // telContacts seeds at its floor (40) → decrement disabled.
+    expect(screen.getByTestId('plan-step-telContacts-dec')).toBeDisabled();
+    expect(screen.getByTestId('plan-step-telContacts-value')).toHaveTextContent('40');
+    fireEvent.click(screen.getByTestId('plan-step-telContacts-inc'));
+    expect(screen.getByTestId('plan-step-telContacts-value')).toHaveTextContent('41');
+    expect(screen.getByTestId('plan-step-telContacts-dec')).toBeEnabled();
   });
 
   it('Reset returns steppers to the current suggestions', () => {

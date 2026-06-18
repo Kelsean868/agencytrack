@@ -33,14 +33,14 @@ const SUNDAY = '2026-06-07';     // verified Sunday
 const NOT_SUNDAY = '2026-06-08'; // Monday
 
 const FLOORS = {
-  callsMade: 100, contactsMade: 40, factFindsCompleted: 8,
+  callsMade: 100, telContacts: 40, factFindsCompleted: 8,
   closingInterviewsKept: 5, applicationsSubmitted: 3,
 };
 
 function validPlan() {
   return {
-    targets: { callsMade: 150, contactsMade: 40, factFindsCompleted: 8, closingInterviewsKept: 12, applicationsSubmitted: 6 },
-    provenance: { callsMade: 'derived', contactsMade: 'floor', factFindsCompleted: 'floor', closingInterviewsKept: 'derived', applicationsSubmitted: 'agent' },
+    targets: { callsMade: 150, telContacts: 40, factFindsCompleted: 8, closingInterviewsKept: 12, applicationsSubmitted: 6 },
+    provenance: { callsMade: 'derived', telContacts: 'floor', factFindsCompleted: 'floor', closingInterviewsKept: 'derived', applicationsSubmitted: 'agent' },
     anchorAPIAtCommit: 200000,
   };
 }

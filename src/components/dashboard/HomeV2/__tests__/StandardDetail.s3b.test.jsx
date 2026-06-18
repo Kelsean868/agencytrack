@@ -25,17 +25,17 @@ const MINIMUMS = { weeklyActivityFloors: DEFAULT_WEEKLY_ACTIVITY_FLOORS };
 
 const COMMITTED_PLAN = {
   targets: {
-    callsMade: 50, contactsMade: 40, factFindsCompleted: 12,
+    callsMade: 50, telContacts: 40, factFindsCompleted: 12,
     closingInterviewsKept: 6, applicationsSubmitted: 2,
   },
   provenance: {
-    callsMade: 'agent', contactsMade: 'floor', factFindsCompleted: 'agent',
+    callsMade: 'agent', telContacts: 'floor', factFindsCompleted: 'agent',
     closingInterviewsKept: 'derived', applicationsSubmitted: 'derived',
   },
 };
 
 const DAILY_DOCS = [{
-  qualifiedApproaches: 20, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 },
+  telContacts: 20, ffiConducted: 6, ciConducted: 5, newBusiness: { apps: 2 },
 }];
 
 // A v2 flat submitted weekly report
@@ -119,7 +119,7 @@ describe('StandardDetail — mid-week / daily source (D3 + D4 state 2)', () => {
 
   it('renders mini-track rows for the 5 plan metrics', () => {
     renderMidWeek();
-    ['callsMade', 'contactsMade', 'factFindsCompleted', 'closingInterviewsKept', 'applicationsSubmitted'].forEach((k) => {
+    ['callsMade', 'telContacts', 'factFindsCompleted', 'closingInterviewsKept', 'applicationsSubmitted'].forEach((k) => {
       expect(screen.getByTestId(`drawer-plan-row-${k}`)).toBeInTheDocument();
     });
   });
@@ -132,7 +132,7 @@ describe('StandardDetail — mid-week / daily source (D3 + D4 state 2)', () => {
 
   it('daily-sourced metrics show actuals from the aggregate', () => {
     renderMidWeek();
-    expect(screen.getByTestId('drawer-actual-contactsMade')).toHaveTextContent('20');
+    expect(screen.getByTestId('drawer-actual-telContacts')).toHaveTextContent('20');
     expect(screen.getByTestId('drawer-actual-factFindsCompleted')).toHaveTextContent('6');
     expect(screen.getByTestId('drawer-actual-closingInterviewsKept')).toHaveTextContent('5');
     expect(screen.getByTestId('drawer-actual-applicationsSubmitted')).toHaveTextContent('2');
@@ -179,7 +179,7 @@ describe('StandardDetail — final / submitted source (D3 + D4 state 3)', () => 
 
   it('contacts resolves from the submission qualifiedApproaches', () => {
     renderFinal();
-    expect(screen.getByTestId('drawer-actual-contactsMade')).toHaveTextContent('40');
+    expect(screen.getByTestId('drawer-actual-telContacts')).toHaveTextContent('40');
   });
 
   it('calls row is NOT hatched when the final source is active', () => {

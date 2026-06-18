@@ -40,7 +40,7 @@ const sparseSubmissions = Array.from({ length: 3 }, (_, i) => ({
 
 const FLOORS = {
   callsMade: 100,
-  contactsMade: 40,
+  telContacts: 40,
   factFindsCompleted: 8,
   closingInterviewsKept: 5,
   applicationsSubmitted: 3,

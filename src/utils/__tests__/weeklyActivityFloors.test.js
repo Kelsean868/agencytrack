@@ -10,7 +10,7 @@ describe('DEFAULT_WEEKLY_ACTIVITY_FLOORS', () => {
   it('matches Tatil workshop 2026-05-19 Appendix A (10 floors)', () => {
     expect(DEFAULT_WEEKLY_ACTIVITY_FLOORS).toEqual({
       callsMade:             60,
-      contactsMade:          40,
+      telContacts:          40,
       appointmentsScheduled: 20,
       interviewsKept:        15,
       factFindsCompleted:    10,
@@ -39,9 +39,10 @@ describe('WEEKLY_ACTIVITY_FLOOR_ROWS', () => {
     expect(currencyRows[0].key).toBe('api');
   });
 
-  it('surfaces the contactsMade proxy footnote', () => {
-    const row = WEEKLY_ACTIVITY_FLOOR_ROWS.find((r) => r.key === 'contactsMade');
-    expect(row.footnote).toMatch(/qualified approaches/i);
+  it('telContacts row exists and has no proxy footnote (v2 Phase 1b: real field)', () => {
+    const row = WEEKLY_ACTIVITY_FLOOR_ROWS.find((r) => r.key === 'telContacts');
+    expect(row).toBeDefined();
+    expect(row.footnote).toBeUndefined();
   });
 });
 
@@ -77,7 +78,7 @@ describe('deriveWeeklyFloorActuals', () => {
   it('returns zeros when fields is null', () => {
     const result = deriveWeeklyFloorActuals(null);
     expect(result).toEqual({
-      callsMade: 0, contactsMade: 0, appointmentsScheduled: 0,
+      callsMade: 0, telContacts: 0, appointmentsScheduled: 0,
       interviewsKept: 0, factFindsCompleted: 0, closingInterviewsKept: 0,
       applicationsSubmitted: 0, clientsSold: 0, api: 0, referralsNewLeads: 0,
     });
@@ -100,7 +101,7 @@ describe('deriveWeeklyFloorActuals', () => {
     };
     const result = deriveWeeklyFloorActuals(fields);
     expect(result.callsMade).toBe(70); // 30+15+20+5 = 70 (4-sum, serviceCalls excluded)
-    expect(result.contactsMade).toBe(45);
+    expect(result.telContacts).toBe(45);
     expect(result.appointmentsScheduled).toBe(21);
     expect(result.interviewsKept).toBe(20); // ffi + ci
     expect(result.factFindsCompleted).toBe(11);

@@ -84,7 +84,7 @@ const EXPECTED_PAYLOAD_SHAPE_KEYS = [
   // Step 2 — telephone
   'referralCalls', 'followUpCalls', 'coldCalls', 'seminarTradeshowCalls', 'serviceCalls',
   // Step 3 — approaches & FFI
-  'qualifiedApproaches', 'appointmentsSet', 'ffisScheduled', 'ffiConducted', 'solutionPresentations',
+  'telContacts', 'qualifiedApproaches', 'appointmentsSet', 'ffisScheduled', 'ffiConducted', 'solutionPresentations',
   // Step 4 — closing & new business
   'newCIBooked', 'oldCIBooked', 'ciConducted', 'livesSold',
   'newBusiness', 'pppIncreases', 'lumpsums',
