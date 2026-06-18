@@ -87,6 +87,16 @@ Phase 2.2 wires `aggregateCurrentWeekDaily` into DCv2 `handleSave` **awaited** (
 
 ---
 
+## loggingModeService.catchUpWeeklyToDaily — same browser-local week key (banked PR #{TBD}, LOW)
+
+Phase 2.2 TT-anchored `aggregateCurrentWeekDaily` (the hot path — runs on every DCv2 save) from `getMostRecentSunday()` → `getSundayOf(getTodayTT())`. Its sibling `catchUpWeeklyToDaily` (`loggingModeService.js`, the weekly→daily mode-switch handoff) still keys its draft lookup on `getMostRecentSunday()` (browser-local) — the identical off-TZ pattern. Left out of the Phase 2.2 fix scope (the dispatcher's finding named `aggregateCurrentWeekDaily`; `catchUpWeeklyToDaily` is mode-switch-only via ProfileScreen, not a hot path).
+
+**Action (if pursued):** TT-anchor `catchUpWeeklyToDaily`'s `weekStarting` the same way (`getSundayOf(getTodayTT())`), so an off-TZ agent switching weekly→daily reads the correct week's draft to carry over. Confirm the catch-up entry `today` param (caller passes `todayLocalDate()`) is also TT-consistent.
+
+**Severity:** LOW — mode-switch-only, not the hot path; an off-TZ agent only hits it when toggling logging mode mid-week.
+
+---
+
 ## Daily Capture v2 Phase 3 — pace + working days (QUEUED — stacks on Phase 2, 2026-06-18, HIGH)
 
 `workingDaysPerWeek` on user doc (default 5, Profile UI toggle). `weeklyPointsFloor` via de-duplicated activity map (no ffi+ci double-count). `dailyPaceTarget` + `weekToDateTarget`. Wire pill ahead/on-pace/behind. Brief landed: `docs/briefs/brief-daily-capture-v2-3-pace.md`. Branch: `feat/daily-capture-v2-3-pace` off Phase 2 HEAD. **Waits on Phase 2 human merge.**
