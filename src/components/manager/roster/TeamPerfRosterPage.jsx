@@ -1,29 +1,30 @@
 import React, { useState, useMemo } from 'react';
-import { MOCK_ROWS } from './mockRosterData';
+import { useAuth } from '../../../context/AuthContext';
+import { useTeamRoster } from '../../../hooks/useTeamRoster';
+import { sortRows } from '../../../lib/teamRoster';
 import PeriodFilter from './PeriodFilter';
 import { defaultPeriodForGrain } from './periodUtils';
 import TeamPerfRoster from './TeamPerfRoster';
 
-// ─── Local sort (mirrors teamRoster.js sortRows contract) ─────────────────────
-// Once the data-layer PR merges, this can be replaced with:
-//   import { sortRows } from '../../../lib/teamRoster';
-// For v1 the UI branch is build-and-hold independent of the data layer.
-function sortRows(rows, col, dir) {
-  if (!col) return rows;
-  const sign = dir === 'asc' ? 1 : -1;
-  return [...rows].sort((a, b) => {
-    const av = a[col];
-    const bv = b[col];
-    if (av === null || av === undefined) return 1;
-    if (bv === null || bv === undefined) return -1;
-    if (typeof av === 'string') return sign * av.localeCompare(bv);
-    return sign * (av - bv);
-  });
-}
-
 export default function TeamPerfRosterPage() {
+  const { tenantId } = useAuth();
   const [sort, setSort] = useState({ column: 'name', direction: 'asc' });
   const [period, setPeriod] = useState(() => defaultPeriodForGrain('year'));
+
+  const { rows, loading, error } = useTeamRoster(tenantId, period);
+
+  // useTeamRoster returns pctOfAnnualGoal as a 0–1 fraction (computePctOfGoal: ytdAPI / goal);
+  // GoalHeatCell and MobileCard both expect 0–100. memberId is the hook's identifier;
+  // the UI table uses row.id for React keys and data-testid attributes.
+  const mappedRows = useMemo(
+    () =>
+      rows.map((r) => ({
+        ...r,
+        id: r.memberId,
+        pctOfAnnualGoal: r.pctOfAnnualGoal !== null ? r.pctOfAnnualGoal * 100 : null,
+      })),
+    [rows]
+  );
 
   function handleSort(colKey) {
     setSort((prev) =>
@@ -34,9 +35,19 @@ export default function TeamPerfRosterPage() {
   }
 
   const sortedRows = useMemo(
-    () => sortRows(MOCK_ROWS, sort.column, sort.direction),
-    [sort.column, sort.direction]
+    () => sortRows(mappedRows, sort.column, sort.direction),
+    [mappedRows, sort.column, sort.direction]
   );
+
+  if (error) {
+    return (
+      <div className="flex flex-col gap-4 p-4 lg:p-6" data-testid="team-perf-page">
+        <div className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-sm text-danger-ink">
+          Failed to load roster: {error.message}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-4 p-4 lg:p-6" data-testid="team-perf-page">
@@ -53,7 +64,7 @@ export default function TeamPerfRosterPage() {
         rows={sortedRows}
         sort={sort}
         onSort={handleSort}
-        loading={false}
+        loading={loading}
       />
     </div>
   );

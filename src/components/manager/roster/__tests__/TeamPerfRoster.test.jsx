@@ -1,5 +1,5 @@
 import React from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MOCK_ROWS } from '../mockRosterData';
 import TeamPerfRoster from '../TeamPerfRoster';
@@ -10,6 +10,18 @@ import GoalHeatCell from '../GoalHeatCell';
 import PeriodFilter from '../PeriodFilter';
 import { defaultPeriodForGrain, periodLabel } from '../periodUtils';
 import TeamPerfRosterPage from '../TeamPerfRosterPage';
+
+// ─── module mocks (hoisted — required after wiring to real hook) ──────────────
+const mockUseTeamRoster = vi.hoisted(() => vi.fn());
+
+vi.mock('../../../../context/AuthContext', () => ({
+  useAuth: () => ({ tenantId: 'test-tenant' }),
+}));
+
+vi.mock('../../../../hooks/useTeamRoster', () => ({
+  useTeamRoster: mockUseTeamRoster,
+  DEFAULT_PERIOD: { grain: 'year', value: '2026' },
+}));
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const SORT_ASC  = { column: 'name', direction: 'asc' };
@@ -300,6 +312,20 @@ describe('TeamPerfRoster', () => {
 
 // ─── TeamPerfRosterPage integration ───────────────────────────────────────────
 describe('TeamPerfRosterPage', () => {
+  // Simulate hook's return shape: memberId (not id), pctOfAnnualGoal as 0–1 fraction.
+  // The page maps memberId→id and multiplies pctOfAnnualGoal×100 before rendering.
+  beforeEach(() => {
+    mockUseTeamRoster.mockReturnValue({
+      rows: MOCK_ROWS.map((r) => ({
+        ...r,
+        memberId: r.id,
+        pctOfAnnualGoal: r.pctOfAnnualGoal !== null ? r.pctOfAnnualGoal / 100 : null,
+      })),
+      loading: false,
+      error: null,
+    });
+  });
+
   it('renders page container', () => {
     render(<TeamPerfRosterPage />);
     expect(screen.getByTestId('team-perf-page')).toBeTruthy();
