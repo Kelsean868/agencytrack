@@ -3,9 +3,9 @@ import { describe, it, expect } from 'vitest';
 import {
   mapFloorToPoints,
   elapsedWorkingDays,
+  deriveWeekStripDays,
   computePaceState,
   computeWeekToDatePoints,
-  WORKING_DAYS,
 } from '../DailyCaptureV2.helpers';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../../utils/weeklyActivityFloors';
 
@@ -100,12 +100,8 @@ describe('mapFloorToPoints — excluded keys', () => {
 
 // ─── elapsedWorkingDays ──────────────────────────────────────────────────────
 
-describe('elapsedWorkingDays', () => {
+describe('elapsedWorkingDays — wd=5 (default)', () => {
   const WEEK = '2026-06-15'; // Sunday 2026-06-15
-
-  it('WORKING_DAYS constant is 5', () => {
-    expect(WORKING_DAYS).toBe(5);
-  });
 
   it('Sunday (= week start) → 0', () => {
     expect(elapsedWorkingDays('2026-06-15', WEEK)).toBe(0);
@@ -131,8 +127,76 @@ describe('elapsedWorkingDays', () => {
     expect(elapsedWorkingDays('2026-06-20', WEEK)).toBe(5);
   });
 
-  it('Saturday → 5 (Saturday is off; all 5 work days have passed)', () => {
+  it('Saturday → 5 (Saturday is off at wd=5; all 5 work days have passed)', () => {
     expect(elapsedWorkingDays('2026-06-21', WEEK)).toBe(5);
+  });
+});
+
+describe('elapsedWorkingDays — wd=6 (Mon–Sat)', () => {
+  const WEEK = '2026-06-15'; // Sunday 2026-06-15
+
+  it('Sunday → 0', () => {
+    expect(elapsedWorkingDays('2026-06-15', WEEK, 6)).toBe(0);
+  });
+
+  it('Friday → 5', () => {
+    expect(elapsedWorkingDays('2026-06-20', WEEK, 6)).toBe(5);
+  });
+
+  it('Saturday → 6 (Saturday is a working day at wd=6)', () => {
+    expect(elapsedWorkingDays('2026-06-21', WEEK, 6)).toBe(6);
+  });
+});
+
+describe('elapsedWorkingDays — invalid wd falls back to 5', () => {
+  const WEEK = '2026-06-15';
+
+  it('wd=undefined → same as wd=5', () => {
+    expect(elapsedWorkingDays('2026-06-21', WEEK, undefined)).toBe(5);
+  });
+
+  it('wd=7 (out of model) → treated as 5', () => {
+    expect(elapsedWorkingDays('2026-06-21', WEEK, 7)).toBe(5);
+  });
+
+  it('wd=NaN → treated as 5', () => {
+    expect(elapsedWorkingDays('2026-06-21', WEEK, NaN)).toBe(5);
+  });
+
+  it('wd=0 → treated as 5 (never divide-by-zero)', () => {
+    // elapsedWorkingDays with invalid wd falls back to 5; pace denominator gets a real number
+    expect(elapsedWorkingDays('2026-06-21', WEEK, 0)).toBe(5);
+  });
+});
+
+describe('deriveWeekStripDays — Saturday isOff per wd', () => {
+  // June 14, 2026 is Sunday (June 1 = Mon, +13 days = Sun). June 15 = Mon anchor.
+  const WEEK    = '2026-06-14'; // Sunday
+  const TODAY   = '2026-06-15'; // Monday (safe non-Sunday anchor)
+  const SAT_IDX = 5;             // i=5 → Sat = weekStart+6 = June 20
+
+  it('wd=5 → Saturday cell isOff=true', () => {
+    const days = deriveWeekStripDays([], TODAY, WEEK, 5);
+    expect(days[SAT_IDX].date).toBe('2026-06-20'); // Saturday June 20
+    expect(days[SAT_IDX].isOff).toBe(true);
+  });
+
+  it('wd=6 → Saturday cell isOff=false', () => {
+    const days = deriveWeekStripDays([], TODAY, WEEK, 6);
+    expect(days[SAT_IDX].date).toBe('2026-06-20');
+    expect(days[SAT_IDX].isOff).toBe(false);
+  });
+
+  it('Mon–Fri cells are never isOff regardless of wd', () => {
+    [5, 6].forEach((wd) => {
+      const days = deriveWeekStripDays([], TODAY, WEEK, wd);
+      days.slice(0, 5).forEach((d) => expect(d.isOff).toBe(false));
+    });
+  });
+
+  it('invalid wd falls back to 5 (Saturday isOff=true)', () => {
+    const days = deriveWeekStripDays([], TODAY, WEEK, 99);
+    expect(days[SAT_IDX].isOff).toBe(true);
   });
 });
 

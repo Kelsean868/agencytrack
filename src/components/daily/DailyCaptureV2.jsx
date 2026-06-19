@@ -27,7 +27,6 @@ import {
   elapsedWorkingDays,
   computePaceState,
   computeWeekToDatePoints,
-  WORKING_DAYS,
 } from './DailyCaptureV2.helpers';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
 import { getCompanyMinimums } from '../../services/goalsService';
@@ -302,6 +301,7 @@ function WeekStrip({ days, selectedDate, onSelect }) {
             aria-label={`${day.label} ${day.dayNum}${day.isLogged ? ' — logged' : day.isFuture ? ' — upcoming' : day.isOff ? ' — off' : ' — missing'}`}
             className={`${chipClass} min-h-[44px]`}
             data-testid={`dcv2-strip-day-${day.date}`}
+            data-off={day.isOff ? 'true' : 'false'}
           >
             <span className="text-[10px] font-semibold uppercase">{day.label}</span>
             <span className="text-sm font-bold leading-tight">{day.dayNum}</span>
@@ -458,6 +458,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   const [weekDocs,      setWeekDocs]      = useState([]);
   const [chipsLoading,  setChipsLoading]  = useState(true);
   const [weeklyFloors,  setWeeklyFloors]  = useState(null);
+  const [workingDays,   setWorkingDays]   = useState(5);
 
   // ── Load entry for selectedDate whenever it changes ──────────────────────
   useEffect(() => {
@@ -531,13 +532,19 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
 
   useEffect(() => { refreshWeekDocs(); }, [refreshWeekDocs]);
 
-  // ── Load per-tenant activity floors once (fallback to code defaults) ──────
+  // ── Load per-tenant activity floors + working days once (fallback to code defaults) ──
   useEffect(() => {
     if (!tenantId) return;
     setWeeklyFloors(null); // reset so prior tenant's floors never show on switch
+    setWorkingDays(5);
     let active = true;
     getCompanyMinimums(tenantId)
-      .then((mins) => { if (active) setWeeklyFloors(mins.weeklyActivityFloors); })
+      .then((mins) => {
+        if (!active) return;
+        setWeeklyFloors(mins.weeklyActivityFloors);
+        const wd = Number(mins.workingDaysPerWeek);
+        setWorkingDays([5, 6].includes(wd) ? wd : 5);
+      })
       .catch(() => { /* silently use code defaults */ });
     return () => { active = false; };
   }, [tenantId]);
@@ -561,7 +568,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const chips     = useMemo(() => deriveCountStripChips(weekDocs), [weekDocs]);
-  const stripDays = useMemo(() => deriveWeekStripDays(weekDocs, today, weekStarting), [weekDocs, today, weekStarting]);
+  const stripDays = useMemo(() => deriveWeekStripDays(weekDocs, today, weekStarting, workingDays), [weekDocs, today, weekStarting, workingDays]);
   const streak    = useMemo(() => computeStreak(weekDocs, today), [weekDocs, today]);
   const dayPoints        = useMemo(() => computeDayPoints(data), [data]);
   const weekPoints       = useMemo(
@@ -572,10 +579,10 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
     () => mapFloorToPoints(weeklyFloors ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS),
     [weeklyFloors],
   );
-  const elapsedDays      = useMemo(() => elapsedWorkingDays(today, weekStarting), [today, weekStarting]);
+  const elapsedDays      = useMemo(() => elapsedWorkingDays(today, weekStarting, workingDays), [today, weekStarting, workingDays]);
   const weekToDateTarget = useMemo(
-    () => weeklyPointsFloor * (elapsedDays / WORKING_DAYS),
-    [weeklyPointsFloor, elapsedDays],
+    () => weeklyPointsFloor * (elapsedDays / workingDays),
+    [weeklyPointsFloor, elapsedDays, workingDays],
   );
   const paceState        = useMemo(
     () => computePaceState(weekPoints, weekToDateTarget),

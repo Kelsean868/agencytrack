@@ -69,6 +69,7 @@ export default function EditConfigModal({
   tenantId,
   currentAnnualAPI,
   currentFloors,
+  currentWorkingDays = 5,
   currentUid,
   onClose,
   onSaved,
@@ -76,6 +77,9 @@ export default function EditConfigModal({
   const [value, setValue] = useState(String(currentAnnualAPI ?? ''));
   const [floorsDraft, setFloorsDraft] = useState(() => initFloorsDraft(currentFloors));
   const [floorsTouched, setFloorsTouched] = useState({});
+  const [workingDaysDraft, setWorkingDaysDraft] = useState(
+    [5, 6].includes(Number(currentWorkingDays)) ? Number(currentWorkingDays) : 5
+  );
   const [touched, setTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [submitError, setSubmitError] = useState(null);
@@ -155,11 +159,21 @@ export default function EditConfigModal({
     [floorsDraft]
   );
 
+  // Detect floor edits so a floors-only change still enables Save (Gemini #1).
+  const initialFloors = useMemo(() => initFloorsDraft(currentFloors), [currentFloors]);
+  const floorsChanged = useMemo(
+    () => WEEKLY_ACTIVITY_FLOOR_ROWS.some((row) => floorsDraft[row.key] !== initialFloors[row.key]),
+    [floorsDraft, initialFloors]
+  );
+
   const parsedValue = parseFloat(value);
   const hasUsableValue = Number.isFinite(parsedValue) && parsedValue > 0;
   const newValueDisplay = hasUsableValue ? formatCurrency(parsedValue) : '—';
   const currentDisplay = formatCurrency(currentAnnualAPI ?? 0);
-  const noChange = hasUsableValue && parsedValue === currentAnnualAPI;
+  const noChange = hasUsableValue &&
+    parsedValue === currentAnnualAPI &&
+    workingDaysDraft === Number(currentWorkingDays) &&
+    !floorsChanged;
   const canSave = !saving && !validationError && hasUsableValue && !noChange && !hasAnyFloorError;
 
   function handleChange(e) {
@@ -193,7 +207,7 @@ export default function EditConfigModal({
     );
 
     try {
-      await setCompanyMinimums(tenantId, { annualAPI: parsedValue, weeklyActivityFloors }, currentUid);
+      await setCompanyMinimums(tenantId, { annualAPI: parsedValue, weeklyActivityFloors, workingDaysPerWeek: workingDaysDraft }, currentUid);
       onSaved?.(parsedValue);
       onClose();
     } catch (err) {
@@ -295,6 +309,37 @@ export default function EditConfigModal({
               <span className="text-ink-muted">New</span>
               <span className="font-semibold text-primary">{newValueDisplay}</span>
             </div>
+          </div>
+
+          {/* Working Days */}
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted mb-2 mt-2">
+            Working Days per Week
+          </p>
+          <div className="flex gap-2 mb-4" role="group" aria-label="Working days per week">
+            {[
+              { value: 5, label: '5 days', sub: 'Mon – Fri' },
+              { value: 6, label: '6 days', sub: 'Mon – Sat' },
+            ].map((opt) => {
+              const active = workingDaysDraft === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => { setWorkingDaysDraft(opt.value); if (submitError) setSubmitError(null); }}
+                  disabled={saving}
+                  aria-pressed={active}
+                  className={[
+                    'flex-1 flex flex-col items-center py-2.5 px-3 rounded-xl border text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50',
+                    active
+                      ? 'bg-primary text-white dark:bg-primary-dark border-primary dark:border-primary-dark'
+                      : 'bg-card text-ink border-border hover:border-primary/50',
+                  ].join(' ')}
+                >
+                  <span>{opt.label}</span>
+                  <span className={['text-xs mt-0.5', active ? 'text-white/80' : 'text-ink-muted'].join(' ')}>{opt.sub}</span>
+                </button>
+              );
+            })}
           </div>
 
           {/* Weekly Activity Floors */}
