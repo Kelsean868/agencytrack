@@ -69,14 +69,18 @@ export function computeDayPoints(entry) {
 }
 
 /**
- * Derive Mon–Sat week-strip day descriptors for the current week.
+ * Derive Sun–Sat week-strip day descriptors for the current week (7 cells).
+ *
+ * The opening Sunday (weekStarting itself, offset +0) is always isOff — any
+ * agent may work it, none is expected to. It is only reachable as a back-fill
+ * cell (Mon-onward); on Sunday itself the strip is hidden by the caller.
  *
  * @param {Array<object>} weekDocs    - dailyActivity docs for the current week
  * @param {string}        today       - 'YYYY-MM-DD' in TT timezone
  * @param {string}        weekStarting - 'YYYY-MM-DD' (the Sunday that opens the week)
  * @param {number}        [wd=5]      - working days per week: 5 (Mon–Fri) or 6 (Mon–Sat)
  * @returns {Array<{date,label,dayNum,isToday,isPast,isFuture,isLogged,isOff}>}
- *   6 items: Mon(+1) … Sat(+6) relative to weekStarting
+ *   7 items: Sun(+0) … Sat(+6) relative to weekStarting
  */
 export function deriveWeekStripDays(weekDocs, today, weekStarting, wd = 5) {
   const workingDays = [5, 6].includes(Number(wd)) ? Number(wd) : 5;
@@ -86,9 +90,9 @@ export function deriveWeekStripDays(weekDocs, today, weekStarting, wd = 5) {
   const weekStartD = new Date(weekStarting + 'T12:00:00Z');
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  return Array.from({ length: 6 }, (_, i) => {
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStartD);
-    d.setUTCDate(d.getUTCDate() + i + 1); // i=0 → Mon, i=5 → Sat
+    d.setUTCDate(d.getUTCDate() + i); // i=0 → Sun(weekStarting), i=1 → Mon, i=6 → Sat
     const yyyy = d.getUTCFullYear();
     const mm   = String(d.getUTCMonth() + 1).padStart(2, '0');
     const dd   = String(d.getUTCDate()).padStart(2, '0');
@@ -101,7 +105,8 @@ export function deriveWeekStripDays(weekDocs, today, weekStarting, wd = 5) {
       isPast:   d < todayD,
       isFuture: d > todayD,
       isLogged: docDates.has(dateStr),
-      isOff:    d.getUTCDay() === 6 && workingDays < 6, // Sat is off only when wd=5
+      // Sunday always off (back-fill only, no nag); Sat off only when wd=5
+      isOff:    d.getUTCDay() === 0 || (d.getUTCDay() === 6 && workingDays < 6),
     };
   });
 }
