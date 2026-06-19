@@ -17,6 +17,20 @@ const WEEKLY_REPORT_VERSION = 2;
 const p = (v) => parseFloat(v) || 0;
 const i = (v) => parseInt(v, 10) || 0;
 
+/**
+ * True iff `dateStr` ('YYYY-MM-DD') falls on a weekend day — the opening
+ * Sunday (day 0) or the Saturday (day 6) of the Trinidad (Sun-start) week.
+ *
+ * Anchored to noon-UTC so the day-of-week derives from the calendar date
+ * itself, never the runtime's local timezone (the UTC-4 trap). Mirrors the
+ * date math in getSundayOf() / deriveWeekStripDays().
+ */
+function isWeekendDate(dateStr) {
+  if (!dateStr) return false;
+  const day = new Date(dateStr + 'T12:00:00Z').getUTCDay();
+  return day === 0 || day === 6;
+}
+
 function computeLumpsumCredit(grossAmount) {
   return p(grossAmount) * LMPS_CREDIT_RATE;
 }
@@ -68,6 +82,30 @@ function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
   const totalProductionCredit = computeTotalProductionCredit(productionShape);
   const totalCommission = computeTotalCommission(productionShape, p(commissionRate) / 100);
 
+  // DCv2 Phase 5 — emergent effort signals derived in-place from the per-day
+  // docs (each carries its own `date`). daysWorked mirrors the agent strip's
+  // own predicate: a day "counts" iff a daily doc exists for it (distinct
+  // dates), NOT a separate non-empty-value rule. weekendApi uses the same
+  // basis as the manager's API column (totalProductionCredit) restricted to
+  // weekend-day entries. MUST stay byte-identical to the ESM twin.
+  const workedDates = new Set();
+  let weekendNbApi = 0;
+  let weekendPppInc = 0;
+  let weekendLmpsGross = 0;
+  for (const e of entries) {
+    const date = e && e.date;
+    if (!date) continue;
+    workedDates.add(date);
+    if (isWeekendDate(date)) {
+      weekendNbApi += p(e && e.newBusiness && e.newBusiness.api);
+      weekendPppInc += p(e && e.pppIncreases && e.pppIncreases.apiIncrease);
+      weekendLmpsGross += p(e && e.lumpsums && e.lumpsums.grossAmount);
+    }
+  }
+  const daysWorked = workedDates.size;
+  const weekendWorked = [...workedDates].some(isWeekendDate);
+  const weekendApi = weekendNbApi + weekendPppInc + computeLumpsumCredit(weekendLmpsGross);
+
   return {
     version: WEEKLY_REPORT_VERSION,
 
@@ -113,6 +151,11 @@ function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
     // Hours (production tracking, distinct from reflection hoursWorked)
     officeHours: sumFloat('officeHours'),
     fieldHours:  sumFloat('fieldHours'),
+
+    // DCv2 Phase 5 — emergent effort signals (render-only in MasterSheet)
+    daysWorked,
+    weekendWorked,
+    weekendApi,
 
     aggregatedFromDaily: true,
   };
