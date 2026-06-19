@@ -565,6 +565,8 @@ Any `#TBD` or `{TBD}` placeholders introduced in the work PR's Phase 4 are fille
 
 Motivating incident (2026-06-06): the Gemini harvest program (Batches A–E, PRs #520–#525) + night-queue R1 fixes (PRs #526–#528, #530) merged via GREEN-CHANNEL without a consolidated fill; `Current main HEAD` in CONTEXT.md remained at `4a72d79` (#517) while the actual last work squash was `681af69` (#528) — a 9-PR drift that only surfaced at the next morning's dispatcher check. Resolved by fill commit `731da1e`.
 
+**CONTEXT.md size caps (banked 2026-06-19):** `Recently shipped` ≤ 5 rows; `Last updated` / `Where we left off` / `Current main HEAD` / `Active track` each ≤ 3 entries. When a fill would exceed a cap, move the oldest entry to `docs/CONTEXT-history.md` in the same fill commit. The cap note at the top of `CONTEXT.md` is the canonical reminder; this bullet is the enforcement hook in the fill sequence.
+
 ### 17. Source verification at authoring time
 
 When a brief or methodology rule describes source behavior — default behavior, example values, command syntax, file paths, line numbers, existing structural format — the author MUST verify each claim against current source BEFORE locking the brief's "Decisions locked" section or proposing rule wording. Specifically:
