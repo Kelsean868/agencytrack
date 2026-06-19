@@ -153,10 +153,10 @@ describe('BranchesPanel — branches list', () => {
     await waitFor(() => expect(screen.getByText('Unassigned')).toBeInTheDocument());
   });
 
-  it('renders correct agent counts per branch', async () => {
+  it('renders correct total user counts per branch', async () => {
     render(<BranchesPanel />);
-    await waitFor(() => expect(screen.getByText('2 agents')).toBeInTheDocument());
-    expect(screen.getByText('1 agents')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('branch-user-count-b1')).toHaveTextContent('2 users'));
+    expect(screen.getByTestId('branch-user-count-b2')).toHaveTextContent('1 user');
   });
 
   it('renders Active status badge for active branch', async () => {
@@ -200,26 +200,98 @@ describe('BranchesPanel — table column headers', () => {
     setup({ branches: [BRANCH_ACTIVE] });
   });
 
-  it('renders Name, Manager, Agents, Status, Actions column headers', async () => {
+  it('renders Name, Manager, Users, Status, Actions column headers', async () => {
     render(<BranchesPanel />);
     await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
     expect(screen.getByText('Name')).toBeInTheDocument();
     expect(screen.getByText('Manager')).toBeInTheDocument();
-    expect(screen.getByText('Agents')).toBeInTheDocument();
+    expect(screen.getByText('Users')).toBeInTheDocument();
     expect(screen.getByText('Status')).toBeInTheDocument();
     expect(screen.getByText('Actions')).toBeInTheDocument();
   });
 });
 
-describe('BranchesPanel — zero agent count', () => {
+describe('BranchesPanel — zero user count', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     setup({ branches: [BRANCH_ACTIVE], users: [] });
   });
 
-  it('renders 0 agents when no users are assigned to branch', async () => {
+  it('renders 0 users when no users are assigned to branch', async () => {
     render(<BranchesPanel />);
     await waitFor(() => expect(screen.getByText('South Branch')).toBeInTheDocument());
-    expect(screen.getByText('0 agents')).toBeInTheDocument();
+    expect(screen.getByTestId('branch-user-count-b1')).toHaveTextContent('0 users');
+  });
+});
+
+describe('BranchesPanel — total user count (all roles)', () => {
+  // b1 carries a mix of roles; one deactivated agent must be excluded.
+  const MIXED_USERS = [
+    { uid: 'a1',  role: 'agent',          branchId: 'b1', active: true },
+    { uid: 'a2',  role: 'agent',          branchId: 'b1', active: true },
+    { uid: 'um1', role: 'unit_manager',   branchId: 'b1', active: true },
+    { uid: 'bm1', role: 'branch_manager', branchId: 'b1', active: true },
+    { uid: 'sm1', role: 'sales_manager',  branchId: 'b1', active: true },
+    { uid: 'd1',  role: 'agent',          branchId: 'b1', active: false }, // deactivated → excluded
+    { uid: 'o1',  role: 'agent',          branchId: 'b2', active: true },  // other branch
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setup({ branches: [BRANCH_ACTIVE], users: MIXED_USERS });
+  });
+
+  it('counts ALL roles, not just agents (total > agent-only)', async () => {
+    render(<BranchesPanel />);
+    // 2 agents + 1 UM + 1 BM + 1 SM = 5 active (deactivated agent excluded)
+    await waitFor(() => expect(screen.getByTestId('branch-user-count-b1')).toHaveTextContent('5 users'));
+  });
+
+  it('renders the per-role breakdown in tier order', async () => {
+    render(<BranchesPanel />);
+    await waitFor(() => expect(screen.getByTestId('branch-user-count-b1')).toBeInTheDocument());
+    expect(screen.getByText('2 agents, 1 UM, 1 BM, 1 SM')).toBeInTheDocument();
+  });
+
+  it('excludes deactivated users from the total (active-only)', async () => {
+    render(<BranchesPanel />);
+    // 6 docs target b1 but one is inactive → total is 5, not 6.
+    await waitFor(() => expect(screen.getByTestId('branch-user-count-b1')).toHaveTextContent('5 users'));
+    expect(screen.getByTestId('branch-user-count-b1')).not.toHaveTextContent('6 users');
+  });
+
+  it('does not count users from other branches', async () => {
+    render(<BranchesPanel />);
+    // b2's agent (o1) must not inflate b1's count.
+    await waitFor(() => expect(screen.getByTestId('branch-user-count-b1')).toHaveTextContent('5 users'));
+  });
+
+  it('skips users with a missing role field (no inflation, no undefined label)', async () => {
+    vi.clearAllMocks();
+    setup({
+      branches: [BRANCH_ACTIVE],
+      users: [
+        { uid: 'a1', role: 'agent', branchId: 'b1', active: true },
+        { uid: 'broken', branchId: 'b1', active: true }, // no role → skipped
+      ],
+    });
+    render(<BranchesPanel />);
+    await waitFor(() => expect(screen.getByTestId('branch-user-count-b1')).toHaveTextContent('1 user'));
+    expect(screen.getByTestId('branch-user-count-b1')).not.toHaveTextContent('undefined');
+  });
+
+  it('appends an unrecognized role to the breakdown (total reconciles)', async () => {
+    vi.clearAllMocks();
+    setup({
+      branches: [BRANCH_ACTIVE],
+      users: [
+        { uid: 'a1', role: 'agent', branchId: 'b1', active: true },
+        { uid: 'f1', role: 'future_role', branchId: 'b1', active: true },
+      ],
+    });
+    render(<BranchesPanel />);
+    await waitFor(() => expect(screen.getByTestId('branch-user-count-b1')).toHaveTextContent('2 users'));
+    // known role first, unrecognized role appended with its raw name
+    expect(screen.getByText('1 agents, 1 future_role')).toBeInTheDocument();
   });
 });
