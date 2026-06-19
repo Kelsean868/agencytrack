@@ -113,7 +113,7 @@ Week-to-date PACE badge added to the DCv2 save-card pill: Behind / On-pace / Ahe
 
 ---
 
-## Daily Capture v2 Phase 3b — `workingDaysPerWeek` per-tenant configurable (RESOLVED — PR #TBD `{TBD}`, 2026-06-19, MED)
+## Daily Capture v2 Phase 3b — `workingDaysPerWeek` per-tenant configurable (RESOLVED — PR #690 `49e8215`, 2026-06-19, MED)
 
 `WORKING_DAYS = 5` in `DailyCaptureV2.helpers.js` (a named constant explicitly deferred from Phase 3a) was replaced with a per-tenant `workingDaysPerWeek` value.
 
