@@ -2,10 +2,13 @@
  * daily-capture-v2-4-full-week-logging-smoke.mjs — Phase 4 Sunday back-fill smoke.
  *
  * Proves the opening Sunday cell works end-to-end:
+ *   Leg 0 — count strip chips baseline BEFORE Sunday log (ffi=0, clean slate)
  *   Leg 1 — Sunday strip cell present; data-off="true" (off-styled, no nag)
  *   Leg 2 — Sunday cell is a <button> with no disabled attr (tappable)
  *   Leg 3 — Select Sunday, log 1 FFI, save → modal closes without error
- *   Leg 4 — Reload; Sunday cell aria-label = "… — logged"; points pill ≥ 5 pts
+ *   Leg 4a — Reload; Sunday cell aria-label = "… — logged"
+ *   Leg 4b — Points pill visible + valid pace badge
+ *   Leg 4c — WEEK-TOTAL-MOVES: ffi chip ffiBefore→ffiBefore+1 (unambiguous aggregate delta)
  *   Leg 5 — Firestore: doc exists with date==weekStarting & weekStarting==weekStarting
  *   Leg 6 — axe NO-NEW serious/critical
  *
@@ -137,6 +140,25 @@ async function closeDailyCapture(page) {
   await page.waitForSelector('[data-testid="daily-fab"]', { timeout: 15000 });
 }
 
+// Read the data-chips attribute from the count strip, waiting for data-loading=false.
+// chips format: "appr|ffi|ci|apps" (e.g. "0|1|0|0" after one Sunday FFI).
+async function readChips(page) {
+  const cs = page.locator('[data-testid="dcv2-count-strip"]');
+  await cs.waitFor({ state: 'attached', timeout: 8000 });
+  await page.waitForFunction(
+    () => {
+      const el = document.querySelector('[data-testid="dcv2-count-strip"]');
+      return el && el.getAttribute('data-loading') === 'false';
+    },
+    { timeout: 10000 }
+  );
+  return cs.getAttribute('data-chips');
+}
+// Parse the FFI value (index 1) from "appr|ffi|ci|apps".
+function parseFfi(chips) {
+  return parseInt((chips ?? '').split('|')[1] ?? '0', 10);
+}
+
 async function runAxe(page, theme, tag) {
   const axe = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
   const serious = (axe.violations || []).filter((v) => ['serious', 'critical'].includes(v.impact));
@@ -163,6 +185,8 @@ async function smokeTheme(page, theme, ctx) {
     return;
   }
 
+  let ffiBefore = 0; // captured in Leg 0; reused for Leg 4c delta assertion
+
   try {
     await loginAsAgent(page);
     pass(`[${theme}] login`);
@@ -173,6 +197,13 @@ async function smokeTheme(page, theme, ctx) {
 
     await openDailyCapture(page);
     await shoot(page, `${theme}-strip`);
+
+    // ── Leg 0 — count strip baseline BEFORE Sunday log ────────────────────────
+    // Reads data-chips="appr|ffi|ci|apps" after data-loading=false (weekDocs settled).
+    // With pre-clean, ffi must be 0 here; the before→after delta is the aggregate proof.
+    const chipsBefore = await readChips(page);
+    ffiBefore = parseFfi(chipsBefore);
+    pass(`[${theme}] leg0-chips-baseline`, `data-chips="${chipsBefore}" ffi=${ffiBefore} (expected 0 after pre-clean)`);
 
     // ── Leg 1 — Sunday cell exists and is off-styled ──────────────────────────
     const sundayCell = page.locator(`[data-testid="dcv2-strip-day-${weekStarting}"]`);
@@ -238,7 +269,19 @@ async function smokeTheme(page, theme, ctx) {
       { timeout: 10000 }
     );
     const ariaLabel = await sundayReload.getAttribute('aria-label');
-    pass(`[${theme}] leg4-sunday-isLogged`, `aria-label="${ariaLabel}"`);
+    pass(`[${theme}] leg4a-sunday-isLogged`, `aria-label="${ariaLabel}"`);
+
+    // ── Leg 4c — WEEK-TOTAL-MOVES delta ──────────────────────────────────────
+    // weekDocs onSnapshot already fired (aria-label "logged" above proved it).
+    // chips derive from the same weekDocs query; delta ffi++1 is the unambiguous
+    // "weekly aggregate counted Sunday" proof per user requirement.
+    const chipsAfter = await readChips(page);
+    const ffiAfter = parseFfi(chipsAfter);
+    if (ffiAfter === ffiBefore + 1) {
+      pass(`[${theme}] leg4c-week-total-moves`, `ffi chip: ${ffiBefore}→${ffiAfter} (data-chips="${chipsAfter}") — weekly aggregate counted Sunday FFI`);
+    } else {
+      fail(`[${theme}] leg4c-week-total-moves`, `expected ffi=${ffiBefore + 1} got ${ffiAfter} (before="${chipsBefore}" after="${chipsAfter}")`);
+    }
 
     // (b) Points pill exists (weekPoints > 0 → Sunday FFI is counted in weekly total).
     // Pill is hidden when weekPoints = 0; its presence proves the Sunday doc contributes.
@@ -250,12 +293,12 @@ async function smokeTheme(page, theme, ctx) {
       const badgeText = (await badge.count()) > 0 ? (await badge.textContent())?.trim() : null;
       const validStates = ['Behind', 'On pace', 'Ahead'];
       if (validStates.includes(badgeText)) {
-        pass(`[${theme}] leg4-points-nonzero`, `pill visible + badge="${badgeText}" (Sunday FFI counted in weekly total)`);
+        pass(`[${theme}] leg4b-points-nonzero`, `pill visible + badge="${badgeText}" (weekPoints>0)`);
       } else {
-        fail(`[${theme}] leg4-points-nonzero`, `pill visible but unexpected badge "${badgeText}"`);
+        fail(`[${theme}] leg4b-points-nonzero`, `pill visible but unexpected badge "${badgeText}"`);
       }
     } else {
-      fail(`[${theme}] leg4-points-nonzero`, 'dcv2-points-pill not found — weekPoints=0 means Sunday FFI was not counted');
+      fail(`[${theme}] leg4b-points-nonzero`, 'dcv2-points-pill not found — weekPoints=0');
     }
 
     await closeDailyCapture(page);
