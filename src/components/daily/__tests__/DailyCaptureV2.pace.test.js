@@ -4,9 +4,22 @@ import {
   mapFloorToPoints,
   elapsedWorkingDays,
   computePaceState,
+  computeWeekToDatePoints,
   WORKING_DAYS,
 } from '../DailyCaptureV2.helpers';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../../utils/weeklyActivityFloors';
+
+// ─── helpers for building minimal daily docs ─────────────────────────────────
+
+// 2 FFIs + 1 app = 2×5 + 25 = 35 pts
+const makeDoc35 = (date) => ({ date, ffiConducted: 2, newBusiness: { apps: 1 } });
+// 5 FFIs + 1 app = 5×5 + 25 = 50 pts
+const makeDoc50 = (date) => ({ date, ffiConducted: 5, newBusiness: { apps: 1 } });
+// 1 app only = 25 pts
+const makeDoc25 = (date) => ({ date, newBusiness: { apps: 1 } });
+
+const TODAY = '2026-06-19';
+const OTHER = '2026-06-18';
 
 // ─── mapFloorToPoints ────────────────────────────────────────────────────────
 
@@ -165,5 +178,46 @@ describe('computePaceState', () => {
     expect(computePaceState(350,  target)).toBe('behind');
     expect(computePaceState(399,  target)).toBe('on-pace');
     expect(computePaceState(420,  target)).toBe('ahead');
+  });
+});
+
+// ─── computeWeekToDatePoints ─────────────────────────────────────────────────
+
+describe('computeWeekToDatePoints — Gemini-#1 live-edit cases', () => {
+  it('no saved doc for selectedDate → otherDays + liveDayData', () => {
+    // other day has 25 pts; today not in weekDocs; live data yields 35 pts
+    const weekDocs = [makeDoc25(OTHER)];
+    expect(computeWeekToDatePoints(weekDocs, TODAY, makeDoc35(TODAY))).toBe(60);
+  });
+
+  it('selectedDate doc EXISTS (35 pts) and live is UNCHANGED (35 pts) → 35, not 70', () => {
+    // savedDoc for TODAY is excluded; live 35 replaces it — total = 35, no double-count
+    const weekDocs = [makeDoc35(TODAY)];
+    expect(computeWeekToDatePoints(weekDocs, TODAY, makeDoc35(TODAY))).toBe(35);
+  });
+
+  it('selectedDate doc EXISTS (35 pts) and live is EDITED to 50 pts → 50, not 35', () => {
+    // live data takes precedence over the saved doc for the selected date
+    const weekDocs = [makeDoc35(TODAY)];
+    expect(computeWeekToDatePoints(weekDocs, TODAY, makeDoc50(TODAY))).toBe(50);
+  });
+
+  it('multiple other days + selectedDate doc + live edit', () => {
+    // other days: 25 + 35 = 60 pts; saved today 35 excluded; live today 50 pts → 110
+    const weekDocs = [makeDoc25(OTHER), makeDoc35('2026-06-17'), makeDoc35(TODAY)];
+    expect(computeWeekToDatePoints(weekDocs, TODAY, makeDoc50(TODAY))).toBe(110);
+  });
+
+  it('empty weekDocs + live data', () => {
+    expect(computeWeekToDatePoints([], TODAY, makeDoc25(TODAY))).toBe(25);
+  });
+
+  it('null weekDocs treated as empty', () => {
+    expect(computeWeekToDatePoints(null, TODAY, makeDoc25(TODAY))).toBe(25);
+  });
+
+  it('null liveDayData contributes 0', () => {
+    const weekDocs = [makeDoc25(OTHER)];
+    expect(computeWeekToDatePoints(weekDocs, TODAY, null)).toBe(25);
   });
 });

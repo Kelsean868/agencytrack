@@ -26,6 +26,7 @@ import {
   mapFloorToPoints,
   elapsedWorkingDays,
   computePaceState,
+  computeWeekToDatePoints,
   WORKING_DAYS,
 } from './DailyCaptureV2.helpers';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
@@ -563,14 +564,10 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   const stripDays = useMemo(() => deriveWeekStripDays(weekDocs, today, weekStarting), [weekDocs, today, weekStarting]);
   const streak    = useMemo(() => computeStreak(weekDocs, today), [weekDocs, today]);
   const dayPoints        = useMemo(() => computeDayPoints(data), [data]);
-  const weekPoints       = useMemo(() => {
-    // Include live unsaved edits for today: replace today's saved doc (if any)
-    // with the current form state so the pace badge updates as the agent types.
-    const otherDays = weekDocs
-      .filter((d) => d.date !== selectedDate)
-      .reduce((s, d) => s + computeDayPoints(d), 0);
-    return otherDays + dayPoints;
-  }, [weekDocs, selectedDate, dayPoints]);
+  const weekPoints       = useMemo(
+    () => computeWeekToDatePoints(weekDocs, selectedDate, data),
+    [weekDocs, selectedDate, data],
+  );
   const weeklyPointsFloor = useMemo(
     () => mapFloorToPoints(weeklyFloors ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS),
     [weeklyFloors],

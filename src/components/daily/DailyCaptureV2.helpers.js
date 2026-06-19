@@ -179,6 +179,27 @@ export function computePaceState(weekPoints, weekToDateTarget) {
 }
 
 /**
+ * Compute the total week-to-date points, blending saved docs with live unsaved edits.
+ *
+ * The selectedDate doc (if any) is excluded from the weekDocs sum and replaced by
+ * computeDayPoints(liveDayData) — the current form state for that day. This ensures
+ * the pace badge updates in real-time as the agent edits today's entry, without
+ * double-counting the saved doc alongside the live data.
+ *
+ * @param {Array<object>} weekDocs   - saved dailyActivity docs for the current week
+ * @param {string}        selectedDate - 'YYYY-MM-DD' currently open in the form
+ * @param {object|null}   liveDayData  - current form state (from DailyCaptureV2 `data`)
+ * @returns {number} integer total points for the week so far
+ */
+export function computeWeekToDatePoints(weekDocs, selectedDate, liveDayData) {
+  const entries = Array.isArray(weekDocs) ? weekDocs : [];
+  const otherDays = entries
+    .filter((d) => d.date !== selectedDate)
+    .reduce((s, d) => s + computeDayPoints(d), 0);
+  return otherDays + computeDayPoints(liveDayData);
+}
+
+/**
  * Count the current logging streak (consecutive non-Sunday days with saved entries,
  * counting backward from today; today is included when already logged).
  *
