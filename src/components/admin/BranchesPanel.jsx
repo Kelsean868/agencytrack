@@ -262,7 +262,7 @@ export default function BranchesPanel() {
                 <div className="text-xs min-w-0" data-testid={`branch-user-count-${b.id}`}>
                   <span className="text-ink-muted">{userCount} {userCount === 1 ? 'user' : 'users'}</span>
                   {roleBreakdown && (
-                    <span className="block text-[10px] text-ink-muted/80 truncate" title={roleBreakdown}>
+                    <span className="block text-[10px] text-ink-muted truncate" title={roleBreakdown}>
                       {roleBreakdown}
                     </span>
                   )}
