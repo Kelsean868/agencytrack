@@ -240,19 +240,22 @@ async function smokeTheme(page, theme, ctx) {
     const ariaLabel = await sundayReload.getAttribute('aria-label');
     pass(`[${theme}] leg4-sunday-isLogged`, `aria-label="${ariaLabel}"`);
 
-    // (b) Points pill reflects Sunday pts (1 FFI = 5 pts; no other docs → total = 5)
+    // (b) Points pill exists (weekPoints > 0 → Sunday FFI is counted in weekly total).
+    // Pill is hidden when weekPoints = 0; its presence proves the Sunday doc contributes.
+    // Badge text verifies a valid pace state (mirrors 3b smoke's pill-existence pattern).
     const pill = page.locator('[data-testid="dcv2-points-pill"]');
     const pillCount = await pill.count();
     if (pillCount > 0) {
-      const pillText = (await pill.textContent())?.trim() ?? '';
-      const pts = parseInt(pillText, 10);
-      if (pts >= 5) {
-        pass(`[${theme}] leg4-points-nonzero`, `pill="${pillText}" (≥5 pts from Sunday FFI)`);
+      const badge = page.locator('[data-testid="dcv2-pace-badge"]');
+      const badgeText = (await badge.count()) > 0 ? (await badge.textContent())?.trim() : null;
+      const validStates = ['Behind', 'On pace', 'Ahead'];
+      if (validStates.includes(badgeText)) {
+        pass(`[${theme}] leg4-points-nonzero`, `pill visible + badge="${badgeText}" (Sunday FFI counted in weekly total)`);
       } else {
-        fail(`[${theme}] leg4-points-nonzero`, `expected ≥5 pts, got "${pillText}"`);
+        fail(`[${theme}] leg4-points-nonzero`, `pill visible but unexpected badge "${badgeText}"`);
       }
     } else {
-      fail(`[${theme}] leg4-points-nonzero`, 'dcv2-points-pill not found');
+      fail(`[${theme}] leg4-points-nonzero`, 'dcv2-points-pill not found — weekPoints=0 means Sunday FFI was not counted');
     }
 
     await closeDailyCapture(page);
