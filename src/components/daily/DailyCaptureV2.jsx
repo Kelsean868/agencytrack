@@ -533,6 +533,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   // ── Load per-tenant activity floors once (fallback to code defaults) ──────
   useEffect(() => {
     if (!tenantId) return;
+    setWeeklyFloors(null); // reset so prior tenant's floors never show on switch
     let active = true;
     getCompanyMinimums(tenantId)
       .then((mins) => { if (active) setWeeklyFloors(mins.weeklyActivityFloors); })
@@ -562,7 +563,14 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   const stripDays = useMemo(() => deriveWeekStripDays(weekDocs, today, weekStarting), [weekDocs, today, weekStarting]);
   const streak    = useMemo(() => computeStreak(weekDocs, today), [weekDocs, today]);
   const dayPoints        = useMemo(() => computeDayPoints(data), [data]);
-  const weekPoints       = useMemo(() => weekDocs.reduce((s, d) => s + computeDayPoints(d), 0), [weekDocs]);
+  const weekPoints       = useMemo(() => {
+    // Include live unsaved edits for today: replace today's saved doc (if any)
+    // with the current form state so the pace badge updates as the agent types.
+    const otherDays = weekDocs
+      .filter((d) => d.date !== selectedDate)
+      .reduce((s, d) => s + computeDayPoints(d), 0);
+    return otherDays + dayPoints;
+  }, [weekDocs, selectedDate, dayPoints]);
   const weeklyPointsFloor = useMemo(
     () => mapFloorToPoints(weeklyFloors ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS),
     [weeklyFloors],
@@ -1044,7 +1052,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
       {!isTodaySunday && (
         <footer className="px-4 py-4 border-t border-border bg-card shrink-0">
           {/* Points pill + pace badge */}
-          {!loading && (dayPoints > 0 || (elapsedDays > 0 && weeklyPointsFloor > 0)) && (
+          {!loading && (dayPoints > 0 || (!chipsLoading && elapsedDays > 0 && weeklyPointsFloor > 0)) && (
             <div
               data-testid="dcv2-points-pill"
               className="flex items-center justify-center gap-1.5 mb-3 flex-wrap"
@@ -1056,7 +1064,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
                   <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">pts today</span>
                 </>
               )}
-              {elapsedDays > 0 && weeklyPointsFloor > 0 && (
+              {!chipsLoading && elapsedDays > 0 && weeklyPointsFloor > 0 && (
                 <span
                   data-testid="dcv2-pace-badge"
                   className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PACE_BADGE_CLASSES[paceState]}`}
