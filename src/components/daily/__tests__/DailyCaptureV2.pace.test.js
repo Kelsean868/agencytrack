@@ -169,11 +169,49 @@ describe('elapsedWorkingDays — invalid wd falls back to 5', () => {
   });
 });
 
+describe('deriveWeekStripDays — Sunday opening cell', () => {
+  const WEEK  = '2026-06-14'; // Sunday June 14
+  const TODAY = '2026-06-15'; // Monday — strip is visible Mon-onward
+
+  it('returns 7 cells (Sun–Sat)', () => {
+    expect(deriveWeekStripDays([], TODAY, WEEK)).toHaveLength(7);
+  });
+
+  it('first cell is the opening Sunday: date === weekStarting, label === "S"', () => {
+    const days = deriveWeekStripDays([], TODAY, WEEK);
+    expect(days[0].date).toBe(WEEK);
+    expect(days[0].label).toBe('S');
+  });
+
+  it('Sunday cell isOff=true regardless of wd', () => {
+    expect(deriveWeekStripDays([], TODAY, WEEK, 5)[0].isOff).toBe(true);
+    expect(deriveWeekStripDays([], TODAY, WEEK, 6)[0].isOff).toBe(true);
+  });
+
+  it('Sunday cell isPast=true and isFuture=false when today is Mon-onward', () => {
+    const days = deriveWeekStripDays([], TODAY, WEEK);
+    expect(days[0].isPast).toBe(true);
+    expect(days[0].isFuture).toBe(false);
+  });
+
+  it('Sunday cell isLogged=true when a doc with weekStarting date exists', () => {
+    const sundayDoc = { date: WEEK };
+    const days = deriveWeekStripDays([sundayDoc], TODAY, WEEK);
+    expect(days[0].isLogged).toBe(true);
+  });
+
+  it('Mon (index 1) is still Monday, not Sunday', () => {
+    const days = deriveWeekStripDays([], TODAY, WEEK);
+    expect(days[1].date).toBe('2026-06-15'); // June 14 + 1 = June 15 (Mon)
+    expect(days[1].label).toBe('M');
+  });
+});
+
 describe('deriveWeekStripDays — Saturday isOff per wd', () => {
-  // June 14, 2026 is Sunday (June 1 = Mon, +13 days = Sun). June 15 = Mon anchor.
+  // June 14, 2026 is Sunday. June 15 = Mon anchor.
   const WEEK    = '2026-06-14'; // Sunday
   const TODAY   = '2026-06-15'; // Monday (safe non-Sunday anchor)
-  const SAT_IDX = 5;             // i=5 → Sat = weekStart+6 = June 20
+  const SAT_IDX = 6;             // i=6 → Sat = weekStart+6 = June 20
 
   it('wd=5 → Saturday cell isOff=true', () => {
     const days = deriveWeekStripDays([], TODAY, WEEK, 5);
@@ -190,7 +228,7 @@ describe('deriveWeekStripDays — Saturday isOff per wd', () => {
   it('Mon–Fri cells are never isOff regardless of wd', () => {
     [5, 6].forEach((wd) => {
       const days = deriveWeekStripDays([], TODAY, WEEK, wd);
-      days.slice(0, 5).forEach((d) => expect(d.isOff).toBe(false));
+      days.slice(1, 6).forEach((d) => expect(d.isOff).toBe(false)); // indices 1-5 = Mon-Fri
     });
   });
 

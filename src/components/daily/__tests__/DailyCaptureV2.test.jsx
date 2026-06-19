@@ -240,15 +240,15 @@ describe('DailyCaptureV2', () => {
     vi.useRealTimers();
   });
 
-  it('shows the week strip with 6 day buttons (Mon–Sat) when today is not Sunday', async () => {
+  it('shows the week strip with 7 day buttons (Sun–Sat) when today is not Sunday', async () => {
     // Pin to a known Tuesday in TT (not Sunday → strip renders)
     vi.useFakeTimers({ toFake: ['Date'], now: new Date('2025-06-03T12:00:00Z') });
     render(<DailyCaptureV2 onClose={vi.fn()} />);
     await screen.findByTestId('daily-capture-v2');
     const strip = await screen.findByTestId('dcv2-week-strip');
-    // Should contain 6 day buttons (Mon=02 through Sat=07)
+    // Should contain 7 day buttons (Sun=01 through Sat=07)
     const dayButtons = strip.querySelectorAll('button');
-    expect(dayButtons).toHaveLength(6);
+    expect(dayButtons).toHaveLength(7);
     vi.useRealTimers();
   });
 
@@ -382,16 +382,18 @@ describe('deriveWeekStripDays (pure)', () => {
   const TODAY        = '2025-06-04';
   const WEEK_STARTING = '2025-06-01';
 
-  it('returns exactly 6 days (Mon–Sat)', () => {
+  it('returns exactly 7 days (Sun–Sat)', () => {
     const days = deriveWeekStripDays([], TODAY, WEEK_STARTING);
-    expect(days).toHaveLength(6);
+    expect(days).toHaveLength(7);
   });
 
-  it('first day is Monday and last is Saturday', () => {
+  it('first day is Sunday (weekStarting) and last is Saturday', () => {
     const days = deriveWeekStripDays([], TODAY, WEEK_STARTING);
-    expect(days[0].date).toBe('2025-06-02'); // Monday
-    expect(days[5].date).toBe('2025-06-07'); // Saturday
-    expect(days[5].isOff).toBe(true);
+    expect(days[0].date).toBe('2025-06-01'); // Sunday (weekStarting)
+    expect(days[0].isOff).toBe(true);
+    expect(days[1].date).toBe('2025-06-02'); // Monday
+    expect(days[6].date).toBe('2025-06-07'); // Saturday
+    expect(days[6].isOff).toBe(true);
   });
 
   it('marks today correctly', () => {
