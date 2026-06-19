@@ -359,8 +359,10 @@ async function smokeWd6(page, theme, ctx) {
 
       const badge = page.locator('[data-testid="dcv2-pace-badge"]');
       const badgeText = (await badge.count()) > 0 ? (await badge.textContent())?.trim() : null;
-      const want = flip.s6 === 'behind' ? 'Behind' : flip.s6 === 'ahead' ? 'Ahead' : 'On-pace';
-      const wouldBe5 = flip.s5 === 'behind' ? 'Behind' : flip.s5 === 'ahead' ? 'Ahead' : 'On-pace';
+      // Must match PACE_LABELS in DailyCaptureV2.jsx exactly: 'On pace' (space, not hyphen).
+      const label = (s) => (s === 'behind' ? 'Behind' : s === 'ahead' ? 'Ahead' : 'On pace');
+      const want = label(flip.s6);
+      const wouldBe5 = label(flip.s5);
       if (badgeText === want) {
         pass(`[${theme}] A leg2-pace-denominator`,
           `badge="${badgeText}" (==/6); at /5 would be "${wouldBe5}". W=${flip.w} t6=${flip.t6.toFixed(1)} t5=${flip.t5.toFixed(1)}`);

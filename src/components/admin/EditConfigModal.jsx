@@ -159,11 +159,21 @@ export default function EditConfigModal({
     [floorsDraft]
   );
 
+  // Detect floor edits so a floors-only change still enables Save (Gemini #1).
+  const initialFloors = useMemo(() => initFloorsDraft(currentFloors), [currentFloors]);
+  const floorsChanged = useMemo(
+    () => WEEKLY_ACTIVITY_FLOOR_ROWS.some((row) => floorsDraft[row.key] !== initialFloors[row.key]),
+    [floorsDraft, initialFloors]
+  );
+
   const parsedValue = parseFloat(value);
   const hasUsableValue = Number.isFinite(parsedValue) && parsedValue > 0;
   const newValueDisplay = hasUsableValue ? formatCurrency(parsedValue) : '—';
   const currentDisplay = formatCurrency(currentAnnualAPI ?? 0);
-  const noChange = hasUsableValue && parsedValue === currentAnnualAPI && workingDaysDraft === Number(currentWorkingDays);
+  const noChange = hasUsableValue &&
+    parsedValue === currentAnnualAPI &&
+    workingDaysDraft === Number(currentWorkingDays) &&
+    !floorsChanged;
   const canSave = !saving && !validationError && hasUsableValue && !noChange && !hasAnyFloorError;
 
   function handleChange(e) {
