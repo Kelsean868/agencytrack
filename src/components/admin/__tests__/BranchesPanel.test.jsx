@@ -265,4 +265,33 @@ describe('BranchesPanel — total user count (all roles)', () => {
     // b2's agent (o1) must not inflate b1's count.
     await waitFor(() => expect(screen.getByTestId('branch-user-count-b1')).toHaveTextContent('5 users'));
   });
+
+  it('skips users with a missing role field (no inflation, no undefined label)', async () => {
+    vi.clearAllMocks();
+    setup({
+      branches: [BRANCH_ACTIVE],
+      users: [
+        { uid: 'a1', role: 'agent', branchId: 'b1', active: true },
+        { uid: 'broken', branchId: 'b1', active: true }, // no role → skipped
+      ],
+    });
+    render(<BranchesPanel />);
+    await waitFor(() => expect(screen.getByTestId('branch-user-count-b1')).toHaveTextContent('1 user'));
+    expect(screen.getByTestId('branch-user-count-b1')).not.toHaveTextContent('undefined');
+  });
+
+  it('appends an unrecognized role to the breakdown (total reconciles)', async () => {
+    vi.clearAllMocks();
+    setup({
+      branches: [BRANCH_ACTIVE],
+      users: [
+        { uid: 'a1', role: 'agent', branchId: 'b1', active: true },
+        { uid: 'f1', role: 'future_role', branchId: 'b1', active: true },
+      ],
+    });
+    render(<BranchesPanel />);
+    await waitFor(() => expect(screen.getByTestId('branch-user-count-b1')).toHaveTextContent('2 users'));
+    // known role first, unrecognized role appended with its raw name
+    expect(screen.getByText('1 agents, 1 future_role')).toBeInTheDocument();
+  });
 });

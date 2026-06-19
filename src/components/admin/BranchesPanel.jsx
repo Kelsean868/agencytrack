@@ -24,11 +24,17 @@ const ROLE_LABELS = {
 const ROLE_ORDER = ['agent', 'unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'];
 
 // roles: { [role]: count } → "2 agents, 1 UM, 1 BM" (omits zero-count roles).
+// Any role not in ROLE_ORDER (a future/unrecognized role) is appended with its
+// raw name so the breakdown always reconciles with the total.
 function formatRoleBreakdown(roles) {
-  return ROLE_ORDER
+  if (!roles) return '';
+  const known = ROLE_ORDER
     .filter((r) => roles[r])
-    .map((r) => `${roles[r]} ${ROLE_LABELS[r] ?? r}`)
-    .join(', ');
+    .map((r) => `${roles[r]} ${ROLE_LABELS[r]}`);
+  const others = Object.keys(roles)
+    .filter((r) => roles[r] && !ROLE_ORDER.includes(r))
+    .map((r) => `${roles[r]} ${ROLE_LABELS[r] ?? r}`);
+  return [...known, ...others].join(', ');
 }
 
 /**
@@ -121,6 +127,7 @@ export default function BranchesPanel() {
     for (const u of users) {
       if (u.active === false) continue;
       if (!u.branchId) continue;
+      if (!u.role) continue; // malformed doc — don't inflate the total with an unrenderable role
       const entry = map.get(u.branchId) ?? { total: 0, roles: {} };
       entry.total += 1;
       entry.roles[u.role] = (entry.roles[u.role] ?? 0) + 1;
