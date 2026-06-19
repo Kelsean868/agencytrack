@@ -6,6 +6,30 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Functions runtime + firebase-functions SDK upgrade — Node 20 EOL + SDK 4.9.0 → ≥5.1.0 (banked 2026-06-19, HIGH)
+
+**Tracking entry only — do NOT start the work without a dispatched brief.**
+
+Two coupled platform deadlines on the Cloud Functions stack:
+
+- **Node 20 runtime is decommissioned 2026-10-30** — after that date, function **deploys are blocked**. The current gen-1 functions run on Node 20.
+- **`firebase-functions` SDK 4.9.0 must move to ≥5.1.0** — the jump carries **breaking changes** (flagged; not a drop-in bump).
+
+**Scope these together, not separately** — the gen-1 runtime target and the SDK migration touch the same surface and should be planned + tested as one piece of work.
+
+**Validation gates before shipping:**
+- Run the full functions suite against the upgraded SDK in the **emulator**.
+- Perform a **non-prod deploy test** (separate project or a controlled deploy) to prove deploys still succeed on the new runtime + SDK before touching production.
+
+**Target: complete before end of September 2026** — buffer ahead of the 2026-10-30 deploy-blocking deadline. Past that, no function deploy is possible until the migration lands, so leaving it late risks an emergency migration under a hard wall.
+
+**Severity:** HIGH — hard external deadline (2026-10-30) with a deploy-blocking consequence; the breaking SDK jump means it cannot be a last-minute change.
+
+**Note:** CONTEXT.md § Pending operational state already carries the bare deprecation facts; this is the actionable, scoped tracking entry.
+
+---
+
+
 ## Daily Capture v2 Phase 1b — aggregator extension + distinct `telContacts` (QUEUED — stacks on 1a, 2026-06-18, HIGH)
 
 Extend `functions/aggregators/sundayDailyToWeekly.js` + `src/services/loggingModeService.aggregateCurrentWeekDaily` to Σ all 1a daily fields into their weekly targets. Add distinct `telContacts` as a real weekly Step 3 field (switch `extractFields` from `qualifiedApproaches` fallback; update floor mapping). Branch: `feat/daily-capture-v2-1b-aggregator` off `feat/daily-capture-v2-1a-schema` HEAD. Brief landed: `docs/briefs/brief-daily-capture-v2-1b-aggregator.md`. **Waits on 1a human merge.**
