@@ -107,9 +107,15 @@ After Phase 2.2, **no daily/draft-write path** uses browser-local `getMostRecent
 
 ---
 
-## Daily Capture v2 Phase 3 — pace + working days (QUEUED — stacks on Phase 2, 2026-06-18, HIGH)
+## Daily Capture v2 Phase 3a — pace pill, WORKING_DAYS=5 hardcoded (IN FLIGHT — PR #689, HUMAN-MERGE, 2026-06-19, HIGH)
 
-`workingDaysPerWeek` on user doc (default 5, Profile UI toggle). `weeklyPointsFloor` via de-duplicated activity map (no ffi+ci double-count). `dailyPaceTarget` + `weekToDateTarget`. Wire pill ahead/on-pace/behind. Brief landed: `docs/briefs/brief-daily-capture-v2-3-pace.md`. Branch: `feat/daily-capture-v2-3-pace` off Phase 2 HEAD. **Waits on Phase 2 human merge.**
+Week-to-date PACE badge added to the DCv2 save-card pill: Behind / On-pace / Ahead vs a pro-rated `weeklyPointsFloor` target. `mapFloorToPoints` derives the floor in points (7 keys counted once — `interviewsKept` excluded as double-count; `telContacts`/`clientsSold` excluded as unscored; default floors → 399 pts). `elapsedWorkingDays` counts Mon–Fri days elapsed. `computePaceState` applies ±5% band. `WORKING_DAYS = 5` is a named constant (Phase 3b replaces it with the per-tenant configurable). 29 new unit tests (pace.test.js). Smoke: 27/27 PASS both themes (Behind→Ahead seeded-floor transition). Brief: `docs/briefs/brief-daily-capture-v2-3a-pace.md`. Branch: `feat/daily-capture-v2-3a-pace` off main (PR #689 open, `d4921c1`).
+
+---
+
+## Daily Capture v2 Phase 3b — `workingDaysPerWeek` per-tenant configurable (QUEUED — stacks on Phase 3a, 2026-06-19, MED)
+
+`WORKING_DAYS = 5` in `DailyCaptureV2.helpers.js` is a named constant explicitly deferred to Phase 3b. Replace with a per-tenant `workingDaysPerWeek` value: stored on the user doc or in `config/companyMinimums`, surfaced via Profile UI toggle, defaulting to 5. `elapsedWorkingDays` and `weekToDateTarget` then consume the live value. Brief not yet drafted. **Waits on Phase 3a human merge.**
 
 ---
 
