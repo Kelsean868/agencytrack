@@ -66,4 +66,73 @@ describe('aggregateDailyToWeekly', () => {
     // nbApi * (10/100) + lumpsumCommission = 10000 * 0.1 + 0 = 1000
     expect(result.totalCommission).toBeCloseTo(1000);
   });
+
+  // ── DCv2 Phase 5: emergent days-worked + weekend signals ────────────────────
+  // MUST stay in sync with the ESM twin's cases (src/lib/schema/dailyActivity.test.js).
+  // Week of Sun 2026-05-10 (opening Sunday) … Sat 2026-05-16.
+  test('empty week → daysWorked 0, weekendWorked false, weekendApi 0', () => {
+    const out = aggregateDailyToWeekly([], 35);
+    expect(out.daysWorked).toBe(0);
+    expect(out.weekendWorked).toBe(false);
+    expect(out.weekendApi).toBe(0);
+  });
+
+  test('5 weekday-only days → daysWorked 5, weekendWorked false', () => {
+    const days = ['2026-05-11', '2026-05-12', '2026-05-13', '2026-05-14', '2026-05-15']
+      .map((date) => ({ date, qualifiedApproaches: 1 }));
+    const out = aggregateDailyToWeekly(days, 35);
+    expect(out.daysWorked).toBe(5);
+    expect(out.weekendWorked).toBe(false);
+    expect(out.weekendApi).toBe(0);
+  });
+
+  test('opening-Sunday-only week → weekendWorked true (TT-anchored)', () => {
+    const out = aggregateDailyToWeekly([{ date: '2026-05-10', qualifiedApproaches: 2 }], 35);
+    expect(out.daysWorked).toBe(1);
+    expect(out.weekendWorked).toBe(true);
+  });
+
+  test('Saturday-only week → weekendWorked true', () => {
+    const out = aggregateDailyToWeekly([{ date: '2026-05-16', qualifiedApproaches: 2 }], 35);
+    expect(out.daysWorked).toBe(1);
+    expect(out.weekendWorked).toBe(true);
+  });
+
+  test('full 7-day week → daysWorked 7, weekendWorked true', () => {
+    const days = [
+      '2026-05-10', '2026-05-11', '2026-05-12', '2026-05-13',
+      '2026-05-14', '2026-05-15', '2026-05-16',
+    ].map((date) => ({ date, qualifiedApproaches: 1 }));
+    const out = aggregateDailyToWeekly(days, 35);
+    expect(out.daysWorked).toBe(7);
+    expect(out.weekendWorked).toBe(true);
+  });
+
+  test('two docs on the same date count once (distinct-date dedupe guard)', () => {
+    const days = [
+      { date: '2026-05-12', qualifiedApproaches: 1 },
+      { date: '2026-05-12', qualifiedApproaches: 1 },
+    ];
+    const out = aggregateDailyToWeekly(days, 35);
+    expect(out.daysWorked).toBe(1);
+  });
+
+  test('weekendApi sums NB.api + PPP.apiIncrease + LMPS credit from weekend entries only', () => {
+    const days = [
+      { date: '2026-05-16', newBusiness: { api: 5000 }, pppIncreases: { apiIncrease: 2000 }, lumpsums: { grossAmount: 10000 } },
+      { date: '2026-05-15', newBusiness: { api: 3000 } },
+    ];
+    const out = aggregateDailyToWeekly(days, 35);
+    expect(out.weekendApi).toBeCloseTo(8000, 6);
+    expect(out.totalProductionCredit).toBeCloseTo(5000 + 3000 + 2000 + 1000, 6);
+    expect(out.weekendWorked).toBe(true);
+    expect(out.daysWorked).toBe(2);
+  });
+
+  test('entries without a date field contribute 0 distinct days and do not crash', () => {
+    const out = aggregateDailyToWeekly([{ qualifiedApproaches: 5 }], 35);
+    expect(out.daysWorked).toBe(0);
+    expect(out.weekendWorked).toBe(false);
+    expect(out.weekendApi).toBe(0);
+  });
 });

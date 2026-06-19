@@ -127,6 +127,14 @@ export function extractFields(d) {
     f.followUpCalls + f.seminarTradeshowCalls + f.prospectingLettersSent +
     f.seminarsConducted + f.tradeshowsAttended;
 
+  // DCv2 Phase 5 — emergent effort signals, written onto the submission by the
+  // daily→weekly aggregator (top-level scalars in both schema variants). Kept
+  // null (NOT coerced to 0) when absent so the manager view can render `—` for
+  // weekly-mode agents who never log daily — 0 would falsely read as "logged 0".
+  f.daysWorked    = d.daysWorked ?? null;
+  f.weekendWorked = d.weekendWorked ?? null;
+  f.weekendApi    = d.weekendApi ?? null;
+
   return f;
 }
 

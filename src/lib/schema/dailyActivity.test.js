@@ -211,6 +211,82 @@ describe('aggregateDailyToWeekly', () => {
   });
 });
 
+// ── DCv2 Phase 5: emergent days-worked + weekend signals ──────────────────────
+// Week of Sun 2026-05-10 (opening Sunday) … Sat 2026-05-16.
+describe('aggregateDailyToWeekly — emergent effort signals', () => {
+  it('empty week → daysWorked 0, weekendWorked false, weekendApi 0', () => {
+    const out = aggregateDailyToWeekly([], 35);
+    expect(out.daysWorked).toBe(0);
+    expect(out.weekendWorked).toBe(false);
+    expect(out.weekendApi).toBe(0);
+  });
+
+  it('5 weekday-only days → daysWorked 5, weekendWorked false', () => {
+    const days = ['2026-05-11', '2026-05-12', '2026-05-13', '2026-05-14', '2026-05-15']
+      .map((date) => ({ date, qualifiedApproaches: 1 }));
+    const out = aggregateDailyToWeekly(days, 35);
+    expect(out.daysWorked).toBe(5);
+    expect(out.weekendWorked).toBe(false);
+    expect(out.weekendApi).toBe(0);
+  });
+
+  it('opening-Sunday-only week → weekendWorked true (TT-anchored: 2026-05-10 is a Sunday)', () => {
+    // The opening Sunday is detected via the noon-UTC anchor, so this holds
+    // regardless of the test runner's local timezone (the UTC-4 trap).
+    const out = aggregateDailyToWeekly([{ date: '2026-05-10', qualifiedApproaches: 2 }], 35);
+    expect(out.daysWorked).toBe(1);
+    expect(out.weekendWorked).toBe(true);
+  });
+
+  it('Saturday-only week → weekendWorked true', () => {
+    const out = aggregateDailyToWeekly([{ date: '2026-05-16', qualifiedApproaches: 2 }], 35);
+    expect(out.daysWorked).toBe(1);
+    expect(out.weekendWorked).toBe(true);
+  });
+
+  it('full 7-day week → daysWorked 7, weekendWorked true', () => {
+    const days = [
+      '2026-05-10', '2026-05-11', '2026-05-12', '2026-05-13',
+      '2026-05-14', '2026-05-15', '2026-05-16',
+    ].map((date) => ({ date, qualifiedApproaches: 1 }));
+    const out = aggregateDailyToWeekly(days, 35);
+    expect(out.daysWorked).toBe(7);
+    expect(out.weekendWorked).toBe(true);
+  });
+
+  it('two docs on the same date count once (distinct-date dedupe guard)', () => {
+    const days = [
+      { date: '2026-05-12', qualifiedApproaches: 1 },
+      { date: '2026-05-12', qualifiedApproaches: 1 },
+    ];
+    const out = aggregateDailyToWeekly(days, 35);
+    expect(out.daysWorked).toBe(1);
+  });
+
+  it('weekendApi sums NB.api + PPP.apiIncrease + LMPS credit from weekend entries only', () => {
+    const days = [
+      // Saturday — counts toward weekendApi
+      { date: '2026-05-16', newBusiness: { api: 5000 }, pppIncreases: { apiIncrease: 2000 }, lumpsums: { grossAmount: 10000 } },
+      // Friday — excluded from weekendApi (still in week totals)
+      { date: '2026-05-15', newBusiness: { api: 3000 } },
+    ];
+    const out = aggregateDailyToWeekly(days, 35);
+    // weekend: 5000 + 2000 + (10000 × 0.10 credit) = 8000
+    expect(out.weekendApi).toBeCloseTo(8000, 6);
+    // whole-week totalProductionCredit includes the Friday too
+    expect(out.totalProductionCredit).toBeCloseTo(5000 + 3000 + 2000 + 1000, 6);
+    expect(out.weekendWorked).toBe(true);
+    expect(out.daysWorked).toBe(2);
+  });
+
+  it('entries without a date field do not crash and contribute 0 distinct days', () => {
+    const out = aggregateDailyToWeekly([{ qualifiedApproaches: 5 }], 35);
+    expect(out.daysWorked).toBe(0);
+    expect(out.weekendWorked).toBe(false);
+    expect(out.weekendApi).toBe(0);
+  });
+});
+
 // ── normalizeDailyEntry ───────────────────────────────────────────────────────
 
 describe('normalizeDailyEntry', () => {

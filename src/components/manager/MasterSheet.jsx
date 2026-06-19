@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import React from 'react';
 import StatusPill from '../ui/StatusPill';
-import { Download, Search, MessageSquare } from 'lucide-react';
+import { Download, Search, MessageSquare, CalendarCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getWeeklySubmissions, getTenantUsers } from '../../services/managerService';
 import { getLastNSundays } from '../../utils/dateHelpers';
@@ -29,6 +29,9 @@ const COLS = [
   { key: 'applicationsSold',    label: 'Sales',                                                    minW: 'min-w-[80px]'  },
   { key: 'livesSold',           label: 'Lives',                                                    minW: 'min-w-[80px]'  },
   { key: 'totalProductionCredit', label: 'API (TTD)',         currency: true, conditional: true,   minW: 'min-w-[110px]' },
+  { key: 'daysWorked',          label: 'Days Wkd',           daysWorked: true,                    minW: 'min-w-[80px]'  },
+  { key: 'weekendWorked',       label: 'Weekend',            weekend: true,                       minW: 'min-w-[90px]'  },
+  { key: 'weekendApi',          label: 'Wknd API',           currency: true,                      minW: 'min-w-[110px]' },
   { key: 'policiesDelivered',   label: 'Delivered',                                                minW: 'min-w-[80px]'  },
   { key: 'serviceContacts',     label: 'Service',                                                  minW: 'min-w-[80px]'  },
   { key: 'totalNewNames',       label: 'New Names',                                                minW: 'min-w-[80px]'  },
@@ -128,6 +131,9 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           applicationsSold:     f.applicationsSold,
           livesSold:            f.livesSold,
           totalProductionCredit: extractTotalProductionCredit(sub),
+          daysWorked:           f.daysWorked,
+          weekendWorked:        f.weekendWorked,
+          weekendApi:           f.weekendApi,
           targetAPI:            f.targetAPI,
           policiesDelivered:    f.policiesDelivered,
           serviceContacts:      f.serviceContacts,
@@ -154,7 +160,8 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
           if (c.key === 'name')   return `"${v}"`;
           if (c.key === 'status') return v;
           if (c.ratio)            return v === null ? '—' : `${v}%`;
-          if (c.currency)         return typeof v === 'number' ? v.toFixed(2) : '0.00';
+          if (c.weekend)          return v === true ? 'Yes' : v === false ? 'No' : '—';
+          if (c.currency)         return typeof v === 'number' ? v.toFixed(2) : '—';
           return v ?? '—';
         }).join(',')
       ),
@@ -196,6 +203,35 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
     if (col.key === 'status') {
       return <StatusPill variant={v === 'submitted' ? 'success' : 'warning'} label={v === 'submitted' ? 'Submitted' : 'Draft'} />;
     }
+    if (col.daysWorked) {
+      // Emergent effort: distinct days the agent logged. Absent (weekly-mode
+      // agent, never logs daily) → `—`, never 0.
+      return (
+        <span className="text-ink tabular-nums" data-testid={`days-worked-${row.id}`}>
+          {v == null ? '—' : v}
+        </span>
+      );
+    }
+    if (col.weekend) {
+      // Compact marker — info token (not alarm-red). Present iff the agent
+      // logged on the opening Sunday or Saturday this week.
+      const state = v === true ? 'yes' : v === false ? 'no' : 'na';
+      return (
+        <span data-testid={`weekend-marker-${row.id}`} data-weekend={state}>
+          {v === true ? (
+            <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium bg-primary/10 text-primary">
+              <CalendarCheck size={13} aria-hidden="true" />
+              <span className="sr-only">Worked weekend</span>
+              <span aria-hidden="true">Yes</span>
+            </span>
+          ) : (
+            <span className="text-ink-muted" aria-label={v === false ? 'No weekend work' : 'No daily data'}>
+              —
+            </span>
+          )}
+        </span>
+      );
+    }
     if (col.currency && col.conditional) {
       return (
         <span className={`whitespace-nowrap ${apiColorClass(row.totalProductionCredit, row.targetAPI)}`}>
@@ -204,7 +240,12 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
       );
     }
     if (col.currency) {
-      return <span className="whitespace-nowrap text-ink-muted">{formatCurrency(v)}</span>;
+      // weekendApi is null for non-daily submissions — render `—`, not $0.00.
+      return (
+        <span className="whitespace-nowrap text-ink-muted">
+          {v == null ? '—' : formatCurrency(v)}
+        </span>
+      );
     }
     if (col.ratio) {
       return <span className="text-ink">{v === null ? '—' : `${v}%`}</span>;
