@@ -74,10 +74,12 @@ export function computeDayPoints(entry) {
  * @param {Array<object>} weekDocs    - dailyActivity docs for the current week
  * @param {string}        today       - 'YYYY-MM-DD' in TT timezone
  * @param {string}        weekStarting - 'YYYY-MM-DD' (the Sunday that opens the week)
+ * @param {number}        [wd=5]      - working days per week: 5 (Mon–Fri) or 6 (Mon–Sat)
  * @returns {Array<{date,label,dayNum,isToday,isPast,isFuture,isLogged,isOff}>}
  *   6 items: Mon(+1) … Sat(+6) relative to weekStarting
  */
-export function deriveWeekStripDays(weekDocs, today, weekStarting) {
+export function deriveWeekStripDays(weekDocs, today, weekStarting, wd = 5) {
+  const workingDays = [5, 6].includes(Number(wd)) ? Number(wd) : 5;
   const entries  = Array.isArray(weekDocs) ? weekDocs : [];
   const docDates = new Set(entries.map((d) => d.date));
   const todayD   = new Date(today + 'T12:00:00Z');
@@ -99,13 +101,10 @@ export function deriveWeekStripDays(weekDocs, today, weekStarting) {
       isPast:   d < todayD,
       isFuture: d > todayD,
       isLogged: docDates.has(dateStr),
-      isOff:    d.getUTCDay() === 6, // Saturday
+      isOff:    d.getUTCDay() === 6 && workingDays < 6, // Sat is off only when wd=5
     };
   });
 }
-
-// Working days per week — Phase 3b replaces this with the per-tenant configurable value.
-export const WORKING_DAYS = 5;
 
 /**
  * Map a weekly-activity-floor object to the computePoints field shape and return
@@ -143,18 +142,20 @@ export function mapFloorToPoints(floors) {
 }
 
 /**
- * Count Mon–Fri working days elapsed from week start through today (inclusive).
- * Saturday does not add a day; Sunday returns 0 (pill is hidden on Sunday anyway).
+ * Count working days elapsed from week start through today (inclusive).
+ * Sunday returns 0 (pill hidden). Saturday counted only when wd = 6.
  *
  * @param {string} today        - 'YYYY-MM-DD'
  * @param {string} weekStarting - 'YYYY-MM-DD' (the Sunday that opens the week)
- * @returns {number} 0–5
+ * @param {number} [wd=5]       - working days per week: 5 (Mon–Fri) or 6 (Mon–Sat)
+ * @returns {number} 0–wd
  */
-export function elapsedWorkingDays(today, weekStarting) {
+export function elapsedWorkingDays(today, weekStarting, wd = 5) {
+  const workingDays = [5, 6].includes(Number(wd)) ? Number(wd) : 5;
   const todayD     = new Date(today       + 'T12:00:00Z');
   const weekStartD = new Date(weekStarting + 'T12:00:00Z');
   let count = 0;
-  for (let i = 1; i <= WORKING_DAYS; i++) {
+  for (let i = 1; i <= workingDays; i++) {
     const d = new Date(weekStartD);
     d.setUTCDate(d.getUTCDate() + i);
     if (d <= todayD) count++;

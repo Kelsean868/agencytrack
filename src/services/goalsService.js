@@ -85,6 +85,15 @@ export async function setCompanyMinimums(tenantId, data, updatedBy) {
     payload.weeklyActivityFloors = validated;
   }
 
+  // Optional workingDaysPerWeek — must be 5 or 6 when provided.
+  if (data.workingDaysPerWeek !== undefined) {
+    const wd = Number(data.workingDaysPerWeek);
+    if (![5, 6].includes(wd)) {
+      throw new Error('Working days per week must be 5 or 6.');
+    }
+    payload.workingDaysPerWeek = wd;
+  }
+
   const ref = doc(db, `tenants/${tenantId}/config/companyMinimums`);
   await setDoc(ref, payload, { merge: true });
 }

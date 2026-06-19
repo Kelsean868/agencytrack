@@ -63,6 +63,7 @@ export default function CompanyConfigPanel() {
 
   const annualAPI = parseFloat(config?.annualAPI) || 0;
   const persistency = parseFloat(config?.persistency) || 0;
+  const workingDays = [5, 6].includes(Number(config?.workingDaysPerWeek)) ? Number(config?.workingDaysPerWeek) : 5;
 
   const tiles = [
     {
@@ -98,6 +99,13 @@ export default function CompanyConfigPanel() {
       label: 'Week Starts',
       value: 'Sunday',
       sub: 'Reports submitted Sun – Sat',
+      editable: false,
+    },
+    {
+      key: 'workingDays',
+      label: 'Working Days',
+      value: `${workingDays} days`,
+      sub: workingDays === 6 ? 'Mon – Sat' : 'Mon – Fri',
       editable: false,
     },
     {
@@ -191,6 +199,7 @@ export default function CompanyConfigPanel() {
           tenantId={tenantId}
           currentAnnualAPI={annualAPI}
           currentFloors={config?.weeklyActivityFloors}
+          currentWorkingDays={workingDays}
           currentUid={user?.uid ?? null}
           onClose={() => setEditing(false)}
           onSaved={() => { loadConfig(); }}

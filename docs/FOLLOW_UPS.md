@@ -107,15 +107,21 @@ After Phase 2.2, **no daily/draft-write path** uses browser-local `getMostRecent
 
 ---
 
-## Daily Capture v2 Phase 3a — pace pill, WORKING_DAYS=5 hardcoded (IN FLIGHT — PR #689, HUMAN-MERGE, 2026-06-19, HIGH)
+## Daily Capture v2 Phase 3a — pace pill, WORKING_DAYS=5 hardcoded (SHIPPED — PR #689 `ed65d52`, 2026-06-19, HIGH)
 
-Week-to-date PACE badge added to the DCv2 save-card pill: Behind / On-pace / Ahead vs a pro-rated `weeklyPointsFloor` target. `mapFloorToPoints` derives the floor in points (7 keys counted once — `interviewsKept` excluded as double-count; `telContacts`/`clientsSold` excluded as unscored; default floors → 399 pts). `elapsedWorkingDays` counts Mon–Fri days elapsed. `computePaceState` applies ±5% band. `WORKING_DAYS = 5` is a named constant (Phase 3b replaces it with the per-tenant configurable). 29 new unit tests (pace.test.js). Smoke: 27/27 PASS both themes (Behind→Ahead seeded-floor transition). Brief: `docs/briefs/brief-daily-capture-v2-3a-pace.md`. Branch: `feat/daily-capture-v2-3a-pace` off main (PR #689 open, `d4921c1`).
+Week-to-date PACE badge added to the DCv2 save-card pill: Behind / On-pace / Ahead vs a pro-rated `weeklyPointsFloor` target. `mapFloorToPoints` derives the floor in points (7 keys counted once — `interviewsKept` excluded as double-count; `telContacts`/`clientsSold` excluded as unscored; default floors → 399 pts). `elapsedWorkingDays` counts Mon–Fri days elapsed. `computePaceState` applies ±5% band. `WORKING_DAYS = 5` was a named constant (Phase 3b — below — replaced it with the per-tenant configurable). 29 new unit tests (pace.test.js). Smoke: 27/27 PASS both themes (Behind→Ahead seeded-floor transition). Brief: `docs/briefs/brief-daily-capture-v2-3a-pace.md`. Shipped PR #689 `ed65d52`.
 
 ---
 
-## Daily Capture v2 Phase 3b — `workingDaysPerWeek` per-tenant configurable (QUEUED — stacks on Phase 3a, 2026-06-19, MED)
+## Daily Capture v2 Phase 3b — `workingDaysPerWeek` per-tenant configurable (RESOLVED — PR #TBD `{TBD}`, 2026-06-19, MED)
 
-`WORKING_DAYS = 5` in `DailyCaptureV2.helpers.js` is a named constant explicitly deferred to Phase 3b. Replace with a per-tenant `workingDaysPerWeek` value: stored on the user doc or in `config/companyMinimums`, surfaced via Profile UI toggle, defaulting to 5. `elapsedWorkingDays` and `weekToDateTarget` then consume the live value. Brief not yet drafted. **Waits on Phase 3a human merge.**
+`WORKING_DAYS = 5` in `DailyCaptureV2.helpers.js` (a named constant explicitly deferred from Phase 3a) was replaced with a per-tenant `workingDaysPerWeek` value.
+
+**Corrected diagnosis (Rule 11).** The original FU body speculated the value could be "stored on the user doc or in `config/companyMinimums`, surfaced via Profile UI toggle." The locked decision was **tenant-level in `config/companyMinimums`** (NOT per-agent user doc — per-agent override explicitly deferred) and surfaced via the **existing admin Company Config UI** (`CompanyConfigPanel` + `EditConfigModal`), NOT a Profile toggle. Default **5**; allowed **{5, 6}** (7 out of model — Sunday is the review day); absent/invalid → 5.
+
+**What shipped.** `workingDaysPerWeek` rides the existing `getCompanyMinimums` fetch via the `...stored` spread (no new Firestore read, no rules change). `deriveWeekStripDays(weekDocs, today, weekStarting, wd)` derives Saturday `isOff` as `getUTCDay() === 6 && wd < 6`; `elapsedWorkingDays(today, weekStarting, wd)` counts Saturday only when `wd = 6`; pace denominator is `weeklyPointsFloor × (elapsedWorkingDays / wd)`. `setCompanyMinimums` validates `workingDaysPerWeek ∈ {5, 6}`. `EditConfigModal` adds a 5/6 segmented control; `CompanyConfigPanel` adds a "Working Days" display tile. Both helpers clamp invalid/absent `wd` to 5 (no divide-by-zero in the pace denominator). 17 new unit tests (wd=5/wd=6/invalid-fallback across `elapsedWorkingDays` + `deriveWeekStripDays`). Brief: `docs/briefs/brief-daily-capture-v2-3b-working-days.md`. Branch: `feat/daily-capture-v2-3b-working-days`.
+
+**Deferred:** per-agent override (mixed-schedule tenant where some agents work Saturdays) — out of model for the uniform-work-week pilot.
 
 ---
 
