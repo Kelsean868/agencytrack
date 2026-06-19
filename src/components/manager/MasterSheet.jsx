@@ -225,8 +225,9 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
               <span aria-hidden="true">Yes</span>
             </span>
           ) : (
-            <span className="text-ink-muted" aria-label={v === false ? 'No weekend work' : 'No daily data'}>
-              —
+            <span className="text-ink-muted">
+              <span className="sr-only">{v === false ? 'No weekend work' : 'No daily data'}</span>
+              <span aria-hidden="true">—</span>
             </span>
           )}
         </span>
