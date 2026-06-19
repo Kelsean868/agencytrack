@@ -11,6 +11,26 @@ import { getBranchManagers, getAllUsers } from '../../services/agentManagementSe
 import BranchEditorModal from './BranchEditorModal';
 import DeactivateBranchConfirmDialog from './DeactivateBranchConfirmDialog';
 
+// Compact per-role breakdown for the branch user count. Short labels keep the
+// secondary line tight; order is lowest-to-highest tier so "agents" leads.
+const ROLE_LABELS = {
+  agent:          'agents',
+  unit_manager:   'UM',
+  branch_manager: 'BM',
+  sales_manager:  'SM',
+  tenant_admin:   'TA',
+  platform_admin: 'PA',
+};
+const ROLE_ORDER = ['agent', 'unit_manager', 'branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'];
+
+// roles: { [role]: count } → "2 agents, 1 UM, 1 BM" (omits zero-count roles).
+function formatRoleBreakdown(roles) {
+  return ROLE_ORDER
+    .filter((r) => roles[r])
+    .map((r) => `${roles[r]} ${ROLE_LABELS[r] ?? r}`)
+    .join(', ');
+}
+
 /**
  * Tenant Admin Branches management surface (Track C — C1).
  *
@@ -23,8 +43,11 @@ import DeactivateBranchConfirmDialog from './DeactivateBranchConfirmDialog';
  *
  * Read pattern:
  *   - On mount: Promise.all([listBranches, getBranchManagers, getAllUsers])
- *   - getAllUsers feeds the per-row agent count (count of active users
- *     with role==='agent' and branchId === thisBranchId).
+ *   - getAllUsers feeds the per-row TOTAL user count — all active users with
+ *     branchId === thisBranchId, any role — plus a compact per-role breakdown.
+ *     branchId is stamped on every user doc at creation (doCreateUser stamps it
+ *     for managers too), so the branchId-keyed total captures non-agent members
+ *     including the assigned branch manager. No new query.
  *   - getBranchManagers feeds the editor modal's manager dropdown.
  *
  * Backwards-compat: this surface is the only consumer of the new
@@ -90,13 +113,18 @@ export default function BranchesPanel() {
     return map;
   }, [branchManagers]);
 
-  const agentCountByBranch = useMemo(() => {
+  // Total active users per branch (all roles) + per-role breakdown, keyed by
+  // branchId. Active-only (mirrors getAllUsers' own filter); the role filter is
+  // intentionally dropped so the count reflects every member of the branch.
+  const usersByBranch = useMemo(() => {
     const map = new Map();
     for (const u of users) {
       if (u.active === false) continue;
-      if (u.role !== 'agent') continue;
       if (!u.branchId) continue;
-      map.set(u.branchId, (map.get(u.branchId) ?? 0) + 1);
+      const entry = map.get(u.branchId) ?? { total: 0, roles: {} };
+      entry.total += 1;
+      entry.roles[u.role] = (entry.roles[u.role] ?? 0) + 1;
+      map.set(u.branchId, entry);
     }
     return map;
   }, [users]);
@@ -209,14 +237,16 @@ export default function BranchesPanel() {
           <div className="grid grid-cols-[2fr_2fr_1fr_1fr_auto] gap-3 px-3 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
             <span>Name</span>
             <span>Manager</span>
-            <span>Agents</span>
+            <span>Users</span>
             <span>Status</span>
             <span>Actions</span>
           </div>
           {sortedBranches.map((b) => {
             const manager = b.managerId ? managerById.get(b.managerId) : null;
             const managerLabel = manager?.name ?? manager?.email ?? (b.managerId ? '—' : 'Unassigned');
-            const agentCount = agentCountByBranch.get(b.id) ?? 0;
+            const branchUsers = usersByBranch.get(b.id) ?? { total: 0, roles: {} };
+            const userCount = branchUsers.total;
+            const roleBreakdown = formatRoleBreakdown(branchUsers.roles);
             const inactive = b.isActive === false;
             return (
               <div
@@ -229,7 +259,14 @@ export default function BranchesPanel() {
               >
                 <span className="text-sm font-semibold text-ink truncate">{b.name}</span>
                 <span className="text-xs text-ink-muted truncate">{managerLabel}</span>
-                <span className="text-xs text-ink-muted">{agentCount} agents</span>
+                <div className="text-xs min-w-0" data-testid={`branch-user-count-${b.id}`}>
+                  <span className="text-ink-muted">{userCount} {userCount === 1 ? 'user' : 'users'}</span>
+                  {roleBreakdown && (
+                    <span className="block text-[10px] text-ink-muted/80 truncate" title={roleBreakdown}>
+                      {roleBreakdown}
+                    </span>
+                  )}
+                </div>
                 <span>
                   {inactive ? (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide bg-ink-muted/10 text-ink-muted">
