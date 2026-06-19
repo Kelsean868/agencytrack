@@ -10,6 +10,7 @@ const hoisted = vi.hoisted(() => ({
   getDailyEntriesForWeek: vi.fn(),
   getDraft: vi.fn(),
   aggregateCurrentWeekDaily: vi.fn(),
+  getCompanyMinimums: vi.fn(),
 }));
 
 vi.mock('../../../context/AuthContext', () => ({ useAuth: hoisted.useAuth }));
@@ -23,6 +24,9 @@ vi.mock('../../../services/submissionService', () => ({
 }));
 vi.mock('../../../services/loggingModeService', () => ({
   aggregateCurrentWeekDaily: hoisted.aggregateCurrentWeekDaily,
+}));
+vi.mock('../../../services/goalsService', () => ({
+  getCompanyMinimums: hoisted.getCompanyMinimums,
 }));
 
 import DailyCaptureV2 from '../DailyCaptureV2';
@@ -46,6 +50,7 @@ beforeEach(() => {
   hoisted.getDailyEntriesForWeek.mockResolvedValue([]);
   hoisted.getDraft.mockResolvedValue(null);
   hoisted.aggregateCurrentWeekDaily.mockResolvedValue({ aggregated: true });
+  hoisted.getCompanyMinimums.mockResolvedValue({ weeklyActivityFloors: {} });
 });
 
 // ─── deriveCountStripChips — pure ────────────────────────────────────────────
