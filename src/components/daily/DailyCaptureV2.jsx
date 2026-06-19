@@ -23,7 +23,13 @@ import {
   computeDayPoints,
   deriveWeekStripDays,
   computeStreak,
+  mapFloorToPoints,
+  elapsedWorkingDays,
+  computePaceState,
+  WORKING_DAYS,
 } from './DailyCaptureV2.helpers';
+import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../../utils/weeklyActivityFloors';
+import { getCompanyMinimums } from '../../services/goalsService';
 
 // ── Local helpers ──────────────────────────────────────────────────────────
 
@@ -46,6 +52,18 @@ function formatDateShort(dateStr) {
 
 const intOrZero   = (v) => parseInt(v, 10) || 0;
 const floatOrZero = (v) => parseFloat(v) || 0;
+
+const PACE_LABELS = {
+  ahead:    'Ahead',
+  'on-pace': 'On pace',
+  behind:   'Behind',
+};
+
+const PACE_BADGE_CLASSES = {
+  ahead:    'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  'on-pace': 'bg-primary/10 text-primary',
+  behind:   'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+};
 
 // ── Sub-components ─────────────────────────────────────────────────────────
 
@@ -438,6 +456,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   // Week-level state (for strip + chips)
   const [weekDocs,      setWeekDocs]      = useState([]);
   const [chipsLoading,  setChipsLoading]  = useState(true);
+  const [weeklyFloors,  setWeeklyFloors]  = useState(null);
 
   // ── Load entry for selectedDate whenever it changes ──────────────────────
   useEffect(() => {
@@ -511,6 +530,16 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
 
   useEffect(() => { refreshWeekDocs(); }, [refreshWeekDocs]);
 
+  // ── Load per-tenant activity floors once (fallback to code defaults) ──────
+  useEffect(() => {
+    if (!tenantId) return;
+    let active = true;
+    getCompanyMinimums(tenantId)
+      .then((mins) => { if (active) setWeeklyFloors(mins.weeklyActivityFloors); })
+      .catch(() => { /* silently use code defaults */ });
+    return () => { active = false; };
+  }, [tenantId]);
+
   // ── Sunday-only: is this week's weekly report already submitted? ──────────
   // Drives the SundayConfirmView CTA (deep-link "Review & submit" vs disabled
   // "Submitted"). Keyed on DCv2's own TT-anchored weekStarting so the status
@@ -532,7 +561,21 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
   const chips     = useMemo(() => deriveCountStripChips(weekDocs), [weekDocs]);
   const stripDays = useMemo(() => deriveWeekStripDays(weekDocs, today, weekStarting), [weekDocs, today, weekStarting]);
   const streak    = useMemo(() => computeStreak(weekDocs, today), [weekDocs, today]);
-  const dayPoints = useMemo(() => computeDayPoints(data), [data]);
+  const dayPoints        = useMemo(() => computeDayPoints(data), [data]);
+  const weekPoints       = useMemo(() => weekDocs.reduce((s, d) => s + computeDayPoints(d), 0), [weekDocs]);
+  const weeklyPointsFloor = useMemo(
+    () => mapFloorToPoints(weeklyFloors ?? DEFAULT_WEEKLY_ACTIVITY_FLOORS),
+    [weeklyFloors],
+  );
+  const elapsedDays      = useMemo(() => elapsedWorkingDays(today, weekStarting), [today, weekStarting]);
+  const weekToDateTarget = useMemo(
+    () => weeklyPointsFloor * (elapsedDays / WORKING_DAYS),
+    [weeklyPointsFloor, elapsedDays],
+  );
+  const paceState        = useMemo(
+    () => computePaceState(weekPoints, weekToDateTarget),
+    [weekPoints, weekToDateTarget],
+  );
 
   // Production credit (header slot in Production card).
   const lmpsGross      = floatOrZero(data.lumpsums?.grossAmount);
@@ -1000,16 +1043,28 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
       {/* ── Sticky save footer — not shown in Sunday confirm view ── */}
       {!isTodaySunday && (
         <footer className="px-4 py-4 border-t border-border bg-card shrink-0">
-          {/* Points pill */}
-          {dayPoints > 0 && !loading && (
+          {/* Points pill + pace badge */}
+          {!loading && (dayPoints > 0 || (elapsedDays > 0 && weeklyPointsFloor > 0)) && (
             <div
               data-testid="dcv2-points-pill"
-              className="flex items-center justify-center gap-1.5 mb-3"
+              className="flex items-center justify-center gap-1.5 mb-3 flex-wrap"
               aria-live="polite"
-              aria-label={`${dayPoints} points today`}
             >
-              <span className="text-2xl font-bold text-primary tabular-nums">{dayPoints}</span>
-              <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">pts today</span>
+              {dayPoints > 0 && (
+                <>
+                  <span className="text-2xl font-bold text-primary tabular-nums">{dayPoints}</span>
+                  <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">pts today</span>
+                </>
+              )}
+              {elapsedDays > 0 && weeklyPointsFloor > 0 && (
+                <span
+                  data-testid="dcv2-pace-badge"
+                  className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PACE_BADGE_CLASSES[paceState]}`}
+                  aria-label={`Pace: ${PACE_LABELS[paceState]}`}
+                >
+                  {PACE_LABELS[paceState]}
+                </span>
+              )}
             </div>
           )}
 

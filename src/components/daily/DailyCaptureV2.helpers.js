@@ -104,6 +104,80 @@ export function deriveWeekStripDays(weekDocs, today, weekStarting) {
   });
 }
 
+// Working days per week — Phase 3b replaces this with the per-tenant configurable value.
+export const WORKING_DAYS = 5;
+
+/**
+ * Map a weekly-activity-floor object to the computePoints field shape and return
+ * the total floor-equivalent point value.
+ *
+ * Each floor key counted ONCE (de-dup guard):
+ *   callsMade             → coldCalls (dials bucket)      × 1
+ *   appointmentsScheduled → appointmentsSet               × 3
+ *   factFindsCompleted    → ffiConducted                  × 5
+ *   closingInterviewsKept → ciConducted                   × 10
+ *   applicationsSubmitted → applicationsSold              × 25
+ *   api                   → apiSold (÷1000)               × 1
+ *   referralsNewLeads     → namesFromOther (@1pt floor)   × 1
+ *
+ * Intentionally excluded:
+ *   interviewsKept  — ≡ ffiConducted + ciConducted (double-count)
+ *   telContacts     — unscored in computePoints
+ *   clientsSold     — unscored in computePoints
+ */
+export function mapFloorToPoints(floors) {
+  if (!floors) return 0;
+  const f = (v) => parseFloat(v) || 0;
+  return computePoints({
+    coldCalls:             f(floors.callsMade),
+    referralCalls:         0,
+    followUpCalls:         0,
+    seminarTradeshowCalls: 0,
+    appointmentsSet:       f(floors.appointmentsScheduled),
+    ffiConducted:          f(floors.factFindsCompleted),
+    ciConducted:           f(floors.closingInterviewsKept),
+    applicationsSold:      f(floors.applicationsSubmitted),
+    apiSold:               f(floors.api),
+    namesFromOther:        f(floors.referralsNewLeads),
+  });
+}
+
+/**
+ * Count Mon–Fri working days elapsed from week start through today (inclusive).
+ * Saturday does not add a day; Sunday returns 0 (pill is hidden on Sunday anyway).
+ *
+ * @param {string} today        - 'YYYY-MM-DD'
+ * @param {string} weekStarting - 'YYYY-MM-DD' (the Sunday that opens the week)
+ * @returns {number} 0–5
+ */
+export function elapsedWorkingDays(today, weekStarting) {
+  const todayD     = new Date(today       + 'T12:00:00Z');
+  const weekStartD = new Date(weekStarting + 'T12:00:00Z');
+  let count = 0;
+  for (let i = 1; i <= WORKING_DAYS; i++) {
+    const d = new Date(weekStartD);
+    d.setUTCDate(d.getUTCDate() + i);
+    if (d <= todayD) count++;
+  }
+  return count;
+}
+
+/**
+ * Derive the week-to-date pace state.
+ * Band: ±5% of the pro-rated floor target.
+ *
+ * @param {number} weekPoints       - points earned so far this week
+ * @param {number} weekToDateTarget - expected floor-pace points by today
+ * @returns {'behind' | 'on-pace' | 'ahead'}
+ */
+export function computePaceState(weekPoints, weekToDateTarget) {
+  if (weekToDateTarget <= 0) return 'on-pace';
+  const ratio = weekPoints / weekToDateTarget;
+  if (ratio < 0.95) return 'behind';
+  if (ratio > 1.05) return 'ahead';
+  return 'on-pace';
+}
+
 /**
  * Count the current logging streak (consecutive non-Sunday days with saved entries,
  * counting backward from today; today is included when already logged).
