@@ -19,6 +19,7 @@ import { extractFields, extractTotalProductionCredit } from '../../utils/extract
 import { generateAgentPDF } from '../../services/exportService';
 import { getActiveCampaignsForAgent, getCampaignSubmissions } from '../../services/campaignService';
 import WizardForm from '../wizard/WizardForm';
+import { resolvePath } from '../wizard/WizardForm.helpers';
 import DailyCaptureV2 from '../daily/DailyCaptureV2';
 import { getDailyEntry, getDailyEntriesForWeek } from '../../services/dailyActivityService';
 import { getWeeklyPlan } from '../../services/weeklyPlanService';
@@ -104,6 +105,7 @@ export default function AgentDashboard() {
   const [policyLedgerFilter, setPolicyLedgerFilter] = useState(null);
   const [showWizard, setShowWizard]           = useState(false);
   const [wizardWeek, setWizardWeek]           = useState(null);
+  const [wizardInitialStep, setWizardInitialStep] = useState(1);
   const [showDailyModal, setShowDailyModal]   = useState(false);
   const [unlockDismissed, setUnlockDismissed] = useState(false);
   const [viewingSubmission, setViewingSubmission] = useState(null);
@@ -419,7 +421,9 @@ export default function AgentDashboard() {
     }
   };
 
-  const openWizardForWeek = (week) => {
+  const openWizardForWeek = (week, draft = null) => {
+    const path = resolvePath(loggingMode, draft);
+    setWizardInitialStep(path === 'fast' ? 10 : 1);
     setWizardWeek(week);
     setShowWizard(true);
   };
@@ -456,7 +460,7 @@ export default function AgentDashboard() {
   };
 
   if (showWizard) {
-    return <WizardForm initialWeek={wizardWeek} onClose={() => { setShowWizard(false); setWizardWeek(null); }} />;
+    return <WizardForm initialWeek={wizardWeek} initialStep={wizardInitialStep} onClose={() => { setShowWizard(false); setWizardWeek(null); setWizardInitialStep(1); }} />;
   }
 
   if (showDailyModal) {
@@ -468,7 +472,9 @@ export default function AgentDashboard() {
         }}
         onReviewSubmit={(week) => {
           setShowDailyModal(false);
-          openWizardForWeek(week);
+          // Signal the fast path: agent coming from DailyCaptureV2 always has
+          // aggregated daily data. resolvePath returns 'fast' → ratings step 10.
+          openWizardForWeek(week, { aggregatedFromDaily: true, daysWorked: 1 });
         }}
       />
     );

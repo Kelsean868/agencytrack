@@ -318,3 +318,30 @@ describe('E — weekly floor (mapFloorToPoints)', () => {
     expect(mapFloorToPoints({})).toBe(0);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// F — initialStep prop (Q4 v3 shell)
+//
+// Keystone tests: WizardForm mounts the correct step when initialStep is given.
+// resolvePath.test.js covers the helper; these cover the render boundary —
+// that WizardForm's useState(initialStep ?? 1) actually determines which step
+// component lands on screen.
+//
+// initialWeek is required for both tests: it drives screen='step' (not 'date'),
+// which is what enables the step counter and step title to render at all.
+// ─────────────────────────────────────────────────────────────────────────────
+describe('F — initialStep prop (Q4 v3 shell)', () => {
+  it('initialStep={10} mounts StepRateYourWeek: title "Rate your week", counter "Step 10 of 12"', async () => {
+    render(<WizardForm onClose={vi.fn()} initialWeek={WEEK} initialStep={10} />);
+    await waitForModal();
+    expect(screen.getByTestId('wizard-v2-step-title')).toHaveTextContent('Rate your week');
+    expect(screen.getByTestId('wizard-v2-step-counter')).toHaveTextContent('Step 10 of 12');
+  });
+
+  it('no initialStep → step 1 default: title "Letters & outreach", counter "Step 1 of 12"', async () => {
+    render(<WizardForm onClose={vi.fn()} initialWeek={WEEK} />);
+    await waitForModal();
+    expect(screen.getByTestId('wizard-v2-step-title')).toHaveTextContent('Letters & outreach');
+    expect(screen.getByTestId('wizard-v2-step-counter')).toHaveTextContent('Step 1 of 12');
+  });
+});
