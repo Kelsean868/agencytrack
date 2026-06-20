@@ -51,17 +51,18 @@ async function perTheme(page, theme) {
   const dialog = page.getByRole('dialog', { name: /year plan/i });
   await dialog.waitFor({ state: 'visible', timeout: 20_000 });
 
-  // Reach the allocating phase: pick a license profile if prompted, then dismiss
-  // the no-seed state if shown.
+  // Reach the allocating phase. First run: pick a license profile (writes the
+  // agent's first-run licenseProfile). With no Money Needs targets this lands in
+  // the no-seed state, whose "Enter from scratch" dismiss → allocating. Wait for
+  // each async-rendered control rather than fixed delays.
   const composite = dialog.getByRole('button', { name: /composite/i });
   if (await composite.count()) {
-    await composite.first().click().catch(() => {});
-    await page.waitForTimeout(800);
+    await composite.first().click();
   }
   const scratch = dialog.getByRole('button', { name: /enter from scratch/i });
+  await scratch.waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {});
   if (await scratch.count()) {
-    await scratch.first().click().catch(() => {});
-    await page.waitForTimeout(500);
+    await scratch.first().click();
   }
 
   // 2.4 — blended-rate tooltip is present once the summary card renders.
