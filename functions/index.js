@@ -424,6 +424,28 @@ async function doCreateUser(data, context) {
 // escape hatch. SUPER_ADMIN_UID bypass removed in PR-2. Claims are now seeded
 // via seed-first-tenant-admin.cjs for new tenants and maintained by createUser.
 // ─────────────────────────────────────────────────────────────────────────────
+// Resolves the sales_manager uid for a tenant via Admin SDK (bypasses client-side
+// rules — agents cannot list users). Returns { smUid: string|null }.
+exports.resolveSalesManagerUid = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Authentication required.');
+  }
+  const tenantId = context.auth.token.tenantId;
+  if (!tenantId) {
+    throw new functions.https.HttpsError('permission-denied', 'No tenantId claim.');
+  }
+  const snap = await admin.firestore()
+    .collection(`tenants/${tenantId}/users`)
+    .where('role', '==', 'sales_manager')
+    .limit(2)
+    .get();
+  if (snap.empty) return { smUid: null };
+  if (snap.size > 1) {
+    console.warn(`resolveSalesManagerUid: ${snap.size} SM docs in tenant ${tenantId}; returning first`);
+  }
+  return { smUid: snap.docs[0].id };
+});
+
 exports.setUserClaims = functions.https.onCall(async (data, context) => {
   if (!context.auth || !['platform_admin', 'tenant_admin'].includes(context.auth.token.role)) {
     throw new functions.https.HttpsError('permission-denied', 'Only tenant_admin or platform_admin can set user claims.');

@@ -4,8 +4,9 @@ const hoisted = vi.hoisted(() => ({
   mockGetDoc: vi.fn(),
   mockSetDoc: vi.fn(),
   mockGetDocs: vi.fn(),
+  mockCallable: vi.fn(),
 }));
-const { mockGetDoc, mockSetDoc, mockGetDocs } = hoisted;
+const { mockGetDoc, mockSetDoc, mockGetDocs, mockCallable } = hoisted;
 
 vi.mock('firebase/firestore', () => ({
   doc: (_db, path) => ({ __ref: path }),
@@ -16,6 +17,10 @@ vi.mock('firebase/firestore', () => ({
   query: (ref, ...constraints) => ({ __collection: ref.__collection, __constraints: constraints }),
   where: (field, op, val) => ({ __where: { field, op, val } }),
   getDocs: (...args) => hoisted.mockGetDocs(...args),
+}));
+
+vi.mock('firebase/functions', () => ({
+  httpsCallable: (_functions, _name) => hoisted.mockCallable,
 }));
 
 import {
@@ -33,6 +38,7 @@ beforeEach(() => {
   mockGetDoc.mockReset();
   mockSetDoc.mockReset();
   mockGetDocs.mockReset();
+  mockCallable.mockReset();
 });
 
 describe('getCompanyMinimums — weeklyActivityFloors defaults', () => {
@@ -329,31 +335,16 @@ describe('setSalesManagerGoals', () => {
 });
 
 describe('getSalesManagerUid', () => {
-  it('returns null when no sales_manager user exists', async () => {
-    mockGetDocs.mockResolvedValue({ empty: true, size: 0, docs: [] });
+  it('returns null when CF reports no sales_manager', async () => {
+    mockCallable.mockResolvedValue({ data: { smUid: null } });
     const result = await getSalesManagerUid('t1');
     expect(result).toBeNull();
   });
 
-  it('returns the uid of the single sales_manager', async () => {
-    mockGetDocs.mockResolvedValue({
-      empty: false, size: 1,
-      docs: [{ id: 'sm-uid-abc' }],
-    });
+  it('returns the uid from the CF response', async () => {
+    mockCallable.mockResolvedValue({ data: { smUid: 'sm-uid-abc' } });
     const result = await getSalesManagerUid('t1');
     expect(result).toBe('sm-uid-abc');
-  });
-
-  it('returns first uid and emits console.warn when multiple SMs found', async () => {
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    mockGetDocs.mockResolvedValue({
-      empty: false, size: 2,
-      docs: [{ id: 'sm-first' }, { id: 'sm-second' }],
-    });
-    const result = await getSalesManagerUid('t1');
-    expect(result).toBe('sm-first');
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('2 sales_manager'));
-    warnSpy.mockRestore();
   });
 });
 
@@ -368,7 +359,6 @@ describe('getGoalHierarchy — salesManagerTarget tier', () => {
 
   it('returns salesManagerTarget: null when smUid is not passed', async () => {
     wireDocs({ 'tenants/t1/config/companyMinimums': { annualAPI: 200000, annualApps: 42 } });
-    mockGetDocs.mockResolvedValue({ empty: true, size: 0, docs: [] });
     const result = await getGoalHierarchy('t1', null, 2026, null);
     expect(result.salesManagerTarget).toBeNull();
   });

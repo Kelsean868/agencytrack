@@ -172,6 +172,10 @@ const HARMLESS_CONSOLE = [
   /\[AgencyTrack\] Auth claims:/,
   /\[AgencyTrack\] UID:/,
 ];
+// Named ignore list — errors matching these substrings are still listed in the report
+// but do not trigger a FAIL verdict. Keep empty; add entries only when an error cannot
+// be filtered out entirely via HARMLESS_CONSOLE and is genuinely known-harmless.
+const CONSOLE_ERROR_IGNORE = [];
 const HARMLESS_NET = [
   // Initial Firestore Listen channel POST aborts under StrictMode double-mount,
   // immediately retried successfully. Per scripts/exploration-template.md.
@@ -551,7 +555,9 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
   lines.push('## Headline');
   lines.push('');
   const wrcNote = ROLE === 'agent' ? ' Real write-read-verify cycle exercised for agent wizard (type → auto-save → reload → persist-verify).' : '';
-  lines.push(`Programmatic walkthrough completed ${completed}/${allActions.length} checks. Exercises tab navigation, dark-mode toggle, wizard open/close, sign out + login redirect, and structural-element verification per tab.${wrcNote} Out-of-scope steps (PDF download, notifications bell, multi-week wizard interstitial flows) require manual verification.`);
+  const fatalErrors = consoleErrors.filter(e => !CONSOLE_ERROR_IGNORE.some(p => e.includes(p)));
+  const errNote = fatalErrors.length > 0 ? ` **${fatalErrors.length} console error(s) captured** — see Console errors section.` : '';
+  lines.push(`Programmatic walkthrough completed ${completed}/${allActions.length} checks. Exercises tab navigation, dark-mode toggle, wizard open/close, sign out + login redirect, and structural-element verification per tab.${wrcNote} Out-of-scope steps (PDF download, notifications bell, multi-week wizard interstitial flows) require manual verification.${errNote}`);
   lines.push('');
   lines.push('## Summary');
   lines.push('');
@@ -603,13 +609,15 @@ const isHarmless = (text, patterns) => patterns.some((p) => p.test(text));
   lines.push('## Recommendation');
   lines.push('');
   const allClean =
-    consoleErrors.length === 0 &&
+    fatalErrors.length === 0 &&
     networkFailures.length === 0 &&
     uncaughtRejections.length === 0 &&
     stepNotes.length === 0 &&
     completed === allActions.length;
   if (allClean) {
     lines.push('**PASS** — all programmatic checks completed cleanly. Manual interactive flows (PDF download, notifications, multi-week wizard) remain out of scope for this automated walkthrough.');
+  } else if (fatalErrors.length > 0) {
+    lines.push('**FAIL** — console error(s) captured. Resolve before merging; see Console errors section.');
   } else {
     lines.push('**REVIEW** — see sections above for specifics.');
   }
