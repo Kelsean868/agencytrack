@@ -58,7 +58,7 @@ This is a pure import-path change; the v1 builder API (`functions.https.onCall`,
 1. **v6 root-export break (HIGH if skipped):** adopting v6 without the `/v1` import change silently breaks all 12 files → every trigger/callable undefined → failed deploy or dead functions. The import migration is mandatory and atomic with the v6 bump.
 2. **v5.1.0 Extensions-API deploy caveat (MED):** could block a deploy unrelated to our code. Pin + dry-run.
 3. **`firebase-admin` compatibility (MED):** v5.0.0 changed the admin-v10 dependency for Firestore multi-DB. We're on admin `^12` — likely fine, but verify the admin/functions pair at the pinned versions. *(Exact admin floor for v5/v6: **UNVERIFIED**.)*
-4. **CF unit tests (`functions/` vitest) mock `firebase-functions` (LOW):** the `/v1` import change may require updating those mocks' module path. Audit `functions/**/__tests__` for `vi.mock('firebase-functions')`.
+4. **CF unit tests (`functions/` jest) mock `firebase-functions` (LOW):** the `functions/` suite runs **jest** (`functions/package.json` `test: jest --testEnvironment=node`, jest `^29`) — distinct from the root `vitest`. The `/v1` import change may require updating those mocks' module path. Audit `functions/**/__tests__` for `jest.mock('firebase-functions')` (e.g. `aggregatePendingPlan.test.js:8`, `leaderboardAggregate.test.js:59`, `onWarWrite.test.js:14`).
 
 ## Phased plan
 - **Phase A — v4.9.0 → latest v5.x (dependency-only).** Bump `functions/package.json`; `npm install` in `functions/`; **no source edits**. Resolve the v5.1.0 Extensions caveat (enable API or pin). Verify locally, then **dispatcher-gated deploy** to prod with a smoke. LOW risk; clears Node-20-aligned SDK + deprecation warnings.
