@@ -28,6 +28,10 @@ const ROOT = join(__dir, '..', '..');
 const E = loadEnv(ROOT);
 const BASE = (process.env.SMOKE_PREVIEW_URL ?? 'https://agencytrack.vercel.app').replace(/\/+$/, '');
 const TOKEN = E.VERCEL_BYPASS_TOKEN ?? process.env.VERCEL_BYPASS_TOKEN;
+// Prefer .env.local; fall back to process.env so the smoke also runs where
+// credentials are injected directly into the environment (Gemini #705 nit).
+const AGENT_EMAIL = E.A11Y_AGENT_EMAIL ?? process.env.A11Y_AGENT_EMAIL;
+const AGENT_PASSWORD = E.A11Y_AGENT_PASSWORD ?? process.env.A11Y_AGENT_PASSWORD;
 
 const SS_DIR = join(ROOT, 'screenshots', 'gameplan-item4');
 if (!existsSync(SS_DIR)) mkdirSync(SS_DIR, { recursive: true });
@@ -36,11 +40,13 @@ const results = [];
 
 async function perTheme(page, theme) {
   const cap = captureConsoleAndNetwork(page);
-  await loginAs(page, BASE, E.A11Y_AGENT_EMAIL, E.A11Y_AGENT_PASSWORD);
+  await loginAs(page, BASE, AGENT_EMAIL, AGENT_PASSWORD);
 
   await page.click('[data-testid="agent-tab-game-plan"]');
+  // Wait deterministically for both the hub and the live rail to render (the rail
+  // is asserted below) instead of a fixed settle delay (Gemini #705 nit).
   await page.waitForSelector('[data-testid="game-plan-hub"]', { timeout: 20_000 });
-  await page.waitForTimeout(1500);
+  await page.waitForSelector('[data-testid="game-plan-rail"]', { timeout: 20_000 });
 
   const hub = await page.locator('[data-testid="game-plan-hub"]').count();
   const rail = await page.locator('[data-testid="game-plan-rail"]').count();
