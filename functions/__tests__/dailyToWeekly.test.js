@@ -136,3 +136,38 @@ describe('aggregateDailyToWeekly', () => {
     expect(out.weekendApi).toBe(0);
   });
 });
+
+// ── M3 points-fix: coldCalls === dials parity (CJS twin) ─────────────────────
+// MUST stay in sync with the ESM twin's M3 cases (src/lib/schema/dailyActivity.test.js).
+// computePoints is ESM-only; point-value assertions live in the ESM test.
+describe('aggregateDailyToWeekly CJS twin — M3 coldCalls parity', () => {
+  test('coldCalls equals the summed dials total', () => {
+    const out = aggregateDailyToWeekly([{ dials: 10 }, { dials: 15 }], 0);
+    expect(out.dials).toBe(25);
+    expect(out.coldCalls).toBe(25);
+  });
+
+  test('coldCalls equals dials when dials is 0 (safe zero)', () => {
+    const out = aggregateDailyToWeekly([], 0);
+    expect(out.coldCalls).toBe(0);
+    expect(out.dials).toBe(0);
+  });
+
+  test('referralCalls / followUpCalls / seminarTradeshowCalls explicitly 0 — merge-safe', () => {
+    const out = aggregateDailyToWeekly([{ dials: 5 }], 0);
+    // Explicit zeros overwrite stale agent-entered values via { merge: true }
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+  });
+
+  test('explicit zeros prevent double-count when prior doc had agent-entered call breakdown', () => {
+    // Mirrors ESM twin test. computePoints is ESM-only; assert the shape is
+    // merge-safe so the ESM point-value assertion is the authoritative proof.
+    const out = aggregateDailyToWeekly([{ dials: 8 }], 0);
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+    expect(out.coldCalls).toBe(8);
+  });
+});
