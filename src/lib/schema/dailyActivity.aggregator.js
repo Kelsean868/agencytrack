@@ -126,9 +126,13 @@ export function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
     seminarsConducted:      sumInt('seminarsConducted'),
     dials:                  sumInt('dials'),
     // M3: mirrors computeDayPoints mapping so aggregated fast-path drafts earn
-    // call points. coldCalls === dials total; referralCalls/followUpCalls/
-    // seminarTradeshowCalls stay absent (0) to avoid double-counting.
+    // call points. coldCalls = Σdials; the three sibling call fields are
+    // explicitly 0 so a { merge: true } write overwrites any stale agent-entered
+    // values and prevents double-counting in computePoints / extractFields.
     coldCalls:              sumInt('dials'),
+    referralCalls:          0,
+    followUpCalls:          0,
+    seminarTradeshowCalls:  0,
     telContacts:            sumInt('telContacts'),
     f2fAttempts:            sumInt('f2fAttempts'),
     // Social (live platform shape)

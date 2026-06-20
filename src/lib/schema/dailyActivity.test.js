@@ -312,13 +312,27 @@ describe('aggregateDailyToWeekly — M3 coldCalls fix', () => {
     expect(computePoints(out)).toBe(20);
   });
 
-  it('referralCalls / followUpCalls / seminarTradeshowCalls absent → no double-count', () => {
+  it('referralCalls / followUpCalls / seminarTradeshowCalls explicitly 0 — merge-safe', () => {
     const out = aggregateDailyToWeekly([{ dials: 5 }], 0);
-    expect(out.referralCalls).toBeUndefined();
-    expect(out.followUpCalls).toBeUndefined();
-    expect(out.seminarTradeshowCalls).toBeUndefined();
-    // computePoints dials bucket = coldCalls(5)+referral(0)+followUp(0)+seminar(0) = 5
+    // Explicit zeros overwrite stale agent-entered values via { merge: true }
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+    // computePoints dials bucket = coldCalls(5) only = 5 pts
     expect(computePoints(out)).toBe(5);
+  });
+
+  it('explicit zeros prevent double-count when prior doc had agent-entered call breakdown', () => {
+    // Scenario: agent previously submitted referralCalls:10, followUpCalls:5 via
+    // the manual wizard. They then switch to daily mode. The aggregated output
+    // must explicitly zero those fields so { merge: true } overwrites them.
+    const out = aggregateDailyToWeekly([{ dials: 8 }], 0);
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+    expect(out.coldCalls).toBe(8);
+    // Only coldCalls=8 contributes: 8 pts. NOT 8+10+5=23 if stale fields survived.
+    expect(computePoints(out)).toBe(8);
   });
 });
 

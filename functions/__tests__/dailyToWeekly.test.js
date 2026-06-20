@@ -153,10 +153,21 @@ describe('aggregateDailyToWeekly CJS twin — M3 coldCalls parity', () => {
     expect(out.dials).toBe(0);
   });
 
-  test('referralCalls / followUpCalls / seminarTradeshowCalls absent → no double-count', () => {
+  test('referralCalls / followUpCalls / seminarTradeshowCalls explicitly 0 — merge-safe', () => {
     const out = aggregateDailyToWeekly([{ dials: 5 }], 0);
-    expect(out.referralCalls).toBeUndefined();
-    expect(out.followUpCalls).toBeUndefined();
-    expect(out.seminarTradeshowCalls).toBeUndefined();
+    // Explicit zeros overwrite stale agent-entered values via { merge: true }
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+  });
+
+  test('explicit zeros prevent double-count when prior doc had agent-entered call breakdown', () => {
+    // Mirrors ESM twin test. computePoints is ESM-only; assert the shape is
+    // merge-safe so the ESM point-value assertion is the authoritative proof.
+    const out = aggregateDailyToWeekly([{ dials: 8 }], 0);
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+    expect(out.coldCalls).toBe(8);
   });
 });
