@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Loader2, AlertCircle, BarChart2 } from 'lucide-react';
+import { X, Loader2, AlertCircle, BarChart2, Info } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   getYearPlan, saveYearPlan,
@@ -20,6 +20,7 @@ import {
 import { DEFAULT_DECOMPOSITION_INPUTS } from '../../utils/goalDecomposition';
 import AwardProjectionStrip from './AwardProjectionStrip';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
+import { getAwardsRuleset } from '../../services/awardsRulesetService';
 import useFocusTrap from '../../hooks/useFocusTrap';
 
 const CURRENT_YEAR = new Date().getFullYear();
@@ -185,7 +186,18 @@ function SummaryCard({ lines, firstYearCommissionsRequired, commissionRate, avgP
         <span className="font-semibold text-ink tabular-nums">{Math.round(totalApps)}</span>
       </div>
       <div className="flex justify-between text-sm">
-        <span className="text-ink-muted">Implied Commission ({commissionRate ?? 35}%)</span>
+        <span className="text-ink-muted inline-flex items-center gap-1">
+          Implied Commission ({commissionRate ?? 35}%)
+          <span
+            className="inline-flex items-center text-ink-muted/70 cursor-help"
+            role="img"
+            aria-label="One blended commission rate is applied across all lines, not a per-line rate"
+            title="One blended commission rate is applied across all lines — not a per-line rate."
+            data-testid="commission-blended-tooltip"
+          >
+            <Info size={12} aria-hidden="true" />
+          </span>
+        </span>
         <span className="font-semibold text-ink tabular-nums">{formatCurrency(totalComm)}</span>
       </div>
 
@@ -281,6 +293,7 @@ export default function YearPlanModal({ onClose, onAfterSave, moneyNeedsWorkshee
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
+  const [ruleset, setRuleset] = useState(DEFAULT_RULESET_2026);
   const modalRef = useFocusTrap({ onEscape: onClose, escapeDisabled: saving || profileSaving });
 
   // ── Load ──────────────────────────────────────────────────────────────────
@@ -336,6 +349,19 @@ export default function YearPlanModal({ onClose, onAfterSave, moneyNeedsWorkshee
   }, [tenantId, uid, year, user, moneyNeedsWorksheet, commissionRate, avgPolicyAPI]);
 
   useEffect(() => { load(); }, [load]);
+
+  // 2.5-data — load the tenant's awardsRuleset_{year} from Firestore (graceful
+  // fallback to the bundled DEFAULT_RULESET_2026); the award strip reads this
+  // instead of the hardcoded default. Read path already in prod use elsewhere
+  // (AgentDashboard) — no rules change.
+  useEffect(() => {
+    if (!tenantId) return undefined;
+    let alive = true;
+    getAwardsRuleset(tenantId, year)
+      .then((r) => { if (alive && r) setRuleset(r); })
+      .catch(() => { /* keep DEFAULT_RULESET_2026 */ });
+    return () => { alive = false; };
+  }, [tenantId, year]);
 
   // ── Profile selection (first-run) ─────────────────────────────────────────
   async function handleProfileSelect(profile) {
@@ -577,7 +603,7 @@ export default function YearPlanModal({ onClose, onAfterSave, moneyNeedsWorkshee
                   monthsAtTatil:    user?.monthsAtTatil,
                   isBdoDso:         user?.isBdoDso,
                 }}
-                ruleset={DEFAULT_RULESET_2026}
+                ruleset={ruleset}
                 avgPolicyAPI={avgPolicyAPI}
               />
             </div>

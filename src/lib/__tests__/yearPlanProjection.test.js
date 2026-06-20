@@ -247,3 +247,45 @@ describe('projectAwards — avgPolicyAPI pass-through', () => {
     expect(highAvgResult.state).toBe('not-yet');
   });
 });
+
+// ── gap-to-next + top-tier (2.5-copy) ─────────────────────────────────────────
+
+describe('projectAwards — gap-to-next + top-tier', () => {
+  it('single-threshold award exposes API gap-to-on-track for a mid-field total', () => {
+    // MDRT shown once api >= 250k; on-track threshold is 500k.
+    const mdrt = byId(proj(300000), 'mdrt');
+    expect(mdrt.state).toBe('in-contention');
+    expect(mdrt.apiThreshold).toBe(500000);
+    expect(mdrt.gapToNext).toBe(200000); // 500k − 300k
+  });
+
+  it('on-track award reports a zero gap', () => {
+    const mdrt = byId(proj(500000), 'mdrt');
+    expect(mdrt.state).toBe('on-track');
+    expect(mdrt.gapToNext).toBe(0);
+  });
+
+  it('club tier reports the gap to the NEXT tier up (not the current one)', () => {
+    // 300k is in Bronze L3 (apiMin 250k); next tier L2 starts at 350k.
+    const club = proj(300000).find((r) => r.isClub);
+    expect(club.id).toBe('bronze_club_l3');
+    expect(club.topTier).toBe(false);
+    expect(club.nextLabel).toBe('Bronze Club — Level 2');
+    expect(club.gapToNext).toBe(50000); // 350k − 300k
+  });
+
+  it('highest club tier is capped — top tier reached, no invented higher award', () => {
+    const club = proj(700000).find((r) => r.isClub); // ≥ Gold (650k)
+    expect(club.id).toBe('gold_club');
+    expect(club.topTier).toBe(true);
+    expect(club.gapToNext).toBe(0);
+    expect(club.nextLabel).toBeUndefined();
+  });
+
+  it('below the lowest club tier reports the gap to reach it', () => {
+    const club = proj(100000).find((r) => r.isClub);
+    expect(club.id).toBe('bronze_club_l3');
+    expect(club.topTier).toBe(false);
+    expect(club.gapToNext).toBe(150000); // 250k − 100k
+  });
+});

@@ -82,29 +82,55 @@ export function projectAwards(lifeTargetAPI, agentProfile, ruleset, avgPolicyAPI
     persistNote: true,
   });
 
-  // 3. Club tier — single pill for the highest tier the plan reaches.
+  // 3. Club tier — single pill for the highest tier the plan reaches, plus the
+  //    API gap to the NEXT tier up, or "top tier reached" at the highest tier
+  //    (no invented higher award).
   {
     const { tiers, appsMin, appsInContention: appsIC } = clubAward;
-    let chosenTier = null;
-    let tierApiState = 'not-yet';
-    // Scan descending (gold → bronze_l3) for highest on-track tier.
+    // Highest tier whose apiMin the Life-line API meets.
+    let apiTierIdx = -1;
     for (let i = tiers.length - 1; i >= 0; i--) {
-      if (api >= tiers[i].apiMin) {
-        chosenTier = tiers[i];
-        tierApiState = 'on-track';
-        break;
-      }
+      if (api >= tiers[i].apiMin) { apiTierIdx = i; break; }
     }
-    if (!chosenTier) {
-      // Below all tiers — show bronze_l3 with its actual inContention state.
+
+    let chosenTier;
+    let tierApiState;
+    let apiThreshold;
+    let gapToNext = 0;
+    let nextLabel;
+    let topTier = false;
+
+    if (apiTierIdx >= 0) {
+      chosenTier = tiers[apiTierIdx];
+      tierApiState = 'on-track';
+      if (apiTierIdx === tiers.length - 1) {
+        // Highest tier reached — cap, never invent a higher award.
+        topTier = true;
+        apiThreshold = chosenTier.apiMin;
+      } else {
+        const nextTier = tiers[apiTierIdx + 1];
+        apiThreshold = nextTier.apiMin;
+        gapToNext = Math.max(0, nextTier.apiMin - api);
+        nextLabel = nextTier.name;
+      }
+    } else {
+      // Below all tiers — show the lowest tier with its real in-contention state.
       chosenTier = tiers[0];
       tierApiState = apiGateState(api, tiers[0].apiMin, tiers[0].apiInContention);
+      apiThreshold = tiers[0].apiMin;
+      gapToNext = Math.max(0, tiers[0].apiMin - api);
+      nextLabel = tiers[0].name;
     }
+
     results.push({
       id:      chosenTier.id,
       label:   chosenTier.name,
       state:   worstState(tierApiState, appsGateState(apps, appsMin, appsIC)),
       isClub:  true,
+      apiThreshold,
+      gapToNext,
+      nextLabel,
+      topTier,
     });
   }
 
@@ -151,6 +177,25 @@ export function projectAwards(lifeTargetAPI, agentProfile, ruleset, avgPolicyAPI
         appsGateState(apps, agentOfYearAward.appsThreshold, agentOfYearAward.appsInContention),
       ),
     });
+  }
+
+  // Attach the API gap-to-on-track for each single-threshold award (the club
+  // pill is already enriched above with its next-tier gap / top-tier cap).
+  const API_THRESHOLD_BY_ID = {
+    persistency_silver: persistencyAward.silver.apiThreshold,
+    persistency_gold:   persistencyAward.gold.apiThreshold,
+    mdrt:               mdrtAward.apiThreshold,
+    rookie:             rookieAward.apiThreshold,
+    new_bs_advisor:     newBsAward.apiThreshold,
+    agent_of_year:      agentOfYearAward.apiThreshold,
+  };
+  for (const r of results) {
+    if (r.isClub) continue;
+    const t = API_THRESHOLD_BY_ID[r.id];
+    if (t != null) {
+      r.apiThreshold = t;
+      r.gapToNext = r.state === 'on-track' ? 0 : Math.max(0, t - api);
+    }
   }
 
   return results;
