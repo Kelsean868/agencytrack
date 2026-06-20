@@ -456,7 +456,7 @@ export default function AgentDashboard() {
   };
 
   if (showWizard) {
-    return <WizardForm initialWeek={wizardWeek} onClose={() => { setShowWizard(false); setWizardWeek(null); }} />;
+    return <WizardForm initialWeek={wizardWeek} goal={goals} floors={resolvedMinimums?.weeklyActivityFloors} onClose={() => { setShowWizard(false); setWizardWeek(null); }} />;
   }
 
   if (showDailyModal) {
