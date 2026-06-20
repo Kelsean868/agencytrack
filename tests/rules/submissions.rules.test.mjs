@@ -7,7 +7,7 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (30 cases):
+ * Test matrix (31 cases):
  *   allow get
  *     1. Agent reads own submission → ALLOW
  *     2. Agent reads another agent's submission → DENY
@@ -22,6 +22,7 @@
  *    28. Non-owner reads another's NON-EXISTENT submission → DENY (existence-oracle guard)
  *    29. Unsigned reads NON-EXISTENT submission → DENY
  *    30. Manager reads NON-EXISTENT non-owned submission → DENY (owner arm owner-scoped)
+ *    31. Cross-tenant agent reads NON-EXISTENT doc in this tenant → DENY (tenant isolation; Gemini HIGH)
  *
  *   allow list (CRITICAL — `canAccessOwn` arm was dropped in SHAKEDOWN-002B
  *               regression; restored in hotfix PR #298; BM isolated in Slice 2)
@@ -256,6 +257,15 @@ async function main() {
     await assertFails(getDoc(subRef(db, `${AGENT1_ID}_2026-07-05`)));
   });
 
+  await t('31. Cross-tenant agent reads NON-EXISTENT doc in this tenant (own-uid prefix) → DENY (tenant isolation)', async () => {
+    // Gemini HIGH: the null-resource owner arm must still enforce tenant scope.
+    // An agent from OTHER_TENANT crafts a path in TENANT_ID with their own uid as
+    // the docId prefix; getTenantId() ('other-tenant') != tenantId ('...test-tenant')
+    // → the arm is false → DENY. Without the tenant check this would wrongly ALLOW.
+    const db = testEnv.authenticatedContext(AGENT_X, authToken('agent', OTHER_TENANT)).firestore();
+    await assertFails(getDoc(subRef(db, `${AGENT_X}_2026-07-05`, TENANT_ID)));
+  });
+
   // ── allow list ────────────────────────────────────────────────────────────
   console.log('\nallow list (CRITICAL — regression vector from SHAKEDOWN-002B / hotfix PR #298):');
 
@@ -423,7 +433,7 @@ async function main() {
 
   // ── Summary ───────────────────────────────────────────────────────────────
   await testEnv.cleanup();
-  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed  (expected 30)`);
+  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed  (expected 31)`);
 
   if (failed > 0) process.exit(1);
 }

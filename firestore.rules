@@ -279,9 +279,11 @@ service cloud.firestore {
         // `${uid}_${weekStarting}` (uid alphanumeric, weekStarting YYYY-MM-DD —
         // both underscore-free), so the id prefix IS the owner uid. Scoping to the
         // owner (not bare `resource == null`) blocks the cross-user existence
-        // oracle. `||` short-circuits before the deref when this arm is true.
+        // oracle; `getTenantId() == tenantId` preserves tenant isolation (mirrors
+        // canAccessOwn) so a cross-tenant agent can't probe this tenant's paths.
+        // `||` short-circuits before the deref when this arm is true.
         allow get: if kioskCanRead(tenantId)
-          || (resource == null && isSignedIn() && submissionId.split('_')[0] == request.auth.uid)
+          || (resource == null && isSignedIn() && getTenantId() == tenantId && submissionId.split('_')[0] == request.auth.uid)
           || canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
                (getRole() != 'unit_manager' && getRole() != 'branch_manager')
