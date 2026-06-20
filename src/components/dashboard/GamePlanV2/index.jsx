@@ -11,7 +11,6 @@ import { getRecentSundays } from '../../../utils/validators';
 import PlanAnchorStrip from './PlanAnchorStrip';
 import StepRail from './StepRail';
 import PlanCascade from './PlanCascade';
-import CommitPreviewCard from './CommitPreviewCard';
 import SuggestedWeekCard from './SuggestedWeekCard';
 import YearPlanModal from '../../agent/YearPlanModal';
 import MonthlyPlanModal from '../../agent/MonthlyPlanModal';
@@ -319,21 +318,18 @@ export default function GamePlanScreen({
             committed={committed}
           />
 
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.5fr_1fr]">
-            <PlanCascade
-              commissionNeed={commissionNeed}
-              moneyNeedsFilled={moneyNeedsFilled}
-              yearPlanEnabled={GAME_PLAN_LOOP_ENABLED}
-              yearPlanTotalAPI={yearPlanTotalAPI}
-              yearPlanFilled={yearPlanFilled}
-              monthlyPlanFilled={monthlyPlanFilled}
-              monthlyPlanTotal={monthlyPlanTotal}
-              monthlyYtdDelta={monthlyYtdDelta}
-              committed={committed}
-              committedAt={committedAt}
-            />
-            <CommitPreviewCard year={year} onOpenGoals={openGoals} />
-          </div>
+          <PlanCascade
+            commissionNeed={commissionNeed}
+            moneyNeedsFilled={moneyNeedsFilled}
+            yearPlanEnabled={GAME_PLAN_LOOP_ENABLED}
+            yearPlanTotalAPI={yearPlanTotalAPI}
+            yearPlanFilled={yearPlanFilled}
+            monthlyPlanFilled={monthlyPlanFilled}
+            monthlyPlanTotal={monthlyPlanTotal}
+            monthlyYtdDelta={monthlyYtdDelta}
+            committed={committed}
+            committedAt={committedAt}
+          />
 
           <SuggestedWeekCard
             committedAnnualAPI={committedAnnualAPI}
