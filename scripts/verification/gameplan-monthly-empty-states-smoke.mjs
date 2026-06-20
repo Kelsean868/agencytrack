@@ -49,20 +49,39 @@ async function perTheme(page, theme) {
   // Open Monthly Plan (Step 3) from the rail.
   await page.locator('[data-testid="game-plan-rail"]').getByRole('button', { name: /monthly plan/i }).click();
 
-  // No Year Plan → the honest no-yearPlan state.
-  await page.waitForSelector('[data-testid="no-yearplan-state"]', { timeout: 20_000 });
-  const stateText = (await page.locator('[data-testid="no-yearplan-state"]').first().textContent())?.trim() ?? '';
-  const consoleErrors = cap.consoleMessages.filter((m) => m.type === 'error');
+  // The modal lands in one of two states depending on the account's data:
+  //   - no Year Plan  → honest "Nothing to split yet" copy (3.8 copy)
+  //   - allocating    → 12-month chart with the NOW line (3.2)
+  // Assert whichever Item-3 feature applies.
+  await page.waitForFunction(
+    () =>
+      document.querySelector('[data-testid="no-yearplan-state"]') !== null ||
+      document.querySelector('[data-testid="month-col-0"]') !== null,
+    null,
+    { timeout: 20_000 },
+  );
 
+  const noYearPlan = await page.locator('[data-testid="no-yearplan-state"]').count();
+  let leg;
+  let detail;
+  let featureOk;
+  if (noYearPlan) {
+    const stateText = (await page.locator('[data-testid="no-yearplan-state"]').first().textContent())?.trim() ?? '';
+    featureOk = /nothing to split yet/i.test(stateText);
+    leg = `${theme}: no-Year-Plan honest copy (3.8)`;
+    detail = `copy~"Nothing to split yet"=${featureOk}`;
+  } else {
+    const nowLine = await page.locator('[data-testid="now-line"]').count();
+    featureOk = nowLine >= 1;
+    leg = `${theme}: NOW line in allocating chart (3.2)`;
+    detail = `now-line=${nowLine}`;
+  }
+
+  const consoleErrors = cap.consoleMessages.filter((m) => m.type === 'error');
   await page.screenshot({ path: join(SS_DIR, `monthly-${theme}.png`), fullPage: false });
 
-  const copyOk = /nothing to split yet/i.test(stateText);
-  const pass = copyOk && consoleErrors.length === 0;
-  results.push({
-    leg: `${theme}: no-Year-Plan honest copy`,
-    passed: pass,
-    detail: `copy~"Nothing to split yet"=${copyOk} consoleErrors=${consoleErrors.length}`,
-  });
+  const pass = featureOk && consoleErrors.length === 0;
+  results.push({ leg, passed: pass, detail: `${detail} consoleErrors=${consoleErrors.length}` });
   formatCaptureReport(cap);
 }
 
