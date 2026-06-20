@@ -14,6 +14,8 @@ export default function MonthChart({ targets, actuals, year, currentMonthIndex, 
     const day = parseInt((todayTT || '').split('-')[2], 10);
     if (!day || currentMonthIndex == null) return null;
     const daysInMonth = new Date(year, currentMonthIndex + 1, 0).getDate();
+    // Guard invalid year/month → NaN daysInMonth → a "left: NaN%" layout bug.
+    if (!Number.isFinite(daysInMonth) || daysInMonth <= 0) return null;
     return Math.min(1, Math.max(0, (day - 0.5) / daysInMonth));
   })();
 

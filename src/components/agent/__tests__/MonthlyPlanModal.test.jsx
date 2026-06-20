@@ -313,6 +313,19 @@ describe('MonthChart', () => {
     );
     expect(screen.queryByTestId('now-line')).toBeNull();
   });
+
+  it('omits the NOW line when year is invalid (no NaN left position)', () => {
+    render(
+      <MonthChart
+        targets={targets}
+        actuals={actuals}
+        year={undefined}
+        currentMonthIndex={5}
+        todayTT="2026-06-15"
+      />,
+    );
+    expect(screen.queryByTestId('now-line')).toBeNull();
+  });
 });
 
 // ── Honest-empty actuals (3.8) ────────────────────────────────────────────────
