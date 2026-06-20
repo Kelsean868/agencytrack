@@ -7,7 +7,7 @@ import {
   createMoneyNeeds, getMoneyNeeds,
   updateExpenseGroup, annualizeAmount, computeGroupTotal,
   updateSubCalculator, updateCommissionTargets, refreshPAYECalculation,
-  updateVisibility,
+  updateVisibility, countFilledLineItems,
   PLAYGROUND_INCOME_GOAL_KEY, PAYE_BRACKETS_VERSION,
 } from '../../services/moneyNeedsService';
 import { formatCurrency } from '../../utils/formatters';
@@ -754,6 +754,10 @@ export default function MoneyNeedsPanel() {
     }
   }
 
+  // 1.8 — worksheet-level FILLED N/total tally, derived from the same per-group
+  // line items the accordions count. Shown only once the worksheet has loaded.
+  const { filled: filledTotal, total: itemsTotal } = countFilledLineItems(worksheet?.expenseGroups);
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       {/* Header */}
@@ -761,6 +765,14 @@ export default function MoneyNeedsPanel() {
         <div className="flex items-center gap-2">
           <Calculator size={20} className="text-primary" />
           <h2 className="text-lg font-bold text-ink">Money Needs Worksheet</h2>
+          {worksheet && (
+            <span
+              data-testid="money-needs-filled-counter"
+              className="font-mono text-[10px] font-semibold uppercase tracking-wide text-ink-muted bg-surface-raised border border-border rounded-full px-2 py-0.5 shrink-0"
+            >
+              Filled {filledTotal}/{itemsTotal}
+            </span>
+          )}
         </div>
         <select
           value={year}
