@@ -38,7 +38,7 @@ import {
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
 import {
-  getDoc, setDoc, updateDoc, doc, collection, getDocs, query, where,
+  getDoc, setDoc, doc, collection, getDocs, query, where,
 } from 'firebase/firestore';
 
 const PROJECT_ID = process.env.GCLOUD_PROJECT ?? 'agencytrack-2a610';
