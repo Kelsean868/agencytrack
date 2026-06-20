@@ -7,6 +7,7 @@ import {
 } from './dailyActivity.js';
 import { aggregateDailyToWeekly } from './dailyActivity.aggregator.js';
 import { LMPS_CREDIT_RATE, LMPS_COMMISSION_RATE } from './weeklyReport.js';
+import { computePoints } from '../computePoints.js';
 
 // ── createEmptyDailyEntry ─────────────────────────────────────────────────────
 
@@ -284,6 +285,54 @@ describe('aggregateDailyToWeekly — emergent effort signals', () => {
     expect(out.daysWorked).toBe(0);
     expect(out.weekendWorked).toBe(false);
     expect(out.weekendApi).toBe(0);
+  });
+});
+
+// ── M3 points-fix: coldCalls === dials in aggregated draft ───────────────────
+// Mirrors the computeDayPoints mapping in DailyCaptureV2.helpers.js so that
+// fast-path submissions (aggregated from daily) earn call points via computePoints.
+// CJS twin (functions/aggregators/dailyToWeekly.js) must stay in sync.
+
+describe('aggregateDailyToWeekly — M3 coldCalls fix', () => {
+  it('coldCalls equals the summed dials total', () => {
+    const out = aggregateDailyToWeekly([{ dials: 10 }, { dials: 15 }], 0);
+    expect(out.dials).toBe(25);
+    expect(out.coldCalls).toBe(25);
+  });
+
+  it('coldCalls equals dials when dials is 0 (safe zero)', () => {
+    const out = aggregateDailyToWeekly([], 0);
+    expect(out.coldCalls).toBe(0);
+    expect(out.dials).toBe(0);
+  });
+
+  it('computePoints(aggregatedDraft) includes call points when dials > 0', () => {
+    const out = aggregateDailyToWeekly([{ dials: 20 }], 0);
+    // 20 coldCalls × 1pt each = 20
+    expect(computePoints(out)).toBe(20);
+  });
+
+  it('referralCalls / followUpCalls / seminarTradeshowCalls explicitly 0 — merge-safe', () => {
+    const out = aggregateDailyToWeekly([{ dials: 5 }], 0);
+    // Explicit zeros overwrite stale agent-entered values via { merge: true }
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+    // computePoints dials bucket = coldCalls(5) only = 5 pts
+    expect(computePoints(out)).toBe(5);
+  });
+
+  it('explicit zeros prevent double-count when prior doc had agent-entered call breakdown', () => {
+    // Scenario: agent previously submitted referralCalls:10, followUpCalls:5 via
+    // the manual wizard. They then switch to daily mode. The aggregated output
+    // must explicitly zero those fields so { merge: true } overwrites them.
+    const out = aggregateDailyToWeekly([{ dials: 8 }], 0);
+    expect(out.referralCalls).toBe(0);
+    expect(out.followUpCalls).toBe(0);
+    expect(out.seminarTradeshowCalls).toBe(0);
+    expect(out.coldCalls).toBe(8);
+    // Only coldCalls=8 contributes: 8 pts. NOT 8+10+5=23 if stale fields survived.
+    expect(computePoints(out)).toBe(8);
   });
 });
 

@@ -16,9 +16,10 @@
  *   • Existing last-week reads / suggested derivations (oldNamesPool,
  *     policiesOutstanding, CI-conducted) — these are EXISTING wizard
  *     behavior, NOT the deferred Decision-A SUGGESTED atom.
- *   • Existing step files (Step1Prospecting … Step9Goals.jsx) on disk
- *     and untouched, for the easy-revert property: revert this file +
- *     delete `v2steps/` + `v2chrome/` → back to 9-step flow.
+ *   • v3 revert boundary: revert the Q4 shell commit (initialStep prop +
+ *     resolvePath wiring in AgentDashboard) → back to v2 open-at-step-1
+ *     behavior. Legacy Step1–Step9 files are NOT on disk (removed in the v2
+ *     migration); a revert does not restore them.
  *
  * What changed:
  *   • SCREENS (5 entries) → STEPS (12 entries).
@@ -197,7 +198,7 @@ const INITIAL_DATA = {
 // the discrete review step with Edit·Step-N jump-back.
 const BRANCH_DIRECT_UNIT = '__branch_direct__';
 
-export default function WizardForm({ onClose, initialWeek, goal, floors }) {
+export default function WizardForm({ onClose, initialWeek, initialStep, goal, floors }) {
   const { user, userProfile, tenantId, role, branchId } = useAuth();
   const targetUnitId = role === 'branch_manager' ? BRANCH_DIRECT_UNIT : (userProfile?.unitId ?? null);
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
@@ -206,7 +207,7 @@ export default function WizardForm({ onClose, initialWeek, goal, floors }) {
   const [localWeekChoice, setLocalWeekChoice] = useState(
     () => initialWeek ?? getLastNSundaysForDropdown(1)[0]?.value ?? ''
   );
-  const [step, setStep]                 = useState(1);   // 1..FINAL_STEP (12 = Review & submit)
+  const [step, setStep]                 = useState(initialStep ?? 1); // 1..FINAL_STEP (12)
   // PR3: when the agent clicks "Edit · Step N" from the Review screen, we
   // navigate back to step N AND set returnToReview=true so a "Back to
   // Review" affordance appears on the footer (Next-label override). This
