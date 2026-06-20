@@ -285,7 +285,7 @@ export async function setSalesManagerGoals(tenantId, smUid, year, targets, meta)
 export async function getSalesManagerUid(_tenantId) {
   const fn = httpsCallable(functions, 'resolveSalesManagerUid');
   const result = await fn({});
-  return result.data.smUid;
+  return result.data?.smUid ?? null;
 }
 
 // ── Goal Hierarchy ────────────────────────────────────────────────────────────
