@@ -136,3 +136,27 @@ describe('aggregateDailyToWeekly', () => {
     expect(out.weekendApi).toBe(0);
   });
 });
+
+// ── M3 points-fix: coldCalls === dials parity (CJS twin) ─────────────────────
+// MUST stay in sync with the ESM twin's M3 cases (src/lib/schema/dailyActivity.test.js).
+// computePoints is ESM-only; point-value assertions live in the ESM test.
+describe('aggregateDailyToWeekly CJS twin — M3 coldCalls parity', () => {
+  test('coldCalls equals the summed dials total', () => {
+    const out = aggregateDailyToWeekly([{ dials: 10 }, { dials: 15 }], 0);
+    expect(out.dials).toBe(25);
+    expect(out.coldCalls).toBe(25);
+  });
+
+  test('coldCalls equals dials when dials is 0 (safe zero)', () => {
+    const out = aggregateDailyToWeekly([], 0);
+    expect(out.coldCalls).toBe(0);
+    expect(out.dials).toBe(0);
+  });
+
+  test('referralCalls / followUpCalls / seminarTradeshowCalls absent → no double-count', () => {
+    const out = aggregateDailyToWeekly([{ dials: 5 }], 0);
+    expect(out.referralCalls).toBeUndefined();
+    expect(out.followUpCalls).toBeUndefined();
+    expect(out.seminarTradeshowCalls).toBeUndefined();
+  });
+});

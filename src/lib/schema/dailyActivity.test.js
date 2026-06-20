@@ -7,6 +7,7 @@ import {
 } from './dailyActivity.js';
 import { aggregateDailyToWeekly } from './dailyActivity.aggregator.js';
 import { LMPS_CREDIT_RATE, LMPS_COMMISSION_RATE } from './weeklyReport.js';
+import { computePoints } from '../computePoints.js';
 
 // ── createEmptyDailyEntry ─────────────────────────────────────────────────────
 
@@ -284,6 +285,40 @@ describe('aggregateDailyToWeekly — emergent effort signals', () => {
     expect(out.daysWorked).toBe(0);
     expect(out.weekendWorked).toBe(false);
     expect(out.weekendApi).toBe(0);
+  });
+});
+
+// ── M3 points-fix: coldCalls === dials in aggregated draft ───────────────────
+// Mirrors the computeDayPoints mapping in DailyCaptureV2.helpers.js so that
+// fast-path submissions (aggregated from daily) earn call points via computePoints.
+// CJS twin (functions/aggregators/dailyToWeekly.js) must stay in sync.
+
+describe('aggregateDailyToWeekly — M3 coldCalls fix', () => {
+  it('coldCalls equals the summed dials total', () => {
+    const out = aggregateDailyToWeekly([{ dials: 10 }, { dials: 15 }], 0);
+    expect(out.dials).toBe(25);
+    expect(out.coldCalls).toBe(25);
+  });
+
+  it('coldCalls equals dials when dials is 0 (safe zero)', () => {
+    const out = aggregateDailyToWeekly([], 0);
+    expect(out.coldCalls).toBe(0);
+    expect(out.dials).toBe(0);
+  });
+
+  it('computePoints(aggregatedDraft) includes call points when dials > 0', () => {
+    const out = aggregateDailyToWeekly([{ dials: 20 }], 0);
+    // 20 coldCalls × 1pt each = 20
+    expect(computePoints(out)).toBe(20);
+  });
+
+  it('referralCalls / followUpCalls / seminarTradeshowCalls absent → no double-count', () => {
+    const out = aggregateDailyToWeekly([{ dials: 5 }], 0);
+    expect(out.referralCalls).toBeUndefined();
+    expect(out.followUpCalls).toBeUndefined();
+    expect(out.seminarTradeshowCalls).toBeUndefined();
+    // computePoints dials bucket = coldCalls(5)+referral(0)+followUp(0)+seminar(0) = 5
+    expect(computePoints(out)).toBe(5);
   });
 });
 

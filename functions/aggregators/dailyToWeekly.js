@@ -132,6 +132,10 @@ function aggregateDailyToWeekly(dailyEntries, commissionRate = 0) {
     prospectingLettersSent: sumInt('prospectingLettersSent'),
     seminarsConducted:      sumInt('seminarsConducted'),
     dials:                  sumInt('dials'),
+    // M3: mirrors computeDayPoints mapping so aggregated fast-path drafts earn
+    // call points. coldCalls === dials total; referralCalls/followUpCalls/
+    // seminarTradeshowCalls stay absent (0) to avoid double-counting.
+    coldCalls:              sumInt('dials'),
     telContacts:            sumInt('telContacts'),
     f2fAttempts:            sumInt('f2fAttempts'),
     // Social (live platform shape)
