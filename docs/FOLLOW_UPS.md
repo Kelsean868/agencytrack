@@ -47,6 +47,18 @@ Two coupled platform deadlines on the Cloud Functions stack:
 
 ---
 
+## A11Y smoke agent — no unstarted-but-fillable week, so the walk's own write-read-verify never runs (banked PR #701, 2026-06-20, LOW)
+
+The exploration walk's step 26b (agent wizard write→auto-save→reload→persist-verify) consistently SKIPs with "All tried weeks are submitted — cannot exercise write path": the smoke agent (`A11Y_AGENT_EMAIL`, `tatillife_smoke`) has submitted weeklies for the recent weeks the walk probes (most-recent 3), so the walk can never type into a fresh draft and prove persistence end-to-end. The walk still passes (0 console errors), but its one real write-read-verify leg is dark.
+
+**Fix:** seed (or leave) one unstarted-but-fillable week for the smoke agent — a Sunday weekStarting with NO submission/draft doc — so step 26b can open it, type, auto-save, reload, and assert persistence. A `scripts/maintenance` seeder (or a deliberately-skipped week in `seed-smoke-data.cjs`) would do it. Keep it OUT of the most-recent-3 window only if the walk's week-probe order would otherwise pick a submitted one first; simplest is to ensure the current or a near week is left unstarted.
+
+**Severity:** LOW — the write path is already covered by `scripts/verification/aggregate-fresh-week-blastradius-probe.mjs` (writes a daily → aggregation builds a fresh-week draft) and `getdraft-nonexistent-probe.mjs`; this only restores the walk's *own* end-to-end leg. **Falsification:** if the smoke agent ever has a current unsubmitted week, step 26b runs without any seeding.
+
+**Source:** dispatcher follow-up after PR #701 post-deploy verification — CC self-critique surfaced the persistent step-26b skip.
+
+---
+
 
 ## Daily Capture v2 Phase 1b — aggregator extension + distinct `telContacts` (QUEUED — stacks on 1a, 2026-06-18, HIGH)
 
