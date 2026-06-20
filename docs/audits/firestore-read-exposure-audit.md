@@ -26,9 +26,9 @@ A `get` on a **non-existent** document evaluates the rule with `resource == null
 |---|---|---|---|---|---|---|
 | 1 | submissions | `firestore.rules:285` | `submissionService.js:152` (getDraft) · `loggingModeService.js:82,123` | read-before-write | — | **RESOLVED #701** (null-arm `:286`); tested 31/31 |
 | 2 | persistency | `firestore.rules:542` | `persistencyService.js:241` (savePersistency RBW) · `:89,:103` | read-before-write | — | **GUARDED** (`:546 \|\| resource == null`); tested (8 null cases) |
-| 3 | **managerWeeklyReports** | `firestore.rules:1072` | `managerWarService.js:62,:81` (RBW) · `:96,:102` | read-before-write | **MED** | **GUARDED** (`:1076` ternary) but **NO test file** → add deny-matrix + null-resource test (Item 2, **GREEN**) |
-| 4 | managerMonthlyRollups | `firestore.rules:1140` | `managerMonthlyRollupService.js:67,:84,:100` | read-before-write | LOW | GUARDED (`:1143` ternary); tested (3 null cases) |
-| 5 | weeklyPlans | `firestore.rules:1301` | `weeklyPlanService.js:41` | read-before-write | LOW | GUARDED (`:1301` ternary); tested (4 null cases) |
+| 3 | **managerWeeklyReports** | `firestore.rules:1072` | `managerWarService.js:62,:81` (RBW) · `:96,:102` | read-before-write | **MED** | **GUARDED** (`:1074` ternary) but **NO test file** → add deny-matrix + null-resource test (Item 2, **GREEN**) |
+| 4 | managerMonthlyRollups | `firestore.rules:1140` | `managerMonthlyRollupService.js:67,:84,:100` | read-before-write | LOW | GUARDED (`:1141` ternary); tested (3 null cases) |
+| 5 | weeklyPlans | `firestore.rules:1301` | `weeklyPlanService.js:41` | read-before-write | LOW | GUARDED (`:1302` ternary); tested (4 null cases) |
 | 6 | leaderboard (singular) | `firestore.rules:593` | `submissionService.js:192` · `useLeaderboard.js:57` | single-doc get | LOW | SAFE — tenant-scope, **no `resource.data` deref** |
 | 7 | policies | `firestore.rules:321` | `policiesService.js:84,:316,:334` (**getDocs list**) | missing-null-arm, **not exercised** | LOW | List-read only → null-resource never hit. Optional defensive test |
 | 8 | policies/history | `firestore.rules:447` | `policiesService.js:312` (**getDocs list**) | missing-null-arm, not exercised | LOW | List-read only. Optional defensive test |
@@ -49,7 +49,7 @@ A `get` on a **non-existent** document evaluates the rule with `resource == null
 
 Confirming the codebase already applies the correct pattern broadly — this is *why* the headline is clean:
 
-- **Null-resource guards present & exercised:** submissions (`:286`, #701), persistency (`:546`), managerWeeklyReports (`:1076` ternary), managerMonthlyRollups (`:1143` ternary), weeklyPlans (`:1301` ternary).
+- **Null-resource guards present & exercised:** submissions (`:286`, #701), persistency (`:546`), managerWeeklyReports (`:1074` ternary), managerMonthlyRollups (`:1141` ternary), weeklyPlans (`:1302` ternary).
 - **Path-var / token-claim owner arms (no `resource.data` deref → non-existent safe):** users-owner (`:144`), goals (`:565` `goalId == uid`), dailyActivity (`:250` `uid == userId`), moneyNeeds/yearPlan/monthlyPlan owner (`:1317/:1349/:1360`), nudges (`:1404` `nudgeId.split`), config (`:598`), leaderboard (`:593`), weeklyChampions (`:752`), branches (`:700`), agentOfMonth (`:715`), managerActivityStandardOverrides (`:1196` `managerId` path-var + cross-doc `get()`).
 - **Goal-hierarchy reads (the scariest hot-path candidate) are SAFE:** `unitGoals` (`:627`), `branchGoals` (`:645`), `salesManagerGoals` (`:657`), `campaigns` (`:670`) all gate on `request.auth.token.tenantId == tenantId` with **no `resource.data` deref** — so `getGoalHierarchy`'s `getDoc` on a non-existent tier returns cleanly. (#699 was a *users-list* permission issue, not this class.)
 
@@ -57,7 +57,7 @@ Confirming the codebase already applies the correct pattern broadly — this is 
 
 ## Item 2 feed
 
-- **GREEN (test-only, rule confirmed correct):** add `tests/rules/managerWeeklyReports.rules.test.mjs` — deny-matrix (owner-allow · non-owner-deny · unsigned-deny · cross-tenant-deny) **plus** the null-resource case: `owner + non-existent (warId prefix == uid) → ALLOW`, `non-owner + non-existent → DENY` (existence-oracle guard), mirroring `submissions.rules.test.mjs` cases 27–31. This locks the `:1076` ternary so a future drop is caught (the exact #701 regression vector).
+- **GREEN (test-only, rule confirmed correct):** add `tests/rules/managerWeeklyReports.rules.test.mjs` — deny-matrix (owner-allow · non-owner-deny · unsigned-deny · cross-tenant-deny) **plus** the null-resource case: `owner + non-existent (warId prefix == uid) → ALLOW`, `non-owner + non-existent → DENY` (existence-oracle guard), mirroring `submissions.rules.test.mjs` cases 27–31. This locks the `:1074` ternary so a future drop is caught (the exact #701 regression vector).
 - **LOW / optional defensive (no live risk):** `policies` and `settlements` lack a null-resource case, but their client reads are list-only; a defensive `owner + non-existent → DENY` test would document the current (deny) behavior. Not required unless a single-doc `getDoc` is later added to those services.
 - **No rule fixes recommended.** No legitimate read is currently denied.
 
@@ -66,6 +66,6 @@ Confirming the codebase already applies the correct pattern broadly — this is 
 This audit's "no live bug" conclusion is overturned if **any** of these is found:
 1. A client `getDoc` (single-doc) on a deref-rule collection (rows 7–13) reading a doc that may not exist — e.g. a future "open policy by id where it may be absent" path. (Current `grep` of all 49 `getDoc` sites shows none.)
 2. A `resource.data`-deref arm reachable on a non-existent doc whose owner arm is NOT a path-var (rows 14–15 are safe only because the owner arm is path-var).
-3. `managerWarService` losing the `warId.split('_')[0]` correspondence to the doc id (would invalidate the `:1076` guard's owner check).
+3. `managerWarService` losing the `warId.split('_')[0]` correspondence to the doc id (would invalidate the `:1074` guard's owner check).
 
 Re-run trigger: any new `await getDoc(` added to `src/services/` on a collection in rows 7–16.
