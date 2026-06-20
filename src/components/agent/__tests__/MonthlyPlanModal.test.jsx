@@ -89,7 +89,7 @@ describe('MonthlyPlanModal — no-yearPlan state', () => {
     );
     await flush();
     expect(screen.getByTestId('no-yearplan-state')).toBeTruthy();
-    expect(screen.getByText(/Set up your Year Plan first/i)).toBeTruthy();
+    expect(screen.getByText(/Nothing to split yet/i)).toBeTruthy();
   });
 
   it('does not call getMonthlyPlan when yearPlanAPI is 0', async () => {
@@ -270,6 +270,66 @@ describe('MonthChart', () => {
     );
     // Only the current month (index 5) gets a pace tick
     expect(screen.getAllByTestId('pace-tick').length).toBe(1);
+  });
+
+  it('renders a single NOW line, in the current month column (3.2)', () => {
+    render(
+      <MonthChart
+        targets={targets}
+        actuals={actuals}
+        year={2026}
+        currentMonthIndex={5}
+        todayTT="2026-06-15"
+      />,
+    );
+    expect(screen.getAllByTestId('now-line').length).toBe(1);
+    // It lives inside June (month-col-5), not elsewhere.
+    expect(screen.getByTestId('month-col-5').querySelector('[data-testid="now-line"]')).not.toBeNull();
+  });
+
+  it('positions the NOW line by TT day-of-month', () => {
+    render(
+      <MonthChart
+        targets={targets}
+        actuals={actuals}
+        year={2026}
+        currentMonthIndex={5}
+        todayTT="2026-06-15"
+      />,
+    );
+    // June has 30 days; (15 − 0.5) / 30 = 0.4833… → ~48.3%
+    expect(screen.getByTestId('now-line').style.left).toMatch(/^48\.3/);
+  });
+
+  it('omits the NOW line when todayTT is unavailable', () => {
+    render(
+      <MonthChart
+        targets={targets}
+        actuals={actuals}
+        year={2026}
+        currentMonthIndex={5}
+        todayTT=""
+      />,
+    );
+    expect(screen.queryByTestId('now-line')).toBeNull();
+  });
+});
+
+// ── Honest-empty actuals (3.8) ────────────────────────────────────────────────
+
+describe('MonthlyPlanModal — honest-empty actuals (3.8)', () => {
+  it('shows "actuals will fill in" when targets are set but there are no submissions', async () => {
+    renderModal({ submissions: [] });
+    await flush();
+    expect(screen.getByTestId('no-actuals-state')).toBeTruthy();
+    expect(screen.getByText(/actuals will fill in/i)).toBeTruthy();
+  });
+
+  it('hides the honest-empty state once a submission contributes actuals', async () => {
+    const submissions = [{ weekStarting: '2026-06-07', totalProductionCredit: 5000 }];
+    renderModal({ submissions });
+    await flush();
+    expect(screen.queryByTestId('no-actuals-state')).toBeNull();
   });
 });
 

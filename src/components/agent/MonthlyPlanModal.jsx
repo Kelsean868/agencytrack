@@ -40,6 +40,9 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
   const todayTT = getTodayTT();
   const currentMonthIndex = parseInt(todayTT.split('-')[1], 10) - 1;
   const actuals = bucketActualsByMonth(submissions, year);
+  // 3.8 — targets can be set before any production exists. Surface an honest
+  // "actuals will fill in" state rather than a chart of silent zeros.
+  const hasActuals = actuals.some((a) => (parseFloat(a) || 0) > 0);
 
   const load = useCallback(async () => {
     if (!tenantId || !uid) return;
@@ -243,7 +246,7 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
                 <span className="font-display text-xl font-extrabold text-ink-muted">3</span>
               </div>
               <div>
-                <p className="font-semibold text-ink">Set up your Year Plan first</p>
+                <p className="font-semibold text-ink">Nothing to split yet — do your Year Plan first</p>
                 <p className="mt-1 text-sm text-ink-muted">
                   Complete Step 2 to set your annual API target, then return here to split it across months.
                 </p>
@@ -297,6 +300,19 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
                 currentMonthIndex={currentMonthIndex}
                 todayTT={todayTT}
               />
+
+              {/* Honest-empty actuals (3.8) — targets set, no production yet */}
+              {!hasActuals && (
+                <div
+                  className="rounded-xl border border-dashed border-border bg-card px-4 py-3 text-center"
+                  data-testid="no-actuals-state"
+                >
+                  <p className="text-sm font-semibold text-ink">Targets set — actuals will fill in</p>
+                  <p className="mt-0.5 text-[11px] text-ink-muted">
+                    Your monthly bars fill in as you submit weekly reports.
+                  </p>
+                </div>
+              )}
 
               {/* Readouts row */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
