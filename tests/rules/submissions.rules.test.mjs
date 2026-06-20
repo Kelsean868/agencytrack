@@ -7,7 +7,7 @@
  *
  * Requires: Java JDK 17+ for the Firestore emulator.
  *
- * Test matrix (26 cases):
+ * Test matrix (30 cases):
  *   allow get
  *     1. Agent reads own submission → ALLOW
  *     2. Agent reads another agent's submission → DENY
@@ -16,6 +16,12 @@
  *     5. UM reads submission where unitId != callerUid → DENY
  *     6. Kiosk reads submission → ALLOW
  *     7. Cross-tenant auth → DENY
+ *
+ *   allow get — non-existent doc (null resource; fix/submissions-get-nonexistent-draft)
+ *    27. Owner reads own NON-EXISTENT submission (fresh week) → ALLOW
+ *    28. Non-owner reads another's NON-EXISTENT submission → DENY (existence-oracle guard)
+ *    29. Unsigned reads NON-EXISTENT submission → DENY
+ *    30. Manager reads NON-EXISTENT non-owned submission → DENY (owner arm owner-scoped)
  *
  *   allow list (CRITICAL — `canAccessOwn` arm was dropped in SHAKEDOWN-002B
  *               regression; restored in hotfix PR #298; BM isolated in Slice 2)
@@ -215,6 +221,41 @@ async function main() {
     await assertFails(getDoc(subRef(db, SUB_DRAFT_ID)));
   });
 
+  // ── allow get — non-existent-doc arm (fix/submissions-get-nonexistent-draft) ──
+  // The wizard's getDraft + aggregateCurrentWeekDaily's pre-write getDoc read
+  // submissions/{uid}_{weekStarting} for a not-yet-started week → the doc is
+  // absent → resource == null. Without the owner arm, canAccessOwn(resource.data.
+  // agentId) derefs null → deny, which breaks client-side daily→weekly aggregation.
+  // Matrix: owner+existent (test 1) and non-owner+existent (test 2) above; the
+  // four below cover the null-resource cases.
+  console.log('\nallow get — non-existent doc (null resource):');
+
+  await t('27. Owner reads own NON-EXISTENT submission (fresh week) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    // docId prefix == caller uid; doc never seeded → resource == null.
+    await assertSucceeds(getDoc(subRef(db, `${AGENT1_ID}_2026-07-05`)));
+  });
+
+  await t('28. Non-owner reads another agent\'s NON-EXISTENT submission → DENY (existence-oracle guard)', async () => {
+    // SECURITY-CRITICAL: agent1 must not be able to probe whether agent2's
+    // (never-created) draft exists. docId prefix 'agent2' != caller 'agent1'.
+    const db = testEnv.authenticatedContext(AGENT1_ID, authToken('agent')).firestore();
+    await assertFails(getDoc(subRef(db, `${AGENT2_ID}_2026-07-05`)));
+  });
+
+  await t('29. Unsigned reads NON-EXISTENT submission → DENY', async () => {
+    const db = testEnv.unauthenticatedContext().firestore();
+    await assertFails(getDoc(subRef(db, `${AGENT1_ID}_2026-07-05`)));
+  });
+
+  await t('30. Manager reads NON-EXISTENT non-owned submission → DENY (owner arm does not leak to managers)', async () => {
+    // The new arm is owner-scoped (id prefix == uid); a BM hitting a missing
+    // doc they do not "own" by id falls through to the manager arms, which deref
+    // resource.data on null → deny. Confirms the arm grants managers nothing new.
+    const db = testEnv.authenticatedContext(BM_ID, authToken('branch_manager', TENANT_ID, { branchId: 'branch-a' })).firestore();
+    await assertFails(getDoc(subRef(db, `${AGENT1_ID}_2026-07-05`)));
+  });
+
   // ── allow list ────────────────────────────────────────────────────────────
   console.log('\nallow list (CRITICAL — regression vector from SHAKEDOWN-002B / hotfix PR #298):');
 
@@ -382,7 +423,7 @@ async function main() {
 
   // ── Summary ───────────────────────────────────────────────────────────────
   await testEnv.cleanup();
-  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed  (expected 26)`);
+  console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed  (expected 30)`);
 
   if (failed > 0) process.exit(1);
 }

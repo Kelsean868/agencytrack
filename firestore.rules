@@ -269,7 +269,19 @@ service cloud.firestore {
         // result doc — a BM query without where('branchId','==',claim) cannot
         // guarantee every result satisfies the rule → Firestore DENIES the query.
         // This closes the crafted-query bypass (the point of denormalization).
+        // Non-existent-doc owner arm (MUST precede any resource.data deref):
+        // a get on a missing doc evaluates with resource == null, so the
+        // canAccessOwn(resource.data.agentId) arm below errors → deny. The wizard's
+        // getDraft (and aggregateCurrentWeekDaily's pre-write getDoc) read
+        // submissions/{uid}_{weekStarting} for a not-yet-started week → the doc is
+        // absent → permission-denied, which breaks client-side daily→weekly
+        // aggregation (draft only built by the Sunday cron). docId is
+        // `${uid}_${weekStarting}` (uid alphanumeric, weekStarting YYYY-MM-DD —
+        // both underscore-free), so the id prefix IS the owner uid. Scoping to the
+        // owner (not bare `resource == null`) blocks the cross-user existence
+        // oracle. `||` short-circuits before the deref when this arm is true.
         allow get: if kioskCanRead(tenantId)
+          || (resource == null && isSignedIn() && submissionId.split('_')[0] == request.auth.uid)
           || canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
                (getRole() != 'unit_manager' && getRole() != 'branch_manager')

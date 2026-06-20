@@ -98,7 +98,6 @@ const TABS = [
     // Try to enable Firestore debug logging via any window-exposed hook.
     await page.evaluate(() => {
       try {
-        // eslint-disable-next-line no-undef
         if (window.firebase?.firestore?.setLogLevel) window.firebase.firestore.setLogLevel('debug');
       } catch { /* not exposed; per-tab attribution is the primary signal */ }
     });
