@@ -30,6 +30,24 @@ Two coupled platform deadlines on the Cloud Functions stack:
 ---
 
 
+## Wizard v3 Q5 — useSeededTargets reads `data.dials` (daily field) instead of `data.coldCalls` (banked PR #698 Gemini backstop, 2026-06-20, LOW)
+
+`useSeededTargets` at `src/hooks/useSeededTargets.js:29` computes `thisWeekDials` from `data?.dials`. The weekly wizard's `formData` has no `dials` field — that is a DailyCaptureV2 daily field (PR #684). The weekly form uses `coldCalls` (plus breakdown fields `referralCalls`, `followUpCalls`, `seminarTradeshowCalls`). Result: `thisWeekDials` is always 0; `Math.max(f.callsMade, 0)` always returns the floor; the "seed from this week's actuals" path for dials is silently broken.
+
+**Symptom:** an agent who made 80 cold calls this week still sees the floor value (e.g. 60) as the step-11 dials suggestion, never 80.
+
+**Fix (targeted — 3 files):**
+1. `src/hooks/useSeededTargets.js:29` — `data?.dials` → `data?.coldCalls` (or sum of all call-breakdown fields if total is the intent).
+2. `src/hooks/useSeededTargets.js:54` (dependency array) — `data?.dials` → `data?.coldCalls`.
+3. `src/hooks/__tests__/useSeededTargets.test.js` — update any fixture using `dials:` → `coldCalls:` in the "actual > floor" test paths.
+
+**Severity:** LOW — suggestion still renders (floor value); no error thrown. The actuals-seed path is dead for dials only; FFI and CI actuals (`ffiConducted`, `ciConducted`) seed correctly. **Falsification:** if WizardForm's `formData` ever gains a `dials` key, the bug heals without code change.
+
+**Source:** Gemini backstop review on PR #698 (`04dbd3b`), dispositioned IMPLEMENT → banked as FU (PR already merged; no in-PR fix possible).
+
+---
+
+
 ## Daily Capture v2 Phase 1b — aggregator extension + distinct `telContacts` (QUEUED — stacks on 1a, 2026-06-18, HIGH)
 
 Extend `functions/aggregators/sundayDailyToWeekly.js` + `src/services/loggingModeService.aggregateCurrentWeekDaily` to Σ all 1a daily fields into their weekly targets. Add distinct `telContacts` as a real weekly Step 3 field (switch `extractFields` from `qualifiedApproaches` fallback; update floor mapping). Branch: `feat/daily-capture-v2-1b-aggregator` off `feat/daily-capture-v2-1a-schema` HEAD. Brief landed: `docs/briefs/brief-daily-capture-v2-1b-aggregator.md`. **Waits on 1a human merge.**
