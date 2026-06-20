@@ -59,6 +59,18 @@ The exploration walk's step 26b (agent wizard write→auto-save→reload→persi
 
 ---
 
+## Rules-test harness — `FIRESTORE_EMULATOR_HOST` parse is not IPv6-safe (banked PR #703 Gemini, 2026-06-20, LOW)
+
+All 21 `tests/rules/*.mjs` parse the emulator host with `const [EMU_HOST, EMU_PORT_STR] = (process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080').split(':')`. `.split(':')` mis-parses an IPv6 host (`[::1]:8080` / `::1:8080`) — the host/port split lands on the first colon, breaking the emulator connection in IPv6 / dual-stack environments.
+
+**Fix:** a shared helper (e.g. `tests/rules/_emulatorHost.mjs`) using `lastIndexOf(':')`, imported by all rules tests — a **repo-wide** change so the 21 files stay consistent. Do NOT patch a single file (the inconsistency is worse than the latent bug).
+
+**Severity:** LOW — the emulator host is always IPv4 `127.0.0.1:8080` in local + CI runs, so the bug never fires today. Gemini flagged it on the new `managerWeeklyReports.rules.test.mjs` (#703); dispositioned OUT-OF-SCOPE there to preserve harness consistency. **Falsification:** if CI or a contributor ever runs the Firestore emulator on an IPv6 host, rules tests fail to connect.
+
+**Source:** Gemini review on PR #703 (Item 2 of night-queue 2026-06-20), dispositioned OUT-OF-SCOPE → FU.
+
+---
+
 
 ## Daily Capture v2 Phase 1b — aggregator extension + distinct `telContacts` (QUEUED — stacks on 1a, 2026-06-18, HIGH)
 
