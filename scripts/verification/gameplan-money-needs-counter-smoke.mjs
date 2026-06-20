@@ -58,7 +58,6 @@ async function perTheme(page, theme) {
     await page.waitForSelector(COUNTER, { timeout: 20_000 });
     seeded = true;
   }
-  await page.waitForTimeout(1000);
 
   const text = (await page.locator(COUNTER).first().textContent())?.trim() ?? '';
   const match = /Filled\s+(\d+)\/(\d+)/.exec(text);

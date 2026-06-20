@@ -51,7 +51,7 @@ export function countFilledLineItems(expenseGroups) {
     (acc, group) => {
       const items = group?.lineItems ?? [];
       acc.total += items.length;
-      acc.filled += items.filter((i) => (parseFloat(i.amount) || 0) > 0).length;
+      acc.filled += items.filter((i) => (parseFloat(i?.amount) || 0) > 0).length;
       return acc;
     },
     { filled: 0, total: 0 },
