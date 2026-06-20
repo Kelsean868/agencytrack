@@ -460,7 +460,7 @@ export default function AgentDashboard() {
   };
 
   if (showWizard) {
-    return <WizardForm initialWeek={wizardWeek} initialStep={wizardInitialStep} onClose={() => { setShowWizard(false); setWizardWeek(null); setWizardInitialStep(1); }} />;
+    return <WizardForm initialWeek={wizardWeek} initialStep={wizardInitialStep} goal={goals} floors={resolvedMinimums?.weeklyActivityFloors} onClose={() => { setShowWizard(false); setWizardWeek(null); setWizardInitialStep(null); }} />;
   }
 
   if (showDailyModal) {

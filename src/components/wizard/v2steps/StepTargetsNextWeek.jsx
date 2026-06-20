@@ -1,6 +1,7 @@
 import React from 'react';
-import { Card, NumericField, CurrencyField } from '../CardStack';
+import { Card, NumericField, CurrencyField, SuggestedField } from '../CardStack';
 import { formatCurrency } from '../../../utils/formatters';
+import { useSeededTargets } from '../../../hooks/useSeededTargets';
 
 /**
  * Wizard v2 step 11 — Targets for next week.
@@ -10,19 +11,27 @@ import { formatCurrency } from '../../../utils/formatters';
  * targetF2FAttempts / targetFFI / targetCI / targetAppsSold / targetAPI /
  * goalNotes), same direct on-change, same 500-char goalNotes cap, same
  * "You're targeting X" banner when targetAPI > 0.
+ *
+ * Q5 addition: goal/floors props thread useSeededTargets suggestions into
+ * the NumericFields that map to the decomp chain (dials, FFI, CI) and the
+ * API CurrencyField. Display-only — the agent's adjusted value persists.
  */
-export default function StepTargetsNextWeek({ data, onChange }) {
+export default function StepTargetsNextWeek({ data, onChange, goal, floors }) {
+  const seeds = useSeededTargets({ data, goal, floors });
+  const seedNote = seeds.hasGoal ? 'seeded from pace' : null;
   const hasTarget = (data.targetAPI ?? 0) > 0;
 
   return (
     <div className="flex flex-col gap-4">
       <Card badge="Prospecting Goals" desc="How many dials and contacts are you committing to next week?">
         <div className="flex flex-col gap-4">
-          <NumericField
+          <SuggestedField
             label="Target Dials"
             name="targetDials"
             value={data.targetDials}
             onChange={onChange}
+            suggestion={seeds.targetDials}
+            note={seedNote}
             desc="Total outbound call attempts you plan to make."
           />
           <NumericField
@@ -44,18 +53,22 @@ export default function StepTargetsNextWeek({ data, onChange }) {
 
       <Card badge="Activity Goals" desc="Meetings and interviews you are committing to next week.">
         <div className="flex flex-col gap-4">
-          <NumericField
+          <SuggestedField
             label="Target FFI"
             name="targetFFI"
             value={data.targetFFI}
             onChange={onChange}
+            suggestion={seeds.targetFFI}
+            note={seedNote}
             desc="Fact-finding interviews you plan to conduct."
           />
-          <NumericField
+          <SuggestedField
             label="Target CI"
             name="targetCI"
             value={data.targetCI}
             onChange={onChange}
+            suggestion={seeds.targetCI}
+            note={seedNote}
             desc="Closing interviews you plan to conduct."
           />
         </div>
@@ -70,13 +83,20 @@ export default function StepTargetsNextWeek({ data, onChange }) {
             onChange={onChange}
             desc="Number of new policy applications you aim to close."
           />
-          <CurrencyField
-            label="Target API (TTD)"
-            name="targetAPI"
-            value={data.targetAPI}
-            onChange={onChange}
-            desc="Annual Premium Income you are targeting for next week's sales."
-          />
+          <div className="flex flex-col gap-1">
+            <CurrencyField
+              label="Target API (TTD)"
+              name="targetAPI"
+              value={data.targetAPI}
+              onChange={onChange}
+              desc="Annual Premium Income you are targeting for next week's sales."
+            />
+            {seeds.targetAPI > 0 && (
+              <p className="text-xs text-primary font-medium">
+                Suggested: {formatCurrency(seeds.targetAPI)} — seeded from pace
+              </p>
+            )}
+          </div>
         </div>
       </Card>
 

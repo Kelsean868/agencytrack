@@ -96,7 +96,7 @@ const STEPS = [
   { n: 9,  phase: 'reflection', title: 'Hours worked',            Component: StepHoursWorked },
   { n: 10, phase: 'reflection', title: 'Rate your week',          Component: StepRateYourWeek },
   // ── Goals (11-12) ── v2 component (R2 retirement extraction) ──────────────
-  { n: 11, phase: 'goals',      title: 'Targets for next week',   Component: StepTargetsNextWeek },
+  { n: 11, phase: 'goals',      title: 'Targets for next week',   Component: StepTargetsNextWeek, needsGoalSeeding: true },
   // PR3: step 12 = Review & submit. Mounted as a special-case below
   // (ReviewSubmit isn't a step-component-shape; it needs commissionRate +
   // edit-jump callback). The STEPS entry exists so PhaseProgress, footer
@@ -198,7 +198,7 @@ const INITIAL_DATA = {
 // the discrete review step with Edit·Step-N jump-back.
 const BRANCH_DIRECT_UNIT = '__branch_direct__';
 
-export default function WizardForm({ onClose, initialWeek, initialStep }) {
+export default function WizardForm({ onClose, initialWeek, initialStep, goal, floors }) {
   const { user, userProfile, tenantId, role, branchId } = useAuth();
   const targetUnitId = role === 'branch_manager' ? BRANCH_DIRECT_UNIT : (userProfile?.unitId ?? null);
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
@@ -581,7 +581,8 @@ export default function WizardForm({ onClose, initialWeek, initialStep }) {
             <ActiveStepComponent
               data={formData}
               onChange={handleChange}
-              {...(activeStepEntry.needsLastWeekData ? { lastWeekData } : {})}
+              {...(activeStepEntry.needsLastWeekData  ? { lastWeekData } : {})}
+              {...(activeStepEntry.needsGoalSeeding   ? { goal, floors } : {})}
             />
           </div>
         )}
