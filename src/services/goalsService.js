@@ -1,5 +1,6 @@
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '../firebase';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../utils/weeklyActivityFloors';
 import {
   DEFAULT_TENURE_API_FLOORS,
@@ -279,19 +280,12 @@ export async function setSalesManagerGoals(tenantId, smUid, year, targets, meta)
   await setDoc(doc(db, `tenants/${tenantId}/salesManagerGoals/${smUid}_${year}`), payload);
 }
 
-// Resolves SM uid for single-SM tenants by querying users where role == 'sales_manager'.
-// Returns null when no SM exists; returns first uid + console.warn when >1 SM found.
-export async function getSalesManagerUid(tenantId) {
-  const q = query(
-    collection(db, `tenants/${tenantId}/users`),
-    where('role', '==', 'sales_manager'),
-  );
-  const snap = await getDocs(q);
-  if (snap.empty) return null;
-  if (snap.size > 1) {
-    console.warn(`getSalesManagerUid: ${snap.size} sales_manager docs found for tenant ${tenantId}; using first`);
-  }
-  return snap.docs[0].id;
+// Resolves SM uid via the resolveSalesManagerUid CF (Admin SDK — bypasses client-side
+// rules so agents can call this without a denied users-list query).
+export async function getSalesManagerUid(_tenantId) {
+  const fn = httpsCallable(functions, 'resolveSalesManagerUid');
+  const result = await fn({});
+  return result.data.smUid;
 }
 
 // ── Goal Hierarchy ────────────────────────────────────────────────────────────
