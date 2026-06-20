@@ -75,12 +75,6 @@ async function waitForModal() {
   });
 }
 
-async function flushMount() {
-  await act(async () => {
-    await Promise.resolve();
-    await Promise.resolve();
-  });
-}
 
 // Navigate from step 1 to submit: 11 Next clicks advance to step 12,
 // the 12th Next click calls handleSubmit (FINAL_STEP guard in handleNext).
@@ -228,15 +222,20 @@ describe('C — autosave draftStatus guard', () => {
     });
 
     renderWizard();
-    // Flush getDraft microtask so draftStatus transitions to 'submitted'
-    await flushMount();
+    // Cannot use findByRole/waitFor here: fake timers are installed in beforeEach,
+    // so waitFor's internal polling (setTimeout) deadlocks. Flush the getDraft
+    // microtask chain directly — Promise.resolve() advances one microtask tick,
+    // two rounds drain the getDraft.then() → setState chain.
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
 
     // Advance past the debounce window; doSave.current fires but is guarded
     // by `if (draftStatus === 'submitted') return` — saveDraft must not run.
+    // vi.advanceTimersByTimeAsync flushes microtasks scheduled by the timer callback.
     await act(async () => {
-      vi.advanceTimersByTime(1500);
-      await Promise.resolve();
-      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1500);
     });
 
     expect(hoisted.saveDraftMock).not.toHaveBeenCalled();
