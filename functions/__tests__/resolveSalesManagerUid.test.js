@@ -159,15 +159,18 @@ describe('resolveSalesManagerUid — resolution', () => {
 
   it('returns the first SM and warns when more than one exists', async () => {
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    seedUsers('t1', [
-      { id: 'sm-1', role: 'sales_manager' },
-      { id: 'sm-2', role: 'sales_manager' },
-    ]);
-    const result = await handler({}, ctx('ag-1'));
-    expect(result).toEqual({ smUid: 'sm-1' });
-    expect(warnSpy).toHaveBeenCalledTimes(1);
-    expect(warnSpy.mock.calls[0][0]).toContain('SM docs in tenant t1');
-    warnSpy.mockRestore();
+    try {
+      seedUsers('t1', [
+        { id: 'sm-1', role: 'sales_manager' },
+        { id: 'sm-2', role: 'sales_manager' },
+      ]);
+      const result = await handler({}, ctx('ag-1'));
+      expect(result).toEqual({ smUid: 'sm-1' });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      expect(warnSpy.mock.calls[0][0]).toContain('SM docs in tenant t1');
+    } finally {
+      warnSpy.mockRestore();
+    }
   });
 
   it('scopes the query to the caller tenant (SM in another tenant is not returned)', async () => {
