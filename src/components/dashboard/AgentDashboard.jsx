@@ -43,6 +43,7 @@ import GamePlanScreen from './GamePlanV2';
 import CommissionPlayground from '../goals/CommissionPlayground';
 import DailyFAB from '../daily/DailyFAB';
 import AgentDashboardHomeV2 from './HomeV2';
+import NewAgentEmptyState from './NewAgentEmptyState';
 import { COMING_SOON_TABS } from '../../config/comingSoonTabs';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
@@ -558,23 +559,22 @@ export default function AgentDashboard() {
 
       {/* ── DASHBOARD TAB (v2 home — Hero + PulseStrip + Recent) ── */}
       {activeTab === 'dashboard' && (
-        allSubmissions.length === 0 ? (
-          <div className="role-hero">
-            <div className="goal-period">Get Started</div>
-            <div className="goal-value" style={{ fontSize: 24, lineHeight: 1.2 }}>
-              Welcome to AgencyTrack
-            </div>
-            <div className="goal-target" style={{ marginTop: 10 }}>
-              Submit your first weekly report to start tracking your goal progress.
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowWizard(true)}
-              className="mt-4 inline-flex items-center justify-center px-5 py-2.5 rounded-lg bg-white text-primary dark:text-primary-dark font-semibold text-sm hover:bg-white/95 transition-colors min-h-[44px]"
-            >
-              Submit your first report
-            </button>
+        loading ? (
+          // Guard the empty-vs-populated branch until data has loaded —
+          // allSubmissions starts [] while loading, which would briefly flash
+          // the new-agent empty state to an agent who actually has submissions
+          // (Gemini #715). Skeleton matches the other tabs' loading treatment.
+          <div className="space-y-4" data-testid="agent-dashboard-loading">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-24 rounded-xl bg-border/40 animate-pulse" />
+            ))}
           </div>
+        ) : allSubmissions.length === 0 ? (
+          <NewAgentEmptyState
+            firstName={userProfile?.name?.trim()?.split(/\s+/)[0] || ''}
+            committedGoal={goals?.personalAnnualAPI ?? null}
+            onStart={() => setShowWizard(true)}
+          />
         ) : (
           <AgentDashboardHomeV2
             ytdTotals={ytdTotals}
