@@ -66,11 +66,12 @@ function makeWorksheet() {
   };
 }
 
-async function renderLoaded() {
-  mockGetMoneyNeeds.mockResolvedValue(makeWorksheet());
+async function renderLoaded(ws = makeWorksheet()) {
+  mockGetMoneyNeeds.mockResolvedValue(ws);
   render(<MoneyNeedsPanel />);
   await screen.findByText('Money Needs Worksheet');
-  // Worksheet body renders once load resolves.
+  // Worksheet body (accordion buttons) renders a tick after the title resolves;
+  // await one before any synchronous openGroup() to avoid a load race.
   await screen.findByRole('button', { name: /Business Expenses/i });
 }
 
@@ -219,9 +220,7 @@ describe('MoneyNeedsPanel — floating calculators', () => {
         { ...calcLine('seed-be-7', 'Professional/industry expenses', 'insuranceIndustry', 1200) },
       ],
     };
-    mockGetMoneyNeeds.mockResolvedValue(ws);
-    render(<MoneyNeedsPanel />);
-    await screen.findByText('Money Needs Worksheet');
+    await renderLoaded(ws);
     openGroup('Business Expenses');
 
     // Filled → Recalculate label, amount input present; the Recalculate button itself
@@ -240,9 +239,7 @@ describe('MoneyNeedsPanel — floating calculators', () => {
         { ...calcLine('seed-be-7', 'Professional/industry expenses', 'insuranceIndustry', 900), isOverridden: true },
       ],
     };
-    mockGetMoneyNeeds.mockResolvedValue(ws);
-    render(<MoneyNeedsPanel />);
-    await screen.findByText('Money Needs Worksheet');
+    await renderLoaded(ws);
     openGroup('Business Expenses');
 
     expect(screen.getByRole('button', { name: /Reset Professional\/industry expenses to calculator value/i })).toBeInTheDocument();
@@ -290,9 +287,7 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     ws.expenseGroups.fixedExpenses = {
       lineItems: [{ id: 'm1', label: longLabel, amount: 0, frequency: 'M', annualizedAmount: 0, isCustom: true }],
     };
-    mockGetMoneyNeeds.mockResolvedValue(ws);
-    render(<MoneyNeedsPanel />);
-    await screen.findByText('Money Needs Worksheet');
+    await renderLoaded(ws);
     openGroup('Fixed Expenses');
 
     // The controlled input shows the full seeded label; class is not truncate-clamped.
