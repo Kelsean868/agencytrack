@@ -6,6 +6,11 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## PM-2 smoke — BM own-data write-seeding for value-level read (banked PR #719, 2026-06-21, LOW)
+
+The PM-2 hardened smoke (`scripts/verification/pm2-my-production-smoke.mjs`) proves UM own-scoping at the value level (UM submits $3,333 → surfaces under the UM's own uid in mp-history "3.3K" + SubmissionViewer "TTD 3,333"), and proves the no-leak property for BOTH UM and BM via the managed-foil sweep (foil $7,777 absent from all 7 tabs). What it does NOT yet do is a value-level own-data read for **BM** — BM's My Production screens are currently verified via the no-leak sweep + heading-render fallback only (no BM submission is seeded, so its screens render empty/heading). This was a deliberate dispatcher-accepted deferral: BM shares `useMyProduction`'s code path with UM, so the own-scoping logic is identical, and the higher-risk BM property (branch-wide `canManage` not leaking) IS decisively covered. **To resolve:** extend the smoke's write-read-verify phase to also submit a BM-owned report (distinct marker, e.g. $5,555) via the BM's own mp-report WizardForm, reload, and assert it surfaces in the BM's mp-history + SubmissionViewer — mirroring the UM phase. Keeps the managed-foil no-leak sweep unchanged.
+
+
 ## MoneyNeedsPanel amount inputs — `=== 0 ? '' :` idiom vs `|| ''` for null safety (banked PR #718 Gemini OUT-OF-SCOPE, 2026-06-21, LOW)
 
 Gemini flagged the `value={item.amount === 0 ? '' : item.amount}` pattern in both `CalcFedLineRow` and `LineItemRow` (and it recurs across `MoneyNeedsPanel` — `CommissionTargetsPanel`, all three calc components): if `item.amount` were ever `undefined`/`null`, React would warn about a controlled→uncontrolled flip. **Theoretical only** in the current data model — `makeItemId()` seeds `amount: 0` and `moneyNeedsService` normalizes via `parseFloat(...) || 0` on every write, so amounts are always numeric. Left as-is in #718 (presentation-only repair; changing two of ~6 sites would make the file internally inconsistent). **To resolve:** sweep all `=== 0 ? '' :` amount-input idioms in `MoneyNeedsPanel.jsx` to `item.amount || ''` in one pass for consistency + defensive null-handling. Verify no test asserts the `=== 0` branch literally.
