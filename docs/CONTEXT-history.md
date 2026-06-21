@@ -10,6 +10,8 @@
 
 | PR | SHA | Description |
 |---|---|---|
+| [#706](https://github.com/Kelsean868/agencytrack/pull/706) | `1c835b7` | feat(gameplan): money-needs worksheet FILLED counter (1.8) (HUMAN-MERGE, 2026-06-21). Worksheet-level `Filled N/total` badge (`countFilledLineItems`). GATE 1.7 (per-line renewal sub-chips) DROPPED — `estimatedRenewalIncome` has no populated per-line data (data-add FU). +5 tests. |
+| [#705](https://github.com/Kelsean868/agencytrack/pull/705) | `a52297b` | refactor(gameplan): remove vestigial CommitPreviewCard (HUMAN-MERGE, 2026-06-21). Removed the hard-disabled Step-4 preview card (stale "coming soon" copy); PlanCascade reflows full-width. |
 | [#701](https://github.com/Kelsean868/agencytrack/pull/701) | `caae5bf` | fix(rules): allow agent get on non-existent own submission draft (HUMAN-MERGE + `firestore:rules` deployed, 2026-06-20). Null-resource owner arm on submissions `allow get`; fixed agent-walk console error + HIGH functional bug (client daily→weekly aggregation threw on fresh weeks). Gemini HIGH tenant-isolation IMPLEMENTED. emulator 31/31; post-deploy 3 probes green. |
 | [#700](https://github.com/Kelsean868/agencytrack/pull/700) | `12b71bb` | test(functions): unit-test resolveSalesManagerUid callable (2026-06-20). Test-only — does NOT advance HEAD (Rule 16(b)). |
 | [#699](https://github.com/Kelsean868/agencytrack/pull/699) | `77626bb` | fix(goals): replace agent-denied SM uid query with CF callable (HUMAN-MERGE, 2026-06-20). `resolveSalesManagerUid` CF; SM-tier proof PASS. CF deployed. |
