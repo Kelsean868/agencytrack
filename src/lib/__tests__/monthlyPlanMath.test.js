@@ -68,43 +68,80 @@ describe('balanceDelta', () => {
 
 // ── autoDistributeRemainder ───────────────────────────────────────────────────
 
-describe('autoDistributeRemainder', () => {
-  it('rebalances to Σ === anchorAPI after a custom edit', () => {
-    // Month 0 increased; remainder redistributed across months 1–11
-    const targets = [15000, 10000, 10000, 10000, 10000, 10000,
-                     10000, 10000, 10000, 10000, 10000, 10000]; // over by 5000
+describe('autoDistributeRemainder (fill empty months, preserve typed)', () => {
+  it('all-empty: spreads the annual evenly across all 12, including current', () => {
+    const targets = Array(12).fill(0);
     const result = autoDistributeRemainder(targets, 120000, 0);
+    expect(result).toEqual(Array(12).fill(10000));
     const sum = result.reduce((s, v) => s + v, 0);
     expect(parseFloat(sum.toFixed(2))).toBe(120000);
   });
 
-  it('does not touch past + current months (only future indices > currentMonthIndex)', () => {
-    const targets = [15000, 10000, 10000, 10000, 10000, 10000,
-                     10000, 10000, 10000, 10000, 10000, 10000];
+  it('some typed: remainder = annual − Σtyped, spread only across the zeros; typed untouched', () => {
+    // Jan & Feb typed (30000 + 20000 = 50000); months 2–11 empty.
+    // remainder = 120000 − 50000 = 70000 across 10 zeros = 7000 each.
+    const targets = [30000, 20000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
     const result = autoDistributeRemainder(targets, 120000, 0);
-    expect(result[0]).toBe(15000); // current month (0) untouched
+    expect(result[0]).toBe(30000); // typed, preserved
+    expect(result[1]).toBe(20000); // typed, preserved
+    for (let i = 2; i < 12; i++) expect(result[i]).toBe(7000);
+    expect(parseFloat(result.reduce((s, v) => s + v, 0).toFixed(2))).toBe(120000);
   });
 
-  it('returns targets unchanged when delta is already 0', () => {
-    const targets = seedEvenSplit(120000);
-    const result = autoDistributeRemainder(targets, 120000, 3);
-    expect(result).toEqual(targets);
+  it('Σtyped ≥ annual: remainder ≤ 0 → zeros stay 0 (clamp; never negative)', () => {
+    // Typed sum 130000 > annual 120000 → remainder negative → no change.
+    const targets = [70000, 60000, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const result = autoDistributeRemainder(targets, 120000, 0);
+    expect(result[0]).toBe(70000);
+    expect(result[1]).toBe(60000);
+    for (let i = 2; i < 12; i++) expect(result[i]).toBe(0); // zeros stay 0
   });
 
-  it('returns targets unchanged when there are no future months', () => {
-    const targets = seedEvenSplit(120000);
-    const result = autoDistributeRemainder(targets, 120000, 11);
-    expect(result).toEqual(targets);
+  it('rounding: distributed portion reconciles to the remainder exactly (last empty absorbs)', () => {
+    // annual 100000, all empty → remainder 100000 / 12 not evenly divisible.
+    const result = autoDistributeRemainder(Array(12).fill(0), 100000, 0);
+    expect(result.slice(0, 11).every((v) => v === 8333.33)).toBe(true);
+    expect(result[11]).toBe(8333.37); // residue absorbed
+    expect(parseFloat(result.reduce((s, v) => s + v, 0).toFixed(2))).toBe(100000);
   });
 
-  it('last future month absorbs rounding so sum is exact', () => {
-    // anchorAPI not evenly divisible — triggers rounding
-    const targets = [5000, 5000, 5000, 5000, 5000, 5000,
-                     5000, 5000, 5000, 5000, 5000, 6001]; // over by 1
-    const anchor = 60000;
-    const result = autoDistributeRemainder(targets, anchor, 5);
-    const sum = result.reduce((s, v) => s + v, 0);
-    expect(parseFloat(sum.toFixed(2))).toBe(anchor);
+  it('current-month inclusion: the current month receives a share when it is at 0', () => {
+    // currentMonthIndex = 5 (June). Past months 0–4 hold settled values (untouched);
+    // June (5) is at 0 and must receive a share — the off-by-one fix.
+    const targets = [5000, 5000, 5000, 5000, 5000, 0, 0, 0, 0, 0, 0, 0];
+    const result = autoDistributeRemainder(targets, 95000, 5);
+    // typedSum = 25000; remainder = 70000 across 7 zeros (indices 5–11) = 10000 each.
+    for (let i = 0; i < 5; i++) expect(result[i]).toBe(5000); // past untouched
+    expect(result[5]).toBe(10000); // current month included
+    for (let i = 6; i < 12; i++) expect(result[i]).toBe(10000);
+    expect(parseFloat(result.reduce((s, v) => s + v, 0).toFixed(2))).toBe(95000);
+  });
+
+  it('past months at 0 are not filled (only current + future are eligible)', () => {
+    // currentMonthIndex = 3; months 0–2 at 0 are PAST → stay 0.
+    const targets = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    const result = autoDistributeRemainder(targets, 90000, 3);
+    for (let i = 0; i < 3; i++) expect(result[i]).toBe(0); // past zeros untouched
+    // 9 eligible months (3–11) share 90000 = 10000 each.
+    for (let i = 3; i < 12; i++) expect(result[i]).toBe(10000);
+  });
+
+  it('no empty months → returned unchanged', () => {
+    const targets = seedEvenSplit(120000); // all 10000, none at 0
+    expect(autoDistributeRemainder(targets, 120000, 3)).toEqual(targets);
+  });
+
+  it('small remainder over many empty months never goes negative (floor distribution)', () => {
+    // 6 typed months (indices 6–11) sum to exactly 100000.00; the anchor leaves a
+    // 4-cent remainder to spread across the 6 empty months (indices 0–5).
+    // Math.round would give 0.01 each → 5 × 0.01 = 0.05 > 0.04 → last month −0.01.
+    // Math.floor gives 0 to the leading empties and the full residue to the last.
+    const targets = [0, 0, 0, 0, 0, 0, 16666.66, 16666.66, 16666.66, 16666.66, 16666.66, 16666.70];
+    const result = autoDistributeRemainder(targets, 100000.04, 0);
+    expect(result.every((v) => v >= 0)).toBe(true);            // no month negative
+    for (let i = 0; i < 5; i++) expect(result[i]).toBe(0);     // leading empties stay 0
+    expect(result[5]).toBeCloseTo(0.04, 2);                    // last empty absorbs the residue
+    expect(parseFloat(result.reduce((s, v) => s + v, 0).toFixed(2))).toBe(100000.04);
   });
 });
 
