@@ -840,7 +840,13 @@ describe('normalizeWorksheet', () => {
           groupAnnualTotal: 0,
         },
       },
-      subCalculators: { loansDebt: { lineItems: [], annualTotal: 24000 } },
+      // Realistic populated sub-calc (annualTotal derives from lineItems).
+      subCalculators: {
+        loansDebt: {
+          lineItems: [{ id: 'seed-ld-0', label: 'Credit Card', amount: 2000, frequency: 'M', annualizedAmount: 24000, isCustom: false }],
+          annualTotal: 24000,
+        },
+      },
     };
     const result = normalizeWorksheet(doc);
     const fed = result.expenseGroups.savingsAccumulation.lineItems.find((i) => i.id === 'seed-sa-2');
@@ -888,6 +894,41 @@ describe('normalizeWorksheet', () => {
     const custom = result.expenseGroups.miscellaneous.lineItems.find((i) => i.id === 'custom-xyz');
     expect(custom).toBeDefined();
     expect(custom.annualizedAmount).toBe(1200);
+  });
+
+  it('scaffolds a MISSING sub-calculator with seeded items (Gemini #714)', () => {
+    // Legacy doc with no subCalculators at all → all three seeded, not empty.
+    const result = normalizeWorksheet({ year: YEAR, expenseGroups: {}, subCalculators: undefined });
+    expect(result.subCalculators.insuranceIndustry.lineItems).toHaveLength(11);
+    expect(result.subCalculators.carExpenses.lineItems).toHaveLength(7);
+    expect(result.subCalculators.loansDebt.lineItems).toHaveLength(6);
+  });
+
+  it('re-seeds an EMPTY sub-calculator (zero lines is non-functional) (Gemini #714)', () => {
+    const result = normalizeWorksheet({
+      year: YEAR,
+      expenseGroups: {},
+      subCalculators: {
+        insuranceIndustry: { lineItems: [], annualTotal: 0 },
+        carExpenses: { lineItems: [] },
+        loansDebt: { lineItems: [], annualTotal: 0 },
+      },
+    });
+    expect(result.subCalculators.insuranceIndustry.lineItems).toHaveLength(11);
+    expect(result.subCalculators.carExpenses.lineItems).toHaveLength(7);
+    expect(result.subCalculators.loansDebt.lineItems).toHaveLength(6);
+  });
+
+  it('preserves a POPULATED sub-calculator (no spurious re-seed)', () => {
+    const result = normalizeWorksheet({
+      year: YEAR,
+      expenseGroups: {},
+      subCalculators: {
+        loansDebt: { lineItems: [{ id: 'custom-ld', label: 'My loan', amount: 100, frequency: 'M', annualizedAmount: 1200, isCustom: true }], annualTotal: 1200 },
+      },
+    });
+    expect(result.subCalculators.loansDebt.lineItems).toHaveLength(1);
+    expect(result.subCalculators.loansDebt.lineItems[0].id).toBe('custom-ld');
   });
 
   it('recomputes rollup totals so downstream reads are corrected in-memory', () => {

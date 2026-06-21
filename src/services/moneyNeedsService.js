@@ -374,11 +374,35 @@ export function calcFedValue(calcKey, subCalculators) {
   return 0;
 }
 
+// Default sub-calculator scaffolds — used to back-fill a legacy/sparse worksheet
+// that is missing a sub-calculator entirely, so the UI never shows an empty
+// checklist instead of the seeded items. (Gemini #714.)
+function defaultSubCalc(key) {
+  if (key === 'carExpenses') {
+    return {
+      lineItems: DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.carExpenses.map((i) => ({ ...i })),
+      withLoan: false,
+      personalSharePct: CAR_PERSONAL_PCT,
+      businessSharePct: CAR_BUSINESS_PCT,
+      annualTotalPersonal: 0,
+      annualTotalBusiness: 0,
+    };
+  }
+  return {
+    lineItems: DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators[key].map((i) => ({ ...i })),
+    annualTotal: 0,
+  };
+}
+
 // Recompute the car calc's personal/business split from its line items, having
-// dropped any retired Vehicle Loan line. Loan is excluded from the split.
+// dropped any retired Vehicle Loan line. Loan is excluded from the split. A
+// legacy doc missing `lineItems` falls back to the seeded car items rather than
+// rendering an empty checklist. (Gemini #714.)
 function normalizeCarCalc(carCalc) {
   const canonicalIds = new Set(DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.carExpenses.map((i) => i.id));
-  const items = (carCalc?.lineItems ?? []).filter((i) => i.isCustom || canonicalIds.has(i.id));
+  const storedItems = carCalc?.lineItems
+    ?? DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.carExpenses.map((i) => ({ ...i }));
+  const items = storedItems.filter((i) => i.isCustom || canonicalIds.has(i.id));
   const lineAnnual = items.reduce(
     (s, i) => s + (annualizeAmount(parseFloat(i.amount) || 0, i.frequency) || 0), 0,
   );
@@ -418,9 +442,17 @@ function normalizeCarCalc(carCalc) {
 export function normalizeWorksheet(worksheet) {
   if (!worksheet) return worksheet;
 
+  // Scaffold any missing OR empty sub-calculator so legacy/sparse docs never
+  // render an empty checklist — a sub-calculator with zero lines is
+  // non-functional (no total/split possible), so we fall back to the seeded set.
+  // (Gemini #714, extended from missing→empty.)
+  const sc = worksheet.subCalculators ?? {};
+  const ensureSubCalc = (stored, key) =>
+    (stored && Array.isArray(stored.lineItems) && stored.lineItems.length > 0) ? stored : defaultSubCalc(key);
   const subCalculators = {
-    ...worksheet.subCalculators,
-    carExpenses: normalizeCarCalc(worksheet.subCalculators?.carExpenses ?? {}),
+    insuranceIndustry: ensureSubCalc(sc.insuranceIndustry, 'insuranceIndustry'),
+    loansDebt:         ensureSubCalc(sc.loansDebt, 'loansDebt'),
+    carExpenses:       normalizeCarCalc(ensureSubCalc(sc.carExpenses, 'carExpenses')),
   };
 
   const storedGroups = worksheet.expenseGroups ?? {};
