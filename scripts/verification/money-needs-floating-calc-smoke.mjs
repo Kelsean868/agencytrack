@@ -157,13 +157,12 @@ async function setCarViaModal(page, monthly) {
 // Read the Living calc-fed "Car expenses, nonbusiness" line annual.
 async function readLivingPersonalLine(page) {
   await openGroup(page, /^Living Expenses/i);
-  // The calc-fed row is the only `.flex.items-center` containing BOTH the label
-  // and the "/ yr" annual (the label <span> alone lacks the annual text).
-  const row = page.locator('.flex.items-center')
-    .filter({ hasText: /Car expenses, nonbusiness/ })
-    .filter({ hasText: /\/\s*yr/ })
-    .last();
-  const rowTxt = await row.textContent().catch(() => '');
+  // The calc-fed row is now a bordered CARD: row 1 holds the label, row 2 holds
+  // the editable amount + "/ yr" annual. Walk up from the label span to its
+  // enclosing `.rounded-xl` card, then read the annual from the whole card.
+  const labelSpan = page.getByText('Car expenses, nonbusiness', { exact: true }).last();
+  const card = labelSpan.locator('xpath=ancestor::div[contains(@class,"rounded-xl")][1]');
+  const rowTxt = await card.textContent().catch(() => '');
   const m = (rowTxt || '').match(MONEY_YR_RE);
   await closeGroup(page, /^Living Expenses/i);
   return m ? parseTTD(m[0]) : NaN;
