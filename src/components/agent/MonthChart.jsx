@@ -7,6 +7,18 @@ const CHART_H = 72; // px
 export default function MonthChart({ targets, actuals, year, currentMonthIndex, todayTT }) {
   const maxVal = Math.max(...(targets || [1]), ...(actuals || [0]), 1);
 
+  // NOW line (3.2): horizontal position of "today" within the current month
+  // column, in Trinidad time. Distinct from the horizontal pace tick — this is a
+  // vertical "you are here" marker. Null when today's date is unavailable.
+  const nowFraction = (() => {
+    const day = parseInt((todayTT || '').split('-')[2], 10);
+    if (!day || currentMonthIndex == null) return null;
+    const daysInMonth = new Date(year, currentMonthIndex + 1, 0).getDate();
+    // Guard invalid year/month → NaN daysInMonth → a "left: NaN%" layout bug.
+    if (!Number.isFinite(daysInMonth) || daysInMonth <= 0) return null;
+    return Math.min(1, Math.max(0, (day - 0.5) / daysInMonth));
+  })();
+
   return (
     <div
       className="flex w-full items-end gap-0.5 sm:gap-1"
@@ -74,6 +86,17 @@ export default function MonthChart({ targets, actuals, year, currentMonthIndex, 
                   style={{ bottom: paceH }}
                   aria-hidden="true"
                   data-testid="pace-tick"
+                />
+              )}
+
+              {/* NOW line (3.2) — vertical "today" marker in the current month,
+                  distinct from the horizontal dashed pace tick. */}
+              {isCurrent && nowFraction != null && (
+                <div
+                  className="absolute top-0 bottom-0 w-px bg-ink/70"
+                  style={{ left: `${nowFraction * 100}%` }}
+                  aria-hidden="true"
+                  data-testid="now-line"
                 />
               )}
             </div>
