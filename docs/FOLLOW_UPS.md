@@ -6,6 +6,23 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## ~~getAwardsRuleset shared hardening — partial-doc crash on all consumers~~ (RESOLVED — PR #709 `2aa1572`, 2026-06-21)
+
+Banked during the Game Plan night-queue: #707's Gemini-HIGH (partial/malformed `awardsRuleset_{year}` doc → destructure crash) was fixed locally in `YearPlanModal`, but `getAwardsRuleset` is also consumed raw by `AgentDashboard`, `ManagerAwardsPanel`, and everything they feed (`AgentAwardsPanel`, `HomeV2`, `BmAtRiskPanel`, `AgentReportDocument`). **RESOLVED by PR #709 (Option A):** deep-merge centralized behind a render-only `getMergedAwardsRuleset`; the three render loaders switched; `getAwardsRuleset` left raw for the admin editor (contract-locked). See § Locked decisions in CONTEXT.md.
+
+## Money Needs 1.7 — per-line renewal sub-chips need a data source (banked PR #706, 2026-06-21, LOW)
+
+The conformance audit's 1.7 (renewal income shown as per-line Life/Health/Group sub-chips) was **dropped** in #706: `estimatedRenewalIncome` is read only via `.total` (`MoneyNeedsPanel.jsx:255,358`); the per-line fields (`life`/`ah`/`property`/`motor`) exist in the scaffold default (`moneyNeedsService.js:278`) but **have no input path and are never populated** (always 0). Rendering sub-chips would fabricate a breakdown the worksheet never captures. **To resolve:** add a per-line renewal-income input UI (Money Needs worksheet) that populates `estimatedRenewalIncome.{life,ah,property,motor}`, then render the sub-chips from real data. Until then, the single `− Renewal income` line is correct.
+
+## MonthlyPlanModal:41 — `todayTT.split` lacks a null guard (banked PR #708 Gemini OUT-OF-SCOPE, 2026-06-21, LOW)
+
+`const currentMonthIndex = parseInt(todayTT.split('-')[1], 10) - 1;` (`MonthlyPlanModal.jsx:41`) throws if `getTodayTT()` ever returns null/empty. Pre-existing (not in #708's edit set); `getTodayTT()` always returns a valid `YYYY-MM-DD` in practice, so the risk is theoretical. **To resolve:** guard `(todayTT || '').split('-')` and fall back gracefully (mirrors the MonthChart NOW-line guard added in #708 `bb1545d`).
+
+## docs/handoffs/ untracked CD package breaks local `npm run lint` (banked post-merge #705–709, 2026-06-21, LOW)
+
+An untracked Claude-Design handoff package under `docs/handoffs/agencytrack-planner-handoff/.../mockups/*.jsx` sits in the working tree and makes local `npm run lint` emit ~1298 errors (`no-undef` / `react-refresh`) — it is **not** on `origin/main` and **not** in any PR (CI lint is clean; my staging is always explicit), but it pollutes the local lint signal and risks an accidental `git add -A` sweep. **To resolve:** either remove the untracked package, or add `docs/handoffs/` to `.gitignore` **and** to the eslint `ignores` in `eslint.config.js` (gitignore alone won't stop eslint from linting it). Verify `npm run lint` is clean afterward.
+
+
 ## Functions runtime + firebase-functions SDK upgrade — Node 20 EOL + SDK 4.9.0 → ≥5.1.0 (banked 2026-06-19, HIGH)
 
 **Tracking entry only — do NOT start the work without a dispatched brief.**
