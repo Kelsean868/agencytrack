@@ -1,65 +1,75 @@
-# Fast-Follow Brief — harden `getAwardsRuleset` (deep-merge at the read boundary)
+# Fast-Follow Brief — harden `getAwardsRuleset` (render-only merge accessor) · v2
 
-**Authored:** 2026-06-20 · dispatcher
+**Authored:** 2026-06-20 · dispatcher · **v2 supersedes v1** (re-scoped after CC's Phase 0.4 falsification FLAG)
 **Baseline:** origin/main **after #705–708 are merged** (specifically #707 / `b67032c`)
 **Mode:** Build to PR-open, then HOLD.
-**Merge class:** **Human-merge (Rule 19)** — touches a shared service consumed by live **agent and manager** surfaces. No green-channel.
+**Merge class:** **Human-merge (Rule 19)** — shared service feeding live agent, manager, and admin surfaces. No green-channel.
 
 ---
 
-## Why
+## v2 amendment — why this supersedes v1
 
-Gemini's HIGH on #707 was real: a partial/malformed `awardsRuleset_{year}` Firestore doc (exists but missing keys) would destructure-crash the modal. CC fixed it **locally inside `YearPlanModal`** with a `deepMergeRuleset` helper. But the same `getAwardsRuleset` is consumed raw by **`AgentDashboard`** and **`ManagerAwardsPanel`**, which still carry the identical latent crash. A missing doc falls back cleanly to `DEFAULT_RULESET_2026`; only a *partial* doc is dangerous — edge, but it crashes live agent + manager surfaces.
+v1 assumed `getAwardsRuleset` fed only render surfaces and scoped the falsification grep to three consumers. CC's Phase 0.4 check found a **fourth consumer outside that list**: the admin ruleset editor `src/components/admin/AwardsRulesetPanel.jsx`. It loads the **raw stored doc** via `getAwardsRuleset` (`setRuleset` / `initFormState`), deliberately tolerates missing keys (`?.clubAward?.tiers ?? []` at :183, `?.recruitingAwards ?? []` :211, `?.activityAwards ?? []` :226, `?.managerMonthlyBonus?.tiers ?? []` :199), and **round-trips the doc back into a write** via `setAwardsRuleset`.
 
-Fix it once, at the read boundary: deep-merge inside `getAwardsRuleset` so every consumer receives a complete ruleset. Then remove the now-redundant local merge from `YearPlanModal`, and add the partial-ruleset tests #707 lacked. This closes the `getAwardsRuleset shared hardening` follow-up CC banked.
+Merging inside `getAwardsRuleset` (v1's "fix once at the boundary") would make the editor see a DEFAULT-backfilled view, shift its dirty-baseline, and **on save silently persist DEFAULT values the admin never authored** — a write-path data-integrity hazard. That is exactly the absence-reliance Phase 0.4 says to FLAG.
+
+**Dispatcher ruling — Option A:** put the deep-merge behind a **new render-only accessor**; `getAwardsRuleset` stays raw for the editor. Rationale: of the two-accessor options, A's "future caller forgets the accessor" failure is a **loud crash** (render side, caught by tests); B's is **silent write-path normalization** (worse than today). Loud-over-silent wins.
 
 ## Scope (one PR)
 
-- Move the deep-merge from `YearPlanModal` into `awardsRulesetService.getAwardsRuleset`.
-- Remove the local `deepMergeRuleset` + its call site in `YearPlanModal.jsx`.
-- Add partial-ruleset unit tests on the service (the crash-prevention proof).
+1. Add `deepMergeRuleset` (exported) + a new `getMergedAwardsRuleset(tenantId, year)` to `awardsRulesetService.js`. `getAwardsRuleset` is **unchanged** (raw).
+2. Switch the **three render consumers** to `getMergedAwardsRuleset`; remove `YearPlanModal`'s local `deepMergeRuleset` (from #707).
+3. Leave the **admin editor `AwardsRulesetPanel.jsx` untouched** — it keeps calling raw `getAwardsRuleset`.
+4. Add tests, including a **contract-lock** pinning `getAwardsRuleset` to stay raw.
 
-**Files:** `src/services/awardsRulesetService.js` · `src/components/.../YearPlanModal.jsx` · `awardsRulesetService.test.js` (new/extend) · `YearPlanModal.test.jsx` (confirm still green).
+**Files:** `src/services/awardsRulesetService.js` · `YearPlanModal.jsx` · `AgentDashboard.jsx` · `ManagerAwardsPanel.jsx` · `awardsRulesetService.test.js` · (confirm `YearPlanModal.test.jsx` green).
+**Explicitly NOT touched:** `AwardsRulesetPanel.jsx` (admin editor — raw fidelity preserved).
 
 ---
 
 ## Phase 0 — source-verify (post-#707 state)
 
-1. **Assert #707 is merged.** Grep `deepMergeRuleset` in `YearPlanModal.jsx`. **Present → proceed.** **Absent → STOP and report** — #707 isn't on main yet; this brief is strictly post-#707.
-2. Confirm `getAwardsRuleset(tenantId, year)` in `awardsRulesetService.js`: reads `config/awardsRuleset_${year}`, returns `DEFAULT_RULESET_2026` on missing doc. Capture the exact load + fallback lines.
-3. Read CC's existing `deepMergeRuleset` (added in `b67032c`). Confirm its merge direction is **doc-wins / default-fills-gaps** (Firestore values take precedence; DEFAULT only backfills absent keys), and whether it recurses into nested award/tier objects. The service version ports this **exactly** — do not reinvent.
-4. **Falsification check (Rule 23):** grep the consumers — `AgentDashboard.jsx`, `ManagerAwardsPanel.jsx`, `yearPlanProjection.js` — for any logic that **branches on a ruleset key being ABSENT** (`=== undefined`, presence guards, optional-key fallbacks). If any consumer relies on a key being missing, deep-merge would change its behavior → **FLAG and HOLD for a dispatcher ruling**, do not proceed silently. (Expected: none — they read keys assuming presence, which is exactly why a partial doc crashes them.)
+1. **Assert #707 merged.** Grep `deepMergeRuleset` in `YearPlanModal.jsx`. Present → proceed. Absent → **STOP and report**.
+2. Confirm `getAwardsRuleset(tenantId, year)`: reads `config/awardsRuleset_${year}`, returns `DEFAULT_RULESET_2026` on missing doc. Capture load + fallback lines.
+3. Port-source: read CC's existing `deepMergeRuleset` (`b67032c`). Confirm merge direction is **doc-wins / default-fills-gaps** and that it recurses into nested award/tier objects. Port it **verbatim**.
+4. **Render-only confirmation (the v2 crux).** Confirm the three render consumers are **read-only w.r.t. the ruleset** — they render/compute from it but never write it back. Only `AwardsRulesetPanel.jsx` writes (`setAwardsRuleset`). If any of the three round-trips the ruleset into a write, **STOP and re-flag** — Option A assumes they don't.
+5. **awardsEngine mapping.** `awardsEngine.js` (~:152,:300) reads `…excludesBdoDso` with absent→falsy but **crashes when the parent object is absent**. Map its ruleset source: confirm it is fed from a render path that will now use `getMergedAwardsRuleset` (or pass it a merged ruleset explicitly). If any caller feeds awardsEngine a **raw** ruleset, note it — that path stays crash-exposed and needs the merged source too.
+6. **Falsification (Rule 23):** the no-regression claim holds only if no render consumer depends on a key being absent. CC already confirmed `yearPlanProjection.js:48-55`, `AgentDashboard`, `ManagerAwardsPanel` assume presence (deep-merge only hardens them). Re-confirm on the merged branch.
 
 ## Phase 1 — build
 
-1. Add `deepMergeRuleset(loaded, fallback)` to `awardsRulesetService.js`, ported from the YearPlanModal version (doc values win; DEFAULT fills missing keys; recurse into nested award/tier objects). **Export it** for direct unit testing (a `.js` service has no react-refresh export constraint — contrast Item 1).
-2. In `getAwardsRuleset`, return `deepMergeRuleset(docData, DEFAULT_RULESET_2026)` for the present-doc case. The missing-doc path is `deepMergeRuleset({}, DEFAULT)` ≡ `DEFAULT`, so it can unify on the same call — confirm the empty/missing case still yields DEFAULT unchanged.
-3. Remove the local `deepMergeRuleset` definition and its invocation in `YearPlanModal.jsx`; the modal now consumes the already-complete ruleset straight from the service.
+1. Add exported `deepMergeRuleset(loaded, fallback)` to `awardsRulesetService.js` (ported from YearPlanModal; doc values win, DEFAULT backfills absent keys, recurses nested objects).
+2. Add `getMergedAwardsRuleset(tenantId, year)` = `deepMergeRuleset(getAwardsRuleset(...), DEFAULT_RULESET_2026)`. The missing-doc case yields DEFAULT unchanged.
+3. `getAwardsRuleset` — **no change** (raw doc / DEFAULT-on-missing).
+4. Switch render loads to `getMergedAwardsRuleset` in `YearPlanModal`, `AgentDashboard`, `ManagerAwardsPanel`; remove YearPlanModal's local `deepMergeRuleset` + call.
+5. `AwardsRulesetPanel.jsx` — **untouched**.
 
-**No-regression reasoning (state it in the report):** for a *complete* doc the merge is a no-op (identical output); for a *missing* doc the output is DEFAULT (unchanged). The only behavioral change is the *partial*-doc case: previously a raw partial (crash-prone), now a complete object (safe). So agent/manager surfaces are strictly hardened, not altered, for the normal and missing cases.
+**No-regression reasoning (state in report):** for the three render surfaces, a complete doc → no-op, a missing doc → DEFAULT (both unchanged); only the partial-doc case changes (raw partial → complete, i.e. crash → safe). The editor keeps raw fidelity because its accessor is unchanged.
 
-## Phase 2 — tests (load-bearing)
+## Phase 2 — tests
 
 `awardsRulesetService.test.js` (mock `getDoc`):
-1. **Missing doc → DEFAULT** (existing behavior preserved).
-2. **Complete custom doc → custom values intact** — assert a non-default threshold from the doc **survives** (defaults must NOT clobber present values; proves merge direction).
-3. **Partial doc** (exists, missing keys / an award missing `apiThreshold`) → returns a **complete** ruleset: gaps backfilled from DEFAULT, present values preserved. *This is the crash-prevention proof #707 lacked.*
-4. **Nested-partial** (award object present but missing a sub-field) → sub-field backfilled (proves the recurse).
+1. `deepMergeRuleset`: missing/empty → fallback.
+2. `deepMergeRuleset`: complete custom doc → custom values intact (defaults do **not** clobber present values).
+3. `deepMergeRuleset`: partial doc → gaps backfilled from DEFAULT, present values preserved (**crash-prevention proof**).
+4. `deepMergeRuleset`: nested-partial → sub-field backfilled (proves recurse).
+5. `getMergedAwardsRuleset`: partial stored doc → returns a complete ruleset.
+6. **CONTRACT-LOCK — `getAwardsRuleset` stays RAW:** partial stored doc → returns the partial doc **unchanged** (NOT backfilled). Pins the admin-editor contract against future drift.
 
-Confirm `YearPlanModal.test.jsx` stays green after the local-merge removal.
+Confirm `YearPlanModal.test.jsx` green after the local-merge removal + accessor switch.
 
 ## Phase 3 — smoke
 
-Both-theme render smoke confirming **no regression** across the three consumers with the real (complete) doc: Year Plan award strip, AgentDashboard awards, ManagerAwardsPanel all render normally. **Coverage boundary (Rule 22):** the partial-doc crash path is proven by unit tests, not the live smoke — malformed data can't be injected against the live account. Say so.
+Both-theme render no-regression on the three render surfaces (Year Plan award strip, AgentDashboard awards, ManagerAwardsPanel) with the real complete doc. **Coverage boundary (Rule 22):** the partial-doc crash path and the editor's raw-fidelity contract are proven by unit tests (5,6), not the live smoke — malformed data can't be injected against the live account. Say so.
 
 ## Phase 4 / 5 / 6
 
-- **Phase 4:** CONTEXT.md fill; in FOLLOW_UPS, mark `getAwardsRuleset shared hardening` **resolved** (this PR).
-- **Phase 5:** commit `fix(awards): deep-merge ruleset at service read boundary; harden all consumers`; push; open PR.
-- **Phase 6:** Gemini poll 15 min + disposition; **HOLD for human merge**. Report: Phase-0 falsification result (any consumer branching on absence?), the no-regression reasoning, test results (esp. the partial-doc case), smoke (both themes), ≥1 named gap.
+- **Phase 4:** CONTEXT.md fill; mark the `getAwardsRuleset shared hardening` follow-up **resolved**; note the admin-editor exclusion as an intentional design decision (Option A ruling).
+- **Phase 5:** commit `fix(awards): render-only merged ruleset accessor; harden render consumers, preserve editor raw fidelity`; PR.
+- **Phase 6:** Gemini poll 15 min + disposition; **HOLD for human merge**. Report: Phase-0 render-only + awardsEngine findings, no-regression reasoning, the contract-lock test result, smoke (both themes), ≥1 named gap.
 
 ---
 
 ## Report back
 
-PR number + URL; Phase-0 verdict (#707 merged? consumers safe?); confirmation the missing/complete cases are unchanged and the partial case is now safe; test + smoke results; the one named gap; and confirmation it's **HELD for human merge**.
+PR + URL; Phase-0 verdicts (#707 merged? three consumers render-only? awardsEngine source mapped?); confirmation `getAwardsRuleset` is unchanged (contract-lock test green) and the three render surfaces are hardened; test + smoke results; the one named gap; confirmation it's **HELD for human merge**.
