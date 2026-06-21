@@ -261,4 +261,43 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     // the amount input lives in a separate inner div — different immediate parents.
     expect(descInput.parentElement).not.toBe(amountInput.parentElement);
   });
+
+  it('manual LineItemRow desktop: Description grows (flex-1 min-w-0), numeric wrapper is sm:contents, no ml-auto spacer', async () => {
+    await renderLoaded();
+    openGroup('Fixed Expenses');
+    mockUpdateExpenseGroup.mockResolvedValue({ totalAnnualExpenses: 0, totalAnnualAfterTax: 0, totalAnnualPreTax: 0 });
+    fireEvent.click(screen.getAllByRole('button', { name: /Add item/i })[0]);
+    await waitFor(() => expect(mockUpdateExpenseGroup).toHaveBeenCalled());
+
+    const descInput = screen.getByRole('textbox', { name: /Expense description/i });
+    const amountInput = screen.getByRole('spinbutton', { name: /Expense amount/i });
+    // Description absorbs all horizontal slack on desktop.
+    expect(descInput.className).toMatch(/\bsm:flex-1\b/);
+    expect(descInput.className).toMatch(/\bsm:min-w-0\b/);
+    // The numeric wrapper (amount's parent) dissolves on desktop via sm:contents,
+    // so amount/freq/annual/delete become direct columns matching the header.
+    const numericWrapper = amountInput.parentElement;
+    expect(numericWrapper.className).toMatch(/\bsm:contents\b/);
+    // No ml-auto / spacer anywhere in the row pushing the numeric columns right.
+    const row = descInput.closest('.border-b');
+    expect(row).not.toBeNull();
+    expect(row.querySelector('[class*="ml-auto"]')).toBeNull();
+  });
+
+  it('manual LineItemRow renders a long Description label in full (no truncation of the value)', async () => {
+    const ws = makeWorksheet();
+    const longLabel = 'TTAIFA Conference Registration & Professional License Renewal';
+    ws.expenseGroups.fixedExpenses = {
+      lineItems: [{ id: 'm1', label: longLabel, amount: 0, frequency: 'M', annualizedAmount: 0, isCustom: true }],
+    };
+    mockGetMoneyNeeds.mockResolvedValue(ws);
+    render(<MoneyNeedsPanel />);
+    await screen.findByText('Money Needs Worksheet');
+    openGroup('Fixed Expenses');
+
+    // The controlled input shows the full seeded label; class is not truncate-clamped.
+    const descInput = screen.getByRole('textbox', { name: /Expense description/i });
+    expect(descInput.value).toBe(longLabel);
+    expect(descInput.className).not.toMatch(/\btruncate\b/);
+  });
 });

@@ -53,7 +53,9 @@ function LineItemRow({ item, onChange, onDelete, onBlur }) {
           aria-label="Expense description"
           className="w-full sm:flex-1 sm:min-w-0 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Mobile: this wrapper is the 2nd row. Desktop (sm:contents): it dissolves
+            so amount/freq/annual/delete align as direct columns under the header. */}
+        <div className="flex items-center gap-2 flex-wrap sm:contents">
           <input
             type="number"
             value={item.amount === 0 ? '' : item.amount}
@@ -81,7 +83,7 @@ function LineItemRow({ item, onChange, onDelete, onBlur }) {
             type="button"
             onClick={() => onDelete(item.id)}
             aria-label="Delete expense"
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors min-h-[44px] min-w-[32px]"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors min-h-[44px] min-w-[32px] shrink-0"
           >
             <Trash2 size={14} />
           </button>
