@@ -188,7 +188,7 @@ function goalDoc(agentId) {
   return { agentId, tenantId: TENANT_ID, personalAnnualAPI: 200000 };
 }
 
-const PLAN_WEEK = '2026-01-05';  // a Sunday
+const PLAN_WEEK = '2026-01-04';  // a Sunday
 function validPlan(agentId) {
   return {
     agentId,
@@ -460,7 +460,7 @@ try {
   // ═══════════════════════════════════════════════════════════════════════════
   console.log('\nweeklyPlans — create/update/delete self-arm extended to isProducingManager:');
 
-  const PLAN_WEEK_2 = '2026-01-12';  // fresh week for create tests
+  const PLAN_WEEK_2 = '2026-01-11';  // fresh week for create tests (a Sunday)
 
   await t('31. UM creates own weeklyPlan → ALLOW (NEW)', async () => {
     await assertSucceeds(setDoc(planRef(umDb(), UM_UID, PLAN_WEEK_2), validPlan(UM_UID)));
