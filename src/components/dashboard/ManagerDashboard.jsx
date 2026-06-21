@@ -166,9 +166,11 @@ export default function ManagerDashboard() {
   const showMpDailyCTA = mpLoggingMode === 'daily' || mpLoggingMode === 'hybrid';
 
   // Lazy-load own policies when Commission tab is first visited.
+  // Destructured to avoid re-running when other myProd fields update (Gemini G1).
+  const { policies: myProdPolicies, loadPolicies: myProdLoadPolicies } = myProd;
   useEffect(() => {
-    if (activeTab === 'mp-commission' && myProd.policies === null) myProd.loadPolicies();
-  }, [activeTab, myProd]);
+    if (activeTab === 'mp-commission' && myProdPolicies === null) myProdLoadPolicies();
+  }, [activeTab, myProdPolicies, myProdLoadPolicies]);
   const onPullRefresh = useCallback(() => {
     setPtrRevision((r) => r + 1);
   }, []);

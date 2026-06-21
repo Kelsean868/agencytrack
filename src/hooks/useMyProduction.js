@@ -55,21 +55,27 @@ export function useMyProduction(tenantId, uid, userProfile) {
 
   useEffect(() => {
     if (!uid || !tenantId) return;
+    let active = true;
     setHierarchyLoading(true);
     setHierarchyError(null);
     getSalesManagerUid(tenantId)
       .catch(() => null)
-      .then((smUid) => getGoalHierarchy(tenantId, userProfile?.unitId ?? null, thisYear, uid, smUid))
-      .then(setHierarchy)
+      .then((smUid) => {
+        if (!active) return null;
+        return getGoalHierarchy(tenantId, userProfile?.unitId ?? null, thisYear, uid, smUid);
+      })
+      .then((res) => { if (active) setHierarchy(res); })
       .catch((e) => {
+        if (!active) return;
         console.error(e);
         setHierarchyError('Failed to load goal hierarchy.');
       })
-      .finally(() => setHierarchyLoading(false));
+      .finally(() => { if (active) setHierarchyLoading(false); });
+    return () => { active = false; };
   }, [uid, tenantId, userProfile?.unitId, thisYear]);
 
   const loadPolicies = useCallback(async () => {
-    if (!uid || !tenantId || policies !== null) return;
+    if (!uid || !tenantId || policies !== null || policiesLoading) return;
     setPoliciesLoading(true);
     setPoliciesError(false);
     try {
@@ -79,7 +85,7 @@ export function useMyProduction(tenantId, uid, userProfile) {
     } finally {
       setPoliciesLoading(false);
     }
-  }, [uid, tenantId, policies]);
+  }, [uid, tenantId, policies, policiesLoading]);
 
   const ytdTotals = useMemo(() => {
     const yearSubs = allSubmissions.filter(
