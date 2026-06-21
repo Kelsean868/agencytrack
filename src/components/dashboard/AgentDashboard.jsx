@@ -559,7 +559,17 @@ export default function AgentDashboard() {
 
       {/* ── DASHBOARD TAB (v2 home — Hero + PulseStrip + Recent) ── */}
       {activeTab === 'dashboard' && (
-        allSubmissions.length === 0 ? (
+        loading ? (
+          // Guard the empty-vs-populated branch until data has loaded —
+          // allSubmissions starts [] while loading, which would briefly flash
+          // the new-agent empty state to an agent who actually has submissions
+          // (Gemini #715). Skeleton matches the other tabs' loading treatment.
+          <div className="space-y-4" data-testid="agent-dashboard-loading">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-24 rounded-xl bg-border/40 animate-pulse" />
+            ))}
+          </div>
+        ) : allSubmissions.length === 0 ? (
           <NewAgentEmptyState
             firstName={userProfile?.name?.trim()?.split(/\s+/)[0] || ''}
             committedGoal={goals?.personalAnnualAPI ?? null}

@@ -128,6 +128,7 @@ vi.mock('../../goals/GapAnalysisPanel',               () => ({ default: () => Re
 vi.mock('../../goals/AwardsReachPanel',               () => ({ default: () => null }));
 
 import AgentDashboard from '../AgentDashboard';
+import { getAgentSubmissions } from '../../../services/submissionService';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -155,5 +156,25 @@ describe('AgentDashboard — coming-soon tab gating (pilot readiness)', () => {
     fireEvent.click(screen.getByTestId('go-money-needs'));
     await waitFor(() => expect(screen.getByTestId('money-needs-panel')).toBeInTheDocument());
     expect(screen.queryByText('Coming soon')).not.toBeInTheDocument();
+  });
+});
+
+describe('AgentDashboard — dashboard empty-state loading guard (#715)', () => {
+  it('shows the loading skeleton (NOT the empty state) while data is loading', () => {
+    // Never-resolving fetch → `loading` stays true. allSubmissions is [] during
+    // load, but the guard must show the skeleton, not flash NewAgentEmptyState.
+    getAgentSubmissions.mockReturnValueOnce(new Promise(() => {}));
+    render(<AgentDashboard />);
+    expect(screen.getByTestId('agent-dashboard-loading')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /your account's ready/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Submit your first report/i)).not.toBeInTheDocument();
+    // The populated view is the same non-loading else-branch, so it cannot flash either.
+  });
+
+  it('renders the empty state once loaded with zero submissions (skeleton gone)', async () => {
+    render(<AgentDashboard />); // default mock resolves to []
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { name: /your account's ready/i })).toBeInTheDocument());
+    expect(screen.queryByTestId('agent-dashboard-loading')).not.toBeInTheDocument();
   });
 });
