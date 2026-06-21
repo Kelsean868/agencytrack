@@ -170,12 +170,15 @@ describe('MonthlyPlanModal — edit behavior', () => {
     expect(pill.textContent).not.toContain('✓');
   });
 
-  it('auto-distribute re-balances and re-enables Save', async () => {
+  it('fill-empty-months fills cleared months and re-enables Save', async () => {
     renderModal();
     await flush();
     const inputs = screen.getAllByRole('spinbutton');
-    fireEvent.change(inputs[inputs.length - 1], { target: { value: '20000' } });
-    fireEvent.click(screen.getByRole('button', { name: /auto-distribute/i }));
+    // Clear December (the last editable/future month) to 0 → under-allocated.
+    fireEvent.change(inputs[inputs.length - 1], { target: { value: '0' } });
+    expect(screen.getByRole('button', { name: /save draft/i }).disabled).toBe(true);
+    // Fill empty months spreads the remainder into the cleared month → balanced.
+    fireEvent.click(screen.getByTestId('auto-distribute-btn'));
     expect(screen.getByRole('button', { name: /save draft/i }).disabled).toBe(false);
     expect(screen.getByTestId('balance-pill').textContent).toContain('✓');
   });
@@ -191,10 +194,10 @@ describe('MonthlyPlanModal — edit behavior', () => {
     expect(screen.getByTestId('balance-pill').textContent).toContain('✓');
   });
 
-  it('auto-distribute button is disabled when already balanced', async () => {
+  it('fill-empty-months button is disabled when already balanced', async () => {
     renderModal();
     await flush();
-    expect(screen.getByRole('button', { name: /auto-distribute/i }).disabled).toBe(true);
+    expect(screen.getByTestId('auto-distribute-btn').disabled).toBe(true);
   });
 });
 

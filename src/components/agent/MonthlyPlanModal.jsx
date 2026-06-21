@@ -439,11 +439,14 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
                     type="button"
                     onClick={handleAutoDistribute}
                     disabled={delta === 0}
-                    title={delta === 0 ? 'Already balanced — nothing to distribute.' : undefined}
+                    title={delta === 0
+                      ? 'Already balanced — nothing to distribute.'
+                      : 'Splits the remaining annual evenly across the months still at 0. Months you have already filled are left as-is.'}
                     aria-disabled={delta === 0}
+                    data-testid="auto-distribute-btn"
                     className="min-h-[36px] rounded-lg border border-border bg-surface px-3 text-xs font-semibold text-ink-muted transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   >
-                    Auto-distribute
+                    Fill empty months
                   </button>
                   <button
                     type="button"

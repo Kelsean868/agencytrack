@@ -64,33 +64,61 @@ export function balanceDelta(targets, anchorAPI) {
 }
 
 /**
- * autoDistributeRemainder — spread the delta evenly across untouched future
- * months (indices > currentMonthIndex). Last future month absorbs rounding so
- * the result sums to anchorAPI exactly. Past + current months are not touched.
+ * autoDistributeRemainder — fill the empty (TT$0) months with what's left of the
+ * annual target, preserving every month the agent has already typed a value into.
+ *
+ * "Typed" = any month with a value > 0 (non-zero heuristic — no new state field,
+ * no schema change). The distributable remainder is:
+ *     remainder = anchorAPI − Σ(months with value > 0)
+ * which is spread evenly across the months currently at 0 that are editable
+ * (current + future, i.e. index >= currentMonthIndex). Past months are never
+ * touched — a past month at 0 stays 0.
+ *
+ * Rounding rule: each empty month receives round(remainder / n, 2dp); the LAST
+ * empty month absorbs the rounding residue (remainder − perMonth × (n − 1)) so
+ * the distributed portion sums to `remainder` exactly, hence Σ(all 12) === anchor.
+ *
+ * Clamp: if remainder <= 0 (already balanced or over-allocated) or there are no
+ * empty editable months, the array is returned unchanged — the remainder is never
+ * pushed negative into a month.
+ *
+ * Accepted v1 consequences (by design, not bugs):
+ *   (a) an intentional TT$0 month cannot be represented — a 0 reads as empty and
+ *       receives a share;
+ *   (b) the button is effectively one-shot — once empty months are filled they
+ *       read as typed, so a second click redistributes nothing until months are
+ *       cleared back to 0.
  *
  * @param {number[]} targets
- * @param {number} anchorAPI
+ * @param {number} anchorAPI — full TTD annual target
  * @param {number} currentMonthIndex — 0-based (January = 0)
  * @returns {number[12]}
  */
 export function autoDistributeRemainder(targets, anchorAPI, currentMonthIndex) {
   const anchor = parseFloat(anchorAPI) || 0;
   const t = (targets || []).map((v) => parseFloat(v) || 0);
-  const futureIndices = [];
-  for (let i = currentMonthIndex + 1; i < 12; i++) futureIndices.push(i);
-  if (!futureIndices.length) return t;
 
-  const delta = t.reduce((s, v) => s + v, 0) - anchor;
-  if (delta === 0) return t;
+  // Preserve typed months (value > 0); the remainder is what the annual target
+  // has left over once those are subtracted.
+  const typedSum = t.reduce((s, v) => s + (v > 0 ? v : 0), 0);
+  const remainder = parseFloat((anchor - typedSum).toFixed(2));
 
-  const perMonth = Math.round((delta / futureIndices.length) * 100) / 100;
-  for (let i = 0; i < futureIndices.length - 1; i++) {
-    t[futureIndices[i]] = parseFloat((t[futureIndices[i]] - perMonth).toFixed(2));
+  // Empty months eligible to receive: at 0 and not in the past.
+  const emptyIndices = [];
+  for (let i = currentMonthIndex; i < 12; i++) {
+    if (t[i] === 0) emptyIndices.push(i);
   }
-  // Last future month set exactly so Σ === anchor
-  const lastIdx = futureIndices[futureIndices.length - 1];
-  const sumWithoutLast = t.reduce((s, v, i) => (i === lastIdx ? s : s + v), 0);
-  t[lastIdx] = parseFloat((anchor - sumWithoutLast).toFixed(2));
+
+  // Clamp: nothing to place, or nowhere to place it → unchanged.
+  if (remainder <= 0 || emptyIndices.length === 0) return t;
+
+  const perMonth = Math.round((remainder / emptyIndices.length) * 100) / 100;
+  for (let i = 0; i < emptyIndices.length - 1; i++) {
+    t[emptyIndices[i]] = perMonth;
+  }
+  // Last empty month absorbs the rounding residue so Σ(filled) === remainder exactly.
+  const lastIdx = emptyIndices[emptyIndices.length - 1];
+  t[lastIdx] = parseFloat((remainder - perMonth * (emptyIndices.length - 1)).toFixed(2));
   return t;
 }
 
