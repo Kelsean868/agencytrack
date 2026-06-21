@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const hoisted = vi.hoisted(() => ({
@@ -105,6 +105,23 @@ describe('deriveCountStripChips (pure)', () => {
 // ─── DailyCaptureV2 ──────────────────────────────────────────────────────────
 
 describe('DailyCaptureV2', () => {
+  // Pin a fixed WEEKDAY so the weekday "Log Today" capture form renders
+  // deterministically, independent of the real calendar day the suite runs on.
+  // Root cause of the prior Sunday-only failures: on Sundays the component
+  // CORRECTLY renders the Sunday review view (SundayConfirmView, see
+  // DailyCaptureV2.jsx `isTodaySunday ? <SundayConfirmView/> : <form/>`), which
+  // has no dcv2-save / "Log Today" heading / dcv2-day-credit — so these
+  // weekday-form assertions could not find their elements and timed out. The
+  // sibling date-sensitive tests already pin their own date; these did not.
+  // Only Date is faked (setTimeout stays real) so waitFor / findBy still work.
+  // Tests that need a specific date re-pin in their own body.
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-17T12:00:00Z') }); // Wednesday
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('renders dialog with v2 testid and Log Today title', async () => {
     render(<DailyCaptureV2 onClose={vi.fn()} />);
     expect(await screen.findByTestId('daily-capture-v2')).toBeInTheDocument();
@@ -231,7 +248,7 @@ describe('DailyCaptureV2', () => {
   it('TZ-001: getDailyEntry called with TT-timezone date, not UTC date', async () => {
     // 2025-06-02T00:30:00Z = 2025-06-01T20:30:00 TT — UTC is June 2, TT is June 1.
     // Only fake Date — leave setTimeout/Promise timers real so waitFor works.
-    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2025-06-02T00:30:00Z') });
+    vi.setSystemTime(new Date('2025-06-02T00:30:00Z')); // timers already faked by beforeEach
     render(<DailyCaptureV2 onClose={vi.fn()} />);
     await waitFor(() => expect(hoisted.getDailyEntry).toHaveBeenCalled());
     // Third argument is the date string used as the Firestore doc key.
@@ -242,7 +259,7 @@ describe('DailyCaptureV2', () => {
 
   it('shows the week strip with 7 day buttons (Sun–Sat) when today is not Sunday', async () => {
     // Pin to a known Tuesday in TT (not Sunday → strip renders)
-    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2025-06-03T12:00:00Z') });
+    vi.setSystemTime(new Date('2025-06-03T12:00:00Z')); // timers already faked by beforeEach
     render(<DailyCaptureV2 onClose={vi.fn()} />);
     await screen.findByTestId('daily-capture-v2');
     const strip = await screen.findByTestId('dcv2-week-strip');
@@ -254,7 +271,7 @@ describe('DailyCaptureV2', () => {
 
   it('tapping a past strip day loads that date via getDailyEntry', async () => {
     // Pin to Wednesday 2025-06-04 TT — Monday 2025-06-02 is in the past
-    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2025-06-04T12:00:00Z') });
+    vi.setSystemTime(new Date('2025-06-04T12:00:00Z')); // timers already faked by beforeEach
     render(<DailyCaptureV2 onClose={vi.fn()} />);
     await screen.findByTestId('dcv2-week-strip');
 
@@ -276,7 +293,7 @@ describe('DailyCaptureV2', () => {
 
   it('Save writes back-fill to the selected strip date, not today', async () => {
     // Pin to Wednesday 2025-06-04 TT
-    vi.useFakeTimers({ toFake: ['Date'], now: new Date('2025-06-04T12:00:00Z') });
+    vi.setSystemTime(new Date('2025-06-04T12:00:00Z')); // timers already faked by beforeEach
     render(<DailyCaptureV2 onClose={vi.fn()} />);
     await screen.findByTestId('dcv2-week-strip');
 
