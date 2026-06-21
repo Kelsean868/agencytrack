@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Calculator, ChevronDown, Loader2, AlertCircle, Plus, Trash2, Send,
+  Calculator, ChevronDown, Loader2, AlertCircle, Plus, Trash2, Send, RotateCcw, Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
   createMoneyNeeds, getMoneyNeeds,
   updateExpenseGroup, annualizeAmount, computeGroupTotal,
   updateSubCalculator, updateCommissionTargets, refreshPAYECalculation,
-  updateVisibility, countFilledLineItems,
+  updateVisibility, countFilledLineItems, calcFedValue,
   PLAYGROUND_INCOME_GOAL_KEY, PAYE_BRACKETS_VERSION,
+  CAR_PERSONAL_PCT, CAR_BUSINESS_PCT, CAR_LOAN_LOANSDEBT_LINE_ID,
 } from '../../services/moneyNeedsService';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -36,6 +37,7 @@ function makeItemId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+// Manual / custom expense line — editable label, amount, frequency, delete.
 function LineItemRow({ item, onChange, onDelete, onBlur }) {
   return (
     <div className="flex items-center gap-2 py-1.5 border-b border-border last:border-0">
@@ -83,6 +85,53 @@ function LineItemRow({ item, onChange, onDelete, onBlur }) {
   );
 }
 
+// Calc-fed line — prefilled from a sub-calculator, editable. Label is fixed
+// (structural); editing the amount stores an override; a synced line shows a
+// "from calculator" badge, an overridden line shows a reset affordance.
+function CalcFedLineRow({ item, onChange, onReset, onBlur }) {
+  const overridden = !!item.isOverridden;
+  return (
+    <div className="flex items-center gap-2 py-1.5 border-b border-border last:border-0">
+      <span className="flex-1 min-w-0 flex items-center gap-1.5">
+        <span className="truncate text-sm text-ink">{item.label}</span>
+        {overridden ? (
+          <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gold">Edited</span>
+        ) : (
+          <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+            <Sparkles size={10} aria-hidden="true" /> Calc
+          </span>
+        )}
+      </span>
+      <input
+        type="number"
+        value={item.amount === 0 ? '' : item.amount}
+        onChange={(e) => onChange(item.id, 'amount', e.target.value)}
+        onBlur={onBlur}
+        placeholder="0"
+        min={0}
+        aria-label={`${item.label} amount`}
+        className="w-24 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
+      />
+      <span className="w-28 text-right text-xs text-ink-muted tabular-nums shrink-0">
+        {formatCurrency(annualizeAmount(item.amount, item.frequency))} / yr
+      </span>
+      {overridden ? (
+        <button
+          type="button"
+          onClick={() => onReset(item.id)}
+          aria-label={`Reset ${item.label} to calculator value`}
+          title="Reset to calculator value"
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-primary hover:bg-primary/5 transition-colors min-h-[44px] min-w-[32px]"
+        >
+          <RotateCcw size={14} />
+        </button>
+      ) : (
+        <span className="w-8 shrink-0" aria-hidden="true" />
+      )}
+    </div>
+  );
+}
+
 function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGroupSaved }) {
   const { tenantId, user } = useAuth();
   const [open, setOpen] = useState(false);
@@ -106,13 +155,10 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
           annualizedAmount: annualizeAmount(amount, item.frequency),
         };
       });
-      const groupAnnualTotal = computeGroupTotal({
-        lineItems: processedItems,
-        subCalculatorRefs: group?.subCalculatorRefs ?? [],
-      });
+      const groupAnnualTotal = computeGroupTotal({ lineItems: processedItems });
       const updatedGroup = {
         lineItems: processedItems,
-        subCalculatorRefs: group?.subCalculatorRefs ?? [],
+        subCalculatorRefs: [],
         groupAnnualTotal,
       };
       const newAllGroups = { ...worksheetDoc.expenseGroups, [groupKey]: updatedGroup };
@@ -147,25 +193,54 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
     saveGroup(next);
   }
 
+  // Editing a calc-fed line's amount/frequency stores an explicit override.
   function handleItemChange(id, field, value, saveNow = false) {
-    const next = localItems.map((i) => i.id === id ? { ...i, [field]: value } : i);
+    const next = localItems.map((i) => {
+      if (i.id !== id) return i;
+      const updated = { ...i, [field]: value };
+      if (i.calcKey && (field === 'amount' || field === 'frequency')) updated.isOverridden = true;
+      return updated;
+    });
     setLocalItems(next);
     if (saveNow) saveGroup(next);
+  }
+
+  // Reset a calc-fed line back to its current calculator value.
+  function handleResetCalcLine(id) {
+    const next = localItems.map((i) => {
+      if (i.id !== id || !i.calcKey) return i;
+      const synced = calcFedValue(i.calcKey, worksheetDoc.subCalculators);
+      return { ...i, isOverridden: false, amount: synced, frequency: 'A', annualizedAmount: synced };
+    });
+    setLocalItems(next);
+    saveGroup(next);
   }
 
   function handleBlur() {
     saveGroup(localItems);
   }
 
+  const calcFedItems = localItems.filter((i) => i.calcKey);
+  const manualItems = localItems.filter((i) => !i.calcKey);
+
   const groupAnnualTotal = computeGroupTotal({
     lineItems: localItems.map((item) => ({
       ...item,
       annualizedAmount: annualizeAmount(parseFloat(item.amount) || 0, item.frequency),
     })),
-    subCalculatorRefs: group?.subCalculatorRefs ?? [],
   });
 
   const filledCount = localItems.filter((i) => (parseFloat(i.amount) || 0) > 0).length;
+
+  const colHeader = (
+    <div className="flex items-center gap-2 pb-1 border-b border-border mb-1">
+      <span className="flex-1 text-xs font-semibold text-ink-muted">Description</span>
+      <span className="w-24 text-right text-xs font-semibold text-ink-muted">Amount</span>
+      <span className="text-xs font-semibold text-ink-muted">Frequency</span>
+      <span className="w-28 text-right text-xs font-semibold text-ink-muted">Annual</span>
+      <span className="w-8" />
+    </div>
+  );
 
   return (
     <div className="border border-border rounded-xl overflow-hidden">
@@ -207,18 +282,34 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
             </div>
           )}
 
-          {localItems.length === 0 ? (
+          {calcFedItems.length > 0 && (
+            <div className="mb-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary mb-1 flex items-center gap-1">
+                <Sparkles size={11} aria-hidden="true" /> From your calculators
+              </p>
+              <p className="text-[11px] text-ink-muted mb-1.5">Prefilled from your sub-calculators — edit to override.</p>
+              {colHeader}
+              {calcFedItems.map((item) => (
+                <CalcFedLineRow
+                  key={item.id}
+                  item={item}
+                  onChange={handleItemChange}
+                  onReset={handleResetCalcLine}
+                  onBlur={handleBlur}
+                />
+              ))}
+            </div>
+          )}
+
+          {manualItems.length === 0 ? (
             <p className="text-xs text-ink-muted py-2">No items yet. Add your first expense below.</p>
           ) : (
             <div className="mb-2">
-              <div className="flex items-center gap-2 pb-1 border-b border-border mb-1">
-                <span className="flex-1 text-xs font-semibold text-ink-muted">Description</span>
-                <span className="w-24 text-right text-xs font-semibold text-ink-muted">Amount</span>
-                <span className="text-xs font-semibold text-ink-muted">Frequency</span>
-                <span className="w-28 text-right text-xs font-semibold text-ink-muted">Annual</span>
-                <span className="w-8" />
-              </div>
-              {localItems.map((item) => (
+              {calcFedItems.length > 0 && (
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted mb-1">Your entries</p>
+              )}
+              {colHeader}
+              {manualItems.map((item) => (
                 <LineItemRow
                   key={item.id}
                   item={item}
@@ -245,6 +336,20 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
   );
 }
 
+// Always-visible lede reframing the worksheet from survival-budgeting to
+// lifestyle design — agents are commission-only with no income ceiling.
+function WorksheetLede() {
+  return (
+    <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
+      <p className="text-sm font-semibold text-ink">Design the life you want</p>
+      <p className="text-xs text-ink-muted mt-1 leading-relaxed">
+        You set your own income — there&apos;s no ceiling. So don&apos;t just plan to get by.
+        Map out the life you actually want, and see exactly what you&apos;ll need to earn to make it real.
+      </p>
+    </div>
+  );
+}
+
 function PAYESummary({ worksheet }) {
   if (!worksheet) return null;
   const { totalAnnualAfterTax = 0, totalAnnualPreTax = 0 } = worksheet;
@@ -257,10 +362,15 @@ function PAYESummary({ worksheet }) {
 
   return (
     <div className="rounded-xl bg-surface-raised border border-border px-4 py-3 space-y-2">
-      <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Annual Income Target</p>
-      <div className="flex justify-between text-sm">
-        <span className="text-ink-muted">After-tax total need</span>
-        <span className="text-ink font-semibold tabular-nums">{formatCurrency(totalAnnualAfterTax)}</span>
+      <div className="border-b border-border pb-2">
+        <p className="text-sm font-bold text-ink">The income your lifestyle requires</p>
+        <p className="text-[11px] text-ink-muted mt-0.5">
+          Everything above is your choice — this is the annual income it takes to fund it.
+        </p>
+        <div className="flex justify-between items-baseline mt-1.5">
+          <span className="text-ink-muted text-sm">After-tax need</span>
+          <span className="text-ink font-bold text-lg tabular-nums">{formatCurrency(totalAnnualAfterTax)}</span>
+        </div>
       </div>
       <div className="flex justify-between text-xs">
         <span className="text-ink-muted">+ PAYE gross-up</span>
@@ -435,9 +545,6 @@ function CommissionTargetsPanel({ worksheet, onTargetsSaved }) {
   );
 }
 
-const CAR_PERSONAL_PCT = 33;
-const CAR_BUSINESS_PCT = 67;
-
 function SubCalcLineItems({ items, onChange, onDelete, onBlur }) {
   return (
     <div className="mb-2">
@@ -513,7 +620,7 @@ function InsuranceIndustryCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
       </button>
       {open && (
         <div className="px-4 pb-4 pt-2 border-t border-border">
-          <p className="text-xs text-ink-muted mb-2">Rolls into Business Expenses</p>
+          <p className="text-xs text-ink-muted mb-2">Prefills “Professional/industry expenses” in Business Expenses</p>
           {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
           {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
           {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
@@ -530,12 +637,11 @@ function InsuranceIndustryCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
 function CarExpensesCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   const { tenantId, user } = useAuth();
   const [localItems, setLocalItems] = useState(() => calcData?.lineItems ?? []);
-  const [withLoan, setWithLoan] = useState(() => calcData?.withLoan ?? false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [open, setOpen] = useState(false);
 
-  useEffect(() => { setLocalItems(calcData?.lineItems ?? []); setWithLoan(calcData?.withLoan ?? false); }, [calcData]);
+  useEffect(() => { setLocalItems(calcData?.lineItems ?? []); }, [calcData]);
 
   const lineAnnual = localItems.reduce(
     (sum, item) => sum + (parseFloat(annualizeAmount(parseFloat(item.amount) || 0, item.frequency)) || 0), 0,
@@ -543,7 +649,13 @@ function CarExpensesCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   const personalAnnual = Math.round((lineAnnual * CAR_PERSONAL_PCT) / 100);
   const businessAnnual = Math.round((lineAnnual * CAR_BUSINESS_PCT) / 100);
 
-  async function save(items, loan) {
+  // Read-only car-loan reference, sourced from Loans & Debt (cost of ownership);
+  // NOT part of the car total and NOT split.
+  const carLoanRef = (worksheetDoc.subCalculators?.loansDebt?.lineItems ?? [])
+    .filter((i) => i.id === CAR_LOAN_LOANSDEBT_LINE_ID)
+    .reduce((s, i) => s + (annualizeAmount(parseFloat(i.amount) || 0, i.frequency) || 0), 0);
+
+  async function save(items) {
     setSaving(true); setSaveError('');
     try {
       const processed = items.map((i) => {
@@ -554,7 +666,7 @@ function CarExpensesCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
       const personal = Math.round((total * CAR_PERSONAL_PCT) / 100);
       const business = Math.round((total * CAR_BUSINESS_PCT) / 100);
       const updated = {
-        lineItems: processed, withLoan: loan,
+        lineItems: processed, withLoan: false,
         personalSharePct: CAR_PERSONAL_PCT, businessSharePct: CAR_BUSINESS_PCT,
         annualTotalPersonal: personal, annualTotalBusiness: business,
       };
@@ -566,14 +678,13 @@ function CarExpensesCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
 
   function handleAdd() {
     const next = [...localItems, { id: makeItemId(), label: '', amount: 0, frequency: 'M', annualizedAmount: 0, isCustom: true }];
-    setLocalItems(next); save(next, withLoan);
+    setLocalItems(next); save(next);
   }
-  function handleDelete(id) { const next = localItems.filter((i) => i.id !== id); setLocalItems(next); save(next, withLoan); }
+  function handleDelete(id) { const next = localItems.filter((i) => i.id !== id); setLocalItems(next); save(next); }
   function handleChange(id, field, value, saveNow = false) {
     const next = localItems.map((i) => i.id === id ? { ...i, [field]: value } : i);
-    setLocalItems(next); if (saveNow) save(next, withLoan);
+    setLocalItems(next); if (saveNow) save(next);
   }
-  function handleLoanToggle() { const next = !withLoan; setWithLoan(next); save(localItems, next); }
 
   return (
     <div className="border border-border rounded-xl overflow-hidden">
@@ -589,20 +700,18 @@ function CarExpensesCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
       </button>
       {open && (
         <div className="px-4 pb-4 pt-2 border-t border-border">
-          <div className="flex items-center gap-2 mb-2">
-            <button type="button" onClick={handleLoanToggle} disabled={saving}
-              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none ${withLoan ? 'bg-primary' : 'bg-border'}`}
-              role="switch" aria-checked={withLoan} aria-label="Includes loan payments">
-              <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${withLoan ? 'translate-x-4' : 'translate-x-0.5'}`} />
-            </button>
-            <span className="text-xs text-ink-muted">Includes loan payments</span>
-          </div>
-          <div className="flex gap-4 mb-2 text-xs text-ink-muted">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs text-ink-muted">
             <span>Personal ({CAR_PERSONAL_PCT}%): <span className="font-semibold text-ink tabular-nums">{formatCurrency(personalAnnual)}</span> → Living</span>
             <span>Business ({CAR_BUSINESS_PCT}%): <span className="font-semibold text-ink tabular-nums">{formatCurrency(businessAnnual)}</span> → Business</span>
           </div>
+          {carLoanRef > 0 && (
+            <p className="mb-2 text-xs text-ink-muted">
+              Car loan (from Loans &amp; Debt): <span className="font-semibold text-ink tabular-nums">{formatCurrency(carLoanRef)}</span>
+              <span className="text-ink-muted"> / yr — reference only, not in the split</span>
+            </p>
+          )}
           {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
-          {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems, withLoan)} />}
+          {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
           {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
           <button type="button" onClick={handleAdd} disabled={saving}
             className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50 min-h-[44px]">
@@ -666,7 +775,7 @@ function LoansDebtCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
       </button>
       {open && (
         <div className="px-4 pb-4 pt-2 border-t border-border">
-          <p className="text-xs text-ink-muted mb-2">Standalone total — not rolled into expense groups</p>
+          <p className="text-xs text-ink-muted mb-2">Prefills “Debt reduction (non-mortgage)” in Savings &amp; Accumulation</p>
           {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
           {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
           {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
@@ -832,6 +941,8 @@ export default function MoneyNeedsPanel() {
       {/* Worksheet */}
       {!loading && worksheet && (
         <div className="space-y-2">
+          <WorksheetLede />
+
           <PAYERefreshBanner worksheet={worksheet} onRefreshed={handlePAYERefreshed} />
 
           <div className="rounded-xl bg-card border border-border px-4 py-3 mb-2">

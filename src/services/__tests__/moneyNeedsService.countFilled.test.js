@@ -5,12 +5,14 @@ import { countFilledLineItems } from '../moneyNeedsService';
 const items = (n, amount = 0) =>
   Array.from({ length: n }, (_, i) => ({ id: `i${i}`, amount }));
 
-// Seed shape mirrors the scaffold: 7 + 8 + 7 + 6 + 6 = 34 named items across the
-// five standard groups, all amounts 0.
+// Seed shape mirrors the scaffold: 6 + 8 + 8 + 6 + 6 = 34 named items across the
+// five standard groups, all amounts 0. (Count-once reconciliation dropped Car
+// insurance + Trade association dues and added Other business travel +
+// Professional/industry expenses — net unchanged at 34.)
 const seedGroups = {
-  fixedExpenses:       { lineItems: items(7) },
+  fixedExpenses:       { lineItems: items(6) },
   livingExpenses:      { lineItems: items(8) },
-  businessExpenses:    { lineItems: items(7) },
+  businessExpenses:    { lineItems: items(8) },
   savingsAccumulation: { lineItems: items(6) },
   miscellaneous:       { lineItems: items(6) },
 };
@@ -24,10 +26,10 @@ describe('countFilledLineItems — Money Needs FILLED N/total (Game Plan v2 1.8)
     const groups = {
       ...seedGroups,
       fixedExpenses: {
-        lineItems: [{ amount: 1200 }, { amount: 0 }, { amount: '500' }, ...items(4)],
+        lineItems: [{ amount: 1200 }, { amount: 0 }, { amount: '500' }, ...items(3)],
       },
     };
-    // fixed: 2 filled of 7; the other four groups (27 items) are all 0.
+    // fixed: 2 filled of 6; the other four groups (28 items) are all 0.
     expect(countFilledLineItems(groups)).toEqual({ filled: 2, total: 34 });
   });
 

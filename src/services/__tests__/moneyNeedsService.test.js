@@ -32,8 +32,9 @@ vi.mock('firebase/firestore', () => ({
 import {
   createMoneyNeeds, getMoneyNeeds,
   annualizeAmount, computeGroupTotal, computeWorksheetRollup,
-  updateExpenseGroup, mergeSubCalcRef, updateSubCalculator,
+  updateExpenseGroup, updateSubCalculator,
   updateCommissionTargets, refreshPAYECalculation, updateVisibility,
+  applyCalcToGroup, calcFedValue, normalizeWorksheet,
   FREQUENCY_MULTIPLIERS, PAYE_BRACKETS_VERSION,
 } from '../moneyNeedsService';
 
@@ -82,9 +83,9 @@ describe('createMoneyNeeds', () => {
       'fixedExpenses', 'livingExpenses', 'businessExpenses',
       'savingsAccumulation', 'miscellaneous',
     ]);
-    expect(groups.fixedExpenses.lineItems).toHaveLength(7);
+    expect(groups.fixedExpenses.lineItems).toHaveLength(6);
     expect(groups.livingExpenses.lineItems).toHaveLength(8);
-    expect(groups.businessExpenses.lineItems).toHaveLength(7);
+    expect(groups.businessExpenses.lineItems).toHaveLength(8);
     expect(groups.savingsAccumulation.lineItems).toHaveLength(6);
     expect(groups.miscellaneous.lineItems).toHaveLength(6);
     for (const g of Object.values(groups)) {
@@ -103,8 +104,8 @@ describe('createMoneyNeeds', () => {
     expect(Object.keys(sc)).toEqual(['insuranceIndustry', 'carExpenses', 'loansDebt']);
     expect(sc.insuranceIndustry.annualTotal).toBe(0);
     expect(sc.insuranceIndustry.lineItems).toHaveLength(11);
-    expect(sc.carExpenses.personalSharePct).toBe(33);
-    expect(sc.carExpenses.lineItems).toHaveLength(8);
+    expect(sc.carExpenses.personalSharePct).toBe(33.3);
+    expect(sc.carExpenses.lineItems).toHaveLength(7); // Vehicle Loan removed → loan lives in Loans & Debt
     expect(sc.loansDebt.annualTotal).toBe(0);
     expect(sc.loansDebt.lineItems).toHaveLength(6);
   });
@@ -156,20 +157,47 @@ describe('createMoneyNeeds — seeded taxonomy', () => {
     return hoisted.mockSetDoc.mock.calls[0][1];
   }
 
-  it('seeds the correct item count per expense group (7-8-7-6-6)', async () => {
+  it('seeds the correct item count per expense group (6-8-8-6-6)', async () => {
     const { expenseGroups: g } = await getPayload();
-    expect(g.fixedExpenses.lineItems).toHaveLength(7);
+    expect(g.fixedExpenses.lineItems).toHaveLength(6);
     expect(g.livingExpenses.lineItems).toHaveLength(8);
-    expect(g.businessExpenses.lineItems).toHaveLength(7);
+    expect(g.businessExpenses.lineItems).toHaveLength(8);
     expect(g.savingsAccumulation.lineItems).toHaveLength(6);
     expect(g.miscellaneous.lineItems).toHaveLength(6);
   });
 
-  it('seeds the correct item count per sub-calculator (11-8-6)', async () => {
+  it('seeds the correct item count per sub-calculator (11-7-6)', async () => {
     const { subCalculators: sc } = await getPayload();
     expect(sc.insuranceIndustry.lineItems).toHaveLength(11);
-    expect(sc.carExpenses.lineItems).toHaveLength(8);
+    expect(sc.carExpenses.lineItems).toHaveLength(7);
     expect(sc.loansDebt.lineItems).toHaveLength(6);
+  });
+
+  it('seeds the four calc-fed lines with calcKey + isOverridden:false', async () => {
+    const { expenseGroups: g } = await getPayload();
+    const find = (group, id) => group.lineItems.find((i) => i.id === id);
+    const carPersonal = find(g.livingExpenses, 'seed-le-4');
+    const carBusiness = find(g.businessExpenses, 'seed-be-4');
+    const insurance   = find(g.businessExpenses, 'seed-be-7');
+    const debt        = find(g.savingsAccumulation, 'seed-sa-2');
+    expect(carPersonal.calcKey).toBe('carExpenses.personal');
+    expect(carBusiness.calcKey).toBe('carExpenses.business');
+    expect(insurance.calcKey).toBe('insuranceIndustry');
+    expect(debt.calcKey).toBe('loansDebt');
+    for (const line of [carPersonal, carBusiness, insurance, debt]) {
+      expect(line.isOverridden).toBe(false);
+    }
+  });
+
+  it('drops the retired named lines (Car insurance, Trade association dues)', async () => {
+    const { expenseGroups: g } = await getPayload();
+    const labels = (group) => group.lineItems.map((i) => i.label);
+    expect(labels(g.fixedExpenses).some((l) => /car insurance/i.test(l))).toBe(false);
+    expect(labels(g.businessExpenses).some((l) => /trade association/i.test(l))).toBe(false);
+    expect(g.savingsAccumulation.lineItems.find((i) => i.id === 'seed-sa-2').label)
+      .toBe('Debt reduction (non-mortgage)');
+    expect(g.businessExpenses.lineItems.find((i) => i.id === 'seed-be-4').label)
+      .toBe('Business car expenses');
   });
 
   it('every seeded item has isCustom: false, amount: 0, annualizedAmount: 0', async () => {
@@ -306,21 +334,83 @@ describe('computeGroupTotal', () => {
     expect(computeGroupTotal(group)).toBe(18000);
   });
 
-  it('adds subCalculatorRefs annualTotal to lineItems total', () => {
+  it('count-once: IGNORES retired subCalculatorRefs (no double-add)', () => {
     const group = {
       lineItems: [{ annualizedAmount: 5000 }],
       subCalculatorRefs: [{ annualTotal: 3000 }],
     };
-    expect(computeGroupTotal(group)).toBe(8000);
+    // The 3000 ref is no longer added on top — calc values live in their line.
+    expect(computeGroupTotal(group)).toBe(5000);
   });
 
-  it('returns 0 for empty lineItems and subCalculatorRefs', () => {
-    expect(computeGroupTotal({ lineItems: [], subCalculatorRefs: [] })).toBe(0);
+  it('returns 0 for empty lineItems', () => {
+    expect(computeGroupTotal({ lineItems: [] })).toBe(0);
   });
 
-  it('handles missing lineItems or subCalculatorRefs gracefully', () => {
+  it('handles missing lineItems gracefully', () => {
     expect(computeGroupTotal({})).toBe(0);
     expect(computeGroupTotal({ lineItems: null })).toBe(0);
+  });
+});
+
+// ── applyCalcToGroup ──────────────────────────────────────────────────────────
+
+describe('applyCalcToGroup', () => {
+  const group = {
+    lineItems: [
+      { id: 'seed-le-4', label: 'Car expenses, nonbusiness', amount: 0, frequency: 'A', annualizedAmount: 0, calcKey: 'carExpenses.personal', isOverridden: false },
+      { id: 'seed-le-0', label: 'Food', amount: 100, frequency: 'M', annualizedAmount: 1200, isCustom: false },
+    ],
+  };
+
+  it('prefills a non-overridden calc-fed line and recomputes the group total', () => {
+    const result = applyCalcToGroup(group, 'seed-le-4', 3300);
+    const fed = result.lineItems.find((i) => i.id === 'seed-le-4');
+    expect(fed.amount).toBe(3300);
+    expect(fed.annualizedAmount).toBe(3300);
+    expect(fed.frequency).toBe('A');
+    expect(result.groupAnnualTotal).toBe(3300 + 1200); // counted ONCE
+  });
+
+  it('does NOT overwrite an overridden line', () => {
+    const overridden = {
+      lineItems: [{ id: 'seed-le-4', amount: 500, frequency: 'M', annualizedAmount: 6000, calcKey: 'carExpenses.personal', isOverridden: true }],
+    };
+    const result = applyCalcToGroup(overridden, 'seed-le-4', 3300);
+    expect(result.lineItems[0].amount).toBe(500);
+    expect(result.lineItems[0].annualizedAmount).toBe(6000);
+  });
+
+  it('leaves non-matching lines untouched', () => {
+    const result = applyCalcToGroup(group, 'seed-le-4', 3300);
+    const food = result.lineItems.find((i) => i.id === 'seed-le-0');
+    expect(food.amount).toBe(100);
+  });
+});
+
+// ── calcFedValue ──────────────────────────────────────────────────────────────
+
+describe('calcFedValue', () => {
+  const sc = {
+    carExpenses: { annualTotalPersonal: 3300, annualTotalBusiness: 6700 },
+    insuranceIndustry: { annualTotal: 8000 },
+    loansDebt: { annualTotal: 24000 },
+  };
+  it('routes carExpenses.personal → annualTotalPersonal', () => {
+    expect(calcFedValue('carExpenses.personal', sc)).toBe(3300);
+  });
+  it('routes carExpenses.business → annualTotalBusiness', () => {
+    expect(calcFedValue('carExpenses.business', sc)).toBe(6700);
+  });
+  it('routes insuranceIndustry → annualTotal', () => {
+    expect(calcFedValue('insuranceIndustry', sc)).toBe(8000);
+  });
+  it('routes loansDebt → annualTotal', () => {
+    expect(calcFedValue('loansDebt', sc)).toBe(24000);
+  });
+  it('returns 0 for an unknown calcKey or absent sub-calc', () => {
+    expect(calcFedValue('unknown', sc)).toBe(0);
+    expect(calcFedValue('loansDebt', {})).toBe(0);
   });
 });
 
@@ -442,57 +532,20 @@ describe('updateExpenseGroup', () => {
   });
 });
 
-// ── mergeSubCalcRef ───────────────────────────────────────────────────────────
+// ── updateSubCalculator (count-once prefill) ──────────────────────────────────
 
-describe('mergeSubCalcRef', () => {
-  it('inserts new ref when key absent', () => {
-    const group = { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 };
-    const result = mergeSubCalcRef(group, 'insuranceIndustry', 5000);
-    expect(result.subCalculatorRefs).toEqual([{ key: 'insuranceIndustry', annualTotal: 5000 }]);
-  });
+// A normalized worksheet: every calc-fed line is present (id + calcKey) so a
+// calc value can prefill it. Mirrors what getMoneyNeeds returns post-normalize.
+const calcFed = (id, calcKey) => ({ id, label: id, amount: 0, frequency: 'A', annualizedAmount: 0, calcKey, isOverridden: false });
+const manual  = (id, annualizedAmount = 0) => ({ id, label: id, amount: annualizedAmount, frequency: 'A', annualizedAmount, isCustom: false });
 
-  it('updates existing ref by key', () => {
-    const group = {
-      lineItems: [],
-      subCalculatorRefs: [{ key: 'insuranceIndustry', annualTotal: 3000 }],
-      groupAnnualTotal: 3000,
-    };
-    const result = mergeSubCalcRef(group, 'insuranceIndustry', 7000);
-    expect(result.subCalculatorRefs).toHaveLength(1);
-    expect(result.subCalculatorRefs[0].annualTotal).toBe(7000);
-  });
-
-  it('recomputes groupAnnualTotal including subCalcTotal', () => {
-    const group = {
-      lineItems: [{ annualizedAmount: 12000 }],
-      subCalculatorRefs: [],
-      groupAnnualTotal: 12000,
-    };
-    const result = mergeSubCalcRef(group, 'carExpenses', 6000);
-    expect(result.groupAnnualTotal).toBe(18000);
-  });
-
-  it('removes ref when annualTotal is 0', () => {
-    const group = {
-      lineItems: [],
-      subCalculatorRefs: [{ key: 'insuranceIndustry', annualTotal: 5000 }],
-      groupAnnualTotal: 5000,
-    };
-    const result = mergeSubCalcRef(group, 'insuranceIndustry', 0);
-    expect(result.subCalculatorRefs).toHaveLength(0);
-    expect(result.groupAnnualTotal).toBe(0);
-  });
-});
-
-// ── updateSubCalculator ───────────────────────────────────────────────────────
-
-const WORKSHEET_DOC = {
+const NORMALIZED_DOC = {
   year: YEAR,
   expenseGroups: {
     fixedExpenses:       { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
-    livingExpenses:      { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
-    businessExpenses:    { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
-    savingsAccumulation: { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
+    livingExpenses:      { lineItems: [calcFed('seed-le-4', 'carExpenses.personal'), manual('seed-le-0', 12000)], subCalculatorRefs: [], groupAnnualTotal: 12000 },
+    businessExpenses:    { lineItems: [calcFed('seed-be-4', 'carExpenses.business'), calcFed('seed-be-7', 'insuranceIndustry')], subCalculatorRefs: [], groupAnnualTotal: 0 },
+    savingsAccumulation: { lineItems: [calcFed('seed-sa-2', 'loansDebt')], subCalculatorRefs: [], groupAnnualTotal: 0 },
     miscellaneous:       { lineItems: [], subCalculatorRefs: [], groupAnnualTotal: 0 },
   },
   subCalculators: {
@@ -502,86 +555,90 @@ const WORKSHEET_DOC = {
   },
 };
 
-describe('updateSubCalculator — insuranceIndustry', () => {
+describe('updateSubCalculator — insuranceIndustry (prefills the named line)', () => {
   const CALC_DATA = { lineItems: [], annualTotal: 8000 };
 
   it('calls updateDoc (not setDoc)', async () => {
-    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, WORKSHEET_DOC);
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, NORMALIZED_DOC);
     expect(hoisted.mockUpdateDoc).toHaveBeenCalledOnce();
     expect(hoisted.mockSetDoc).not.toHaveBeenCalled();
   });
 
   it('patches subCalculators.insuranceIndustry', async () => {
-    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, WORKSHEET_DOC);
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, NORMALIZED_DOC);
     const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
     expect(patch['subCalculators.insuranceIndustry']).toEqual(CALC_DATA);
   });
 
-  it('patches expenseGroups.businessExpenses with merged subCalcRef', async () => {
-    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, WORKSHEET_DOC);
-    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
-    expect('expenseGroups.businessExpenses' in patch).toBe(true);
-    const biz = patch['expenseGroups.businessExpenses'];
-    expect(biz.subCalculatorRefs.some((r) => r.key === 'insuranceIndustry' && r.annualTotal === 8000)).toBe(true);
+  it('prefills the Professional/industry line (seed-be-7) — NO subCalculatorRefs add-on', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, NORMALIZED_DOC);
+    const biz = hoisted.mockUpdateDoc.mock.calls[0][1]['expenseGroups.businessExpenses'];
+    const fed = biz.lineItems.find((i) => i.id === 'seed-be-7');
+    expect(fed.amount).toBe(8000);
+    expect(fed.annualizedAmount).toBe(8000);
+    expect(biz.subCalculatorRefs).toEqual([]);
+    expect(biz.groupAnnualTotal).toBe(8000); // counted once
   });
 
   it('does NOT patch livingExpenses', async () => {
-    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, WORKSHEET_DOC);
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, NORMALIZED_DOC);
     const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
     expect('expenseGroups.livingExpenses' in patch).toBe(false);
   });
 
   it('returns rollup and updatedGroups', async () => {
-    const result = await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, WORKSHEET_DOC);
+    const result = await updateSubCalculator(TENANT_ID, UID, YEAR, 'insuranceIndustry', CALC_DATA, NORMALIZED_DOC);
     expect(result).toHaveProperty('rollup');
-    expect(result).toHaveProperty('updatedGroups');
     expect(result.updatedGroups).toHaveProperty('businessExpenses');
   });
 });
 
-describe('updateSubCalculator — carExpenses', () => {
+describe('updateSubCalculator — carExpenses (prefills both shares)', () => {
   const CALC_DATA = { lineItems: [], withLoan: false, personalSharePct: 33, businessSharePct: 67, annualTotalPersonal: 3300, annualTotalBusiness: 6700 };
 
-  it('patches expenseGroups.livingExpenses with personal share', async () => {
-    await updateSubCalculator(TENANT_ID, UID, YEAR, 'carExpenses', CALC_DATA, WORKSHEET_DOC);
-    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
-    expect('expenseGroups.livingExpenses' in patch).toBe(true);
-    const living = patch['expenseGroups.livingExpenses'];
-    expect(living.subCalculatorRefs.some((r) => r.key === 'carExpenses' && r.annualTotal === 3300)).toBe(true);
+  it('prefills the personal share into Living (seed-le-4), counted once', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'carExpenses', CALC_DATA, NORMALIZED_DOC);
+    const living = hoisted.mockUpdateDoc.mock.calls[0][1]['expenseGroups.livingExpenses'];
+    const fed = living.lineItems.find((i) => i.id === 'seed-le-4');
+    expect(fed.amount).toBe(3300);
+    expect(living.subCalculatorRefs).toEqual([]);
+    // 3300 (car personal) + 12000 (existing Food) — the car value counted ONCE.
+    expect(living.groupAnnualTotal).toBe(15300);
   });
 
-  it('patches expenseGroups.businessExpenses with business share', async () => {
-    await updateSubCalculator(TENANT_ID, UID, YEAR, 'carExpenses', CALC_DATA, WORKSHEET_DOC);
-    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
-    const biz = patch['expenseGroups.businessExpenses'];
-    expect(biz.subCalculatorRefs.some((r) => r.key === 'carExpenses' && r.annualTotal === 6700)).toBe(true);
+  it('prefills the business share into Business (seed-be-4)', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'carExpenses', CALC_DATA, NORMALIZED_DOC);
+    const biz = hoisted.mockUpdateDoc.mock.calls[0][1]['expenseGroups.businessExpenses'];
+    const fed = biz.lineItems.find((i) => i.id === 'seed-be-4');
+    expect(fed.amount).toBe(6700);
   });
 });
 
-describe('updateSubCalculator — loansDebt', () => {
+describe('updateSubCalculator — loansDebt (now prefills Savings)', () => {
   const CALC_DATA = { lineItems: [], annualTotal: 24000 };
 
   it('patches subCalculators.loansDebt', async () => {
-    await updateSubCalculator(TENANT_ID, UID, YEAR, 'loansDebt', CALC_DATA, WORKSHEET_DOC);
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'loansDebt', CALC_DATA, NORMALIZED_DOC);
     const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
     expect(patch['subCalculators.loansDebt']).toEqual(CALC_DATA);
   });
 
-  it('does NOT patch any expenseGroups', async () => {
-    await updateSubCalculator(TENANT_ID, UID, YEAR, 'loansDebt', CALC_DATA, WORKSHEET_DOC);
-    const patch = hoisted.mockUpdateDoc.mock.calls[0][1];
-    const groupKeys = Object.keys(patch).filter((k) => k.startsWith('expenseGroups.'));
-    expect(groupKeys).toHaveLength(0);
+  it('prefills Debt reduction (seed-sa-2) in savingsAccumulation', async () => {
+    await updateSubCalculator(TENANT_ID, UID, YEAR, 'loansDebt', CALC_DATA, NORMALIZED_DOC);
+    const sav = hoisted.mockUpdateDoc.mock.calls[0][1]['expenseGroups.savingsAccumulation'];
+    const fed = sav.lineItems.find((i) => i.id === 'seed-sa-2');
+    expect(fed.amount).toBe(24000);
+    expect(sav.groupAnnualTotal).toBe(24000);
   });
 
-  it('returns empty updatedGroups', async () => {
-    const result = await updateSubCalculator(TENANT_ID, UID, YEAR, 'loansDebt', CALC_DATA, WORKSHEET_DOC);
-    expect(Object.keys(result.updatedGroups)).toHaveLength(0);
+  it('returns savingsAccumulation in updatedGroups', async () => {
+    const result = await updateSubCalculator(TENANT_ID, UID, YEAR, 'loansDebt', CALC_DATA, NORMALIZED_DOC);
+    expect(result.updatedGroups).toHaveProperty('savingsAccumulation');
   });
 
   it('throws for invalid year', async () => {
     await expect(
-      updateSubCalculator(TENANT_ID, UID, 'bad', 'loansDebt', CALC_DATA, WORKSHEET_DOC),
+      updateSubCalculator(TENANT_ID, UID, 'bad', 'loansDebt', CALC_DATA, NORMALIZED_DOC),
     ).rejects.toThrow();
   });
 });
@@ -711,5 +768,184 @@ describe('updateVisibility', () => {
 
   it('throws for invalid visibility value', async () => {
     await expect(updateVisibility(TENANT_ID, UID, YEAR, 'default')).rejects.toThrow();
+  });
+});
+
+// ── normalizeWorksheet — migration / count-once reconciliation ────────────────
+
+describe('normalizeWorksheet', () => {
+  it('returns null/undefined untouched', () => {
+    expect(normalizeWorksheet(null)).toBeNull();
+    expect(normalizeWorksheet(undefined)).toBeUndefined();
+  });
+
+  it('expands a sparse legacy doc to the full canonical inventory', () => {
+    const result = normalizeWorksheet({ year: YEAR, expenseGroups: {}, subCalculators: {} });
+    expect(result.expenseGroups.fixedExpenses.lineItems).toHaveLength(6);
+    expect(result.expenseGroups.businessExpenses.lineItems).toHaveLength(8);
+    expect(result.expenseGroups.livingExpenses.lineItems.find((i) => i.id === 'seed-le-4').calcKey)
+      .toBe('carExpenses.personal');
+  });
+
+  it('drops retired lines and the subCalculatorRefs add-on', () => {
+    const legacy = {
+      year: YEAR,
+      expenseGroups: {
+        fixedExpenses: {
+          lineItems: [{ id: 'seed-fe-4', label: 'Car insurance', amount: 1000, frequency: 'A', annualizedAmount: 1000, isCustom: false }],
+          subCalculatorRefs: [],
+          groupAnnualTotal: 1000,
+        },
+      },
+      subCalculators: {},
+    };
+    const result = normalizeWorksheet(legacy);
+    expect(result.expenseGroups.fixedExpenses.lineItems.some((i) => i.id === 'seed-fe-4')).toBe(false);
+    expect(result.expenseGroups.fixedExpenses.subCalculatorRefs).toEqual([]);
+  });
+
+  it('RECONCILES the double-count: a legacy manual value + ref drops to count-once', () => {
+    // Agent had a manual "Car expenses, nonbusiness" (6000/yr) AND the old
+    // carExpenses ref (3300) double-added → stored 9300. Post-normalize: 6000.
+    const legacy = {
+      year: YEAR,
+      estimatedRenewalIncome: { total: 0 },
+      expenseGroups: {
+        livingExpenses: {
+          lineItems: [{ id: 'seed-le-4', label: 'Car expenses, nonbusiness', amount: 500, frequency: 'M', annualizedAmount: 6000, isCustom: false }],
+          subCalculatorRefs: [{ key: 'carExpenses', annualTotal: 3300 }],
+          groupAnnualTotal: 9300,
+        },
+      },
+      subCalculators: {
+        carExpenses: { lineItems: [], annualTotalPersonal: 3300, annualTotalBusiness: 6700 },
+      },
+    };
+    const result = normalizeWorksheet(legacy);
+    const fed = result.expenseGroups.livingExpenses.lineItems.find((i) => i.id === 'seed-le-4');
+    expect(fed.isOverridden).toBe(true);          // manual value preserved as override
+    expect(fed.amount).toBe(500);                 // exact value retained (no data loss)
+    expect(fed.annualizedAmount).toBe(6000);
+    expect(result.expenseGroups.livingExpenses.groupAnnualTotal).toBe(6000); // counted ONCE — 3300 phantom gone
+  });
+
+  it('prefills a non-overridden calc-fed line from the current calculator value', () => {
+    const doc = {
+      year: YEAR,
+      estimatedRenewalIncome: { total: 0 },
+      expenseGroups: {
+        savingsAccumulation: {
+          lineItems: [{ id: 'seed-sa-2', label: 'Debt reduction (other than mortgage)', amount: 0, frequency: 'M', annualizedAmount: 0, isCustom: false }],
+          subCalculatorRefs: [],
+          groupAnnualTotal: 0,
+        },
+      },
+      // Realistic populated sub-calc (annualTotal derives from lineItems).
+      subCalculators: {
+        loansDebt: {
+          lineItems: [{ id: 'seed-ld-0', label: 'Credit Card', amount: 2000, frequency: 'M', annualizedAmount: 24000, isCustom: false }],
+          annualTotal: 24000,
+        },
+      },
+    };
+    const result = normalizeWorksheet(doc);
+    const fed = result.expenseGroups.savingsAccumulation.lineItems.find((i) => i.id === 'seed-sa-2');
+    expect(fed.calcKey).toBe('loansDebt');
+    expect(fed.isOverridden).toBe(false);
+    expect(fed.amount).toBe(24000);
+    expect(fed.label).toBe('Debt reduction (non-mortgage)'); // renamed
+  });
+
+  it('excludes the Vehicle Loan from the car split (loan lives in Loans & Debt)', () => {
+    const doc = {
+      year: YEAR,
+      estimatedRenewalIncome: { total: 0 },
+      expenseGroups: {},
+      subCalculators: {
+        carExpenses: {
+          lineItems: [
+            { id: 'seed-ce-0', label: 'Gas', amount: 1000, frequency: 'M', annualizedAmount: 12000, isCustom: false },
+            { id: 'seed-ce-7', label: 'Vehicle Loan', amount: 2000, frequency: 'M', annualizedAmount: 24000, isCustom: false },
+          ],
+        },
+      },
+    };
+    const result = normalizeWorksheet(doc);
+    // Vehicle Loan dropped → split computed on 12000 only: 33% personal, 67% business.
+    expect(result.subCalculators.carExpenses.lineItems.some((i) => i.id === 'seed-ce-7')).toBe(false);
+    expect(result.subCalculators.carExpenses.annualTotalPersonal).toBe(Math.round(12000 * 33.3 / 100)); // 3996
+    expect(result.subCalculators.carExpenses.annualTotalBusiness).toBe(Math.round(12000 * 66.7 / 100)); // 8004
+  });
+
+  it('preserves agent-added custom lines', () => {
+    const doc = {
+      year: YEAR,
+      estimatedRenewalIncome: { total: 0 },
+      expenseGroups: {
+        miscellaneous: {
+          lineItems: [{ id: 'custom-xyz', label: 'My thing', amount: 100, frequency: 'M', annualizedAmount: 1200, isCustom: true }],
+          subCalculatorRefs: [],
+          groupAnnualTotal: 1200,
+        },
+      },
+      subCalculators: {},
+    };
+    const result = normalizeWorksheet(doc);
+    const custom = result.expenseGroups.miscellaneous.lineItems.find((i) => i.id === 'custom-xyz');
+    expect(custom).toBeDefined();
+    expect(custom.annualizedAmount).toBe(1200);
+  });
+
+  it('scaffolds a MISSING sub-calculator with seeded items (Gemini #714)', () => {
+    // Legacy doc with no subCalculators at all → all three seeded, not empty.
+    const result = normalizeWorksheet({ year: YEAR, expenseGroups: {}, subCalculators: undefined });
+    expect(result.subCalculators.insuranceIndustry.lineItems).toHaveLength(11);
+    expect(result.subCalculators.carExpenses.lineItems).toHaveLength(7);
+    expect(result.subCalculators.loansDebt.lineItems).toHaveLength(6);
+  });
+
+  it('re-seeds an EMPTY sub-calculator (zero lines is non-functional) (Gemini #714)', () => {
+    const result = normalizeWorksheet({
+      year: YEAR,
+      expenseGroups: {},
+      subCalculators: {
+        insuranceIndustry: { lineItems: [], annualTotal: 0 },
+        carExpenses: { lineItems: [] },
+        loansDebt: { lineItems: [], annualTotal: 0 },
+      },
+    });
+    expect(result.subCalculators.insuranceIndustry.lineItems).toHaveLength(11);
+    expect(result.subCalculators.carExpenses.lineItems).toHaveLength(7);
+    expect(result.subCalculators.loansDebt.lineItems).toHaveLength(6);
+  });
+
+  it('preserves a POPULATED sub-calculator (no spurious re-seed)', () => {
+    const result = normalizeWorksheet({
+      year: YEAR,
+      expenseGroups: {},
+      subCalculators: {
+        loansDebt: { lineItems: [{ id: 'custom-ld', label: 'My loan', amount: 100, frequency: 'M', annualizedAmount: 1200, isCustom: true }], annualTotal: 1200 },
+      },
+    });
+    expect(result.subCalculators.loansDebt.lineItems).toHaveLength(1);
+    expect(result.subCalculators.loansDebt.lineItems[0].id).toBe('custom-ld');
+  });
+
+  it('recomputes rollup totals so downstream reads are corrected in-memory', () => {
+    const legacy = {
+      year: YEAR,
+      estimatedRenewalIncome: { total: 0 },
+      totalAnnualAfterTax: 9999999, // stale double-counted value
+      expenseGroups: {
+        livingExpenses: {
+          lineItems: [{ id: 'seed-le-0', label: 'Food', amount: 1000, frequency: 'M', annualizedAmount: 12000, isCustom: false }],
+          subCalculatorRefs: [{ key: 'carExpenses', annualTotal: 5000 }],
+          groupAnnualTotal: 17000,
+        },
+      },
+      subCalculators: {},
+    };
+    const result = normalizeWorksheet(legacy);
+    expect(result.totalAnnualAfterTax).toBe(12000); // ref dropped, recomputed
   });
 });

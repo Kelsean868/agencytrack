@@ -10,18 +10,39 @@ export const FREQUENCY_MULTIPLIERS = { A: 1, S: 2, Q: 4, M: 12 };
 
 export const PLAYGROUND_INCOME_GOAL_KEY = 'agencytrack-playground-income-goal';
 
+// CBTT-exact personal/business split of running car costs (sum to 100%).
+export const CAR_PERSONAL_PCT = 33.3;
+export const CAR_BUSINESS_PCT = 66.7;
+
+// ── Feed-map (count-once) ─────────────────────────────────────────────────────
+// Each sub-calculator output PREFILLS a single named expense-group line rather
+// than being added on top as a separate ref. A line marked with one of these
+// `calcKey` values is "calc-fed": its value syncs from the calculator unless the
+// agent has explicitly overridden it. FEED_MAP routes a calc value → its line.
+// Banked: PR #5 Money-Needs double-count reconciliation.
+export const FEED_MAP = {
+  'carExpenses.personal': { group: 'livingExpenses',      lineId: 'seed-le-4' },
+  'carExpenses.business': { group: 'businessExpenses',    lineId: 'seed-be-4' },
+  insuranceIndustry:      { group: 'businessExpenses',    lineId: 'seed-be-7' },
+  loansDebt:              { group: 'savingsAccumulation', lineId: 'seed-sa-2' },
+};
+
+// Loans & Debt line that represents the car loan — surfaced read-only inside the
+// Car Expenses calculator as a cost-of-ownership reference (NOT split, NOT a car
+// total). Matched by stable seed id.
+export const CAR_LOAN_LOANSDEBT_LINE_ID = 'seed-ld-1';
+
 export function annualizeAmount(amount, frequency) {
   return (parseFloat(amount) || 0) * (FREQUENCY_MULTIPLIERS[frequency] ?? 12);
 }
 
+// Count-once: a group total is the sum of its line items only. Calc-fed values
+// live IN their named line (prefilled-but-editable), so there is no separate
+// sub-calculator add-on. `subCalculatorRefs` is retired and ignored here.
 export function computeGroupTotal(group) {
-  const lineTotal = (group.lineItems ?? []).reduce(
+  return (group.lineItems ?? []).reduce(
     (sum, item) => sum + (parseFloat(item.annualizedAmount) || 0), 0,
   );
-  const subCalcTotal = (group.subCalculatorRefs ?? []).reduce(
-    (sum, ref) => sum + (parseFloat(ref.annualTotal) || 0), 0,
-  );
-  return lineTotal + subCalcTotal;
 }
 
 export function computeWorksheetRollup(expenseGroups) {
@@ -78,14 +99,26 @@ export async function updateExpenseGroup(tenantId, uid, year, groupKey, updatedG
   return rollup;
 }
 
-export function mergeSubCalcRef(group, key, annualTotal) {
-  const existing = (group.subCalculatorRefs ?? []).filter((r) => r.key !== key);
-  const refs = annualTotal > 0 ? [...existing, { key, annualTotal }] : existing;
-  const lineTotal = (group.lineItems ?? []).reduce(
-    (sum, item) => sum + (parseFloat(item.annualizedAmount) || 0), 0,
-  );
-  const subCalcTotal = refs.reduce((sum, r) => sum + (parseFloat(r.annualTotal) || 0), 0);
-  return { ...group, subCalculatorRefs: refs, groupAnnualTotal: lineTotal + subCalcTotal };
+// Write an annual calc value into its named calc-fed line, unless the agent has
+// overridden that line. Returns the group with a recomputed groupAnnualTotal.
+export function applyCalcToGroup(group, lineId, annualValue) {
+  const items = (group.lineItems ?? []).map((item) => {
+    if (item.id !== lineId || item.isOverridden) return item;
+    const v = parseFloat(annualValue) || 0;
+    return { ...item, amount: v, frequency: 'A', annualizedAmount: v };
+  });
+  return { ...group, lineItems: items, groupAnnualTotal: computeGroupTotal({ lineItems: items }) };
+}
+
+// Which feed(s) a sub-calculator drives, paired with the annual value to push.
+function feedsForCalc(calcKey, calcData) {
+  if (calcKey === 'insuranceIndustry') return [['insuranceIndustry', calcData.annualTotal ?? 0]];
+  if (calcKey === 'carExpenses') return [
+    ['carExpenses.personal', calcData.annualTotalPersonal ?? 0],
+    ['carExpenses.business', calcData.annualTotalBusiness ?? 0],
+  ];
+  if (calcKey === 'loansDebt') return [['loansDebt', calcData.annualTotal ?? 0]];
+  return [];
 }
 
 export async function updateSubCalculator(tenantId, uid, year, calcKey, calcData, worksheetDoc) {
@@ -93,27 +126,27 @@ export async function updateSubCalculator(tenantId, uid, year, calcKey, calcData
   if (!parsedYear) throw new Error('Invalid year');
 
   const docRef = doc(db, 'tenants', tenantId, 'users', uid, 'moneyNeeds', String(parsedYear));
-  const currentGroups = { ...(worksheetDoc.expenseGroups ?? {}) };
-  const updatedGroups = {};
+  const working = { ...(worksheetDoc.expenseGroups ?? {}) };
   const patch = { [`subCalculators.${calcKey}`]: calcData };
 
-  if (calcKey === 'insuranceIndustry') {
-    const updated = mergeSubCalcRef(currentGroups.businessExpenses ?? {}, 'insuranceIndustry', calcData.annualTotal ?? 0);
-    updatedGroups.businessExpenses = updated;
-    patch['expenseGroups.businessExpenses'] = updated;
-  } else if (calcKey === 'carExpenses') {
-    const personal = mergeSubCalcRef(currentGroups.livingExpenses ?? {}, 'carExpenses', calcData.annualTotalPersonal ?? 0);
-    const business = mergeSubCalcRef(currentGroups.businessExpenses ?? {}, 'carExpenses', calcData.annualTotalBusiness ?? 0);
-    updatedGroups.livingExpenses = personal;
-    updatedGroups.businessExpenses = business;
-    patch['expenseGroups.livingExpenses'] = personal;
-    patch['expenseGroups.businessExpenses'] = business;
+  // Prefill each fed line in turn. Multiple feeds can target the same group
+  // (car-business + insurance both → businessExpenses), so compose on `working`.
+  const feeds = feedsForCalc(calcKey, calcData);
+  const touched = new Set();
+  for (const [feedKey, value] of feeds) {
+    const target = FEED_MAP[feedKey];
+    if (!target) continue;
+    working[target.group] = applyCalcToGroup(working[target.group] ?? {}, target.lineId, value);
+    touched.add(target.group);
   }
-  // LoansDebt: no group roll-in
 
-  const mergedGroups = { ...currentGroups, ...updatedGroups };
-  const rollup = computeWorksheetRollup(mergedGroups);
+  const updatedGroups = {};
+  for (const gKey of touched) {
+    updatedGroups[gKey] = working[gKey];
+    patch[`expenseGroups.${gKey}`] = working[gKey];
+  }
 
+  const rollup = computeWorksheetRollup(working);
   Object.assign(patch, {
     totalAnnualAfterTax: rollup.totalAnnualAfterTax,
     totalAnnualPreTax: rollup.totalAnnualPreTax,
@@ -171,8 +204,11 @@ export async function updateCommissionTargets(tenantId, uid, year, targets, work
   return { firstYearCommissionsRequired, firstYearCommissionsTargets };
 }
 
-function seedItem(id, label, frequency) {
-  return { id, label, amount: 0, frequency, annualizedAmount: 0, isCustom: false };
+// `calcKey` (4th arg) marks a calc-fed line; calc-fed lines also carry
+// `isOverridden: false` so the prefill/override state is explicit from seed.
+function seedItem(id, label, frequency, calcKey = null) {
+  const base = { id, label, amount: 0, frequency, annualizedAmount: 0, isCustom: false };
+  return calcKey ? { ...base, calcKey, isOverridden: false } : base;
 }
 
 const DEFAULT_MONEY_NEEDS_CATEGORIES = {
@@ -182,7 +218,6 @@ const DEFAULT_MONEY_NEEDS_CATEGORIES = {
       seedItem('seed-fe-1', 'Utilities – gas, heat, light, telephone, water', 'M'),
       seedItem('seed-fe-2', 'Disability income insurance', 'M'),
       seedItem('seed-fe-3', 'Homeowners insurance', 'M'),
-      seedItem('seed-fe-4', 'Car insurance', 'A'),
       seedItem('seed-fe-5', 'Property taxes', 'A'),
       seedItem('seed-fe-6', 'Other', 'M'),
     ],
@@ -191,24 +226,25 @@ const DEFAULT_MONEY_NEEDS_CATEGORIES = {
       seedItem('seed-le-1', 'Clothing', 'M'),
       seedItem('seed-le-2', 'Laundry, tailoring', 'M'),
       seedItem('seed-le-3', 'Entertainment', 'M'),
-      seedItem('seed-le-4', 'Car expenses, nonbusiness', 'M'),
+      seedItem('seed-le-4', 'Car expenses, nonbusiness', 'A', 'carExpenses.personal'),
       seedItem('seed-le-5', 'Medical – doctor, dentist, drugs', 'M'),
       seedItem('seed-le-6', 'Household', 'M'),
       seedItem('seed-le-7', 'Other', 'M'),
     ],
     businessExpenses: [
       seedItem('seed-be-0', 'Sales promotion, advertising, direct mail, tuition', 'M'),
-      seedItem('seed-be-1', 'Trade association dues, services, events', 'M'),
       seedItem('seed-be-2', 'Telephone, computer, stationery, postage, supplies', 'M'),
       seedItem('seed-be-3', 'Secretarial and banking services', 'M'),
-      seedItem('seed-be-4', 'Business travel, car expense', 'M'),
+      seedItem('seed-be-4', 'Business car expenses', 'A', 'carExpenses.business'),
       seedItem('seed-be-5', 'Business entertainment', 'M'),
       seedItem('seed-be-6', 'Other', 'M'),
+      seedItem('seed-be-7', 'Professional/industry expenses', 'A', 'insuranceIndustry'),
+      seedItem('seed-be-8', 'Other business travel', 'M'),
     ],
     savingsAccumulation: [
       seedItem('seed-sa-0', 'Life insurance', 'M'),
       seedItem('seed-sa-1', 'Savings account', 'M'),
-      seedItem('seed-sa-2', 'Debt reduction (other than mortgage)', 'M'),
+      seedItem('seed-sa-2', 'Debt reduction (non-mortgage)', 'A', 'loansDebt'),
       seedItem('seed-sa-3', 'Investments', 'M'),
       seedItem('seed-sa-4', 'Slush fund', 'M'),
       seedItem('seed-sa-5', 'Other', 'M'),
@@ -244,7 +280,6 @@ const DEFAULT_MONEY_NEEDS_CATEGORIES = {
       seedItem('seed-ce-4', 'Tickets', 'A'),
       seedItem('seed-ce-5', 'Car wash and maintenance', 'M'),
       seedItem('seed-ce-6', 'Miscellaneous', 'A'),
-      seedItem('seed-ce-7', 'Vehicle Loan', 'M'),
     ],
     loansDebt: [
       seedItem('seed-ld-0', 'Credit Card', 'M'),
@@ -257,8 +292,20 @@ const DEFAULT_MONEY_NEEDS_CATEGORIES = {
   },
 };
 
+// Canonical named-line spec per group, derived from the seed. Drives normalization:
+// any stored line whose id is NOT here and isCustom:false is a retired line and
+// is dropped (Car insurance, Trade association dues, Vehicle Loan-in-car-calc).
+const CANONICAL_LINES = Object.fromEntries(
+  Object.entries(DEFAULT_MONEY_NEEDS_CATEGORIES.expenseGroups).map(([gKey, items]) => [
+    gKey,
+    items.map((i) => ({ id: i.id, label: i.label, frequency: i.frequency, calcKey: i.calcKey ?? null })),
+  ]),
+);
+
+const EXPENSE_GROUP_KEYS = Object.keys(DEFAULT_MONEY_NEEDS_CATEGORIES.expenseGroups);
+
 const EXPENSE_GROUP_SCAFFOLD = (items = []) => ({
-  lineItems: [...items],
+  lineItems: items.map((i) => ({ ...i })),
   subCalculatorRefs: [],
   groupAnnualTotal: 0,
 });
@@ -277,19 +324,19 @@ const BLANK_SCAFFOLD = (tenantId, uid, year) => ({
 
   subCalculators: {
     insuranceIndustry: {
-      lineItems: [...DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.insuranceIndustry],
+      lineItems: DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.insuranceIndustry.map((i) => ({ ...i })),
       annualTotal: 0,
     },
     carExpenses: {
-      lineItems: [...DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.carExpenses],
+      lineItems: DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.carExpenses.map((i) => ({ ...i })),
       withLoan: false,
-      personalSharePct: 33,
-      businessSharePct: 67,
+      personalSharePct: CAR_PERSONAL_PCT,
+      businessSharePct: CAR_BUSINESS_PCT,
       annualTotalPersonal: 0,
       annualTotalBusiness: 0,
     },
     loansDebt: {
-      lineItems: [...DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.loansDebt],
+      lineItems: DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.loansDebt.map((i) => ({ ...i })),
       annualTotal: 0,
     },
   },
@@ -315,6 +362,181 @@ const BLANK_SCAFFOLD = (tenantId, uid, year) => ({
   updatedBy: uid,
 });
 
+// Annual value a given calc-fed line should sync to, read from the worksheet's
+// sub-calculators. Excludes the car loan from the car split (loan lives in
+// Loans & Debt) because the car calc's own line inventory no longer contains it.
+// Exported for the panel's "reset to calculator value" affordance.
+export function calcFedValue(calcKey, subCalculators) {
+  const sc = subCalculators ?? {};
+  if (calcKey === 'carExpenses.personal') return parseFloat(sc.carExpenses?.annualTotalPersonal) || 0;
+  if (calcKey === 'carExpenses.business') return parseFloat(sc.carExpenses?.annualTotalBusiness) || 0;
+  if (calcKey === 'insuranceIndustry')    return parseFloat(sc.insuranceIndustry?.annualTotal) || 0;
+  if (calcKey === 'loansDebt')            return parseFloat(sc.loansDebt?.annualTotal) || 0;
+  return 0;
+}
+
+// Default sub-calculator scaffolds — used to back-fill a legacy/sparse worksheet
+// that is missing a sub-calculator entirely, so the UI never shows an empty
+// checklist instead of the seeded items. (Gemini #714.)
+function defaultSubCalc(key) {
+  if (key === 'carExpenses') {
+    return {
+      lineItems: DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.carExpenses.map((i) => ({ ...i })),
+      withLoan: false,
+      personalSharePct: CAR_PERSONAL_PCT,
+      businessSharePct: CAR_BUSINESS_PCT,
+      annualTotalPersonal: 0,
+      annualTotalBusiness: 0,
+    };
+  }
+  return {
+    lineItems: DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators[key].map((i) => ({ ...i })),
+    annualTotal: 0,
+  };
+}
+
+// Recompute the car calc's personal/business split from its line items, having
+// dropped any retired Vehicle Loan line. Loan is excluded from the split. A
+// legacy doc missing `lineItems` falls back to the seeded car items rather than
+// rendering an empty checklist. (Gemini #714.)
+function normalizeCarCalc(carCalc) {
+  const canonicalIds = new Set(DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.carExpenses.map((i) => i.id));
+  const storedItems = carCalc?.lineItems
+    ?? DEFAULT_MONEY_NEEDS_CATEGORIES.subCalculators.carExpenses.map((i) => ({ ...i }));
+  const items = storedItems.filter((i) => i.isCustom || canonicalIds.has(i.id));
+  const lineAnnual = items.reduce(
+    (s, i) => s + (annualizeAmount(parseFloat(i.amount) || 0, i.frequency) || 0), 0,
+  );
+  const annualTotalPersonal = Math.round((lineAnnual * CAR_PERSONAL_PCT) / 100);
+  const annualTotalBusiness = Math.round((lineAnnual * CAR_BUSINESS_PCT) / 100);
+  return {
+    ...carCalc,
+    lineItems: items,
+    personalSharePct: CAR_PERSONAL_PCT,
+    businessSharePct: CAR_BUSINESS_PCT,
+    annualTotalPersonal,
+    annualTotalBusiness,
+  };
+}
+
+/**
+ * normalizeWorksheet — bring a loaded worksheet to the count-once schema in memory.
+ *
+ * Applied on read so every consumer sees corrected, un-double-counted totals
+ * without a write. Persists naturally on the agent's next save (every save path
+ * recomputes the rollup from the in-memory groups this returns).
+ *
+ *  1. Reconcile the named-line inventory against CANONICAL_LINES: retired lines
+ *     (Car insurance, Trade association dues, in-car Vehicle Loan) drop; renamed
+ *     lines pick up the new label; new lines (Professional/industry expenses,
+ *     Other business travel) are added; calc-fed lines pick up their `calcKey`.
+ *  2. Preserve agent values: a legacy calc-fed line carrying a manual value
+ *     becomes an explicit override (no data loss); custom lines are carried over.
+ *  3. Drop the retired `subCalculatorRefs` add-on (the double-count source).
+ *  4. Sync each non-overridden calc-fed line to its current calculator value
+ *     (car split excludes the loan).
+ *  5. Recompute every groupAnnualTotal and the worksheet rollup.
+ *
+ * @param {object|null} worksheet
+ * @returns {object|null}
+ */
+export function normalizeWorksheet(worksheet) {
+  if (!worksheet) return worksheet;
+
+  // Scaffold any missing OR empty sub-calculator so legacy/sparse docs never
+  // render an empty checklist — a sub-calculator with zero lines is
+  // non-functional (no total/split possible), so we fall back to the seeded set.
+  // (Gemini #714, extended from missing→empty.)
+  const sc = worksheet.subCalculators ?? {};
+  const ensureSubCalc = (stored, key) =>
+    (stored && Array.isArray(stored.lineItems) && stored.lineItems.length > 0) ? stored : defaultSubCalc(key);
+  const subCalculators = {
+    insuranceIndustry: ensureSubCalc(sc.insuranceIndustry, 'insuranceIndustry'),
+    loansDebt:         ensureSubCalc(sc.loansDebt, 'loansDebt'),
+    carExpenses:       normalizeCarCalc(ensureSubCalc(sc.carExpenses, 'carExpenses')),
+  };
+
+  const storedGroups = worksheet.expenseGroups ?? {};
+  const expenseGroups = {};
+
+  for (const gKey of EXPENSE_GROUP_KEYS) {
+    const canonical = CANONICAL_LINES[gKey];
+    const stored = storedGroups[gKey]?.lineItems ?? [];
+    const byId = new Map(stored.map((i) => [i.id, i]));
+
+    // Canonical named lines, in canonical order, merging any stored values.
+    const namedLines = canonical.map((spec) => {
+      const prev = byId.get(spec.id);
+      const base = {
+        id: spec.id,
+        label: spec.label,
+        frequency: prev?.frequency ?? spec.frequency,
+        amount: parseFloat(prev?.amount) || 0,
+        annualizedAmount: 0,
+        isCustom: false,
+      };
+      base.annualizedAmount = annualizeAmount(base.amount, base.frequency);
+
+      if (!spec.calcKey) return base;
+
+      // Calc-fed line. Respect an explicit override flag if present; otherwise a
+      // legacy stored value (>0) is preserved as an override (no data loss).
+      const explicitOverride = typeof prev?.isOverridden === 'boolean' ? prev.isOverridden : null;
+      const hasLegacyValue = base.amount > 0;
+      const isOverridden = explicitOverride !== null ? explicitOverride : hasLegacyValue;
+
+      if (isOverridden) {
+        return { ...base, calcKey: spec.calcKey, isOverridden: true };
+      }
+      const synced = calcFedValue(spec.calcKey, subCalculators);
+      return {
+        ...base,
+        calcKey: spec.calcKey,
+        isOverridden: false,
+        amount: synced,
+        frequency: 'A',
+        annualizedAmount: synced,
+      };
+    });
+
+    // Carry over agent-added custom lines (never calc-fed).
+    const canonicalIds = new Set(canonical.map((c) => c.id));
+    const customLines = stored
+      .filter((i) => i.isCustom && !canonicalIds.has(i.id))
+      .map((i) => {
+        const amount = parseFloat(i.amount) || 0;
+        return {
+          id: i.id,
+          label: i.label,
+          frequency: i.frequency,
+          amount,
+          annualizedAmount: annualizeAmount(amount, i.frequency),
+          isCustom: true,
+        };
+      });
+
+    const lineItems = [...namedLines, ...customLines];
+    expenseGroups[gKey] = {
+      lineItems,
+      subCalculatorRefs: [],
+      groupAnnualTotal: computeGroupTotal({ lineItems }),
+    };
+  }
+
+  const rollup = computeWorksheetRollup(expenseGroups);
+  const renewalTotal = parseFloat(worksheet.estimatedRenewalIncome?.total) || 0;
+
+  return {
+    ...worksheet,
+    subCalculators,
+    expenseGroups,
+    totalAnnualAfterTax: rollup.totalAnnualAfterTax,
+    totalAnnualPreTax: rollup.totalAnnualPreTax,
+    computedPAYE: rollup.computedPAYE,
+    firstYearCommissionsRequired: Math.max(0, rollup.totalAnnualPreTax - renewalTotal),
+  };
+}
+
 export async function createMoneyNeeds(tenantId, uid, year) {
   const parsedYear = parseInt(year, 10);
   if (!parsedYear || parsedYear < 2020 || parsedYear > 2100) {
@@ -323,7 +545,7 @@ export async function createMoneyNeeds(tenantId, uid, year) {
 
   const docRef = doc(db, 'tenants', tenantId, 'users', uid, 'moneyNeeds', String(parsedYear));
   const existing = await getDoc(docRef);
-  if (existing.exists()) return { id: existing.id, ...existing.data() };
+  if (existing.exists()) return normalizeWorksheet({ id: existing.id, ...existing.data() });
 
   const payload = BLANK_SCAFFOLD(tenantId, uid, parsedYear);
   await setDoc(docRef, payload);
@@ -337,7 +559,7 @@ export async function getMoneyNeeds(tenantId, uid, year) {
   const docRef = doc(db, 'tenants', tenantId, 'users', uid, 'moneyNeeds', String(parsedYear));
   const snap = await getDoc(docRef);
   if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() };
+  return normalizeWorksheet({ id: snap.id, ...snap.data() });
 }
 
 export async function updateVisibility(tenantId, uid, year, visibility) {
