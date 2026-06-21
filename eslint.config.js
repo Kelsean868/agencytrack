@@ -6,7 +6,11 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'design_handoff_v2_app']),
+  // Design-reference handoff bundles are not production code (raw mockup JSX with
+  // undefined design tokens, etc.) — ignore them so they never drown lint.
+  // `design_handoff_v2_app` is a whole tracked bundle; `docs/**/mockups/**` covers
+  // the planner-handoff mockup dirs under docs/handoffs/.
+  globalIgnores(['dist', 'design_handoff_v2_app', 'docs/**/mockups/**']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [
