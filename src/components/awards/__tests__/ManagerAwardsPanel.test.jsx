@@ -18,6 +18,7 @@ vi.mock('../../../services/settlementService', () => ({
 
 vi.mock('../../../services/awardsRulesetService', () => ({
   getAwardsRuleset: vi.fn(() => Promise.resolve(undefined)),
+  getMergedAwardsRuleset: vi.fn(() => Promise.resolve(undefined)),
 }));
 
 vi.mock('../../../services/managerService', () => ({

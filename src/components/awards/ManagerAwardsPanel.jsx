@@ -18,7 +18,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { computeManagerAwards } from '../../utils/awardsEngine';
 import { getSettlementsForUnit } from '../../services/settlementService';
-import { getAwardsRuleset } from '../../services/awardsRulesetService';
+import { getMergedAwardsRuleset } from '../../services/awardsRulesetService';
 import { getAllYTDSubmissions } from '../../services/managerService';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 import { formatCurrency } from '../../utils/formatters';
@@ -177,7 +177,7 @@ export default function ManagerAwardsPanel({
     setLoading(true);
     Promise.all([
       getSettlementsForUnit(tenantId, agentIds, year),
-      getAwardsRuleset(tenantId, year).catch(() => DEFAULT_RULESET_2026),
+      getMergedAwardsRuleset(tenantId, year).catch(() => DEFAULT_RULESET_2026),
       getAllYTDSubmissions(tenantId).catch(() => []),
     ])
       .then(([setts, loadedRuleset, subs]) => {

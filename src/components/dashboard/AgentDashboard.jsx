@@ -10,7 +10,7 @@ import { getRoleLabel, formatDateDisplay } from '../../utils/formatters';
 import { getMostRecentSunday } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
 import { getGoals, getCompanyMinimums, getGoalHierarchy, getSalesManagerUid } from '../../services/goalsService';
-import { getAwardsRuleset } from '../../services/awardsRulesetService';
+import { getMergedAwardsRuleset } from '../../services/awardsRulesetService';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 import { resolveWeeklyAPIFloor, FLAT_WEEKLY_API_FALLBACK } from '../../utils/tenureFloors';
 import { getAgentHistory } from '../../services/persistencyService';
@@ -190,7 +190,7 @@ export default function AgentDashboard() {
       getAgentHistory(tenantId, user.uid, 12).catch(() => []),
       getSettlements(tenantId, user.uid, thisYear).catch(() => []),
       getCompanyMinimums(tenantId).catch(() => null),
-      getAwardsRuleset(tenantId, thisYear).catch(() => DEFAULT_RULESET_2026),
+      getMergedAwardsRuleset(tenantId, thisYear).catch(() => DEFAULT_RULESET_2026),
     ]).then(([weekSub, subs, agentGoals, pers, setts, mins, ruleset]) => {
       setCurrentWeekSub(weekSub);
       setAllSubmissions(subs);

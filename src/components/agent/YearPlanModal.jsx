@@ -20,33 +20,11 @@ import {
 import { DEFAULT_DECOMPOSITION_INPUTS } from '../../utils/goalDecomposition';
 import AwardProjectionStrip from './AwardProjectionStrip';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
-import { getAwardsRuleset } from '../../services/awardsRulesetService';
+import { getMergedAwardsRuleset } from '../../services/awardsRulesetService';
 import useFocusTrap from '../../hooks/useFocusTrap';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const DEFAULT_AVG_POLICY = DEFAULT_DECOMPOSITION_INPUTS.avgPolicyAPI;
-
-/**
- * deepMergeRuleset — merge a (possibly partial / schema-drifted) Firestore
- * awards ruleset onto the bundled default so projectAwards never destructures a
- * missing nested field and crashes. Nested objects merge recursively; arrays
- * (e.g. clubAward.tiers) and primitives are taken wholesale from the override
- * when present, else fall back to the default.
- */
-function deepMergeRuleset(base, override) {
-  if (!override || typeof override !== 'object') return base;
-  const out = Array.isArray(base) ? [...base] : { ...base };
-  for (const key of Object.keys(override)) {
-    const ov = override[key];
-    const bv = base?.[key];
-    out[key] =
-      ov && typeof ov === 'object' && !Array.isArray(ov) &&
-      bv && typeof bv === 'object' && !Array.isArray(bv)
-        ? deepMergeRuleset(bv, ov)
-        : ov;
-  }
-  return out;
-}
 
 const LINE_META = [
   { key: 'life',     label: 'Life'     },
@@ -379,8 +357,8 @@ export default function YearPlanModal({ onClose, onAfterSave, moneyNeedsWorkshee
   useEffect(() => {
     if (!tenantId) return undefined;
     let alive = true;
-    getAwardsRuleset(tenantId, year)
-      .then((r) => { if (alive && r) setRuleset(deepMergeRuleset(DEFAULT_RULESET_2026, r)); })
+    getMergedAwardsRuleset(tenantId, year)
+      .then((r) => { if (alive && r) setRuleset(r); })
       .catch(() => { /* keep DEFAULT_RULESET_2026 */ });
     return () => { alive = false; };
   }, [tenantId, year]);

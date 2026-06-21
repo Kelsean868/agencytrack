@@ -8,6 +8,47 @@ export async function getAwardsRuleset(tenantId, year = 2026) {
   return snap.exists() ? snap.data() : DEFAULT_RULESET_2026;
 }
 
+/**
+ * deepMergeRuleset — merge a loaded (possibly partial / schema-drifted) ruleset
+ * onto a complete fallback so render consumers never destructure a missing
+ * nested field and crash. Loaded values win; the fallback backfills any absent
+ * key; nested award/tier objects merge recursively; arrays and primitives are
+ * taken wholesale from `loaded` when present. Behavior ported from the local
+ * helper added to YearPlanModal in #707 (b67032c).
+ *
+ * @param {object|null|undefined} loaded - the stored ruleset (may be partial)
+ * @param {object} fallback              - the complete default ruleset
+ * @returns {object} a complete ruleset
+ */
+export function deepMergeRuleset(loaded, fallback) {
+  if (!loaded || typeof loaded !== 'object') return fallback;
+  const out = Array.isArray(fallback) ? [...fallback] : { ...fallback };
+  for (const key of Object.keys(loaded)) {
+    const lv = loaded[key];
+    const fv = fallback?.[key];
+    out[key] =
+      lv && typeof lv === 'object' && !Array.isArray(lv) &&
+      fv && typeof fv === 'object' && !Array.isArray(fv)
+        ? deepMergeRuleset(lv, fv)
+        : lv;
+  }
+  return out;
+}
+
+/**
+ * getMergedAwardsRuleset — render-only accessor. Returns a COMPLETE ruleset:
+ * the stored doc deep-merged onto DEFAULT_RULESET_2026 (missing doc → DEFAULT
+ * unchanged; partial doc → gaps backfilled). Render/compute consumers (Year
+ * Plan, AgentDashboard, ManagerAwardsPanel and everything they feed) use this
+ * so a partial Firestore doc can't crash them. The raw `getAwardsRuleset` above
+ * is intentionally left unchanged for the admin editor (AwardsRulesetPanel),
+ * which must see and round-trip the stored doc faithfully (Option A ruling).
+ */
+export async function getMergedAwardsRuleset(tenantId, year = 2026) {
+  const ruleset = await getAwardsRuleset(tenantId, year);
+  return deepMergeRuleset(ruleset, DEFAULT_RULESET_2026);
+}
+
 const REQUIRED_GROUPS = Object.keys(DEFAULT_RULESET_2026);
 
 // Recursively validates all numeric fields are finite and non-negative.

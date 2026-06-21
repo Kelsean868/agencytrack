@@ -28,6 +28,7 @@ vi.mock('../../../services/goalsService', () => ({
 
 vi.mock('../../../services/awardsRulesetService', () => ({
   getAwardsRuleset: vi.fn().mockResolvedValue(null),
+  getMergedAwardsRuleset: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('../../../config/awardsRuleset/2026', () => ({
