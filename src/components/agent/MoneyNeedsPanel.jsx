@@ -39,112 +39,132 @@ function makeItemId() {
 }
 
 // Manual / custom expense line — editable label, amount, frequency, delete.
+// On mobile (<sm) the label stacks above the amount/freq/annual/delete row.
 function LineItemRow({ item, onChange, onDelete, onBlur }) {
   return (
-    <div className="flex items-center gap-2 py-1.5 border-b border-border last:border-0">
-      <input
-        type="text"
-        value={item.label}
-        onChange={(e) => onChange(item.id, 'label', e.target.value)}
-        onBlur={onBlur}
-        placeholder="Description"
-        aria-label="Expense description"
-        className="flex-1 min-w-0 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
-      />
-      <input
-        type="number"
-        value={item.amount === 0 ? '' : item.amount}
-        onChange={(e) => onChange(item.id, 'amount', e.target.value)}
-        onBlur={onBlur}
-        placeholder="0"
-        min={0}
-        aria-label="Expense amount"
-        className="w-24 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
-      />
-      <select
-        value={item.frequency}
-        onChange={(e) => onChange(item.id, 'frequency', e.target.value, true)}
-        aria-label="Frequency"
-        className="h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
-      >
-        {FREQUENCY_OPTIONS.map((opt) => (
-          <option key={opt.value} value={opt.value}>{opt.label}</option>
-        ))}
-      </select>
-      <span className="w-28 text-right text-xs text-ink-muted tabular-nums shrink-0">
-        {formatCurrency(annualizeAmount(item.amount, item.frequency))} / yr
-      </span>
-      <button
-        type="button"
-        onClick={() => onDelete(item.id)}
-        aria-label="Delete expense"
-        className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors min-h-[44px] min-w-[32px]"
-      >
-        <Trash2 size={14} />
-      </button>
+    <div className="py-1.5 border-b border-border last:border-0">
+      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+        <input
+          type="text"
+          value={item.label}
+          onChange={(e) => onChange(item.id, 'label', e.target.value)}
+          onBlur={onBlur}
+          placeholder="Description"
+          aria-label="Expense description"
+          className="w-full sm:flex-1 sm:min-w-0 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+        />
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="number"
+            value={item.amount === 0 ? '' : item.amount}
+            onChange={(e) => onChange(item.id, 'amount', e.target.value)}
+            onBlur={onBlur}
+            placeholder="0"
+            min={0}
+            aria-label="Expense amount"
+            className="w-24 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <select
+            value={item.frequency}
+            onChange={(e) => onChange(item.id, 'frequency', e.target.value, true)}
+            aria-label="Frequency"
+            className="flex-1 sm:flex-none h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+          >
+            {FREQUENCY_OPTIONS.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+          <span className="w-28 text-right text-xs text-ink-muted tabular-nums shrink-0">
+            {formatCurrency(annualizeAmount(item.amount, item.frequency))} / yr
+          </span>
+          <button
+            type="button"
+            onClick={() => onDelete(item.id)}
+            aria-label="Delete expense"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors min-h-[44px] min-w-[32px]"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
 
-// Calc-fed line — prefilled from a sub-calculator, editable. Label is fixed
-// (structural); editing the amount stores an override; a synced line shows a
-// "from calculator" badge, an overridden line shows a reset affordance.
+// Calc-fed line — prefilled from a sub-calculator, presented as a bordered
+// card. Empty → teal CTA card (no input until calc is run). Filled → plain
+// card with editable amount, Recalculate, and conditional Reset.
 function CalcFedLineRow({ item, onChange, onReset, onBlur, onOpenCalc }) {
   const overridden = !!item.isOverridden;
   const filled = (parseFloat(item.amount) || 0) > 0;
-  // Trigger opens the owning floating calculator. Both car lines
-  // (carExpenses.personal / carExpenses.business) resolve to 'carExpenses'.
+  // Both car lines (carExpenses.personal / carExpenses.business) → 'carExpenses'.
   const calcId = item.calcKey ? item.calcKey.split('.')[0] : null;
+
   return (
-    <div className="flex items-center gap-2 py-1.5 border-b border-border last:border-0">
-      <span className="flex-1 min-w-0 flex items-center gap-1.5">
-        <span className="truncate text-sm text-ink">{item.label}</span>
+    <div className={`rounded-xl border p-[11px_13px] space-y-2 ${filled ? 'border-border bg-surface' : 'border-primary bg-primary/5'}`}>
+      {/* Row 1 — label (full, no truncation) + state chip */}
+      <div className="flex items-start gap-2">
+        <span className="flex-1 min-w-0 text-sm text-ink text-pretty">{item.label}</span>
         {overridden ? (
           <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wide text-gold">Edited</span>
         ) : (
           <span className="shrink-0 inline-flex items-center gap-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
-            <Sparkles size={10} aria-hidden="true" /> Calc
+            <Sparkles size={10} aria-hidden="true" /> Calculator
           </span>
         )}
-      </span>
-      <input
-        type="number"
-        value={item.amount === 0 ? '' : item.amount}
-        onChange={(e) => onChange(item.id, 'amount', e.target.value)}
-        onBlur={onBlur}
-        placeholder="0"
-        min={0}
-        aria-label={`${item.label} amount`}
-        className="w-24 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
-      />
-      <span className="w-28 text-right text-xs text-ink-muted tabular-nums shrink-0">
-        {formatCurrency(annualizeAmount(item.amount, item.frequency))} / yr
-      </span>
-      <div className="flex items-center gap-1 shrink-0">
-        {overridden && (
-          <button
-            type="button"
-            onClick={() => onReset(item.id)}
-            aria-label={`Reset ${item.label} to calculator value`}
-            title="Reset to calculator value"
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-primary hover:bg-primary/5 transition-colors min-h-[44px] min-w-[32px]"
-          >
-            <RotateCcw size={14} />
-          </button>
-        )}
-        {calcId && (
-          <button
-            type="button"
-            onClick={() => onOpenCalc(calcId)}
-            aria-label={`Open ${item.label} calculator`}
-            title={`Open ${item.label} calculator`}
-            className="inline-flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] px-2 rounded-lg text-primary text-xs font-semibold hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          >
-            <Calculator size={14} aria-hidden="true" />
-            {!filled && <span>Calculate</span>}
-          </button>
-        )}
       </div>
+      {/* Row 2 — empty: full-width CTA; filled: value-first + Recalculate + Reset */}
+      {!filled ? (
+        <button
+          type="button"
+          onClick={() => onOpenCalc(calcId)}
+          aria-label={`Open ${item.label} calculator`}
+          className="w-full min-h-12 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <Calculator size={15} aria-hidden="true" />
+          Build with calculator →
+        </button>
+      ) : (
+        <div className="flex items-center gap-2 flex-wrap">
+          <input
+            type="number"
+            value={item.amount === 0 ? '' : item.amount}
+            onChange={(e) => onChange(item.id, 'amount', e.target.value)}
+            onBlur={onBlur}
+            placeholder="0"
+            min={0}
+            aria-label={`${item.label} amount`}
+            className="w-24 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
+          />
+          <span className="text-xs text-ink-muted tabular-nums">
+            {formatCurrency(annualizeAmount(item.amount, item.frequency))} / yr
+          </span>
+          <div className="flex items-center gap-2 ml-auto">
+            {calcId && (
+              <button
+                type="button"
+                onClick={() => onOpenCalc(calcId)}
+                aria-label={`Open ${item.label} calculator`}
+                className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 rounded-xl border border-border text-primary text-xs font-semibold hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <Calculator size={13} aria-hidden="true" />
+                Recalculate
+              </button>
+            )}
+            {overridden && (
+              <button
+                type="button"
+                onClick={() => onReset(item.id)}
+                aria-label={`Reset ${item.label} to calculator value`}
+                className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 rounded-xl border border-border text-ink-muted text-xs font-semibold hover:bg-surface-raised hover:text-ink transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <RotateCcw size={13} aria-hidden="true" />
+                Reset
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -301,21 +321,21 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
 
           {calcFedItems.length > 0 && (
             <div className="mb-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary mb-1 flex items-center gap-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary mb-2 flex items-center gap-1">
                 <Sparkles size={11} aria-hidden="true" /> From your calculators
               </p>
-              <p className="text-[11px] text-ink-muted mb-1.5">Prefilled from your sub-calculators — edit to override.</p>
-              {colHeader}
-              {calcFedItems.map((item) => (
-                <CalcFedLineRow
-                  key={item.id}
-                  item={item}
-                  onChange={handleItemChange}
-                  onReset={handleResetCalcLine}
-                  onBlur={handleBlur}
-                  onOpenCalc={onOpenCalc}
-                />
-              ))}
+              <div className="space-y-2">
+                {calcFedItems.map((item) => (
+                  <CalcFedLineRow
+                    key={item.id}
+                    item={item}
+                    onChange={handleItemChange}
+                    onReset={handleResetCalcLine}
+                    onBlur={handleBlur}
+                    onOpenCalc={onOpenCalc}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
