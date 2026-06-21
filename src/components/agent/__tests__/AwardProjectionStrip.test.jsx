@@ -138,7 +138,8 @@ describe('AwardProjectionStrip — state aria-labels', () => {
   it('MDRT pill shows in-contention aria-label at 250k', () => {
     render(<AwardProjectionStrip lines={mkLines(250000)} agentProfile={{}} ruleset={R} />);
     const pill = screen.getByTestId('award-pill-mdrt');
-    expect(pill).toHaveAttribute('aria-label', 'MDRT: in-contention');
+    // aria-label now carries the gap-to-next (2.5-copy): +TTD to reach on-track.
+    expect(pill).toHaveAttribute('aria-label', 'MDRT: in-contention — TTD 250.0K to MDRT');
   });
 
   it('MDRT pill shows on-track aria-label at 500k', () => {
