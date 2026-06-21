@@ -6,6 +6,10 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## MoneyNeedsPanel amount inputs — `=== 0 ? '' :` idiom vs `|| ''` for null safety (banked PR #718 Gemini OUT-OF-SCOPE, 2026-06-21, LOW)
+
+Gemini flagged the `value={item.amount === 0 ? '' : item.amount}` pattern in both `CalcFedLineRow` and `LineItemRow` (and it recurs across `MoneyNeedsPanel` — `CommissionTargetsPanel`, all three calc components): if `item.amount` were ever `undefined`/`null`, React would warn about a controlled→uncontrolled flip. **Theoretical only** in the current data model — `makeItemId()` seeds `amount: 0` and `moneyNeedsService` normalizes via `parseFloat(...) || 0` on every write, so amounts are always numeric. Left as-is in #718 (presentation-only repair; changing two of ~6 sites would make the file internally inconsistent). **To resolve:** sweep all `=== 0 ? '' :` amount-input idioms in `MoneyNeedsPanel.jsx` to `item.amount || ''` in one pass for consistency + defensive null-handling. Verify no test asserts the `=== 0` branch literally.
+
 ## ~~getAwardsRuleset shared hardening — partial-doc crash on all consumers~~ (RESOLVED — PR #709 `2aa1572`, 2026-06-21)
 
 Banked during the Game Plan night-queue: #707's Gemini-HIGH (partial/malformed `awardsRuleset_{year}` doc → destructure crash) was fixed locally in `YearPlanModal`, but `getAwardsRuleset` is also consumed raw by `AgentDashboard`, `ManagerAwardsPanel`, and everything they feed (`AgentAwardsPanel`, `HomeV2`, `BmAtRiskPanel`, `AgentReportDocument`). **RESOLVED by PR #709 (Option A):** deep-merge centralized behind a render-only `getMergedAwardsRuleset`; the three render loaders switched; `getAwardsRuleset` left raw for the admin editor (contract-locked). See § Locked decisions in CONTEXT.md.
