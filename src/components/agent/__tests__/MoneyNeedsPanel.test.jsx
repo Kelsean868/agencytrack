@@ -259,7 +259,7 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     expect(descInput.parentElement).not.toBe(amountInput.parentElement);
   });
 
-  it('manual LineItemRow desktop: Description grows (flex-1 min-w-0), numeric wrapper is sm:contents, no ml-auto spacer', async () => {
+  it('main-panel manual row keeps the #718 responsive layout (sm:flex-1 label, no forced stack)', async () => {
     await renderLoaded();
     openGroup('Fixed Expenses');
     mockUpdateExpenseGroup.mockResolvedValue({ totalAnnualExpenses: 0, totalAnnualAfterTax: 0, totalAnnualPreTax: 0 });
@@ -267,17 +267,14 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     await waitFor(() => expect(mockUpdateExpenseGroup).toHaveBeenCalled());
 
     const descInput = screen.getByRole('textbox', { name: /Expense description/i });
-    const amountInput = screen.getByRole('spinbutton', { name: /Expense amount/i });
-    // Description absorbs all horizontal slack on desktop.
+    // Main panel = responsive: label grows on desktop (sm:flex-1) — NOT the modal's
+    // always-stacked layout. The outer row carries sm:flex-row.
     expect(descInput.className).toMatch(/\bsm:flex-1\b/);
     expect(descInput.className).toMatch(/\bsm:min-w-0\b/);
-    // The numeric wrapper (amount's parent) dissolves on desktop via sm:contents,
-    // so amount/freq/annual/delete become direct columns matching the header.
-    const numericWrapper = amountInput.parentElement;
-    expect(numericWrapper.className).toMatch(/\bsm:contents\b/);
-    // No ml-auto / spacer anywhere in the row pushing the numeric columns right.
+    const outerRow = descInput.parentElement;
+    expect(outerRow.className).toMatch(/\bsm:flex-row\b/);
+    // No ml-auto / spacer anywhere in the row.
     const row = descInput.closest('.border-b');
-    expect(row).not.toBeNull();
     expect(row.querySelector('[class*="ml-auto"]')).toBeNull();
   });
 
@@ -294,5 +291,26 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     const descInput = screen.getByRole('textbox', { name: /Expense description/i });
     expect(descInput.value).toBe(longLabel);
     expect(descInput.className).not.toMatch(/\btruncate\b/);
+  });
+
+  it('calc-modal rows use the STACKED layout (full-width label, no sm:flex-1, no flat column header)', async () => {
+    mockUpdateSubCalc.mockResolvedValue({ rollup: {}, updatedGroups: {} });
+    await renderLoaded();
+    openGroup('Business Expenses');
+
+    // Open the Insurance Industry calc modal and add a line item.
+    fireEvent.click(screen.getByRole('button', { name: /Open Professional\/industry expenses calculator/i }));
+    const dialog = await screen.findByRole('dialog', { name: 'Insurance Industry Expenses' });
+    fireEvent.click(within(dialog).getByRole('button', { name: /Add item/i }));
+    const descInput = await within(dialog).findByRole('textbox', { name: /Expense description/i });
+
+    // Stacked mode: label is full-width and does NOT take the main-panel sm:flex-1.
+    expect(descInput.className).toMatch(/\bw-full\b/);
+    expect(descInput.className).not.toMatch(/\bsm:flex-1\b/);
+    // The always-stacked outer row has no sm:flex-row.
+    expect(descInput.parentElement.className).not.toMatch(/\bsm:flex-row\b/);
+    // The flat column header (Description/Amount/Frequency/Annual) is gone in the modal.
+    expect(within(dialog).queryByText('Description')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('Frequency')).not.toBeInTheDocument();
   });
 });
