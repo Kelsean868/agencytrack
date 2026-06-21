@@ -104,7 +104,7 @@ describe('createMoneyNeeds', () => {
     expect(Object.keys(sc)).toEqual(['insuranceIndustry', 'carExpenses', 'loansDebt']);
     expect(sc.insuranceIndustry.annualTotal).toBe(0);
     expect(sc.insuranceIndustry.lineItems).toHaveLength(11);
-    expect(sc.carExpenses.personalSharePct).toBe(33);
+    expect(sc.carExpenses.personalSharePct).toBe(33.3);
     expect(sc.carExpenses.lineItems).toHaveLength(7); // Vehicle Loan removed → loan lives in Loans & Debt
     expect(sc.loansDebt.annualTotal).toBe(0);
     expect(sc.loansDebt.lineItems).toHaveLength(6);
@@ -873,8 +873,8 @@ describe('normalizeWorksheet', () => {
     const result = normalizeWorksheet(doc);
     // Vehicle Loan dropped → split computed on 12000 only: 33% personal, 67% business.
     expect(result.subCalculators.carExpenses.lineItems.some((i) => i.id === 'seed-ce-7')).toBe(false);
-    expect(result.subCalculators.carExpenses.annualTotalPersonal).toBe(Math.round(12000 * 33 / 100));
-    expect(result.subCalculators.carExpenses.annualTotalBusiness).toBe(Math.round(12000 * 67 / 100));
+    expect(result.subCalculators.carExpenses.annualTotalPersonal).toBe(Math.round(12000 * 33.3 / 100)); // 3996
+    expect(result.subCalculators.carExpenses.annualTotalBusiness).toBe(Math.round(12000 * 66.7 / 100)); // 8004
   });
 
   it('preserves agent-added custom lines', () => {

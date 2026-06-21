@@ -171,8 +171,8 @@ async function reload(page) {
     // ── MN2: headline count-once via delta ──────────────────────────────────
     console.log('\n── MN2 — count once (Living total moves by the prefill delta, not 2×)');
     // Two distinct car totals → two personal shares; assert living delta == personal delta.
-    const GAS_A = 1000; // monthly → 12000/yr → personal 33% = 3960
-    const GAS_B = 2000; // monthly → 24000/yr → personal 33% = 7920
+    const GAS_A = 1000; // monthly → 12000/yr → personal 33.3% = 3996
+    const GAS_B = 2000; // monthly → 24000/yr → personal 33.3% = 7992
 
     await setCarGas(page, GAS_A);
     const livingA = await groupHeaderTotal(page, 'Living Expenses');
@@ -184,8 +184,8 @@ async function reload(page) {
     const persB = await readCarPersonalLine(page);
     safeLog(`[MN2] B: livingTotal=${livingB} carPersonalLine=${persB.annual} (amount=${persB.amount})`);
 
-    const expectedPersA = Math.round(12000 * 33 / 100);
-    const expectedPersB = Math.round(24000 * 33 / 100);
+    const expectedPersA = Math.round(12000 * 33.3 / 100);
+    const expectedPersB = Math.round(24000 * 33.3 / 100);
     if (persA.annual === expectedPersA && persB.annual === expectedPersB) {
       pass('MN2: Car personal share prefills the Living line', `${expectedPersA} → ${expectedPersB}`);
     } else {

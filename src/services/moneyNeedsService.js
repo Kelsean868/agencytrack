@@ -10,8 +10,9 @@ export const FREQUENCY_MULTIPLIERS = { A: 1, S: 2, Q: 4, M: 12 };
 
 export const PLAYGROUND_INCOME_GOAL_KEY = 'agencytrack-playground-income-goal';
 
-export const CAR_PERSONAL_PCT = 33;
-export const CAR_BUSINESS_PCT = 67;
+// CBTT-exact personal/business split of running car costs (sum to 100%).
+export const CAR_PERSONAL_PCT = 33.3;
+export const CAR_BUSINESS_PCT = 66.7;
 
 // ── Feed-map (count-once) ─────────────────────────────────────────────────────
 // Each sub-calculator output PREFILLS a single named expense-group line rather
