@@ -138,7 +138,7 @@ function CalcFedLineRow({ item, onChange, onReset, onBlur, onOpenCalc }) {
             onClick={() => onOpenCalc(calcId)}
             aria-label={`Open ${item.label} calculator`}
             title={`Open ${item.label} calculator`}
-            className="inline-flex items-center gap-1 min-h-[44px] px-2 rounded-lg text-primary text-xs font-semibold hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            className="inline-flex items-center justify-center gap-1 min-h-[44px] min-w-[44px] px-2 rounded-lg text-primary text-xs font-semibold hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <Calculator size={14} aria-hidden="true" />
             {!filled && <span>Calculate</span>}
@@ -598,6 +598,14 @@ const CALC_TITLES = {
 // so the trap captures the trigger correctly and returns focus on unmount.
 function FloatingCalcModal({ onClose, title, children }) {
   const modalRef = useFocusTrap({ onEscape: onClose });
+
+  // Lock background scroll while open (matters most for the mobile bottom sheet).
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:p-4">
       <div
