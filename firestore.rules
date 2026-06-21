@@ -43,7 +43,7 @@ service cloud.firestore {
     }
 
     function canAccessOwn(tenantId, agentId) {
-      return isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || (isAgent() && getTenantId() == tenantId && request.auth.uid == agentId));
+      return isSignedIn() && (getRole() in ['platform_admin', 'tenant_admin'] || ((isAgent() || isProducingManager()) && getTenantId() == tenantId && request.auth.uid == agentId));
     }
 
     // E5: kiosk display session — read-only, tenant-scoped
@@ -562,14 +562,14 @@ service cloud.firestore {
 
       match /goals/{goalId} {
         allow read:  if canManage(tenantId) ||
-          (isSignedIn() && isAgent() && getTenantId() == tenantId && goalId == request.auth.uid);
+          (isSignedIn() && (isAgent() || isProducingManager()) && getTenantId() == tenantId && goalId == request.auth.uid);
         // goalId == agentId (UID) always — service writes `goals/{agentId}`.
         // Agents write their own commitment; managers write target fields.
         // SEC-4 pattern: unit_manager scoped to own-unit agents only
         // (cross-doc unitId lookup, same as users write gate).
         // branch_manager, sales_manager, tenant_admin, platform_admin: unrestricted.
         allow write: if
-          (isSignedIn() && isAgent() && getTenantId() == tenantId && goalId == request.auth.uid)
+          (isSignedIn() && (isAgent() || isProducingManager()) && getTenantId() == tenantId && goalId == request.auth.uid)
           || (canManage(tenantId) && (
             getRole() != 'unit_manager'
             || (callerUnitId(tenantId) != null
@@ -1287,10 +1287,10 @@ service cloud.firestore {
           );
         }
 
-        allow create: if isAgent() && getTenantId() == tenantId && validPlanWrite();
+        allow create: if (isAgent() || isProducingManager()) && getTenantId() == tenantId && validPlanWrite();
 
         // weekStart is the week's identity — re-commit overwrites targets, never the week.
-        allow update: if isAgent() && getTenantId() == tenantId
+        allow update: if (isAgent() || isProducingManager()) && getTenantId() == tenantId
           && resource.data.agentId == request.auth.uid
           && request.resource.data.weekStart == resource.data.weekStart
           && validPlanWrite();
@@ -1303,7 +1303,7 @@ service cloud.firestore {
               ? planId.split('_')[0] == request.auth.uid
               : resource.data.agentId == request.auth.uid || uplineCanReadPlan());
 
-        allow delete: if isAgent() && getTenantId() == tenantId
+        allow delete: if (isAgent() || isProducingManager()) && getTenantId() == tenantId
           && resource.data.agentId == request.auth.uid;
 
         // No list arm by design (see header). S4 stays get-fan-out, no index.
@@ -1333,8 +1333,8 @@ service cloud.firestore {
           && getRole() == 'sales_manager'
           && resource.data.shareWithSm == true;
 
-        // Create: agent-only, must start private (isAgent guards against manager self-creation)
-        allow create: if isAgent() && getTenantId() == tenantId && request.auth.uid == uid
+        // Create: agent or producing manager, must start private, own uid only
+        allow create: if (isAgent() || isProducingManager()) && getTenantId() == tenantId && request.auth.uid == uid
           && request.resource.data.visibility == 'private';
 
         // Update: owner only (agent controls visibility and shareWithSm)
@@ -1347,7 +1347,7 @@ service cloud.firestore {
       // Owner-only; manager-read arm added with the Manager-review slice later.
       match /users/{uid}/yearPlan/{year} {
         allow get, list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
-        allow create: if isAgent() && getTenantId() == tenantId && request.auth.uid == uid
+        allow create: if (isAgent() || isProducingManager()) && getTenantId() == tenantId && request.auth.uid == uid
           && request.resource.data.status == 'draft';
         allow update: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
         allow delete: if false;
@@ -1358,7 +1358,7 @@ service cloud.firestore {
       // manager-review slice. No UI writes this path until the gated Slice-2 panel.
       match /users/{uid}/monthlyPlan/{year} {
         allow get, list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
-        allow create: if isAgent() && getTenantId() == tenantId && request.auth.uid == uid
+        allow create: if (isAgent() || isProducingManager()) && getTenantId() == tenantId && request.auth.uid == uid
           && request.resource.data.status == 'draft';
         allow update: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
         allow delete: if false;
