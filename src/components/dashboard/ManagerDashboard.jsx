@@ -2,11 +2,12 @@
 // (Vite supports automatic JSX transform but vitest does not always apply it).
 // Touched here in Track J P5 because the new ManagerDashboardLeaderboardTab
 // test mounts <ManagerDashboard /> directly.
-import React, { useMemo, useState, useEffect, useCallback } from 'react';
+import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
   Activity, UserPlus, ClipboardCheck, BookOpen, LayoutList,
+  NotebookPen, Target, Wallet, History, Zap,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -41,6 +42,18 @@ import TeamPerfRosterPage from '../manager/roster/TeamPerfRosterPage';
 import { MANAGER_COMING_SOON_TABS } from '../../config/comingSoonTabs';
 import GoalsPanel from '../manager/GoalsPanel';
 import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
+import DailyCaptureV2 from '../daily/DailyCaptureV2';
+import DailyFAB from '../daily/DailyFAB';
+import GamePlanScreen from './GamePlanV2';
+import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
+import HistoryTab from '../submissions/HistoryTab';
+import CommissionAnchorStrip from '../agent/CommissionAnchorStrip';
+import CommissionPlayground from '../goals/CommissionPlayground';
+import GapAnalysisPanel from '../goals/GapAnalysisPanel';
+import DerivedIncomePanel from '../goals/DerivedIncomePanel';
+import AwardsReachPanel from '../goals/AwardsReachPanel';
+import MdrtTracker from '../goals/MdrtTracker';
+import { useMyProduction } from '../../hooks/useMyProduction';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -73,7 +86,17 @@ const NAV_ITEMS = [
   // the access-denied state for uncredentialled callers.
   { id: 'policy-reconciliation', label: 'Policy Reconciliation', tabId: 'policy-reconciliation', Icon: ClipboardCheck },
   { id: 'leaderboard', label: 'Leaderboard',  tabId: 'leaderboard', Icon: Star,          sectionLabel: 'Tools' },
-  { id: 'policy-ledger', label: 'Policy Ledger', tabId: 'policy-ledger', Icon: BookOpen, roles: ['unit_manager', 'branch_manager'] },
+  // PM-2: My Production — producing manager (UM/BM) own-production screens.
+  // Each item maps to one agent screen scoped to user.uid. DailyFAB overlay
+  // activates when any mp-* tab is active. Policy Ledger was a standalone
+  // nav item here (Option A, PM-2 Phase 0); it is now the Policies screen.
+  { id: 'mp-report',      label: 'Weekly Report', tabId: 'mp-report',      Icon: NotebookPen, roles: ['unit_manager', 'branch_manager'], sectionLabel: 'My Production' },
+  { id: 'mp-goals',       label: 'Goals',         tabId: 'mp-goals',       Icon: Target,      roles: ['unit_manager', 'branch_manager'] },
+  { id: 'mp-game-plan',   label: 'Game Plan',     tabId: 'mp-game-plan',   Icon: BarChart2,   roles: ['unit_manager', 'branch_manager'] },
+  { id: 'mp-money-needs', label: 'Money Needs',   tabId: 'mp-money-needs', Icon: Wallet,      roles: ['unit_manager', 'branch_manager'] },
+  { id: 'mp-history',     label: 'History',       tabId: 'mp-history',     Icon: History,     roles: ['unit_manager', 'branch_manager'] },
+  { id: 'mp-commission',  label: 'Commission',    tabId: 'mp-commission',  Icon: Zap,         roles: ['unit_manager', 'branch_manager'] },
+  { id: 'mp-policies',    label: 'Policies',      tabId: 'mp-policies',    Icon: BookOpen,    roles: ['unit_manager', 'branch_manager'] },
   // E6: agent of the month — branch_manager+ only (unit_manager excluded)
   { id: 'agent-of-month', label: 'Agent of Month', tabId: 'agent-of-month', Icon: Trophy, roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
   // E5: kiosk tab — branch_manager+ only (unit_manager excluded)
@@ -92,8 +115,10 @@ const BOTTOM_NAV = [
   { id: 'profile',     label: 'Profile',   tabId: 'profile',     Icon: UserCircle },
 ];
 
+const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies']);
+
 export default function ManagerDashboard() {
-  const { userProfile, role, tenantId } = useAuth();
+  const { user, userProfile, role, tenantId } = useAuth();
   const [showWizard, setShowWizard]       = useState(false);
   const [activeTab, setActiveTab]         = useState('overview');
   const [selectedWeek, setSelectedWeek]   = useState(getMostRecentSunday());
@@ -125,7 +150,25 @@ export default function ManagerDashboard() {
   // Pull-to-refresh — enabled on data-feed tabs only.
   // Game Plan is an agent-only surface so no exclusion needed here.
   const [ptrRevision, setPtrRevision] = useState(0);
-  const PTR_MANAGER_TABS = new Set(['overview', 'mastersheet', 'leaderboard', 'policy-ledger']);
+  const PTR_MANAGER_TABS = new Set(['overview', 'mastersheet', 'leaderboard', 'mp-history', 'mp-policies']);
+  const [showMpDailyModal, setShowMpDailyModal] = useState(false);
+  const mpPlaygroundRef = useRef(null);
+
+  const isProducingManager = role === 'unit_manager' || role === 'branch_manager';
+  const myProd = useMyProduction(
+    isProducingManager ? tenantId : null,
+    isProducingManager ? user?.uid : null,
+    userProfile,
+  );
+
+  // E6 logging-mode: unset defaults to 'hybrid' (showDailyCTA = true).
+  const mpLoggingMode = userProfile?.loggingMode ?? 'hybrid';
+  const showMpDailyCTA = mpLoggingMode === 'daily' || mpLoggingMode === 'hybrid';
+
+  // Lazy-load own policies when Commission tab is first visited.
+  useEffect(() => {
+    if (activeTab === 'mp-commission' && myProd.policies === null) myProd.loadPolicies();
+  }, [activeTab, myProd]);
   const onPullRefresh = useCallback(() => {
     setPtrRevision((r) => r + 1);
   }, []);
@@ -189,6 +232,25 @@ export default function ManagerDashboard() {
 
   if (showWizard) {
     return <WizardForm onClose={() => setShowWizard(false)} />;
+  }
+
+  // My Production — Weekly Report tab renders WizardForm full-screen (same
+  // pattern as showWizard; onClose returns to Goals as the natural next screen).
+  if (activeTab === 'mp-report') {
+    return <WizardForm onClose={() => setActiveTab('mp-goals')} />;
+  }
+
+  // My Production — DailyCaptureV2 full-screen overlay when FAB is tapped.
+  if (showMpDailyModal) {
+    return (
+      <DailyCaptureV2
+        onClose={() => setShowMpDailyModal(false)}
+        onReviewSubmit={() => {
+          setShowMpDailyModal(false);
+          setActiveTab('mp-report');
+        }}
+      />
+    );
   }
 
   if (meetingActive) {
@@ -315,7 +377,87 @@ export default function ManagerDashboard() {
 
         {activeTab === 'kiosk' && <KioskModeTab />}
 
-        {activeTab === 'policy-ledger' && (role === 'unit_manager' || role === 'branch_manager') && <PolicyLedgerPanel key={ptrRevision} />}
+        {/* ── MY PRODUCTION — own-production screens for UM/BM ── */}
+        {/* mp-report handled via early return (WizardForm full-screen) */}
+
+        {activeTab === 'mp-goals' && (
+          <>
+            <GapAnalysisPanel
+              hierarchy={myProd.hierarchy}
+              ytdTotals={myProd.ytdTotals}
+              loading={myProd.hierarchyLoading}
+              error={myProd.hierarchyError}
+              ytdPersistency={myProd.ytdPersistency}
+              persistencyFloor={myProd.companyMinimums?.persistency ?? 90}
+            />
+            <div className="mt-4 border-t border-border pt-4">
+              <DerivedIncomePanel
+                hierarchy={myProd.hierarchy}
+                ytdTotals={myProd.ytdTotals}
+                commissionRate={parseFloat(userProfile?.commissionRate) || null}
+                loading={myProd.hierarchyLoading}
+              />
+            </div>
+            <div className="mt-4 border-t border-border pt-4">
+              <AwardsReachPanel
+                submissions={myProd.allSubmissions}
+                confirmedSettlements={myProd.settlements}
+                agentProfile={userProfile}
+              />
+            </div>
+            <div className="mt-4 border-t border-border pt-4">
+              <MdrtTracker
+                ytdTotals={myProd.ytdTotals}
+                loading={myProd.loading}
+              />
+            </div>
+          </>
+        )}
+
+        {activeTab === 'mp-game-plan' && <GamePlanScreen />}
+
+        {activeTab === 'mp-money-needs' && <MoneyNeedsPanel />}
+
+        {activeTab === 'mp-history' && (
+          <HistoryTab submissions={myProd.allSubmissions} />
+        )}
+
+        {activeTab === 'mp-commission' && (
+          <div className="flex flex-col gap-4">
+            <CommissionAnchorStrip
+              policies={myProd.policies || []}
+              loading={myProd.policiesLoading}
+              error={myProd.policiesError}
+              onRetry={() => { myProd.loadPolicies(); }}
+              persistencyHistory={myProd.persistency}
+              committedAnnualAPI={myProd.goals?.personalAnnualAPI ?? null}
+              commissionRate={parseFloat(userProfile?.commissionRate) || 35}
+              onScrollToPlayground={() => mpPlaygroundRef.current?.scrollIntoView({ behavior: 'smooth' })}
+            />
+            <div ref={mpPlaygroundRef}>
+              <CommissionPlayground
+                submissions={myProd.allSubmissions}
+                agentId={user?.uid}
+                tenantId={tenantId}
+                currentGoal={myProd.goals?.personalAnnualAPI ?? null}
+                onGoalSaved={() => myProd.reload()}
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'mp-policies' && <PolicyLedgerPanel key={ptrRevision} />}
+
+        {/* DailyFAB overlay — shown on any My Production tab when logging mode
+            is daily or hybrid (unset → hybrid). Hidden when full-screen early
+            returns (mp-report WizardForm, showMpDailyModal DailyCaptureV2)
+            are active since those branches never reach this Shell render. */}
+        {MP_TABS.has(activeTab) && showMpDailyCTA && (
+          <DailyFAB
+            onClick={() => setShowMpDailyModal(true)}
+            todayLogged={true}
+          />
+        )}
 
         {activeTab === 'profile' && <ProfileScreen />}
     </Shell>

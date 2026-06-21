@@ -42,6 +42,7 @@ vi.mock('../../../services/managerService', () => ({
 }));
 vi.mock('../../../services/persistencyService', () => ({
   getPersistencyMapForYear: vi.fn().mockResolvedValue({}),
+  getAgentHistory:          vi.fn().mockResolvedValue([]), // PM-2: useMyProduction calls this for UM/BM
 }));
 vi.mock('../../../services/exportService', () => ({ exportBranchCSV: vi.fn() }));
 vi.mock('../../../utils/formatters', () => ({ getRoleLabel: () => 'Manager' }));
@@ -72,6 +73,20 @@ vi.mock('../../leaderboard/SmLeaderboardView', async () => {
   };
 });
 
+// ── PM-2: useMyProduction fires for UM/BM — stub it out so this test doesn't
+//    need to satisfy all the service deps the hook pulls in. ─────────────────
+vi.mock('../../../hooks/useMyProduction', () => ({
+  useMyProduction: () => ({
+    allSubmissions: [], goals: null, companyMinimums: null,
+    persistency: [], settlements: [], awardsRuleset: {},
+    loading: false, hierarchy: null, hierarchyLoading: false, hierarchyError: null,
+    policies: null, policiesLoading: false, policiesError: false,
+    loadPolicies: () => {}, reload: () => {}, currentWeek: '2026-05-31',
+    ytdTotals: { api: 0, apps: 0, ffiConducted: 0, ciConducted: 0, dials: 0 },
+    ytdPersistency: null,
+  }),
+}));
+
 // ── Inert mocks for the rest of the dashboard sub-components ─────────────────
 vi.mock('../../wizard/WizardForm',                       () => ({ default: () => null }));
 vi.mock('../../manager/MasterSheet',                     () => ({ default: () => null }));
@@ -92,6 +107,19 @@ vi.mock('../../manager/ManagerWarTab',                    () => ({ default: () =
 vi.mock('../../manager/TeamWarsTab',                      () => ({ default: () => null }));
 vi.mock('../../manager/MonthlyRecruitingTab',             () => ({ default: () => null }));
 vi.mock('../../manager/PolicyReconciliationPanel',        () => ({ default: () => null }));
+// PM-2 component imports added to ManagerDashboard — all inert here.
+vi.mock('../../daily/DailyCaptureV2',                    () => ({ default: () => null }));
+vi.mock('../../daily/DailyFAB',                          () => ({ default: () => null }));
+vi.mock('../GamePlanV2',                                  () => ({ default: () => null }));
+vi.mock('../../agent/MoneyNeedsPanel',                   () => ({ default: () => null }));
+vi.mock('../../submissions/HistoryTab',                   () => ({ default: () => null }));
+vi.mock('../../agent/CommissionAnchorStrip',              () => ({ default: () => null }));
+vi.mock('../../goals/CommissionPlayground',               () => ({ default: () => null }));
+vi.mock('../../goals/GapAnalysisPanel',                  () => ({ default: () => null }));
+vi.mock('../../goals/DerivedIncomePanel',                 () => ({ default: () => null }));
+vi.mock('../../goals/AwardsReachPanel',                  () => ({ default: () => null }));
+vi.mock('../../goals/MdrtTracker',                       () => ({ default: () => null }));
+vi.mock('../../agent/PolicyLedgerPanel',                 () => ({ default: () => null }));
 
 // Shell — renders children, exposes a setter for activeTab so tests can flip
 // directly to the leaderboard tab without going through the sidebar DOM.
