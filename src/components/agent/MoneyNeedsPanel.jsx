@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Calculator, ChevronDown, Loader2, AlertCircle, Plus, Trash2, Send, RotateCcw, Sparkles,
+  Calculator, ChevronDown, Loader2, AlertCircle, Plus, Trash2, Send, RotateCcw, Sparkles, X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import useFocusTrap from '../../hooks/useFocusTrap';
 import {
   createMoneyNeeds, getMoneyNeeds,
   updateExpenseGroup, annualizeAmount, computeGroupTotal,
@@ -88,8 +89,12 @@ function LineItemRow({ item, onChange, onDelete, onBlur }) {
 // Calc-fed line — prefilled from a sub-calculator, editable. Label is fixed
 // (structural); editing the amount stores an override; a synced line shows a
 // "from calculator" badge, an overridden line shows a reset affordance.
-function CalcFedLineRow({ item, onChange, onReset, onBlur }) {
+function CalcFedLineRow({ item, onChange, onReset, onBlur, onOpenCalc }) {
   const overridden = !!item.isOverridden;
+  const filled = (parseFloat(item.amount) || 0) > 0;
+  // Trigger opens the owning floating calculator. Both car lines
+  // (carExpenses.personal / carExpenses.business) resolve to 'carExpenses'.
+  const calcId = item.calcKey ? item.calcKey.split('.')[0] : null;
   return (
     <div className="flex items-center gap-2 py-1.5 border-b border-border last:border-0">
       <span className="flex-1 min-w-0 flex items-center gap-1.5">
@@ -115,24 +120,36 @@ function CalcFedLineRow({ item, onChange, onReset, onBlur }) {
       <span className="w-28 text-right text-xs text-ink-muted tabular-nums shrink-0">
         {formatCurrency(annualizeAmount(item.amount, item.frequency))} / yr
       </span>
-      {overridden ? (
-        <button
-          type="button"
-          onClick={() => onReset(item.id)}
-          aria-label={`Reset ${item.label} to calculator value`}
-          title="Reset to calculator value"
-          className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-primary hover:bg-primary/5 transition-colors min-h-[44px] min-w-[32px]"
-        >
-          <RotateCcw size={14} />
-        </button>
-      ) : (
-        <span className="w-8 shrink-0" aria-hidden="true" />
-      )}
+      <div className="flex items-center gap-1 shrink-0">
+        {overridden && (
+          <button
+            type="button"
+            onClick={() => onReset(item.id)}
+            aria-label={`Reset ${item.label} to calculator value`}
+            title="Reset to calculator value"
+            className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-primary hover:bg-primary/5 transition-colors min-h-[44px] min-w-[32px]"
+          >
+            <RotateCcw size={14} />
+          </button>
+        )}
+        {calcId && (
+          <button
+            type="button"
+            onClick={() => onOpenCalc(calcId)}
+            aria-label={`Open ${item.label} calculator`}
+            title={`Open ${item.label} calculator`}
+            className="inline-flex items-center gap-1 min-h-[44px] px-2 rounded-lg text-primary text-xs font-semibold hover:bg-primary/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <Calculator size={14} aria-hidden="true" />
+            {!filled && <span>Calculate</span>}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
 
-function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGroupSaved }) {
+function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGroupSaved, onOpenCalc }) {
   const { tenantId, user } = useAuth();
   const [open, setOpen] = useState(false);
   const [localItems, setLocalItems] = useState(() => group?.lineItems ?? []);
@@ -296,6 +313,7 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
                   onChange={handleItemChange}
                   onReset={handleResetCalcLine}
                   onBlur={handleBlur}
+                  onOpenCalc={onOpenCalc}
                 />
               ))}
             </div>
@@ -568,12 +586,49 @@ function SubCalcLineItems({ items, onChange, onDelete, onBlur }) {
   );
 }
 
+const CALC_TITLES = {
+  insuranceIndustry: 'Insurance Industry Expenses',
+  carExpenses: 'Car Expenses',
+  loansDebt: 'Loans & Debt',
+};
+
+// Responsive floating-calculator shell: desktop = centred modal; mobile =
+// full-screen bottom sheet. Reuses useFocusTrap (focus-first + focus-return
+// to the originating trigger + Tab cycle + Escape). Mounted only while open,
+// so the trap captures the trigger correctly and returns focus on unmount.
+function FloatingCalcModal({ onClose, title, children }) {
+  const modalRef = useFocusTrap({ onEscape: onClose });
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:p-4">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="flex h-full max-h-[100dvh] w-full flex-col rounded-none border-0 bg-surface-raised shadow-xl outline-none sm:h-auto sm:max-h-[90vh] sm:max-w-lg sm:rounded-2xl sm:border sm:border-border"
+      >
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-4 py-3">
+          <h2 className="font-display text-base font-extrabold tracking-tight text-ink">{title}</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label={`Close ${title} calculator`}
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-muted transition-colors hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 py-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function InsuranceIndustryCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   const { tenantId, user } = useAuth();
   const [localItems, setLocalItems] = useState(() => calcData?.lineItems ?? []);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [open, setOpen] = useState(false);
 
   useEffect(() => { setLocalItems(calcData?.lineItems ?? []); }, [calcData]);
 
@@ -607,29 +662,21 @@ function InsuranceIndustryCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   }
 
   return (
-    <div className="border border-border rounded-xl overflow-hidden">
-      <button type="button" onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
-        aria-expanded={open}>
-        <span>Insurance Industry Expenses</span>
-        <div className="flex items-center gap-2">
+    <div>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="text-xs text-ink-muted">Prefills “Professional/industry expenses” in Business Expenses</p>
+        <span className="flex shrink-0 items-center gap-2">
           {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
           {annualTotal > 0 && <span className="text-xs font-medium text-ink-muted tabular-nums">{formatCurrency(annualTotal)} / yr</span>}
-          <ChevronDown size={16} className={`text-ink-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-        </div>
+        </span>
+      </div>
+      {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
+      {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
+      {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
+      <button type="button" onClick={handleAdd} disabled={saving}
+        className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50 min-h-[44px]">
+        <Plus size={13} />Add item
       </button>
-      {open && (
-        <div className="px-4 pb-4 pt-2 border-t border-border">
-          <p className="text-xs text-ink-muted mb-2">Prefills “Professional/industry expenses” in Business Expenses</p>
-          {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
-          {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
-          {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
-          <button type="button" onClick={handleAdd} disabled={saving}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50 min-h-[44px]">
-            <Plus size={13} />Add item
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -639,7 +686,6 @@ function CarExpensesCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   const [localItems, setLocalItems] = useState(() => calcData?.lineItems ?? []);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [open, setOpen] = useState(false);
 
   useEffect(() => { setLocalItems(calcData?.lineItems ?? []); }, [calcData]);
 
@@ -687,38 +733,28 @@ function CarExpensesCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   }
 
   return (
-    <div className="border border-border rounded-xl overflow-hidden">
-      <button type="button" onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
-        aria-expanded={open}>
-        <span>Car Expenses</span>
-        <div className="flex items-center gap-2">
-          {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
-          {lineAnnual > 0 && <span className="text-xs font-medium text-ink-muted tabular-nums">{formatCurrency(lineAnnual)} / yr</span>}
-          <ChevronDown size={16} className={`text-ink-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-        </div>
-      </button>
-      {open && (
-        <div className="px-4 pb-4 pt-2 border-t border-border">
-          <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs text-ink-muted">
-            <span>Personal ({CAR_PERSONAL_PCT}%): <span className="font-semibold text-ink tabular-nums">{formatCurrency(personalAnnual)}</span> → Living</span>
-            <span>Business ({CAR_BUSINESS_PCT}%): <span className="font-semibold text-ink tabular-nums">{formatCurrency(businessAnnual)}</span> → Business</span>
-          </div>
-          {carLoanRef > 0 && (
-            <p className="mb-2 text-xs text-ink-muted">
-              Car loan (from Loans &amp; Debt): <span className="font-semibold text-ink tabular-nums">{formatCurrency(carLoanRef)}</span>
-              <span className="text-ink-muted"> / yr — reference only, not in the split</span>
-            </p>
-          )}
-          {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
-          {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
-          {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
-          <button type="button" onClick={handleAdd} disabled={saving}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50 min-h-[44px]">
-            <Plus size={13} />Add item
-          </button>
-        </div>
+    <div>
+      <div className="flex items-center justify-end gap-2 mb-2">
+        {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
+        {lineAnnual > 0 && <span className="text-xs font-medium text-ink-muted tabular-nums">{formatCurrency(lineAnnual)} / yr</span>}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 mb-2 text-xs text-ink-muted">
+        <span>Personal ({CAR_PERSONAL_PCT}%): <span className="font-semibold text-ink tabular-nums">{formatCurrency(personalAnnual)}</span> → Living</span>
+        <span>Business ({CAR_BUSINESS_PCT}%): <span className="font-semibold text-ink tabular-nums">{formatCurrency(businessAnnual)}</span> → Business</span>
+      </div>
+      {carLoanRef > 0 && (
+        <p className="mb-2 text-xs text-ink-muted">
+          Car loan (from Loans &amp; Debt): <span className="font-semibold text-ink tabular-nums">{formatCurrency(carLoanRef)}</span>
+          <span className="text-ink-muted"> / yr — reference only, not in the split</span>
+        </p>
       )}
+      {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
+      {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
+      {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
+      <button type="button" onClick={handleAdd} disabled={saving}
+        className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50 min-h-[44px]">
+        <Plus size={13} />Add item
+      </button>
     </div>
   );
 }
@@ -728,7 +764,6 @@ function LoansDebtCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   const [localItems, setLocalItems] = useState(() => calcData?.lineItems ?? []);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [open, setOpen] = useState(false);
 
   useEffect(() => { setLocalItems(calcData?.lineItems ?? []); }, [calcData]);
 
@@ -762,29 +797,21 @@ function LoansDebtCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   }
 
   return (
-    <div className="border border-border rounded-xl overflow-hidden">
-      <button type="button" onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
-        aria-expanded={open}>
-        <span>Loans &amp; Debt</span>
-        <div className="flex items-center gap-2">
+    <div>
+      <div className="flex items-center justify-between gap-2 mb-2">
+        <p className="text-xs text-ink-muted">Prefills “Debt reduction (non-mortgage)” in Savings &amp; Accumulation</p>
+        <span className="flex shrink-0 items-center gap-2">
           {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
           {annualTotal > 0 && <span className="text-xs font-medium text-ink-muted tabular-nums">{formatCurrency(annualTotal)} / yr</span>}
-          <ChevronDown size={16} className={`text-ink-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
-        </div>
+        </span>
+      </div>
+      {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
+      {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
+      {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
+      <button type="button" onClick={handleAdd} disabled={saving}
+        className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50 min-h-[44px]">
+        <Plus size={13} />Add item
       </button>
-      {open && (
-        <div className="px-4 pb-4 pt-2 border-t border-border">
-          <p className="text-xs text-ink-muted mb-2">Prefills “Debt reduction (non-mortgage)” in Savings &amp; Accumulation</p>
-          {saveError && <div className="flex items-center gap-2 mb-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400"><AlertCircle size={12} className="shrink-0" /><span>{saveError}</span></div>}
-          {localItems.length > 0 && <SubCalcLineItems items={localItems} onChange={handleChange} onDelete={handleDelete} onBlur={() => save(localItems)} />}
-          {localItems.length === 0 && <p className="text-xs text-ink-muted py-2">No items yet.</p>}
-          <button type="button" onClick={handleAdd} disabled={saving}
-            className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-dashed border-primary/50 text-primary text-xs font-semibold hover:bg-primary/5 transition-colors disabled:opacity-50 min-h-[44px]">
-            <Plus size={13} />Add item
-          </button>
-        </div>
-      )}
     </div>
   );
 }
@@ -798,6 +825,9 @@ export default function MoneyNeedsPanel() {
   const [loading, setLoading]   = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError]       = useState('');
+  // Which floating calculator is open: 'insuranceIndustry' | 'carExpenses' | 'loansDebt' | null.
+  // Lifted to the panel so triggers embedded in any expense group open the right calc.
+  const [openCalc, setOpenCalc] = useState(null);
 
   const load = useCallback(async () => {
     if (!tenantId || !uid) return;
@@ -969,26 +999,9 @@ export default function MoneyNeedsPanel() {
               group={worksheet.expenseGroups?.[key]}
               worksheetDoc={worksheet}
               onGroupSaved={handleGroupSaved}
+              onOpenCalc={setOpenCalc}
             />
           ))}
-
-          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide pt-2">Sub-Calculators</p>
-
-          <InsuranceIndustryCalc
-            calcData={worksheet.subCalculators?.insuranceIndustry}
-            worksheetDoc={worksheet}
-            onSubCalcSaved={handleSubCalcSaved}
-          />
-          <CarExpensesCalc
-            calcData={worksheet.subCalculators?.carExpenses}
-            worksheetDoc={worksheet}
-            onSubCalcSaved={handleSubCalcSaved}
-          />
-          <LoansDebtCalc
-            calcData={worksheet.subCalculators?.loansDebt}
-            worksheetDoc={worksheet}
-            onSubCalcSaved={handleSubCalcSaved}
-          />
 
           <CommissionTargetsPanel
             worksheet={worksheet}
@@ -996,6 +1009,38 @@ export default function MoneyNeedsPanel() {
           />
 
           <PAYESummary worksheet={worksheet} />
+
+          {/* Floating calculators — opened by the trigger next to each calc-fed
+              line. Mounted only while open so the focus trap captures the
+              originating trigger and returns focus to it on close. */}
+          {openCalc && (
+            <FloatingCalcModal
+              onClose={() => setOpenCalc(null)}
+              title={CALC_TITLES[openCalc]}
+            >
+              {openCalc === 'insuranceIndustry' && (
+                <InsuranceIndustryCalc
+                  calcData={worksheet.subCalculators?.insuranceIndustry}
+                  worksheetDoc={worksheet}
+                  onSubCalcSaved={handleSubCalcSaved}
+                />
+              )}
+              {openCalc === 'carExpenses' && (
+                <CarExpensesCalc
+                  calcData={worksheet.subCalculators?.carExpenses}
+                  worksheetDoc={worksheet}
+                  onSubCalcSaved={handleSubCalcSaved}
+                />
+              )}
+              {openCalc === 'loansDebt' && (
+                <LoansDebtCalc
+                  calcData={worksheet.subCalculators?.loansDebt}
+                  worksheetDoc={worksheet}
+                  onSubCalcSaved={handleSubCalcSaved}
+                />
+              )}
+            </FloatingCalcModal>
+          )}
         </div>
       )}
     </div>
