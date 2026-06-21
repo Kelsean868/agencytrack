@@ -130,6 +130,14 @@ describe('deepMergeRuleset', () => {
     const merged = deepMergeRuleset({ clubAward: { tiers: customTiers } }, DEFAULT_RULESET_2026);
     expect(merged.clubAward.tiers).toBe(customTiers);
   });
+
+  it('a key explicitly null/undefined in the doc falls back to DEFAULT (Gemini #709)', () => {
+    const partial = { clubAward: null, persistencyAward: undefined, mdrtAward: { apiThreshold: 5 } };
+    const merged = deepMergeRuleset(partial, DEFAULT_RULESET_2026);
+    expect(merged.clubAward).toEqual(DEFAULT_RULESET_2026.clubAward);                 // null → default
+    expect(merged.persistencyAward).toEqual(DEFAULT_RULESET_2026.persistencyAward);   // undefined → default
+    expect(merged.mdrtAward.apiThreshold).toBe(5);                                    // real value preserved
+  });
 });
 
 // ── getMergedAwardsRuleset (render-only accessor) ──────────────────────────────

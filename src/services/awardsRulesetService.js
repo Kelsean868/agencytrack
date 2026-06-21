@@ -26,8 +26,15 @@ export function deepMergeRuleset(loaded, fallback) {
   for (const key of Object.keys(loaded)) {
     const lv = loaded[key];
     const fv = fallback?.[key];
+    // A key explicitly null/undefined in the stored doc (malformed / hand-edited)
+    // falls back to the default — a null award group would otherwise be written
+    // through and crash a downstream destructure (the very thing this prevents).
+    if (lv === null || lv === undefined) {
+      out[key] = fv;
+      continue;
+    }
     out[key] =
-      lv && typeof lv === 'object' && !Array.isArray(lv) &&
+      typeof lv === 'object' && !Array.isArray(lv) &&
       fv && typeof fv === 'object' && !Array.isArray(fv)
         ? deepMergeRuleset(lv, fv)
         : lv;
