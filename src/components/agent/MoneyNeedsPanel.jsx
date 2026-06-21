@@ -53,7 +53,7 @@ function LineItemRow({ item, onChange, onDelete, onBlur }) {
           aria-label="Expense description"
           className="w-full sm:flex-1 sm:min-w-0 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <input
             type="number"
             value={item.amount === 0 ? '' : item.amount}
