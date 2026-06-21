@@ -74,9 +74,14 @@ export function balanceDelta(targets, anchorAPI) {
  * (current + future, i.e. index >= currentMonthIndex). Past months are never
  * touched — a past month at 0 stays 0.
  *
- * Rounding rule: each empty month receives round(remainder / n, 2dp); the LAST
- * empty month absorbs the rounding residue (remainder − perMonth × (n − 1)) so
- * the distributed portion sums to `remainder` exactly, hence Σ(all 12) === anchor.
+ * Rounding rule: each empty month receives floor(remainder / n, 2dp); the LAST
+ * empty month absorbs the residue (remainder − perMonth × (n − 1)) so the
+ * distributed portion sums to `remainder` exactly, hence Σ(all 12) === anchor.
+ * floor (not round) is deliberate: a rounded-UP perMonth can exceed
+ * remainder / (n − 1) for a small remainder over many empty months
+ * (e.g. remainder 0.04 over 6 → round gives 0.01 each, 5 × 0.01 = 0.05 > 0.04,
+ * last = −0.01). floor keeps perMonth ≤ remainder/n, so the last month is the
+ * LARGEST and can never be pushed negative.
  *
  * Clamp: if remainder <= 0 (already balanced or over-allocated) or there are no
  * empty editable months, the array is returned unchanged — the remainder is never
@@ -112,7 +117,7 @@ export function autoDistributeRemainder(targets, anchorAPI, currentMonthIndex) {
   // Clamp: nothing to place, or nowhere to place it → unchanged.
   if (remainder <= 0 || emptyIndices.length === 0) return t;
 
-  const perMonth = Math.round((remainder / emptyIndices.length) * 100) / 100;
+  const perMonth = Math.floor((remainder / emptyIndices.length) * 100) / 100;
   for (let i = 0; i < emptyIndices.length - 1; i++) {
     t[emptyIndices[i]] = perMonth;
   }

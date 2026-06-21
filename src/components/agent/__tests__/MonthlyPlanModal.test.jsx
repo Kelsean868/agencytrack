@@ -199,6 +199,15 @@ describe('MonthlyPlanModal — edit behavior', () => {
     await flush();
     expect(screen.getByTestId('auto-distribute-btn').disabled).toBe(true);
   });
+
+  it('fill-empty-months button is disabled when over-allocated', async () => {
+    renderModal();
+    await flush();
+    const inputs = screen.getAllByRole('spinbutton');
+    // Push a future month above the annual anchor → over-allocated (no-op for fill).
+    fireEvent.change(inputs[inputs.length - 1], { target: { value: '999999' } });
+    expect(screen.getByTestId('auto-distribute-btn').disabled).toBe(true);
+  });
 });
 
 // ── Stale anchor ──────────────────────────────────────────────────────────────

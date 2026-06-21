@@ -130,6 +130,19 @@ describe('autoDistributeRemainder (fill empty months, preserve typed)', () => {
     const targets = seedEvenSplit(120000); // all 10000, none at 0
     expect(autoDistributeRemainder(targets, 120000, 3)).toEqual(targets);
   });
+
+  it('small remainder over many empty months never goes negative (floor distribution)', () => {
+    // 6 typed months (indices 6–11) sum to exactly 100000.00; the anchor leaves a
+    // 4-cent remainder to spread across the 6 empty months (indices 0–5).
+    // Math.round would give 0.01 each → 5 × 0.01 = 0.05 > 0.04 → last month −0.01.
+    // Math.floor gives 0 to the leading empties and the full residue to the last.
+    const targets = [0, 0, 0, 0, 0, 0, 16666.66, 16666.66, 16666.66, 16666.66, 16666.66, 16666.70];
+    const result = autoDistributeRemainder(targets, 100000.04, 0);
+    expect(result.every((v) => v >= 0)).toBe(true);            // no month negative
+    for (let i = 0; i < 5; i++) expect(result[i]).toBe(0);     // leading empties stay 0
+    expect(result[5]).toBeCloseTo(0.04, 2);                    // last empty absorbs the residue
+    expect(parseFloat(result.reduce((s, v) => s + v, 0).toFixed(2))).toBe(100000.04);
+  });
 });
 
 // ── monthEditable ─────────────────────────────────────────────────────────────
