@@ -98,11 +98,11 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     expect(screen.getByRole('button', { name: /Open Debt reduction \(non-mortgage\) calculator/i })).toBeInTheDocument();
   });
 
-  it('empty calc-fed line shows a "Calculate" label trigger', async () => {
+  it('empty calc-fed line shows a "Build with calculator" CTA', async () => {
     await renderLoaded();
     openGroup('Savings & Accumulation');
     const trigger = screen.getByRole('button', { name: /Open Debt reduction \(non-mortgage\) calculator/i });
-    expect(within(trigger).getByText('Calculate')).toBeInTheDocument();
+    expect(within(trigger).getByText(/Build with calculator/i)).toBeInTheDocument();
   });
 
   it('the read-only car-loan reference has no trigger', async () => {
@@ -157,7 +157,7 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     expect(document.activeElement).toBe(trigger);
   });
 
-  it('completing the car calc prefills BOTH car lines and drops the "Calculate" label', async () => {
+  it('completing the car calc prefills BOTH car lines and drops the "Build with calculator" CTA', async () => {
     await renderLoaded();
     // Saving any calc edit returns updatedGroups that feed both car lines.
     mockUpdateSubCalc.mockResolvedValue({
@@ -174,8 +174,8 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     openGroup('Living Expenses');
     openGroup('Business Expenses');
 
-    // Before: both car lines empty → "Calculate" label present on both triggers.
-    expect(within(screen.getByRole('button', { name: /Open Car expenses, nonbusiness calculator/i })).getByText('Calculate')).toBeInTheDocument();
+    // Before: both car lines empty → CTA present on both triggers.
+    expect(within(screen.getByRole('button', { name: /Open Car expenses, nonbusiness calculator/i })).getByText(/Build with calculator/i)).toBeInTheDocument();
 
     // Open the car calc and add an item (auto-saves → onSubCalcSaved → prefill).
     fireEvent.click(screen.getByRole('button', { name: /Open Business car expenses calculator/i }));
@@ -184,12 +184,81 @@ describe('MoneyNeedsPanel — floating calculators', () => {
 
     await waitFor(() => expect(mockUpdateSubCalc).toHaveBeenCalled());
 
-    // Both car lines now carry their prefilled values; the "Calculate" label is gone.
+    // Both car lines now carry their prefilled values; the CTA is replaced by Recalculate.
     await waitFor(() => {
       const personalTrigger = screen.getByRole('button', { name: /Open Car expenses, nonbusiness calculator/i });
-      expect(within(personalTrigger).queryByText('Calculate')).not.toBeInTheDocument();
+      expect(within(personalTrigger).queryByText(/Build with calculator/i)).not.toBeInTheDocument();
     });
     const businessTrigger = screen.getByRole('button', { name: /Open Business car expenses calculator/i });
-    expect(within(businessTrigger).queryByText('Calculate')).not.toBeInTheDocument();
+    expect(within(businessTrigger).queryByText(/Build with calculator/i)).not.toBeInTheDocument();
+  });
+
+  it('long label renders its full text — no truncation', async () => {
+    await renderLoaded();
+    openGroup('Business Expenses');
+    // "Professional/industry expenses" is long; the card layout must not truncate it.
+    const labelEl = screen.getByText('Professional/industry expenses');
+    expect(labelEl).toBeInTheDocument();
+    expect(labelEl.className).not.toMatch(/\btruncate\b/);
+  });
+
+  it('empty calc-fed card: shows CTA and NO amount input', async () => {
+    await renderLoaded();
+    openGroup('Business Expenses');
+    // Industry line is empty (amount=0) → CTA button, no amount spinbutton.
+    const cta = screen.getByRole('button', { name: /Open Professional\/industry expenses calculator/i });
+    expect(within(cta).getByText(/Build with calculator/i)).toBeInTheDocument();
+    expect(screen.queryByRole('spinbutton', { name: /Professional\/industry expenses amount/i })).not.toBeInTheDocument();
+  });
+
+  it('filled calc-fed card: shows Recalculate button and amount input, not CTA', async () => {
+    const ws = makeWorksheet();
+    ws.expenseGroups.businessExpenses = {
+      lineItems: [
+        calcLine('seed-be-4', 'Business car expenses', 'carExpenses.business'),
+        { ...calcLine('seed-be-7', 'Professional/industry expenses', 'insuranceIndustry', 1200) },
+      ],
+    };
+    mockGetMoneyNeeds.mockResolvedValue(ws);
+    render(<MoneyNeedsPanel />);
+    await screen.findByText('Money Needs Worksheet');
+    openGroup('Business Expenses');
+
+    // Filled → Recalculate label, amount input present; the Recalculate button itself
+    // does NOT contain "Build with calculator" (the CTA belongs to empty-state cards only).
+    const reopenBtn = screen.getByRole('button', { name: /Open Professional\/industry expenses calculator/i });
+    expect(within(reopenBtn).getByText('Recalculate')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: /Professional\/industry expenses amount/i })).toBeInTheDocument();
+    expect(within(reopenBtn).queryByText(/Build with calculator/i)).not.toBeInTheDocument();
+  });
+
+  it('overridden calc-fed card: shows Reset button', async () => {
+    const ws = makeWorksheet();
+    ws.expenseGroups.businessExpenses = {
+      lineItems: [
+        calcLine('seed-be-4', 'Business car expenses', 'carExpenses.business'),
+        { ...calcLine('seed-be-7', 'Professional/industry expenses', 'insuranceIndustry', 900), isOverridden: true },
+      ],
+    };
+    mockGetMoneyNeeds.mockResolvedValue(ws);
+    render(<MoneyNeedsPanel />);
+    await screen.findByText('Money Needs Worksheet');
+    openGroup('Business Expenses');
+
+    expect(screen.getByRole('button', { name: /Reset Professional\/industry expenses to calculator value/i })).toBeInTheDocument();
+  });
+
+  it('manual LineItemRow: label stacks above amount/freq/delete (mobile-friendly DOM structure)', async () => {
+    await renderLoaded();
+    openGroup('Fixed Expenses');
+    mockUpdateExpenseGroup.mockResolvedValue({ totalAnnualExpenses: 0, totalAnnualAfterTax: 0, totalAnnualPreTax: 0 });
+    fireEvent.click(screen.getAllByRole('button', { name: /Add item/i })[0]);
+    await waitFor(() => expect(mockUpdateExpenseGroup).toHaveBeenCalled());
+
+    const descInput = screen.getByRole('textbox', { name: /Expense description/i });
+    const amountInput = screen.getByRole('spinbutton', { name: /Expense amount/i });
+    // In the stacked layout the label input is a direct child of the flex-col container;
+    // the amount input lives in a separate inner div — different immediate parents.
+    expect(descInput.parentElement).not.toBe(amountInput.parentElement);
   });
 });

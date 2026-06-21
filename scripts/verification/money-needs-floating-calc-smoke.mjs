@@ -1,25 +1,31 @@
 /**
- * money-needs-floating-calc-smoke.mjs — floating sub-calculators (PR #716).
+ * money-needs-floating-calc-smoke.mjs — floating sub-calculators (PR #716) +
+ * calc-row card layout (PR #calc-row-fix).  Regression guard for both PRs.
  *
  * Verifies the floating-calculator conversion on the Vercel PREVIEW (real PROD
  * Firestore via the bypass session). Edits are made to the A11Y agent's own
  * Car Expenses sub-calc and RESTORED at the end (neutral footprint).
  *
  * Gates:
- *   F1: Money Needs renders; a trigger sits next to each calc-fed line (car on
- *       BOTH lines, industry, loans); the read-only car-loan ref has NO trigger;
- *       the trailing "Sub-Calculators" section is gone.
- *   F2 (count-once): change the Car total; the Living "Car expenses, nonbusiness"
- *       line moves by EXACTLY the change in its prefill (delta once, not doubled).
- *   F3 (both car lines prefill): Living personal + Business "Business car expenses"
- *       both populate from the same Car calc.
- *   F4 (persist): reload → the prefilled value persists.
- *   F5 (desktop shape): the calc opens as a CENTRED bounded modal.
- *   F6 (focus): clicking a trigger traps focus into the modal; Escape returns
- *       focus to the originating trigger.
- *   F7 (mobile shape, 390×844): the calc opens as a FULL-SCREEN bottom sheet.
- *   F8 (mobile focus): focus returns to the trigger on close.
- *   F9: axe NO-NEW serious/critical (contrast + labels) with the modal open, both themes.
+ *   F1:  Money Needs renders; a trigger sits next to each calc-fed line (car on
+ *        BOTH lines, industry, loans); the read-only car-loan ref has NO trigger;
+ *        the trailing "Sub-Calculators" section is gone.
+ *   FL1: Long label "Professional/industry expenses" renders in full (no truncate
+ *        class — card layout, not flat row).
+ *   FL2: At least one empty calc-fed card shows the "Build with calculator" CTA
+ *        (not the old ghost "Calculate" text).
+ *   F2  (count-once): change the Car total; the Living "Car expenses, nonbusiness"
+ *        line moves by EXACTLY the change in its prefill (delta once, not doubled).
+ *   F3  (both car lines prefill): Living personal + Business "Business car expenses"
+ *        both populate from the same Car calc.
+ *   F4  (persist): reload → the prefilled value persists.
+ *   F5  (desktop shape): the calc opens as a CENTRED bounded modal.
+ *   F6  (focus): clicking a trigger traps focus into the modal; Escape returns
+ *        focus to the originating trigger (now a real button in both card states).
+ *   F7  (mobile shape, 390×844): the calc opens as a FULL-SCREEN bottom sheet.
+ *   F8  (mobile focus): focus returns to the trigger on close.
+ *   FLm: Mobile — long label in full + "Build with calculator" CTA visible.
+ *   F9:  axe NO-NEW serious/critical (contrast + labels) with the modal open, both themes.
  *   F10: 0 app console errors across the session.
  *
  * Run: node scripts/verification/money-needs-floating-calc-smoke.mjs [previewUrl]
@@ -210,6 +216,35 @@ async function reload(page) {
     const bodyTxt = await page.evaluate(() => document.body.textContent);
     if (!/Sub-Calculators/.test(bodyTxt)) pass('F1: trailing "Sub-Calculators" section removed');
     else fail('F1: trailing section still present');
+
+    // ── FL1: long label in full (card layout, no truncate) ───────────────────
+    console.log('\n── FL1 — long label renders in full without truncate class');
+    {
+      // Business Expenses is still open; "Professional/industry expenses" is in DOM.
+      const notTruncated = await page.evaluate(() => {
+        const spans = [...document.querySelectorAll('.text-sm.text-ink')];
+        const el = spans.find((s) => s.textContent.trim() === 'Professional/industry expenses');
+        return !!el && !el.classList.contains('truncate');
+      });
+      if (notTruncated) pass('FL1: "Professional/industry expenses" in DOM, no truncate class');
+      else fail('FL1: long label truncated or not found in DOM');
+    }
+
+    // ── FL2: empty calc-fed card shows "Build with calculator" CTA ───────────
+    console.log('\n── FL2 — empty calc-fed card shows "Build with calculator" CTA');
+    {
+      await openGroup(page, /^Savings & Accumulation/i);
+      const ctaCount = await page.getByText(/Build with calculator/i).count();
+      if (ctaCount > 0) {
+        pass('FL2: "Build with calculator" CTA present on at least one empty calc-fed card');
+      } else {
+        // All lines may be pre-filled — check Recalculate buttons exist as proof of card layout.
+        const recalcCount = await page.getByRole('button', { name: /Open.*calculator/i }).count();
+        if (recalcCount >= 4) pass('FL2: all calc-fed lines filled — Recalculate buttons present (card layout active)');
+        else fail('FL2: neither CTA nor Recalculate buttons found — card layout may be missing');
+      }
+    }
+
     await closeGroup(page, /^Living Expenses/i);
     await closeGroup(page, /^Savings & Accumulation/i);
 
@@ -368,13 +403,37 @@ async function reload(page) {
     });
     if (mGone && mReturned) pass('F8: mobile focus returned to trigger on close');
     else fail('F8: mobile focus', `closed=${mGone} returned=${mReturned}`);
+
+    // ── FLm: mobile — long label in full + CTA ───────────────────────────────
+    console.log('\n── FLm — mobile layout: long label in full + CTA');
+    {
+      await openGroup(mpage, /^Business Expenses/i);
+      const mNotTruncated = await mpage.evaluate(() => {
+        const spans = [...document.querySelectorAll('.text-sm.text-ink')];
+        const el = spans.find((s) => s.textContent.trim() === 'Professional/industry expenses');
+        return !!el && !el.classList.contains('truncate');
+      });
+      if (mNotTruncated) pass('FLm: mobile — long label in DOM without truncate class');
+      else fail('FLm: mobile long label truncated or not found');
+
+      await openGroup(mpage, /^Savings & Accumulation/i);
+      const mCtaCount = await mpage.getByText(/Build with calculator/i).count();
+      if (mCtaCount > 0) {
+        pass('FLm: mobile — "Build with calculator" CTA present on empty calc-fed card');
+      } else {
+        const mRecalcCount = await mpage.getByRole('button', { name: /Open.*calculator/i }).count();
+        if (mRecalcCount >= 4) pass('FLm: mobile — all lines filled, Recalculate buttons present (card layout active)');
+        else fail('FLm: mobile CTA/Recalculate not found');
+      }
+    }
+
     await mctx.close();
   } finally {
     await browser.close();
   }
 
   console.log('\n══════════════════════════════════════');
-  console.log('MONEY-NEEDS FLOATING-CALC SMOKE SUMMARY');
+  console.log('MONEY-NEEDS CALC-ROW + FLOATING-CALC SMOKE SUMMARY');
   console.log('══════════════════════════════════════');
   const passed = results.filter((r) => r.ok).length;
   const failed = results.filter((r) => !r.ok).length;
