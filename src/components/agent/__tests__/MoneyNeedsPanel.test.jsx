@@ -66,11 +66,12 @@ function makeWorksheet() {
   };
 }
 
-async function renderLoaded() {
-  mockGetMoneyNeeds.mockResolvedValue(makeWorksheet());
+async function renderLoaded(ws = makeWorksheet()) {
+  mockGetMoneyNeeds.mockResolvedValue(ws);
   render(<MoneyNeedsPanel />);
   await screen.findByText('Money Needs Worksheet');
-  // Worksheet body renders once load resolves.
+  // Worksheet body (accordion buttons) renders a tick after the title resolves;
+  // await one before any synchronous openGroup() to avoid a load race.
   await screen.findByRole('button', { name: /Business Expenses/i });
 }
 
@@ -219,9 +220,7 @@ describe('MoneyNeedsPanel — floating calculators', () => {
         { ...calcLine('seed-be-7', 'Professional/industry expenses', 'insuranceIndustry', 1200) },
       ],
     };
-    mockGetMoneyNeeds.mockResolvedValue(ws);
-    render(<MoneyNeedsPanel />);
-    await screen.findByText('Money Needs Worksheet');
+    await renderLoaded(ws);
     openGroup('Business Expenses');
 
     // Filled → Recalculate label, amount input present; the Recalculate button itself
@@ -240,9 +239,7 @@ describe('MoneyNeedsPanel — floating calculators', () => {
         { ...calcLine('seed-be-7', 'Professional/industry expenses', 'insuranceIndustry', 900), isOverridden: true },
       ],
     };
-    mockGetMoneyNeeds.mockResolvedValue(ws);
-    render(<MoneyNeedsPanel />);
-    await screen.findByText('Money Needs Worksheet');
+    await renderLoaded(ws);
     openGroup('Business Expenses');
 
     expect(screen.getByRole('button', { name: /Reset Professional\/industry expenses to calculator value/i })).toBeInTheDocument();
@@ -260,5 +257,60 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     // In the stacked layout the label input is a direct child of the flex-col container;
     // the amount input lives in a separate inner div — different immediate parents.
     expect(descInput.parentElement).not.toBe(amountInput.parentElement);
+  });
+
+  it('main-panel manual row keeps the #718 responsive layout (sm:flex-1 label, no forced stack)', async () => {
+    await renderLoaded();
+    openGroup('Fixed Expenses');
+    mockUpdateExpenseGroup.mockResolvedValue({ totalAnnualExpenses: 0, totalAnnualAfterTax: 0, totalAnnualPreTax: 0 });
+    fireEvent.click(screen.getAllByRole('button', { name: /Add item/i })[0]);
+    await waitFor(() => expect(mockUpdateExpenseGroup).toHaveBeenCalled());
+
+    const descInput = screen.getByRole('textbox', { name: /Expense description/i });
+    // Main panel = responsive: label grows on desktop (sm:flex-1) — NOT the modal's
+    // always-stacked layout. The outer row carries sm:flex-row.
+    expect(descInput.className).toMatch(/\bsm:flex-1\b/);
+    expect(descInput.className).toMatch(/\bsm:min-w-0\b/);
+    const outerRow = descInput.parentElement;
+    expect(outerRow.className).toMatch(/\bsm:flex-row\b/);
+    // No ml-auto / spacer anywhere in the row.
+    const row = descInput.closest('.border-b');
+    expect(row.querySelector('[class*="ml-auto"]')).toBeNull();
+  });
+
+  it('manual LineItemRow renders a long Description label in full (no truncation of the value)', async () => {
+    const ws = makeWorksheet();
+    const longLabel = 'TTAIFA Conference Registration & Professional License Renewal';
+    ws.expenseGroups.fixedExpenses = {
+      lineItems: [{ id: 'm1', label: longLabel, amount: 0, frequency: 'M', annualizedAmount: 0, isCustom: true }],
+    };
+    await renderLoaded(ws);
+    openGroup('Fixed Expenses');
+
+    // The controlled input shows the full seeded label; class is not truncate-clamped.
+    const descInput = screen.getByRole('textbox', { name: /Expense description/i });
+    expect(descInput.value).toBe(longLabel);
+    expect(descInput.className).not.toMatch(/\btruncate\b/);
+  });
+
+  it('calc-modal rows use the STACKED layout (full-width label, no sm:flex-1, no flat column header)', async () => {
+    mockUpdateSubCalc.mockResolvedValue({ rollup: {}, updatedGroups: {} });
+    await renderLoaded();
+    openGroup('Business Expenses');
+
+    // Open the Insurance Industry calc modal and add a line item.
+    fireEvent.click(screen.getByRole('button', { name: /Open Professional\/industry expenses calculator/i }));
+    const dialog = await screen.findByRole('dialog', { name: 'Insurance Industry Expenses' });
+    fireEvent.click(within(dialog).getByRole('button', { name: /Add item/i }));
+    const descInput = await within(dialog).findByRole('textbox', { name: /Expense description/i });
+
+    // Stacked mode: label is full-width and does NOT take the main-panel sm:flex-1.
+    expect(descInput.className).toMatch(/\bw-full\b/);
+    expect(descInput.className).not.toMatch(/\bsm:flex-1\b/);
+    // The always-stacked outer row has no sm:flex-row.
+    expect(descInput.parentElement.className).not.toMatch(/\bsm:flex-row\b/);
+    // The flat column header (Description/Amount/Frequency/Annual) is gone in the modal.
+    expect(within(dialog).queryByText('Description')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('Frequency')).not.toBeInTheDocument();
   });
 });

@@ -40,10 +40,21 @@ function makeItemId() {
 
 // Manual / custom expense line — editable label, amount, frequency, delete.
 // On mobile (<sm) the label stacks above the amount/freq/annual/delete row.
-function LineItemRow({ item, onChange, onDelete, onBlur }) {
+function LineItemRow({ item, onChange, onDelete, onBlur, stacked = false }) {
+  // Default (main panel): responsive — label above the numeric row on mobile,
+  // single flat row on desktop (the PR-718 layout). `stacked` (calc modal):
+  // ALWAYS stacked so the label takes the full row width and a long Description
+  // renders in full inside the narrow FloatingCalcModal (~480px), where a flat
+  // row would pin it to ~89px.
+  const outerCls = stacked
+    ? 'flex flex-col gap-1.5'
+    : 'flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2';
+  const labelCls = stacked
+    ? 'w-full h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40'
+    : 'w-full sm:flex-1 sm:min-w-0 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40';
   return (
     <div className="py-1.5 border-b border-border last:border-0">
-      <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2">
+      <div className={outerCls}>
         <input
           type="text"
           value={item.label}
@@ -51,7 +62,7 @@ function LineItemRow({ item, onChange, onDelete, onBlur }) {
           onBlur={onBlur}
           placeholder="Description"
           aria-label="Expense description"
-          className="w-full sm:flex-1 sm:min-w-0 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className={labelCls}
         />
         <div className="flex items-center gap-2 flex-wrap">
           <input
@@ -583,16 +594,12 @@ function CommissionTargetsPanel({ worksheet, onTargetsSaved }) {
   );
 }
 
+// Calc-modal line items render in LineItemRow's `stacked` layout (label on its
+// own full-width line). No flat column header — stacked rows wouldn't align to
+// it, and each field is self-labelled (placeholder / "/ yr"), as on mobile.
 function SubCalcLineItems({ items, onChange, onDelete, onBlur }) {
   return (
     <div className="mb-2">
-      <div className="flex items-center gap-2 pb-1 border-b border-border mb-1">
-        <span className="flex-1 text-xs font-semibold text-ink-muted">Description</span>
-        <span className="w-24 text-right text-xs font-semibold text-ink-muted">Amount</span>
-        <span className="text-xs font-semibold text-ink-muted">Frequency</span>
-        <span className="w-28 text-right text-xs font-semibold text-ink-muted">Annual</span>
-        <span className="w-8" />
-      </div>
       {items.map((item) => (
         <LineItemRow
           key={item.id}
@@ -600,6 +607,7 @@ function SubCalcLineItems({ items, onChange, onDelete, onBlur }) {
           onChange={onChange}
           onDelete={onDelete}
           onBlur={onBlur}
+          stacked
         />
       ))}
     </div>
