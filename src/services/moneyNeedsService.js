@@ -33,6 +33,31 @@ export function computeWorksheetRollup(expenseGroups) {
   return { totalAnnualAfterTax, totalAnnualPreTax, computedPAYE };
 }
 
+/**
+ * countFilledLineItems — worksheet-level FILLED N/total tally (Game Plan v2 1.8).
+ *
+ * Pure derivation over the worksheet's expense groups: total = every line item
+ * across all groups; filled = items with a positive amount. Mirrors the per-group
+ * "N of M filled" count each accordion derives from its own items, aggregated
+ * across the whole worksheet. First-run seed (34 named items, all 0) → { filled: 0,
+ * total: 34 }; adding a custom item grows the denominator.
+ *
+ * @param {Record<string, { lineItems?: Array<{ amount?: number|string }> }>|null|undefined} expenseGroups
+ * @returns {{ filled: number, total: number }}
+ */
+export function countFilledLineItems(expenseGroups) {
+  if (!expenseGroups) return { filled: 0, total: 0 };
+  return Object.values(expenseGroups).reduce(
+    (acc, group) => {
+      const items = group?.lineItems ?? [];
+      acc.total += items.length;
+      acc.filled += items.filter((i) => (parseFloat(i?.amount) || 0) > 0).length;
+      return acc;
+    },
+    { filled: 0, total: 0 },
+  );
+}
+
 export async function updateExpenseGroup(tenantId, uid, year, groupKey, updatedGroup, fullExpenseGroups) {
   const parsedYear = parseInt(year, 10);
   if (!parsedYear) throw new Error('Invalid year');
