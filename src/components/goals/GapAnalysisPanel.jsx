@@ -17,7 +17,7 @@ function HeroMetricRow({ label, ytd, pct, belowFloor }) {
   const barFg = belowFloor ? 'bg-warning'         : 'bg-white dark:bg-primary-dark';
   const barBg = belowFloor ? 'bg-warning/20'      : 'bg-white/20 dark:bg-border/40';
   const textCls = belowFloor ? 'text-warning-ink' : 'text-white dark:text-ink';
-  const mutedCls = belowFloor ? 'text-warning-ink/70' : 'text-white/85 dark:text-ink-muted';
+  const mutedCls = belowFloor ? 'text-warning-ink/70' : 'text-white/80 dark:text-ink-muted';
   const labelCls = belowFloor ? 'text-warning-ink/80' : 'text-white/90 dark:text-ink-muted';
 
   return (
@@ -61,7 +61,7 @@ function CommitmentHero({ personal, ytdTotals, belowFloor, ytdPersistency, persi
     : 'bg-primary dark:bg-surface-raised dark:border dark:border-primary-dark';
   const headingCls = belowFloor ? 'text-warning-ink/70' : 'text-white/90 dark:text-ink-muted';
   const bigNumCls  = belowFloor ? 'text-warning-ink'    : 'text-white dark:text-ink';
-  const subCls     = belowFloor ? 'text-warning-ink/60' : 'text-white/85 dark:text-ink-muted';
+  const subCls     = belowFloor ? 'text-warning-ink/60' : 'text-white/80 dark:text-ink-muted';
 
   return (
     <div className={`rounded-xl p-4 ${containerCls}`} data-testid="commitment-hero">
