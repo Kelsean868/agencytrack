@@ -13,7 +13,9 @@ vi.mock('firebase/firestore', () => ({
   serverTimestamp: () => ({ _type: 'SERVER_TS' }),
 }));
 
-import { getAwardsRuleset, setAwardsRuleset } from '../awardsRulesetService';
+import {
+  getAwardsRuleset, setAwardsRuleset, deepMergeRuleset, getMergedAwardsRuleset,
+} from '../awardsRulesetService';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 
 beforeEach(() => {
@@ -71,6 +73,89 @@ describe('getAwardsRuleset', () => {
     await getAwardsRuleset('tenant1', 2027);
     const ref = mockGetDoc.mock.calls[0][0];
     expect(ref.__ref).toBe('tenants/tenant1/config/awardsRuleset_2027');
+  });
+
+  // ── CONTRACT-LOCK: getAwardsRuleset stays RAW (admin-editor fidelity) ────────
+  it('CONTRACT-LOCK — a PARTIAL stored doc is returned unchanged (NOT backfilled)', async () => {
+    const partial = { advisorMonth: { api: { threshold: 60000 } } }; // missing most groups
+    mockGetDoc.mockResolvedValue({ exists: () => true, data: () => partial });
+    const result = await getAwardsRuleset('tenant1', 2026);
+    // Same reference, no default backfill — the admin editor must see exactly
+    // what is stored (Option A). If this ever fails, deep-merge leaked into the
+    // raw accessor and the editor would silently normalize partial docs on save.
+    expect(result).toBe(partial);
+    expect(result).not.toHaveProperty('clubAward');
+    expect(result).not.toHaveProperty('persistencyAward');
+    expect(result.advisorMonth).not.toHaveProperty('persistGate');
+  });
+});
+
+// ── deepMergeRuleset (crash-prevention helper) ────────────────────────────────
+describe('deepMergeRuleset', () => {
+  it('missing / empty / non-object loaded → fallback', () => {
+    expect(deepMergeRuleset(null, DEFAULT_RULESET_2026)).toBe(DEFAULT_RULESET_2026);
+    expect(deepMergeRuleset(undefined, DEFAULT_RULESET_2026)).toBe(DEFAULT_RULESET_2026);
+    expect(deepMergeRuleset('nope', DEFAULT_RULESET_2026)).toBe(DEFAULT_RULESET_2026);
+    expect(deepMergeRuleset({}, DEFAULT_RULESET_2026)).toEqual(DEFAULT_RULESET_2026);
+  });
+
+  it('complete custom doc → custom values intact (defaults do NOT clobber present values)', () => {
+    const custom = {
+      ...DEFAULT_RULESET_2026,
+      mdrtAward: { ...DEFAULT_RULESET_2026.mdrtAward, apiThreshold: 999999 },
+    };
+    const merged = deepMergeRuleset(custom, DEFAULT_RULESET_2026);
+    expect(merged.mdrtAward.apiThreshold).toBe(999999); // doc wins
+  });
+
+  it('partial doc → gaps backfilled from DEFAULT, present values preserved (crash-prevention)', () => {
+    const partial = { mdrtAward: { apiThreshold: 123456, apiInContention: 250000, prize: 'X' } };
+    const merged = deepMergeRuleset(partial, DEFAULT_RULESET_2026);
+    expect(merged.mdrtAward.apiThreshold).toBe(123456);                  // present preserved
+    expect(merged.clubAward).toEqual(DEFAULT_RULESET_2026.clubAward);    // gap backfilled
+    expect(merged.persistencyAward).toEqual(DEFAULT_RULESET_2026.persistencyAward);
+  });
+
+  it('nested-partial → missing sub-field backfilled from DEFAULT (proves recurse)', () => {
+    const partial = {
+      persistencyAward: { silver: { ...DEFAULT_RULESET_2026.persistencyAward.silver, apiThreshold: 200000 } },
+    };
+    const merged = deepMergeRuleset(partial, DEFAULT_RULESET_2026);
+    expect(merged.persistencyAward.silver.apiThreshold).toBe(200000);                       // present preserved
+    expect(merged.persistencyAward.gold).toEqual(DEFAULT_RULESET_2026.persistencyAward.gold); // recursed backfill
+  });
+
+  it('arrays are taken wholesale from the loaded doc when present (not element-merged)', () => {
+    const customTiers = [{ id: 'only', name: 'Only', apiMin: 1 }];
+    const merged = deepMergeRuleset({ clubAward: { tiers: customTiers } }, DEFAULT_RULESET_2026);
+    expect(merged.clubAward.tiers).toBe(customTiers);
+  });
+
+  it('a key explicitly null/undefined in the doc falls back to DEFAULT (Gemini #709)', () => {
+    const partial = { clubAward: null, persistencyAward: undefined, mdrtAward: { apiThreshold: 5 } };
+    const merged = deepMergeRuleset(partial, DEFAULT_RULESET_2026);
+    expect(merged.clubAward).toEqual(DEFAULT_RULESET_2026.clubAward);                 // null → default
+    expect(merged.persistencyAward).toEqual(DEFAULT_RULESET_2026.persistencyAward);   // undefined → default
+    expect(merged.mdrtAward.apiThreshold).toBe(5);                                    // real value preserved
+  });
+});
+
+// ── getMergedAwardsRuleset (render-only accessor) ──────────────────────────────
+describe('getMergedAwardsRuleset', () => {
+  it('missing doc → DEFAULT (unchanged behavior for the no-doc case)', async () => {
+    mockGetDoc.mockResolvedValue({ exists: () => false, data: () => undefined });
+    const result = await getMergedAwardsRuleset('tenant1', 2026);
+    expect(result).toEqual(DEFAULT_RULESET_2026);
+  });
+
+  it('partial stored doc → returns a COMPLETE ruleset (every DEFAULT group present)', async () => {
+    const partial = { mdrtAward: { apiThreshold: 123456 } };
+    mockGetDoc.mockResolvedValue({ exists: () => true, data: () => partial });
+    const result = await getMergedAwardsRuleset('tenant1', 2026);
+    expect(result.mdrtAward.apiThreshold).toBe(123456);
+    for (const key of Object.keys(DEFAULT_RULESET_2026)) {
+      expect(result).toHaveProperty(key); // no missing group → no destructure crash downstream
+    }
   });
 });
 
