@@ -75,10 +75,23 @@ vi.mock('../../daily/DailyCaptureV2', async () => {
   };
 });
 
-// DailyFAB surfaces its onClick so the test can open the daily modal.
+// DailyFAB surfaces its onClick so the test can open the Quick-Add menu (PR-3).
 vi.mock('../../daily/DailyFAB', async () => {
   const R = await import('react');
   return { default: ({ onClick }) => R.createElement('button', { 'data-testid': 'mp-daily-fab', onClick }) };
+});
+
+// QuickAddMenu — surfaces a Log-today button that calls onSelect('log-today').
+// Fast-path tests go: mp-daily-fab → quick-add-log-today → DailyCaptureV2 review.
+vi.mock('../../shell/QuickAddMenu', async () => {
+  const R = await import('react');
+  return {
+    default: ({ onSelect, onClose }) =>
+      R.createElement('button', {
+        'data-testid': 'quick-add-log-today',
+        onClick: () => { onSelect('log-today'); onClose(); },
+      }, 'Log today'),
+  };
 });
 
 // WizardForm exposes the routing props it received via data-* attributes.
@@ -178,10 +191,13 @@ beforeEach(() => {
 
 // Navigate to an mp-* tab, open the daily modal via the FAB, and click the
 // given review button. Leaves the dashboard on the showMpWizard host render.
+// PR-3: FAB now opens QuickAddMenu; clicking Log-today in the menu opens the
+// daily capture overlay (handleMgrAction('log-today') → setShowMpDailyModal).
 function openDailyReview(reviewTestId) {
-  fireEvent.click(screen.getByTestId('nav-mp-goals'));   // mp-* tab → FAB visible
-  fireEvent.click(screen.getByTestId('mp-daily-fab'));   // → showMpDailyModal
-  fireEvent.click(screen.getByTestId(reviewTestId));     // → onReviewSubmit(payload)
+  fireEvent.click(screen.getByTestId('nav-mp-goals'));        // mp-* tab → FAB visible
+  fireEvent.click(screen.getByTestId('mp-daily-fab'));        // → showQuickAdd
+  fireEvent.click(screen.getByTestId('quick-add-log-today')); // → showMpDailyModal
+  fireEvent.click(screen.getByTestId(reviewTestId));          // → onReviewSubmit(payload)
 }
 
 describe('ManagerDashboard — producing-manager fast path', () => {
