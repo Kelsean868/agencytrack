@@ -26,7 +26,11 @@ export function useSeededTargets({ data, goal, floors }) {
     const annualAPI = parseFloat(goal?.personalAnnualAPI) || 0;
     const hasGoal   = annualAPI > 0;
 
-    const thisWeekDials = parseFloat(data?.dials)        || 0;
+    // Fast path: the daily-aggregated draft carries `dials`. Full path: weekly
+    // INITIAL_DATA has no `dials` — it uses `coldCalls`. `??` reads dials when
+    // present (fast path unchanged) and falls back to coldCalls otherwise so the
+    // full-path actuals-seed isn't dead (canonical daily-dials ↔ weekly-coldCalls).
+    const thisWeekDials = parseFloat(data?.dials ?? data?.coldCalls) || 0;
     const thisWeekFFI   = parseFloat(data?.ffiConducted) || 0;
     const thisWeekCI    = parseFloat(data?.ciConducted)  || 0;
 
@@ -52,6 +56,7 @@ export function useSeededTargets({ data, goal, floors }) {
     return { targetDials, targetFFI, targetCI, targetAPI, hasGoal };
   }, [
     data?.dials,
+    data?.coldCalls,
     data?.ffiConducted,
     data?.ciConducted,
     goal?.personalAnnualAPI,
