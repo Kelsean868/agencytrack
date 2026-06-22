@@ -90,6 +90,7 @@ export default function MobileBottomNav({ items, drawerNavItems, activeTab, setA
           pinnedItems={pinnedItems}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          onAction={onAction}
           onClose={() => setDrawerOpen(false)}
         />
       )}

@@ -6,7 +6,7 @@ import useFocusTrap from '../../hooks/useFocusTrap';
  * Slide-up bottom-sheet drawer giving mobile users access to sidebar-only nav items.
  * Opened from the MobileBottomNav "More" button.
  */
-export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClose, pinnedItems = [] }) {
+export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClose, onAction, pinnedItems = [] }) {
   const modalRef = useFocusTrap({ onEscape: onClose });
 
   useEffect(() => {
@@ -29,6 +29,7 @@ export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClos
         onClick={() => {
           if (isDisabled) return;
           if (item.tabId != null) setActiveTab(item.tabId);
+          else if (item.action != null) onAction?.(item.action);
           onClose();
         }}
         className={`w-full flex items-center gap-4 ${isChild ? 'pl-10 pr-5' : 'px-5'} min-h-[44px] text-sm font-medium motion-safe:transition-colors focus-visible:outline-none ${
