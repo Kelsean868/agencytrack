@@ -38,7 +38,7 @@ export default function MobileBottomNav({ items, drawerNavItems, activeTab, setA
               <div key={item.id} className="bottom-nav-fab-wrap">
                 <button
                   type="button"
-                  className="bottom-nav-fab"
+                  className="bottom-nav-fab relative"
                   onClick={() => {
                     if (item.tabId != null) setActiveTab(item.tabId);
                     else if (item.action != null) onAction?.(item.action);
@@ -47,6 +47,12 @@ export default function MobileBottomNav({ items, drawerNavItems, activeTab, setA
                   data-testid={item.testId ?? `bottomnav-${item.id}`}
                 >
                   <Plus size={24} strokeWidth={2.5} />
+                  {item.dot && (
+                    <span
+                      className="absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-warning border-2 border-bg"
+                      aria-hidden="true"
+                    />
+                  )}
                 </button>
                 <span className="bottom-nav-fab-label">{item.label}</span>
               </div>

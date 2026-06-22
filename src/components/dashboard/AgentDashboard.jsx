@@ -41,6 +41,8 @@ import { getOwnPolicies } from '../../services/policiesService';
 import GamePlanScreen from './GamePlanV2';
 import CommissionPlayground from '../goals/CommissionPlayground';
 import DailyFAB from '../daily/DailyFAB';
+import QuickAddMenu from '../shell/QuickAddMenu';
+import { getQuickAddActions } from '../shell/quickAddConfig';
 import AgentDashboardHomeV2 from './HomeV2';
 import NewAgentEmptyState from './NewAgentEmptyState';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
@@ -57,15 +59,16 @@ import MdrtTracker from '../goals/MdrtTracker';
 // Daily Log item appears only for daily/hybrid-mode agents (mirrors DailyFAB).
 // Coming-soon gating (prospect-info, planner) is applied inside getNavConfig.
 
-// Mobile bottom-nav per mock (lines 2227-2232). The "Submit" item is an
-// action, not a tab — it triggers the wizard via the onAction callback.
+// Mobile bottom-nav — center ＋ is "Create" (Quick-Add, PR-3). Submit FAB
+// replaced; dot field is computed reactively inside the component so the
+// amber not-logged-today nudge mirrors the DailyFAB predicate exactly.
 const BOTTOM_NAV = [
-  { id: 'home',        label: 'Home',     tabId: 'dashboard',   Icon: ClipboardList },
-  { id: 'submit',      label: 'Submit',   action: 'submit',     Icon: FileText, fab: true },
-  { id: 'history',     label: 'History',  tabId: 'history',     Icon: History       },
+  { id: 'home',        label: 'Home',     tabId: 'dashboard',            Icon: ClipboardList },
+  { id: 'create',      label: 'Create',   action: 'quick-add',           Icon: FileText, fab: true },
+  { id: 'history',     label: 'History',  tabId: 'history',              Icon: History       },
   // Track J P6 — bottom-nav "Ranks" routes to the production-leaderboard tab.
-  { id: 'leaderboard', label: 'Ranks',    tabId: 'production-leaderboard', Icon: Star          },
-  { id: 'profile',     label: 'Profile',  tabId: 'profile',     Icon: UserCircle    },
+  { id: 'leaderboard', label: 'Ranks',    tabId: 'production-leaderboard', Icon: Star        },
+  { id: 'profile',     label: 'Profile',  tabId: 'profile',              Icon: UserCircle    },
 ];
 
 export default function AgentDashboard() {
@@ -79,6 +82,7 @@ export default function AgentDashboard() {
   const [wizardInitialStep, setWizardInitialStep] = useState(1);
   const [wizardInitialScreen, setWizardInitialScreen] = useState(null);
   const [showDailyModal, setShowDailyModal]   = useState(false);
+  const [showQuickAdd,   setShowQuickAdd]     = useState(false);
   const [unlockDismissed, setUnlockDismissed] = useState(false);
   const [viewingSubmission, setViewingSubmission] = useState(null);
   const [todayDailyEntry, setTodayDailyEntry] = useState(null);
@@ -138,6 +142,18 @@ export default function AgentDashboard() {
       (item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)
     ),
     [navItems]
+  );
+
+  // Mobile center ＋ dot — amber nudge when today not yet logged (PR-3).
+  // Matches the DailyFAB predicate exactly: only on daily/hybrid loggingMode
+  // and only once the today-check resolves (todayDailyChecked = true).
+  const bottomNavItems = useMemo(
+    () => BOTTOM_NAV.map((item) =>
+      item.fab
+        ? { ...item, dot: showDailyCTA && todayDailyChecked && !todayDailyEntry }
+        : item
+    ),
+    [showDailyCTA, todayDailyChecked, todayDailyEntry]
   );
 
   // ★ Pinned-nav (Nav redesign PR-2) — seeds + persistence + pin/unpin.
@@ -390,11 +406,14 @@ export default function AgentDashboard() {
     try { await signOut(); } catch (err) { console.error(err); }
   };
 
-  // Bottom-nav action dispatch. The agent's 'submit' item is not a tab;
-  // it opens the wizard at the most-recent Sunday week. In daily-only mode
-  // it opens the daily entry modal instead.
+  // Bottom-nav + Quick-Add action dispatch.
+  // 'quick-add' opens the QuickAddMenu (from the center ＋ on mobile or the
+  // desktop pencil FAB). 'submit' / 'log-today' preserve existing modal paths.
+  // Tab-based actions ('policy-ledger', 'goals') route via setActiveTab.
   const handleAction = (action) => {
-    if (action === 'submit') {
+    if (action === 'quick-add') {
+      setShowQuickAdd(true);
+    } else if (action === 'submit') {
       if (loggingMode === 'daily') {
         setShowDailyModal(true);
       } else {
@@ -402,6 +421,10 @@ export default function AgentDashboard() {
       }
     } else if (action === 'log-today') {
       setShowDailyModal(true);
+    } else if (action === 'policy-ledger') {
+      setActiveTab('policy-ledger');
+    } else if (action === 'goals') {
+      setActiveTab('goals');
     }
   };
 
@@ -475,7 +498,7 @@ export default function AgentDashboard() {
   return (
     <Shell
       navItems={navItems}
-      bottomNavItems={BOTTOM_NAV}
+      bottomNavItems={bottomNavItems}
       drawerNavItems={drawerNavItems}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
@@ -498,12 +521,22 @@ export default function AgentDashboard() {
       onPin={pin}
       onUnpin={unpin}
     >
-      {/* Daily entry FAB — visible on all agent tabs when daily/hybrid mode.
-          Hidden when the modal/wizard takes full-screen (those branches return
-          early, so the FAB is never rendered alongside them). */}
+      {/* Quick-Add FAB (desktop pencil) — opens popover on click. Hidden on
+          mobile (<768px) via hidden md:flex in DailyFAB; the mobile center ＋
+          triggers the sheet variant instead (via BOTTOM_NAV 'quick-add' action). */}
       {showDailyCTA && (
         <DailyFAB
-          onClick={() => setShowDailyModal(true)}
+          onClick={() => setShowQuickAdd(true)}
+          todayLogged={todayDailyChecked ? !!todayDailyEntry : true}
+        />
+      )}
+
+      {/* Quick-Add menu — popover on desktop, sheet on mobile */}
+      {showQuickAdd && (
+        <QuickAddMenu
+          actions={getQuickAddActions('agent')}
+          onSelect={handleAction}
+          onClose={() => setShowQuickAdd(false)}
           todayLogged={todayDailyChecked ? !!todayDailyEntry : true}
         />
       )}

@@ -6,13 +6,13 @@ import DailyFAB from '../DailyFAB';
 describe('DailyFAB', () => {
   it('renders button with accessible label', () => {
     render(<DailyFAB onClick={() => {}} todayLogged={true} />);
-    expect(screen.getByRole('button', { name: /log today/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /quick add/i })).toBeTruthy();
   });
 
   it('calls onClick when tapped', () => {
     const onClick = vi.fn();
     render(<DailyFAB onClick={onClick} todayLogged={true} />);
-    fireEvent.click(screen.getByRole('button', { name: /log today/i }));
+    fireEvent.click(screen.getByRole('button', { name: /quick add/i }));
     expect(onClick).toHaveBeenCalledOnce();
   });
 
