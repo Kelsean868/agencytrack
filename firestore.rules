@@ -1364,6 +1364,15 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // User app preferences (Nav redesign PR-2) — owner-only, no manager arm.
+      // Single doc `prefs/app` = { pinnedNav: string[], updatedAt }. Written with
+      // { merge: true }; PR-4 adds `menuLayout` to the SAME doc, so this owner
+      // block already permits that write (no PR-4 rules change). Owner gating
+      // mirrors the moneyNeeds/yearPlan arm: strict uid match, tenant-scoped.
+      match /users/{uid}/prefs/{prefId} {
+        allow read, write: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
+      }
+
       // ── Compliance v2 Slice 2: manager-initiated filing nudges ────────────────
       // /tenants/{tid}/nudges/{audienceUid}_{type}_{weekStart}
       //   weekStart = YYYY-MM-DD Sunday; type = 'compliance.filing.nudge' (dotted,

@@ -190,4 +190,29 @@ export function getNavConfig(configKey, opts = {}) {
   return applyComingSoon(items);
 }
 
+// ── ★ Pinned-zone seeds (Nav redesign PR-2) ──────────────────────────────────
+// Per-role default pins, by navConfig item id. Validated at resolve time against
+// the role's full nav id set — any id that no longer resolves is DROPPED (not
+// stubbed). The producing-manager spec's "Log Today" has no manager route and is
+// intentionally absent here (deferred to PR-3 Quick-Add).
+const PINNED_SEEDS = {
+  agent:            ['daily-log', 'wizard', 'policy-ledger', 'goals', 'planner'],
+  producingManager: ['mp-report', 'mastersheet', 'monthly-recruiting', 'mp-goals', 'planner'],
+  manager:          [],
+};
+
+/**
+ * Validated per-role seed pin ids. Drops any seed id absent from the role's
+ * navConfig (agent validated against the daily-capture-enabled superset so
+ * `daily-log` resolves; the per-render resolver drops it for weekly-mode agents).
+ *
+ * @param {'agent'|'producingManager'|'manager'} configKey
+ * @returns {string[]}
+ */
+export function getPinnedSeed(configKey) {
+  const seed = PINNED_SEEDS[configKey] ?? [];
+  const validIds = new Set(getNavConfig(configKey, { showDailyCapture: true }).map((i) => i.id));
+  return seed.filter((id) => validIds.has(id));
+}
+
 export default getNavConfig;

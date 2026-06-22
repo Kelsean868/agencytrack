@@ -45,6 +45,7 @@ import AgentDashboardHomeV2 from './HomeV2';
 import NewAgentEmptyState from './NewAgentEmptyState';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
 import { getNavConfig } from '../shell/navConfig';
+import usePinnedNav from '../../hooks/usePinnedNav';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
@@ -138,6 +139,11 @@ export default function AgentDashboard() {
     ),
     [navItems]
   );
+
+  // ★ Pinned-nav (Nav redesign PR-2) — seeds + persistence + pin/unpin.
+  const { pinnedItems, isPinned, pin, unpin } = usePinnedNav({
+    tenantId, uid: user?.uid, configKey: 'agent', navItems,
+  });
 
   // Show welcome screen on first login (agents only)
   useEffect(() => {
@@ -487,6 +493,10 @@ export default function AgentDashboard() {
       })()}
       onSignOut={handleSignOut}
       onPullRefresh={PTR_AGENT_TABS.has(activeTab) ? onPullRefresh : undefined}
+      pinnedItems={pinnedItems}
+      isPinned={isPinned}
+      onPin={pin}
+      onUnpin={unpin}
     >
       {/* Daily entry FAB — visible on all agent tabs when daily/hybrid mode.
           Hidden when the modal/wizard takes full-screen (those branches return
