@@ -357,6 +357,15 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
     };
   }, []);
 
+  // Once the agent descends into the full-path step flow (any step < 10 — via
+  // the phase rail or Review's Edit·Step jump-back), the Confirm-return shortcut
+  // is stale: a subsequent forward walk back to step 10 should Back to step 9,
+  // not Confirm. Clear cameFromConfirm whenever step < 10 so the shortcut only
+  // applies when the agent reached step 10 directly from Confirm. (Gemini #723.)
+  useEffect(() => {
+    if (step < 10 && cameFromConfirm) setCameFromConfirm(false);
+  }, [step, cameFromConfirm]);
+
   const handleChange = useCallback((name, value) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   }, []);

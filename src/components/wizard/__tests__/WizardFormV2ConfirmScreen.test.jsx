@@ -145,6 +145,37 @@ describe('Wizard v3 — fast-path back-navigation (Confirm ↔ step 10)', () => 
     expect(screen.getByTestId('wizard-v2-step-title').textContent).toBe('Hours worked');
     expect(screen.queryByTestId('week-confirm-view')).toBeNull();
   });
+
+  // Gemini #723: once the agent descends below step 10 (here, via the phase rail),
+  // the Confirm-return shortcut is stale. After walking back up to step 10, Back
+  // must decrement to step 9 — NOT jump back to Confirm.
+  it('clears the Confirm shortcut after descending below step 10 via the phase rail', async () => {
+    render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" initialScreen="confirm" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('week-confirm-next')).toBeInTheDocument();
+    });
+    // Confirm → step 10.
+    fireEvent.click(screen.getByTestId('week-confirm-next'));
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-v2-step-counter').textContent).toMatch(/Step 10 of 12/);
+    });
+    // Jump back to step 9 via the rail (a visited dot) → cameFromConfirm clears.
+    fireEvent.click(screen.getByTestId('wizard-v2-step-dot-9'));
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-v2-step-counter').textContent).toMatch(/Step 9 of 12/);
+    });
+    // Walk forward back to step 10.
+    fireEvent.click(screen.getByTestId('wizard-v2-next'));
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-v2-step-counter').textContent).toMatch(/Step 10 of 12/);
+    });
+    // Back now decrements to step 9 (full-path behavior), NOT Confirm.
+    fireEvent.click(screen.getByTestId('wizard-v2-back'));
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-v2-step-counter').textContent).toMatch(/Step 9 of 12/);
+    });
+    expect(screen.queryByTestId('week-confirm-view')).toBeNull();
+  });
 });
 
 describe('Wizard v3 — Confirm points-earned-vs-floor readout', () => {
