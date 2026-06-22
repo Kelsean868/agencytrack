@@ -151,9 +151,12 @@ const CONFIGS = {
 // `.map(item => COMING_SOON_TABS.has(item.tabId) ? {...item, disabled:true} : item)`
 // and also honors an explicit `soon: true` on the item.
 function applyComingSoon(items) {
+  // Always return a fresh object so callers never receive (and cannot mutate)
+  // a reference into the module-level config arrays — keeps the source of truth
+  // immutable (Gemini review, PR-1).
   return items.map((item) => {
     const isSoon = item.soon === true || (item.tabId != null && COMING_SOON_TABS.has(item.tabId));
-    return isSoon ? { ...item, disabled: true } : item;
+    return isSoon ? { ...item, disabled: true } : { ...item };
   });
 }
 
