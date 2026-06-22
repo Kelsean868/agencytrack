@@ -16,14 +16,14 @@ export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClos
 
   // Read-only on mobile (Nav redesign PR-2 decision #7): pins render at top; no
   // star edit affordance here. Disabled pins stay non-navigable.
-  const renderRow = (item) => {
+  const renderRow = (item, keyPrefix = '') => {
     const Icon = item.Icon;
     const isActive = item.tabId != null && activeTab === item.tabId;
     const isDisabled = item.disabled === true;
     const isChild = item.child === true;
     return (
       <button
-        key={item.id}
+        key={`${keyPrefix}${item.id}`}
         type="button"
         disabled={isDisabled}
         onClick={() => {
@@ -94,7 +94,7 @@ export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClos
               <div className="px-5 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 ★ Pinned
               </div>
-              {pinnedItems.map((item) => renderRow(item))}
+              {pinnedItems.map((item) => renderRow(item, 'pin-'))}
               <div className="mx-5 my-2 border-t border-border" aria-hidden="true" />
             </>
           )}

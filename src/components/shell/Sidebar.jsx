@@ -45,14 +45,18 @@ export default function Sidebar({
   const displayName = userProfile?.name ?? userProfile?.email ?? 'AgencyTrack User';
   const photoURL = userProfile?.photoURL ?? null;
 
-  const renderRow = (item) => {
+  const renderRow = (item, inPinnedZone = false) => {
     const Icon = item.Icon;
     const isActive = item.tabId != null && activeTab === item.tabId;
     const isDisabled = item.disabled === true;
     const isChild = item.child === true;
     const pinned = canPin && typeof isPinned === 'function' ? isPinned(item.id) : false;
+    // Pinned-zone rows get a distinct testid so a seeded item that ALSO appears
+    // in its group doesn't render the same data-testid twice (Playwright strict
+    // mode + tooling). Group rows keep the canonical nav testid.
+    const testId = inPinnedZone ? `pinned-${item.id}` : (item.testId ?? `nav-${item.id}`);
     return (
-      <div className="sidebar-link-row" key={item.id}>
+      <div className="sidebar-link-row" key={inPinnedZone ? `pin-${item.id}` : item.id}>
         <button
           type="button"
           className={`sidebar-link${isChild ? ' sidebar-link-child' : ''}${isActive ? ' active' : ''}${isDisabled ? ' sidebar-link-disabled' : ''}`}
@@ -65,7 +69,7 @@ export default function Sidebar({
           aria-disabled={isDisabled || undefined}
           tabIndex={isDisabled ? -1 : undefined}
           title={isDisabled ? `${item.label} · Coming soon` : item.label}
-          data-testid={item.testId ?? `nav-${item.id}`}
+          data-testid={testId}
         >
           {isChild && <span className="sidebar-link-child-connector" aria-hidden="true" />}
           <Icon size={isChild ? 15 : 17} />
@@ -133,7 +137,7 @@ export default function Sidebar({
       {canPin && pinnedItems.length > 0 && (
         <Fragment>
           <div className="sidebar-section">★ Pinned</div>
-          {pinnedItems.map((item) => renderRow(item))}
+          {pinnedItems.map((item) => renderRow(item, true))}
         </Fragment>
       )}
 
