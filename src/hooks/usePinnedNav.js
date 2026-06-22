@@ -13,8 +13,10 @@ import { getPinnedSeed } from '../components/shell/navConfig';
  *   - Writes are Firestore-primary then mirror; a failed write is a non-blocking
  *     console.warn (never thrown into render).
  *
- * Storage (decision #2): `tenants/{tenantId}/users/{uid}/prefs/app.pinnedNav`
- * (merge-write), mirror key `agencytrack-pinned-nav` (JSON string[]).
+ * Storage (decision #2, revised per dispatcher ruling 2026-06-22): doc
+ * `tenants/{tenantId}/users/{uid}/prefs/app.pinnedNav` (merge-write), mirror key
+ * **per-user** `agencytrack-pinned-nav:{uid}` (JSON string[]) — namespacing
+ * prevents cross-user pin bleed on a shared browser.
  *
  * @param {{ tenantId?: string, uid?: string, configKey?: string, navItems?: Array }} params
  *   navItems = the role's resolved getNavConfig output (descriptor source).
@@ -22,24 +24,27 @@ import { getPinnedSeed } from '../components/shell/navConfig';
  *             pin: (id:string)=>void, unpin: (id:string)=>void }}
  */
 export const PINNED_MIRROR_KEY = 'agencytrack-pinned-nav';
+export const pinnedMirrorKey = (uid) => `${PINNED_MIRROR_KEY}:${uid}`;
 
-function readMirror() {
+function readMirror(uid) {
+  if (!uid) return null;
   try {
-    const raw = localStorage.getItem(PINNED_MIRROR_KEY);
+    const raw = localStorage.getItem(pinnedMirrorKey(uid));
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : null;
   } catch { return null; }
 }
 
-function writeMirror(ids) {
-  try { localStorage.setItem(PINNED_MIRROR_KEY, JSON.stringify(ids)); } catch { /* quota / disabled — ignore */ }
+function writeMirror(uid, ids) {
+  if (!uid) return;
+  try { localStorage.setItem(pinnedMirrorKey(uid), JSON.stringify(ids)); } catch { /* quota / disabled — ignore */ }
 }
 
 export default function usePinnedNav({ tenantId, uid, configKey, navItems = [] }) {
-  // Synchronous initial paint: mirror → seeds.
+  // Synchronous initial paint: per-user mirror → seeds.
   const [pinnedIds, setPinnedIds] = useState(() => {
-    const mirror = readMirror();
+    const mirror = readMirror(uid);
     if (mirror) return mirror;
     return configKey ? getPinnedSeed(configKey) : [];
   });
@@ -56,7 +61,7 @@ export default function usePinnedNav({ tenantId, uid, configKey, navItems = [] }
         // seed/mirror paint untouched — the first user pin is what persists it.
         if (prefs && Array.isArray(prefs.pinnedNav)) {
           setPinnedIds(prefs.pinnedNav);
-          writeMirror(prefs.pinnedNav);
+          writeMirror(uid, prefs.pinnedNav);
         }
       })
       .catch(() => { /* offline / rules — keep mirror/seeds, never block render */ });
@@ -65,7 +70,7 @@ export default function usePinnedNav({ tenantId, uid, configKey, navItems = [] }
 
   const persistAll = useCallback((next) => {
     setPinnedIds(next);
-    writeMirror(next);
+    writeMirror(uid, next);
     if (tenantId && uid) {
       persistPinnedNav(tenantId, uid, next).catch((e) =>
         console.warn('[usePinnedNav] pinned-nav write failed (non-blocking):', e?.message ?? e));

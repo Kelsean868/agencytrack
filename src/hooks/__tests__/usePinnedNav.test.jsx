@@ -15,7 +15,10 @@ vi.mock('../../services/userPrefsService', () => ({
   setPinnedNav: (...a) => setPinnedNav(...a),
 }));
 
-import usePinnedNav, { PINNED_MIRROR_KEY } from '../usePinnedNav';
+import usePinnedNav, { pinnedMirrorKey } from '../usePinnedNav';
+
+// All hook calls in this file use uid 'u' → per-user mirror key.
+const MK = pinnedMirrorKey('u');
 
 // Agent nav items (subset) — descriptor source for the resolver.
 const AGENT_NAV_ITEMS = [
@@ -42,7 +45,7 @@ describe('usePinnedNav — initial paint', () => {
   });
 
   it('paints from the localStorage mirror when present (over seeds)', () => {
-    localStorage.setItem(PINNED_MIRROR_KEY, JSON.stringify(['goals']));
+    localStorage.setItem(MK, JSON.stringify(['goals']));
     getUserPrefs.mockResolvedValue(null);
     const { result } = renderHook(() => usePinnedNav({ tenantId: 't', uid: 'u', configKey: 'agent', navItems: AGENT_NAV_ITEMS }));
     expect(result.current.pinnedIds).toEqual(['goals']);
@@ -51,12 +54,12 @@ describe('usePinnedNav — initial paint', () => {
 
 describe('usePinnedNav — Firestore reconcile', () => {
   it('Firestore wins on a successful read with pinnedNav', async () => {
-    localStorage.setItem(PINNED_MIRROR_KEY, JSON.stringify(['goals']));
+    localStorage.setItem(MK, JSON.stringify(['goals']));
     getUserPrefs.mockResolvedValue({ pinnedNav: ['planner', 'wizard'] });
     const { result } = renderHook(() => usePinnedNav({ tenantId: 't', uid: 'u', configKey: 'agent', navItems: AGENT_NAV_ITEMS }));
     await waitFor(() => expect(result.current.pinnedIds).toEqual(['planner', 'wizard']));
     // mirror refreshed to the Firestore value
-    expect(JSON.parse(localStorage.getItem(PINNED_MIRROR_KEY))).toEqual(['planner', 'wizard']);
+    expect(JSON.parse(localStorage.getItem(MK))).toEqual(['planner', 'wizard']);
   });
 
   it('keeps the seed/mirror paint when the read fails (graceful)', async () => {
@@ -83,7 +86,7 @@ describe('usePinnedNav — pin / unpin', () => {
     act(() => result.current.pin('wizard'));
     expect(result.current.pinnedIds).toEqual(['goals', 'wizard']);
     expect(setPinnedNav).toHaveBeenCalledWith('t', 'u', ['goals', 'wizard']);
-    expect(JSON.parse(localStorage.getItem(PINNED_MIRROR_KEY))).toEqual(['goals', 'wizard']);
+    expect(JSON.parse(localStorage.getItem(MK))).toEqual(['goals', 'wizard']);
   });
 
   it('pin is idempotent (no duplicate, no extra write)', async () => {
