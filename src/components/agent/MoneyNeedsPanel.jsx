@@ -307,8 +307,9 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
             className={`sm:hidden shrink-0 text-ink-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
           />
         </span>
-        {/* Line 2 (mobile) / right segment (desktop): count + total, chevron on desktop */}
-        <div className="flex items-center gap-2 shrink-0 pl-[1.125rem] sm:pl-0 text-ink-muted">
+        {/* Line 2 (mobile) / right segment (desktop): count + total, chevron on desktop.
+            <span> (not <div>) so the header <button> holds only phrasing content. */}
+        <span className="flex items-center gap-2 shrink-0 pl-[1.125rem] sm:pl-0 text-ink-muted">
           {localItems.length > 0 && (
             <span className="font-mono text-[10px] font-medium tracking-wide">
               {filledCount} of {localItems.length} filled
@@ -324,7 +325,7 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
             size={16}
             className={`hidden sm:block transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
           />
-        </div>
+        </span>
       </button>
 
       {open && (

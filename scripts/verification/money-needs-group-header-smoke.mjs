@@ -127,7 +127,9 @@ async function measureHeader(page) {
     if (!header) return { found: false };
     const spans = Array.from(header.querySelectorAll('span'));
     const labelEl = spans.find((s) => s.textContent.trim() === gt);
-    const countEl = spans.find((s) => /of\s+\d+\s+filled/i.test(s.textContent));
+    // Leaf span only — the count lives in a nested wrapper <span>; matching by
+    // textContent alone would catch the wrapper (which appears first in DOM order).
+    const countEl = spans.find((s) => s.children.length === 0 && /of\s+\d+\s+filled/i.test(s.textContent));
     const rect = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
     return {
       found: true,
