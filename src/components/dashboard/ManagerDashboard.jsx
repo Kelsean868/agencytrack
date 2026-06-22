@@ -33,6 +33,7 @@ import ManagerOverviewTab from './ManagerOverviewTab';
 import ProfileScreen from '../profile/ProfileScreen';
 import Shell from '../shell/Shell';
 import { getNavConfig } from '../shell/navConfig';
+import usePinnedNav from '../../hooks/usePinnedNav';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
 import AgentOfMonthTab from '../manager/AgentOfMonthTab';
@@ -218,6 +219,16 @@ export default function ManagerDashboard() {
     [navItems]
   );
 
+  // ★ Pinned-nav (Nav redesign PR-2) — producing managers (UM/BM) only. Other
+  // manager roles pass no tenantId/uid/configKey (hook is inert) and forward no
+  // pinned props to Shell, so their nav renders exactly as before.
+  const { pinnedItems, isPinned, pin, unpin } = usePinnedNav({
+    tenantId:  isProducingManager ? tenantId : undefined,
+    uid:       isProducingManager ? user?.uid : undefined,
+    configKey: isProducingManager ? 'producingManager' : null,
+    navItems,
+  });
+
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Manager';
   const roleLabel    = getRoleLabel(role);
 
@@ -348,6 +359,10 @@ export default function ManagerDashboard() {
   return (
     <Shell
       navItems={navItems}
+      pinnedItems={isProducingManager ? pinnedItems : undefined}
+      isPinned={isProducingManager ? isPinned : undefined}
+      onPin={isProducingManager ? pin : undefined}
+      onUnpin={isProducingManager ? unpin : undefined}
       bottomNavItems={BOTTOM_NAV}
       drawerNavItems={drawerNavItems}
       activeTab={activeTab}

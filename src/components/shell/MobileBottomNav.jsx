@@ -20,7 +20,7 @@ import MobileNavDrawer from './MobileNavDrawer';
  * drawerNavItems: optional list of sidebar-only items surfaced via a
  * slide-up "More" drawer. When provided, a 6th "More" button is appended.
  */
-export default function MobileBottomNav({ items, drawerNavItems, activeTab, setActiveTab, onAction }) {
+export default function MobileBottomNav({ items, drawerNavItems, activeTab, setActiveTab, onAction, pinnedItems }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   if (!items || items.length === 0) return null;
@@ -87,6 +87,7 @@ export default function MobileBottomNav({ items, drawerNavItems, activeTab, setA
       {drawerOpen && drawerNavItems && (
         <MobileNavDrawer
           items={drawerNavItems}
+          pinnedItems={pinnedItems}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           onClose={() => setDrawerOpen(false)}

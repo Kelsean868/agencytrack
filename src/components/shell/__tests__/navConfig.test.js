@@ -4,7 +4,7 @@
 // mapping for producing managers and the agent group/SOON/Daily-Log behavior.
 
 import { describe, it, expect } from 'vitest';
-import { getNavConfig } from '../navConfig';
+import { getNavConfig, getPinnedSeed } from '../navConfig';
 
 const ids = (items) => items.map((i) => i.id);
 
@@ -116,5 +116,33 @@ describe('getNavConfig — manager (defined, unassigned)', () => {
 describe('getNavConfig — unknown key', () => {
   it('returns an empty array', () => {
     expect(getNavConfig('nope')).toEqual([]);
+  });
+});
+
+describe('getPinnedSeed — ★ Pinned-zone seeds (PR-2)', () => {
+  it('agent seed binds to real navConfig ids', () => {
+    expect(getPinnedSeed('agent')).toEqual(['daily-log', 'wizard', 'policy-ledger', 'goals', 'planner']);
+  });
+
+  it('producingManager seed binds to real navConfig ids', () => {
+    expect(getPinnedSeed('producingManager')).toEqual(['mp-report', 'mastersheet', 'monthly-recruiting', 'mp-goals', 'planner']);
+  });
+
+  it('every seed id resolves to an item in the role config (no orphans)', () => {
+    for (const key of ['agent', 'producingManager']) {
+      const validIds = new Set(getNavConfig(key, { showDailyCapture: true }).map((i) => i.id));
+      for (const id of getPinnedSeed(key)) expect(validIds.has(id)).toBe(true);
+    }
+  });
+
+  it('producingManager seed does NOT include a Log Today / manager log id (dropped)', () => {
+    const seed = getPinnedSeed('producingManager');
+    expect(seed).not.toContain('log-today');
+    expect(seed).not.toContain('daily-log');
+  });
+
+  it('manager and unknown configs seed empty', () => {
+    expect(getPinnedSeed('manager')).toEqual([]);
+    expect(getPinnedSeed('nope')).toEqual([]);
   });
 });

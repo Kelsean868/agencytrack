@@ -36,6 +36,10 @@ export default function Shell({
   topbarActions,
   onSignOut,
   onPullRefresh,
+  pinnedItems,
+  isPinned,
+  onPin,
+  onUnpin,
   children,
 }) {
   const mainRef = useRef(null);
@@ -69,6 +73,10 @@ export default function Shell({
         onSignOut={onSignOut}
         collapsed={collapsed}
         toggleCollapse={toggleCollapse}
+        pinnedItems={pinnedItems}
+        isPinned={isPinned}
+        onPin={onPin}
+        onUnpin={onUnpin}
       />
       <div className="shell-main">
         <TopBar
@@ -94,6 +102,7 @@ export default function Shell({
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onAction={onAction}
+        pinnedItems={pinnedItems}
       />
     </div>
   );
