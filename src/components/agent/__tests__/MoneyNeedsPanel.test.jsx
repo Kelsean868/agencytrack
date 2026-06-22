@@ -314,3 +314,35 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     expect(within(dialog).queryByText('Frequency')).not.toBeInTheDocument();
   });
 });
+
+describe('MoneyNeedsPanel — accordion group header (mobile truncation fix)', () => {
+  it('header stacks on mobile (flex-col sm:flex-row) with the full label and metrics on a separate line', async () => {
+    await renderLoaded();
+
+    const headerBtn = screen.getByRole('button', { name: /Business Expenses/i });
+    // Header switches from a single justify-between row to a stacking layout.
+    expect(headerBtn.className).toMatch(/\bflex-col\b/);
+    expect(headerBtn.className).toMatch(/\bsm:flex-row\b/);
+
+    // The group label renders in full — no truncate clamp; it grows to fill line 1.
+    const labelEl = within(headerBtn).getByText('Business Expenses');
+    expect(labelEl.className).not.toMatch(/\btruncate\b/);
+    expect(labelEl.className).toMatch(/\bflex-1\b/);
+    expect(labelEl.className).toMatch(/\bmin-w-0\b/);
+
+    // The "{filled} of {total} filled" count is in the mobile sub-row, NOT inside the
+    // label's line-1 span (that crowding was the original truncation cause).
+    const countEl = within(headerBtn).getByText(/of .* filled/i);
+    expect(labelEl.parentElement.contains(countEl)).toBe(false);
+  });
+
+  it('header toggle still opens and closes the group', async () => {
+    await renderLoaded();
+    const headerBtn = screen.getByRole('button', { name: /Fixed Expenses/i });
+    expect(headerBtn.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(headerBtn);
+    expect(headerBtn.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(headerBtn);
+    expect(headerBtn.getAttribute('aria-expanded')).toBe('false');
+  });
+});
