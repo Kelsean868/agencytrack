@@ -295,30 +295,37 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between gap-2 px-4 h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
+        className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-2 px-4 py-2 sm:py-0 sm:h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
         aria-expanded={open}
       >
-        <span className="flex items-center gap-2.5 min-w-0">
+        {/* Line 1 (mobile) / left segment (desktop): dot + full label, chevron pinned right on mobile */}
+        <span className="flex items-center gap-2.5 min-w-0 w-full sm:w-auto">
           <span className={`h-2 w-2 shrink-0 rounded-sm ${dot}`} aria-hidden="true" />
-          <span className="truncate">{label}</span>
+          <span className="flex-1 min-w-0 [text-wrap:pretty]">{label}</span>
+          <ChevronDown
+            size={16}
+            className={`sm:hidden shrink-0 text-ink-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          />
+        </span>
+        {/* Line 2 (mobile) / right segment (desktop): count + total, chevron on desktop.
+            <span> (not <div>) so the header <button> holds only phrasing content. */}
+        <span className="flex items-center gap-2 shrink-0 pl-[1.125rem] sm:pl-0 text-ink-muted">
           {localItems.length > 0 && (
-            <span className="font-mono text-[10px] font-medium text-ink-muted tracking-wide shrink-0">
+            <span className="font-mono text-[10px] font-medium tracking-wide">
               {filledCount} of {localItems.length} filled
             </span>
           )}
-        </span>
-        <div className="flex items-center gap-2 shrink-0">
-          {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
+          {saving && <Loader2 size={12} className="animate-spin" />}
           {groupAnnualTotal > 0 && (
-            <span className="text-xs font-medium text-ink-muted tabular-nums">
+            <span className="text-xs font-medium tabular-nums">
               {formatCurrency(groupAnnualTotal)} / yr
             </span>
           )}
           <ChevronDown
             size={16}
-            className={`text-ink-muted transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+            className={`hidden sm:block transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
           />
-        </div>
+        </span>
       </button>
 
       {open && (
