@@ -13,7 +13,7 @@ PR-2 ships the ★ Pinned zone with pin/unpin on the **desktop Sidebar** only; `
 ## Nav redesign — PR-2/3/4 sequence (banked PR-1 nav-pr1-navconfig, 2026-06-22, the redesign roadmap)
 
 PR-1 centralized agent + producing-manager nav into `src/components/shell/navConfig.js`, rendered section groups + scope chips, and added the Planner `SOON` stub. **PR-2 (nav-pr2-pinned) ships the ★ Pinned zone + `prefs/app` persistence.** Remaining slices, each its own brief + PR:
-- ~~**PR-2 — ★ Pinned zone**~~ — in flight (nav-pr2-pinned): pin seeds, star affordance, owner-only `prefs/app` persistence, localStorage mirror.
+- ~~**PR-2 — ★ Pinned zone**~~ — SHIPPED (PR #727 `98d8aed`): pin seeds, star affordance, owner-only `prefs/app` persistence, per-user localStorage mirror. **Operator deploy pending:** `firebase deploy --only firestore:rules` (additive `prefs/{prefId}` block) — pin writes are denied in prod until then; deferred Firestore round-trip smoke completes post-deploy.
 - **PR-3 — Quick-Add:** desktop pencil → popover, mobile ＋ → sheet, remove mobile pencil, amber-dot relocation. **This is where the dropped producing-manager Meetings entry lands** (it's an action — `handleStartMeeting`/MeetingMode — not a tab; PR-3 Quick-Add is its home). Also the home for a manager `log-today` action (see the MINE-surfaces FU).
 - **PR-4 — Menu-layout preference:** `workspace`/`both` layouts + the My Work/My Team toggle (PR-1 shipped `pinned` layout only). Adds `menuLayout` to the SAME `prefs/app` doc — the PR-2 owner-only rule already permits it (no PR-4 rules change).
 
