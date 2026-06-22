@@ -50,10 +50,13 @@ export function deriveSections(draft) {
         { key: 'socialEngagementTotal',             label: 'Engagement total',          value: d.socialEngagementTotal ?? 0 },
         { key: 'socialInboxEnquiries',              label: 'Inbox enquiries',           value: d.socialInboxEnquiries ?? 0 },
         { key: 'namesFromSocial',                   label: 'Names from social',         value: d.namesFromSocial ?? 0 },
-        { key: 'socialPlatformBreakdown.facebook',  label: 'Facebook',                  value: spb.facebook ?? 0 },
-        { key: 'socialPlatformBreakdown.instagram', label: 'Instagram',                 value: spb.instagram ?? 0 },
-        { key: 'socialPlatformBreakdown.whatsapp',  label: 'WhatsApp',                  value: spb.whatsapp ?? 0 },
-        { key: 'socialPlatformBreakdown.linkedin',  label: 'LinkedIn',                  value: spb.linkedin ?? 0 },
+        // FU-b: the four per-platform rows collapse under a single "Platform
+        // breakdown" expandable in the social SectionCard. Four separate keys
+        // are preserved (locked ruling) — only the headline is aggregated.
+        { key: 'socialPlatformBreakdown.facebook',  label: 'Facebook',                  value: spb.facebook ?? 0,  expandable: true },
+        { key: 'socialPlatformBreakdown.instagram', label: 'Instagram',                 value: spb.instagram ?? 0, expandable: true },
+        { key: 'socialPlatformBreakdown.whatsapp',  label: 'WhatsApp',                  value: spb.whatsapp ?? 0,  expandable: true },
+        { key: 'socialPlatformBreakdown.linkedin',  label: 'LinkedIn',                  value: spb.linkedin ?? 0,  expandable: true },
       ],
     },
     {
