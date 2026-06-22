@@ -14,7 +14,7 @@ PR-2 ships the ★ Pinned zone with pin/unpin on the **desktop Sidebar** only; `
 
 PR-1 centralized agent + producing-manager nav into `src/components/shell/navConfig.js`, rendered section groups + scope chips, and added the Planner `SOON` stub. **PR-2 (nav-pr2-pinned) ships the ★ Pinned zone + `prefs/app` persistence.** Remaining slices, each its own brief + PR:
 - ~~**PR-2 — ★ Pinned zone**~~ — SHIPPED (PR #727 `98d8aed`): pin seeds, star affordance, owner-only `prefs/app` persistence, per-user localStorage mirror. **Deploy-gate CLOSED (2026-06-22):** `prefs/{prefId}` rule deployed; prod Firestore round-trip verified (write→mirror-clear→reload→read-back, 9/9 PASS — `smoke-nav-pr2.mjs` prod run, harness landed in `feat/nav-pr2-smoke-roundtrip`).
-- ~~**PR-3 — Quick-Add:**~~ **IN FLIGHT** (`feat/nav-pr3-quickadd`, PR #729). Desktop pencil → popover, mobile ＋ → sheet, mobile pencil removed (`hidden md:flex`), amber dot relocated to `MobileBottomNav` fab. Meetings (`start-meeting` → `handleStartMeeting`) and manager `log-today` (→ `setShowMpDailyModal`, Decision #6) both landed. Role lists: agent · producingManager · manager. Lint 0 · build · 3576/3576 tests · holding for smoke.
+- ~~**PR-3 — Quick-Add:**~~ SHIPPED (PR #729 `48e5a89`, HUMAN-MERGE 2026-06-22). Desktop pencil → popover, mobile ＋ → sheet, mobile pencil hidden (`hidden md:flex`), amber dot relocated to `MobileBottomNav` fab. Meetings (`start-meeting` → `handleStartMeeting`) and manager `log-today` (→ `setShowMpDailyModal`, Decision #6) both landed. Role lists: agent · producingManager · manager. 17 QuickAddMenu tests + 6 FastPath updates; lint 0; build; 3576/3576; smoke 21/21 PASS.
 - **PR-4 — Menu-layout preference:** `workspace`/`both` layouts + the My Work/My Team toggle (PR-1 shipped `pinned` layout only). Adds `menuLayout` to the SAME `prefs/app` doc — the PR-2 owner-only rule already permits it (no PR-4 rules change).
 
 ## Nav redesign — producing-manager "MINE" surfaces have no own-producer route yet (banked PR-1 nav-pr1-navconfig, 2026-06-22, MEDIUM)
@@ -23,7 +23,7 @@ The original PR-1 Target listed several producing-manager items the manager nav 
 - **My Production Dashboard** — no `mp-dashboard` tab (only the team `overview`).
 - **Persistency MINE** — no `mp-persistency` (only the team `persistency` entry tab).
 - **Production Report MINE** — no `mp-production-report` (only the team `production-report`).
-- ~~**Manager Daily Log**~~ — **RESOLVED in PR-3 (IN FLIGHT).** `log-today` key in the `producingManager` Quick-Add config dispatches `handleMgrAction('log-today')` → `setShowMpDailyModal(true)` (Decision #6 verdict from Phase 0). Both DailyFAB (desktop) and the ＋ fab (BOTTOM_NAV_PRODUCING) open QuickAddMenu; selecting "Log today" opens the existing `DailyCaptureV2` overlay. No new modal needed.
+- ~~**Manager Daily Log**~~ — **RESOLVED in PR-3** (PR #729 `48e5a89`, HUMAN-MERGE 2026-06-22). `log-today` key in the `producingManager` Quick-Add config dispatches `handleMgrAction('log-today')` → `setShowMpDailyModal(true)` (Decision #6 verdict from Phase 0). Both DailyFAB (desktop) and the ＋ fab (BOTTOM_NAV_PRODUCING) open QuickAddMenu; selecting "Log today" opens the existing `DailyCaptureV2` overlay. No new modal needed.
 - **Manager Career Portal** — agents have a `career` tab; managers have no career route.
 - **Awards MINE** — no `mp-awards` (the `awards` tab is the team/manager awards surface).
 
