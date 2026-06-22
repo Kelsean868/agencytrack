@@ -23,6 +23,13 @@ The producing-manager daily-review → Confirm fast path is RTL-covered (6 tests
 
 The fast path is wired for the **daily-review → Confirm** flow only. The `mp-report` direct-nav entry (sidebar "Weekly Report") and the `showWizard` "Submit Report" entry deliberately stay full-path (date-picker / step 1), matching **agent parity** — the agent's equivalent direct entry is also full-path. Routing direct-nav to Confirm would require a Dashboard-side current-week draft read (a `currentWeekSub`-style field in `useMyProduction`, which today exposes no current-week draft — only `getAgentSubmissions` list + `currentWeek`), since there is no `draftHint` on a cold tab click. **Revisit only if product wants direct-nav to also fast-path:** add a `getDraft(tenantId, uid, currentWeek)` read to `useMyProduction`, expose it, and feed it through `resolvePath` on the `mp-report`/`showWizard` entry. Not needed for the daily-review flow this PR ships.
 
+## Producing-manager fast-path — Gemini backstop nits (banked PR #724 post-merge Gemini, 2026-06-22, LOW)
+
+PR #724's Gemini review landed after the pre-merge window (absent at merge time); four medium comments dispositioned at the Rule 21 backstop. None are correctness — all deferred:
+
+- **`openMpWizardForWeek` `useCallback` (ManagerDashboard.jsx).** Gemini suggested wrapping the helper in `useCallback([mpLoggingMode])` for a stable ref passed to `DailyCaptureV2.onReviewSubmit`. **DISAGREED at backstop on agent-parity grounds:** the helper deliberately mirrors `AgentDashboard.openWizardForWeek`, which is also un-memoized, and `DailyCaptureV2` mounts via an early-return that re-mounts on each `showMpDailyModal` toggle (marginal stable-ref benefit). **To resolve (optional):** if pursued, memoize **both** `openWizardForWeek` (AgentDashboard) and `openMpWizardForWeek` (ManagerDashboard) together so the two stay identical — never just one.
+- **`page.waitForTimeout(...)` in `smoke-mp-fastpath-confirm.mjs` (lines ~63/77/121).** Gemini flagged three hardcoded sleeps; replace with element-state waits (`waitFor({state})`) / network-idle. These were copied verbatim from the proven agent `smoke-wizard-confirm-phase2.mjs` (the 4000ms after `daily-capture-v2` mount is a deliberate settle for the Sunday-detection async render). **To resolve:** harden both smokes together — swap the `waitForTimeout` sites for `waitFor`/`waitForFunction` state-waits in `smoke-mp-fastpath-confirm.mjs` AND the agent `smoke-wizard-confirm-phase2.mjs` it derives from, keeping the two patterns identical. Bundle with the 2026-06-28 deferred manager-Confirm smoke re-run.
+
 
 ## PM-2 smoke — BM own-data write-seeding for value-level read (banked PR #719, 2026-06-21, LOW)
 
