@@ -124,8 +124,12 @@ async function runAgentDesktop(browser) {
     : pass('agent-desktop-fab-dot', 'SKIP-INFO: amber dot absent (already logged today or hook settling — not a FAIL; dot present when !todayDailyEntry)');
 
   // 3. Click FAB → Quick-Add popover opens.
+  //    Selector: [role="dialog"][aria-label="Quick add"] — DailyFAB button shares
+  //    the same aria-label, so a bare [aria-label="Quick add"] resolves to 2
+  //    elements (strict-mode violation). The role="dialog" qualifier is unique
+  //    to the QuickAddMenu container and avoids the false-negative.
   await fab.click();
-  const menu = page.locator('[aria-label="Quick add"]');
+  const menu = page.locator('[role="dialog"][aria-label="Quick add"]');
   if (!(await menu.isVisible({ timeout: 5000 }).catch(() => false))) {
     fail('agent-desktop-menu-opens', 'Quick add dialog did not appear after FAB click');
     formatCaptureReport(cap);
@@ -242,8 +246,11 @@ async function runAgentMobile(browser) {
     : pass('agent-mobile-dot-on-plus', 'SKIP-INFO: amber dot absent (already logged or hook settling — dot driven by showDailyCTA && todayDailyChecked && !todayDailyEntry)');
 
   // 4. Tap center ＋ → Quick-Add sheet opens.
+  //    Same [role="dialog"] qualifier used here: DailyFAB is hidden md:flex but
+  //    still exists in the DOM with aria-label="Quick add", causing a strict-mode
+  //    violation on a bare [aria-label="Quick add"] selector.
   await centerPlus.click();
-  const menu = page.locator('[aria-label="Quick add"]');
+  const menu = page.locator('[role="dialog"][aria-label="Quick add"]');
   if (!(await menu.isVisible({ timeout: 5000 }).catch(() => false))) {
     fail('agent-mobile-sheet-opens', 'Quick add sheet did not appear after center ＋ tap');
     formatCaptureReport(cap);
@@ -326,8 +333,9 @@ async function runPmDesktop(browser) {
   pass('pm-desktop-fab-visible', 'daily-fab visible on mp-goals tab (UM hybrid mode)');
 
   // 3. Click FAB → Quick-Add popover opens with producingManager config.
+  //    [role="dialog"] qualifier required — DailyFAB shares aria-label="Quick add".
   await fab.click();
-  const menu = page.locator('[aria-label="Quick add"]');
+  const menu = page.locator('[role="dialog"][aria-label="Quick add"]');
   if (!(await menu.isVisible({ timeout: 5000 }).catch(() => false))) {
     fail('pm-desktop-menu-opens', 'Quick add dialog did not appear after UM FAB click');
     formatCaptureReport(cap);
@@ -365,22 +373,37 @@ async function runPmDesktop(browser) {
   }
 
   // 6. Reopen menu → "Start a meeting" → MeetingMode (full-screen takeover,
-  //    data-meeting-mode="true"). handleStartMeeting is async (loads subs) —
-  //    wait up to 8 s for the meeting mode root to appear.
+  //    data-meeting-mode="true"). handleStartMeeting is async (loads subs +
+  //    users from Firestore before setMeetingActive(true)) — allow 15 s.
+  //    After DailyCaptureV2 closes, wait for the Shell to fully re-render before
+  //    looking for the FAB — 600 ms sometimes isn't enough when React has queued
+  //    multiple state updates.
+  await page.waitForFunction(
+    () => !!document.querySelector('[data-testid="daily-fab"]'),
+    { timeout: 6000 },
+  ).catch(() => {});
+
   const fab2 = page.locator('[data-testid="daily-fab"]');
   if (await fab2.isVisible({ timeout: 4000 }).catch(() => false)) {
     await fab2.click();
+    // Wait for the QuickAddMenu dialog to appear before clicking Start a meeting.
+    const menu2 = page.locator('[role="dialog"][aria-label="Quick add"]');
+    await menu2.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+
     const meetingBtn = page.locator('[data-testid="quickadd-start-meeting"]');
     if (await meetingBtn.isVisible({ timeout: 3000 }).catch(() => false)) {
       await meetingBtn.click();
       // QuickAddMenu closes; handleStartMeeting() loads subs then setMeetingActive(true).
+      // React event handler dispatches async — give it 500 ms to fire before polling.
+      await page.waitForTimeout(500);
       const meetingMode = page.locator('[data-meeting-mode="true"]');
-      if (await meetingMode.isVisible({ timeout: 8000 }).catch(() => false)) {
+      if (await meetingMode.isVisible({ timeout: 15000 }).catch(() => false)) {
         pass('pm-desktop-start-meeting', 'MeetingMode opened after Start a meeting click');
       } else {
-        // Check if there was an error vs just slow load.
-        const bodyText = await page.evaluate(() => document.body.textContent?.slice(0, 200) ?? '');
-        fail('pm-desktop-start-meeting', `data-meeting-mode="true" not found within 8 s (body=${bodyText.replace(/\s+/g, ' ')})`);
+        // Capture DOM + console state for diagnosis.
+        const bodyText = await page.evaluate(() => document.body.textContent?.slice(0, 300) ?? '');
+        const consoleErrs = (await page.evaluate(() => window.__smokeErrors ?? []));
+        fail('pm-desktop-start-meeting', `data-meeting-mode="true" not found within 15 s (body=${bodyText.replace(/\s+/g, ' ')} | errors=${JSON.stringify(consoleErrs)})`);
       }
     } else {
       fail('pm-desktop-start-meeting', 'quickadd-start-meeting not found in PM menu on reopen');
