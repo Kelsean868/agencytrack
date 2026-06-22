@@ -107,6 +107,7 @@ export default function AgentDashboard() {
   const [showWizard, setShowWizard]           = useState(false);
   const [wizardWeek, setWizardWeek]           = useState(null);
   const [wizardInitialStep, setWizardInitialStep] = useState(1);
+  const [wizardInitialScreen, setWizardInitialScreen] = useState(null);
   const [showDailyModal, setShowDailyModal]   = useState(false);
   const [unlockDismissed, setUnlockDismissed] = useState(false);
   const [viewingSubmission, setViewingSubmission] = useState(null);
@@ -424,7 +425,10 @@ export default function AgentDashboard() {
 
   const openWizardForWeek = (week, draft = null) => {
     const path = resolvePath(loggingMode, draft);
+    // Fast path lands on the Confirm screen (Wizard v3 Phase 1); it advances to
+    // step 10 (Rate) on confirm. Full path opens at step 1 with no Confirm.
     setWizardInitialStep(path === 'fast' ? 10 : 1);
+    setWizardInitialScreen(path === 'fast' ? 'confirm' : null);
     setWizardWeek(week);
     setShowWizard(true);
   };
@@ -461,7 +465,7 @@ export default function AgentDashboard() {
   };
 
   if (showWizard) {
-    return <WizardForm initialWeek={wizardWeek} initialStep={wizardInitialStep} goal={goals} floors={resolvedMinimums?.weeklyActivityFloors} onClose={() => { setShowWizard(false); setWizardWeek(null); setWizardInitialStep(null); }} />;
+    return <WizardForm initialWeek={wizardWeek} initialStep={wizardInitialStep} initialScreen={wizardInitialScreen} goal={goals} floors={resolvedMinimums?.weeklyActivityFloors} onClose={() => { setShowWizard(false); setWizardWeek(null); setWizardInitialStep(null); setWizardInitialScreen(null); }} />;
   }
 
   if (showDailyModal) {
@@ -471,11 +475,16 @@ export default function AgentDashboard() {
           setShowDailyModal(false);
           refreshDailyEntry();
         }}
-        onReviewSubmit={(week) => {
+        onReviewSubmit={(week, draftHint) => {
           setShowDailyModal(false);
-          // Signal the fast path: agent coming from DailyCaptureV2 always has
-          // aggregated daily data. resolvePath returns 'fast' → ratings step 10.
-          openWizardForWeek(week, { aggregatedFromDaily: true, daysWorked: 1 });
+          // Phase 1.2 (brief premise corrected — see PR description): route on the
+          // REVIEWED (completed) week's real aggregation, which DailyCaptureV2
+          // computes from its weekDocs and passes through here. Do NOT use
+          // currentWeekSub — on Sunday (the only day this deep-link appears) it is
+          // the *current* (new, empty) week's draft, not the reviewed week.
+          // resolvePath → 'fast' (→ Confirm) when the reviewed week has daily
+          // entries; 'full' otherwise.
+          openWizardForWeek(week, draftHint);
         }}
       />
     );
@@ -537,7 +546,7 @@ export default function AgentDashboard() {
       {/* Unlock banner */}
       {showUnlockBanner && (
         <button
-          onClick={() => openWizardForWeek(currentWeekSub.weekStarting)}
+          onClick={() => openWizardForWeek(currentWeekSub.weekStarting, currentWeekSub)}
           className="w-full text-left mb-4 flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/30"
         >
           <div className="flex-1">

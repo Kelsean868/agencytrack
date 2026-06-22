@@ -335,3 +335,123 @@ describe('D — onEditField: stepper interactions', () => {
     expect(ttdSpans.length).toBeGreaterThan(0);
   });
 });
+
+// ── Suite E — Phase 1: onConfirm + carried #696 FUs (a/b/c) ───────────────────
+
+describe('E — onConfirm footer', () => {
+  it('renders "Looks good →" and calls onConfirm when provided', () => {
+    const onConfirm = vi.fn();
+    render(
+      <WeekConfirmView
+        draft={DRAFT_PARTIAL}
+        sections={deriveSections(DRAFT_PARTIAL)}
+        onEditField={vi.fn()}
+        onConfirm={onConfirm}
+      />,
+    );
+    const btn = screen.getByTestId('week-confirm-next');
+    expect(btn.textContent).toMatch(/looks good/i);
+    fireEvent.click(btn);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits the footer button when onConfirm is not provided', () => {
+    render(
+      <WeekConfirmView
+        draft={DRAFT_PARTIAL}
+        sections={deriveSections(DRAFT_PARTIAL)}
+        onEditField={vi.fn()}
+      />,
+    );
+    expect(screen.queryByTestId('week-confirm-next')).toBeNull();
+  });
+});
+
+describe('E — FU-a: keystroke coercion (partial entry holds while focused)', () => {
+  it('a partial decimal ("1.") is held verbatim while focused, not snapped', () => {
+    const onEditField = vi.fn();
+    render(
+      <WeekConfirmView
+        draft={DRAFT_PARTIAL}
+        sections={deriveSections(DRAFT_PARTIAL)}
+        onEditField={onEditField}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('wcv-section-hours-edit'));
+    const input = screen.getByRole('textbox', { name: 'Office hours' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '1.' } });
+    // Held raw — NOT coerced to "1" (the pre-FU bug stripped the dot every keystroke).
+    expect(input.value).toBe('1.');
+    expect(onEditField).not.toHaveBeenCalled();
+    // Commit on blur → parsed float.
+    fireEvent.blur(input);
+    expect(onEditField).toHaveBeenCalledWith('officeHours', 1);
+  });
+
+  it('clearing the field to empty holds "" while focused (not forced to 0)', () => {
+    render(
+      <WeekConfirmView
+        draft={DRAFT_PARTIAL}
+        sections={deriveSections(DRAFT_PARTIAL)}
+        onEditField={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('wcv-section-hours-edit'));
+    const input = screen.getByRole('textbox', { name: 'Office hours' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '' } });
+    expect(input.value).toBe('');
+  });
+});
+
+describe('E — FU-b: social platform breakdown expandable', () => {
+  it('platform rows are hidden behind a toggle in edit mode until expanded', () => {
+    render(
+      <WeekConfirmView
+        draft={DRAFT_PARTIAL}
+        sections={deriveSections(DRAFT_PARTIAL)}
+        onEditField={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('wcv-section-social-edit'));
+    // Aggregate row present; platform stepper hidden initially.
+    expect(screen.getByRole('button', { name: 'Posts / content published increase' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Facebook increase' })).toBeNull();
+    // Expand → platform steppers appear.
+    fireEvent.click(screen.getByTestId('wcv-section-social-expand'));
+    expect(screen.getByRole('button', { name: 'Facebook increase' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'LinkedIn increase' })).toBeInTheDocument();
+  });
+
+  it('non-social sections render no platform-breakdown toggle', () => {
+    render(
+      <WeekConfirmView
+        draft={DRAFT_PARTIAL}
+        sections={deriveSections(DRAFT_PARTIAL)}
+        onEditField={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('wcv-section-prospecting-edit'));
+    expect(screen.queryByTestId('wcv-section-prospecting-expand')).toBeNull();
+  });
+});
+
+describe('E — FU-c: edit button active-state', () => {
+  it('the edit button gains a distinct active class while editing', () => {
+    render(
+      <WeekConfirmView
+        draft={DRAFT_PARTIAL}
+        sections={deriveSections(DRAFT_PARTIAL)}
+        onEditField={vi.fn()}
+      />,
+    );
+    const btn = screen.getByTestId('wcv-section-appointments-edit');
+    // Inactive: no accent background.
+    expect(btn.className).not.toMatch(/bg-primary\/10/);
+    fireEvent.click(btn);
+    // Active: accent background + border applied.
+    expect(btn.className).toMatch(/bg-primary\/10/);
+    expect(btn.className).toMatch(/border-primary\/50/);
+  });
+});

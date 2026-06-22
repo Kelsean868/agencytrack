@@ -495,9 +495,13 @@ describe('SundayConfirmView (component path)', () => {
     vi.useRealTimers();
   });
 
-  it('CTA "Review & submit" deep-links to the wizard for the COMPLETED week', async () => {
+  it('CTA "Review & submit" deep-links to the COMPLETED week with its real aggregation hint', async () => {
     vi.useFakeTimers({ toFake: ['Date'], now: new Date('2026-06-21T12:00:00Z') });
-    hoisted.getDailyEntriesForWeek.mockResolvedValue([]);
+    // Two daily docs for the completed week → daysWorked 2, aggregatedFromDaily true.
+    hoisted.getDailyEntriesForWeek.mockResolvedValue([
+      { date: '2026-06-15', dials: 5, ffiConducted: 1 },
+      { date: '2026-06-16', dials: 3, ffiConducted: 0 },
+    ]);
     const onReviewSubmit = vi.fn();
     render(<DailyCaptureV2 onClose={vi.fn()} onReviewSubmit={onReviewSubmit} />);
     await waitFor(() =>
@@ -505,8 +509,13 @@ describe('SundayConfirmView (component path)', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: /review & submit/i }));
     // Sunday 2026-06-21 → completed week 2026-06-14 (prior Sunday), not today's.
+    // The hint reflects the reviewed week's real daily aggregation (Phase 1.2):
+    // resolvePath gates on this, NOT on the dashboard's current-week draft.
     expect(onReviewSubmit).toHaveBeenCalledTimes(1);
-    expect(onReviewSubmit).toHaveBeenCalledWith('2026-06-14');
+    expect(onReviewSubmit).toHaveBeenCalledWith('2026-06-14', {
+      aggregatedFromDaily: true,
+      daysWorked: 2,
+    });
     vi.useRealTimers();
   });
 

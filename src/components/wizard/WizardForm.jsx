@@ -51,6 +51,9 @@ import { computePoints } from '../../lib/computePoints.js';
 import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
+import WeekConfirmView from './WeekConfirmView';
+import { deriveSections } from './WeekConfirmView.helpers';
+import { setByPath } from './WizardForm.helpers';
 
 // All 12 wizard steps are now v2 components (legacy step files retired in the
 // R1→R2→R3 pass). v2steps/ holds every step's component.
@@ -193,16 +196,18 @@ const INITIAL_DATA = {
   },
 };
 
-// screen: 'date' | 'step' | 'done' | 'submitted'
+// screen: 'date' | 'confirm' | 'step' | 'done' | 'submitted'
 // Note: 'review' removed in PR1 — step 11 submits directly. PR3 reintroduces
 // the discrete review step with Edit·Step-N jump-back.
+// 'confirm' (Wizard v3 Phase 1): the fast-path entry — daily/hybrid agents
+// confirm their daily-aggregated week before Rate → Goals → Submit.
 const BRANCH_DIRECT_UNIT = '__branch_direct__';
 
-export default function WizardForm({ onClose, initialWeek, initialStep, goal, floors }) {
+export default function WizardForm({ onClose, initialWeek, initialStep, initialScreen, goal, floors }) {
   const { user, userProfile, tenantId, role, branchId } = useAuth();
   const targetUnitId = role === 'branch_manager' ? BRANCH_DIRECT_UNIT : (userProfile?.unitId ?? null);
   const agentName = userProfile?.name ?? userProfile?.email ?? '';
-  const [screen, setScreen]             = useState(initialWeek ? 'step' : 'date');
+  const [screen, setScreen]             = useState(initialScreen ?? (initialWeek ? 'step' : 'date'));
   const [weekStarting, setWeekStarting] = useState(initialWeek ?? '');
   const [localWeekChoice, setLocalWeekChoice] = useState(
     () => initialWeek ?? getLastNSundaysForDropdown(1)[0]?.value ?? ''
@@ -428,6 +433,25 @@ export default function WizardForm({ onClose, initialWeek, initialStep, goal, fl
     setStep(stepN);
   }, []);
 
+  // ── Wizard v3 fast-path Confirm screen (Phase 1) ──────────────────────────
+  // "Looks good →" advances out of Confirm into the step flow at step 10 (Rate).
+  // Step 11 = Goals, step 12 = Review (no skip-model needed — Phase 0 verified
+  // STEPS 10/11/12 = Rate/Goals/Review).
+  const handleConfirmNext = useCallback(() => {
+    setError('');
+    setScreen('step');
+    setStep(10);
+  }, []);
+
+  // Inline field edit from Confirm. Domain rule: parseFloat, never store a
+  // string. Writes through setByPath so dotted keys (newBusiness.api,
+  // socialPlatformBreakdown.*) update the real nested field; existing autosave
+  // then persists the merged draft.
+  const handleConfirmEdit = useCallback((key, nextValue) => {
+    const num = parseFloat(nextValue) || 0;
+    setFormData((prev) => setByPath(prev, key, num));
+  }, []);
+
   const activeStepEntry = STEPS.find((s) => s.n === step) ?? STEPS[0];
   const ActiveStepComponent = activeStepEntry.Component;
   const nextStepEntry = STEPS.find((s) => s.n === step + 1);
@@ -464,6 +488,7 @@ export default function WizardForm({ onClose, initialWeek, initialStep, goal, fl
           <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-muted">
             {screen === 'step'      && `Step ${step} · ${activeStepEntry.phase[0].toUpperCase()}${activeStepEntry.phase.slice(1)}`}
             {screen === 'date'      && 'Weekly Report'}
+            {screen === 'confirm'   && 'Weekly Report'}
             {screen === 'done'      && 'Complete'}
             {screen === 'submitted' && 'Weekly Report'}
           </p>
@@ -473,6 +498,7 @@ export default function WizardForm({ onClose, initialWeek, initialStep, goal, fl
             data-testid="wizard-v2-step-title"
           >
             {screen === 'date'      && 'Select Week'}
+            {screen === 'confirm'   && 'Confirm your week'}
             {screen === 'step'      && activeStepEntry.title}
             {screen === 'done'      && 'Report Submitted'}
             {screen === 'submitted' && 'Already submitted'}
@@ -563,6 +589,19 @@ export default function WizardForm({ onClose, initialWeek, initialStep, goal, fl
               Start Report
             </button>
           </div>
+        )}
+
+        {/* Wizard v3 fast-path Confirm screen — daily/hybrid agents confirm
+            their daily-aggregated week before Rate → Goals → Submit. Sections
+            derive from live formData so inline edits reflect immediately. */}
+        {screen === 'confirm' && (
+          <WeekConfirmView
+            draft={formData}
+            sections={deriveSections(formData)}
+            onEditField={handleConfirmEdit}
+            onConfirm={handleConfirmNext}
+            variant="desktop"
+          />
         )}
 
         {/* Active v2 step */}

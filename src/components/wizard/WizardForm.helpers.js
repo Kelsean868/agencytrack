@@ -28,3 +28,25 @@ export function resolvePath(loggingMode, draft) {
   }
   return 'full';
 }
+
+/**
+ * Immutably set a (possibly dotted) path on a plain-object tree.
+ *
+ * Supports the nested keys deriveSections emits (e.g. 'newBusiness.api',
+ * 'socialPlatformBreakdown.facebook') so a Confirm-screen edit lands on the real
+ * nested field rather than creating a literal "newBusiness.api" key. Flat keys
+ * pass straight through. Used by WizardForm's handleConfirmEdit.
+ *
+ * @param {object} obj   - source object (not mutated)
+ * @param {string} path  - flat key ('dials') or dotted path ('newBusiness.api')
+ * @param {*}      value - value to set at the path
+ * @returns {object} a shallow-cloned tree with the path set
+ */
+export function setByPath(obj, path, value) {
+  const dot = path.indexOf('.');
+  if (dot === -1) return { ...obj, [path]: value };
+  const head = path.slice(0, dot);
+  const rest = path.slice(dot + 1);
+  const child = (obj[head] && typeof obj[head] === 'object') ? obj[head] : {};
+  return { ...obj, [head]: setByPath(child, rest, value) };
+}

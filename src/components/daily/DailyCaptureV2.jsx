@@ -766,7 +766,13 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
               weekDocs={weekDocs}
               onClose={onClose}
               submitted={weeklySubmitted}
-              onReviewSubmit={onReviewSubmit ? () => onReviewSubmit(weekStarting) : undefined}
+              // Pass the reviewed (completed) week's real daily-aggregation hint
+              // so the wizard's resolvePath gates on actual days logged — fast
+              // path (→ Confirm) when this week has daily entries, full otherwise.
+              onReviewSubmit={onReviewSubmit ? () => onReviewSubmit(weekStarting, {
+                aggregatedFromDaily: weekDocs.length > 0,
+                daysWorked: weekDocs.length,
+              }) : undefined}
             />
           )
         ) : (
