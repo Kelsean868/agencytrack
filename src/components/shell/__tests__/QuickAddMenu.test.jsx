@@ -14,7 +14,7 @@
 //   8. Escape key calls onClose.
 
 import React from 'react';
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import QuickAddMenu from '../QuickAddMenu';
 import { getQuickAddActions } from '../quickAddConfig';
