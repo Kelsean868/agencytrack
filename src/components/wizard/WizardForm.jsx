@@ -48,6 +48,7 @@ import ReviewSubmit from './v2chrome/ReviewSubmit';
 import Celebration from './v2chrome/Celebration';
 import { saveDraft, submitReport, getDraft, getRecentSubmissions, sanitize, getLeaderboardPoints } from '../../services/submissionService';
 import { computePoints } from '../../lib/computePoints.js';
+import { mapFloorToPoints } from '../daily/DailyCaptureV2.helpers';
 import { getLastNSundaysForDropdown } from '../../utils/dateHelpers';
 import { formatDateFriendly } from '../../utils/formatters';
 import SubmissionViewer from '../submissions/SubmissionViewer';
@@ -218,6 +219,10 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
   // Review" affordance appears on the footer (Next-label override). This
   // avoids extending PR1's visited-step navigation semantics.
   const [returnToReview, setReturnToReview] = useState(false);
+  // Wizard v3 fast path: set true when the agent advances out of the Confirm
+  // screen into step 10 (Rate). Lets handleBack return to Confirm from step 10
+  // instead of decrementing to full-path step 9 (which the fast path skipped).
+  const [cameFromConfirm, setCameFromConfirm] = useState(false);
   const [formData, setFormData]         = useState(INITIAL_DATA);
   // Confirm screen: false until the getDraft read completes, so the fast-path
   // Confirm never flashes WeekConfirmView's "No activity logged" empty state
@@ -420,7 +425,13 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
   };
 
   const handleBack = () => {
-    if (step > 1) {
+    if (step === 10 && cameFromConfirm) {
+      // Fast path entered via Confirm: Back from the first post-Confirm step
+      // (Rate, step 10) returns to the Confirm screen, not full-path step 9.
+      setCameFromConfirm(false);
+      setError('');
+      setScreen('confirm');
+    } else if (step > 1) {
       setError('');
       setStep((s) => s - 1);
     } else {
@@ -451,6 +462,7 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
   // STEPS 10/11/12 = Rate/Goals/Review).
   const handleConfirmNext = useCallback(() => {
     setError('');
+    setCameFromConfirm(true);
     setScreen('step');
     setStep(10);
   }, []);
@@ -467,6 +479,18 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
   const activeStepEntry = STEPS.find((s) => s.n === step) ?? STEPS[0];
   const ActiveStepComponent = activeStepEntry.Component;
   const nextStepEntry = STEPS.find((s) => s.n === step + 1);
+
+  // Wizard v3 fast-path Confirm readout: points earned this week vs the floor
+  // target. Both helpers are pure (no fetch); mirrors handleSubmit's earned
+  // computation. NOT intra-week pace (computeWeekToDatePoints/computePaceState) —
+  // there is no elapsed-days cursor at end-of-week confirmation.
+  const confirmCommissionRate = userProfile?.commissionRate ?? 0;
+  const confirmEarnedPoints = useMemo(
+    () => computePoints(sanitize(formData, confirmCommissionRate)),
+    [formData, confirmCommissionRate]
+  );
+  const confirmFloorPoints = useMemo(() => mapFloorToPoints(floors), [floors]);
+  const confirmFloorMet = confirmFloorPoints > 0 && confirmEarnedPoints >= confirmFloorPoints;
 
   const prevLabel = step === 1 ? 'Change week' : 'Back';
   const nextLabel = (() => {
@@ -610,13 +634,42 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
             "No activity logged" empty state at this trust-sensitive moment. */}
         {screen === 'confirm' && (
           draftLoaded ? (
-            <WeekConfirmView
-              draft={formData}
-              sections={deriveSections(formData)}
-              onEditField={handleConfirmEdit}
-              onConfirm={handleConfirmNext}
-              variant="desktop"
-            />
+            <>
+              {/* Points-earned-vs-floor readout — end-of-week context, not pace. */}
+              <div data-testid="wizard-v2-confirm-points" className="max-w-lg mx-auto px-4 pt-4">
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-card border border-border/60 px-4 py-3 shadow-sm">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-ink-muted">
+                      Points this week
+                    </p>
+                    <p
+                      data-testid="wizard-v2-confirm-points-value"
+                      className="mt-1 text-xl font-display font-bold text-ink leading-none"
+                      style={{ letterSpacing: '-0.02em' }}
+                    >
+                      {confirmEarnedPoints}{' '}
+                      <span className="text-ink-muted font-normal">/ {confirmFloorPoints} pts</span>
+                    </p>
+                  </div>
+                  {confirmFloorMet && (
+                    <span
+                      data-testid="wizard-v2-confirm-floor-met"
+                      className="flex items-center gap-1 text-xs font-semibold text-success-ink shrink-0"
+                    >
+                      <Check size={14} aria-hidden="true" />
+                      Floor met
+                    </span>
+                  )}
+                </div>
+              </div>
+              <WeekConfirmView
+                draft={formData}
+                sections={deriveSections(formData)}
+                onEditField={handleConfirmEdit}
+                onConfirm={handleConfirmNext}
+                variant="desktop"
+              />
+            </>
           ) : (
             <div
               className="flex flex-col items-center justify-center py-16"

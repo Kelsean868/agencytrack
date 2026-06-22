@@ -66,20 +66,17 @@ Two coupled platform deadlines on the Cloud Functions stack:
 ---
 
 
-## Wizard v3 Q5 — useSeededTargets reads `data.dials` (daily field) instead of `data.coldCalls` (banked PR #698 Gemini backstop, 2026-06-20, LOW)
+## ~~Wizard v3 Q5 — useSeededTargets reads `data.dials` (daily field) instead of `data.coldCalls`~~ (RESOLVED — Wizard v3 fast-path Phase 2, 2026-06-22)
 
-`useSeededTargets` at `src/hooks/useSeededTargets.js:29` computes `thisWeekDials` from `data?.dials`. The weekly wizard's `formData` has no `dials` field — that is a DailyCaptureV2 daily field (PR #684). The weekly form uses `coldCalls` (plus breakdown fields `referralCalls`, `followUpCalls`, `seminarTradeshowCalls`). Result: `thisWeekDials` is always 0; `Math.max(f.callsMade, 0)` always returns the floor; the "seed from this week's actuals" path for dials is silently broken.
+**Resolved.** `src/hooks/useSeededTargets.js:29` now reads `parseFloat(data?.dials ?? data?.coldCalls) || 0`, with `data?.coldCalls` added to the dependency array. **Diagnosis refinement (Rule 11):** the FU body's suggested fix was a plain swap (`data?.dials` → `data?.coldCalls`); a swap would have *regressed the fast path*, where the daily-aggregated draft genuinely carries `dials`. The shipped fix uses `??` so the fast path (dials present) is unchanged and the full path (weekly `INITIAL_DATA` has only `coldCalls`) now seeds correctly. Regression covered by `useSeededTargets.test.js` full-path + precedence cases. Original FU body preserved below for trail.
 
-**Symptom:** an agent who made 80 cold calls this week still sees the floor value (e.g. 60) as the step-11 dials suggestion, never 80.
+<sub>~~`useSeededTargets` computed `thisWeekDials` from `data?.dials`. The weekly wizard's `formData` had no `dials` field (a DailyCaptureV2 daily field, PR #684); the weekly form uses `coldCalls`. Result: `thisWeekDials` was always 0; `Math.max(f.callsMade, 0)` always returned the floor; the "seed from this week's actuals" path for dials was silently broken. Symptom: an agent who made 80 cold calls still saw the floor as the step-11 dials suggestion. Severity LOW (suggestion still rendered the floor; no error). Source: Gemini backstop review on PR #698 (`04dbd3b`), dispositioned IMPLEMENT → banked as FU.~~</sub>
 
-**Fix (targeted — 3 files):**
-1. `src/hooks/useSeededTargets.js:29` — `data?.dials` → `data?.coldCalls` (or sum of all call-breakdown fields if total is the intent).
-2. `src/hooks/useSeededTargets.js:54` (dependency array) — `data?.dials` → `data?.coldCalls`.
-3. `src/hooks/__tests__/useSeededTargets.test.js` — update any fixture using `dials:` → `coldCalls:` in the "actual > floor" test paths.
+## Wizard v3 — "Target Dials" semantics: cold-calls-only vs total calls (product Q, banked 2026-06-22, LOW)
 
-**Severity:** LOW — suggestion still renders (floor value); no error thrown. The actuals-seed path is dead for dials only; FFI and CI actuals (`ffiConducted`, `ciConducted`) seed correctly. **Falsification:** if WizardForm's `formData` ever gains a `dials` key, the bug heals without code change.
+`useSeededTargets` seeds the step-11 "Target Dials" suggestion from the week's actual dials. On the full path that actual now reads `coldCalls` (the `data?.dials ?? data?.coldCalls` fallback shipped in Phase 2). **Open product question:** should "Target Dials" mean **cold-calls only** (current behaviour) or the **total of all call subtypes** (`coldCalls + referralCalls + followUpCalls + seminarTradeshowCalls`)? The weekly form captures all four; the seed currently considers only the cold bucket. If "Dials" is meant as the all-calls total, the read should sum the four subtypes instead of falling back to `coldCalls` alone.
 
-**Source:** Gemini backstop review on PR #698 (`04dbd3b`), dispositioned IMPLEMENT → banked as FU (PR already merged; no in-PR fix possible).
+**Severity:** LOW — the suggestion is display-only and the agent can adjust it. **Decision owner:** head-of-sales / Kyron. **Falsification:** resolved once a product call fixes the intended meaning of "Dials" in the targets step.
 
 ---
 

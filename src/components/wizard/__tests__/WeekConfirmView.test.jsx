@@ -403,6 +403,44 @@ describe('E — FU-a: keystroke coercion (partial entry holds while focused)', (
     fireEvent.change(input, { target: { value: '' } });
     expect(input.value).toBe('');
   });
+
+  // Type-then-click: the +/- buttons must commit from the live typed draft, not
+  // the originally-committed value. Proves bump()'s base() reads the focused
+  // draft (DRAFT_PARTIAL.appointmentsSet starts at 4; after typing 7 the bump
+  // must operate on 7, not 4).
+  it('+ button commits from the typed draft (type 7 → click + → 8)', () => {
+    const onEditField = vi.fn();
+    render(
+      <WeekConfirmView
+        draft={DRAFT_PARTIAL}
+        sections={deriveSections(DRAFT_PARTIAL)}
+        onEditField={onEditField}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('wcv-section-appointments-edit'));
+    const input = screen.getByRole('textbox', { name: 'Appointments set' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Appointments set increase' }));
+    expect(onEditField).toHaveBeenCalledWith('appointmentsSet', 8);
+  });
+
+  it('− button commits from the typed draft (type 7 → click − → 6)', () => {
+    const onEditField = vi.fn();
+    render(
+      <WeekConfirmView
+        draft={DRAFT_PARTIAL}
+        sections={deriveSections(DRAFT_PARTIAL)}
+        onEditField={onEditField}
+      />,
+    );
+    fireEvent.click(screen.getByTestId('wcv-section-appointments-edit'));
+    const input = screen.getByRole('textbox', { name: 'Appointments set' });
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: '7' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Appointments set decrease' }));
+    expect(onEditField).toHaveBeenCalledWith('appointmentsSet', 6);
+  });
 });
 
 describe('E — FU-b: social platform breakdown expandable', () => {

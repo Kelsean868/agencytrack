@@ -47,6 +47,7 @@ vi.mock('../../submissions/SubmissionViewer', () => ({
 
 import WizardForm from '../WizardForm';
 import { getDraft } from '../../../services/submissionService';
+import { mapFloorToPoints } from '../../daily/DailyCaptureV2.helpers';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -109,5 +110,73 @@ describe('Wizard v3 — Confirm screen (fast-path entry)', () => {
     });
     expect(screen.queryByTestId('week-confirm-view')).toBeNull();
     expect(screen.getByTestId('wizard-v2-step-title').textContent).toBe('Select Week');
+  });
+});
+
+describe('Wizard v3 — fast-path back-navigation (Confirm ↔ step 10)', () => {
+  it('Back from step 10 returns to the Confirm screen when entered via the fast path', async () => {
+    render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" initialScreen="confirm" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('week-confirm-next')).toBeInTheDocument();
+    });
+    // Advance Confirm → step 10.
+    fireEvent.click(screen.getByTestId('week-confirm-next'));
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-v2-step-counter').textContent).toMatch(/Step 10 of 12/);
+    });
+    // Back from step 10 → Confirm, NOT step 9.
+    fireEvent.click(screen.getByTestId('wizard-v2-back'));
+    await waitFor(() => {
+      expect(screen.getByTestId('week-confirm-view')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('wizard-v2-step-title').textContent).toBe('Confirm your week');
+  });
+
+  it('full-path Back from step 10 decrements to step 9 (regression guard)', async () => {
+    render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" initialStep={10} />);
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-v2-step-counter').textContent).toMatch(/Step 10 of 12/);
+    });
+    // No fast-path origin → Back decrements to step 9 (Hours worked), no Confirm.
+    fireEvent.click(screen.getByTestId('wizard-v2-back'));
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-v2-step-counter').textContent).toMatch(/Step 9 of 12/);
+    });
+    expect(screen.getByTestId('wizard-v2-step-title').textContent).toBe('Hours worked');
+    expect(screen.queryByTestId('week-confirm-view')).toBeNull();
+  });
+});
+
+describe('Wizard v3 — Confirm points-earned-vs-floor readout', () => {
+  const SEEDED_DRAFT = { aggregatedFromDaily: true, daysWorked: 3, ffiConducted: 2 };
+  const FLOORS_LOW  = { factFindsCompleted: 1 };          // small floor → met
+  const FLOORS_HIGH = { applicationsSubmitted: 100 };     // large floor → not met
+
+  it('renders the readout and shows "Floor met" when earned ≥ floor', async () => {
+    getDraft.mockResolvedValueOnce({ ...SEEDED_DRAFT });
+    render(
+      <WizardForm onClose={vi.fn()} initialWeek="2026-05-31" initialScreen="confirm" floors={FLOORS_LOW} />
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-v2-confirm-points')).toBeInTheDocument();
+    });
+    const floor = mapFloorToPoints(FLOORS_LOW); // 5
+    expect(screen.getByTestId('wizard-v2-confirm-points-value').textContent)
+      .toMatch(new RegExp(`/ ${floor} pts`));
+    expect(screen.getByTestId('wizard-v2-confirm-floor-met')).toBeInTheDocument();
+  });
+
+  it('hides "Floor met" when earned < floor', async () => {
+    getDraft.mockResolvedValueOnce({ ...SEEDED_DRAFT });
+    render(
+      <WizardForm onClose={vi.fn()} initialWeek="2026-05-31" initialScreen="confirm" floors={FLOORS_HIGH} />
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-v2-confirm-points')).toBeInTheDocument();
+    });
+    const floor = mapFloorToPoints(FLOORS_HIGH); // 2500
+    expect(screen.getByTestId('wizard-v2-confirm-points-value').textContent)
+      .toMatch(new RegExp(`/ ${floor} pts`));
+    expect(screen.queryByTestId('wizard-v2-confirm-floor-met')).toBeNull();
   });
 });

@@ -42,6 +42,26 @@ describe('useSeededTargets', () => {
       expect(result.current.targetFFI).toBe(20);
       expect(result.current.targetCI).toBe(18);
     });
+
+    // Full path (weekly wizard): INITIAL_DATA has no `dials` field — it uses
+    // `coldCalls`. The dials seed reads coldCalls when dials is absent so the
+    // actuals-seed path isn't dead for full-path agents. (Fast path, which
+    // carries `dials` on the daily-aggregated draft, is unchanged — covered above.)
+    it('seeds targetDials from coldCalls when dials is absent (full path)', () => {
+      const data = { coldCalls: 130, ffiConducted: 20, ciConducted: 18 };
+      const { result } = renderHook(() =>
+        useSeededTargets({ data, goal: null, floors: null })
+      );
+      expect(result.current.targetDials).toBe(130);
+    });
+
+    it('prefers dials over coldCalls when both are present', () => {
+      const data = { dials: 120, coldCalls: 55 };
+      const { result } = renderHook(() =>
+        useSeededTargets({ data, goal: null, floors: null })
+      );
+      expect(result.current.targetDials).toBe(120);
+    });
   });
 
   describe('with annual goal', () => {
