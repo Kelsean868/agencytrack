@@ -1143,6 +1143,21 @@ h1, h2, h3, h4 {
   color: var(--color-gold);
   letter-spacing: 0.06em;
 }
+/* Scope chip (Nav redesign PR-1) — MINE / TEAM / BOTH. Non-interactive label
+   sitting next to the item; presentation only (does not change routing). Reuses
+   the AA-passing .badge-soon token pair (surface-muted bg + text-muted). */
+.sidebar-link .sidebar-link-scope {
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 99px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
 .sidebar-foot {
   margin-top: auto;
   padding: 14px 10px 0;

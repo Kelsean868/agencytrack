@@ -1,8 +1,7 @@
 import React, { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   X, Download, Loader2,
-  ClipboardList, FileText, Home, NotebookPen, Wallet, Target, Zap, Repeat, Search, Medal, Shield,
-  Star, History, UserCircle, BarChart2, BookOpen,
+  ClipboardList, FileText, Star, History, UserCircle,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -44,48 +43,18 @@ import CommissionPlayground from '../goals/CommissionPlayground';
 import DailyFAB from '../daily/DailyFAB';
 import AgentDashboardHomeV2 from './HomeV2';
 import NewAgentEmptyState from './NewAgentEmptyState';
-import { COMING_SOON_TABS } from '../../config/comingSoonTabs';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
+import { getNavConfig } from '../shell/navConfig';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
 
-// Sidebar nav items for the agent role. Mirrors the live dashboard tabs
-// 1:1 — no fabricated items (per kickoff Decisions: "mirrors the existing
-// TabBar TABS array — no fabricated items"). The mock's "Submit Report",
-// "Commission Calc", and standalone "Goals" sidebar items don't map to
-// v2 nav IA — 4 groups fed into Sidebar's groupBySection() helper.
-// Profile is removed from the sidebar list; the footer avatar navigates to
-// the profile tab instead (see Sidebar.jsx footer-avatar button).
-const NAV_ITEMS = [
-  // Ungrouped (no section header)
-  { id: 'dashboard',         label: 'Dashboard',         tabId: 'dashboard',         Icon: Home,      testId: 'agent-tab-dashboard' },
-  { id: 'wizard',            label: 'Weekly Report',     action: 'submit',            Icon: NotebookPen, testId: 'agent-tab-wizard' },
-  { id: 'history',           label: 'History',           tabId: 'history',           Icon: History,   testId: 'agent-tab-history' },
-  // Planning — Game Plan is the Planning parent; Money Needs nests under it as
-  // a child (still its own tabId/route). Goals stays a sibling — Game Plan will
-  // FEED Goals on commit (deferred slice), it does not nest under it.
-  { id: 'game-plan',         label: 'Game Plan',         tabId: 'game-plan',         Icon: BarChart2, sectionLabel: 'Planning', badgeNew: true, testId: 'agent-tab-game-plan' },
-  { id: 'money-needs',       label: 'Money Needs',       tabId: 'money-needs',       Icon: Wallet,    child: true,                  testId: 'agent-tab-money-needs' },
-  { id: 'goals',             label: 'Goals',             tabId: 'goals',             Icon: Target,    testId: 'agent-tab-goals' },
-  // Tools
-  { id: 'commission',        label: 'Commission',        tabId: 'commission',        Icon: Zap,       sectionLabel: 'Tools',        testId: 'agent-tab-commission' },
-  { id: 'persistency',       label: 'Persistency',       tabId: 'persistency',       Icon: Repeat,    testId: 'agent-tab-persistency' },
-  { id: 'policy-ledger',     label: 'Policy Ledger',     tabId: 'policy-ledger',     Icon: BookOpen,  testId: 'agent-tab-policy-ledger' },
-  { id: 'prospect-info',     label: 'Prospect Prep',     tabId: 'prospect-info',     Icon: Search,    testId: 'agent-tab-prospect-info' },
-  { id: 'production-report', label: 'Production Report', tabId: 'production-report', Icon: BarChart2, testId: 'agent-tab-production-report' },
-  // Recognition
-  { id: 'awards',            label: 'Awards',            tabId: 'awards',            Icon: Medal,     sectionLabel: 'Recognition',  testId: 'agent-tab-awards' },
-  { id: 'career',            label: 'Career Portal',     tabId: 'career',            Icon: Shield,    testId: 'agent-tab-career' },
-  // Track J P6 — production-leaderboard takes the old "Leaderboard" slot. The
-  // P3/P4 surface (`ProductionLeaderboardSurface`) is now a real primary-nav
-  // item; the points-board (`gamification/Leaderboard`) retires from the agent
-  // nav atomically with this change. ManagerDashboard retains the points-board
-  // nav entry (deferred to P5 alongside role-scope + branch picker).
-  { id: 'leaderboard',       label: 'Leaderboard',       tabId: 'production-leaderboard', Icon: Star, testId: 'agent-tab-leaderboard' },
-].map(item => item.tabId && COMING_SOON_TABS.has(item.tabId) ? { ...item, disabled: true } : item);
+// Agent sidebar nav is centralized in shell/navConfig.js (Nav redesign PR-1) —
+// resolved per-render via getNavConfig('agent', { showDailyCapture }) so the
+// Daily Log item appears only for daily/hybrid-mode agents (mirrors DailyFAB).
+// Coming-soon gating (prospect-info, planner) is applied inside getNavConfig.
 
 // Mobile bottom-nav per mock (lines 2227-2232). The "Submit" item is an
 // action, not a tab — it triggers the wizard via the onAction callback.
@@ -147,15 +116,27 @@ export default function AgentDashboard() {
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Agent';
   const roleLabel    = getRoleLabel(role);
 
-  // Mobile More-drawer items: every NAV_ITEMS entry whose tabId isn't already
-  // in BOTTOM_NAV. Filtered by tabId (not id) because BOTTOM_NAV's 'home'
-  // item maps to the 'dashboard' tabId — id-only filtering would wrongly
-  // include Dashboard in the drawer.
+  // E6 — logging mode: 'weekly' | 'daily' | 'hybrid'. Existing agents have no
+  // field; default to hybrid per planning decision. Drives both the Daily Log
+  // nav item and the DailyFAB visibility (same predicate).
+  const loggingMode = userProfile?.loggingMode ?? 'hybrid';
+  const showDailyCTA = loggingMode === 'daily' || loggingMode === 'hybrid';
+
+  // Agent sidebar nav — centralized in shell/navConfig.js. Daily Log appears
+  // only for daily/hybrid-mode agents (mirrors the DailyFAB predicate above).
+  const navItems = useMemo(
+    () => getNavConfig('agent', { showDailyCapture: showDailyCTA }),
+    [showDailyCTA]
+  );
+
+  // Mobile More-drawer items: every nav entry whose tabId isn't already in
+  // BOTTOM_NAV. Filtered by tabId — action items (Daily Log, Weekly Report)
+  // have no tabId and are intentionally excluded from the drawer.
   const drawerNavItems = useMemo(
-    () => NAV_ITEMS.filter(
+    () => navItems.filter(
       (item) => item.tabId && !BOTTOM_NAV.find((b) => b.tabId === item.tabId)
     ),
-    []
+    [navItems]
   );
 
   // Show welcome screen on first login (agents only)
@@ -347,11 +328,6 @@ export default function AgentDashboard() {
       .finally(() => setCampaignsLoading(false));
   }, [user?.uid, tenantId, userProfile?.unitId]);
 
-  // E6 — logging mode: 'weekly' | 'daily' | 'hybrid'. Existing agents have
-  // no field; default to hybrid per planning decision.
-  const loggingMode = userProfile?.loggingMode ?? 'hybrid';
-  const showDailyCTA = loggingMode === 'daily' || loggingMode === 'hybrid';
-
   // Today's date in agent's local time — same convention as the modal.
   const today = useMemo(() => {
     const d = new Date();
@@ -492,7 +468,7 @@ export default function AgentDashboard() {
 
   return (
     <Shell
-      navItems={NAV_ITEMS}
+      navItems={navItems}
       bottomNavItems={BOTTOM_NAV}
       drawerNavItems={drawerNavItems}
       activeTab={activeTab}

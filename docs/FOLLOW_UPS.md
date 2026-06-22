@@ -6,6 +6,26 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Nav redesign — PR-2/3/4 sequence (banked PR-1 nav-pr1-navconfig, 2026-06-22, the redesign roadmap)
+
+PR-1 (this PR) centralized agent + producing-manager nav into `src/components/shell/navConfig.js`, rendered section groups + scope chips, and added the Planner `SOON` stub. The remaining nav-redesign slices, each its own brief + PR:
+- **PR-2 — ★ Pinned zone:** pin seeds, star affordance, persistence via `prefs/app` (rules change). Renders the Pinned zone above the section groups.
+- **PR-3 — Quick-Add:** desktop pencil → popover, mobile ＋ → sheet, remove mobile pencil, amber-dot relocation. **This is where the dropped producing-manager Meetings entry lands** (it's an action — `handleStartMeeting`/MeetingMode — not a tab; PR-3 Quick-Add is its home).
+- **PR-4 — Menu-layout preference:** `workspace`/`both` layouts + the My Work/My Team toggle (PR-1 shipped `pinned` layout only).
+
+## Nav redesign — producing-manager "MINE" surfaces have no own-producer route yet (banked PR-1 nav-pr1-navconfig, 2026-06-22, MEDIUM)
+
+The original PR-1 Target listed several producing-manager items the manager nav has no route for; the dispatcher dropped them from the route-faithful v2 mapping rather than stub them. They need real `mp-*` screens (or a decision to omit) before they can appear in nav:
+- **My Production Dashboard** — no `mp-dashboard` tab (only the team `overview`).
+- **Persistency MINE** — no `mp-persistency` (only the team `persistency` entry tab).
+- **Production Report MINE** — no `mp-production-report` (only the team `production-report`).
+- **Manager Daily Log** — the manager daily modal (`setShowMpDailyModal`) is FAB-only; there is no `log-today`-equivalent action wired for managers. Needed for the PR-3 Quick-Add producing-manager entry.
+- **Manager Career Portal** — agents have a `career` tab; managers have no career route.
+- **Awards MINE** — no `mp-awards` (the `awards` tab is the team/manager awards surface).
+
+Each is a small own-producer surface (mirror the existing agent screen, scoped to `user.uid` like the other `mp-*` tabs) — or an explicit product decision to leave it out. Until then the producing-manager nav is route-faithful: every item points at a destination that exists today.
+
+
 ## WeekConfirmView steppers — test the type-then-click-button race (banked Wizard v3 Phase 1, 2026-06-21, LOW — test-coverage only)
 
 FU-a gave `IntStepper`/`DecimalStepper` a focused-draft (raw string held while focused, committed on blur/Enter). The +/- buttons read the in-progress draft via `base()` and commit it before stepping, so typing a value then clicking +/- (without first blurring) commits the typed value ± the step. This path is covered by reasoning + the no-draft unit tests (Suite D), but **not by an explicit RTL/browser test** that types into the input then clicks a stepper button in one go. **To resolve:** add an RTL test — focus the Office-hours `DecimalStepper`, `fireEvent.change` to e.g. "2." (no blur), `fireEvent.click` the increase button, assert `onEditField('officeHours', 2.5)` (draft committed via `base()` then stepped), and that no stale/duplicate value is emitted. Mirror for `IntStepper`. Pure test-coverage; the implementation is already in place.

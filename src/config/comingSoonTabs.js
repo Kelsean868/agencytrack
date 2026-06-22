@@ -4,6 +4,10 @@
 // (3) replace <ComingSoonPanel> with the real component in the tab render block.
 export const COMING_SOON_TABS = new Set([
   'prospect-info',
+  // Planner — nav redesign PR-1 SOON stub (agent + producing-manager nav).
+  // No render-switch case: disabled items are non-navigable, so 'planner' is
+  // never set as activeTab. Un-gate when the Planner surface ships.
+  'planner',
 ]);
 
 // Manager dashboard gated tabs (ManagerDashboard + TenantAdminDashboard).
