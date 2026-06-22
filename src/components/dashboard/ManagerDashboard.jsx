@@ -32,6 +32,7 @@ import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import ManagerOverviewTab from './ManagerOverviewTab';
 import ProfileScreen from '../profile/ProfileScreen';
 import Shell from '../shell/Shell';
+import { getNavConfig } from '../shell/navConfig';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
 import AgentOfMonthTab from '../manager/AgentOfMonthTab';
@@ -201,9 +202,20 @@ export default function ManagerDashboard() {
     [role]
   );
 
+  // Nav redesign PR-1: producing managers (UM/BM) render the centralized
+  // producingManager config (route-faithful — every item points at an existing
+  // tabId, branch-only items gated via `roles`). All other manager roles
+  // (sales_manager / tenant_admin / platform_admin) keep the existing inline
+  // nav unchanged. The shared NAV_ITEMS array and the activeTab render-switch
+  // are deliberately untouched, so no screen can regress.
+  const navItems = useMemo(
+    () => (isProducingManager ? getNavConfig('producingManager', { role }) : filteredNavItems),
+    [isProducingManager, role, filteredNavItems]
+  );
+
   const drawerNavItems = useMemo(
-    () => filteredNavItems.filter((item) => !BOTTOM_NAV.find((b) => b.id === item.id)),
-    [filteredNavItems]
+    () => navItems.filter((item) => !BOTTOM_NAV.find((b) => b.id === item.id)),
+    [navItems]
   );
 
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Manager';
@@ -335,7 +347,7 @@ export default function ManagerDashboard() {
 
   return (
     <Shell
-      navItems={filteredNavItems}
+      navItems={navItems}
       bottomNavItems={BOTTOM_NAV}
       drawerNavItems={drawerNavItems}
       activeTab={activeTab}

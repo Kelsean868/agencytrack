@@ -46,12 +46,22 @@ Items are grouped by `sectionLabel` (existing Sidebar grouping). `child:true` re
 - **Tools:** Commission · Persistency · Policy Ledger · Prospect Prep `(SOON per decision #6 unless Phase 0 proves standalone)` · Production Report
 - **Recognition:** Leaderboard · Awards · Career Portal
 
-### producingManager (role ∈ {unit_manager, branch_manager})
+### producingManager (role ∈ {unit_manager, branch_manager}) — **revised per dispatcher ruling 2026-06-22 (route-faithful v2)**
+Phase 0 surfaced that the original Target below diverged materially from the existing manager nav (≥7 Target labels had no route; ≥6 current destinations would be lost). Dispatcher ruled **Option 2**: map only onto existing tabIds, mirror the shared `NAV_ITEMS` `roles` gating byte-for-byte, drop the no-route labels (banked as FUs). Implemented mapping (label = existing tabId):
+- **My Production:** Weekly Report=`mp-report` · Commission=`mp-commission` · Policy Ledger=`mp-policies` · My WAR=`my-war` · History=`mp-history`
+- **Planning:** Game Plan=`mp-game-plan` → Money Needs=`mp-money-needs` (child) · Goals=`mp-goals` `MINE` · Planner `SOON`
+- **My Team:** Team Dashboard=`overview` · Team=`team` · Master Sheet=`mastersheet` · Weekly WARs=`team-wars` `BM` · Recruiting=`monthly-recruiting` · Team Goals=`goals` `TEAM` · Persistency Entry=`persistency` `TEAM` · Compliance=`compliance` · Campaigns=`campaigns` · Team Reports=`production-report` `TEAM` · Team Awards=`awards` `TEAM` · Team Roster=`team-perf` · Settlements=`settlements` · Reconciliation=`policy-reconciliation` · Agent of Month=`agent-of-month` `BM` · Kiosk Mode=`kiosk` `BM`
+- **Recognition:** Leaderboard=`leaderboard` `BOTH`
+- **DROPPED (no existing route — banked as FUs, not stubbed):** My Production Dashboard (no `mp-dashboard`), Daily Log (no manager `log-today` action), Persistency MINE (no `mp-persistency`), Production Report MINE (no `mp-production-report`); My Team Meetings (action-only → PR-3 Quick-Add); Awards MINE (no `mp-awards`); Career Portal (no manager career route).
+
+<details><summary>Original (pre-ruling) Target — superseded</summary>
+
 - **My Production:** Dashboard · Daily Log · Weekly Report · Commission · Persistency `MINE` · Policy Ledger · Production Report `MINE` · History
 - **My Team:** Team Dashboard · Master Sheet · Weekly WARs · Recruiting · Team Goals `TEAM` · Persistency Entry `TEAM` · Compliance · Campaigns · Meetings · Team Reports `TEAM` · Team Awards `TEAM`
-  - **branch_manager-only (gated):** Reconciliation · Kiosk Mode — appended to My Team (or an Oversight subgroup) only when `role === 'branch_manager'`. (These exist as `PolicyReconciliationPanel.jsx` / `KioskModeTab.jsx`; include only if Phase 0 confirms they are current BM destinations — no-regression guard.)
+  - **branch_manager-only (gated):** Reconciliation · Kiosk Mode
 - **Planning:** Game Plan · Goals `MINE` · Planner `SOON`
 - **Recognition:** Leaderboard `BOTH` · Awards `MINE` · Career Portal
+</details>
 
 ### manager (DEFINED, UNASSIGNED this track — per spec §2)
 - **Team:** Team Dashboard · Master Sheet · Weekly WARs · Team Goals · Reports

@@ -88,6 +88,11 @@ export default function Sidebar({
                 {isChild && <span className="sidebar-link-child-connector" aria-hidden="true" />}
                 <Icon size={isChild ? 15 : 17} />
                 <span>{item.label}</span>
+                {item.scope && (
+                  <span className="sidebar-link-scope" data-scope={item.scope}>
+                    {item.scope}
+                  </span>
+                )}
                 {isDisabled && (
                   <span className="badge badge-soon" aria-label="Coming soon">Soon</span>
                 )}

@@ -50,21 +50,39 @@ export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClos
           {items.map((item) => {
             const Icon = item.Icon;
             const isActive = item.tabId != null && activeTab === item.tabId;
+            const isDisabled = item.disabled === true;
+            const isChild = item.child === true;
             return (
               <button
                 key={item.id}
                 type="button"
+                disabled={isDisabled}
                 onClick={() => {
+                  if (isDisabled) return;
                   if (item.tabId != null) setActiveTab(item.tabId);
                   onClose();
                 }}
-                className={`w-full flex items-center gap-4 px-5 min-h-[44px] text-sm font-medium motion-safe:transition-colors hover:bg-card-raised focus-visible:outline-none focus-visible:bg-card-raised ${
-                  isActive ? 'text-primary bg-primary/5' : 'text-ink'
+                className={`w-full flex items-center gap-4 ${isChild ? 'pl-10 pr-5' : 'px-5'} min-h-[44px] text-sm font-medium motion-safe:transition-colors focus-visible:outline-none ${
+                  isDisabled
+                    ? 'text-ink-muted cursor-not-allowed'
+                    : isActive
+                      ? 'text-primary bg-primary/5'
+                      : 'text-ink hover:bg-card-raised focus-visible:bg-card-raised'
                 }`}
                 aria-current={isActive ? 'page' : undefined}
               >
-                <Icon size={18} />
+                <Icon size={isChild ? 16 : 18} />
                 <span>{item.label}</span>
+                {item.scope && (
+                  <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded-full bg-card-raised text-ink-muted">
+                    {item.scope}
+                  </span>
+                )}
+                {isDisabled && (
+                  <span className="ml-auto text-[10px] font-bold uppercase tracking-wide px-1.5 py-px rounded-full bg-card-raised text-ink-muted">
+                    Soon
+                  </span>
+                )}
               </button>
             );
           })}
