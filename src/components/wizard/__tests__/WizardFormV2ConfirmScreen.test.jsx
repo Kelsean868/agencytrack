@@ -46,6 +46,7 @@ vi.mock('../../submissions/SubmissionViewer', () => ({
 }));
 
 import WizardForm from '../WizardForm';
+import { getDraft } from '../../../services/submissionService';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -53,6 +54,21 @@ beforeEach(() => {
 });
 
 describe('Wizard v3 — Confirm screen (fast-path entry)', () => {
+  it('shows the loading state until the draft read resolves, never the empty state', async () => {
+    // Hold the getDraft read open so we can observe the pre-resolve render.
+    let resolveDraft;
+    getDraft.mockReturnValueOnce(new Promise((res) => { resolveDraft = res; }));
+    render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" initialScreen="confirm" />);
+    // Before the read resolves: loader shown; NOT WeekConfirmView, NOT the empty state.
+    expect(await screen.findByTestId('wizard-v2-confirm-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('week-confirm-view')).toBeNull();
+    expect(screen.queryByText(/no activity logged/i)).toBeNull();
+    // Resolve with a seeded daily-aggregated draft → Confirm view mounts, loader gone.
+    resolveDraft({ aggregatedFromDaily: true, daysWorked: 3, ffiConducted: 2 });
+    await waitFor(() => expect(screen.getByTestId('week-confirm-view')).toBeInTheDocument());
+    expect(screen.queryByTestId('wizard-v2-confirm-loading')).toBeNull();
+  });
+
   it("initialScreen='confirm' mounts WeekConfirmView with the Confirm title", async () => {
     render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" initialScreen="confirm" />);
     await waitFor(() => {

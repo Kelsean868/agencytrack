@@ -41,7 +41,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { X, Check, AlertTriangle, RotateCcw } from 'lucide-react';
+import { X, Check, AlertTriangle, RotateCcw, Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import WeekSoFarPanel from './v2chrome/WeekSoFarPanel';
 import ReviewSubmit from './v2chrome/ReviewSubmit';
@@ -219,6 +219,11 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
   // avoids extending PR1's visited-step navigation semantics.
   const [returnToReview, setReturnToReview] = useState(false);
   const [formData, setFormData]         = useState(INITIAL_DATA);
+  // Confirm screen: false until the getDraft read completes, so the fast-path
+  // Confirm never flashes WeekConfirmView's "No activity logged" empty state
+  // before formData is seeded. resolvePath routes empty weeks to 'full', so a
+  // loaded Confirm always has data.
+  const [draftLoaded, setDraftLoaded]   = useState(false);
   const [lastWeekData, setLastWeekData] = useState(null);
   const [recentSubmissions, setRecentSubmissions] = useState([]);
   const [draftStatus, setDraftStatus]   = useState(null);
@@ -263,8 +268,15 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
 
   useEffect(() => {
     if (!weekStarting || !user) return;
+    // No setDraftLoaded(false) reset here: WizardForm remounts on every open
+    // (showWizard toggles mount/unmount), so draftLoaded starts false per open.
+    // Adding a synchronous reset perturbs the fake-timer autosave RTL tests.
     getDraft(tenantId, user.uid, weekStarting)
       .then((draft) => {
+        // Flip in-band with the other setters (NOT via a trailing .finally) so
+        // the promise chain stays then→catch — the autosave RTL tests drain
+        // exactly those two ticks inside act(); a third link would hang them.
+        setDraftLoaded(true);
         if (!draft) {
           setDraftStatus(null);
           setSubmissionData(null);
@@ -280,7 +292,7 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
           setFormData((prev) => ({ ...prev, ...fields }));
         }
       })
-      .catch(console.error);
+      .catch((e) => { console.error(e); setDraftLoaded(true); });
   }, [weekStarting, user, tenantId]);
 
   // Always-current save executor — assigned on every render so the online
@@ -593,15 +605,29 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
 
         {/* Wizard v3 fast-path Confirm screen — daily/hybrid agents confirm
             their daily-aggregated week before Rate → Goals → Submit. Sections
-            derive from live formData so inline edits reflect immediately. */}
+            derive from live formData so inline edits reflect immediately.
+            Gated on draftLoaded so the aggregated data never flashes the
+            "No activity logged" empty state at this trust-sensitive moment. */}
         {screen === 'confirm' && (
-          <WeekConfirmView
-            draft={formData}
-            sections={deriveSections(formData)}
-            onEditField={handleConfirmEdit}
-            onConfirm={handleConfirmNext}
-            variant="desktop"
-          />
+          draftLoaded ? (
+            <WeekConfirmView
+              draft={formData}
+              sections={deriveSections(formData)}
+              onEditField={handleConfirmEdit}
+              onConfirm={handleConfirmNext}
+              variant="desktop"
+            />
+          ) : (
+            <div
+              className="flex flex-col items-center justify-center py-16"
+              data-testid="wizard-v2-confirm-loading"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 size={28} className="animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+              <p className="text-sm text-ink-muted mt-3">Loading your week…</p>
+            </div>
+          )
         )}
 
         {/* Active v2 step */}
