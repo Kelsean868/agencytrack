@@ -17,6 +17,7 @@ import { getWeeklySubmissions, getTenantUsers, getAllYTDSubmissions } from '../.
 import { getPersistencyMapForYear } from '../../services/persistencyService';
 import { exportBranchCSV } from '../../services/exportService';
 import WizardForm from '../wizard/WizardForm';
+import { resolvePath } from '../wizard/WizardForm.helpers';
 import MasterSheet from '../manager/MasterSheet';
 import CompliancePanel from '../manager/CompliancePanel';
 import PersistencyTab from '../manager/PersistencyTab';
@@ -152,6 +153,14 @@ export default function ManagerDashboard() {
   const [ptrRevision, setPtrRevision] = useState(0);
   const PTR_MANAGER_TABS = new Set(['overview', 'mastersheet', 'leaderboard', 'mp-history', 'mp-policies']);
   const [showMpDailyModal, setShowMpDailyModal] = useState(false);
+  // Producing-manager fast path: dedicated wizard host (mirrors the agent's
+  // showWizard host). The daily-review → Confirm flow routes here; vars are
+  // re-set fresh on every open via openMpWizardForWeek (onClose does not reset
+  // them — safe because the helper always re-sets before showing).
+  const [showMpWizard, setShowMpWizard]               = useState(false);
+  const [mpWizardWeek, setMpWizardWeek]               = useState('');
+  const [mpWizardInitialStep, setMpWizardInitialStep] = useState(1);
+  const [mpWizardInitialScreen, setMpWizardInitialScreen] = useState(null);
   const mpPlaygroundRef = useRef(null);
 
   const isProducingManager = role === 'unit_manager' || role === 'branch_manager';
@@ -164,6 +173,18 @@ export default function ManagerDashboard() {
   // E6 logging-mode: unset defaults to 'hybrid' (showDailyCTA = true).
   const mpLoggingMode = userProfile?.loggingMode ?? 'hybrid';
   const showMpDailyCTA = mpLoggingMode === 'daily' || mpLoggingMode === 'hybrid';
+
+  // Producing-manager fast path — mirrors AgentDashboard.openWizardForWeek.
+  // Fast path (reviewed week has daily entries) lands on the Confirm screen and
+  // advances to step 10 (Rate); full path opens at step 1 with no Confirm. The
+  // draftHint is the reviewed week's real aggregation passed up by DailyCaptureV2.
+  const openMpWizardForWeek = (week, draftHint = null) => {
+    const path = resolvePath(mpLoggingMode, draftHint);
+    setMpWizardInitialStep(path === 'fast' ? 10 : 1);
+    setMpWizardInitialScreen(path === 'fast' ? 'confirm' : null);
+    setMpWizardWeek(week);
+    setShowMpWizard(true);
+  };
 
   // Lazy-load own policies when Commission tab is first visited.
   // Destructured to avoid re-running when other myProd fields update (Gemini G1).
@@ -236,6 +257,23 @@ export default function ManagerDashboard() {
     return <WizardForm onClose={() => setShowWizard(false)} />;
   }
 
+  // Producing-manager fast-path host — daily-review → Confirm. Threads the
+  // resolvePath-derived initialStep/initialScreen plus goal/floors (step-11
+  // seeding) for the manager's OWN production. getDraft inside WizardForm is
+  // uid-generic, so it auto-loads submissions/{managerUid}_{week}.
+  if (showMpWizard) {
+    return (
+      <WizardForm
+        initialWeek={mpWizardWeek}
+        initialStep={mpWizardInitialStep}
+        initialScreen={mpWizardInitialScreen}
+        goal={myProd.goals}
+        floors={myProd.companyMinimums?.weeklyActivityFloors}
+        onClose={() => setShowMpWizard(false)}
+      />
+    );
+  }
+
   // My Production — Weekly Report tab renders WizardForm full-screen (same
   // pattern as showWizard; onClose returns to Goals as the natural next screen).
   if (activeTab === 'mp-report') {
@@ -247,9 +285,12 @@ export default function ManagerDashboard() {
     return (
       <DailyCaptureV2
         onClose={() => setShowMpDailyModal(false)}
-        onReviewSubmit={() => {
+        onReviewSubmit={(week, draftHint) => {
+          // Route on the REVIEWED week's real aggregation (draftHint) into the
+          // dedicated fast-path host — Confirm when the week has daily entries,
+          // full otherwise. Mirrors AgentDashboard's onReviewSubmit.
           setShowMpDailyModal(false);
-          setActiveTab('mp-report');
+          openMpWizardForWeek(week, draftHint);
         }}
       />
     );
