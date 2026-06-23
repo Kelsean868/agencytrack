@@ -51,3 +51,23 @@ export async function setPinnedNav(tenantId, uid, pinnedNav) {
     { merge: true },
   );
 }
+
+/**
+ * Persist the sidebar menu-layout preference (Nav redesign PR-4). Merge-write so
+ * the coexisting `pinnedNav` (PR-2) on the same doc is preserved. Validation of
+ * the value (`pinned` | `workspace` | `both`) and the agent→pinned clamp live in
+ * `useMenuLayout`; this writer only guards tenantId/uid presence.
+ *
+ * @param {string} tenantId
+ * @param {string} uid
+ * @param {'pinned'|'workspace'|'both'} menuLayout
+ * @returns {Promise<void>}
+ */
+export async function setMenuLayout(tenantId, uid, menuLayout) {
+  if (!tenantId || !uid) throw new Error('setMenuLayout requires tenantId and uid');
+  await setDoc(
+    prefsDocRef(tenantId, uid),
+    { menuLayout, updatedAt: serverTimestamp() },
+    { merge: true },
+  );
+}

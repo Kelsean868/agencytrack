@@ -40,6 +40,10 @@ export default function Shell({
   isPinned,
   onPin,
   onUnpin,
+  showPinnedZone = true,
+  showWorkspaceToggle = false,
+  workspace,
+  onWorkspaceChange,
   children,
 }) {
   const mainRef = useRef(null);
@@ -77,6 +81,10 @@ export default function Shell({
         isPinned={isPinned}
         onPin={onPin}
         onUnpin={onUnpin}
+        showPinnedZone={showPinnedZone}
+        showWorkspaceToggle={showWorkspaceToggle}
+        workspace={workspace}
+        onWorkspaceChange={onWorkspaceChange}
       />
       <div className="shell-main">
         <TopBar
@@ -103,6 +111,10 @@ export default function Shell({
         setActiveTab={setActiveTab}
         onAction={onAction}
         pinnedItems={pinnedItems}
+        showPinnedZone={showPinnedZone}
+        showWorkspaceToggle={showWorkspaceToggle}
+        workspace={workspace}
+        onWorkspaceChange={onWorkspaceChange}
       />
     </div>
   );
