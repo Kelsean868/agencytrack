@@ -215,4 +215,91 @@ export function getPinnedSeed(configKey) {
   return seed.filter((id) => validIds.has(id));
 }
 
+// ── Workspace / Both layouts (Nav redesign PR-4) ──────────────────────────────
+// `workspace` and `both` are alternative PRESENTATIONS of the same producingManager
+// item set above — NOT a new item set (the governing invariant). The partition
+// below references existing PRODUCING_MANAGER_NAV items BY ID (route-faithful — no
+// route is redefined here); getWorkspaceGroups resolves each id against the live
+// config. Two action items (Daily Log, Meetings) have no pinned-nav route — they
+// are PR-3 actions (`log-today` → setShowMpDailyModal, `start-meeting` →
+// handleStartMeeting), defined inline and injected at the top of their workspace.
+//
+// Partition (dispatcher ruling 2026-06-22, PR-4 Phase 0):
+//   • My Work  = the shipped "My Production" + "Planning" sub-sections (preserved
+//                as sub-headers — Decision B) + the Daily Log action atop My Production.
+//   • My Team  = the shipped "My Team" section (flat) + the Meetings action atop it.
+//   • Recognition (leaderboard, scope BOTH) = a PERSISTENT group rendered below the
+//     active workspace's groups in BOTH toggle states (Decision A) — single instance,
+//     no duplication/testid collision.
+// Invariant: My Work ∪ My Team ∪ Recognition destinations == the pinned-layout
+// producingManager destinations, per role (enforced by unit test).
+const WORKSPACE_WORK_SECTIONS = [
+  { label: 'My Production', ids: ['mp-report', 'mp-commission', 'mp-policies', 'my-war', 'mp-history'] },
+  { label: 'Planning',      ids: ['mp-game-plan', 'mp-money-needs', 'mp-goals', 'planner'] },
+];
+const WORKSPACE_TEAM_SECTIONS = [
+  { label: 'My Team', ids: [
+    'overview', 'team', 'mastersheet', 'team-wars', 'monthly-recruiting', 'goals',
+    'persistency', 'compliance', 'campaigns', 'production-report', 'awards',
+    'team-perf', 'settlements', 'policy-reconciliation', 'agent-of-month', 'kiosk',
+  ] },
+];
+const WORKSPACE_RECOGNITION_IDS = ['leaderboard'];
+
+// Action items injected into the workspace layouts (no pinned-nav route).
+const DAILY_LOG_ACTION = { id: 'mp-daily-log', label: 'Daily Log', action: 'log-today', Icon: CalendarCheck, testId: 'mp-tab-daily-log' };
+const MEETINGS_ACTION  = { id: 'mp-meetings',  label: 'Meetings',  action: 'start-meeting', Icon: Presentation,  testId: 'mp-tab-meetings' };
+
+/**
+ * Resolve the workspace-partitioned producingManager nav for one workspace.
+ *
+ * Returns a FLAT item array in Sidebar's shape (sectionLabel demarcates groups —
+ * consumed by the existing groupBySection), so render needs no new grouping path.
+ * Role gating (branch-only items) and coming-soon disabling are applied exactly
+ * as getNavConfig does. The persistent Recognition group is appended for BOTH
+ * workspaces, so it survives the My Work ⇄ My Team toggle (Decision A).
+ *
+ * @param {'producingManager'} configKey  (only producingManager has workspaces)
+ * @param {{ role?: string, workspace?: 'work'|'team' }} [opts]
+ * @returns {Array} ordered nav items (sectionLabel-grouped)
+ */
+export function getWorkspaceGroups(configKey, opts = {}) {
+  if (configKey !== 'producingManager') return [];
+  const { role, workspace = 'work' } = opts;
+  const byId = new Map(PRODUCING_MANAGER_NAV.map((i) => [i.id, i]));
+  const out = [];
+
+  // Push a section: the section label is carried by the first SURVIVING row
+  // (lead action if present, else the first id that passes role gating) so a
+  // role-gated-out lead never orphans the header.
+  const pushSection = (label, ids, leadAction) => {
+    let labelAssigned = false;
+    if (leadAction) {
+      out.push({ ...leadAction, sectionLabel: label });
+      labelAssigned = true;
+    }
+    ids.forEach((id) => {
+      const item = byId.get(id);
+      if (!item) return; // route-faithful: drop an id with no descriptor
+      if (item.roles && role && !item.roles.includes(role)) return; // branch-only gating
+      const copy = { ...item };
+      if (labelAssigned) delete copy.sectionLabel; // header already emitted
+      else { copy.sectionLabel = label; labelAssigned = true; }
+      out.push(copy);
+    });
+  };
+
+  if (workspace === 'team') {
+    WORKSPACE_TEAM_SECTIONS.forEach((s, i) =>
+      pushSection(s.label, s.ids, i === 0 ? MEETINGS_ACTION : undefined));
+  } else {
+    WORKSPACE_WORK_SECTIONS.forEach((s, i) =>
+      pushSection(s.label, s.ids, i === 0 ? DAILY_LOG_ACTION : undefined));
+  }
+  // Persistent Recognition group — both workspaces (Decision A).
+  pushSection('Recognition', WORKSPACE_RECOGNITION_IDS);
+
+  return applyComingSoon(out);
+}
+
 export default getNavConfig;

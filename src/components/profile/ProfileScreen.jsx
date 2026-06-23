@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Save, AlertCircle, User, CalendarClock, LogOut, Pencil } from 'lucide-react';
+import { Camera, Save, AlertCircle, User, CalendarClock, LogOut, Pencil, LayoutDashboard } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
 import { getRoleLabel } from '../../utils/formatters';
@@ -14,7 +14,7 @@ import {
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
 const BIO_MAX   = 200;
 
-export default function ProfileScreen() {
+export default function ProfileScreen({ menuLayout = 'pinned', onMenuLayoutChange } = {}) {
   const { user, userProfile, role, tenantId, branchId } = useAuth();
 
   const [displayName,     setDisplayName]     = useState(userProfile?.name ?? '');
@@ -455,6 +455,61 @@ export default function ProfileScreen() {
           )}
         </div>
       )}
+
+      {/* Menu layout (Nav redesign PR-4) — all roles see the card; agents have
+          workspace/both disabled (manager-only layouts). Persists to prefs/app
+          via onMenuLayoutChange (the dashboard's useMenuLayout setter). */}
+      <div className="card flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <LayoutDashboard size={16} className="text-primary" />
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Menu layout</p>
+        </div>
+        <fieldset className="flex flex-col gap-3">
+          <legend className="sr-only">Choose your sidebar menu layout</legend>
+          {[
+            { value: 'pinned',    title: 'Pinned',    isDefault: true,  desc: 'Your starred shortcuts pinned above the full menu.' },
+            { value: 'workspace', title: 'Workspace', isDefault: false, desc: 'Switch between My Work and My Team — one focused list at a time.' },
+            { value: 'both',      title: 'Both',      isDefault: false, desc: 'Your pinned shortcuts above the My Work / My Team switcher.' },
+          ].map((opt) => {
+            const descId = `menu-layout-${opt.value}-desc`;
+            // Agents are locked to Pinned — workspace/both are manager-only.
+            const optDisabled = role === 'agent' && opt.value !== 'pinned';
+            return (
+              <div
+                key={opt.value}
+                className={`flex flex-col p-3 rounded-lg border bg-surface transition-colors ${
+                  optDisabled ? 'border-border' : 'border-border hover:border-primary/40'
+                }`}
+              >
+                <label className={`flex items-center gap-2 ${optDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                  <input
+                    type="radio"
+                    name="menu-layout"
+                    value={opt.value}
+                    checked={menuLayout === opt.value}
+                    disabled={optDisabled}
+                    aria-disabled={optDisabled || undefined}
+                    aria-describedby={descId}
+                    onChange={() => { if (!optDisabled) onMenuLayoutChange?.(opt.value); }}
+                    data-testid={`menu-layout-${opt.value}`}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <span className="text-sm font-semibold text-ink">{opt.title}</span>
+                  {opt.isDefault && (
+                    <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-px rounded-full bg-card-raised text-ink-muted">
+                      Default
+                    </span>
+                  )}
+                </label>
+                <p id={descId} className="text-xs text-ink-muted mt-1 ml-6">
+                  {opt.desc}
+                  {optDisabled && ' Available for managers.'}
+                </p>
+              </div>
+            );
+          })}
+        </fieldset>
+      </div>
 
       {/* Read-only info */}
       <div className="card flex flex-col gap-3">

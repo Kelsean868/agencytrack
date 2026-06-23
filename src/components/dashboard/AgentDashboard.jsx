@@ -48,6 +48,7 @@ import NewAgentEmptyState from './NewAgentEmptyState';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
 import { getNavConfig } from '../shell/navConfig';
 import usePinnedNav from '../../hooks/usePinnedNav';
+import useMenuLayout from '../../hooks/useMenuLayout';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
@@ -160,6 +161,13 @@ export default function AgentDashboard() {
   const { pinnedItems, isPinned, pin, unpin } = usePinnedNav({
     tenantId, uid: user?.uid, configKey: 'agent', navItems,
   });
+
+  // Menu layout (Nav redesign PR-4) — agents are clamped to `pinned` at the
+  // resolver, so this is effectively a no-op for rendering (the agent shell has
+  // no workspace path); the value is passed to ProfileScreen so the layout card
+  // renders with workspace/both disabled. Defense-in-depth: even a forced
+  // `workspace` pref returns `pinned` here.
+  const { menuLayout, setMenuLayout } = useMenuLayout({ role, tenantId, uid: user?.uid });
 
   // Show welcome screen on first login (agents only)
   useEffect(() => {
@@ -500,6 +508,7 @@ export default function AgentDashboard() {
       navItems={navItems}
       bottomNavItems={bottomNavItems}
       drawerNavItems={drawerNavItems}
+      showWorkspaceToggle={menuLayout !== 'pinned'}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       onAction={handleAction}
@@ -788,7 +797,9 @@ export default function AgentDashboard() {
       {activeTab === 'production-leaderboard' && <ProductionLeaderboardSurface key={ptrRevision} />}
 
       {/* ── PROFILE TAB ── */}
-      {activeTab === 'profile' && <ProfileScreen />}
+      {activeTab === 'profile' && (
+        <ProfileScreen menuLayout={menuLayout} onMenuLayoutChange={setMenuLayout} />
+      )}
 
       {/* ── HISTORY TAB ── */}
       {activeTab === 'history' && (
