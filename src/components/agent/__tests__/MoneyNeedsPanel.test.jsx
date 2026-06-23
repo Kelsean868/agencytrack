@@ -329,11 +329,13 @@ function makeWorksheetWithPAYE() {
 describe('MoneyNeedsPanel — PAYESummary display (Bug 2)', () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
-  it('headline is gross (totalAnnualPreTax = "Income you must earn"); after-tax is the subordinate row', async () => {
+  it('headline is gross (totalAnnualPreTax = "= Income you must earn"); after-tax is the build-up base', async () => {
     await renderLoaded(makeWorksheetWithPAYE());
-    expect(screen.getByText('Income you must earn')).toBeInTheDocument();
-    expect(screen.getByText('After-tax take-home')).toBeInTheDocument();
-    // Both formatted values present (1,090,000 may appear in headline + commissions required row).
+    // PR #735: gross is now "= Income you must earn" (additive summation line).
+    expect(screen.getByText('= Income you must earn')).toBeInTheDocument();
+    // After-tax take-home is the build-up base (first row), labelled with budget link.
+    expect(screen.getByText('After-tax take-home (= your annual budget)')).toBeInTheDocument();
+    // Both formatted values present.
     expect(screen.getAllByText(/1,090,000/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText(/840,000/).length).toBeGreaterThanOrEqual(1);
   });
@@ -360,6 +362,91 @@ describe('MoneyNeedsPanel — Send to Playground send-path (Bug 1)', () => {
     // Value = totalAnnualPreTax (1,090,000) − renewals (0) = 1,090,000 — NOT 1,453,333.
     expect(stored.value).toBe(1090000);
     expect(stored.value).not.toBe(1453333);
+  });
+});
+
+// ── Fixtures for clarity PR tests ────────────────────────────────────────────
+function makeWorksheetWithRenewals(renewalTotal = 100000) {
+  return {
+    ...makeWorksheetWithPAYE(),
+    estimatedRenewalIncome: { total: renewalTotal },
+  };
+}
+
+describe('MoneyNeedsPanel — summary clarity (income build-up order + grand total)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('Total annual budget line renders below categories with worksheet.totalAnnualAfterTax', async () => {
+    await renderLoaded(makeWorksheetWithPAYE()); // totalAnnualAfterTax = 840,000
+    const budgetLine = screen.getByTestId('budget-total-line');
+    expect(budgetLine).toBeInTheDocument();
+    expect(budgetLine).toHaveTextContent('840,000');
+  });
+
+  it('Total annual budget and PAYESummary After-tax take-home show the identical value', async () => {
+    await renderLoaded(makeWorksheetWithPAYE());
+    const budgetLine = screen.getByTestId('budget-total-line');
+    const afterTaxLabel = screen.getByText('After-tax take-home (= your annual budget)');
+    // Both read from worksheet.totalAnnualAfterTax = 840,000 — never a re-sum.
+    expect(budgetLine).toHaveTextContent('840,000');
+    expect(afterTaxLabel.closest('div')).toHaveTextContent('840,000');
+  });
+
+  it('income section order: After-tax take-home → + PAYE → = Income you must earn → commissions', async () => {
+    await renderLoaded(makeWorksheetWithPAYE());
+    const afterTax = screen.getByText('After-tax take-home (= your annual budget)');
+    const paye     = screen.getByText('+ PAYE');
+    const gross    = screen.getByText('= Income you must earn');
+    const comms    = screen.getByText('1st-year commissions required');
+    // DOM order (pre-order depth-first): each item precedes the next.
+    expect(afterTax.compareDocumentPosition(paye)  & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(paye.compareDocumentPosition(gross)     & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(gross.compareDocumentPosition(comms)    & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('gross-up is shown additively as "+ PAYE", not "− PAYE gross-up"', async () => {
+    await renderLoaded(makeWorksheetWithPAYE());
+    expect(screen.getByText('+ PAYE')).toBeInTheDocument();
+    expect(screen.queryByText(/− PAYE/)).not.toBeInTheDocument();
+    expect(screen.queryByText('− PAYE gross-up')).not.toBeInTheDocument();
+  });
+
+  it('"= Income you must earn" value carries text-lg font-bold (visually dominant)', async () => {
+    await renderLoaded(makeWorksheetWithPAYE());
+    // The gross value (1,090,000) must appear in a text-lg font-bold element.
+    const grossValues = screen.getAllByText(/1,090,000/);
+    const headlineEl = grossValues.find(
+      (el) => el.className.includes('font-bold') && el.className.includes('text-lg'),
+    );
+    expect(headlineEl).toBeDefined();
+  });
+
+  it('renewals=0: explanatory note "no renewal income yet" is present on commissions line', async () => {
+    await renderLoaded(makeWorksheetWithPAYE()); // estimatedRenewalIncome.total = 0
+    expect(screen.getByText(/no renewal income yet/i)).toBeInTheDocument();
+  });
+
+  it('renewals>0: commissions line shows a different value from gross, renewal offset is visible', async () => {
+    await renderLoaded(makeWorksheetWithRenewals(100000)); // renewals = 100,000
+    // commissionsRequired = 1,090,000 − 100,000 = 990,000 ≠ 1,090,000 (gross).
+    expect(screen.getByText('− Renewal income')).toBeInTheDocument();
+    expect(screen.queryByText(/no renewal income yet/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/990,000/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('CommissionTargetsPanel renders AFTER PAYESummary in the DOM', async () => {
+    await renderLoaded(makeWorksheetWithPAYE());
+    const incomeHeader = screen.getByText('The income your lifestyle requires');
+    const commHeader   = screen.getByText('Commission Targets');
+    // PAYESummary's header must precede CommissionTargetsPanel's header in DOM order.
+    expect(incomeHeader.compareDocumentPosition(commHeader) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('no value changed vs pre-PR: gross=1,090,000 after-tax=840,000 PAYE=250,000 (renewals=0)', async () => {
+    await renderLoaded(makeWorksheetWithPAYE());
+    expect(screen.getAllByText(/1,090,000/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/840,000/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/250,000/).length).toBeGreaterThanOrEqual(1);
   });
 });
 

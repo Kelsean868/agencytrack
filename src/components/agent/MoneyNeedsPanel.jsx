@@ -418,32 +418,41 @@ function PAYESummary({ worksheet }) {
 
   return (
     <div className="rounded-xl bg-surface-raised border border-border px-4 py-3 space-y-2">
-      <div className="border-b border-border pb-2">
+      <div className="pb-2 border-b border-border">
         <p className="text-sm font-bold text-ink">The income your lifestyle requires</p>
         <p className="text-[11px] text-ink-muted mt-0.5">
           Everything above is your choice — this is the annual income it takes to fund it.
         </p>
-        <div className="flex justify-between items-baseline mt-1.5">
-          <span className="text-ink-muted text-sm">Income you must earn</span>
-          <span className="text-ink font-bold text-lg tabular-nums">{formatCurrency(totalAnnualPreTax)}</span>
-        </div>
+      </div>
+      {/* Build-up: take-home + PAYE = gross (additive, top-down logic) */}
+      <div className="flex justify-between text-sm">
+        <span className="text-ink-muted">After-tax take-home (= your annual budget)</span>
+        <span className="text-ink tabular-nums">{formatCurrency(totalAnnualAfterTax)}</span>
       </div>
       <div className="flex justify-between text-xs">
-        <span className="text-ink-muted">− PAYE gross-up</span>
-        <span className="text-ink-muted tabular-nums">− {formatCurrency(payeGrossUp)}</span>
+        <span className="text-ink-muted">+ PAYE</span>
+        <span className="text-ink-muted tabular-nums">+ {formatCurrency(payeGrossUp)}</span>
       </div>
-      <div className="flex justify-between text-sm border-t border-border pt-2">
-        <span className="text-ink font-semibold">After-tax take-home</span>
-        <span className="text-ink font-bold tabular-nums">{formatCurrency(totalAnnualAfterTax)}</span>
+      {/* Summation line — gross stays the visually-dominant figure */}
+      <div className="flex justify-between items-baseline border-t border-border pt-2">
+        <span className="text-ink-muted text-sm">= Income you must earn</span>
+        <span className="text-ink font-bold text-lg tabular-nums">{formatCurrency(totalAnnualPreTax)}</span>
       </div>
+      {/* Renewal offset when agent has renewal income */}
       {renewals > 0 && (
         <div className="flex justify-between text-xs">
           <span className="text-ink-muted">− Renewal income</span>
           <span className="text-success-ink tabular-nums">− {formatCurrency(renewals)}</span>
         </div>
       )}
+      {/* Commissions required — explains why it equals gross when renewals = 0 */}
       <div className="flex justify-between items-baseline border-t border-border pt-2">
-        <span className="text-ink font-semibold text-sm">1st-year commissions required</span>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-ink font-semibold text-sm">1st-year commissions required</span>
+          {renewals === 0 && (
+            <span className="text-[11px] text-ink-muted">all of it — no renewal income yet</span>
+          )}
+        </div>
         <span className="text-gold font-extrabold text-lg tabular-nums">{formatCurrency(commissionsRequired)}</span>
       </div>
     </div>
@@ -1046,12 +1055,27 @@ export default function MoneyNeedsPanel() {
             />
           ))}
 
+          {/* Grand-total budget line — closes the category block.
+              Sources from worksheet.totalAnnualAfterTax, the identical field
+              PAYESummary's "After-tax take-home" row reads, so both can never diverge. */}
+          {worksheet.totalAnnualAfterTax > 0 && (
+            <div
+              data-testid="budget-total-line"
+              className="flex justify-between items-baseline px-4 py-2.5 rounded-xl border border-border bg-surface"
+            >
+              <span className="text-sm font-semibold text-ink">Total annual budget</span>
+              <span className="text-sm font-bold text-ink tabular-nums">
+                {formatCurrency(worksheet.totalAnnualAfterTax)}
+              </span>
+            </div>
+          )}
+
+          <PAYESummary worksheet={worksheet} />
+
           <CommissionTargetsPanel
             worksheet={worksheet}
             onTargetsSaved={handleTargetsSaved}
           />
-
-          <PAYESummary worksheet={worksheet} />
 
           {/* Floating calculators — opened by the trigger next to each calc-fed
               line. Mounted only while open so the focus trap captures the

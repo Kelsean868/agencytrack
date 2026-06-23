@@ -6,21 +6,19 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
-## PAYESummary card — renewals math visual confusion when renewals > 0 (banked PR #734 Gemini G1 OUT-OF-SCOPE, 2026-06-23, MEDIUM)
+## ~~PAYESummary card — renewals math visual confusion when renewals > 0~~ **RESOLVED by PR #735** (pending merge, 2026-06-23)
 
-When `renewals > 0`, the PAYESummary card reads:
+PR #735 (`fix/money-needs-summary-clarity`) folds this in. The new build-up layout shows:
 
 ```
-Income you must earn   1,090,000  ← pre-tax
-− PAYE gross-up         −250,000
-After-tax take-home     840,000
-− Renewal income        −100,000
-1st-year commissions    990,000
+After-tax take-home (= your annual budget)   840,000
++ PAYE                                       250,000
+= Income you must earn                     1,090,000   ← gross headline
+− Renewal income                          −100,000
+1st-year commissions required               990,000
 ```
 
-This layout visually implies `840,000 − 100,000 = 990,000`, which is incorrect — the actual math is `commissions = (after-tax − renewals) → grossed up to pre-tax → divided by rate`. Gemini flagged this as HIGH. Pre-existing; not introduced by PR #734 (the renewals subtraction and the commissions line were in the original layout).
-
-**To resolve:** restructure the PAYESummary card when renewals > 0 so the math chain is visually correct (e.g., "After-tax target = after-tax need − renewals → grossed up to reach headline"). Or show two separate columns (total gross vs net-of-renewals gross). Requires a UX design decision before implementing.
+The math chain now reads correctly top-to-bottom: gross `1,090,000` minus renewals `100,000` = commissions `990,000`. The old layout's ambiguity (implied `840,000 − 100,000 = 990,000`) is eliminated. **Remove this row after PR #735 merges.**
 
 ## GoalDecompositionTab — taxConnector label misleading when preTaxAlreadyApplied=true (banked PR #734 Gemini G3 OUT-OF-SCOPE, 2026-06-23, LOW)
 
