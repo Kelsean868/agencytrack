@@ -326,6 +326,19 @@ function makeWorksheetWithPAYE() {
   };
 }
 
+describe('MoneyNeedsPanel — PAYESummary display (Bug 2)', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('headline is gross (totalAnnualPreTax = "Income you must earn"); after-tax is the subordinate row', async () => {
+    await renderLoaded(makeWorksheetWithPAYE());
+    expect(screen.getByText('Income you must earn')).toBeInTheDocument();
+    expect(screen.getByText('After-tax take-home')).toBeInTheDocument();
+    // Both formatted values present (1,090,000 may appear in headline + commissions required row).
+    expect(screen.getAllByText(/1,090,000/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/840,000/).length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe('MoneyNeedsPanel — Send to Playground send-path (Bug 1)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
