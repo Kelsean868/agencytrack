@@ -523,6 +523,10 @@ describe('MoneyNeedsPanel — single-open accordion + rev 4-5 features', () => {
     fireEvent.click(screen.getByRole('button', { name: /send to playground/i }));
     expect(await screen.findByText('Target sent!')).toBeInTheDocument();
     expect(screen.getByText('Saved to your Commission Playground')).toBeInTheDocument();
+    // Reused FloatingCalcModal shell must not leak "calculator" into the close
+    // a11y label for a non-calc modal (Gemini #4 regression guard).
+    expect(screen.getByRole('button', { name: 'Close Target sent' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Close Target sent calculator/i })).not.toBeInTheDocument();
   });
 
   it('"Continue to Game Plan" fires onOpenTab("game-plan") and closes ack modal', async () => {

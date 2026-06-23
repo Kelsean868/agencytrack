@@ -175,7 +175,7 @@ function FieldSection({ variant, children }) {
   return (
     <div className="mb-2.5">
       <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg mb-2.5 ${
-        isCalc ? 'bg-primary/8' : 'bg-surface-muted'
+        isCalc ? 'bg-primary/5' : 'bg-surface-muted'
       }`}>
         {isCalc
           ? <Sparkles size={11} className="text-primary shrink-0" aria-hidden="true" />
@@ -721,7 +721,7 @@ function FloatingCalcModal({ onClose, title, children, footer }) {
           <button
             type="button"
             onClick={onClose}
-            aria-label={`Close ${title} calculator`}
+            aria-label={`Close ${title}`}
             className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-muted transition-colors hover:bg-surface hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
             <X size={18} aria-hidden="true" />
