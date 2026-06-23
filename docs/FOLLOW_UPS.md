@@ -6,6 +6,14 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## GoalDecompositionTab + MoneyNeedsPanel — shared localStorage key (banked PR #734, 2026-06-23, LOW)
+
+`PLAYGROUND_INCOME_GOAL_KEY = 'agencytrack-playground-income-goal'` is hardcoded independently in both `src/components/goals/CommissionPlayground/tabs/GoalDecompositionTab.jsx` (reader) and `src/components/agent/MoneyNeedsPanel.jsx` (writer). A rename must be made in both files simultaneously — no cross-import contract enforces the match.
+
+**To resolve:** extract to a single shared constant in `src/constants/` (e.g., `playgroundKeys.js`) and import in both files. Zero behavior change; prevents future key-drift bugs.
+
+**Value-format note (backward-compat already handled):** PR #734 changed the stored value from a bare number to `{ value, preTaxAlreadyApplied: true }`. `GoalDecompositionTab` handles both: bare number → legacy gross-up path; object with flag → skip gross-up. Any future feature that reads this key must use the same dual-format reader pattern from `GoalDecompositionTab.jsx` lines ~180–190.
+
 ## Nav redesign — mobile pin edit-mode (banked PR-2 nav-pr2-pinned, 2026-06-22, deferred this PR)
 
 PR-2 ships the ★ Pinned zone with pin/unpin on the **desktop Sidebar** only; `MobileNavDrawer` renders the pinned zone **read-only** (persisted/seeded pins at top, no star edit). A mobile pin edit-mode (long-press or an explicit edit toggle in the drawer to add/remove pins on a phone) is deferred. When built, reuse `usePinnedNav` (`pin`/`unpin` already mobile-safe) and add a touch affordance in `MobileNavDrawer.jsx`.
