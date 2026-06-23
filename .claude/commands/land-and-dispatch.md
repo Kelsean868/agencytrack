@@ -32,7 +32,7 @@ recon-gated briefs) remains the real review pause and is untouched by this comma
    # unrecognised line pattern → ABORT unchanged.
    $tracked = (git status --porcelain --untracked-files=no)
    if ($tracked) {
-       $dirtyLines = @($tracked -split "`n" | Where-Object { $_ -match '\S' })
+       $dirtyLines = @($tracked -split "\r?\n" | Where-Object { $_ -match '\S' })
        $onlyFirebaserc = ($dirtyLines.Count -eq 1) -and ($dirtyLines[0] -match '\.firebaserc$')
        if (-not $onlyFirebaserc) {
            Write-Error "ABORT: uncommitted tracked changes (not .firebaserc-only):`n$tracked"
@@ -40,11 +40,11 @@ recon-gated briefs) remains the real review pause and is untouched by this comma
        }
        # Sole dirty file is .firebaserc — inspect diff for etag-only churn pattern.
        $diff = (git diff -- .firebaserc)
-       $changedLines = @($diff -split "`n" | Where-Object {
+       $changedLines = @($diff -split "\r?\n" | Where-Object {
            $_ -match '^[+-]' -and $_ -notmatch '^\+\+\+' -and $_ -notmatch '^---'
        })
        $nonEtagLines = @($changedLines | Where-Object {
-           $_ -notmatch '^[+-]\s+"[A-Za-z0-9_-]+":\s+"[0-9a-f]{64}"'
+           $_ -notmatch '^[+-]\s+"[A-Za-z0-9_-]+":\s+"[0-9a-f]{64}"$'
        })
        if ($nonEtagLines.Count -gt 0) {
            Write-Error "ABORT: .firebaserc has changes outside the etag block — resolve manually:"
@@ -52,6 +52,10 @@ recon-gated briefs) remains the real review pause and is untouched by this comma
            exit 1
        }
        git checkout -- .firebaserc
+       if ($LASTEXITCODE -ne 0) {
+           Write-Error "ABORT: git checkout -- .firebaserc failed (exit $LASTEXITCODE)"
+           exit 1
+       }
        Write-Host "discarded .firebaserc extension-etag churn (etag hash rotation only)"
    }
    ```
