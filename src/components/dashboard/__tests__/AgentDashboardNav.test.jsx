@@ -191,3 +191,46 @@ describe('AgentDashboard — Track J P6 nav swap', () => {
     expect(() => render(<AgentDashboard />)).not.toThrow();
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Nav redesign PR-1 — agent nav IA (groups, SOON, child, Daily Log).
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('AgentDashboard — Nav redesign PR-1 structure', () => {
+  it('renders the four section groups in order: Today, Planning, Tools, Recognition', () => {
+    render(<AgentDashboard />);
+    const labels = captured.navItems.map((i) => i.sectionLabel).filter(Boolean);
+    expect(labels).toEqual(['Today', 'Planning', 'Tools', 'Recognition']);
+  });
+
+  it('Game Plan renders with NO "New" badge (badgeNew removed)', () => {
+    render(<AgentDashboard />);
+    const gamePlan = captured.navItems.find((i) => i.id === 'game-plan');
+    expect(gamePlan).toBeDefined();
+    expect(gamePlan.badgeNew).toBeUndefined();
+  });
+
+  it('Money Needs is an indented child', () => {
+    render(<AgentDashboard />);
+    expect(captured.navItems.find((i) => i.id === 'money-needs')?.child).toBe(true);
+  });
+
+  it('Planner is present and disabled (SOON)', () => {
+    render(<AgentDashboard />);
+    const planner = captured.navItems.find((i) => i.id === 'planner');
+    expect(planner).toBeDefined();
+    expect(planner.disabled).toBe(true);
+  });
+
+  it('Prospect Prep stays SOON (disabled via COMING_SOON_TABS)', () => {
+    render(<AgentDashboard />);
+    expect(captured.navItems.find((i) => i.id === 'prospect-info')?.disabled).toBe(true);
+  });
+
+  it('Daily Log is present for the default (hybrid) logging mode', () => {
+    render(<AgentDashboard />);
+    const dailyLog = captured.navItems.find((i) => i.id === 'daily-log');
+    expect(dailyLog).toBeDefined();
+    expect(dailyLog.action).toBe('log-today');
+  });
+});

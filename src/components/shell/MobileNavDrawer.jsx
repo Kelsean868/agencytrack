@@ -1,18 +1,69 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
+import WorkspaceToggle from './WorkspaceToggle';
 
 /**
  * Slide-up bottom-sheet drawer giving mobile users access to sidebar-only nav items.
  * Opened from the MobileBottomNav "More" button.
+ *
+ * Nav redesign PR-4: in the workspace/both layouts (producing managers) the drawer
+ * hosts the My Work ⇄ My Team toggle at the top (parity with the desktop sidebar);
+ * showPinnedZone={false} hides the pinned rows for the workspace layout.
  */
-export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClose }) {
+export default function MobileNavDrawer({
+  items, activeTab, setActiveTab, onClose, onAction, pinnedItems = [],
+  showPinnedZone = true, showWorkspaceToggle = false, workspace, onWorkspaceChange,
+}) {
   const modalRef = useFocusTrap({ onEscape: onClose });
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
   }, []);
+
+  // Read-only on mobile (Nav redesign PR-2 decision #7): pins render at top; no
+  // star edit affordance here. Disabled pins stay non-navigable.
+  const renderRow = (item, keyPrefix = '') => {
+    const Icon = item.Icon;
+    const isActive = item.tabId != null && activeTab === item.tabId;
+    const isDisabled = item.disabled === true;
+    const isChild = item.child === true;
+    return (
+      <button
+        key={`${keyPrefix}${item.id}`}
+        type="button"
+        disabled={isDisabled}
+        onClick={() => {
+          if (isDisabled) return;
+          if (item.tabId != null) setActiveTab(item.tabId);
+          else if (item.action != null) onAction?.(item.action);
+          onClose();
+        }}
+        className={`w-full flex items-center gap-4 ${isChild ? 'pl-10 pr-5' : 'px-5'} min-h-[44px] text-sm font-medium motion-safe:transition-colors focus-visible:outline-none ${
+          isDisabled
+            ? 'text-ink-muted cursor-not-allowed'
+            : isActive
+              ? 'text-primary bg-primary/5'
+              : 'text-ink hover:bg-card-raised focus-visible:bg-card-raised'
+        }`}
+        aria-current={isActive ? 'page' : undefined}
+      >
+        <Icon size={isChild ? 16 : 18} />
+        <span>{item.label}</span>
+        {item.scope && (
+          <span className="ml-1.5 text-[9px] font-bold uppercase tracking-wide px-1.5 py-px rounded-full bg-card-raised text-ink-muted">
+            {item.scope}
+          </span>
+        )}
+        {isDisabled && (
+          <span className="ml-auto text-[10px] font-bold uppercase tracking-wide px-1.5 py-px rounded-full bg-card-raised text-ink-muted">
+            Soon
+          </span>
+        )}
+      </button>
+    );
+  };
 
   return (
     <>
@@ -47,27 +98,21 @@ export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClos
         </div>
 
         <nav aria-label="More navigation options">
-          {items.map((item) => {
-            const Icon = item.Icon;
-            const isActive = item.tabId != null && activeTab === item.tabId;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  if (item.tabId != null) setActiveTab(item.tabId);
-                  onClose();
-                }}
-                className={`w-full flex items-center gap-4 px-5 min-h-[44px] text-sm font-medium motion-safe:transition-colors hover:bg-card-raised focus-visible:outline-none focus-visible:bg-card-raised ${
-                  isActive ? 'text-primary bg-primary/5' : 'text-ink'
-                }`}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
+          {showWorkspaceToggle && typeof onWorkspaceChange === 'function' && (
+            <div className="pt-2">
+              <WorkspaceToggle workspace={workspace} onChange={onWorkspaceChange} idPrefix="drawer-ws" />
+            </div>
+          )}
+          {showPinnedZone && pinnedItems.length > 0 && (
+            <>
+              <div className="px-5 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
+                ★ Pinned
+              </div>
+              {pinnedItems.map((item) => renderRow(item, 'pin-'))}
+              <div className="mx-5 my-2 border-t border-border" aria-hidden="true" />
+            </>
+          )}
+          {items.map((item) => renderRow(item))}
         </nav>
 
         {/* Safe-area spacer */}

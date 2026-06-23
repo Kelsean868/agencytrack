@@ -36,6 +36,14 @@ export default function Shell({
   topbarActions,
   onSignOut,
   onPullRefresh,
+  pinnedItems,
+  isPinned,
+  onPin,
+  onUnpin,
+  showPinnedZone = true,
+  showWorkspaceToggle = false,
+  workspace,
+  onWorkspaceChange,
   children,
 }) {
   const mainRef = useRef(null);
@@ -69,6 +77,14 @@ export default function Shell({
         onSignOut={onSignOut}
         collapsed={collapsed}
         toggleCollapse={toggleCollapse}
+        pinnedItems={pinnedItems}
+        isPinned={isPinned}
+        onPin={onPin}
+        onUnpin={onUnpin}
+        showPinnedZone={showPinnedZone}
+        showWorkspaceToggle={showWorkspaceToggle}
+        workspace={workspace}
+        onWorkspaceChange={onWorkspaceChange}
       />
       <div className="shell-main">
         <TopBar
@@ -94,6 +110,11 @@ export default function Shell({
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         onAction={onAction}
+        pinnedItems={pinnedItems}
+        showPinnedZone={showPinnedZone}
+        showWorkspaceToggle={showWorkspaceToggle}
+        workspace={workspace}
+        onWorkspaceChange={onWorkspaceChange}
       />
     </div>
   );

@@ -17,8 +17,8 @@ export default function DailyFAB({ onClick, todayLogged }) {
     <button
       type="button"
       onClick={onClick}
-      className="fixed bottom-20 right-4 z-40 w-14 h-14 flex items-center justify-center rounded-full bg-primary dark:bg-primary-dark text-white shadow-lg hover:bg-primary/90 dark:hover:bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60 focus:ring-offset-2"
-      aria-label="Log today's activity"
+      className="fixed bottom-20 right-4 z-40 w-14 h-14 hidden md:flex items-center justify-center rounded-full bg-primary dark:bg-primary-dark text-white shadow-lg hover:bg-primary/90 dark:hover:bg-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/60 focus:ring-offset-2"
+      aria-label="Quick add"
       data-testid="daily-fab"
     >
       <Pencil size={22} aria-hidden="true" />

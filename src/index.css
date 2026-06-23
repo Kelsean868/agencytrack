@@ -1143,6 +1143,64 @@ h1, h2, h3, h4 {
   color: var(--color-gold);
   letter-spacing: 0.06em;
 }
+/* Scope chip (Nav redesign PR-1) — MINE / TEAM / BOTH. Non-interactive label
+   sitting next to the item; presentation only (does not change routing). Reuses
+   the AA-passing .badge-soon token pair (surface-muted bg + text-muted). */
+.sidebar-link .sidebar-link-scope {
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 99px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+/* ★ Pinned-zone star pin/unpin (Nav redesign PR-2). Row-wrapper holds the nav
+   link button + a sibling star button (buttons can't nest). Star is revealed on
+   row hover / keyboard focus, and stays visible while pinned. */
+.sidebar-link-row {
+  position: relative;
+  width: 100%;
+}
+.sidebar-link-row .sidebar-link {
+  padding-right: 40px;
+}
+.sidebar-nav-star {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  z-index: 1;
+}
+.sidebar-link-row:hover .sidebar-nav-star,
+.sidebar-nav-star:focus-visible,
+.sidebar-nav-star.sidebar-nav-star-on {
+  opacity: 1;
+}
+.sidebar-nav-star:hover { color: var(--color-text); }
+.sidebar-nav-star:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.sidebar-nav-star.sidebar-nav-star-on { color: var(--color-primary); }
+.sidebar-nav-star.sidebar-nav-star-on svg { fill: currentColor; }
+@media (prefers-reduced-motion: no-preference) {
+  .sidebar-nav-star { transition: opacity 0.12s ease, color 0.12s ease; }
+}
 .sidebar-foot {
   margin-top: auto;
   padding: 14px 10px 0;
@@ -1455,6 +1513,7 @@ h1, h2, h3, h4 {
   .sidebar-collapsed .sidebar-section,
   .sidebar-collapsed .sidebar-link span,
   .sidebar-collapsed .sidebar-link .badge,
+  .sidebar-collapsed .sidebar-nav-star,
   .sidebar-collapsed .sidebar-foot-info { display: none; }
   .sidebar-collapsed .sidebar-link { justify-content: center; padding: 10px 8px; }
   /* Stack brand mark + collapse toggle vertically. The toggle's default

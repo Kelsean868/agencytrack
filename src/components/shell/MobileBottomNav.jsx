@@ -20,7 +20,10 @@ import MobileNavDrawer from './MobileNavDrawer';
  * drawerNavItems: optional list of sidebar-only items surfaced via a
  * slide-up "More" drawer. When provided, a 6th "More" button is appended.
  */
-export default function MobileBottomNav({ items, drawerNavItems, activeTab, setActiveTab, onAction }) {
+export default function MobileBottomNav({
+  items, drawerNavItems, activeTab, setActiveTab, onAction, pinnedItems,
+  showPinnedZone = true, showWorkspaceToggle = false, workspace, onWorkspaceChange,
+}) {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   if (!items || items.length === 0) return null;
@@ -38,7 +41,7 @@ export default function MobileBottomNav({ items, drawerNavItems, activeTab, setA
               <div key={item.id} className="bottom-nav-fab-wrap">
                 <button
                   type="button"
-                  className="bottom-nav-fab"
+                  className="bottom-nav-fab relative"
                   onClick={() => {
                     if (item.tabId != null) setActiveTab(item.tabId);
                     else if (item.action != null) onAction?.(item.action);
@@ -47,6 +50,12 @@ export default function MobileBottomNav({ items, drawerNavItems, activeTab, setA
                   data-testid={item.testId ?? `bottomnav-${item.id}`}
                 >
                   <Plus size={24} strokeWidth={2.5} />
+                  {item.dot && (
+                    <span
+                      className="absolute top-0.5 right-0.5 w-3 h-3 rounded-full bg-warning border-2 border-bg"
+                      aria-hidden="true"
+                    />
+                  )}
                 </button>
                 <span className="bottom-nav-fab-label">{item.label}</span>
               </div>
@@ -87,9 +96,15 @@ export default function MobileBottomNav({ items, drawerNavItems, activeTab, setA
       {drawerOpen && drawerNavItems && (
         <MobileNavDrawer
           items={drawerNavItems}
+          pinnedItems={pinnedItems}
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          onAction={onAction}
           onClose={() => setDrawerOpen(false)}
+          showPinnedZone={showPinnedZone}
+          showWorkspaceToggle={showWorkspaceToggle}
+          workspace={workspace}
+          onWorkspaceChange={onWorkspaceChange}
         />
       )}
     </>

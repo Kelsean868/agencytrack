@@ -32,6 +32,9 @@ import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import ManagerOverviewTab from './ManagerOverviewTab';
 import ProfileScreen from '../profile/ProfileScreen';
 import Shell from '../shell/Shell';
+import { getNavConfig, getWorkspaceGroups } from '../shell/navConfig';
+import usePinnedNav from '../../hooks/usePinnedNav';
+import useMenuLayout from '../../hooks/useMenuLayout';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
 import AgentOfMonthTab from '../manager/AgentOfMonthTab';
@@ -45,6 +48,8 @@ import GoalsPanel from '../manager/GoalsPanel';
 import PolicyLedgerPanel from '../agent/PolicyLedgerPanel';
 import DailyCaptureV2 from '../daily/DailyCaptureV2';
 import DailyFAB from '../daily/DailyFAB';
+import QuickAddMenu from '../shell/QuickAddMenu';
+import { getQuickAddActions } from '../shell/quickAddConfig';
 import GamePlanScreen from './GamePlanV2';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
 import HistoryTab from '../submissions/HistoryTab';
@@ -105,15 +110,24 @@ const NAV_ITEMS = [
   { id: 'profile',     label: 'Profile',      tabId: 'profile',     Icon: UserCircle },
 ].map(item => item.tabId && MANAGER_COMING_SOON_TABS.has(item.tabId) ? { ...item, disabled: true } : item);
 
-// Mobile bottom-nav — 5 items chosen as the most-used manager surfaces.
-// Master Sheet stands in for the mock's "Reports" item (no Reports tab
-// exists today). All 4 manager roles share this layout for B4.
+// Mobile bottom-nav — SM/TA/PA (non-producing managers). Unchanged from B4.
 const BOTTOM_NAV = [
-  { id: 'overview',    label: 'Dashboard', tabId: 'overview',    Icon: BarChart2 },
-  { id: 'team',        label: 'Team',      tabId: 'team',        Icon: Users },
+  { id: 'overview',    label: 'Dashboard', tabId: 'overview',    Icon: BarChart2     },
+  { id: 'team',        label: 'Team',      tabId: 'team',        Icon: Users         },
   { id: 'mastersheet', label: 'Reports',   tabId: 'mastersheet', Icon: ClipboardList },
-  { id: 'campaigns',   label: 'Campaigns', tabId: 'campaigns',   Icon: Gift },
-  { id: 'profile',     label: 'Profile',   tabId: 'profile',     Icon: UserCircle },
+  { id: 'campaigns',   label: 'Campaigns', tabId: 'campaigns',   Icon: Gift          },
+  { id: 'profile',     label: 'Profile',   tabId: 'profile',     Icon: UserCircle    },
+];
+
+// UM/BM mobile bottom-nav — center ＋ ("Create") opens Quick-Add sheet (PR-3).
+// Campaigns is omitted here; it lands in the More drawer via drawerNavItems.
+// Icon field omitted on the fab item — MobileBottomNav always renders Plus for fabs.
+const BOTTOM_NAV_PRODUCING = [
+  { id: 'overview',    label: 'Dashboard', tabId: 'overview',    Icon: BarChart2     },
+  { id: 'team',        label: 'Team',      tabId: 'team',        Icon: Users         },
+  { id: 'create',      label: 'Create',    action: 'quick-add',  fab: true           },
+  { id: 'mastersheet', label: 'Reports',   tabId: 'mastersheet', Icon: ClipboardList },
+  { id: 'profile',     label: 'Profile',   tabId: 'profile',     Icon: UserCircle    },
 ];
 
 const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies']);
@@ -153,6 +167,7 @@ export default function ManagerDashboard() {
   const [ptrRevision, setPtrRevision] = useState(0);
   const PTR_MANAGER_TABS = new Set(['overview', 'mastersheet', 'leaderboard', 'mp-history', 'mp-policies']);
   const [showMpDailyModal, setShowMpDailyModal] = useState(false);
+  const [showQuickAdd,     setShowQuickAdd]     = useState(false);
   // Producing-manager fast path: dedicated wizard host (mirrors the agent's
   // showWizard host). The daily-review → Confirm flow routes here; vars are
   // re-set fresh on every open via openMpWizardForWeek (onClose does not reset
@@ -201,16 +216,77 @@ export default function ManagerDashboard() {
     [role]
   );
 
-  const drawerNavItems = useMemo(
-    () => filteredNavItems.filter((item) => !BOTTOM_NAV.find((b) => b.id === item.id)),
-    [filteredNavItems]
+  // Nav redesign PR-1: producing managers (UM/BM) render the centralized
+  // producingManager config (route-faithful — every item points at an existing
+  // tabId, branch-only items gated via `roles`). All other manager roles
+  // (sales_manager / tenant_admin / platform_admin) keep the existing inline
+  // nav unchanged. The shared NAV_ITEMS array and the activeTab render-switch
+  // are deliberately untouched, so no screen can regress.
+  // Menu layout (Nav redesign PR-4) — producing managers honor the stored
+  // preference; non-producing manager roles aren't producingManager so they
+  // never enter the workspace path. Agents clamp at the resolver (n/a here).
+  const { menuLayout, setMenuLayout } = useMenuLayout({ role, tenantId, uid: user?.uid });
+  const [workspace, setWorkspace] = useState('work'); // session-state, default My Work (decision #4)
+  const isWorkspaceLayout = isProducingManager && (menuLayout === 'workspace' || menuLayout === 'both');
+
+  // Full role nav — the descriptor universe for pinned-zone resolution. Always
+  // the complete producingManager config (independent of the active workspace)
+  // so the `both` layout's pinned rows always resolve to a descriptor.
+  const fullNav = useMemo(
+    () => (isProducingManager ? getNavConfig('producingManager', { role }) : filteredNavItems),
+    [isProducingManager, role, filteredNavItems]
   );
+
+  // Rendered groups — the workspace partition for workspace/both, else the full
+  // nav (pinned layout + non-producing roles render exactly as before).
+  const navItems = useMemo(
+    () => (isWorkspaceLayout ? getWorkspaceGroups('producingManager', { role, workspace }) : fullNav),
+    [isWorkspaceLayout, role, workspace, fullNav]
+  );
+
+  const drawerNavItems = useMemo(
+    () => {
+      const activeNav = isProducingManager ? BOTTOM_NAV_PRODUCING : BOTTOM_NAV;
+      return navItems.filter((item) => !activeNav.find((b) => b.id === item.id));
+    },
+    [navItems, isProducingManager]
+  );
+
+  // ★ Pinned-nav (Nav redesign PR-2) — producing managers (UM/BM) only. Other
+  // manager roles pass no tenantId/uid/configKey (hook is inert) and forward no
+  // pinned props to Shell, so their nav renders exactly as before. Resolves pins
+  // against `fullNav` (not the rendered subset) so `both`'s pins always resolve.
+  const { pinnedItems, isPinned, pin, unpin } = usePinnedNav({
+    tenantId:  isProducingManager ? tenantId : undefined,
+    uid:       isProducingManager ? user?.uid : undefined,
+    configKey: isProducingManager ? 'producingManager' : null,
+    navItems:  fullNav,
+  });
 
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Manager';
   const roleLabel    = getRoleLabel(role);
 
   const handleSignOut = async () => {
     try { await signOut(); } catch (err) { console.error(err); }
+  };
+
+  // Quick-Add + bottom-nav action dispatch (PR-3). 'quick-add' opens the
+  // QuickAddMenu. Tab-based Quick-Add actions route via setActiveTab.
+  // 'log-today' opens the producing-manager daily-capture overlay (Decision #6).
+  // 'start-meeting' delegates to handleStartMeeting (deferred from PR-1).
+  const handleMgrAction = (action) => {
+    if (action === 'quick-add') {
+      setShowQuickAdd(true);
+    } else if (action === 'log-today') {
+      setShowMpDailyModal(true);
+    } else if (action === 'start-meeting') {
+      handleStartMeeting();
+    } else if ([
+      'mp-report', 'mp-policies', 'monthly-recruiting',
+      'persistency', 'campaigns', 'mp-goals',
+    ].includes(action)) {
+      setActiveTab(action);
+    }
   };
 
   const handleStartMeeting = async () => {
@@ -335,9 +411,18 @@ export default function ManagerDashboard() {
 
   return (
     <Shell
-      navItems={filteredNavItems}
-      bottomNavItems={BOTTOM_NAV}
+      navItems={navItems}
+      pinnedItems={isProducingManager ? pinnedItems : undefined}
+      isPinned={isProducingManager ? isPinned : undefined}
+      onPin={isProducingManager ? pin : undefined}
+      onUnpin={isProducingManager ? unpin : undefined}
+      showPinnedZone={isProducingManager ? menuLayout !== 'workspace' : true}
+      showWorkspaceToggle={isWorkspaceLayout}
+      workspace={workspace}
+      onWorkspaceChange={setWorkspace}
+      bottomNavItems={isProducingManager ? BOTTOM_NAV_PRODUCING : BOTTOM_NAV}
       drawerNavItems={drawerNavItems}
+      onAction={handleMgrAction}
       activeTab={activeTab}
       setActiveTab={setActiveTab}
       userProfile={userProfile}
@@ -491,18 +576,30 @@ export default function ManagerDashboard() {
 
         {activeTab === 'mp-policies' && <PolicyLedgerPanel key={ptrRevision} />}
 
-        {/* DailyFAB overlay — shown on any My Production tab when logging mode
-            is daily or hybrid (unset → hybrid). Hidden when full-screen early
-            returns (mp-report WizardForm, showMpDailyModal DailyCaptureV2)
-            are active since those branches never reach this Shell render. */}
+        {/* Quick-Add FAB (desktop pencil) — shown on any My Production tab
+            when in daily/hybrid mode. Hides on mobile (<768px) via DailyFAB.
+            Opens the Quick-Add popover; 'Log today' inside it opens the daily
+            capture overlay (Decision #6 verdict). */}
         {MP_TABS.has(activeTab) && showMpDailyCTA && (
           <DailyFAB
-            onClick={() => setShowMpDailyModal(true)}
+            onClick={() => setShowQuickAdd(true)}
             todayLogged={true}
           />
         )}
 
-        {activeTab === 'profile' && <ProfileScreen />}
+        {/* Quick-Add menu — popover (desktop) or sheet (mobile) */}
+        {showQuickAdd && (
+          <QuickAddMenu
+            actions={getQuickAddActions(isProducingManager ? 'producingManager' : 'manager')}
+            onSelect={handleMgrAction}
+            onClose={() => setShowQuickAdd(false)}
+            todayLogged={true}
+          />
+        )}
+
+        {activeTab === 'profile' && (
+          <ProfileScreen menuLayout={menuLayout} onMenuLayoutChange={setMenuLayout} />
+        )}
     </Shell>
   );
 }
