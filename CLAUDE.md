@@ -654,8 +654,10 @@ After opening any PR, poll for **both** configured bot reviewers (up to 10 min e
 
 **Configured reviewers and poll targets:**
 
-- **Gemini** (`gemini-code-assist[bot]`) — PR Reviews API. Poll: `gh pr view <pr> --json reviews` → entries where `.author.login == "gemini-code-assist"` (state `COMMENTED`). *Gemini sunsets 2026-07-17; after that GLM is the primary reviewer.*
-- **GLM-5.2** (`github-actions[bot]`, marker `## 🤖`) — issue comments. Poll: `gh pr view <pr> --json comments` → entries where `.author.login == "github-actions[bot]"` and `.body` starts with `"## 🤖"`. Workflow fires only when `.github/workflows/glm-review.yml` exists on the base branch (main); if the workflow is not yet installed on main, note its absence rather than treating it as "no comments."
+**Note: bot-author logins in the GitHub JSON carry NO `[bot]` suffix.** The display names shown in the GitHub UI (e.g. `gemini-code-assist[bot]`) differ from the `.author.login` field returned by the API. Filtering on the `[bot]`-suffixed display name silently matches nothing. Correct values: Gemini = `"gemini-code-assist"`, GLM = `"github-actions"` (distinguished from other github-actions comments by the `## 🤖` body prefix). Banked from PR #735 audit (2026-06-23).
+
+- **Gemini** (`gemini-code-assist` in API) — PR Reviews API. Poll: `gh pr view <pr> --json reviews` → entries where `.author.login == "gemini-code-assist"` (state `COMMENTED`). *Gemini sunsets 2026-07-17; after that GLM is the primary reviewer.*
+- **GLM-5.2** (`github-actions` in API, marker `## 🤖`) — issue comments. Poll: `gh pr view <pr> --json comments` → entries where `.author.login == "github-actions"` and `.body` starts with `"## 🤖"`. Workflow fires only when `.github/workflows/glm-review.yml` exists on the base branch (main); if the workflow is not yet installed on main, note its absence rather than treating it as "no comments."
 
 **Post-merge backstop.** A pre-merge "absent" is provisional for each reviewer independently. `/post-merge` re-polls for BOTH reviewers; any comment that arrived after the pre-merge window is dispositioned in the post-merge report under the same taxonomy — IMPLEMENT → banked as a follow-up PR or FU (the PR is already merged, no in-PR fix possible) · DISAGREE → recorded in summary · OUT-OF-SCOPE → banked as FU · ALREADY-RESOLVED → noted · OBSOLETE → noted. The gate is not satisfied by a pre-merge "absent" for either reviewer alone.
 
