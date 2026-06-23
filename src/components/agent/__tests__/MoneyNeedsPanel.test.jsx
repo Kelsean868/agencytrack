@@ -86,16 +86,15 @@ beforeEach(() => { vi.clearAllMocks(); });
 describe('MoneyNeedsPanel — floating calculators', () => {
   it('renders a trigger next to each calc-fed line, with the car trigger on BOTH car lines', async () => {
     await renderLoaded();
+    // Single-open accordion — verify each group's triggers by opening it in turn.
     openGroup('Living Expenses');
-    openGroup('Business Expenses');
-    openGroup('Savings & Accumulation');
-
-    // Car calc → both "Car expenses, nonbusiness" (Living) and "Business car expenses" (Business).
     expect(screen.getByRole('button', { name: /Open Car expenses, nonbusiness calculator/i })).toBeInTheDocument();
+
+    openGroup('Business Expenses'); // closes Living
     expect(screen.getByRole('button', { name: /Open Business car expenses calculator/i })).toBeInTheDocument();
-    // Industry calc → "Professional/industry expenses".
     expect(screen.getByRole('button', { name: /Open Professional\/industry expenses calculator/i })).toBeInTheDocument();
-    // Loans calc → "Debt reduction (non-mortgage)".
+
+    openGroup('Savings & Accumulation'); // closes Business
     expect(screen.getByRole('button', { name: /Open Debt reduction \(non-mortgage\) calculator/i })).toBeInTheDocument();
   });
 
@@ -108,12 +107,17 @@ describe('MoneyNeedsPanel — floating calculators', () => {
 
   it('the read-only car-loan reference has no trigger', async () => {
     await renderLoaded();
+    // Single-open: verify trigger counts per group, then confirm no car-loan trigger anywhere.
     openGroup('Living Expenses');
+    expect(screen.getAllByRole('button', { name: /^Open .* calculator$/i })).toHaveLength(1);
+
     openGroup('Business Expenses');
+    expect(screen.getAllByRole('button', { name: /^Open .* calculator$/i })).toHaveLength(2);
+
     openGroup('Savings & Accumulation');
-    // Only the four calc-fed lines own a trigger; the seed-ld-1 car-loan ref is not a calc-fed expense line.
-    const triggers = screen.getAllByRole('button', { name: /^Open .* calculator$/i });
-    expect(triggers).toHaveLength(4);
+    expect(screen.getAllByRole('button', { name: /^Open .* calculator$/i })).toHaveLength(1);
+
+    // Car-loan is a read-only display item in the sub-calc modal — it never gets a trigger button.
     expect(screen.queryByRole('button', { name: /Open Car loan.* calculator/i })).not.toBeInTheDocument();
   });
 
@@ -172,26 +176,31 @@ describe('MoneyNeedsPanel — floating calculators', () => {
       },
     });
 
-    openGroup('Living Expenses');
+    // Single-open: open Business first, verify CTA on business line.
     openGroup('Business Expenses');
-
-    // Before: both car lines empty → CTA present on both triggers.
-    expect(within(screen.getByRole('button', { name: /Open Car expenses, nonbusiness calculator/i })).getByText(/Build with calculator/i)).toBeInTheDocument();
+    expect(within(screen.getByRole('button', { name: /Open Business car expenses calculator/i })).getByText(/Build with calculator/i)).toBeInTheDocument();
 
     // Open the car calc and add an item (auto-saves → onSubCalcSaved → prefill).
     fireEvent.click(screen.getByRole('button', { name: /Open Business car expenses calculator/i }));
     const dialog = await screen.findByRole('dialog', { name: 'Car Expenses' });
     fireEvent.click(within(dialog).getByRole('button', { name: /Add item/i }));
-
     await waitFor(() => expect(mockUpdateSubCalc).toHaveBeenCalled());
 
-    // Both car lines now carry their prefilled values; the CTA is replaced by Recalculate.
+    // Business car line CTA replaced by Recalculate.
+    await waitFor(() => {
+      const businessTrigger = screen.getByRole('button', { name: /Open Business car expenses calculator/i });
+      expect(within(businessTrigger).queryByText(/Build with calculator/i)).not.toBeInTheDocument();
+    });
+
+    // Close the modal (Done footer close), then switch to Living Expenses to verify the personal car line.
+    fireEvent.click(within(dialog).getByRole('button', { name: /Done — use this figure/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Car Expenses' })).not.toBeInTheDocument());
+
+    openGroup('Living Expenses'); // closes Business
     await waitFor(() => {
       const personalTrigger = screen.getByRole('button', { name: /Open Car expenses, nonbusiness calculator/i });
       expect(within(personalTrigger).queryByText(/Build with calculator/i)).not.toBeInTheDocument();
     });
-    const businessTrigger = screen.getByRole('button', { name: /Open Business car expenses calculator/i });
-    expect(within(businessTrigger).queryByText(/Build with calculator/i)).not.toBeInTheDocument();
   });
 
   it('long label renders its full text — no truncation', async () => {
@@ -259,7 +268,7 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     expect(descInput.parentElement).not.toBe(amountInput.parentElement);
   });
 
-  it('main-panel manual row keeps the #718 responsive layout (sm:flex-1 label, no forced stack)', async () => {
+  it('manual LineItemRow renders as a card (description heading full-width, amount row beneath)', async () => {
     await renderLoaded();
     openGroup('Fixed Expenses');
     mockUpdateExpenseGroup.mockResolvedValue({ totalAnnualExpenses: 0, totalAnnualAfterTax: 0, totalAnnualPreTax: 0 });
@@ -267,15 +276,16 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     await waitFor(() => expect(mockUpdateExpenseGroup).toHaveBeenCalled());
 
     const descInput = screen.getByRole('textbox', { name: /Expense description/i });
-    // Main panel = responsive: label grows on desktop (sm:flex-1) — NOT the modal's
-    // always-stacked layout. The outer row carries sm:flex-row.
-    expect(descInput.className).toMatch(/\bsm:flex-1\b/);
-    expect(descInput.className).toMatch(/\bsm:min-w-0\b/);
-    const outerRow = descInput.parentElement;
-    expect(outerRow.className).toMatch(/\bsm:flex-row\b/);
-    // No ml-auto / spacer anywhere in the row.
-    const row = descInput.closest('.border-b');
-    expect(row.querySelector('[class*="ml-auto"]')).toBeNull();
+    // Card container: rounded-xl border bg-surface.
+    const card = descInput.parentElement;
+    expect(card.className).toMatch(/\brounded-xl\b/);
+    expect(card.className).toMatch(/\bborder\b/);
+    expect(card.className).toMatch(/\bbg-surface\b/);
+    // Description is the full-width heading — font-semibold, bg-surface-muted, no sm:flex-1.
+    expect(descInput.className).toMatch(/\bw-full\b/);
+    expect(descInput.className).toMatch(/\bfont-semibold\b/);
+    expect(descInput.className).toMatch(/\bbg-surface-muted\b/);
+    expect(descInput.className).not.toMatch(/\bsm:flex-1\b/);
   });
 
   it('manual LineItemRow renders a long Description label in full (no truncation of the value)', async () => {
@@ -479,5 +489,107 @@ describe('MoneyNeedsPanel — accordion group header (mobile truncation fix)', (
     expect(headerBtn.getAttribute('aria-expanded')).toBe('true');
     fireEvent.click(headerBtn);
     expect(headerBtn.getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('MoneyNeedsPanel — single-open accordion + rev 4-5 features', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  it('opening one group collapses the previously open group', async () => {
+    await renderLoaded();
+    const fixedBtn  = screen.getByRole('button', { name: /Fixed Expenses/i });
+    const livingBtn = screen.getByRole('button', { name: /Living Expenses/i });
+
+    fireEvent.click(fixedBtn);
+    expect(fixedBtn.getAttribute('aria-expanded')).toBe('true');
+    expect(livingBtn.getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.click(livingBtn);
+    expect(livingBtn.getAttribute('aria-expanded')).toBe('true');
+    expect(fixedBtn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('clicking the open group again collapses it (all groups closed)', async () => {
+    await renderLoaded();
+    const fixedBtn = screen.getByRole('button', { name: /Fixed Expenses/i });
+    fireEvent.click(fixedBtn);
+    expect(fixedBtn.getAttribute('aria-expanded')).toBe('true');
+    fireEvent.click(fixedBtn);
+    expect(fixedBtn.getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('Send to Playground shows ack modal with "Target sent!" confirmation', async () => {
+    await renderLoaded(makeWorksheetWithPAYE());
+    fireEvent.click(screen.getByRole('button', { name: /send to playground/i }));
+    expect(await screen.findByText('Target sent!')).toBeInTheDocument();
+    expect(screen.getByText('Saved to your Commission Playground')).toBeInTheDocument();
+  });
+
+  it('"Continue to Game Plan" fires onOpenTab("game-plan") and closes ack modal', async () => {
+    const mockOnOpenTab = vi.fn();
+    mockGetMoneyNeeds.mockResolvedValue(makeWorksheetWithPAYE());
+    render(<MoneyNeedsPanel onOpenTab={mockOnOpenTab} />);
+    await screen.findByText('Money Needs Worksheet');
+    await screen.findByRole('button', { name: /Business Expenses/i });
+
+    fireEvent.click(screen.getByRole('button', { name: /send to playground/i }));
+    const continueBtn = await screen.findByRole('button', { name: /Continue to Game Plan/i });
+    fireEvent.click(continueBtn);
+    expect(mockOnOpenTab).toHaveBeenCalledWith('game-plan');
+    await waitFor(() => expect(screen.queryByText('Target sent!')).not.toBeInTheDocument());
+  });
+
+  it('"Stay here" closes ack modal without firing onOpenTab', async () => {
+    const mockOnOpenTab = vi.fn();
+    mockGetMoneyNeeds.mockResolvedValue(makeWorksheetWithPAYE());
+    render(<MoneyNeedsPanel onOpenTab={mockOnOpenTab} />);
+    await screen.findByText('Money Needs Worksheet');
+    await screen.findByRole('button', { name: /Business Expenses/i });
+
+    fireEvent.click(screen.getByRole('button', { name: /send to playground/i }));
+    await screen.findByText('Target sent!');
+    fireEvent.click(screen.getByRole('button', { name: /Stay here/i }));
+    await waitFor(() => expect(screen.queryByText('Target sent!')).not.toBeInTheDocument());
+    expect(mockOnOpenTab).not.toHaveBeenCalled();
+  });
+
+  it('Done footer renders with "Annual total" label and close button inside the sub-calc modal', async () => {
+    const ws = {
+      ...makeWorksheet(),
+      subCalculators: {
+        insuranceIndustry: { lineItems: [], annualTotal: 2400 },
+        carExpenses:       { lineItems: [], annualTotalPersonal: 0, annualTotalBusiness: 0 },
+        loansDebt:         { lineItems: [], annualTotal: 0 },
+      },
+    };
+    await renderLoaded(ws);
+    openGroup('Business Expenses');
+    fireEvent.click(screen.getByRole('button', { name: /Open Professional\/industry expenses calculator/i }));
+    const dialog = await screen.findByRole('dialog', { name: 'Insurance Industry Expenses' });
+
+    expect(within(dialog).getByText(/Annual total/i)).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /Done — use this figure/i })).toBeInTheDocument();
+  });
+
+  it('Done footer close button closes the modal', async () => {
+    await renderLoaded();
+    openGroup('Savings & Accumulation');
+    fireEvent.click(screen.getByRole('button', { name: /Open Debt reduction \(non-mortgage\) calculator/i }));
+    const dialog = await screen.findByRole('dialog', { name: 'Loans & Debt' });
+
+    fireEvent.click(within(dialog).getByRole('button', { name: /Done — use this figure/i }));
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Loans & Debt' })).not.toBeInTheDocument());
+  });
+
+  it('car Done footer shows personal and business split labels', async () => {
+    await renderLoaded();
+    openGroup('Business Expenses');
+    fireEvent.click(screen.getByRole('button', { name: /Open Business car expenses calculator/i }));
+    const dialog = await screen.findByRole('dialog', { name: 'Car Expenses' });
+
+    // Car calc footer branches into two labeled totals (not a single total).
+    expect(within(dialog).getByText('personal')).toBeInTheDocument();
+    expect(within(dialog).getByText('business')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: /Done — use this figure/i })).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Calculator, ChevronDown, Loader2, AlertCircle, Plus, Trash2, Send, RotateCcw, Sparkles, X,
+  Calculator, ChevronDown, Loader2, AlertCircle, Plus, Trash2, Send, RotateCcw, Sparkles, X, Pencil, Check,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import useFocusTrap from '../../hooks/useFocusTrap';
@@ -38,65 +38,53 @@ function makeItemId() {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-// Manual / custom expense line — editable label, amount, frequency, delete.
-// On mobile (<sm) the label stacks above the amount/freq/annual/delete row.
-function LineItemRow({ item, onChange, onDelete, onBlur, stacked = false }) {
-  // Default (main panel): responsive — label above the numeric row on mobile,
-  // single flat row on desktop (the PR-718 layout). `stacked` (calc modal):
-  // ALWAYS stacked so the label takes the full row width and a long Description
-  // renders in full inside the narrow FloatingCalcModal (~480px), where a flat
-  // row would pin it to ~89px.
-  const outerCls = stacked
-    ? 'flex flex-col gap-1.5'
-    : 'flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-2';
-  const labelCls = stacked
-    ? 'w-full h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40'
-    : 'w-full sm:flex-1 sm:min-w-0 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40';
+// Manual / custom expense line — card layout (rev 4 Fix 3). Description is the
+// heading (full-width, bg-surface-muted, borderless until focus); amount · freq ·
+// annual · delete on the row beneath. Applies in both the panel and sub-calc modal.
+function LineItemRow({ item, onChange, onDelete, onBlur }) {
   return (
-    <div className="py-1.5 border-b border-border last:border-0">
-      <div className={outerCls}>
+    <div className="rounded-xl border border-border bg-surface shadow-sm mb-2 p-3">
+      <input
+        type="text"
+        value={item.label}
+        onChange={(e) => onChange(item.id, 'label', e.target.value)}
+        onBlur={onBlur}
+        placeholder="Description"
+        aria-label="Expense description"
+        className="w-full bg-surface-muted border-0 rounded-md px-2 py-1.5 text-sm font-semibold text-ink placeholder:font-normal placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/40 mb-2"
+      />
+      <div className="flex items-center gap-2 flex-wrap">
         <input
-          type="text"
-          value={item.label}
-          onChange={(e) => onChange(item.id, 'label', e.target.value)}
+          type="number"
+          value={item.amount === 0 ? '' : item.amount}
+          onChange={(e) => onChange(item.id, 'amount', e.target.value)}
           onBlur={onBlur}
-          placeholder="Description"
-          aria-label="Expense description"
-          className={labelCls}
+          placeholder="0"
+          min={0}
+          aria-label="Expense amount"
+          className="w-24 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
         />
-        <div className="flex items-center gap-2 flex-wrap">
-          <input
-            type="number"
-            value={item.amount === 0 ? '' : item.amount}
-            onChange={(e) => onChange(item.id, 'amount', e.target.value)}
-            onBlur={onBlur}
-            placeholder="0"
-            min={0}
-            aria-label="Expense amount"
-            className="w-24 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
-          <select
-            value={item.frequency}
-            onChange={(e) => onChange(item.id, 'frequency', e.target.value, true)}
-            aria-label="Frequency"
-            className="flex-1 sm:flex-none h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
-          >
-            {FREQUENCY_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-          <span className="w-28 text-right text-xs text-ink-muted tabular-nums shrink-0">
-            {formatCurrency(annualizeAmount(item.amount, item.frequency))} / yr
-          </span>
-          <button
-            type="button"
-            onClick={() => onDelete(item.id)}
-            aria-label="Delete expense"
-            className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors min-h-[44px] min-w-[32px]"
-          >
-            <Trash2 size={14} />
-          </button>
-        </div>
+        <select
+          value={item.frequency}
+          onChange={(e) => onChange(item.id, 'frequency', e.target.value, true)}
+          aria-label="Frequency"
+          className="flex-1 sm:flex-none h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+        >
+          {FREQUENCY_OPTIONS.map((opt) => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+        <span className="w-28 text-right text-xs text-ink-muted tabular-nums shrink-0">
+          {formatCurrency(annualizeAmount(item.amount, item.frequency))} / yr
+        </span>
+        <button
+          type="button"
+          onClick={() => onDelete(item.id)}
+          aria-label="Delete expense"
+          className="flex items-center justify-center w-8 h-8 rounded-lg text-ink-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors min-h-[44px] min-w-[32px]"
+        >
+          <Trash2 size={14} />
+        </button>
       </div>
     </div>
   );
@@ -112,7 +100,7 @@ function CalcFedLineRow({ item, onChange, onReset, onBlur, onOpenCalc }) {
   const calcId = item.calcKey ? item.calcKey.split('.')[0] : null;
 
   return (
-    <div className={`rounded-xl border p-[11px_13px] space-y-2 ${filled ? 'border-border bg-surface' : 'border-primary bg-primary/5'}`}>
+    <div className={`rounded-xl border p-3 space-y-2 shadow-sm ${filled ? 'border-border bg-surface' : 'border-primary bg-primary/5'}`}>
       {/* Row 1 — label (full, no truncation) + state chip */}
       <div className="flex items-start gap-2">
         <span className="flex-1 min-w-0 text-sm text-ink text-pretty">{item.label}</span>
@@ -180,9 +168,33 @@ function CalcFedLineRow({ item, onChange, onReset, onBlur, onOpenCalc }) {
   );
 }
 
-function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGroupSaved, onOpenCalc }) {
+// Tinted section band — separates calc-fed rows from manual rows within an open
+// accordion. Sparkles header for "From your calculators"; Pencil for "Your entries".
+function FieldSection({ variant, children }) {
+  const isCalc = variant === 'calc';
+  return (
+    <div className="mb-2.5">
+      <div className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg mb-2.5 ${
+        isCalc ? 'bg-primary/8' : 'bg-surface-muted'
+      }`}>
+        {isCalc
+          ? <Sparkles size={11} className="text-primary shrink-0" aria-hidden="true" />
+          : <Pencil size={11} className="text-ink-muted shrink-0" aria-hidden="true" />
+        }
+        <span className={`text-[11px] font-semibold uppercase tracking-wide ${
+          isCalc ? 'text-primary' : 'text-ink-muted'
+        }`}>
+          {isCalc ? 'From your calculators' : 'Your entries'}
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// open + onToggle props lifted to MoneyNeedsPanel (Fix 2 — single-open accordion).
+function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGroupSaved, onOpenCalc, open, onToggle }) {
   const { tenantId, user } = useAuth();
-  const [open, setOpen] = useState(false);
   const [localItems, setLocalItems] = useState(() => group?.lineItems ?? []);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -280,21 +292,11 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
 
   const filledCount = localItems.filter((i) => (parseFloat(i.amount) || 0) > 0).length;
 
-  const colHeader = (
-    <div className="flex items-center gap-2 pb-1 border-b border-border mb-1">
-      <span className="flex-1 text-xs font-semibold text-ink-muted">Description</span>
-      <span className="w-24 text-right text-xs font-semibold text-ink-muted">Amount</span>
-      <span className="text-xs font-semibold text-ink-muted">Frequency</span>
-      <span className="w-28 text-right text-xs font-semibold text-ink-muted">Annual</span>
-      <span className="w-8" />
-    </div>
-  );
-
   return (
-    <div className="border border-border rounded-xl overflow-hidden">
+    <div className={`border border-border rounded-xl overflow-hidden${open ? ' shadow-sm' : ''}`}>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={onToggle}
         className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-2 px-4 py-2 sm:py-0 sm:h-12 text-sm font-semibold text-ink hover:bg-surface-raised transition-colors min-h-[44px]"
         aria-expanded={open}
       >
@@ -338,33 +340,24 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
           )}
 
           {calcFedItems.length > 0 && (
-            <div className="mb-3">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-primary mb-2 flex items-center gap-1">
-                <Sparkles size={11} aria-hidden="true" /> From your calculators
-              </p>
-              <div className="space-y-2">
-                {calcFedItems.map((item) => (
-                  <CalcFedLineRow
-                    key={item.id}
-                    item={item}
-                    onChange={handleItemChange}
-                    onReset={handleResetCalcLine}
-                    onBlur={handleBlur}
-                    onOpenCalc={onOpenCalc}
-                  />
-                ))}
-              </div>
-            </div>
+            <FieldSection variant="calc">
+              {calcFedItems.map((item) => (
+                <CalcFedLineRow
+                  key={item.id}
+                  item={item}
+                  onChange={handleItemChange}
+                  onReset={handleResetCalcLine}
+                  onBlur={handleBlur}
+                  onOpenCalc={onOpenCalc}
+                />
+              ))}
+            </FieldSection>
           )}
 
           {manualItems.length === 0 ? (
             <p className="text-xs text-ink-muted py-2">No items yet. Add your first expense below.</p>
           ) : (
-            <div className="mb-2">
-              {calcFedItems.length > 0 && (
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted mb-1">Your entries</p>
-              )}
-              {colHeader}
+            <FieldSection variant="manual">
               {manualItems.map((item) => (
                 <LineItemRow
                   key={item.id}
@@ -374,7 +367,7 @@ function ExpenseGroupAccordion({ groupKey, label, dot, group, worksheetDoc, onGr
                   onBlur={handleBlur}
                 />
               ))}
-            </div>
+            </FieldSection>
           )}
 
           <button
@@ -509,7 +502,8 @@ const PRODUCT_LINE_FIELDS = [
   { key: 'motor',    label: 'Motor' },
 ];
 
-function CommissionTargetsPanel({ worksheet, onTargetsSaved }) {
+// onOpenTab (rev 5 Tweak B): threads through to the ack modal's "Continue to Game Plan" button.
+function CommissionTargetsPanel({ worksheet, onTargetsSaved, onOpenTab }) {
   const { tenantId, user } = useAuth();
   const [targets, setTargets] = useState(() => ({
     life:     worksheet?.firstYearCommissionsTargets?.life     ?? 0,
@@ -519,7 +513,7 @@ function CommissionTargetsPanel({ worksheet, onTargetsSaved }) {
   }));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [sent, setSent] = useState(false);
+  const [showAck, setShowAck] = useState(false);
 
   useEffect(() => {
     setTargets({
@@ -546,73 +540,108 @@ function CommissionTargetsPanel({ worksheet, onTargetsSaved }) {
 
   function handleSendToPlayground() {
     localStorage.setItem(PLAYGROUND_INCOME_GOAL_KEY, JSON.stringify({ value: required, preTaxAlreadyApplied: true }));
-    setSent(true);
-    setTimeout(() => setSent(false), 1500);
+    setShowAck(true);
   }
 
   return (
-    <div className="rounded-xl bg-card border border-border px-4 py-4 space-y-3">
-      <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Commission Targets</p>
+    <>
+      <div className="rounded-xl bg-card border border-border px-4 py-4 space-y-3">
+        <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">Commission Targets</p>
 
-      <div className="flex justify-between items-center">
-        <span className="text-sm text-ink-muted">Required 1st-Year Commissions</span>
-        <span className="text-base font-bold text-ink tabular-nums">{formatCurrency(required)}</span>
-      </div>
-      {renewalTotal > 0 && (
-        <div className="flex justify-between items-center text-xs text-ink-muted">
-          <span>Estimated Renewal Income</span>
-          <span className="tabular-nums">− {formatCurrency(renewalTotal)}</span>
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-ink-muted">Required 1st-Year Commissions</span>
+          <span className="text-base font-bold text-ink tabular-nums">{formatCurrency(required)}</span>
         </div>
-      )}
-
-      <div className="border-t border-border pt-3 space-y-2">
-        <p className="text-xs font-semibold text-ink-muted">Targets by Product Line</p>
-        {PRODUCT_LINE_FIELDS.map(({ key, label }) => (
-          <div key={key} className="flex items-center gap-3">
-            <label className="flex-1 text-sm text-ink-muted">{label}</label>
-            <input
-              type="number"
-              value={targets[key] === 0 ? '' : targets[key]}
-              onChange={(e) => setTargets((prev) => ({ ...prev, [key]: e.target.value }))}
-              onBlur={save}
-              placeholder="0"
-              min={0}
-              aria-label={`${label} commission target`}
-              className="w-36 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
-            />
+        {renewalTotal > 0 && (
+          <div className="flex justify-between items-center text-xs text-ink-muted">
+            <span>Estimated Renewal Income</span>
+            <span className="tabular-nums">− {formatCurrency(renewalTotal)}</span>
           </div>
-        ))}
-        <div className="flex justify-between items-center pt-1 border-t border-border text-sm font-semibold">
-          <span className="text-ink-muted">Total</span>
-          <span className="tabular-nums text-ink">{formatCurrency(targetsTotal)}</span>
+        )}
+
+        <div className="border-t border-border pt-3 space-y-2">
+          <p className="text-xs font-semibold text-ink-muted">Targets by Product Line</p>
+          {PRODUCT_LINE_FIELDS.map(({ key, label }) => (
+            <div key={key} className="flex items-center gap-3">
+              <label className="flex-1 text-sm text-ink-muted">{label}</label>
+              <input
+                type="number"
+                value={targets[key] === 0 ? '' : targets[key]}
+                onChange={(e) => setTargets((prev) => ({ ...prev, [key]: e.target.value }))}
+                onBlur={save}
+                placeholder="0"
+                min={0}
+                aria-label={`${label} commission target`}
+                className="w-36 h-11 px-2 rounded-lg border border-border bg-surface text-sm text-ink text-right focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+          ))}
+          <div className="flex justify-between items-center pt-1 border-t border-border text-sm font-semibold">
+            <span className="text-ink-muted">Total</span>
+            <span className="tabular-nums text-ink">{formatCurrency(targetsTotal)}</span>
+          </div>
+        </div>
+
+        {saveError && (
+          <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400">
+            <AlertCircle size={12} className="shrink-0" /><span>{saveError}</span>
+          </div>
+        )}
+
+        <div className="pt-1 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleSendToPlayground}
+            disabled={saving || required <= 0}
+            className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-xs font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors disabled:opacity-50 min-h-[44px]"
+          >
+            <Send size={13} />
+            Send to Playground
+          </button>
+          {saving && <Loader2 size={14} className="animate-spin text-ink-muted" />}
         </div>
       </div>
 
-      {saveError && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 dark:border-red-800 px-3 py-2 text-xs text-red-700 dark:text-red-400">
-          <AlertCircle size={12} className="shrink-0" /><span>{saveError}</span>
-        </div>
-      )}
-
-      <div className="pt-1 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={handleSendToPlayground}
-          disabled={saving || required <= 0}
-          className="flex items-center gap-1.5 h-9 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-xs font-semibold hover:bg-primary/90 dark:hover:bg-primary-dark/90 transition-colors disabled:opacity-50 min-h-[44px]"
+      {showAck && (
+        <FloatingCalcModal
+          onClose={() => setShowAck(false)}
+          title="Target sent"
+          footer={
+            <div className="flex items-center justify-between gap-3 border-t border-border px-4 py-3">
+              <button
+                type="button"
+                onClick={() => { setShowAck(false); onOpenTab?.('game-plan'); }}
+                className="flex items-center gap-1.5 min-h-12 px-5 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                Continue to Game Plan →
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAck(false)}
+                className="text-sm text-ink-muted hover:text-ink transition-colors min-h-[44px] px-2"
+              >
+                Stay here
+              </button>
+            </div>
+          }
         >
-          <Send size={13} />
-          {sent ? 'Sent!' : 'Send to Playground'}
-        </button>
-        {saving && <Loader2 size={14} className="animate-spin text-ink-muted" />}
-      </div>
-    </div>
+          <div className="flex flex-col items-center gap-4 py-6 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+              <Check size={28} className="text-primary" aria-hidden="true" />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-ink">Target sent!</p>
+              <p className="text-sm text-ink-muted mt-1">Saved to your Commission Playground</p>
+            </div>
+          </div>
+        </FloatingCalcModal>
+      )}
+    </>
   );
 }
 
-// Calc-modal line items render in LineItemRow's `stacked` layout (label on its
-// own full-width line). No flat column header — stacked rows wouldn't align to
-// it, and each field is self-labelled (placeholder / "/ yr"), as on mobile.
+// Calc-modal line items render in the card layout (always-stacked description heading).
+// No flat column header — each field is self-labelled via placeholder / "/ yr".
 function SubCalcLineItems({ items, onChange, onDelete, onBlur }) {
   return (
     <div className="mb-2">
@@ -623,7 +652,6 @@ function SubCalcLineItems({ items, onChange, onDelete, onBlur }) {
           onChange={onChange}
           onDelete={onDelete}
           onBlur={onBlur}
-          stacked
         />
       ))}
     </div>
@@ -636,11 +664,40 @@ const CALC_TITLES = {
   loansDebt: 'Loans & Debt',
 };
 
+// Done footer for the sub-calc modal (Fix 1). Shows the calc's annual total on
+// the left and a "Done — use this figure" close button on the right. The body
+// already saves on blur/add/delete so closing is always safe.
+function CalcDoneFooter({ onClose, children }) {
+  return (
+    <div className="shrink-0 border-t border-border bg-surface px-4 py-3 space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col min-w-0">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted mb-0.5">Annual total</span>
+          {children}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 flex items-center gap-1.5 min-h-12 px-4 rounded-xl bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        >
+          <Check size={15} aria-hidden="true" />
+          Done — use this figure
+        </button>
+      </div>
+      <p className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+        <Check size={11} className="shrink-0" aria-hidden="true" />
+        Saved automatically as you type · Done closes and fills the field.
+      </p>
+    </div>
+  );
+}
+
 // Responsive floating-calculator shell: desktop = centred modal; mobile =
 // full-screen bottom sheet. Reuses useFocusTrap (focus-first + focus-return
 // to the originating trigger + Tab cycle + Escape). Mounted only while open,
 // so the trap captures the trigger correctly and returns focus on unmount.
-function FloatingCalcModal({ onClose, title, children }) {
+// footer prop (Fix 1): optional node rendered as a shrink-0 row below the body.
+function FloatingCalcModal({ onClose, title, children, footer }) {
   const modalRef = useFocusTrap({ onEscape: onClose });
 
   // Lock background scroll while open (matters most for the mobile bottom sheet).
@@ -671,6 +728,7 @@ function FloatingCalcModal({ onClose, title, children }) {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto px-4 py-4">{children}</div>
+        {footer}
       </div>
     </div>
   );
@@ -716,7 +774,7 @@ function InsuranceIndustryCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-2 mb-2">
-        <p className="text-xs text-ink-muted">Prefills “Professional/industry expenses” in Business Expenses</p>
+        <p className="text-xs text-ink-muted">Prefills &quot;Professional/industry expenses&quot; in Business Expenses</p>
         <span className="flex shrink-0 items-center gap-2">
           {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
           {annualTotal > 0 && <span className="text-xs font-medium text-ink-muted tabular-nums">{formatCurrency(annualTotal)} / yr</span>}
@@ -851,7 +909,7 @@ function LoansDebtCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-2 mb-2">
-        <p className="text-xs text-ink-muted">Prefills “Debt reduction (non-mortgage)” in Savings &amp; Accumulation</p>
+        <p className="text-xs text-ink-muted">Prefills &quot;Debt reduction (non-mortgage)&quot; in Savings &amp; Accumulation</p>
         <span className="flex shrink-0 items-center gap-2">
           {saving && <Loader2 size={12} className="animate-spin text-ink-muted" />}
           {annualTotal > 0 && <span className="text-xs font-medium text-ink-muted tabular-nums">{formatCurrency(annualTotal)} / yr</span>}
@@ -868,18 +926,21 @@ function LoansDebtCalc({ calcData, worksheetDoc, onSubCalcSaved }) {
   );
 }
 
-export default function MoneyNeedsPanel() {
+// onOpenTab (rev 5 Tweak B): passed from AgentDashboard, threaded to CommissionTargetsPanel.
+export default function MoneyNeedsPanel({ onOpenTab }) {
   const { tenantId, user } = useAuth();
   const uid = user?.uid;
 
-  const [year, setYear]         = useState(CURRENT_YEAR);
+  const [year, setYear]           = useState(CURRENT_YEAR);
   const [worksheet, setWorksheet] = useState(null);
-  const [loading, setLoading]   = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [error, setError]       = useState('');
+  const [loading, setLoading]     = useState(true);
+  const [creating, setCreating]   = useState(false);
+  const [error, setError]         = useState('');
   // Which floating calculator is open: 'insuranceIndustry' | 'carExpenses' | 'loansDebt' | null.
   // Lifted to the panel so triggers embedded in any expense group open the right calc.
-  const [openCalc, setOpenCalc] = useState(null);
+  const [openCalc, setOpenCalc]   = useState(null);
+  // Single-open accordion (Fix 2): only one group open at a time.
+  const [openGroup, setOpenGroup] = useState(null);
 
   const load = useCallback(async () => {
     if (!tenantId || !uid) return;
@@ -948,6 +1009,44 @@ export default function MoneyNeedsPanel() {
   // 1.8 — worksheet-level FILLED N/total tally, derived from the same per-group
   // line items the accordions count. Shown only once the worksheet has loaded.
   const { filled: filledTotal, total: itemsTotal } = countFilledLineItems(worksheet?.expenseGroups);
+
+  // Fix 1 — Done footer: branch on openCalc to show the right totals.
+  // Industry/Loans → single annualTotal; Car → annualTotalPersonal + annualTotalBusiness.
+  const calcFooter = (() => {
+    if (!openCalc) return null;
+    const calcs = worksheet?.subCalculators ?? {};
+    const handleClose = () => setOpenCalc(null);
+    if (openCalc === 'carExpenses') {
+      const personal = calcs.carExpenses?.annualTotalPersonal ?? 0;
+      const business = calcs.carExpenses?.annualTotalBusiness ?? 0;
+      return (
+        <CalcDoneFooter onClose={handleClose}>
+          <div className="flex items-baseline gap-3 flex-wrap mt-0.5">
+            <span className="font-display text-base font-extrabold text-ink tabular-nums">
+              {formatCurrency(personal)}
+              <span className="text-[11px] text-ink-muted font-normal ml-1">personal</span>
+            </span>
+            <span className="text-ink-muted text-xs">·</span>
+            <span className="font-display text-base font-extrabold text-ink tabular-nums">
+              {formatCurrency(business)}
+              <span className="text-[11px] text-ink-muted font-normal ml-1">business</span>
+            </span>
+          </div>
+        </CalcDoneFooter>
+      );
+    }
+    const total = openCalc === 'insuranceIndustry'
+      ? (calcs.insuranceIndustry?.annualTotal ?? 0)
+      : (calcs.loansDebt?.annualTotal ?? 0);
+    return (
+      <CalcDoneFooter onClose={handleClose}>
+        <span className="font-display text-base font-extrabold text-ink tabular-nums mt-0.5">
+          {formatCurrency(total)}
+          <span className="text-[11px] text-ink-muted font-normal ml-1">/ yr</span>
+        </span>
+      </CalcDoneFooter>
+    );
+  })();
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
@@ -1052,6 +1151,8 @@ export default function MoneyNeedsPanel() {
               worksheetDoc={worksheet}
               onGroupSaved={handleGroupSaved}
               onOpenCalc={setOpenCalc}
+              open={openGroup === key}
+              onToggle={() => setOpenGroup((o) => (o === key ? null : key))}
             />
           ))}
 
@@ -1075,6 +1176,7 @@ export default function MoneyNeedsPanel() {
           <CommissionTargetsPanel
             worksheet={worksheet}
             onTargetsSaved={handleTargetsSaved}
+            onOpenTab={onOpenTab}
           />
 
           {/* Floating calculators — opened by the trigger next to each calc-fed
@@ -1084,6 +1186,7 @@ export default function MoneyNeedsPanel() {
             <FloatingCalcModal
               onClose={() => setOpenCalc(null)}
               title={CALC_TITLES[openCalc]}
+              footer={calcFooter}
             >
               {openCalc === 'insuranceIndustry' && (
                 <InsuranceIndustryCalc

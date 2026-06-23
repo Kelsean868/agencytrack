@@ -725,7 +725,7 @@ export default function AgentDashboard() {
         />
       )}
 
-      {activeTab === 'money-needs' && <MoneyNeedsPanel />}
+      {activeTab === 'money-needs' && <MoneyNeedsPanel onOpenTab={setActiveTab} />}
 
       {/* ── GOALS TAB ── */}
       {activeTab === 'goals' && (
