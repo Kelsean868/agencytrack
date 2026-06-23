@@ -478,7 +478,7 @@ export default function ProfileScreen({ menuLayout = 'pinned', onMenuLayoutChang
               <div
                 key={opt.value}
                 className={`flex flex-col p-3 rounded-lg border bg-surface transition-colors ${
-                  optDisabled ? 'border-border opacity-60' : 'border-border hover:border-primary/40'
+                  optDisabled ? 'border-border' : 'border-border hover:border-primary/40'
                 }`}
               >
                 <label className={`flex items-center gap-2 ${optDisabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
