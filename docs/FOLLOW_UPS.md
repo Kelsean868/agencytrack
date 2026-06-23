@@ -6,20 +6,6 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
-## ~~PAYESummary card — renewals math visual confusion when renewals > 0~~ **RESOLVED by PR #735** (pending merge, 2026-06-23)
-
-PR #735 (`fix/money-needs-summary-clarity`) folds this in. The new build-up layout shows:
-
-```
-After-tax take-home (= your annual budget)   840,000
-+ PAYE                                       250,000
-= Income you must earn                     1,090,000   ← gross headline
-− Renewal income                          −100,000
-1st-year commissions required               990,000
-```
-
-The math chain now reads correctly top-to-bottom: gross `1,090,000` minus renewals `100,000` = commissions `990,000`. The old layout's ambiguity (implied `840,000 − 100,000 = 990,000`) is eliminated. **Remove this row after PR #735 merges.**
-
 ## GoalDecompositionTab — taxConnector label misleading when preTaxAlreadyApplied=true (banked PR #734 Gemini G3 OUT-OF-SCOPE, 2026-06-23, LOW)
 
 When the playground receives a `preTaxAlreadyApplied=true` value from Money Needs, the `taxConnector` in the DecompositionLadder still renders `− 25% tax` (or the configured rate). Since the flag path bypasses the gross-up step, no tax is actually applied between "Income goal" and "1st-year commissions required" — the label is misleading.
