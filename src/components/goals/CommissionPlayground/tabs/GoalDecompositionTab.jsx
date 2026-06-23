@@ -202,7 +202,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   }, [hasHistory, autoCiToSale, autoDialsToCI]);
 
   const setField = (key) => (value) => {
-    if (key === 'incomeGoal') setPtaFlag(false);
+    if (key === 'incomeGoal' || key === 'taxRate') setPtaFlag(false);
     setInputs((prev) => ({ ...prev, [key]: value }));
   };
 
