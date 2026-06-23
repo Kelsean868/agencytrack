@@ -12,8 +12,10 @@
  *   L3 — L1b regression: playground income-goal reads 1,090,000 NOT 1,453,333.
  *
  * Run:
- *   SMOKE_PREVIEW_URL=https://<host> \
+ *   SMOKE_BASE_URL=https://agencytrack.vercel.app \          ← production
+ *   SMOKE_PREVIEW_URL=https://<preview-host> \               ← Vercel preview
  *   node scripts/verification/smoke-money-needs-summary-clarity.mjs
+ * SMOKE_BASE_URL wins when both are set.
  */
 import { chromium } from 'playwright';
 import { join, dirname } from 'path';
@@ -34,7 +36,7 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dir, '..', '..');
 const E = loadEnv(ROOT);
 
-const BASE = (process.env.SMOKE_PREVIEW_URL ?? '').replace(/\/+$/, '')
+const BASE = (process.env.SMOKE_BASE_URL ?? process.env.SMOKE_PREVIEW_URL ?? '').replace(/\/+$/, '')
   || 'https://agencytrack-git-fix-money-needs-summary-clarity-kyron-marchan-s-projects.vercel.app';
 const TOKEN = E.VERCEL_BYPASS_TOKEN;
 
