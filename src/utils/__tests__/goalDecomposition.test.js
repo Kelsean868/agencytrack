@@ -156,6 +156,57 @@ describe('deriveRatiosFromHistory', () => {
   });
 });
 
+// ── preTaxAlreadyApplied — skip-gross-up flag ────────────────────────────────
+// Money Needs sends the bracket-engine gross (e.g. 1,090,000 for net=840k)
+// with preTaxAlreadyApplied:true so the playground does NOT re-gross-up.
+describe('decomposeFromIncome — preTaxAlreadyApplied skip-gross-up flag', () => {
+  // Pre-computed falsification anchors (net=840k, renewals=0, defaults):
+  //   correct gross = 1,090,000 (bracket engine)
+  //   wrong old double-tax: 1,090,000/0.75 = 1,453,333 → apiToWrite ≈ 4,613,757
+  //   wrong flat-approx:    840,000/0.75  = 1,120,000 → apiToWrite ≈ 3,682,540
+  //   correct (flag):       1,090,000     → apiToWrite ≈ 3,460,317
+  const GROSS = 1_090_000;
+  const DEF   = DEFAULT_DECOMPOSITION_INPUTS; // persistency 90%, commission 35%
+
+  const apiFromPreTax = (preTax) => (preTax / (DEF.persistencyRate / 100)) / (DEF.commissionRate / 100);
+
+  it('flag true → incomeGoal used as-is; apiToWrite derived from 1,090,000 (not 1,453,333)', () => {
+    const out = decomposeFromIncome({ ...DEF, incomeGoal: GROSS, taxRate: 25, preTaxAlreadyApplied: true });
+    expect(out.apiToWrite).toBeCloseTo(apiFromPreTax(GROSS), 2);
+    expect(out.apiToWrite).not.toBeCloseTo(apiFromPreTax(1_453_333), 0); // NOT double-tax
+    expect(out.apiToWrite).not.toBeCloseTo(apiFromPreTax(1_120_000), 0); // NOT flat-approx
+  });
+
+  it('flag false → normal gross-up applies (incomeGoal treated as net)', () => {
+    const out = decomposeFromIncome({ ...DEF, incomeGoal: GROSS, taxRate: 25, preTaxAlreadyApplied: false });
+    expect(out.apiToWrite).toBeCloseTo(apiFromPreTax(GROSS / 0.75), 2);
+  });
+
+  it('flag omitted (undefined) → same as false; gross-up applies', () => {
+    const out = decomposeFromIncome({ ...DEF, incomeGoal: GROSS, taxRate: 25 });
+    expect(out.apiToWrite).toBeCloseTo(apiFromPreTax(GROSS / 0.75), 2);
+  });
+
+  it('end-to-end vector: net=840k → gross 1,090,000 with flag → correct apiToWrite (not double-taxed)', () => {
+    // Simulates the exact post-fix flow:
+    //   MoneyNeedsPanel.handleSendToPlayground stores { value: 1_090_000, preTaxAlreadyApplied: true }
+    //   GoalDecompositionTab reads it and passes preTaxAlreadyApplied:true to decomposeFromIncome
+    const out = decomposeFromIncome({ ...DEF, incomeGoal: 1_090_000, taxRate: 25, preTaxAlreadyApplied: true });
+    const CORRECT   = apiFromPreTax(1_090_000); // bracket-engine-exact
+    const WRONG_DBL = apiFromPreTax(1_453_333); // old double-tax bug
+    const WRONG_APX = apiFromPreTax(1_120_000); // flat-approx option (a)
+    expect(out.apiToWrite).toBeCloseTo(CORRECT,   2);
+    expect(out.apiToWrite).not.toBeCloseTo(WRONG_DBL, 0);
+    expect(out.apiToWrite).not.toBeCloseTo(WRONG_APX, 0);
+  });
+
+  it('flag true overrides taxRate=100 guard — preTaxIncome = incomeGoal (already gross, so collapse guard does not apply)', () => {
+    const out = decomposeFromIncome({ ...DEF, incomeGoal: 1_090_000, taxRate: 100, preTaxAlreadyApplied: true });
+    // When the flag is set, the value is already gross — the taxRate=100 collapse guard is irrelevant.
+    expect(out.apiToWrite).toBeCloseTo(apiFromPreTax(1_090_000), 2);
+  });
+});
+
 // ── rounding + constants ─────────────────────────────────────────────────────
 describe('rounding helpers + WEEKLY_DIVISOR', () => {
   it('roundTo10 rounds to nearest $10', () => {

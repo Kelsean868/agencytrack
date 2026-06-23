@@ -80,9 +80,12 @@ export function decomposeFromIncome(inputs) {
     incomeGoal, taxRate, renewalIncome, settlementRate,
     commissionRate, avgPolicyAPI, persistencyRate,
     ciToSaleRatio, dialsToCIRatio, prospectRatio,
+    preTaxAlreadyApplied,
   } = inputs;
 
-  const preTaxIncome           = taxRate < 100 ? incomeGoal / (1 - taxRate / 100) : 0;
+  const preTaxIncome = preTaxAlreadyApplied
+    ? incomeGoal
+    : (taxRate < 100 ? incomeGoal / (1 - taxRate / 100) : 0);
   const firstYearCommRequired  = Math.max(0, preTaxIncome - renewalIncome);
   const adjustedForPersistency = persistencyRate > 0 ? firstYearCommRequired / (persistencyRate / 100) : 0;
   const apiToWrite             = commissionRate > 0 ? adjustedForPersistency / (commissionRate / 100) : 0;

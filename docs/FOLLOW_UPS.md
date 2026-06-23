@@ -6,6 +6,38 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## PAYESummary card — renewals math visual confusion when renewals > 0 (banked PR #734 Gemini G1 OUT-OF-SCOPE, 2026-06-23, MEDIUM)
+
+When `renewals > 0`, the PAYESummary card reads:
+
+```
+Income you must earn   1,090,000  ← pre-tax
+− PAYE gross-up         −250,000
+After-tax take-home     840,000
+− Renewal income        −100,000
+1st-year commissions    990,000
+```
+
+This layout visually implies `840,000 − 100,000 = 990,000`, which is incorrect — the actual math is `commissions = (after-tax − renewals) → grossed up to pre-tax → divided by rate`. Gemini flagged this as HIGH. Pre-existing; not introduced by PR #734 (the renewals subtraction and the commissions line were in the original layout).
+
+**To resolve:** restructure the PAYESummary card when renewals > 0 so the math chain is visually correct (e.g., "After-tax target = after-tax need − renewals → grossed up to reach headline"). Or show two separate columns (total gross vs net-of-renewals gross). Requires a UX design decision before implementing.
+
+## GoalDecompositionTab — taxConnector label misleading when preTaxAlreadyApplied=true (banked PR #734 Gemini G3 OUT-OF-SCOPE, 2026-06-23, LOW)
+
+When the playground receives a `preTaxAlreadyApplied=true` value from Money Needs, the `taxConnector` in the DecompositionLadder still renders `− 25% tax` (or the configured rate). Since the flag path bypasses the gross-up step, no tax is actually applied between "Income goal" and "1st-year commissions required" — the label is misleading.
+
+Partially mitigated by PR #734's G2 fix: editing the Tax Rate (%) field now clears the flag, making the connector accurate once the user touches the field. The misleading case is only the initial state (immediately after send-from-Money-Needs, before any edits).
+
+**To resolve:** in the `taxConnector` display logic, check `preTaxAlreadyApplied` and render `(pre-tax goal)` or omit the rate when the flag is active.
+
+## GoalDecompositionTab + MoneyNeedsPanel — shared localStorage key (banked PR #734, 2026-06-23, LOW)
+
+`PLAYGROUND_INCOME_GOAL_KEY = 'agencytrack-playground-income-goal'` is hardcoded independently in both `src/components/goals/CommissionPlayground/tabs/GoalDecompositionTab.jsx` (reader) and `src/components/agent/MoneyNeedsPanel.jsx` (writer). A rename must be made in both files simultaneously — no cross-import contract enforces the match.
+
+**To resolve:** extract to a single shared constant in `src/constants/` (e.g., `playgroundKeys.js`) and import in both files. Zero behavior change; prevents future key-drift bugs.
+
+**Value-format note (backward-compat already handled):** PR #734 changed the stored value from a bare number to `{ value, preTaxAlreadyApplied: true }`. `GoalDecompositionTab` handles both: bare number → legacy gross-up path; object with flag → skip gross-up. Any future feature that reads this key must use the same dual-format reader pattern from `GoalDecompositionTab.jsx` lines ~180–190.
+
 ## Nav redesign — mobile pin edit-mode (banked PR-2 nav-pr2-pinned, 2026-06-22, deferred this PR)
 
 PR-2 ships the ★ Pinned zone with pin/unpin on the **desktop Sidebar** only; `MobileNavDrawer` renders the pinned zone **read-only** (persisted/seeded pins at top, no star edit). A mobile pin edit-mode (long-press or an explicit edit toggle in the drawer to add/remove pins on a phone) is deferred. When built, reuse `usePinnedNav` (`pin`/`unpin` already mobile-safe) and add a touch affordance in `MobileNavDrawer.jsx`.

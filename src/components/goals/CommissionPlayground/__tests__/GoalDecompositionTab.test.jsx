@@ -111,4 +111,46 @@ describe('GoalDecompositionTab — D5 parked RTL baseline', () => {
     expect(screen.queryByTestId('commission-confirm-dialog')).not.toBeInTheDocument();
     expect(setGoals).not.toHaveBeenCalled();
   });
+
+  // ── Test 9: backward-compat — bare number localStorage ──────────────────
+  it('backward-compat: bare number in localStorage loads incomeGoal without preTaxAlreadyApplied', () => {
+    localStorage.setItem('agencytrack-playground-income-goal', JSON.stringify(840000));
+    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+    const input = screen.getByLabelText(/income goal/i);
+    expect(parseFloat(input.value)).toBe(840000);
+    // No flag → normal gross-up applies; the confirm button is available (apiToWrite > 0).
+    fireEvent.click(screen.getByTestId('commission-save-goal-btn'));
+    expect(screen.getByTestId('commission-confirm-dialog')).toBeInTheDocument();
+  });
+
+  // ── Test 10: new object shape sets incomeGoal + preTaxAlreadyApplied ────
+  it('new object shape {value, preTaxAlreadyApplied:true} loads correct incomeGoal', () => {
+    localStorage.setItem(
+      'agencytrack-playground-income-goal',
+      JSON.stringify({ value: 1090000, preTaxAlreadyApplied: true }),
+    );
+    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+    const input = screen.getByLabelText(/income goal/i);
+    expect(parseFloat(input.value)).toBe(1090000);
+  });
+
+  // ── Test 11: manual incomeGoal edit clears preTaxAlreadyApplied ─────────
+  it('manually editing Income Goal clears the preTaxAlreadyApplied flag (confirm opens, apiToWrite reflects normal gross-up)', () => {
+    localStorage.setItem(
+      'agencytrack-playground-income-goal',
+      JSON.stringify({ value: 1090000, preTaxAlreadyApplied: true }),
+    );
+    render(<GoalDecompositionTab submissions={[]} agentId="a" tenantId="t" />);
+    const input = screen.getByLabelText(/income goal/i);
+    // Manually override the field — flag must clear.
+    fireEvent.change(input, { target: { value: '900000' } });
+    expect(parseFloat(input.value)).toBe(900000);
+    // Confirm dialog opens and shows a non-zero computed API (normal gross-up now active).
+    fireEvent.click(screen.getByTestId('commission-save-goal-btn'));
+    const dialog = screen.getByTestId('commission-confirm-dialog');
+    expect(dialog).toBeInTheDocument();
+    const newVal = screen.getByTestId('commission-confirm-new');
+    // Normal gross-up: 900k / (1-0.25) = 1,200,000 pre-tax → apiToWrite > 0.
+    expect(parseFloat(newVal.textContent.replace(/[^0-9.]/g, ''))).toBeGreaterThan(0);
+  });
 });

@@ -424,17 +424,17 @@ function PAYESummary({ worksheet }) {
           Everything above is your choice — this is the annual income it takes to fund it.
         </p>
         <div className="flex justify-between items-baseline mt-1.5">
-          <span className="text-ink-muted text-sm">After-tax need</span>
-          <span className="text-ink font-bold text-lg tabular-nums">{formatCurrency(totalAnnualAfterTax)}</span>
+          <span className="text-ink-muted text-sm">Income you must earn</span>
+          <span className="text-ink font-bold text-lg tabular-nums">{formatCurrency(totalAnnualPreTax)}</span>
         </div>
       </div>
       <div className="flex justify-between text-xs">
-        <span className="text-ink-muted">+ PAYE gross-up</span>
-        <span className="text-ink-muted tabular-nums">+ {formatCurrency(payeGrossUp)}</span>
+        <span className="text-ink-muted">− PAYE gross-up</span>
+        <span className="text-ink-muted tabular-nums">− {formatCurrency(payeGrossUp)}</span>
       </div>
       <div className="flex justify-between text-sm border-t border-border pt-2">
-        <span className="text-ink font-semibold">Pre-tax / gross need</span>
-        <span className="text-ink font-bold tabular-nums">{formatCurrency(totalAnnualPreTax)}</span>
+        <span className="text-ink font-semibold">After-tax take-home</span>
+        <span className="text-ink font-bold tabular-nums">{formatCurrency(totalAnnualAfterTax)}</span>
       </div>
       {renewals > 0 && (
         <div className="flex justify-between text-xs">
@@ -536,7 +536,7 @@ function CommissionTargetsPanel({ worksheet, onTargetsSaved }) {
   }
 
   function handleSendToPlayground() {
-    localStorage.setItem(PLAYGROUND_INCOME_GOAL_KEY, JSON.stringify(required));
+    localStorage.setItem(PLAYGROUND_INCOME_GOAL_KEY, JSON.stringify({ value: required, preTaxAlreadyApplied: true }));
     setSent(true);
     setTimeout(() => setSent(false), 1500);
   }
