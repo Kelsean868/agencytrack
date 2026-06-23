@@ -3,7 +3,7 @@
 Lands a brief directly to `main` (no PR, no CI wait) and dispatches it, in one command. This is
 the fast path for the brief-landing ceremony. It is **DOCS-ONLY**: it stages only the brief and
 aborts if anything outside `docs/` would be committed. It is NEVER a path for code — code merges
-keep the full PR → CI-green → Gemini (Rule 21) → human-merge flow.
+keep the full PR → CI-green → bot review (Rule 21) → human-merge flow.
 
 ## Usage
 `/land-and-dispatch <brief-filename>`
