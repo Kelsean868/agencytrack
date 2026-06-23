@@ -32,8 +32,9 @@ import ManagerAwardsPanel from '../awards/ManagerAwardsPanel';
 import ManagerOverviewTab from './ManagerOverviewTab';
 import ProfileScreen from '../profile/ProfileScreen';
 import Shell from '../shell/Shell';
-import { getNavConfig } from '../shell/navConfig';
+import { getNavConfig, getWorkspaceGroups } from '../shell/navConfig';
 import usePinnedNav from '../../hooks/usePinnedNav';
+import useMenuLayout from '../../hooks/useMenuLayout';
 import ProductionReportTab from '../productionReport/ProductionReportTab';
 import KioskModeTab from '../kiosk/KioskModeTab';
 import AgentOfMonthTab from '../manager/AgentOfMonthTab';
@@ -221,9 +222,26 @@ export default function ManagerDashboard() {
   // (sales_manager / tenant_admin / platform_admin) keep the existing inline
   // nav unchanged. The shared NAV_ITEMS array and the activeTab render-switch
   // are deliberately untouched, so no screen can regress.
-  const navItems = useMemo(
+  // Menu layout (Nav redesign PR-4) — producing managers honor the stored
+  // preference; non-producing manager roles aren't producingManager so they
+  // never enter the workspace path. Agents clamp at the resolver (n/a here).
+  const { menuLayout, setMenuLayout } = useMenuLayout({ role, tenantId, uid: user?.uid });
+  const [workspace, setWorkspace] = useState('work'); // session-state, default My Work (decision #4)
+  const isWorkspaceLayout = isProducingManager && (menuLayout === 'workspace' || menuLayout === 'both');
+
+  // Full role nav — the descriptor universe for pinned-zone resolution. Always
+  // the complete producingManager config (independent of the active workspace)
+  // so the `both` layout's pinned rows always resolve to a descriptor.
+  const fullNav = useMemo(
     () => (isProducingManager ? getNavConfig('producingManager', { role }) : filteredNavItems),
     [isProducingManager, role, filteredNavItems]
+  );
+
+  // Rendered groups — the workspace partition for workspace/both, else the full
+  // nav (pinned layout + non-producing roles render exactly as before).
+  const navItems = useMemo(
+    () => (isWorkspaceLayout ? getWorkspaceGroups('producingManager', { role, workspace }) : fullNav),
+    [isWorkspaceLayout, role, workspace, fullNav]
   );
 
   const drawerNavItems = useMemo(
@@ -236,12 +254,13 @@ export default function ManagerDashboard() {
 
   // ★ Pinned-nav (Nav redesign PR-2) — producing managers (UM/BM) only. Other
   // manager roles pass no tenantId/uid/configKey (hook is inert) and forward no
-  // pinned props to Shell, so their nav renders exactly as before.
+  // pinned props to Shell, so their nav renders exactly as before. Resolves pins
+  // against `fullNav` (not the rendered subset) so `both`'s pins always resolve.
   const { pinnedItems, isPinned, pin, unpin } = usePinnedNav({
     tenantId:  isProducingManager ? tenantId : undefined,
     uid:       isProducingManager ? user?.uid : undefined,
     configKey: isProducingManager ? 'producingManager' : null,
-    navItems,
+    navItems:  fullNav,
   });
 
   const displayName  = userProfile?.name ?? userProfile?.email ?? 'Manager';
@@ -397,6 +416,10 @@ export default function ManagerDashboard() {
       isPinned={isProducingManager ? isPinned : undefined}
       onPin={isProducingManager ? pin : undefined}
       onUnpin={isProducingManager ? unpin : undefined}
+      showPinnedZone={isProducingManager ? menuLayout !== 'workspace' : true}
+      showWorkspaceToggle={isWorkspaceLayout}
+      workspace={workspace}
+      onWorkspaceChange={setWorkspace}
       bottomNavItems={isProducingManager ? BOTTOM_NAV_PRODUCING : BOTTOM_NAV}
       drawerNavItems={drawerNavItems}
       onAction={handleMgrAction}
@@ -574,7 +597,9 @@ export default function ManagerDashboard() {
           />
         )}
 
-        {activeTab === 'profile' && <ProfileScreen />}
+        {activeTab === 'profile' && (
+          <ProfileScreen menuLayout={menuLayout} onMenuLayoutChange={setMenuLayout} />
+        )}
     </Shell>
   );
 }

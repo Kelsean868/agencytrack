@@ -648,15 +648,20 @@ Why: PR #418 surfaced this. CC posted the PR-ready report; the dispatcher merged
 
 Banked from PR #418 post-merge fill (2026-06-01).
 
-### 21. Gemini disposition gate
+### 21. Bot reviewer disposition gate
 
-After opening any PR, poll for the gemini-code-assist[bot] review (up to 10 min; if absent, note it and proceed). Every bot comment gets a disposition in the Phase 5 report: IMPLEMENT (agreed, in-family with the PR's scope — apply in-PR before the report) · ALREADY-RESOLVED · OBSOLETE · DISAGREE (one-line technical rationale; recorded doctrine and dispatcher rulings outrank Gemini) · OUT-OF-SCOPE (valid but expands the PR — banked as an FU, never silently implemented). The disposition table is a mandatory report section; a PR is not pre-review-ready without it. On auto-merge green-channel PRs, CC self-dispositions under the same taxonomy and the report records it; DISAGREE and OUT-OF-SCOPE items on auto-merged PRs roll up to the dispatcher in the next report.
+After opening any PR, poll for **both** configured bot reviewers (up to 10 min each; if a reviewer is absent, note its absence explicitly — do NOT treat absence as "no comments"). Every comment from each reviewer gets a disposition in the Phase 5 report using the same taxonomy: IMPLEMENT (agreed, in-family with the PR's scope — apply in-PR before the report) · ALREADY-RESOLVED · OBSOLETE · DISAGREE (one-line technical rationale; recorded doctrine and dispatcher rulings outrank any bot) · OUT-OF-SCOPE (valid but expands the PR — banked as an FU, never silently implemented). The disposition table covers both reviewers and is a mandatory report section; a PR is not pre-review-ready without it. On auto-merge green-channel PRs, CC self-dispositions under the same taxonomy and the report records it; DISAGREE and OUT-OF-SCOPE items on auto-merged PRs roll up to the dispatcher in the next report.
 
-**Post-merge backstop.** A pre-merge "absent" is provisional. `/post-merge` re-polls for the Gemini review; any comment that arrived after the pre-merge window is dispositioned in the post-merge report under the same taxonomy — IMPLEMENT → banked as a follow-up PR or FU (the PR is already merged, no in-PR fix possible) · DISAGREE → recorded in summary · OUT-OF-SCOPE → banked as FU · ALREADY-RESOLVED → noted · OBSOLETE → noted. The gate is not satisfied by a pre-merge "absent" alone.
+**Configured reviewers and poll targets:**
+
+- **Gemini** (`gemini-code-assist[bot]`) — PR Reviews API. Poll: `gh pr view <pr> --json reviews` → entries where `.author.login == "gemini-code-assist"` (state `COMMENTED`). *Gemini sunsets 2026-07-17; after that GLM is the primary reviewer.*
+- **GLM-5.2** (`github-actions[bot]`, marker `## 🤖`) — issue comments. Poll: `gh pr view <pr> --json comments` → entries where `.author.login == "github-actions[bot]"` and `.body` starts with `"## 🤖"`. Workflow fires only when `.github/workflows/glm-review.yml` exists on the base branch (main); if the workflow is not yet installed on main, note its absence rather than treating it as "no comments."
+
+**Post-merge backstop.** A pre-merge "absent" is provisional for each reviewer independently. `/post-merge` re-polls for BOTH reviewers; any comment that arrived after the pre-merge window is dispositioned in the post-merge report under the same taxonomy — IMPLEMENT → banked as a follow-up PR or FU (the PR is already merged, no in-PR fix possible) · DISAGREE → recorded in summary · OUT-OF-SCOPE → banked as FU · ALREADY-RESOLVED → noted · OBSOLETE → noted. The gate is not satisfied by a pre-merge "absent" for either reviewer alone.
 
 ### 22. Self-critique gate
 
-Before posting any PR-ready report, plan, or final session summary, CC enumerates ≥1 known gap — what it did NOT verify, the weakest part of the change, or an assumption that could be wrong. Self-generated and independent of Rule 21 (Gemini disposition): surfaces blind spots before external review, not after. A report with no stated gap is incomplete, not clean.
+Before posting any PR-ready report, plan, or final session summary, CC enumerates ≥1 known gap — what it did NOT verify, the weakest part of the change, or an assumption that could be wrong. Self-generated and independent of Rule 21 (bot reviewer disposition gate): surfaces blind spots before external review, not after. A report with no stated gap is incomplete, not clean.
 
 ### 23. Falsification-before-banking gate
 

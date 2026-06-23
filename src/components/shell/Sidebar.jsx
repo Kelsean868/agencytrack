@@ -1,5 +1,6 @@
-import { Fragment, useMemo } from 'react';
+import React, { Fragment, useMemo } from 'react';
 import { LogOut, ChevronLeft, ChevronRight, Star } from 'lucide-react';
+import WorkspaceToggle from './WorkspaceToggle';
 
 /**
  * Desktop primary navigation (Design System v2 — B4).
@@ -37,9 +38,16 @@ export default function Sidebar({
   isPinned,
   onPin,
   onUnpin,
+  showPinnedZone = true,
+  showWorkspaceToggle = false,
+  workspace,
+  onWorkspaceChange,
 }) {
   const sections = useMemo(() => groupBySection(navItems), [navItems]);
   const canPin = typeof onPin === 'function' && typeof onUnpin === 'function';
+  // ★ Pinned zone shows for `pinned` + `both` layouts (PR-2 behavior); the
+  // `workspace` layout passes showPinnedZone={false} to hide it (decision #5).
+  const renderPinnedZone = canPin && pinnedItems.length > 0 && showPinnedZone;
 
   const initials = getInitials(userProfile);
   const displayName = userProfile?.name ?? userProfile?.email ?? 'AgencyTrack User';
@@ -133,12 +141,19 @@ export default function Sidebar({
         </button>
       </div>
 
-      {/* ★ Pinned zone — above the first group; hidden entirely when empty. */}
-      {canPin && pinnedItems.length > 0 && (
+      {/* ★ Pinned zone — above the toggle/first group; hidden when empty or for
+          the workspace layout (showPinnedZone=false). For `both` it renders
+          above the My Work ⇄ My Team toggle (decision #5). */}
+      {renderPinnedZone && (
         <Fragment>
           <div className="sidebar-section">★ Pinned</div>
           {pinnedItems.map((item) => renderRow(item, true))}
         </Fragment>
+      )}
+
+      {/* My Work ⇄ My Team toggle — workspace + both layouts (producing managers). */}
+      {showWorkspaceToggle && typeof onWorkspaceChange === 'function' && (
+        <WorkspaceToggle workspace={workspace} onChange={onWorkspaceChange} idPrefix="sidebar-ws" />
       )}
 
       {sections.map((section, idx) => (

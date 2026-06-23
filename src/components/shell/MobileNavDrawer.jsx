@@ -1,12 +1,20 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import useFocusTrap from '../../hooks/useFocusTrap';
+import WorkspaceToggle from './WorkspaceToggle';
 
 /**
  * Slide-up bottom-sheet drawer giving mobile users access to sidebar-only nav items.
  * Opened from the MobileBottomNav "More" button.
+ *
+ * Nav redesign PR-4: in the workspace/both layouts (producing managers) the drawer
+ * hosts the My Work ⇄ My Team toggle at the top (parity with the desktop sidebar);
+ * showPinnedZone={false} hides the pinned rows for the workspace layout.
  */
-export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClose, onAction, pinnedItems = [] }) {
+export default function MobileNavDrawer({
+  items, activeTab, setActiveTab, onClose, onAction, pinnedItems = [],
+  showPinnedZone = true, showWorkspaceToggle = false, workspace, onWorkspaceChange,
+}) {
   const modalRef = useFocusTrap({ onEscape: onClose });
 
   useEffect(() => {
@@ -90,7 +98,12 @@ export default function MobileNavDrawer({ items, activeTab, setActiveTab, onClos
         </div>
 
         <nav aria-label="More navigation options">
-          {pinnedItems.length > 0 && (
+          {showWorkspaceToggle && typeof onWorkspaceChange === 'function' && (
+            <div className="pt-2">
+              <WorkspaceToggle workspace={workspace} onChange={onWorkspaceChange} idPrefix="drawer-ws" />
+            </div>
+          )}
+          {showPinnedZone && pinnedItems.length > 0 && (
             <>
               <div className="px-5 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-ink-muted">
                 ★ Pinned
