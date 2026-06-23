@@ -536,7 +536,7 @@ function CommissionTargetsPanel({ worksheet, onTargetsSaved }) {
   }
 
   function handleSendToPlayground() {
-    localStorage.setItem(PLAYGROUND_INCOME_GOAL_KEY, JSON.stringify(required));
+    localStorage.setItem(PLAYGROUND_INCOME_GOAL_KEY, JSON.stringify({ value: required, preTaxAlreadyApplied: true }));
     setSent(true);
     setTimeout(() => setSent(false), 1500);
   }

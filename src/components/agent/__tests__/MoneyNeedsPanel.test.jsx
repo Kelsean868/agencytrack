@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act, within } from '@testing-library/react';
 
 // ── Mocks ────────────────────────────────────────────────────────────────────
@@ -312,6 +312,41 @@ describe('MoneyNeedsPanel — floating calculators', () => {
     // The flat column header (Description/Amount/Frequency/Annual) is gone in the modal.
     expect(within(dialog).queryByText('Description')).not.toBeInTheDocument();
     expect(within(dialog).queryByText('Frequency')).not.toBeInTheDocument();
+  });
+});
+
+// ── Fixtures for PAYE summary tests ──────────────────────────────────────────
+function makeWorksheetWithPAYE() {
+  return {
+    ...makeWorksheet(),
+    totalAnnualAfterTax: 840000,
+    totalAnnualPreTax: 1090000,
+    estimatedRenewalIncome: { total: 0 },
+    firstYearCommissionsTargets: { life: 0, ah: 0, property: 0, motor: 0 },
+  };
+}
+
+describe('MoneyNeedsPanel — Send to Playground send-path (Bug 1)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.removeItem('agencytrack-playground-income-goal');
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('agencytrack-playground-income-goal');
+  });
+
+  it('Send to Playground writes { value, preTaxAlreadyApplied:true } — not a bare number', async () => {
+    await renderLoaded(makeWorksheetWithPAYE());
+    const sendBtn = screen.getByRole('button', { name: /send to playground/i });
+    fireEvent.click(sendBtn);
+    const stored = JSON.parse(localStorage.getItem('agencytrack-playground-income-goal'));
+    // Must be an object with the flag — never a bare number.
+    expect(typeof stored).toBe('object');
+    expect(stored.preTaxAlreadyApplied).toBe(true);
+    // Value = totalAnnualPreTax (1,090,000) − renewals (0) = 1,090,000 — NOT 1,453,333.
+    expect(stored.value).toBe(1090000);
+    expect(stored.value).not.toBe(1453333);
   });
 });
 

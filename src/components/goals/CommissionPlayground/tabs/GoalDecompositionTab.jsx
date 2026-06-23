@@ -96,14 +96,14 @@ function LadderConnector({ children, isActivity }) {
   );
 }
 
-function DecompositionLadder({ computed, inputs, freqKey, onFreqChange, hasHistory }) {
+function DecompositionLadder({ computed, inputs, freqKey, onFreqChange, hasHistory, preTaxAlreadyApplied }) {
   const period = PERIODS.find((p) => p.key === freqKey) ?? PERIODS[0];
   const { divisor } = period;
   const cadenceSuffix = freqKey === 'annual' ? 'ANNUAL' : `/ ${period.display.toUpperCase()}`;
 
-  const preTaxIncome = inputs.taxRate < 100
-    ? inputs.incomeGoal / (1 - inputs.taxRate / 100)
-    : inputs.incomeGoal;
+  const preTaxIncome = preTaxAlreadyApplied
+    ? inputs.incomeGoal
+    : (inputs.taxRate < 100 ? inputs.incomeGoal / (1 - inputs.taxRate / 100) : 0);
   const firstYearCommRequired = Math.max(0, preTaxIncome - (inputs.renewalIncome || 0));
 
   const taxConnector = inputs.taxRate > 0
@@ -170,12 +170,19 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
   const [savedAssumptions, setSavedAssumptions] = useState(false);
   const [error, setError]                       = useState('');
   const [showConfirm, setShowConfirm]           = useState(false);
+  const [preTaxAlreadyApplied, setPtaFlag]      = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('agencytrack-playground-income-goal');
     if (stored) {
-      const val = parseFloat(JSON.parse(stored));
-      if (val > 0) setInputs((prev) => ({ ...prev, incomeGoal: val }));
+      const parsed = JSON.parse(stored);
+      const isObj = parsed !== null && typeof parsed === 'object';
+      const val = isObj ? parseFloat(parsed.value) : parseFloat(parsed);
+      const flag = isObj && parsed.preTaxAlreadyApplied === true;
+      if (val > 0) {
+        setInputs((prev) => ({ ...prev, incomeGoal: val }));
+        setPtaFlag(flag);
+      }
     }
   }, []);
 
@@ -194,9 +201,15 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
     }
   }, [hasHistory, autoCiToSale, autoDialsToCI]);
 
-  const setField = (key) => (value) => setInputs((prev) => ({ ...prev, [key]: value }));
+  const setField = (key) => (value) => {
+    if (key === 'incomeGoal') setPtaFlag(false);
+    setInputs((prev) => ({ ...prev, [key]: value }));
+  };
 
-  const computed = useMemo(() => decomposeFromIncome(inputs), [inputs]);
+  const computed = useMemo(
+    () => decomposeFromIncome({ ...inputs, preTaxAlreadyApplied }),
+    [inputs, preTaxAlreadyApplied],
+  );
 
   const handleRequestConfirm = () => {
     const api = computed.apiToWrite;
@@ -315,6 +328,7 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
         freqKey={freqKey}
         onFreqChange={setFreqKey}
         hasHistory={hasHistory}
+        preTaxAlreadyApplied={preTaxAlreadyApplied}
       />
 
       <div className="flex items-start gap-1.5">
