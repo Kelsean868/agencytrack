@@ -113,12 +113,16 @@ async function perTheme(page, theme) {
   const commissionTab = page.locator('[data-testid="agent-tab-commission"]').first();
   await commissionTab.scrollIntoViewIfNeeded().catch(() => {});
   await commissionTab.click({ force: true });
-  await page.waitForTimeout(500);
 
   const incomeInput = page.locator('#gdt-income-goal-ttd');
   try {
     await incomeInput.waitFor({ state: 'visible', timeout: 20_000 });
-    await page.waitForTimeout(800);
+    // Wait until React has populated the input value (avoids empty-read on fast machines).
+    await page.waitForFunction(
+      (sel) => { const el = document.querySelector(sel); return el && el.value !== ''; },
+      '#gdt-income-goal-ttd',
+      { timeout: 10_000 },
+    );
     const rawVal = await incomeInput.inputValue();
     const val    = parseFloat(rawVal);
     if (Math.abs(val - KNOWN_GROSS) < 1) {
