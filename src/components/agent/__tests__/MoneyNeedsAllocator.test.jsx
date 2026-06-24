@@ -236,3 +236,73 @@ describe('MoneyNeedsAllocator — Send → Game Plan', () => {
     expect(onOpenTab).toHaveBeenCalledWith('game-plan');
   });
 });
+
+describe('MoneyNeedsAllocator — AllocationSummaryCard', () => {
+  // Fixture: a drilled Life line (2 products) so we can assert product subtotal rows.
+  function makeDrilledWorksheet() {
+    return makeWorksheet({
+      allocation: {
+        licenseClass: 'composite',
+        lines: {
+          life: {
+            commission: 29000, rate: 0.35, drilled: true,
+            products: [
+              { name: 'Whole Life', commission: 21000, rate: 0.35 }, // api 60000
+              { name: 'Term',       commission: 8000,  rate: 0.20 }, // api 40000
+            ],
+          },
+          ah:      { commission: 10000, rate: 0.25, drilled: false },
+          general: { commission: 0,     rate: 0.10, drilled: false, products: [] },
+        },
+      },
+    });
+  }
+
+  it('renders summary card with line row + product subtotals + totals for a drilled fixture', () => {
+    render(<MoneyNeedsAllocator worksheet={makeDrilledWorksheet()} />);
+    const card = screen.getByTestId('alloc-summary-card');
+    expect(card).toBeTruthy();
+
+    // Life line row (drilled): should show commission 29000
+    const lifeLine = within(card).getByTestId('summary-line-life');
+    expect(within(lifeLine).getByText(/TTD 29,000/)).toBeTruthy();
+    expect(within(lifeLine).getByText(/Life/)).toBeTruthy();
+
+    // Per-product subtotal rows
+    const p0 = within(card).getByTestId('summary-product-life-0');
+    expect(within(p0).getByText('Whole Life')).toBeTruthy();
+    expect(within(p0).getByText(/TTD 21,000/)).toBeTruthy();
+
+    const p1 = within(card).getByTestId('summary-product-life-1');
+    expect(within(p1).getByText('Term')).toBeTruthy();
+    expect(within(p1).getByText(/TTD 8,000/)).toBeTruthy();
+
+    // A&H line (collapsed, no product rows for ah)
+    const ahLine = within(card).getByTestId('summary-line-ah');
+    expect(within(ahLine).getByText(/A&H/)).toBeTruthy();
+    expect(within(ahLine).getByText(/TTD 10,000/)).toBeTruthy();
+    expect(within(card).queryByTestId('summary-product-ah-0')).toBeNull();
+
+    // Grand total row
+    const total = within(card).getByTestId('summary-total');
+    expect(within(total).getByText(/TTD 39,000/)).toBeTruthy(); // 29000+10000
+  });
+
+  it('shows empty state when nothing is allocated yet', () => {
+    render(<MoneyNeedsAllocator worksheet={makeWorksheet({ firstYearCommissionsTargets: {} })} />);
+    const card = screen.getByTestId('alloc-summary-card');
+    expect(card.textContent).toMatch(/Allocate above/i);
+  });
+
+  it('ack modal (no regression) still shows the line-level subset from buildAllocationSummary', async () => {
+    render(<MoneyNeedsAllocator worksheet={makeDrilledWorksheet()} onOpenTab={vi.fn()} />);
+    fireEvent.click(screen.getByTestId('alloc-send-btn'));
+    const ack = await screen.findByTestId('alloc-ack-modal');
+    // Ack renders Life + A&H (both have commission > 0); General (0) is filtered out.
+    expect(within(ack).getByText('Life')).toBeTruthy();
+    expect(within(ack).getByText('A&H')).toBeTruthy();
+    expect(within(ack).queryByText('General')).toBeNull();
+    // No product rows in ack (it renders line-level subset only).
+    expect(within(ack).queryByTestId('summary-product-life-0')).toBeNull();
+  });
+});

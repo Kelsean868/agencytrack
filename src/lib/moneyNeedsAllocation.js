@@ -214,3 +214,39 @@ export function sumProductCommission(products) {
 export function sumProductAPI(products) {
   return (products ?? []).reduce((s, p) => s + productAPI(p), 0);
 }
+
+// Build a hierarchical summary object consumed by AllocationSummaryCard and AckModal.
+// Pure: no JSX, no side effects. All math delegates to existing primitives.
+//
+// Returns:
+//   { lines: [{ key, label, commission, api, apps, effectiveRate,
+//               products: [{name, commission, api, rate}] | null }],
+//     totalCommission, totalAPI, allocatedPct, required }
+//
+// `products` is an array when isDrilled(line), null otherwise.
+// `allocatedPct` = totalCommission ÷ required, 0 when required ≤ 0.
+export function buildAllocationSummary(alloc, visibleKeys, required) {
+  const keys = visibleKeys ?? ALLOC_LINE_KEYS;
+  const req = num(required);
+  const lines = keys.map((key) => {
+    const line = alloc?.lines?.[key] ?? {};
+    const commission = lineCommission(line);
+    const api = lineAPI(line);
+    const apps = Math.round(allocApps(api));
+    const effectiveRate = effectiveLineRate(line);
+    const meta = ALLOC_LINE_META.find((m) => m.key === key);
+    const products = isDrilled(line)
+      ? (line.products ?? []).map((p) => ({
+          name: p.name ?? '',
+          commission: num(p.commission),
+          api: productAPI(p),
+          rate: num(p.rate),
+        }))
+      : null;
+    return { key, label: meta?.label ?? key, commission, api, apps, effectiveRate, products };
+  });
+  const totalCommission = lines.reduce((s, l) => s + l.commission, 0);
+  const totalAPI = lines.reduce((s, l) => s + l.api, 0);
+  const allocatedPct = req > 0 ? totalCommission / req : 0;
+  return { lines, totalCommission, totalAPI, allocatedPct, required: req };
+}

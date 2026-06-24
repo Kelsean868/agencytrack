@@ -14,7 +14,7 @@ import {
   ALLOC_LINE_META, LINE_DEFAULT_RATES, MAX_PRODUCTS, PRODUCT_SEEDS,
   visibleLineKeys, allocApps, isDrilled, lineCommission, lineAPI, productAPI,
   effectiveLineRate, totalAllocatedCommission, normalizeAllocation,
-  autoBalanceProducts, sumProductCommission,
+  autoBalanceProducts, sumProductCommission, buildAllocationSummary,
 } from '../../lib/moneyNeedsAllocation';
 
 const LICENSE_OPTIONS = [
@@ -412,6 +412,77 @@ function AckModal({ onClose, onContinue, summary }) {
   );
 }
 
+// ── Always-visible allocation summary card ───────────────────────────────────
+// Mirrors the ack modal's line breakdown but adds per-product subtotals when a
+// line is drilled, so the agent sees the full decomposition while allocating.
+function AllocationSummaryCard({ summary }) {
+  const { lines, totalCommission, totalAPI, allocatedPct, required } = summary;
+  if (totalCommission === 0) {
+    return (
+      <div
+        className="rounded-xl bg-surface-muted px-4 py-3 text-center text-sm text-ink-muted"
+        data-testid="alloc-summary-card"
+      >
+        Allocate above to see your breakdown.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-xl bg-surface-muted px-4 py-3" data-testid="alloc-summary-card">
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+        Breakdown
+      </p>
+      <ul className="space-y-2.5 text-xs">
+        {lines.filter((l) => l.commission > 0).map((line) => (
+          <li key={line.key}>
+            {/* Line headline — name + commission */}
+            <div
+              className="flex items-baseline justify-between gap-2"
+              data-testid={`summary-line-${line.key}`}
+            >
+              <span className="font-semibold text-ink">{line.label}</span>
+              <span className="font-semibold text-ink tabular-nums">{formatCurrency(line.commission)}</span>
+            </div>
+            {/* API · apps · effective rate */}
+            <p className="text-[11px] text-ink-muted tabular-nums">
+              {formatCurrency(line.api)} API · {line.apps} apps · {(line.effectiveRate * 100).toFixed(1)}%
+            </p>
+            {/* Per-product rows (drilled lines only) */}
+            {line.products && (
+              <ul className="mt-1 space-y-1 border-l-2 border-primary/20 pl-2.5 text-[11px] text-ink-muted">
+                {line.products.map((p, i) => (
+                  <li
+                    key={i}
+                    className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0"
+                    data-testid={`summary-product-${line.key}-${i}`}
+                  >
+                    <span>{p.name || `Product ${i + 1}`}</span>
+                    <span className="font-semibold text-ink tabular-nums">{formatCurrency(p.commission)}</span>
+                    <span className="w-full tabular-nums">
+                      {formatCurrency(p.api)} API · {(p.rate * 100).toFixed(1)}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+        {/* Grand total */}
+        <li
+          className="flex items-baseline justify-between gap-2 border-t border-border pt-2"
+          data-testid="summary-total"
+        >
+          <span className="font-semibold text-ink">Total</span>
+          <span className="font-semibold text-ink tabular-nums">{formatCurrency(totalCommission)}</span>
+        </li>
+      </ul>
+      <p className="mt-1 text-[11px] text-ink-muted tabular-nums">
+        {formatCurrency(totalAPI)} API · {Math.round(allocatedPct * 100)}% of {formatCurrency(required)} covered
+      </p>
+    </div>
+  );
+}
+
 // ── Main allocator ───────────────────────────────────────────────────────────
 export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
   const { tenantId, user } = useAuth();
@@ -584,9 +655,12 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
     setShowAck(true);
   }
 
-  const ackSummary = visibleKeys
-    .map((k) => ({ label: LABEL[k], commission: lineCommission(alloc.lines[k] ?? {}) }))
-    .filter((s) => s.commission > 0);
+  // Single derivation shared by AllocationSummaryCard (always visible) and
+  // AckModal (shown on Send). AckModal renders the line-level subset only.
+  const allocSummary = buildAllocationSummary(alloc, visibleKeys, required);
+  const ackLines = allocSummary.lines
+    .filter((l) => l.commission > 0)
+    .map((l) => ({ label: l.label, commission: l.commission }));
 
   // ── Render ──────────────────────────────────────────────────────────────
   if (!licenseProfile) {
@@ -656,6 +730,8 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
         ruleset={ruleset}
       />
 
+      <AllocationSummaryCard summary={allocSummary} />
+
       <div className="flex items-center gap-2 pt-1">
         <button
           type="button"
@@ -673,7 +749,7 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
         <AckModal
           onClose={() => setShowAck(false)}
           onContinue={() => { setShowAck(false); onOpenTab?.('game-plan'); }}
-          summary={ackSummary}
+          summary={ackLines}
         />
       )}
     </div>
