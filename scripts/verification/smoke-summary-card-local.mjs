@@ -132,7 +132,8 @@ async function runTheme(browser, theme) {
     // Wait for any in-flight saves to settle
     await page.waitForTimeout(3000);
     const sendBtn = await page.$('[data-testid="alloc-send-btn"]');
-    const isDisabled = sendBtn ? await sendBtn.getAttribute('disabled') : 'absent';
+    // getAttribute('disabled') returns null when absent (enabled) and "" when present (disabled).
+    const isDisabled = sendBtn ? (await sendBtn.getAttribute('disabled') !== null) : true;
     if (sendBtn && !isDisabled) {
       await sendBtn.click();
       const ack = await page.waitForSelector('[data-testid="alloc-ack-modal"]', { timeout: 6_000 }).catch(() => null);
