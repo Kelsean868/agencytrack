@@ -79,15 +79,34 @@ export function isDrilled(line) {
   return !!line?.drilled && Array.isArray(line?.products) && line.products.length > 0;
 }
 
-// Line commission.
-//  • Drilled  → Σ(product.api × product.rate)  (products define the line).
-//  • Collapsed→ lineAPI × line.rate.
-// (general = API × rate this PR; 6% premium-tax deferred — see LINE_DEFAULT_RATES.)
+// COMMISSION-CANONICAL model: the agent types the commission they want; API is
+// DERIVED everywhere from commission ÷ rate. Nothing stores `api`.
+
+// Derived API for a single product (commission ÷ its rate).
+export function productAPI(p) {
+  const r = num(p?.rate);
+  return r > 0 ? num(p?.commission) / r : 0;
+}
+
+// Line commission (the canonical figure).
+//  • Drilled  → Σ product.commission  (products define the line).
+//  • Collapsed→ the stored line.commission.
 export function lineCommission(line) {
   if (isDrilled(line)) {
-    return line.products.reduce((s, p) => s + num(p.api) * num(p.rate), 0);
+    return line.products.reduce((s, p) => s + num(p.commission), 0);
   }
-  return num(line?.api) * num(line?.rate);
+  return num(line?.commission);
+}
+
+// Derived line API.
+//  • Drilled  → Σ productAPI  (Σ commission ÷ rate per product).
+//  • Collapsed→ line.commission ÷ line.rate.
+export function lineAPI(line) {
+  if (isDrilled(line)) {
+    return line.products.reduce((s, p) => s + productAPI(p), 0);
+  }
+  const r = num(line?.rate);
+  return r > 0 ? num(line?.commission) / r : 0;
 }
 
 // Effective (weighted-average) commission rate.
@@ -95,7 +114,7 @@ export function lineCommission(line) {
 //  • Collapsed→ the editable line rate.
 export function effectiveLineRate(line) {
   if (isDrilled(line)) {
-    const api = num(line?.api);
+    const api = lineAPI(line);
     return api > 0 ? lineCommission(line) / api : 0;
   }
   return num(line?.rate);
@@ -106,38 +125,37 @@ export function totalAllocatedCommission(lines, visibleKeys) {
   return (visibleKeys ?? ALLOC_LINE_KEYS).reduce((s, k) => s + lineCommission(lines?.[k] ?? {}), 0);
 }
 
-// Σ API across the visible lines.
+// Σ derived API across the visible lines.
 export function totalAllocatedAPI(lines, visibleKeys) {
-  return (visibleKeys ?? ALLOC_LINE_KEYS).reduce((s, k) => s + num(lines?.[k]?.api), 0);
+  return (visibleKeys ?? ALLOC_LINE_KEYS).reduce((s, k) => s + lineAPI(lines?.[k] ?? {}), 0);
 }
 
-// Seed a fresh allocation for a worksheet. Each line carries its default rate and
-// (for drillable lines) the seeded product list (drilled:false until the agent
-// expands it). Line API is seeded from the worksheet's per-line commission targets
-// where present (api = target ÷ rate); absent → 0 (honest-data, no zeros-as-data).
+// Seed a fresh allocation for a worksheet. COMMISSION-CANONICAL: each line's
+// commission is seeded directly from the worksheet's per-line commission targets
+// (the targets ARE commissions — no ÷ rate needed); absent → 0 (honest-data, no
+// zeros-as-data). API is derived at read time. Products seed commission:0.
 export function seedAllocation(worksheet, licenseProfile) {
   const targets = worksheet?.firstYearCommissionsTargets ?? {};
   // General subsumes property + motor from the legacy 4-line target shape.
   const generalTarget = num(targets.property) + num(targets.motor);
-  const seedAPI = (commissionTarget, rate) => (rate > 0 ? num(commissionTarget) / rate : 0);
 
-  const mkProducts = (key) => (PRODUCT_SEEDS[key] ?? []).map((p) => ({ name: p.name, api: 0, rate: p.rate }));
+  const mkProducts = (key) => (PRODUCT_SEEDS[key] ?? []).map((p) => ({ name: p.name, commission: 0, rate: p.rate }));
 
   return {
     licenseClass: ALLOC_LINE_GATING[licenseProfile] ? licenseProfile : 'composite',
     lines: {
       life: {
-        api: Math.round(seedAPI(targets.life, LINE_DEFAULT_RATES.life)),
+        commission: Math.round(num(targets.life)),
         rate: LINE_DEFAULT_RATES.life,
         drilled: false,
         products: mkProducts('life'),
       },
       ah: {
-        api: Math.round(seedAPI(targets.ah, LINE_DEFAULT_RATES.ah)),
+        commission: Math.round(num(targets.ah)),
         rate: LINE_DEFAULT_RATES.ah,
       },
       general: {
-        api: Math.round(seedAPI(generalTarget, LINE_DEFAULT_RATES.general)),
+        commission: Math.round(generalTarget),
         rate: LINE_DEFAULT_RATES.general,
         drilled: false,
         products: mkProducts('general'),
@@ -159,12 +177,12 @@ export function normalizeAllocation(stored, worksheet, licenseProfile) {
     out.lines[key] = {
       ...b,
       ...s,
-      api: num(s.api),
+      commission: num(s.commission),
       rate: s.rate === undefined ? b.rate : num(s.rate),
     };
     if (b.products) {
       out.lines[key].products = Array.isArray(s.products) && s.products.length > 0
-        ? s.products.slice(0, MAX_PRODUCTS).map((p) => ({ name: p.name ?? '', api: num(p.api), rate: num(p.rate) }))
+        ? s.products.slice(0, MAX_PRODUCTS).map((p) => ({ name: p.name ?? '', commission: num(p.commission), rate: num(p.rate) }))
         : b.products;
       out.lines[key].drilled = !!s.drilled;
     }
@@ -172,22 +190,27 @@ export function normalizeAllocation(stored, worksheet, licenseProfile) {
   return out;
 }
 
-// Distribute a line total evenly across its products (auto-balance), preserving
-// names + rates. Used when the agent edits the line total while drilled, or hits
-// "balance". Rounding remainder lands on the last product so Σ products === total.
-export function autoBalanceProducts(products, lineTotal) {
+// Distribute a line COMMISSION total evenly across its products (auto-balance),
+// preserving names + rates. Used when drilling, or on "Distribute evenly".
+// Rounding remainder lands on the last product so Σ product.commission === total.
+export function autoBalanceProducts(products, lineCommissionTotal) {
   const list = (products ?? []).slice(0, MAX_PRODUCTS);
   const n = list.length;
   if (n === 0) return list;
-  const total = Math.max(0, Math.round(num(lineTotal)));
+  const total = Math.max(0, Math.round(num(lineCommissionTotal)));
   const even = Math.floor(total / n);
   return list.map((p, i) => ({
     ...p,
-    api: i === n - 1 ? total - even * (n - 1) : even,
+    commission: i === n - 1 ? total - even * (n - 1) : even,
   }));
 }
 
-// Σ product API (used to keep the line total in sync when drilled).
+// Σ product commission (the drilled line's canonical total).
+export function sumProductCommission(products) {
+  return (products ?? []).reduce((s, p) => s + num(p.commission), 0);
+}
+
+// Σ derived product API (Σ commission ÷ rate).
 export function sumProductAPI(products) {
-  return (products ?? []).reduce((s, p) => s + num(p.api), 0);
+  return (products ?? []).reduce((s, p) => s + productAPI(p), 0);
 }

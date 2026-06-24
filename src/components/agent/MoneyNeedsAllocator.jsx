@@ -12,9 +12,9 @@ import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
 import AwardProjectionStrip from './AwardProjectionStrip';
 import {
   ALLOC_LINE_META, LINE_DEFAULT_RATES, MAX_PRODUCTS, PRODUCT_SEEDS,
-  visibleLineKeys, allocApps, isDrilled, lineCommission, effectiveLineRate,
-  totalAllocatedCommission, normalizeAllocation,
-  autoBalanceProducts, sumProductAPI,
+  visibleLineKeys, allocApps, isDrilled, lineCommission, lineAPI, productAPI,
+  effectiveLineRate, totalAllocatedCommission, normalizeAllocation,
+  autoBalanceProducts, sumProductCommission,
 } from '../../lib/moneyNeedsAllocation';
 
 const LICENSE_OPTIONS = [
@@ -27,12 +27,16 @@ const num = (v) => parseFloat(v) || 0;
 const LABEL = Object.fromEntries(ALLOC_LINE_META.map((m) => [m.key, m.label]));
 const DRILLABLE = Object.fromEntries(ALLOC_LINE_META.map((m) => [m.key, m.drillable]));
 
-// Slider ceiling for a line — required ÷ rate × 1.5, floored so an empty plan
-// still has a usable range. Mirrors the brief's two-way ceiling rule.
+// Rate (decimal fraction) → clean percent for DISPLAY (0.35 → 35, 0.125 → 12.5).
+// Storage stays the decimal; ×100/÷100 conversion happens only at the input edge.
+const ratePct = (rate) => parseFloat((num(rate) * 100).toFixed(2));
+
+// Slider ceiling for a line — API-anchored: required ÷ rate × 1.5, floored so an
+// empty plan still has a usable range. (Slider drives derived API.)
 function lineCeiling(key, line, required) {
   const rate = num(line?.rate) || LINE_DEFAULT_RATES[key] || 0.1;
   if (required > 0 && rate > 0) return Math.max(Math.round((required / rate) * 1.5), 50000);
-  const api = num(line?.api);
+  const api = lineAPI(line);
   return api > 0 ? Math.round(api * 2) : 1000000;
 }
 
@@ -93,7 +97,7 @@ function TheSeam({ required }) {
 // ── Per-product drill drawer (Life + General) ───────────────────────────────
 function ProductDrillDrawer({ lineKey, line, onProducts, onAutoBalance, onBlur }) {
   const products = line.products ?? [];
-  const lineTotal = sumProductAPI(products);
+  const lineCommissionTotal = sumProductCommission(products);
 
   function update(i, field, value) {
     const next = products.map((p, idx) => (idx === i ? { ...p, [field]: value } : p));
@@ -102,7 +106,7 @@ function ProductDrillDrawer({ lineKey, line, onProducts, onAutoBalance, onBlur }
   function add() {
     if (products.length >= MAX_PRODUCTS) return;
     const seed = (PRODUCT_SEEDS[lineKey] ?? [])[products.length] ?? { name: '', rate: LINE_DEFAULT_RATES[lineKey] ?? 0.1 };
-    onProducts(lineKey, [...products, { name: seed.name ?? '', api: 0, rate: seed.rate }]);
+    onProducts(lineKey, [...products, { name: seed.name ?? '', commission: 0, rate: seed.rate }]);
   }
   function remove(i) {
     onProducts(lineKey, products.filter((_, idx) => idx !== i));
@@ -147,36 +151,41 @@ function ProductDrillDrawer({ lineKey, line, onProducts, onAutoBalance, onBlur }
             </button>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <label className="sr-only" htmlFor={`alloc-product-api-${lineKey}-${i}`}>{LABEL[lineKey]} product {i + 1} API</label>
+            <label className="sr-only" htmlFor={`alloc-product-commission-${lineKey}-${i}`}>{LABEL[lineKey]} product {i + 1} commission</label>
+            <span className="text-[11px] text-ink-muted">TTD</span>
             <input
-              id={`alloc-product-api-${lineKey}-${i}`}
+              id={`alloc-product-commission-${lineKey}-${i}`}
               type="number"
-              value={p.api === 0 ? '' : p.api}
-              onChange={(e) => update(i, 'api', e.target.value)}
+              value={p.commission === 0 ? '' : p.commission}
+              onChange={(e) => update(i, 'commission', e.target.value)}
               onBlur={onBlur}
               placeholder="0"
               min={0}
               step={1000}
-              aria-label={`${p.name || `Product ${i + 1}`} API`}
-              data-testid={`alloc-product-api-${lineKey}-${i}`}
+              aria-label={`${p.name || `Product ${i + 1}`} commission`}
+              data-testid={`alloc-product-commission-${lineKey}-${i}`}
               className="h-11 w-28 rounded-lg border border-border bg-surface px-2 text-right text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
-            <span className="text-[11px] text-ink-muted">API ×</span>
+            <span className="text-[11px] text-ink-muted">@</span>
             <input
               type="number"
-              value={p.rate === 0 ? '' : p.rate}
-              onChange={(e) => update(i, 'rate', e.target.value)}
+              value={p.rate === 0 ? '' : ratePct(p.rate)}
+              onChange={(e) => update(i, 'rate', num(e.target.value) / 100)}
               onBlur={onBlur}
               placeholder="0"
               min={0}
-              max={1}
-              step={0.005}
-              aria-label={`${p.name || `Product ${i + 1}`} commission rate`}
+              max={100}
+              step={0.5}
+              aria-label={`${p.name || `Product ${i + 1}`} commission rate percent`}
               data-testid={`alloc-product-rate-${lineKey}-${i}`}
-              className="h-11 w-20 rounded-lg border border-border bg-surface px-2 text-right text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="h-11 w-16 rounded-lg border border-border bg-surface px-2 text-right text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
             />
-            <span className="ml-auto text-xs font-semibold text-ink tabular-nums">
-              {formatCurrency(num(p.api) * num(p.rate))}
+            <span className="text-[11px] text-ink-muted">%</span>
+            <span
+              className="ml-auto text-xs text-ink-muted tabular-nums"
+              data-testid={`alloc-product-api-${lineKey}-${i}`}
+            >
+              {formatCurrency(productAPI(p))} API
             </span>
           </div>
         </div>
@@ -196,18 +205,19 @@ function ProductDrillDrawer({ lineKey, line, onProducts, onAutoBalance, onBlur }
           <span className="text-[11px] text-ink-muted">Max {MAX_PRODUCTS} products</span>
         )}
         <span className="text-[11px] text-ink-muted" data-testid={`alloc-product-sum-${lineKey}`}>
-          Line total <span className="font-semibold text-ink tabular-nums">{formatCurrency(lineTotal)}</span>
+          Line commission <span className="font-semibold text-ink tabular-nums">{formatCurrency(lineCommissionTotal)}</span>
+          <span className="text-ink-muted"> · {formatCurrency(lineAPI(line))} API</span>
         </span>
       </div>
     </div>
   );
 }
 
-// ── Allocation line row ──────────────────────────────────────────────────────
-function AllocationLineRow({ lineKey, line, required, onAPIChange, onRateChange, onBlur, onToggleDrill, eligible }) {
+// ── Allocation line row (commission-first) ───────────────────────────────────
+function AllocationLineRow({ lineKey, line, required, onCommissionChange, onSliderAPIChange, onRateChange, onBlur, onToggleDrill, eligible }) {
   const drilled = isDrilled(line);
-  const api = num(line.api);
-  const commission = lineCommission(line);
+  const commission = lineCommission(line);   // canonical (Σ products when drilled)
+  const api = lineAPI(line);                 // DERIVED from commission ÷ rate
   const apps = Math.round(allocApps(api));
   const effRate = effectiveLineRate(line);
   const ceiling = lineCeiling(lineKey, line, required);
@@ -216,7 +226,7 @@ function AllocationLineRow({ lineKey, line, required, onAPIChange, onRateChange,
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-surface shadow-sm" data-testid={`alloc-line-${lineKey}`}>
       <div className="space-y-2.5 px-3 py-3">
-        {/* Row 1 — label + eligibility tag + commission */}
+        {/* Row 1 — label + eligibility tag + commission headline */}
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-ink">{LABEL[lineKey]}</span>
           {eligible ? (
@@ -229,39 +239,46 @@ function AllocationLineRow({ lineKey, line, required, onAPIChange, onRateChange,
           </span>
         </div>
 
-        {/* Row 2 — slider + TTD field (two-way). Collapsed only; drilled total is
-            derived from products (read-only here, edited in the drawer). */}
-        <div className="flex items-center gap-3">
+        {/* Row 2 — COMMISSION number field (canonical) + API slider (derived) with
+            a live API readout. Drilled → both disabled; products define the line. */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-ink-muted">TTD</span>
+            <input
+              type="number"
+              value={commission === 0 ? '' : commission}
+              onChange={(e) => onCommissionChange(lineKey, e.target.value)}
+              onBlur={onBlur}
+              placeholder="0"
+              min={0}
+              step={1000}
+              disabled={drilled}
+              aria-label={`${LABEL[lineKey]} commission target`}
+              data-testid={`alloc-line-commission-input-${lineKey}`}
+              className="h-11 w-36 rounded-lg border border-border bg-surface px-2 text-right text-sm font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+            />
+            <span className="text-[11px] text-ink-muted">commission you want</span>
+          </div>
           <input
             type="range"
             min={0}
             max={ceiling}
             step={1000}
             value={Math.min(api, ceiling)}
-            onChange={(e) => onAPIChange(lineKey, e.target.value)}
+            onChange={(e) => onSliderAPIChange(lineKey, e.target.value)}
             onMouseUp={onBlur}
             onTouchEnd={onBlur}
             disabled={drilled}
-            aria-label={`${LABEL[lineKey]} API`}
-            data-testid={`alloc-line-slider-${lineKey}`}
-            className={`h-2 flex-1 cursor-pointer appearance-none rounded-full bg-surface-muted accent-primary disabled:cursor-not-allowed ${eligible ? '' : '[&::-webkit-slider-thumb]:bg-ink-muted'}`}
-          />
-          <input
-            type="number"
-            value={api === 0 ? '' : api}
-            onChange={(e) => onAPIChange(lineKey, e.target.value)}
-            onBlur={onBlur}
-            placeholder="0"
-            min={0}
-            step={1000}
-            disabled={drilled}
             aria-label={`${LABEL[lineKey]} annual API`}
-            data-testid={`alloc-line-api-${lineKey}`}
-            className="h-11 w-32 rounded-lg border border-border bg-surface px-2 text-right text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60"
+            data-testid={`alloc-line-slider-${lineKey}`}
+            className={`h-2 w-full cursor-pointer appearance-none rounded-full bg-surface-muted accent-primary disabled:cursor-not-allowed ${eligible ? '' : '[&::-webkit-slider-thumb]:bg-ink-muted'}`}
           />
+          <p className="text-[11px] text-ink-muted tabular-nums" data-testid={`alloc-line-api-label-${lineKey}`}>
+            Annual API · {formatCurrency(api)}
+          </p>
         </div>
 
-        {/* Row 3 — rate + derived apps + drill toggle */}
+        {/* Row 3 — rate (shown as %) + derived apps + drill toggle */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-muted">
           <span className="inline-flex items-center gap-1">
             Rate
@@ -270,19 +287,22 @@ function AllocationLineRow({ lineKey, line, required, onAPIChange, onRateChange,
                 {(effRate * 100).toFixed(1)}% <span className="font-normal text-ink-muted">(weighted)</span>
               </span>
             ) : (
-              <input
-                type="number"
-                value={line.rate === 0 ? '' : line.rate}
-                onChange={(e) => onRateChange(lineKey, e.target.value)}
-                onBlur={onBlur}
-                placeholder="0"
-                min={0}
-                max={1}
-                step={0.005}
-                aria-label={`${LABEL[lineKey]} commission rate`}
-                data-testid={`alloc-line-rate-${lineKey}`}
-                className="h-9 w-16 rounded-md border border-border bg-surface px-1.5 text-right text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
-              />
+              <span className="inline-flex items-center gap-0.5">
+                <input
+                  type="number"
+                  value={line.rate === 0 ? '' : ratePct(line.rate)}
+                  onChange={(e) => onRateChange(lineKey, e.target.value)}
+                  onBlur={onBlur}
+                  placeholder="0"
+                  min={0}
+                  max={100}
+                  step={0.5}
+                  aria-label={`${LABEL[lineKey]} commission rate percent`}
+                  data-testid={`alloc-line-rate-${lineKey}`}
+                  className="h-9 w-14 rounded-md border border-border bg-surface px-1.5 text-right text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+                <span aria-hidden="true">%</span>
+              </span>
             )}
           </span>
           <span data-testid={`alloc-line-apps-${lineKey}`}>· {apps} apps est.</span>
@@ -364,7 +384,7 @@ function AckModal({ onClose, onContinue, summary }) {
               {summary.map((s) => (
                 <li key={s.label} className="flex justify-between gap-2">
                   <span>{s.label}</span>
-                  <span className="font-semibold text-ink tabular-nums">{formatCurrency(s.api)} API</span>
+                  <span className="font-semibold text-ink tabular-nums">{formatCurrency(s.commission)} commission</span>
                 </li>
               ))}
             </ul>
@@ -467,12 +487,27 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
     }
   }
 
-  // ── Line edits ──────────────────────────────────────────────────────────
-  function setLineAPI(key, value) {
-    setAlloc((prev) => ({ ...prev, lines: { ...prev.lines, [key]: { ...prev.lines[key], api: num(value) } } }));
+  // ── Line edits (commission-canonical) ────────────────────────────────────
+  // Number field: commission is the canonical value the agent types. Clamp to
+  // [0, required] (you can't need more commission than your need).
+  function setLineCommission(key, value) {
+    const clamped = Math.max(0, Math.min(num(value), required));
+    setAlloc((prev) => ({ ...prev, lines: { ...prev.lines, [key]: { ...prev.lines[key], commission: clamped } } }));
   }
+  // Slider drives API → derive commission = api × rate, store the commission.
+  function setSliderAPI(key, value) {
+    setAlloc((prev) => {
+      const line = prev.lines[key];
+      const commission = num(value) * num(line.rate);
+      return { ...prev, lines: { ...prev.lines, [key]: { ...line, commission } } };
+    });
+  }
+  // Rate change KEEPS commission fixed and re-derives API (API is derived from
+  // commission ÷ rate, so just storing the new rate re-derives it). Value is the
+  // percent typed → ÷100 to the stored decimal (single 0–100 boundary at the edge).
   function setLineRate(key, value) {
-    setAlloc((prev) => ({ ...prev, lines: { ...prev.lines, [key]: { ...prev.lines[key], rate: num(value) } } }));
+    const rate = num(value) / 100;
+    setAlloc((prev) => ({ ...prev, lines: { ...prev.lines, [key]: { ...prev.lines[key], rate } } }));
   }
 
   // Pure compute-then-set-then-persist (no side-effect inside the updater, so
@@ -481,17 +516,17 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
     const line = alloc.lines[key];
     const next = { ...line };
     if (isDrilled(line)) {
-      // Collapse: keep the line total = current product sum.
+      // Collapse: keep the line commission = current product commission sum.
       next.drilled = false;
-      next.api = sumProductAPI(line.products);
+      next.commission = sumProductCommission(line.products);
     } else {
-      // Drill: seed products to evenly sum to the current line total.
+      // Drill: seed products and evenly distribute the line commission across them.
       const seeds = (line.products && line.products.length > 0)
         ? line.products
-        : (PRODUCT_SEEDS[key] ?? []).map((p) => ({ name: p.name, api: 0, rate: p.rate }));
-      next.products = autoBalanceProducts(seeds, line.api);
+        : (PRODUCT_SEEDS[key] ?? []).map((p) => ({ name: p.name, commission: 0, rate: p.rate }));
+      next.products = autoBalanceProducts(seeds, line.commission);
       next.drilled = true;
-      next.api = sumProductAPI(next.products);
+      next.commission = sumProductCommission(next.products);
     }
     const out = { ...alloc, lines: { ...alloc.lines, [key]: next } };
     setAlloc(out);
@@ -500,15 +535,15 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
 
   function setProducts(key, products) {
     setAlloc((prev) => {
-      const capped = products.slice(0, MAX_PRODUCTS).map((p) => ({ name: p.name ?? '', api: num(p.api), rate: num(p.rate) }));
-      const line = { ...prev.lines[key], products: capped, drilled: true, api: sumProductAPI(capped) };
+      const capped = products.slice(0, MAX_PRODUCTS).map((p) => ({ name: p.name ?? '', commission: num(p.commission), rate: num(p.rate) }));
+      const line = { ...prev.lines[key], products: capped, drilled: true, commission: sumProductCommission(capped) };
       return { ...prev, lines: { ...prev.lines, [key]: line } };
     });
   }
   function autoBalance(key) {
     const line = alloc.lines[key];
-    const balanced = autoBalanceProducts(line.products, line.api);
-    const out = { ...alloc, lines: { ...alloc.lines, [key]: { ...line, products: balanced } } };
+    const balanced = autoBalanceProducts(line.products, line.commission);
+    const out = { ...alloc, lines: { ...alloc.lines, [key]: { ...line, products: balanced, commission: sumProductCommission(balanced) } } };
     setAlloc(out);
     persist(out);
   }
@@ -523,9 +558,12 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
   function handleSend() {
     const lifeLine = alloc.lines.life ?? {};
     const generalLine = alloc.lines.general ?? {};
-    const productAPIs = (line) => (isDrilled(line) ? (line.products ?? []).map((p) => ({ name: p.name, api: num(p.api) })) : []);
+    // Products carry commission (canonical) + derived API.
+    const productRows = (line) => (isDrilled(line)
+      ? (line.products ?? []).map((p) => ({ name: p.name, commission: num(p.commission), api: productAPI(p) }))
+      : []);
     // Extend the existing #738 payload — value + preTaxAlreadyApplied preserved so
-    // the Playground reader (which ignores unknown keys) is unaffected.
+    // the Playground reader (which ignores unknown keys) is unaffected. API is derived.
     const payload = {
       value: required,
       preTaxAlreadyApplied: true,
@@ -533,12 +571,12 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
         licenseClass: licenseProfile,
         lines: visibleKeys.reduce((acc, k) => {
           const line = alloc.lines[k] ?? {};
-          acc[k] = { api: num(line.api), commission: lineCommission(line) };
-          if (DRILLABLE[k]) acc[k].products = productAPIs(line);
+          acc[k] = { commission: lineCommission(line), api: lineAPI(line) };
+          if (DRILLABLE[k]) acc[k].products = productRows(line);
           return acc;
         }, {}),
-        life: { api: num(lifeLine.api), products: productAPIs(lifeLine) },
-        general: { api: num(generalLine.api), products: productAPIs(generalLine) },
+        life: { commission: lineCommission(lifeLine), api: lineAPI(lifeLine), products: productRows(lifeLine) },
+        general: { commission: lineCommission(generalLine), api: lineAPI(generalLine), products: productRows(generalLine) },
       },
     };
     localStorage.setItem(PLAYGROUND_INCOME_GOAL_KEY, JSON.stringify(payload));
@@ -547,8 +585,8 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
   }
 
   const ackSummary = visibleKeys
-    .map((k) => ({ label: LABEL[k], api: num(alloc.lines[k]?.api) }))
-    .filter((s) => s.api > 0);
+    .map((k) => ({ label: LABEL[k], commission: lineCommission(alloc.lines[k] ?? {}) }))
+    .filter((s) => s.commission > 0);
 
   // ── Render ──────────────────────────────────────────────────────────────
   if (!licenseProfile) {
@@ -584,7 +622,8 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
                 lineKey={key}
                 line={alloc.lines[key]}
                 required={required}
-                onAPIChange={setLineAPI}
+                onCommissionChange={setLineCommission}
+                onSliderAPIChange={setSliderAPI}
                 onRateChange={setLineRate}
                 onBlur={handleBlur}
                 onToggleDrill={toggleDrill}
@@ -606,9 +645,9 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
 
       <AllocatedMeter allocated={allocatedCommission} required={required} />
 
-      {/* Award strip — Life API only, real ruleset tiers. */}
+      {/* Award strip — Life API only (derived from commission ÷ rate), real ruleset tiers. */}
       <AwardProjectionStrip
-        lines={{ life: { targetAPI: num(alloc.lines.life?.api) } }}
+        lines={{ life: { targetAPI: lineAPI(alloc.lines.life ?? {}) } }}
         agentProfile={{
           monthsInIndustry: user?.monthsInIndustry,
           monthsAtTatil: user?.monthsAtTatil,

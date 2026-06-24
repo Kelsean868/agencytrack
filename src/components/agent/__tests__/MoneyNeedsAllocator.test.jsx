@@ -97,57 +97,82 @@ describe('MoneyNeedsAllocator — the seam + meter', () => {
   });
 });
 
-describe('MoneyNeedsAllocator — collapsed commission = API × rate', () => {
-  it('editing the API field updates the derived commission', () => {
+describe('MoneyNeedsAllocator — commission-first input model', () => {
+  it('number field is commission; seeded from the worksheet target (life 35000)', () => {
     render(<MoneyNeedsAllocator worksheet={makeWorksheet()} />);
-    const apiField = screen.getByTestId('alloc-line-api-life');
-    fireEvent.change(apiField, { target: { value: '200000' } });
-    // 200000 × 0.35 = 70000
+    expect(screen.getByTestId('alloc-line-commission-input-life').value).toBe('35000');
+  });
+
+  it('type commission → API derives (commission ÷ rate) and the slider label updates', () => {
+    render(<MoneyNeedsAllocator worksheet={makeWorksheet()} />);
+    const commField = screen.getByTestId('alloc-line-commission-input-life');
+    fireEvent.change(commField, { target: { value: '70000' } });
+    // 70000 ÷ 0.35 = 200000 API
+    expect(within(screen.getByTestId('alloc-line-api-label-life')).getByText(/TTD 200,000/)).toBeTruthy();
+    // commission headline reflects the typed value
     expect(within(screen.getByTestId('alloc-line-life')).getByText(/TTD 70,000/)).toBeTruthy();
   });
 
-  it('editing the rate updates the derived commission and persists on blur', async () => {
+  it('commission field clamps to [0, required]', () => {
     render(<MoneyNeedsAllocator worksheet={makeWorksheet()} />);
-    const rateField = screen.getByTestId('alloc-line-rate-life');
-    // seeded life api = 100000; rate 0.5 → 50000
-    fireEvent.change(rateField, { target: { value: '0.5' } });
-    fireEvent.blur(rateField);
-    expect(within(screen.getByTestId('alloc-line-life')).getByText(/TTD 50,000/)).toBeTruthy();
-    await waitFor(() => expect(mockSaveAllocation).toHaveBeenCalled());
-    const savedAlloc = mockSaveAllocation.mock.calls.at(-1)[3];
-    expect(savedAlloc.lines.life.rate).toBe(0.5);
+    const commField = screen.getByTestId('alloc-line-commission-input-life');
+    fireEvent.change(commField, { target: { value: '999999' } }); // > required 100000
+    expect(commField.value).toBe('100000');
   });
 
-  it('slider and field are two-way bound (slider drives the field)', () => {
+  it('drag slider (API) → commission derives (api × rate)', () => {
     render(<MoneyNeedsAllocator worksheet={makeWorksheet()} />);
     const slider = screen.getByTestId('alloc-line-slider-life');
-    fireEvent.change(slider, { target: { value: '150000' } });
-    expect(screen.getByTestId('alloc-line-api-life').value).toBe('150000');
+    fireEvent.change(slider, { target: { value: '150000' } }); // API
+    // 150000 × 0.35 = 52500 commission
+    expect(screen.getByTestId('alloc-line-commission-input-life').value).toBe('52500');
+    expect(within(screen.getByTestId('alloc-line-api-label-life')).getByText(/TTD 150,000/)).toBeTruthy();
+  });
+
+  it('rate field shows percent (×100), parses ÷100, stores the decimal', async () => {
+    render(<MoneyNeedsAllocator worksheet={makeWorksheet()} />);
+    const rateField = screen.getByTestId('alloc-line-rate-life');
+    expect(rateField.value).toBe('35'); // 0.35 shown as 35
+    fireEvent.change(rateField, { target: { value: '50' } }); // 50% → 0.5
+    fireEvent.blur(rateField);
+    await waitFor(() => expect(mockSaveAllocation).toHaveBeenCalled());
+    expect(mockSaveAllocation.mock.calls.at(-1)[3].lines.life.rate).toBe(0.5);
+  });
+
+  it('rate change KEEPS commission fixed and re-derives API', () => {
+    render(<MoneyNeedsAllocator worksheet={makeWorksheet()} />);
+    // seeded life commission 35000 @ 35% → API 100000
+    fireEvent.change(screen.getByTestId('alloc-line-rate-life'), { target: { value: '50' } }); // → 0.5
+    // commission unchanged, API re-derived 35000/0.5 = 70000
+    expect(screen.getByTestId('alloc-line-commission-input-life').value).toBe('35000');
+    expect(within(screen.getByTestId('alloc-line-api-label-life')).getByText(/TTD 70,000/)).toBeTruthy();
   });
 });
 
 describe('MoneyNeedsAllocator — per-product drill (Life)', () => {
-  it('breaks Life into products, derives Σ(api×rate) and a weighted rate, renames', async () => {
+  it('breaks Life into products (commission-first), derives line commission Σ + weighted rate + per-product API; renames', async () => {
     render(<MoneyNeedsAllocator worksheet={makeWorksheet()} />);
     fireEvent.click(screen.getByTestId('alloc-drill-toggle-life'));
     const drawer = await screen.findByTestId('alloc-drill-life');
-    // seeded 4 products, auto-balanced to sum the line total (100000)
+    // seeded 4 products
     expect(within(drawer).getAllByTestId(/alloc-product-life-\d/)).toHaveLength(4);
 
-    // Set two distinct product APIs + rates, others to 0 → commission = Σ.
-    fireEvent.change(screen.getByTestId('alloc-product-api-life-0'), { target: { value: '60000' } });
-    fireEvent.change(screen.getByTestId('alloc-product-rate-life-0'), { target: { value: '0.35' } });
-    fireEvent.change(screen.getByTestId('alloc-product-api-life-1'), { target: { value: '40000' } });
-    fireEvent.change(screen.getByTestId('alloc-product-rate-life-1'), { target: { value: '0.20' } });
-    fireEvent.change(screen.getByTestId('alloc-product-api-life-2'), { target: { value: '0' } });
-    fireEvent.change(screen.getByTestId('alloc-product-api-life-3'), { target: { value: '0' } });
+    // Enter commission per product (+ rate %); product API derives. Others → 0.
+    fireEvent.change(screen.getByTestId('alloc-product-commission-life-0'), { target: { value: '21000' } });
+    fireEvent.change(screen.getByTestId('alloc-product-rate-life-0'), { target: { value: '35' } }); // 35% → 0.35
+    fireEvent.change(screen.getByTestId('alloc-product-commission-life-1'), { target: { value: '8000' } });
+    fireEvent.change(screen.getByTestId('alloc-product-rate-life-1'), { target: { value: '20' } }); // 20% → 0.20
+    fireEvent.change(screen.getByTestId('alloc-product-commission-life-2'), { target: { value: '0' } });
+    fireEvent.change(screen.getByTestId('alloc-product-commission-life-3'), { target: { value: '0' } });
 
-    // Line commission = 60000*0.35 + 40000*0.20 = 29000
+    // Line commission = 21000 + 8000 = 29000 (Σ product commissions)
     await waitFor(() => expect(
       within(screen.getByTestId('alloc-line-life')).getByText(/TTD 29,000/),
     ).toBeTruthy());
-    // Weighted rate read-only = 29000 / 100000 = 29.0%
+    // Weighted rate read-only = 29000 / 100000 = 29.0% (lineAPI = 60000 + 40000)
     expect(within(screen.getByTestId('alloc-line-life')).getByText(/29\.0%/)).toBeTruthy();
+    // Product 0 derived API = 21000 / 0.35 = 60000
+    expect(within(screen.getByTestId('alloc-product-api-life-0')).getByText(/TTD 60,000/)).toBeTruthy();
 
     // Rename product 0
     fireEvent.change(screen.getByTestId('alloc-product-name-life-0'), { target: { value: 'Endowment' } });
@@ -159,9 +184,9 @@ describe('MoneyNeedsAllocator — per-product drill (Life)', () => {
       allocation: {
         licenseClass: 'composite',
         lines: {
-          life: { api: 50000, rate: 0.35, drilled: true, products: [{ name: 'Whole Life', api: 50000, rate: 0.35 }] },
-          ah: { api: 0, rate: 0.25 },
-          general: { api: 0, rate: 0.10, drilled: false, products: [] },
+          life: { commission: 17500, rate: 0.35, drilled: true, products: [{ name: 'Whole Life', commission: 17500, rate: 0.35 }] },
+          ah: { commission: 0, rate: 0.25 },
+          general: { commission: 0, rate: 0.10, drilled: false, products: [] },
         },
       },
     });
@@ -169,6 +194,8 @@ describe('MoneyNeedsAllocator — per-product drill (Life)', () => {
     // Drawer is present immediately — proves drawer gates on isDrilled, not UI state.
     expect(screen.getByTestId('alloc-drill-life')).toBeTruthy();
     expect(screen.getByTestId('alloc-product-name-life-0').value).toBe('Whole Life');
+    // Derived product API = 17500 / 0.35 = 50000
+    expect(within(screen.getByTestId('alloc-product-api-life-0')).getByText(/TTD 50,000/)).toBeTruthy();
   });
 
   it('caps products at 4 (no Add button when full)', async () => {
@@ -199,7 +226,9 @@ describe('MoneyNeedsAllocator — Send → Game Plan', () => {
     expect(stored.value).toBe(100000);              // #738 contract preserved
     expect(stored.preTaxAlreadyApplied).toBe(true); // #738 contract preserved
     expect(stored.allocation).toBeDefined();        // extension
-    expect(stored.allocation.lines.life.api).toBe(100000);
+    // commission canonical (seeded life target 35000), API derived (35000 ÷ 0.35)
+    expect(stored.allocation.lines.life.commission).toBe(35000);
+    expect(stored.allocation.lines.life.api).toBeCloseTo(100000);
     expect(stored.allocation.licenseClass).toBe('composite');
 
     const ack = await screen.findByTestId('alloc-ack-modal');

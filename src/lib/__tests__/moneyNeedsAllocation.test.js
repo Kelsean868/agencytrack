@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   AVG_POLICY_API, LINE_DEFAULT_RATES, ALLOC_LINE_KEYS, MAX_PRODUCTS, PRODUCT_SEEDS,
-  visibleLineKeys, allocApps, isDrilled, lineCommission, effectiveLineRate,
+  visibleLineKeys, allocApps, isDrilled, productAPI, lineCommission, lineAPI, effectiveLineRate,
   totalAllocatedCommission, totalAllocatedAPI, seedAllocation, normalizeAllocation,
-  autoBalanceProducts, sumProductAPI,
+  autoBalanceProducts, sumProductCommission, sumProductAPI,
 } from '../moneyNeedsAllocation';
 
 describe('moneyNeedsAllocation — constants', () => {
@@ -13,7 +13,7 @@ describe('moneyNeedsAllocation — constants', () => {
   it('AVG_POLICY_API is the shared 12000 divisor', () => {
     expect(AVG_POLICY_API).toBe(12000);
   });
-  it('three allocation lines, general subsumes property/motor', () => {
+  it('three allocation lines', () => {
     expect(ALLOC_LINE_KEYS).toEqual(['life', 'ah', 'general']);
   });
   it('product seeds: Life all 0.35; General Motor/Property/Group/Commercial', () => {
@@ -25,152 +25,145 @@ describe('moneyNeedsAllocation — constants', () => {
 });
 
 describe('visibleLineKeys — license → visible lines (A&H always present)', () => {
-  it('composite → all three', () => {
-    expect(visibleLineKeys('composite')).toEqual(['life', 'ah', 'general']);
+  it('composite → all three', () => expect(visibleLineKeys('composite')).toEqual(['life', 'ah', 'general']));
+  it('life_only → life + ah', () => expect(visibleLineKeys('life_only')).toEqual(['life', 'ah']));
+  it('general_only → ah + general', () => expect(visibleLineKeys('general_only')).toEqual(['ah', 'general']));
+  it('A&H present in every profile', () => {
+    for (const p of ['composite', 'life_only', 'general_only']) expect(visibleLineKeys(p)).toContain('ah');
   });
-  it('life_only → life + ah (no general)', () => {
-    expect(visibleLineKeys('life_only')).toEqual(['life', 'ah']);
-  });
-  it('general_only → ah + general (no life)', () => {
-    expect(visibleLineKeys('general_only')).toEqual(['ah', 'general']);
-  });
-  it('A&H is present in every profile', () => {
-    for (const p of ['composite', 'life_only', 'general_only']) {
-      expect(visibleLineKeys(p)).toContain('ah');
-    }
-  });
-  it('unknown profile falls back to composite', () => {
-    expect(visibleLineKeys(undefined)).toEqual(['life', 'ah', 'general']);
-  });
+  it('unknown profile falls back to composite', () => expect(visibleLineKeys(undefined)).toEqual(['life', 'ah', 'general']));
 });
 
 describe('allocApps — API ÷ blended avg-policy', () => {
-  it('divides by 12000 by default', () => {
-    expect(allocApps(120000)).toBe(10);
-  });
-  it('honours an override divisor', () => {
-    expect(allocApps(120000, 10000)).toBe(12);
-  });
-  it('zero / non-positive divisor → 0', () => {
-    expect(allocApps(120000, 0)).toBe(10); // falls back to AVG_POLICY_API
+  it('divides by 12000 by default', () => expect(allocApps(120000)).toBe(10));
+  it('honours an override divisor', () => expect(allocApps(120000, 10000)).toBe(12));
+  it('non-positive divisor falls back; zero api → 0', () => {
+    expect(allocApps(120000, 0)).toBe(10);
     expect(allocApps(0)).toBe(0);
   });
 });
 
-describe('lineCommission — collapsed = API × rate', () => {
-  it('collapsed line uses the editable line rate', () => {
-    expect(lineCommission({ api: 100000, rate: 0.35 })).toBeCloseTo(35000);
+describe('commission-canonical math — collapsed', () => {
+  it('lineCommission = the stored commission (canonical)', () => {
+    expect(lineCommission({ commission: 35000, rate: 0.35 })).toBe(35000);
   });
-  it('editing the rate changes the commission', () => {
-    expect(lineCommission({ api: 100000, rate: 0.4 })).toBeCloseTo(40000);
+  it('lineAPI = commission ÷ rate (derived)', () => {
+    expect(lineAPI({ commission: 35000, rate: 0.35 })).toBeCloseTo(100000);
   });
-  it('general uses API × rate (6% premium-tax deferred this PR)', () => {
-    expect(lineCommission({ api: 200000, rate: 0.10 })).toBeCloseTo(20000);
+  it('rate change keeps commission, re-derives API (higher rate → less API)', () => {
+    const line = { commission: 35000, rate: 0.35 };
+    expect(lineAPI(line)).toBeCloseTo(100000);
+    const better = { ...line, rate: 0.5 };
+    expect(lineCommission(better)).toBe(35000);   // commission fixed
+    expect(lineAPI(better)).toBeCloseTo(70000);   // API re-derived (35000/0.5)
+  });
+  it('effectiveLineRate collapsed = the line rate', () => {
+    expect(effectiveLineRate({ commission: 10000, rate: 0.25 })).toBe(0.25);
+  });
+  it('rate 0 → derived API 0 (no divide-by-zero)', () => {
+    expect(lineAPI({ commission: 10000, rate: 0 })).toBe(0);
   });
 });
 
-describe('lineCommission / effectiveLineRate — drilled = Σ(product.api × rate)', () => {
+describe('commission-canonical math — drilled (products define the line)', () => {
   const drilled = {
-    api: 100000,
-    rate: 0.35,
-    drilled: true,
+    commission: 0, rate: 0.35, drilled: true,
     products: [
-      { name: 'Whole Life', api: 60000, rate: 0.35 },
-      { name: 'Term',       api: 40000, rate: 0.20 },
+      { name: 'Whole Life', commission: 21000, rate: 0.35 }, // api 60000
+      { name: 'Term',       commission: 8000,  rate: 0.20 }, // api 40000
     ],
   };
-  it('drilled commission sums product api × product rate', () => {
-    // 60000*0.35 + 40000*0.20 = 21000 + 8000 = 29000
-    expect(lineCommission(drilled)).toBeCloseTo(29000);
+  it('productAPI = commission ÷ rate', () => {
+    expect(productAPI(drilled.products[0])).toBeCloseTo(60000);
+    expect(productAPI(drilled.products[1])).toBeCloseTo(40000);
   });
-  it('derived weighted-average rate = lineCommission ÷ lineAPI', () => {
-    // 29000 / 100000 = 0.29
-    expect(effectiveLineRate(drilled)).toBeCloseTo(0.29);
+  it('lineCommission = Σ product.commission', () => {
+    expect(lineCommission(drilled)).toBe(29000);
   });
-  it('collapsed effective rate is the line rate', () => {
-    expect(effectiveLineRate({ api: 50000, rate: 0.35 })).toBe(0.35);
+  it('lineAPI = Σ productAPI', () => {
+    expect(lineAPI(drilled)).toBeCloseTo(100000);
   });
-  it('isDrilled requires drilled flag AND non-empty products', () => {
+  it('effectiveLineRate = lineCommission ÷ lineAPI (weighted, read-only)', () => {
+    expect(effectiveLineRate(drilled)).toBeCloseTo(0.29); // 29000 / 100000
+  });
+  it('isDrilled requires flag AND non-empty products', () => {
     expect(isDrilled(drilled)).toBe(true);
     expect(isDrilled({ drilled: true, products: [] })).toBe(false);
-    expect(isDrilled({ drilled: false, products: [{ api: 1, rate: 1 }] })).toBe(false);
+    expect(isDrilled({ drilled: false, products: [{ commission: 1, rate: 1 }] })).toBe(false);
   });
 });
 
 describe('totals', () => {
   const lines = {
-    life:    { api: 100000, rate: 0.35 },
-    ah:      { api: 40000,  rate: 0.25 },
-    general: { api: 200000, rate: 0.10 },
+    life:    { commission: 35000, rate: 0.35 },
+    ah:      { commission: 10000, rate: 0.25 },
+    general: { commission: 20000, rate: 0.10 },
   };
   it('totalAllocatedCommission sums visible lines only', () => {
-    // life 35000 + ah 10000 = 45000 (general omitted)
-    expect(totalAllocatedCommission(lines, ['life', 'ah'])).toBeCloseTo(45000);
+    expect(totalAllocatedCommission(lines, ['life', 'ah'])).toBe(45000);
   });
-  it('totalAllocatedAPI sums visible lines only', () => {
-    expect(totalAllocatedAPI(lines, ['life', 'general'])).toBe(300000);
+  it('totalAllocatedAPI sums derived API of visible lines only', () => {
+    expect(totalAllocatedAPI(lines, ['life', 'general'])).toBeCloseTo(300000); // 100000 + 200000
   });
 });
 
-describe('seedAllocation — from worksheet commission targets', () => {
-  const ws = {
-    firstYearCommissionsTargets: { life: 35000, ah: 10000, property: 10000, motor: 10000 },
-  };
-  it('seeds line API = target ÷ default rate', () => {
+describe('seedAllocation — commission seeded directly from targets', () => {
+  const ws = { firstYearCommissionsTargets: { life: 35000, ah: 10000, property: 10000, motor: 10000 } };
+  it('seeds line commission = the commission target (no ÷ rate)', () => {
     const a = seedAllocation(ws, 'composite');
-    expect(a.lines.life.api).toBe(100000);   // 35000 / 0.35
-    expect(a.lines.ah.api).toBe(40000);       // 10000 / 0.25
-    expect(a.lines.general.api).toBe(200000); // (10000+10000) / 0.10
+    expect(a.lines.life.commission).toBe(35000);
+    expect(a.lines.ah.commission).toBe(10000);
+    expect(a.lines.general.commission).toBe(20000); // property + motor
   });
-  it('seeds default rates and seeded product lists', () => {
+  it('seeds default rates + product lists (commission:0)', () => {
     const a = seedAllocation(ws, 'composite');
     expect(a.lines.life.rate).toBe(0.35);
     expect(a.lines.life.products).toHaveLength(4);
-    expect(a.lines.life.drilled).toBe(false);
-    expect(a.lines.general.products[1]).toMatchObject({ name: 'Property', rate: 0.125 });
+    expect(a.lines.life.products[0]).toMatchObject({ name: 'Whole Life', commission: 0, rate: 0.35 });
+    expect(a.lines.general.products[1]).toMatchObject({ name: 'Property', commission: 0, rate: 0.125 });
   });
-  it('absent targets seed 0 (honest-data, no zeros-as-data)', () => {
-    const a = seedAllocation({}, 'composite');
-    expect(a.lines.life.api).toBe(0);
-  });
-  it('records the licenseClass', () => {
-    expect(seedAllocation(ws, 'life_only').licenseClass).toBe('life_only');
-  });
+  it('absent targets seed 0', () => expect(seedAllocation({}, 'composite').lines.life.commission).toBe(0));
+  it('records licenseClass', () => expect(seedAllocation(ws, 'life_only').licenseClass).toBe('life_only'));
 });
 
-describe('normalizeAllocation — merge stored onto seed', () => {
+describe('normalizeAllocation — merge stored (commission) onto seed', () => {
   const ws = { firstYearCommissionsTargets: { life: 35000 } };
   it('null stored → fresh seed', () => {
-    expect(normalizeAllocation(null, ws, 'composite').lines.life.api).toBe(100000);
+    expect(normalizeAllocation(null, ws, 'composite').lines.life.commission).toBe(35000);
   });
-  it('stored values win, gaps backfill', () => {
-    const stored = { licenseClass: 'composite', lines: { life: { api: 500000, rate: 0.4, drilled: false } } };
+  it('stored commission wins, gaps backfill', () => {
+    const stored = { licenseClass: 'composite', lines: { life: { commission: 50000, rate: 0.4, drilled: false } } };
     const a = normalizeAllocation(stored, ws, 'composite');
-    expect(a.lines.life.api).toBe(500000);
+    expect(a.lines.life.commission).toBe(50000);
     expect(a.lines.life.rate).toBe(0.4);
-    expect(a.lines.ah).toBeDefined();        // backfilled
-    expect(a.lines.life.products).toHaveLength(4); // backfilled
+    expect(a.lines.ah).toBeDefined();
+    expect(a.lines.life.products).toHaveLength(4);
   });
-  it('caps stored products at MAX_PRODUCTS', () => {
-    const five = Array.from({ length: 5 }, (_, i) => ({ name: `P${i}`, api: 1000, rate: 0.3 }));
-    const stored = { lines: { life: { api: 5000, drilled: true, products: five } } };
+  it('caps stored products at MAX_PRODUCTS, carries commission', () => {
+    const five = Array.from({ length: 5 }, (_, i) => ({ name: `P${i}`, commission: 1000, rate: 0.3 }));
+    const stored = { lines: { life: { commission: 5000, drilled: true, products: five } } };
     const a = normalizeAllocation(stored, ws, 'composite');
     expect(a.lines.life.products).toHaveLength(MAX_PRODUCTS);
+    expect(a.lines.life.products[0]).toMatchObject({ commission: 1000, rate: 0.3 });
   });
 });
 
-describe('autoBalanceProducts / sumProductAPI', () => {
-  it('distributes a total evenly, remainder on the last product', () => {
-    const balanced = autoBalanceProducts([{ name: 'A' }, { name: 'B' }, { name: 'C' }], 100000);
-    expect(balanced.map((p) => p.api)).toEqual([33333, 33333, 33334]);
-    expect(sumProductAPI(balanced)).toBe(100000);
+describe('autoBalanceProducts / sums (commission)', () => {
+  it('distributes a COMMISSION total evenly, remainder on last', () => {
+    const balanced = autoBalanceProducts([{ name: 'A', rate: 0.3 }, { name: 'B', rate: 0.3 }, { name: 'C', rate: 0.3 }], 100000);
+    expect(balanced.map((p) => p.commission)).toEqual([33333, 33333, 33334]);
+    expect(sumProductCommission(balanced)).toBe(100000);
   });
-  it('preserves names and rates', () => {
-    const balanced = autoBalanceProducts([{ name: 'A', rate: 0.3 }, { name: 'B', rate: 0.2 }], 50000);
-    expect(balanced.map((p) => [p.name, p.rate])).toEqual([['A', 0.3], ['B', 0.2]]);
+  it('preserves names + rates', () => {
+    const balanced = autoBalanceProducts([{ name: 'A', rate: 0.35 }, { name: 'B', rate: 0.2 }], 50000);
+    expect(balanced.map((p) => [p.name, p.rate])).toEqual([['A', 0.35], ['B', 0.2]]);
   });
-  it('caps at MAX_PRODUCTS and handles empty', () => {
-    const many = Array.from({ length: 6 }, (_, i) => ({ name: `P${i}` }));
+  it('sumProductAPI is derived (Σ commission ÷ rate)', () => {
+    const products = [{ commission: 21000, rate: 0.35 }, { commission: 8000, rate: 0.20 }];
+    expect(sumProductAPI(products)).toBeCloseTo(100000); // 60000 + 40000
+  });
+  it('caps at MAX_PRODUCTS; empty → empty', () => {
+    const many = Array.from({ length: 6 }, (_, i) => ({ name: `P${i}`, rate: 0.3 }));
     expect(autoBalanceProducts(many, 40000)).toHaveLength(MAX_PRODUCTS);
     expect(autoBalanceProducts([], 100)).toEqual([]);
   });
