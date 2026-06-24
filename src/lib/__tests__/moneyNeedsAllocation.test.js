@@ -3,7 +3,7 @@ import {
   AVG_POLICY_API, LINE_DEFAULT_RATES, ALLOC_LINE_KEYS, MAX_PRODUCTS, PRODUCT_SEEDS,
   visibleLineKeys, allocApps, isDrilled, productAPI, lineCommission, lineAPI, effectiveLineRate,
   totalAllocatedCommission, totalAllocatedAPI, seedAllocation, normalizeAllocation,
-  autoBalanceProducts, sumProductCommission, sumProductAPI,
+  autoBalanceProducts, sumProductCommission, sumProductAPI, buildAllocationSummary,
 } from '../moneyNeedsAllocation';
 
 describe('moneyNeedsAllocation — constants', () => {
@@ -166,5 +166,77 @@ describe('autoBalanceProducts / sums (commission)', () => {
     const many = Array.from({ length: 6 }, (_, i) => ({ name: `P${i}`, rate: 0.3 }));
     expect(autoBalanceProducts(many, 40000)).toHaveLength(MAX_PRODUCTS);
     expect(autoBalanceProducts([], 100)).toEqual([]);
+  });
+});
+
+describe('buildAllocationSummary', () => {
+  const collapsedAlloc = {
+    lines: {
+      life:    { commission: 35000, rate: 0.35 },
+      ah:      { commission: 10000, rate: 0.25 },
+      general: { commission: 20000, rate: 0.10 },
+    },
+  };
+
+  it('collapsed line — commission, derived api, apps, effectiveRate; products = null', () => {
+    const s = buildAllocationSummary(collapsedAlloc, ['life'], 100000);
+    const life = s.lines[0];
+    expect(life.key).toBe('life');
+    expect(life.label).toBe('Life');
+    expect(life.commission).toBe(35000);
+    expect(life.api).toBeCloseTo(100000);       // 35000 ÷ 0.35
+    expect(life.apps).toBe(Math.round(100000 / 12000)); // ≈8
+    expect(life.effectiveRate).toBeCloseTo(0.35);
+    expect(life.products).toBeNull();
+  });
+
+  it('drilled line — product rows, line totals = Σ products, effective weighted rate', () => {
+    const drilledAlloc = {
+      lines: {
+        life: {
+          commission: 0, rate: 0.35, drilled: true,
+          products: [
+            { name: 'Whole Life', commission: 21000, rate: 0.35 }, // api 60000
+            { name: 'Term',       commission: 8000,  rate: 0.20 }, // api 40000
+          ],
+        },
+      },
+    };
+    const s = buildAllocationSummary(drilledAlloc, ['life'], 100000);
+    const life = s.lines[0];
+    expect(life.commission).toBe(29000);          // 21000 + 8000
+    expect(life.api).toBeCloseTo(100000);         // 60000 + 40000
+    expect(life.effectiveRate).toBeCloseTo(0.29); // 29000 ÷ 100000
+    expect(life.products).toHaveLength(2);
+    expect(life.products[0]).toMatchObject({ name: 'Whole Life', commission: 21000, rate: 0.35 });
+    expect(life.products[0].api).toBeCloseTo(60000);
+    expect(life.products[1]).toMatchObject({ name: 'Term', commission: 8000, rate: 0.20 });
+    expect(life.products[1].api).toBeCloseTo(40000);
+  });
+
+  it('totals — totalCommission, totalAPI, allocatedPct', () => {
+    const s = buildAllocationSummary(collapsedAlloc, ['life', 'ah', 'general'], 130000);
+    expect(s.totalCommission).toBe(65000);        // 35000+10000+20000
+    expect(s.totalAPI).toBeCloseTo(340000);       // 100000+40000+200000
+    expect(s.allocatedPct).toBeCloseTo(65000 / 130000);
+    expect(s.required).toBe(130000);
+  });
+
+  it('required = 0 guard → allocatedPct = 0 (no divide-by-zero)', () => {
+    const s = buildAllocationSummary(collapsedAlloc, ['life'], 0);
+    expect(s.allocatedPct).toBe(0);
+  });
+
+  it('empty alloc → all commissions 0, products null, totals 0', () => {
+    const s = buildAllocationSummary({ lines: {} }, ['life', 'ah', 'general'], 100000);
+    expect(s.lines.every((l) => l.commission === 0)).toBe(true);
+    expect(s.lines.every((l) => l.products === null)).toBe(true);
+    expect(s.totalCommission).toBe(0);
+    expect(s.allocatedPct).toBe(0);
+  });
+
+  it('visibleKeys defaults to all three lines when omitted', () => {
+    const s = buildAllocationSummary(collapsedAlloc, undefined, 100000);
+    expect(s.lines.map((l) => l.key)).toEqual(['life', 'ah', 'general']);
   });
 });
