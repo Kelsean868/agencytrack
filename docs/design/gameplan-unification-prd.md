@@ -10,7 +10,9 @@
 
 ## 1. Decision lock
 
-`yearPlan/{year}` **stays the canonical loop store.** The merged Money Needs + Allocator surface (#739) is repointed to *write into* `yearPlan` via a shape adapter; `YearPlanModal` is retired as the editor; the decoupled `moneyNeeds/{year}.allocation` field is retired. This is the `LOOP_SPEC §2` end-state ("Money Needs + Allocator … writes `yearPlan.lines[].api`"). The `.allocation` decoupling was always the temporary anti-collision measure for the flag-gated period.
+`yearPlan/{year}` **stays the canonical loop store.** The merged Money Needs + Allocator surface (#739) is repointed to *write into* `yearPlan` via a shape adapter; `YearPlanModal` is retired as the editor; the decoupled `moneyNeeds/{year}.allocation` field is retired. This is the `LOOP_SPEC §2` end-state ("Money Needs + Allocator … writes `yearPlan.lines[].targetAPI`"). The `.allocation` decoupling was always the temporary anti-collision measure for the flag-gated period.
+
+**Direction 1.5 (the merge mechanic).** `yearPlan` keeps `targetAPI` as its canonical per-line field, but its line key set moves from the 4-line `['life','ah','property','motor']` to the allocator's shared 3-line `['life','ah','general']`. This is a **bounded reader change** — every `yearPlan` reader (hub `yearPlanTotalAPI`, `ReviewCommitModal`, the monthly anchor) repoints to the shared `LINE_KEYS` — **not** a purely additive schema add. The original "additive `rate`/`products[]`, readers untouched" framing was wrong: the allocator is 3-line commission-canonical, so its `general` line has no home in a 4-line reader and would be silently dropped from the committed total (see PR-U1 Phase 0).
 
 Rejected: Direction 2 (make `.allocation` canonical, repoint all loop readers, bolt a `draft→committed` status onto a shape with none, migrate yearPlan data). Heavier blast radius and less spec-aligned.
 
@@ -23,9 +25,9 @@ Rejected: Direction 2 (make `.allocation` canonical, repoint all loop readers, b
 | Store | Writer | Shape | Status lifecycle |
 |---|---|---|---|
 | `moneyNeeds/{year}.allocation` | `saveAllocation()` | keyed object: `{ licenseClass, lines: { life:{api,rate,drilled,products:[{name,api,rate}]}, ah:{api,rate}, general:{…} } }` | none |
-| `yearPlan/{year}` | `commitPlan` / `YearPlanModal` / `StepRail` | array: `lines:[{line,api}]` + `licenseProfile` + `status` | `draft → committed` |
+| `yearPlan/{year}` | `commitPlan` / `YearPlanModal` / `StepRail` | keyed object over `LINE_KEYS=['life','ah','property','motor']` (→ `['life','ah','general']` post-U1); per-line `targetAPI` + `pct`/`derivedApps`/`derivedCommission`/`enabled`; + `licenseProfile` + `status` | `draft → committed` |
 
-**Loop readers that depend on `yearPlan` today (unchanged in Direction 1):**
+**Loop readers that depend on `yearPlan` today (repointed to the shared 3-line `LINE_KEYS` in U1 — Direction 1.5):**
 `StepRail` (`yearPlanFilled`), `PlanCascade` (`yearPlanTotalAPI`, `yearPlanFilled`), `ReviewCommitModal` / `PlanReview` / `CommitConfirm` (`yearPlan`, `yearPlanTotalAPI`, `avgPolicyAPI`), the `monthlyPlan` anchor (`anchorAPI` = snapshot of yearPlan total; invariant `Σtargets === anchorAPI/1000`), and `commitPlan()`.
 
 **Prod flag state:** `VITE_MONEY_NEEDS_MERGED_ENABLED` **OFF in prod** (confirmed). Flag-ON live drive-through (gap #1) **never run** — commission-entry was RTL-only because the smoke agent had no PAYE figure.
@@ -34,13 +36,13 @@ Rejected: Direction 2 (make `.allocation` canonical, repoint all loop readers, b
 
 ## 3. Target architecture
 
-1. **Adapter** `allocationToYearPlan(allocation)` — maps the keyed allocation object → `yearPlan` array form, carrying per-line `rate` and `products[]`. One direction; lives next to `moneyNeedsAllocation.js`.
+1. **Adapter** `allocationToYearPlan(allocation)` — maps the 3-line commission-canonical allocation object → `yearPlan` keyed object over the shared `LINE_KEYS=['life','ah','general']`, per-line `targetAPI` (= derived `lineAPI`), carrying `rate` and `products[]`. One direction; lives next to `moneyNeedsAllocation.js`.
 2. **Writer repoint** — the merged surface's persistence calls the `yearPlan` writer (`createYearPlan`/update) instead of `saveAllocation`. `.allocation` write is cut.
-3. **Schema add (flag A)** — `yearPlan` line entries gain optional `rate` (decimal) and `products: [{name, api, rate}]` (≤4, Life + General). **Additive** — readers that consume `api`/total are untouched.
+3. **Reader repoint (Direction 1.5 — bounded, NOT additive)** — `yearPlan` adopts the shared 3-line `LINE_KEYS=['life','ah','general']`; every reader moves off the 4-line `['life','ah','property','motor']` list onto the shared one. `targetAPI` stays the canonical per-line field; lines gain `rate` and `products: [{name, api, rate}]` (≤4, Life + General). Readers that consume `targetAPI`/total are repointed — they are **not** untouched.
 4. **Editor retirement** — `YearPlanModal` is removed from the hub; the merged Money Needs + Allocator surface *is* the allocator.
-5. **Rail collapse 4→3** — `StepRail` / `PlanCascade` collapse Money Needs (1) + Year Plan (2) into one **Money Needs + Allocator** step → Monthly → Review & Commit. `yearPlanFilled` now derives from the merged allocator having written `yearPlan`.
+5. **Rail collapse 4→3** — `StepRail` / `PlanCascade` collapse Money Needs (1) + Year Plan (2) into one **Money Needs + Allocator** step → Monthly → Review & Commit (this 4→3 is rail *steps*, not line keys). `yearPlanFilled` now derives from the merged allocator having written `yearPlan`.
 
-**Migration: none expected.** Existing `yearPlan` docs stay canonical and valid (new fields additive). `.allocation` is throwaway (flag OFF in prod). *Phase-0 gate: confirm zero real `.allocation` prod data before treating as throwaway.*
+**Migration: now an open Phase-0 gate (Direction 1.5).** The original "additive, no migration" claim no longer holds — moving `yearPlan` to the 3-line `['life','ah','general']` key set means any existing 4-line `yearPlan` doc (`property`/`motor` lines) would have those lines dropped by the repointed readers, changing its committed total. PR-U1 Phase 0 must confirm zero real 4-line `yearPlan` prod data (same flag-gated reasoning as `.allocation`), or a `property`+`motor` → `general` fold is required. `.allocation` is throwaway (flag OFF in prod); confirm zero real `.allocation` prod data before treating as throwaway.
 
 ---
 
