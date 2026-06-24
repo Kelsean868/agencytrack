@@ -596,4 +596,13 @@ describe('MoneyNeedsPanel — single-open accordion + rev 4-5 features', () => {
     expect(within(dialog).getByText('business')).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: /Done — use this figure/i })).toBeInTheDocument();
   });
+
+  // VITE_MONEY_NEEDS_MERGED_ENABLED is unset in the test env (default OFF), so the
+  // panel must render today's CommissionTargetsPanel send — NOT the merged allocator.
+  it('flag OFF (default): renders the legacy CommissionTargetsPanel, not the merged allocator', async () => {
+    await renderLoaded();
+    expect(screen.getByRole('button', { name: /Send to Playground/i })).toBeInTheDocument();
+    expect(screen.queryByTestId('merged-allocator')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('alloc-seam')).not.toBeInTheDocument();
+  });
 });

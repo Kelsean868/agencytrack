@@ -6,6 +6,26 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Money Needs merged allocator — general 6% premium-tax handling (banked merged-allocator PR, 2026-06-24, MEDIUM — money-correctness)
+
+The merged allocator computes **general** line/product commission as `commission = API × rate` (a documented simplification). General insurance policies in T&T carry a 6% premium tax, so the *accurate* form bases commission on the **pretax** premium: `commission = (API ÷ 1.06) × rate` — but only if API is entered **gross** (tax-inclusive). If agents enter pretax API, no division is needed. The convention is **unconfirmed**.
+
+**No pilot impact:** Tatil is Life-only, so the General line is rarely/never used in the pilot. Life and A&H carry no premium tax, so their `API × rate` is already correct.
+
+**To resolve:** (1) confirm whether agents enter General API gross or pretax; (2) if gross, change `lineCommission` / per-product commission in `src/lib/moneyNeedsAllocation.js` to divide the General base by 1.06 before applying the rate; (3) add a small "incl. 6% premium tax" note on General lines. Keep Life/A&H unchanged. This intentionally differs from the legacy blended-rate model in the untouched `YearPlanModal`.
+
+## Money Needs merged allocator — per-product avg-policy divisor (banked merged-allocator PR, 2026-06-24, LOW)
+
+Apps for every line and product are derived with the single blended avg-policy divisor (`AVG_POLICY_API = DEFAULT_DECOMPOSITION_INPUTS.avgPolicyAPI = 12000`), the same source the weekly planner / goal decomposition uses. A *per-product* average policy size (a Whole Life policy averages a very different API than a Motor policy) would make per-product apps more accurate.
+
+**To resolve:** introduce a per-product avg-policy map (config or agent-entered), thread it through `allocApps` in `src/lib/moneyNeedsAllocation.js` and the drawer's per-product apps display. Until then the UI carries a "per-product avg-policy pending" understanding — keep the blended divisor as the one math source.
+
+## Money Needs merged allocator — Step-2 removal / yearPlan unification (banked merged-allocator PR, 2026-06-24, MEDIUM — supervised)
+
+The merged surface persists its allocation additively to `moneyNeeds/{year}.allocation` and is intentionally **decoupled** from Game Plan Step 2 (`yearPlan/{year}`, written by `commitPlan`/`YearPlanModal`/`StepRail`), to avoid a two-writer conflict while the merged surface is flag-gated. Once the merged surface is the default, the redundant Step-2 allocator should be removed and the GamePlan loop restructured to read the merged allocation as its single source of API allocation.
+
+**To resolve (separate supervised PR):** unify the two allocators — retire `YearPlanModal`/Step-2, point the GamePlan loop's `yearPlanFilled`/`monthlyPlan` reads at `moneyNeeds.allocation`, and migrate any persisted `yearPlan` data. Touches the commit loop + StepRail — explicitly out of scope for the additive flag-gated PR. Blocked on the merged surface shipping default-ON.
+
 ## GoalDecompositionTab — taxConnector label misleading when preTaxAlreadyApplied=true (banked PR #734 Gemini G3 OUT-OF-SCOPE, 2026-06-23, LOW)
 
 When the playground receives a `preTaxAlreadyApplied=true` value from Money Needs, the `taxConnector` in the DecompositionLadder still renders `− 25% tax` (or the configured rate). Since the flag path bypasses the gross-up step, no tax is actually applied between "Income goal" and "1st-year commissions required" — the label is misleading.
