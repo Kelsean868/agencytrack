@@ -131,6 +131,25 @@ async function perTheme(page, theme) {
     } else {
       fail(`L2-${theme}: no FieldSection band visible in open group`);
     }
+
+    // L2b — the calc band MUST have a non-transparent background (the bg-primary/5
+    // tint). A text-only check would miss a non-rendering opacity class (the exact
+    // bug Gemini caught with the original /8 value). Walk up from the label text to
+    // the banded strip and read its computed background-color.
+    if (hasCalcBand) {
+      const bandBg = await page.evaluate(() => {
+        const els = [...document.querySelectorAll('span, div')];
+        const label = els.find((e) => /^from your calculators$/i.test((e.textContent || '').trim()));
+        if (!label) return null;
+        const strip = label.closest('div');
+        return strip ? getComputedStyle(strip).backgroundColor : null;
+      });
+      const transparent = !bandBg || bandBg === 'rgba(0, 0, 0, 0)' || bandBg === 'transparent';
+      if (!transparent) pass(`L2b-${theme}: calc band has a rendered background`, bandBg);
+      else              fail(`L2b-${theme}: calc band background is transparent (opacity class did not render)`, String(bandBg));
+    } else {
+      skip(`L2b-${theme}: calc band background`, 'no calc band in this group');
+    }
     await page.screenshot({ path: join(SS_DIR, `cards-${theme}.png`), fullPage: false });
 
     // ── L4 — sub-calc Done footer ───────────────────────────────────────────────
