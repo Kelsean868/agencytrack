@@ -562,6 +562,26 @@ export async function getMoneyNeeds(tenantId, uid, year) {
   return normalizeWorksheet({ id: snap.id, ...snap.data() });
 }
 
+// Persist the merged-surface allocation additively onto the moneyNeeds/{year}
+// doc (NEVER yearPlan/{year} — that is Game Plan Step 2's writer; decoupling
+// avoids a two-writer conflict). The doc's update rule is owner-uid only with no
+// hasOnly allowlist, so this additive `.allocation` field needs no rules change.
+// Shape: { licenseClass, lines: { life: { api, rate, drilled, products:[{name,api,rate}] },
+// ah: { api, rate }, general: { api, rate, drilled, products:[{name,api,rate}] } } }.
+// getMoneyNeeds returns `allocation` for free via normalizeWorksheet's spread.
+export async function saveAllocation(tenantId, uid, year, allocation) {
+  const parsedYear = parseInt(year, 10);
+  if (!parsedYear) throw new Error('Invalid year');
+
+  const docRef = doc(db, 'tenants', tenantId, 'users', uid, 'moneyNeeds', String(parsedYear));
+  await updateDoc(docRef, {
+    allocation,
+    updatedAt: serverTimestamp(),
+    updatedBy: uid,
+  });
+  return allocation;
+}
+
 export async function updateVisibility(tenantId, uid, year, visibility) {
   const parsedYear = parseInt(year, 10);
   if (!parsedYear) throw new Error('Invalid year');

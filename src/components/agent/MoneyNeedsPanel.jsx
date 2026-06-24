@@ -13,6 +13,13 @@ import {
   CAR_PERSONAL_PCT, CAR_BUSINESS_PCT, CAR_LOAN_LOANSDEBT_LINE_ID,
 } from '../../services/moneyNeedsService';
 import { formatCurrency } from '../../utils/formatters';
+import MoneyNeedsAllocator from './MoneyNeedsAllocator';
+
+// Merged Money-Needs + Allocator surface — flag-gated, DEFAULT OFF. `=== 'true'`
+// (not the GamePlan loop's `!== 'false'`) so an unset env renders today's panel
+// unchanged. Flag-ON swaps the CommissionTargetsPanel send for the seam +
+// allocator and opens the worksheet adaptively on first run.
+const MONEY_NEEDS_MERGED_ENABLED = import.meta.env.VITE_MONEY_NEEDS_MERGED_ENABLED === 'true';
 
 // Checklist restyle (Game Plan v2 Slice 1): each group leads with a colored
 // dot, mirroring the build annotation's group key. Presentation only — no
@@ -958,6 +965,16 @@ export default function MoneyNeedsPanel({ onOpenTab }) {
 
   useEffect(() => { load(); }, [load]);
 
+  // Adaptive first-run (merged surface only): an empty worksheet opens expanded
+  // (first group) so a new agent is guided; a returning agent lands compact.
+  // Flag-OFF behaviour is untouched (openGroup stays null).
+  useEffect(() => {
+    if (!MONEY_NEEDS_MERGED_ENABLED || !worksheet) return;
+    const { filled } = countFilledLineItems(worksheet.expenseGroups);
+    if (filled === 0) setOpenGroup((o) => (o == null ? EXPENSE_GROUPS[0].key : o));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [worksheet?.year]);
+
   async function handleStart() {
     setCreating(true);
     setError('');
@@ -1173,11 +1190,21 @@ export default function MoneyNeedsPanel({ onOpenTab }) {
 
           <PAYESummary worksheet={worksheet} />
 
-          <CommissionTargetsPanel
-            worksheet={worksheet}
-            onTargetsSaved={handleTargetsSaved}
-            onOpenTab={onOpenTab}
-          />
+          {/* Flag-gated merge point: ON → the seam + allocator (Money Needs is the
+              source, ending in Send→Game Plan); OFF → today's CommissionTargetsPanel.
+              The worksheet + PAYE build-up above are shared by both. */}
+          {MONEY_NEEDS_MERGED_ENABLED ? (
+            <MoneyNeedsAllocator
+              worksheet={worksheet}
+              onOpenTab={onOpenTab}
+            />
+          ) : (
+            <CommissionTargetsPanel
+              worksheet={worksheet}
+              onTargetsSaved={handleTargetsSaved}
+              onOpenTab={onOpenTab}
+            />
+          )}
 
           {/* Floating calculators — opened by the trigger next to each calc-fed
               line. Mounted only while open so the focus trap captures the
