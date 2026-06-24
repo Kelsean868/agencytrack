@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   ArrowRight, ChevronDown, Loader2, AlertCircle, Send, Check, Plus, Trash2, Scale, BarChart2,
 } from 'lucide-react';
@@ -407,11 +407,22 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
 
   const year = worksheet?.year;
 
-  // Re-seed when the worksheet identity changes (year switch / fresh load).
+  // Sync licenseProfile when the user profile resolves/changes asynchronously
+  // (useAuth can deliver `user` after mount; the useState initializer runs once).
+  useEffect(() => {
+    if (user?.licenseProfile && !licenseProfile) setLicenseProfile(user.licenseProfile);
+  }, [user?.licenseProfile, licenseProfile]);
+
+  // Re-seed when the worksheet identity OR the license profile changes. Returning
+  // agents keep their stored allocation (normalizeAllocation merges it); a first-run
+  // license pick re-seeds with the correct licenseClass/visible lines. The `worksheet`
+  // OBJECT is intentionally excluded — the parent recreates it on every expense edit,
+  // and re-seeding then would wipe in-progress allocation edits. Only year /
+  // persisted-allocation / license are meaningful re-seed triggers.
   useEffect(() => {
     setAlloc(normalizeAllocation(worksheet?.allocation, worksheet, licenseProfile));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [worksheet?.year, worksheet?.allocation]);
+  }, [worksheet?.year, worksheet?.allocation, licenseProfile]);
 
   // Real awards ruleset (graceful fallback to bundled default). Read-only path
   // already in prod use (AgentDashboard / YearPlanModal) — no rules change.
@@ -442,12 +453,13 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
   }, [tenantId, uid, year]);
 
   // ── License first-run ───────────────────────────────────────────────────
+  // setLicenseProfile triggers the re-seed effect above (which sets licenseClass +
+  // visible lines) — no manual setAlloc needed here.
   async function handleLicenseSelect(profile) {
     setLicenseSaving(true);
     try {
       await updateUserProfile(tenantId, uid, { licenseProfile: profile });
       setLicenseProfile(profile);
-      setAlloc((prev) => ({ ...prev, licenseClass: profile }));
     } catch {
       setSaveError('Could not save your license. Check your connection.');
     } finally {
@@ -463,27 +475,27 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
     setAlloc((prev) => ({ ...prev, lines: { ...prev.lines, [key]: { ...prev.lines[key], rate: num(value) } } }));
   }
 
+  // Pure compute-then-set-then-persist (no side-effect inside the updater, so
+  // StrictMode / concurrent double-invocation can't double-fire the write).
   function toggleDrill(key) {
-    setAlloc((prev) => {
-      const line = prev.lines[key];
-      const next = { ...line };
-      if (isDrilled(line)) {
-        // Collapse: keep the line total = current product sum.
-        next.drilled = false;
-        next.api = sumProductAPI(line.products);
-      } else {
-        // Drill: seed products to evenly sum to the current line total.
-        const seeds = (line.products && line.products.length > 0)
-          ? line.products
-          : (PRODUCT_SEEDS[key] ?? []).map((p) => ({ name: p.name, api: 0, rate: p.rate }));
-        next.products = autoBalanceProducts(seeds, line.api);
-        next.drilled = true;
-        next.api = sumProductAPI(next.products);
-      }
-      const out = { ...prev, lines: { ...prev.lines, [key]: next } };
-      persist(out);
-      return out;
-    });
+    const line = alloc.lines[key];
+    const next = { ...line };
+    if (isDrilled(line)) {
+      // Collapse: keep the line total = current product sum.
+      next.drilled = false;
+      next.api = sumProductAPI(line.products);
+    } else {
+      // Drill: seed products to evenly sum to the current line total.
+      const seeds = (line.products && line.products.length > 0)
+        ? line.products
+        : (PRODUCT_SEEDS[key] ?? []).map((p) => ({ name: p.name, api: 0, rate: p.rate }));
+      next.products = autoBalanceProducts(seeds, line.api);
+      next.drilled = true;
+      next.api = sumProductAPI(next.products);
+    }
+    const out = { ...alloc, lines: { ...alloc.lines, [key]: next } };
+    setAlloc(out);
+    persist(out);
   }
 
   function setProducts(key, products) {
@@ -494,16 +506,18 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
     });
   }
   function autoBalance(key) {
-    setAlloc((prev) => {
-      const line = prev.lines[key];
-      const balanced = autoBalanceProducts(line.products, line.api);
-      const out = { ...prev, lines: { ...prev.lines, [key]: { ...line, products: balanced } } };
-      persist(out);
-      return out;
-    });
+    const line = alloc.lines[key];
+    const balanced = autoBalanceProducts(line.products, line.api);
+    const out = { ...alloc, lines: { ...alloc.lines, [key]: { ...line, products: balanced } } };
+    setAlloc(out);
+    persist(out);
   }
 
-  const handleBlur = useCallback(() => { persist(alloc); }, [persist, alloc]);
+  // Keep a ref to the latest alloc so a blur firing before the onChange re-render
+  // still persists the freshest values (avoids reverting the last keystroke).
+  const allocRef = useRef(alloc);
+  useEffect(() => { allocRef.current = alloc; }, [alloc]);
+  const handleBlur = useCallback(() => { persist(allocRef.current); }, [persist]);
 
   // ── Send → confirm → ack → tab ──────────────────────────────────────────
   function handleSend() {
