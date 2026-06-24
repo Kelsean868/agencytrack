@@ -8,10 +8,9 @@ import { deriveAnnualApps } from '../../../lib/deriveApps';
 import { formatCurrency } from '../../../utils/formatters';
 
 const LINE_META = [
-  { key: 'life',     label: 'Life'     },
-  { key: 'ah',       label: 'A&H'      },
-  { key: 'property', label: 'Property' },
-  { key: 'motor',    label: 'Motor'    },
+  { key: 'life',    label: 'Life'    },
+  { key: 'ah',      label: 'A&H'     },
+  { key: 'general', label: 'General' },
 ];
 
 const MONTH_LABELS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -45,7 +44,7 @@ function ModalShell({ title, subtitle, onClose, children, footer, saving = false
         <div className="flex items-start justify-between px-6 pt-5 pb-4 border-b border-border shrink-0">
           <div>
             <p className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-primary">
-              Step 4 — Review &amp; Commit
+              Step 3 — Review &amp; Commit
             </p>
             <h2 className="font-display text-lg font-extrabold tracking-tight text-ink mt-0.5">
               {title}
@@ -132,7 +131,7 @@ function PlanReview({
   yearPlan, monthlyPlan,
   yearPlanFilled, monthlyPlanFilled,
   yearPlanTotalAPI, avgPolicyAPI,
-  onOpenYearPlan, onOpenMonthlyPlan,
+  onOpenMoneyNeeds, onOpenMonthlyPlan,
 }) {
   const appsDerived =
     yearPlanFilled && avgPolicyAPI
@@ -171,15 +170,15 @@ function PlanReview({
       {!yearPlanFilled && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-950/20">
           <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-            Year Plan not drafted
+            Plan not allocated yet
           </p>
           <p className="mt-0.5 text-[11px] text-amber-700 dark:text-amber-400">
-            Complete Step 2 before committing.
+            Allocate your Money Needs before committing.
           </p>
-          {onOpenYearPlan && (
+          {onOpenMoneyNeeds && (
             <button
               type="button"
-              onClick={onOpenYearPlan}
+              onClick={onOpenMoneyNeeds}
               className="mt-1.5 text-xs font-semibold text-primary underline-offset-2 hover:underline"
             >
               Go to Year Plan →
@@ -240,7 +239,7 @@ function PlanReview({
             Monthly Plan not drafted
           </p>
           <p className="mt-0.5 text-[11px] text-amber-700 dark:text-amber-400">
-            Complete Step 3 to break your plan into months.
+            Complete Step 2 to break your plan into months.
           </p>
           {onOpenMonthlyPlan && (
             <button
@@ -294,7 +293,7 @@ function CommitConfirm({
   committing, errorKind, errorData,
   avgInput, setAvgInput, avgSaving, avgError,
   onSaveAvgAndRecommit,
-  onOpenYearPlan,
+  onOpenMoneyNeeds,
 }) {
   return (
     <div className="space-y-5">
@@ -327,15 +326,15 @@ function CommitConfirm({
             </p>
             <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">
               Your plan ({formatCurrency(errorData.planTotal)}) is below your floor
-              ({formatCurrency(errorData.floor)}). Raise it in Year Plan.
+              ({formatCurrency(errorData.floor)}). Raise it in Money Needs.
             </p>
-            {onOpenYearPlan && (
+            {onOpenMoneyNeeds && (
               <button
                 type="button"
-                onClick={onOpenYearPlan}
+                onClick={onOpenMoneyNeeds}
                 className="mt-1.5 text-xs font-semibold text-primary underline-offset-2 hover:underline"
               >
-                Go to Year Plan →
+                Go to Money Needs →
               </button>
             )}
           </div>
@@ -351,15 +350,15 @@ function CommitConfirm({
             </p>
             <p className="mt-0.5 text-xs text-red-600 dark:text-red-400">
               Your plan works out to {errorData.actual?.toFixed(1)} apps, below the minimum
-              of {errorData.floor}. Plan more or smaller policies, or raise your API in Year Plan.
+              of {errorData.floor}. Plan more or smaller policies, or raise your API in Money Needs.
             </p>
-            {onOpenYearPlan && (
+            {onOpenMoneyNeeds && (
               <button
                 type="button"
-                onClick={onOpenYearPlan}
+                onClick={onOpenMoneyNeeds}
                 className="mt-1.5 text-xs font-semibold text-primary underline-offset-2 hover:underline"
               >
-                Go to Year Plan →
+                Go to Money Needs →
               </button>
             )}
           </div>
@@ -457,7 +456,7 @@ function CommittedDone({ year, committedResult, onReopen }) {
         </p>
         <p className="mt-1 text-sm text-ink-muted">{dateStr}</p>
         <div className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-raised px-3 py-1">
-          <span className="font-mono text-xs font-bold text-primary">4 / 4</span>
+          <span className="font-mono text-xs font-bold text-primary">3 / 3</span>
           <span className="text-[10px] text-ink-muted">steps built · 100%</span>
         </div>
       </div>
@@ -489,7 +488,7 @@ export default function ReviewCommitModal({
   avgPolicyAPI,
   committedAnnualAPI,
   onAfterCommit,
-  onOpenYearPlan,
+  onOpenMoneyNeeds,
   onOpenMonthlyPlan,
 }) {
   const { tenantId, user } = useAuth();
@@ -616,7 +615,7 @@ export default function ReviewCommitModal({
           monthlyPlanFilled={monthlyPlanFilled}
           yearPlanTotalAPI={yearPlanTotalAPI}
           avgPolicyAPI={localAvgPolicyAPI}
-          onOpenYearPlan={onOpenYearPlan}
+          onOpenMoneyNeeds={onOpenMoneyNeeds}
           onOpenMonthlyPlan={onOpenMonthlyPlan}
         />
       </ModalShell>
@@ -713,7 +712,7 @@ export default function ReviewCommitModal({
           avgSaving={avgSaving}
           avgError={avgError}
           onSaveAvgAndRecommit={handleSaveAvgAndRecommit}
-          onOpenYearPlan={onOpenYearPlan}
+          onOpenMoneyNeeds={onOpenMoneyNeeds}
         />
       </ModalShell>
     );

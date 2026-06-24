@@ -72,15 +72,16 @@ const SEED_ACTOR = 'seed-smoke-data';
 const YEAR = Number(process.env.A11Y_SMOKE_YEAR ?? env.A11Y_SMOKE_YEAR) || new Date().getFullYear();
 const CURRENT_MONTH_INDEX = new Date().getMonth(); // 0-based; completed = [0, CMI)
 
-// Smoke agent annual plan: 4 product lines summing to YEAR_TOTAL. anchorAPI on
-// the monthly plan is set === YEAR_TOTAL so the cascade's Step 3 (anchorAPI/12)
-// equals Step 2 (Σ line targetAPI) / 12 — the #677 ratio assertion.
+// Smoke agent annual plan: the canonical 3-line taxonomy (Direction 1.5, PR-U1)
+// summing to YEAR_TOTAL — `general` subsumes the legacy property+motor lines
+// (300_000, award-neutral, total-preserving). anchorAPI on the monthly plan is
+// set === YEAR_TOTAL so the cascade's monthly rung (anchorAPI/12) equals
+// (Σ line targetAPI) / 12 — the #677 ratio assertion.
 const YEAR_TOTAL = 1_200_000;
 const LINES = {
-  life:     { targetAPI: 600_000, pct: 50 },
-  ah:       { targetAPI: 300_000, pct: 25 },
-  property: { targetAPI: 180_000, pct: 15 },
-  motor:    { targetAPI: 120_000, pct: 10 },
+  life:    { targetAPI: 600_000, pct: 50 },
+  ah:      { targetAPI: 300_000, pct: 25 },
+  general: { targetAPI: 300_000, pct: 25 },
 };
 const AVG_POLICY_API = 12_000;
 
@@ -324,10 +325,9 @@ async function main() {
     status: 'committed',
     committedAt: ts(),
     lines: {
-      life:     buildLine(LINES.life.targetAPI, LINES.life.pct),
-      ah:       buildLine(LINES.ah.targetAPI, LINES.ah.pct),
-      property: buildLine(LINES.property.targetAPI, LINES.property.pct),
-      motor:    buildLine(LINES.motor.targetAPI, LINES.motor.pct),
+      life:    buildLine(LINES.life.targetAPI, LINES.life.pct),
+      ah:      buildLine(LINES.ah.targetAPI, LINES.ah.pct),
+      general: buildLine(LINES.general.targetAPI, LINES.general.pct),
     },
     updatedAt: ts(),
     updatedBy: SEED_ACTOR,

@@ -4,6 +4,7 @@ import {
   visibleLineKeys, allocApps, isDrilled, productAPI, lineCommission, lineAPI, effectiveLineRate,
   totalAllocatedCommission, totalAllocatedAPI, seedAllocation, normalizeAllocation,
   autoBalanceProducts, sumProductCommission, sumProductAPI, buildAllocationSummary,
+  allocationToYearPlan,
 } from '../moneyNeedsAllocation';
 
 describe('moneyNeedsAllocation — constants', () => {
@@ -238,5 +239,89 @@ describe('buildAllocationSummary', () => {
   it('visibleKeys defaults to all three lines when omitted', () => {
     const s = buildAllocationSummary(collapsedAlloc, undefined, 100000);
     expect(s.lines.map((l) => l.key)).toEqual(['life', 'ah', 'general']);
+  });
+});
+
+describe('allocationToYearPlan — commission allocation → yearPlan keyed object (Direction 1.5)', () => {
+  const composite = {
+    licenseClass: 'composite',
+    lines: {
+      life:    { commission: 35000, rate: 0.35 }, // api 100000
+      ah:      { commission: 10000, rate: 0.25 }, // api 40000
+      general: { commission: 20000, rate: 0.10 }, // api 200000
+    },
+  };
+
+  it('emits exactly the 3 canonical keys with targetAPI = lineAPI', () => {
+    const lines = allocationToYearPlan(composite);
+    expect(Object.keys(lines)).toEqual(['life', 'ah', 'general']);
+    expect(lines.life.targetAPI).toBeCloseTo(100000);
+    expect(lines.ah.targetAPI).toBeCloseTo(40000);
+    expect(lines.general.targetAPI).toBeCloseTo(200000); // general carried, never dropped
+  });
+
+  it('carries derivedCommission, rate, and pct share', () => {
+    const lines = allocationToYearPlan(composite);
+    expect(lines.life.derivedCommission).toBe(35000);
+    expect(lines.life.rate).toBeCloseTo(0.35);
+    // pct share of total enabled targetAPI (100000 / 340000)
+    expect(lines.life.pct).toBeCloseTo((100000 / 340000) * 100, 1);
+  });
+
+  it('ROUND-TRIP invariant: Σ targetAPI (enabled) === totalAllocatedAPI (visible) — general non-zero', () => {
+    const lines = allocationToYearPlan(composite);
+    const sumTargets = ['life', 'ah', 'general']
+      .reduce((s, k) => s + (lines[k].enabled ? lines[k].targetAPI : 0), 0);
+    const allocatorTotal = totalAllocatedAPI(composite.lines, visibleLineKeys('composite'));
+    expect(sumTargets).toBeCloseTo(allocatorTotal);
+    expect(sumTargets).toBeCloseTo(340000); // 100000 + 40000 + 200000 (general's 200k present)
+  });
+
+  it('drilled line carries products as { name, api, rate } (≤4) and weighted rate', () => {
+    const drilled = {
+      licenseClass: 'composite',
+      lines: {
+        life: {
+          commission: 0, rate: 0.35, drilled: true,
+          products: [
+            { name: 'Whole Life', commission: 21000, rate: 0.35 }, // api 60000
+            { name: 'Term',       commission: 8000,  rate: 0.20 }, // api 40000
+          ],
+        },
+        ah:      { commission: 0, rate: 0.25 },
+        general: { commission: 0, rate: 0.10 },
+      },
+    };
+    const lines = allocationToYearPlan(drilled);
+    expect(lines.life.targetAPI).toBeCloseTo(100000);      // Σ productAPI
+    expect(lines.life.derivedCommission).toBe(29000);      // Σ product commission
+    expect(lines.life.rate).toBeCloseTo(0.29);             // weighted
+    expect(lines.life.products).toHaveLength(2);
+    expect(lines.life.products[0]).toMatchObject({ name: 'Whole Life', rate: 0.35 });
+    expect(lines.life.products[0].api).toBeCloseTo(60000);
+    expect(lines.life.products[1]).toMatchObject({ name: 'Term', rate: 0.20 });
+    expect(lines.life.products[1].api).toBeCloseTo(40000);
+  });
+
+  it('license gating: life_only disables general (enabled:false, targetAPI:0) — not in total', () => {
+    const lines = allocationToYearPlan({ ...composite, licenseClass: 'life_only' });
+    expect(lines.life.enabled).toBe(true);
+    expect(lines.ah.enabled).toBe(true);
+    expect(lines.general.enabled).toBe(false);
+    expect(lines.general.targetAPI).toBe(0);
+    const sumTargets = ['life', 'ah', 'general']
+      .reduce((s, k) => s + (lines[k].enabled ? lines[k].targetAPI : 0), 0);
+    expect(sumTargets).toBeCloseTo(140000); // life 100000 + ah 40000 only
+  });
+
+  it('unknown licenseClass falls back to composite (all three enabled)', () => {
+    const lines = allocationToYearPlan({ licenseClass: 'bogus', lines: composite.lines });
+    expect(lines.life.enabled && lines.ah.enabled && lines.general.enabled).toBe(true);
+  });
+
+  it('empty allocation → zeroed lines, no throw', () => {
+    const lines = allocationToYearPlan({});
+    expect(Object.keys(lines)).toEqual(['life', 'ah', 'general']);
+    expect(['life', 'ah', 'general'].every((k) => lines[k].targetAPI === 0)).toBe(true);
   });
 });

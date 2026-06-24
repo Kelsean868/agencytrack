@@ -67,6 +67,16 @@ These are settled across all future sessions. If a session audit surfaces a reas
 - **Rules are tenant-generic** — no rules or index changes needed for a new tenant.
 - **`isActive` (not `active`) on branch docs** — matches `branchService.js` `where('isActive', '==', true)` query.
 
+### Game Plan unification — `yearPlan` 3-line canonical · `.allocation` retired · rail 4→3 (PR-U1, Direction 1.5, 2026-06-24)
+
+- **`yearPlan/{year}` stays the canonical loop store; its line taxonomy moved 4-line → 3-line.** `LINE_KEYS = ['life','ah','general']` (shared, exported from `yearPlanService.js`); `general` subsumes the legacy `property`+`motor` lines. `targetAPI` stays the canonical per-line field. Every reader (hub `yearPlanTotalAPI` in `GamePlanV2/index.jsx`, `ReviewCommitModal` `LINE_META`, the monthly anchor) adopts the shared 3-line keys. This was a **bounded reader change, NOT additive** — writing a `general` key into the old 4-key store would be silently dropped by every reader → a money undercount (the §0 fix).
+- **The merged Money Needs + Allocator surface writes `yearPlan` directly** via the one-directional adapter `allocationToYearPlan()` (`src/lib/moneyNeedsAllocation.js`): allocator commission → `yearPlan.lines[k].targetAPI = lineAPI`, `general` always carried; additive per-line `rate` + `products[]` (≤4, life/general only). **Round-trip invariant:** Σ`targetAPI` (enabled keys) === allocator `totalAllocatedAPI` (visible keys).
+- **`.allocation` write is CUT** (the decoupled `moneyNeeds.allocation` anti-collision field is retired). The `.allocation` *reader* + dead `saveAllocation`/`yearPlanAllocation.js` cleanup is deferred to **PR-U2** (rules maturation + dead-code; FOLLOW_UPS.md). The allocator re-seeds from worksheet targets on reload — accepted because the flag was OFF in prod (no `.allocation` data stranded).
+- **`YearPlanModal` retired** (file + test deleted); hub mount + `onOpenYearPlan` wiring removed. **Rail collapsed 4 steps → 3:** Money Needs (merged) · Monthly · Review & Commit. `yearPlanFilled` (the merged write) is Step-1's completion signal; `TOTAL_STEPS = 3`.
+- **No `firestore.rules` change** — `yearPlan` `create` requires `status=='draft'`, `update`/`get`/`list` owner-uid only, no `hasOnly` field allowlist, so changing key *semantics* (4→3) and adding `rate`/`products[]` needs no rules touch.
+- **Migration run state:** clean cut if prod has zero 4-key `yearPlan` docs and zero `.allocation` docs (flag was OFF in prod — expected). Operator-pasted counts gate the optional `functions/scripts/migrate-yearplan-3line.cjs` arm (PR-U1 brief §2.6/§5).
+- **Falsification (Rule 23):** overturned if a consumer is found that reads `yearPlan.lines.property`/`.motor` **outside the Game Plan loop** (none today — the `policies` product-line domain and the money-needs worksheet `firstYearCommissionsTargets` are separate schemas), or if real 4-key `yearPlan` / `.allocation` prod data exists (operator gate). Surface, do not bank.
+
 ### Multi-tenancy (SEC-9, shipped PR #16; holder retired in SEC-9b)
 
 - `tenantId` is sourced from auth claims at runtime and exposed via `useAuth().tenantId` in all React components.

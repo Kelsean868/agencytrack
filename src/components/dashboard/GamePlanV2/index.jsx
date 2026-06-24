@@ -12,7 +12,6 @@ import PlanAnchorStrip from './PlanAnchorStrip';
 import StepRail from './StepRail';
 import PlanCascade from './PlanCascade';
 import SuggestedWeekCard from './SuggestedWeekCard';
-import YearPlanModal from '../../agent/YearPlanModal';
 import MonthlyPlanModal from '../../agent/MonthlyPlanModal';
 import ReviewCommitModal from './ReviewCommitModal';
 
@@ -43,7 +42,7 @@ const GAME_PLAN_LOOP_ENABLED = import.meta.env.VITE_GAME_PLAN_LOOP_ENABLED !== '
  * once by AgentDashboard and threaded in; `dataLoading` / `dataError` / `onRetry`
  * drive its honest loading / error states.
  */
-const TOTAL_STEPS = 4;
+const TOTAL_STEPS = 3;
 
 export default function GamePlanScreen({
   committedAnnualAPI = null,
@@ -75,7 +74,6 @@ export default function GamePlanScreen({
   const [monthlyPlan, setMonthlyPlan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [yearPlanOpen, setYearPlanOpen] = useState(false);
   const [monthlyPlanOpen, setMonthlyPlanOpen] = useState(false);
   const [reviewCommitOpen, setReviewCommitOpen] = useState(false);
 
@@ -205,12 +203,13 @@ export default function GamePlanScreen({
         ? monthlyPlan.committedAt
         : monthlyPlan?.committedAt?.toDate?.() ?? null)
     : null;
-  const stepsBuilt = (moneyNeedsFilled ? 1 : 0) + (yearPlanFilled ? 1 : 0) + (monthlyPlanFilled ? 1 : 0) + (committed ? 1 : 0);
+  // Direction 1.5 (PR-U1): Money Needs + Year Plan are ONE step now. The merged
+  // allocator writing the yearPlan (`yearPlanFilled`) is step 1's completion.
+  const stepsBuilt = (yearPlanFilled ? 1 : 0) + (monthlyPlanFilled ? 1 : 0) + (committed ? 1 : 0);
   const planBuiltPct = Math.round((stepsBuilt / TOTAL_STEPS) * 100);
 
   const openMoneyNeeds = () => onOpenTab?.('money-needs');
   const openGoals = () => onOpenTab?.('goals');
-  const openYearPlan = GAME_PLAN_LOOP_ENABLED ? () => setYearPlanOpen(true) : undefined;
   const openMonthlyPlan = GAME_PLAN_LOOP_ENABLED ? () => setMonthlyPlanOpen(true) : undefined;
   const openReviewCommit = GAME_PLAN_LOOP_ENABLED ? () => setReviewCommitOpen(true) : undefined;
 
@@ -255,15 +254,6 @@ export default function GamePlanScreen({
         </div>
       )}
 
-      {yearPlanOpen && (
-        <YearPlanModal
-          onClose={() => setYearPlanOpen(false)}
-          onAfterSave={load}
-          moneyNeedsWorksheet={worksheet}
-          avgPolicyAPI={avgPolicyAPI}
-        />
-      )}
-
       {monthlyPlanOpen && (
         <MonthlyPlanModal
           onClose={() => setMonthlyPlanOpen(false)}
@@ -287,7 +277,7 @@ export default function GamePlanScreen({
           avgPolicyAPI={avgPolicyAPI}
           committedAnnualAPI={committedAnnualAPI}
           onAfterCommit={load}
-          onOpenYearPlan={() => { setReviewCommitOpen(false); setYearPlanOpen(true); }}
+          onOpenMoneyNeeds={() => { setReviewCommitOpen(false); openMoneyNeeds(); }}
           onOpenMonthlyPlan={() => { setReviewCommitOpen(false); setMonthlyPlanOpen(true); }}
         />
       )}
@@ -310,7 +300,6 @@ export default function GamePlanScreen({
           <StepRail
             moneyNeedsFilled={moneyNeedsFilled}
             onOpenMoneyNeeds={openMoneyNeeds}
-            onOpenYearPlan={openYearPlan}
             yearPlanFilled={yearPlanFilled}
             onOpenMonthlyPlan={openMonthlyPlan}
             monthlyPlanFilled={monthlyPlanFilled}

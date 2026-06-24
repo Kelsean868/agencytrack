@@ -61,10 +61,9 @@ const mkAvgMissingErr = () =>
 const DRAFT_YEAR_PLAN = {
   status: 'draft',
   lines: {
-    life:     { targetAPI: 150000, enabled: true },
-    ah:       { targetAPI: 50000,  enabled: true },
-    property: { enabled: false },
-    motor:    { enabled: false },
+    life:    { targetAPI: 150000, enabled: true },
+    ah:      { targetAPI: 50000,  enabled: true },
+    general: { enabled: false },
   },
 };
 
@@ -85,7 +84,7 @@ const BASE_PROPS = {
   avgPolicyAPI:       10000,
   committedAnnualAPI: null,
   onAfterCommit:      vi.fn(),
-  onOpenYearPlan:     vi.fn(),
+  onOpenMoneyNeeds:   vi.fn(),
   onOpenMonthlyPlan:  vi.fn(),
 };
 
@@ -120,9 +119,9 @@ describe('ReviewCommitModal', () => {
     expect(screen.getByTestId('review-continue-btn')).toBeInTheDocument();
   });
 
-  it('shows Year Plan incomplete warning and hides Continue when yearPlanFilled=false', () => {
+  it('shows not-allocated warning and hides Continue when yearPlanFilled=false', () => {
     setup({ yearPlanFilled: false, yearPlanTotalAPI: 0 });
-    expect(screen.getByText(/Year Plan not drafted/i)).toBeInTheDocument();
+    expect(screen.getByText(/Plan not allocated yet/i)).toBeInTheDocument();
     expect(screen.queryByTestId('review-continue-btn')).not.toBeInTheDocument();
   });
 
@@ -161,11 +160,11 @@ describe('ReviewCommitModal', () => {
       expect.objectContaining({ annualAPI: 200000 })
     );
     expect(screen.getByTestId('done-api')).toHaveTextContent('200');
-    expect(screen.getByText(/4 \/ 4/)).toBeInTheDocument();
+    expect(screen.getByText(/3 \/ 3/)).toBeInTheDocument();
     expect(BASE_PROPS.onAfterCommit).toHaveBeenCalledTimes(1);
   });
 
-  it('shows BelowApiFloorError with floor and link back to Year Plan', async () => {
+  it('shows BelowApiFloorError with floor and link back to Money Needs', async () => {
     commitPlanMock.mockRejectedValue(mkApiFloorErr(250000, 200000));
     const { user } = setup();
     await advanceToConfirm(user);
@@ -176,7 +175,7 @@ describe('ReviewCommitModal', () => {
     );
 
     expect(screen.getByText(/250/)).toBeInTheDocument(); // floor value
-    expect(screen.getByRole('button', { name: /go to year plan/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /go to money needs/i })).toBeInTheDocument();
     expect(BASE_PROPS.onAfterCommit).not.toHaveBeenCalled();
   });
 

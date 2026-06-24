@@ -3,11 +3,13 @@ import { Check, ChevronRight } from 'lucide-react';
 import { statusToken } from '../../../lib/policyStatusTokens';
 
 /**
- * StepRail — Game Plan v2 four-step rail (NEW chrome).
+ * StepRail — Game Plan v2 three-step rail (NEW chrome).
  *
- * Money Needs is the only LIVE step (clickable → Money Needs). Year Plan /
- * Monthly Plan / Review & Commit render as honest "next / coming" states —
- * NOT interactive cards showing empty or fabricated data.
+ * Direction 1.5 (PR-U1): the merged Money Needs + Allocator surface IS the
+ * year-plan editor, so Money Needs + Year Plan collapse into one step. The rail
+ * is Money Needs → Monthly Plan → Review & Commit. Money Needs is the only
+ * always-LIVE step (clickable → Money Needs); Monthly Plan / Review & Commit
+ * render as honest "next / coming" states — NOT cards showing fabricated data.
  *
  * Semantic roles per the build annotation, resolved through statusToken():
  *   done    → settled  (success)   current → in-flight (teal accent)
@@ -82,40 +84,42 @@ function Chevron() {
 export default function StepRail({
   moneyNeedsFilled,
   onOpenMoneyNeeds,
-  onOpenYearPlan,
   yearPlanFilled,
   onOpenMonthlyPlan,
   monthlyPlanFilled = false,
   onOpenReviewCommit,
   committed = false,
 }) {
-  const step2Active = !!onOpenYearPlan;
-  const step2Variant = step2Active ? (yearPlanFilled ? 'done' : 'current') : 'next';
-  const step2Kicker = step2Active ? (yearPlanFilled ? 'Done' : 'Start') : 'Next';
-  const step2Sub = step2Active ? (yearPlanFilled ? 'API allocated by line' : 'Allocate API by line') : 'Coming soon';
+  // Direction 1.5 (PR-U1): Money Needs + Year Plan collapse into ONE step — the
+  // merged Money Needs + Allocator surface writes the yearPlan. `yearPlanFilled`
+  // (the merged write) is now Step 1's completion signal; `moneyNeedsFilled`
+  // (worksheet started) drives the in-progress vs not-started copy.
+  const step1Variant = yearPlanFilled ? 'done' : 'current';
+  const step1Kicker = yearPlanFilled ? 'Done' : moneyNeedsFilled ? 'In progress' : 'Start';
+  const step1Sub = yearPlanFilled ? 'Allocated by line' : 'What you need & how you write it';
 
-  const step3Active = !!onOpenMonthlyPlan;
-  const step3Variant = step3Active
+  const step2Active = !!onOpenMonthlyPlan;
+  const step2Variant = step2Active
     ? (monthlyPlanFilled ? 'done' : yearPlanFilled ? 'current' : 'next')
     : 'coming';
-  const step3Kicker = step3Active
+  const step2Kicker = step2Active
     ? (monthlyPlanFilled ? 'Done' : yearPlanFilled ? 'Start' : 'Next')
     : 'Coming';
-  const step3Sub = step3Active ? 'Split into months' : 'Coming soon';
+  const step2Sub = step2Active ? 'Split into months' : 'Coming soon';
 
-  const step4Active = !!onOpenReviewCommit && monthlyPlanFilled;
-  const step4Variant = committed ? 'done' : step4Active ? 'current' : 'coming';
-  const step4Kicker = committed ? 'Done' : step4Active ? 'Review' : 'Coming';
-  const step4Sub = committed ? 'Plan committed' : step4Active ? 'Review & commit your plan' : 'Coming soon';
+  const step3Active = !!onOpenReviewCommit && monthlyPlanFilled;
+  const step3Variant = committed ? 'done' : step3Active ? 'current' : 'coming';
+  const step3Kicker = committed ? 'Done' : step3Active ? 'Review' : 'Coming';
+  const step3Sub = committed ? 'Plan committed' : step3Active ? 'Review & commit your plan' : 'Coming soon';
 
   return (
     <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center" data-testid="game-plan-rail">
       <StepCard
-        variant={moneyNeedsFilled ? 'done' : 'current'}
+        variant={step1Variant}
         num="1"
-        kicker={moneyNeedsFilled ? 'Done' : 'Start'}
+        kicker={step1Kicker}
         title="Money Needs"
-        sub="What you need to earn"
+        sub={step1Sub}
         onClick={onOpenMoneyNeeds}
       />
       <Chevron />
@@ -123,27 +127,18 @@ export default function StepRail({
         variant={step2Variant}
         num="2"
         kicker={step2Kicker}
-        title="Year Plan"
+        title="Monthly Plan"
         sub={step2Sub}
-        onClick={onOpenYearPlan}
+        onClick={step2Active ? onOpenMonthlyPlan : undefined}
       />
       <Chevron />
       <StepCard
         variant={step3Variant}
         num="3"
         kicker={step3Kicker}
-        title="Monthly Plan"
-        sub={step3Sub}
-        onClick={step3Active ? onOpenMonthlyPlan : undefined}
-      />
-      <Chevron />
-      <StepCard
-        variant={step4Variant}
-        num="4"
-        kicker={step4Kicker}
         title="Review & Commit"
-        sub={step4Sub}
-        onClick={step4Active ? onOpenReviewCommit : undefined}
+        sub={step3Sub}
+        onClick={step3Active ? onOpenReviewCommit : undefined}
       />
     </div>
   );

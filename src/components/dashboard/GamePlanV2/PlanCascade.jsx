@@ -14,9 +14,10 @@ function formatSeal(date) {
 /**
  * PlanCascade — Game Plan v2 "plan so far" (NEW chrome, read-only).
  *
- * The live rung shows the real Money Needs commission total. The Year Plan
- * and Monthly rungs render as honest "Coming" states — not empty or
- * fabricated data.
+ * Direction 1.5 (PR-U1): Money Needs + Year Plan collapse into one rung — the
+ * Money Needs rung shows the commission need AND, once the merged allocator has
+ * written the plan, the planned annual API. The Monthly and Review & Commit
+ * rungs render as honest "Coming" states when the loop is gated off.
  */
 function ComingRung({ step, title, desc }) {
   return (
@@ -77,33 +78,23 @@ export default function PlanCascade({
             {moneyNeedsFilled ? formatCurrency(commissionNeed) : 'Not started'}
           </div>
         </div>
-      </div>
-
-      <CascadeArrow />
-
-      {yearPlanEnabled ? (
-        <div className="rounded-xl border border-primary/30 bg-primary-tint p-3.5">
-          <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-            Step 2 · Year Plan
-          </div>
-          <div className="mt-1 flex items-center justify-between gap-3">
+        {yearPlanEnabled && (
+          <div className="mt-2 flex items-center justify-between gap-3 border-t border-gold/20 pt-2">
             <div className="text-xs text-ink-muted">Planned annual API</div>
-            <div className="whitespace-nowrap font-display text-xl font-extrabold tracking-tight text-ink">
+            <div className="whitespace-nowrap font-display text-base font-extrabold tracking-tight text-ink">
               {yearPlanFilled ? formatCurrency(yearPlanTotalAPI) : (
-                <span className="font-sans text-sm font-medium text-ink-muted">Set in your plan</span>
+                <span className="font-sans text-sm font-medium text-ink-muted">Allocate to set</span>
               )}
             </div>
           </div>
-        </div>
-      ) : (
-        <ComingRung step="Step 2 · Year Plan" title="Year Plan" desc="Split across product lines" />
-      )}
+        )}
+      </div>
 
       <CascadeArrow />
       {yearPlanEnabled ? (
         <div className="rounded-xl border border-primary/30 bg-primary-tint p-3.5">
           <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-            Step 3 · Monthly Plan
+            Step 2 · Monthly Plan
           </div>
           <div className="mt-1 flex items-center justify-between gap-3">
             <div className="min-w-0">
@@ -135,7 +126,7 @@ export default function PlanCascade({
           </div>
         </div>
       ) : (
-        <ComingRung step="Step 3 · Monthly Plan" title="Monthly Plan" desc="Broken into 12 months" />
+        <ComingRung step="Step 2 · Monthly Plan" title="Monthly Plan" desc="Broken into 12 months" />
       )}
 
       <CascadeArrow />
@@ -147,7 +138,7 @@ export default function PlanCascade({
             data-testid="commit-rung-committed"
           >
             <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-              Step 4 · Review &amp; Commit
+              Step 3 · Review &amp; Commit
             </div>
             <div className="mt-1 flex items-center justify-between gap-3">
               <div className="text-xs text-ink-muted">
@@ -163,7 +154,7 @@ export default function PlanCascade({
         ) : (
           <div className="rounded-xl border border-primary/30 bg-primary-tint p-3.5" data-testid="commit-rung-ready">
             <div className="font-mono text-[9px] font-bold uppercase tracking-[0.12em] text-ink-muted">
-              Step 4 · Review &amp; Commit
+              Step 3 · Review &amp; Commit
             </div>
             <div className="mt-1 flex items-center justify-between gap-3">
               <div className="text-xs text-ink-muted">Commit to your plan</div>
@@ -174,7 +165,7 @@ export default function PlanCascade({
           </div>
         )
       ) : (
-        <ComingRung step="Step 4 · Review &amp; Commit" title="Review &amp; Commit" desc="Commit to your plan" />
+        <ComingRung step="Step 3 · Review &amp; Commit" title="Review &amp; Commit" desc="Commit to your plan" />
       )}
     </div>
   );
