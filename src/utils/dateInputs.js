@@ -64,3 +64,68 @@ export function computeMonthsFromDate(dateStr) {
     return 0;
   }
 }
+
+const MONTH_KEY_RE = /^\d{4}_\d{2}$/;
+
+/**
+ * monthKeyFromDate — the "YYYY_MM" ledger month key for a YYYY-MM-DD date.
+ *
+ * Pure string slice (no Date math, no timezone) — the calendar month is taken
+ * verbatim from the bare date string. Used to anchor the financing ledger to
+ * the effectiveDate's first month (Track K · K2).
+ *
+ * @param {string} dateStr — "YYYY-MM-DD"
+ * @returns {string} — "YYYY_MM"
+ * @throws if the string is not YYYY-MM-DD
+ */
+export function monthKeyFromDate(dateStr) {
+  if (typeof dateStr !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    throw new Error(`monthKeyFromDate: expected YYYY-MM-DD, got ${dateStr}`);
+  }
+  return `${dateStr.slice(0, 4)}_${dateStr.slice(5, 7)}`;
+}
+
+/**
+ * monthsBetweenKeys — whole calendar months from `fromKey` to `toKey`.
+ *
+ * Pure integer math on "YYYY_MM" keys; ignores day-of-month entirely (a ledger
+ * month is a whole calendar month). Negative when `toKey` precedes `fromKey`.
+ *
+ * @param {string} fromKey — "YYYY_MM"
+ * @param {string} toKey — "YYYY_MM"
+ * @returns {number} — (toYear*12+toMonth) - (fromYear*12+fromMonth)
+ * @throws if either key is not YYYY_MM
+ */
+export function monthsBetweenKeys(fromKey, toKey) {
+  if (!MONTH_KEY_RE.test(fromKey ?? '')) throw new Error(`monthsBetweenKeys: bad fromKey ${fromKey}`);
+  if (!MONTH_KEY_RE.test(toKey ?? ''))   throw new Error(`monthsBetweenKeys: bad toKey ${toKey}`);
+  const [fy, fm] = fromKey.split('_').map(Number);
+  const [ty, tm] = toKey.split('_').map(Number);
+  return (ty * 12 + tm) - (fy * 12 + fm);
+}
+
+/**
+ * enumerateMonthKeys — the inclusive list of "YYYY_MM" keys from `fromKey` to
+ * `toKey` (chronological). Returns [] when `toKey` precedes `fromKey`.
+ *
+ * Used to detect skipped months in the financing ledger (Track K · K2): the
+ * full expected month sequence minus the entered set = the gaps.
+ *
+ * @param {string} fromKey — "YYYY_MM"
+ * @param {string} toKey — "YYYY_MM"
+ * @returns {string[]} — ["YYYY_MM", …] inclusive of both endpoints
+ * @throws if either key is not YYYY_MM
+ */
+export function enumerateMonthKeys(fromKey, toKey) {
+  const span = monthsBetweenKeys(fromKey, toKey);
+  if (span < 0) return [];
+  const [fy, fm] = fromKey.split('_').map(Number);
+  const out = [];
+  for (let i = 0; i <= span; i++) {
+    const total = (fy * 12 + (fm - 1)) + i; // 0-based month ordinal
+    const y = Math.floor(total / 12);
+    const m = (total % 12) + 1;
+    out.push(`${String(y).padStart(4, '0')}_${String(m).padStart(2, '0')}`);
+  }
+  return out;
+}
