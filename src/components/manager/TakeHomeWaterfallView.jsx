@@ -194,7 +194,6 @@ const MODE_ACTUAL    = 'actual';
 
 export default function TakeHomeWaterfallView() {
   const { userProfile, role, tenantId } = useAuth();
-  const _role = role; // lint: accessed for access-guard below
 
   const [agents, setAgents]         = useState([]);
   const [loadingAgents, setLoadingAgents] = useState(true);
@@ -219,14 +218,18 @@ export default function TakeHomeWaterfallView() {
   useEffect(() => { loadAgents(); }, [loadAgents]);
 
   // ── Load projection when agent is selected ───────────────────────────────
+  // latest-request guard: rapid agent switches can produce stale resolutions;
+  // `active` flag ensures only the last-requested result applies.
   useEffect(() => {
     if (!selectedAgent || !tenantId) { setProjection(null); return; }
+    let active = true;
     setLoadingProj(true);
     setProjError('');
     getProjectedBonus(tenantId, selectedAgent)
-      .then((out) => setProjection(out))
-      .catch((e) => { console.error(e); setProjError('Failed to load projection.'); })
-      .finally(() => setLoadingProj(false));
+      .then((out) => { if (active) setProjection(out); })
+      .catch((e) => { if (active) { console.error(e); setProjError('Failed to load projection.'); } })
+      .finally(() => { if (active) setLoadingProj(false); });
+    return () => { active = false; };
   }, [tenantId, selectedAgent]);
 
   // ── Access guard (mirrors FinancingTermsSetup) ───────────────────────────

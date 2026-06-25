@@ -24,7 +24,8 @@ const OWING_STATUSES = new Set(['on_financing', 'post_financing_repayment']);
  */
 export function computeTakeHome(grossBonus, financingStatus, ruleset = DEFAULT_FINANCING_RULESET_2026) {
   const rs = ruleset ?? DEFAULT_FINANCING_RULESET_2026;
-  const { taxRate, financingPortionRate } = rs;
+  const taxRate = rs.taxRate ?? DEFAULT_FINANCING_RULESET_2026.taxRate;
+  const financingPortionRate = rs.financingPortionRate ?? DEFAULT_FINANCING_RULESET_2026.financingPortionRate;
   const isOwing = OWING_STATUSES.has(financingStatus);
   const gross = Math.max(0, parseFloat(grossBonus) || 0);
   const tax = gross * taxRate;

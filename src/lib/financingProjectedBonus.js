@@ -100,10 +100,11 @@ export async function getProjectedBonus(tenantId, agentId, ruleset = DEFAULT_FIN
       // isStaff: undefined — A.4 inert, no ledger field today
     }));
 
-  // Lapses within the quarter (surrendered/reinstated = 0; no ledger status today)
+  // Lapses within the quarter. Q1 submitted-basis: use proposedAPI (matches policyLines basis).
+  // Q2+ settled-basis: use settledAPI. (surrendered/reinstated = 0; no ledger status today)
   const lapsedSurrenderedUnder2yrAPI = quarterPolicies
     .filter((pol) => pol.status === 'lapsed')
-    .reduce((sum, pol) => sum + (parseFloat(pol.settledAPI) || 0), 0);
+    .reduce((sum, pol) => sum + (parseFloat(isQ1 ? pol.proposedAPI : pol.settledAPI) || 0), 0);
 
   // ── Persistency — 0-1 fraction (no normalisation; see sourcing note above) ──
   const persistencyDoc = await getPersistencyForAgent(tenantId, currentMonthKey, agentId);
