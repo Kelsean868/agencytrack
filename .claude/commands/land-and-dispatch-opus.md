@@ -1,10 +1,10 @@
----
-description: Land a brief to main + dispatch it, pinned to Opus 4.8 (judgment-dense builds — U1/U2-class)
-model: Opus 4.8
+﻿---
+description: Land a brief to main + dispatch it, pinned to Opus 4.8 (judgment-dense builds â€” U1/U2-class)
+model: opus
 disable-model-invocation: true
 ---
 
-# /land-and-dispatch-opus — fast brief landing + dispatch, PINNED TO OPUS 4.8 (DOCS-ONLY)
+# /land-and-dispatch-opus â€” fast brief landing + dispatch, PINNED TO OPUS 4.8 (DOCS-ONLY)
 
 Identical to `/land-and-dispatch`, but pins the run to **Opus 4.8** via frontmatter so the
 dispatched build runs on Opus regardless of the session's selected model. Use for
@@ -12,13 +12,13 @@ judgment-dense / money-adjacent / schema / rules briefs whose header reads
 `run_model: claude-opus-4-8`.
 
 > Model-scope note: the `model:` pin is guaranteed for THIS command's execution. Whether it
-> carries through the nested `/dispatch` and the full multi-turn build is verified on first use —
+> carries through the nested `/dispatch` and the full multi-turn build is verified on first use â€”
 > check the session model indicator after the build starts. If it reverts, set the session model
 > with `/model` before dispatching (or use the `/dispatch-opus` variant if present).
 
 Lands a brief directly to `main` (no PR, no CI wait) and dispatches it, in one command. It is
 **DOCS-ONLY**: it stages only the brief and aborts if anything outside `docs/` would be committed.
-It is NEVER a path for code — code merges keep the full PR -> CI-green -> bot review (Rule 21) ->
+It is NEVER a path for code â€” code merges keep the full PR -> CI-green -> bot review (Rule 21) ->
 human-merge flow.
 
 ## Usage
@@ -28,13 +28,13 @@ e.g. `/land-and-dispatch-opus pr-u2-rules-cleanup-kickoff.md`
 The brief must already be in the operator's Downloads folder (downloaded from chat).
 
 ## Why this is safe to fast-track
-A brief is a `.md` in `docs/briefs/` — not linted, not in the Vite build, can't break the app. It
+A brief is a `.md` in `docs/briefs/` â€” not linted, not in the Vite build, can't break the app. It
 is reviewed before it lands (authored in chat, read by the operator). The recon HARD-STOP (for
 recon-gated briefs) remains the real review pause and is untouched by this command.
 
-## Procedure (PowerShell — no `&&` chaining; separate lines)
+## Procedure (PowerShell â€” no `&&` chaining; separate lines)
 
-1. **Preconditions — no uncommitted TRACKED changes.**
+1. **Preconditions â€” no uncommitted TRACKED changes.**
    ```powershell
    git checkout main
    git pull origin main
@@ -45,7 +45,7 @@ recon-gated briefs) remains the real review pause and is untouched by this comma
    # (b) every +/- line in the diff matches the extension-etag pattern
    # (key = extension-instance name, value = 64-char lowercase hex SHA-256).
    # ANY other dirty tracked file, ANY change to "projects"/"targets", or ANY
-   # unrecognised line pattern → ABORT unchanged.
+   # unrecognised line pattern â†’ ABORT unchanged.
    $tracked = (git status --porcelain --untracked-files=no)
    if ($tracked) {
        $dirtyLines = @($tracked -split "\r?\n" | Where-Object { $_ -match '\S' })
@@ -54,7 +54,7 @@ recon-gated briefs) remains the real review pause and is untouched by this comma
            Write-Error "ABORT: uncommitted tracked changes (not .firebaserc-only):`n$tracked"
            exit 1
        }
-       # Sole dirty file is .firebaserc — inspect diff for etag-only churn pattern.
+       # Sole dirty file is .firebaserc â€” inspect diff for etag-only churn pattern.
        $diff = (git diff -- .firebaserc)
        $changedLines = @($diff -split "\r?\n" | Where-Object {
            $_ -match '^[+-]' -and $_ -notmatch '^\+\+\+' -and $_ -notmatch '^---'
@@ -63,7 +63,7 @@ recon-gated briefs) remains the real review pause and is untouched by this comma
            $_ -notmatch '^[+-]\s+"[A-Za-z0-9_-]+":\s+"[0-9a-f]{64}"$'
        })
        if ($nonEtagLines.Count -gt 0) {
-           Write-Error "ABORT: .firebaserc has changes outside the etag block — resolve manually:"
+           Write-Error "ABORT: .firebaserc has changes outside the etag block â€” resolve manually:"
            $nonEtagLines | ForEach-Object { Write-Error "  $_" }
            exit 1
        }
@@ -77,7 +77,7 @@ recon-gated briefs) remains the real review pause and is untouched by this comma
    ```
    On a clean tree the block is a no-op. On etag-only churn it discards and proceeds.
    Any other dirty tracked file, or any `.firebaserc` change outside the etag block, exits 1.
-   Untracked files are fine and are ignored — step 3 stages only the brief, so stale
+   Untracked files are fine and are ignored â€” step 3 stages only the brief, so stale
    working-tree artifacts never enter the commit.
 
 2. **Move the brief from Downloads -> docs/briefs/.**
@@ -97,7 +97,7 @@ recon-gated briefs) remains the real review pause and is untouched by this comma
    ```powershell
    git reset
    ```
-   -> **ABORT.** Report the reason. Do NOT commit. (Never use `git add -A` here — it would sweep
+   -> **ABORT.** Report the reason. Do NOT commit. (Never use `git add -A` here â€” it would sweep
    in untracked working-tree artifacts.)
 
 4. **Commit + push directly to main.**
@@ -113,13 +113,13 @@ recon-gated briefs) remains the real review pause and is untouched by this comma
    git log origin/main --oneline -1
    ```
    Local HEAD SHA MUST match `origin/main`. On mismatch -> **HARD-STOP** and report. On match ->
-   report `pushed and verified — SHA <sha>`.
+   report `pushed and verified â€” SHA <sha>`.
 
 6. **Dispatch.** Run the existing dispatch on the now-landed brief:
    ```
    /dispatch-opus docs/briefs/<brief-filename>
    ```
-   CC then proceeds per the brief — a recon HARD-STOP (paste the recon back to the dispatcher) or
+   CC then proceeds per the brief â€” a recon HARD-STOP (paste the recon back to the dispatcher) or
    the build, exactly as the brief specifies.
 
 ## Abort conditions (any one -> stop; do not push)
@@ -136,3 +136,4 @@ or any non-`docs/` change through this command.
 ## Final report
 End with: the landed brief, its commit SHA on `origin/main`, the Rule-15 line, the dispatch
 outcome (recon hard-stop reached, or build started), and the model the build is running on.
+
