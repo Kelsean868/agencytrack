@@ -6,6 +6,32 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Track K · K1 — DerivedTermsPanel (read-only ceiling + clocks) DEFERRED + ceiling-basis correction (banked K1, 2026-06-25, MEDIUM — money-correctness)
+
+The K1 mockup (`design_handoff_track_k/Track K Financing Terms Setup - Build.html`) draws a **DerivedTermsPanel** — a read-only block showing the financing **ceiling** + the **24-month term / 12-month service / first-3-months waiver** clocks computed off `effectiveDate`. **Deferred from K1** (dispatcher lock, 2026-06-25): K1 ships only Decision 5's surface (terms form + 5-state machine + status badge). Build the DerivedTermsPanel with **K2** (ceiling vs running balance) and **K6** (reconciliation clocks) as a **pure exported clock helper** (parses `effectiveDate` via `parseDateOnlyTT` from `src/utils/dateInputs.js`).
+
+**⚠ CEILING-BASIS CORRECTION (locked, supersedes design-spec §6 + the mockup):** the 6× financing ceiling is **`6 × currentMonthlyFinancing`** per contract **2.4 / 6.3** — **NOT** `agreedMonthlyFinancing`. The design-spec §6 text and the mockup annotation ("agreed drives the 6× ceiling") are **wrong**; the running standing amount (`currentMonthlyFinancing`) is the ceiling basis. Implement the corrected basis when DerivedTermsPanel is built. (K1 stores both fields; no K1 math depends on the ceiling, so no K1 code is affected.)
+
+## Track K · K1 — admin corrective / backward status transition (banked K1, 2026-06-25, deferred per Addendum B.9)
+
+The K1 `financingService.transitionFinancingStatus` enforces the **forward-only** machine (B.9): no backward moves. An **admin-level corrective transition** (e.g. `reconciling → on_financing` to undo a mis-set event), gated behind a required audit note + elevated role, is **deferred**. Scope when an operator needs to correct a wrongly-advanced status in production.
+
+**To resolve:** add an admin-only `correctFinancingStatus(tenantId, agentId, toStatus, actor, note)` path (note REQUIRED) that bypasses the forward-only guard but still appends a `statusHistory` entry (flagged `corrective: true`); gate to `tenant_admin`/`platform_admin` in service + a rules arm if a separate write path is introduced. Keep the normal forward-only `transitionFinancingStatus` unchanged.
+
+## Track K · A.4 Staff-policy credit-filter confirm — gates K3 (carry from locked-decisions A.4, until resolved)
+
+`docs/design/track-k-locked-decisions.md` **A.4 is OPEN**: the product owner says staff policies are **counted** toward the bonus credit; contract 1.2 says **excluded**. Pending explicit confirmation. **Gates K3 only** (the bonus engine / credit filter) — **not K1/K2**. If counted → operative-practice divergence documented, no staff flag needed on the ledger (K3 simplifies). If excluded → staff identification required (new ledger flag, or a pilot out-of-scope call). Resolve before dispatching K3.
+
+## SettlementPanel / FinancingTermsSetup — latest-request guard parity + race tests (banked K1, 2026-06-25, LOW)
+
+K1 added a `useRef` **latest-request guard** to `FinancingTermsSetup.loadTerms` (Gemini #2): on rapid agent switching a slower `getFinancingTerms` could resolve last and overwrite the form, and because Save targets `selectedAgent` with the displayed values, that is a money-write hazard (agent A's figures onto agent B's doc). **`SettlementPanel` has the same latent shape** in its per-agent flows but was out of scope for K1 (the locked mount mirrors it; K1 didn't modify it).
+
+**To resolve (keep the two panels true mirrors):** (1) apply the same latest-request `useRef` guard to `SettlementPanel`'s async per-agent loads; (2) add a focused **race test** to both panels (stale resolution must not overwrite the current selection); (3) add a defensive `getTenantUsers` **nullish fallback** (`|| []`) to both `loadAgents` paths — Gemini #1; `getTenantUsers` resolves to an array today so this is defense-in-depth, applied to both for consistency, not just one.
+
+## Track K · K2 — `basisBadge` primitive lands with K2 (banked K1, 2026-06-25, scope note)
+
+The `basisBadge` (submitted-provisional / submitted-final / settled-confirmed quarter-basis indicator, CD#3) is a **K2** primitive, not K1. K1 ships only `FinancingStatusBadge` (the 5-state financing-status badge). No action until K2.
+
 ## Money Needs merged allocator — general 6% premium-tax handling (banked merged-allocator PR, 2026-06-24, MEDIUM — money-correctness)
 
 The merged allocator computes **general** line/product commission as `commission = API × rate` (a documented simplification). General insurance policies in T&T carry a 6% premium tax, so the *accurate* form bases commission on the **pretax** premium: `commission = (API ÷ 1.06) × rate` — but only if API is entered **gross** (tax-inclusive). If agents enter pretax API, no division is needed. The convention is **unconfirmed**.

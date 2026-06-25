@@ -623,6 +623,46 @@ service cloud.firestore {
           || get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.auth.uid)).data.canConfirmSettlements == true);
       }
 
+      // ── Track K · K1 — per-agent financing terms ─────────────────────────────
+      // /tenants/{tid}/financingTerms/{agentId}  (doc ID == agent UID; one
+      // current-terms doc per agent). Manager-set; gates all later financing
+      // modules (K2–K8). Read mirrors settlements (agent reads own via
+      // canAccessOwn keyed on the {agentId} path var; managers via canManage —
+      // unit_manager reads, but cannot write). Write is BM-and-up (unit_manager
+      // EXCLUDED per contract 5.3) — an explicit role set, deliberately NOT a
+      // shared helper (canManage) that would admit unit_manager. Coarse
+      // validation only (U2 single-boundary precedent): the cross-field rule
+      // (currentMonthlyFinancing <= agreedMonthlyFinancing) and forward-only
+      // transition legality live in financingService + UI, NOT here.
+      // No `list` arm: K1 reads a single per-agent doc (getFinancingTerms →
+      // getDoc); a collection-list feature (agent dashboard) would add one at K8.
+      match /financingTerms/{agentId} {
+        function validFinancingData() {
+          return request.resource.data.agreedMonthlyFinancing  is number
+              && request.resource.data.agreedMonthlyFinancing  >= 0
+              && request.resource.data.currentMonthlyFinancing is number
+              && request.resource.data.currentMonthlyFinancing >= 0
+              && request.resource.data.validatingAPI           is number
+              && request.resource.data.validatingAPI           >= 0
+              && request.resource.data.financingStatus in [
+                   'not_on_financing', 'on_financing', 'reconciling',
+                   'post_financing_repayment', 'cleared'
+                 ]
+              && request.resource.data.effectiveDate is string
+              && request.resource.data.agentId  == agentId
+              && request.resource.data.tenantId == tenantId;
+        }
+
+        allow get: if canAccessOwn(tenantId, agentId) || canManage(tenantId);
+
+        allow create, update: if validFinancingData() && (
+          (getRole() in ['branch_manager', 'sales_manager', 'tenant_admin'] && getTenantId() == tenantId)
+          || getRole() == 'platform_admin'
+        );
+
+        allow delete: if false;
+      }
+
       match /unitGoals/{docId} {
         allow read: if request.auth != null
           && request.auth.token.tenantId == tenantId;
