@@ -16,6 +16,8 @@ All smokes read credentials from `.env.local` (never echoed — Rule 4). Common 
 | Money Needs merged surface (flag-ON render + swap) | `smoke-money-needs-merged-local.mjs` | **local flag-ON** — `VITE_MONEY_NEEDS_MERGED_ENABLED=true`; `A11Y_AGENT_*` | `MoneyNeedsPanel`, `MoneyNeedsAllocator`, merged-surface gating logic |
 | Commission-first allocator (line number = commission, rate → derived API) | `smoke-commission-first-local.mjs` | **local flag-ON** — `VITE_MONEY_NEEDS_MERGED_ENABLED=true`; `A11Y_AGENT_*` | `MoneyNeedsAllocator` commission-first input model, rate field, slider label |
 | AllocationSummaryCard (line rows, total, ack modal) | `smoke-summary-card-local.mjs` | **local** — `A11Y_AGENT_*`; optional `BASE` as argv[2] (default `localhost:5175`) | `AllocationSummaryCard`, ack modal, per-product subtotals |
+| Money Needs UX presentation flag-OFF (accordion, sub-calc Done footer, send-to-playground flow) | `smoke-money-needs-rev4-5.mjs` | **preview-capable** — `SMOKE_PREVIEW_URL=<url>` + `VERCEL_BYPASS_TOKEN` + `A11Y_AGENT_*` | `MoneyNeedsPanel`, single-open accordion, sub-calc Done footer, send-to-playground ack modal; standing until merged allocator becomes default-on |
+| Money Needs PAYE display order + double-tax regression guard (flag-OFF) | `smoke-money-needs-summary-clarity.mjs` | **preview-capable** — `SMOKE_BASE_URL=<url>` / `SMOKE_PREVIEW_URL=<url>` + `VERCEL_BYPASS_TOKEN` + `A11Y_AGENT_*` | `MoneyNeedsPanel`, `PAYESummary` display order, playground income-goal localStorage shape; L3 (double-tax = 1,453,333 regression) always runs — re-run on ANY Money Needs or Commission Playground change |
 | Agent Dashboard home v2 (HeroCard, Pulse chips, StandardDetail) | `smoke-agentdash-home-v2.mjs` | **preview-capable** — `VERCEL_BYPASS_TOKEN` + `A11Y_AGENT_*` | `AgentDashboard`, `HeroCard`, `PulseChips`, `StandardDetail`, tab routing |
 | Agent Dashboard nav IA v2 (sidebar groups, tab routing, mobile BOTTOM_NAV) | `smoke-agentdash-nav-v2.mjs` | **preview-capable** — `VERCEL_BYPASS_TOKEN` + `A11Y_AGENT_*` | `navConfig`, sidebar sections, tab IDs, `BOTTOM_NAV`, `AgentDashboard` routing |
 | Career Portal v2 (career ladder, CommitmentScorecards, TimeToNext, Trajectory) | `smoke-career-portal-v2.mjs` | **preview-capable** — `VERCEL_BYPASS_TOKEN` + `A11Y_AGENT_*` | `CareerPortal`, career-ladder nodes, `CommitmentScorecards`, `TrajectoryCard` |
@@ -34,14 +36,12 @@ All smokes read credentials from `.env.local` (never echoed — Rule 4). Common 
 
 ---
 
-## Ambiguous / one-off smokes
+## Retired / one-off (not standing)
 
-These files exist in `scripts/verification/` but their standing status is unclear. Listed here for discoverability; do not include in re-run checklists without confirming the smoke is still applicable to current code.
+These files exist in `scripts/verification/` but are not standing regression guards. Do not include in re-run checklists.
 
-| File | Why ambiguous |
-|------|--------------|
-| `smoke-money-needs-rev4-5.mjs` | PR #738 UX-polish verification; behaviors now established — may be superseded by the standing Money Needs smokes above |
-| `smoke-money-needs-double-tax-fix.mjs` | PR #734 bug-fix verification; regression asserted in `smoke-money-needs-summary-clarity.mjs` L3 |
-| `smoke-money-needs-summary-clarity.mjs` | PR #735 verification; L3 is a regression guard (playground double-tax fix) — borderline standing |
-| `smoke-wizard-confirm-phase2.mjs` | Self-labeled "ad-hoc, not committed" in file header; Wizard v3 Phase 2 one-off |
-| `smoke-wizard-confirm-preview.mjs` | Self-labeled "ad-hoc, not committed" in file header; Wizard v3 Phase 1 one-off |
+| File | Reason |
+|------|--------|
+| `smoke-money-needs-double-tax-fix.mjs` | Authored for PR #734 double-tax bug fix; key regression guard (double-tax = 1,453,333) absorbed into `smoke-money-needs-summary-clarity.mjs` L3 at time of PR #735. |
+| `smoke-wizard-confirm-phase2.mjs` | Ad-hoc, never committed to git; authored for PR #723 wizard v3 Phase 2 branch preview. Confirm-screen behaviors shipped; covered by `smoke-sunday-confirm-check.mjs`. |
+| `smoke-wizard-confirm-preview.mjs` | Ad-hoc, never committed to git; authored for PR #723 wizard v3 Phase 1 branch preview. Sunday deep-link Confirm-screen behaviors shipped; covered by `smoke-sunday-confirm-check.mjs`. |
