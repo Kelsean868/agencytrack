@@ -69,7 +69,23 @@ The K2 mockup draws a **RollForwardCheck** advisory panel (client roll-forward e
 
 ## Track K — lift agent-selection into FinancingTab (banked K2, 2026-06-25, LOW — UX)
 
-K2 mounted the financing surface as a `FinancingTab` container with a segmented control (Terms · Monthly Ledger). Each sub-view (`FinancingTermsSetup`, `MonthlyStatementEntry`) keeps its **own** internal agent dropdown — so switching sub-views re-selects the agent. **To resolve:** lift the agent selection into `FinancingTab` and pass `selectedAgent` as a prop to both sub-views (drop each one's internal dropdown), so the selected agent persists across the Terms/Ledger toggle. Touches the K1 `FinancingTermsSetup` (accept a prop). Pure UX; no behavior/security change.
+K2 mounted the financing surface as a `FinancingTab` container with a segmented control (Terms · Monthly Ledger). Each sub-view (`FinancingTermsSetup`, `MonthlyStatementEntry`) keeps its **own** internal agent dropdown — so switching sub-views re-selects the agent. **To resolve:** lift the agent selection into `FinancingTab` and pass `selectedAgent` as a prop to both sub-views (drop each one's internal dropdown), so the selected agent persists across the Terms/Ledger toggle. Touches the K1 `FinancingTermsSetup` (accept a prop). K5 adds a **third** sub-view (`FinancingProrationPanel`) with the same internal-dropdown pattern — the lift should cover all three. Pure UX; no behavior/security change.
+
+## Track K · K5 → K7 — `adjustmentPct` consumer (banked K5, 2026-06-25, carry to K7)
+
+K5 (PR #TBD) **produces and stores** `adjustmentPct` on the `financing/{agentId}_{YYYY_MM}` ledger doc = `(currentMonthlyFinancing − managerFinancing) ÷ currentMonthlyFinancing`, on the **confirmed** figure only (null until the manager confirms `managerFinancing`; denominator = `currentMonthlyFinancing` per CD#5). **K7 owns the clause-5.3 duty** that consumes it: when a *confirmed* `adjustmentPct > 0.10` (a standing >10% downward cut vs the current schedule), raise the **notify-Sales-Admin-by-the-1st** obligation (reuses the Compliance-v2 nudge transport + a logged audit, CD#15) — a notification duty, **never** an automatic termination. K5 supplies the number; K7 surfaces the flag + duty. The K7 roster/termination-monitor + the >10% `DownwardAdjustFlag` + `notifySalesAdmin` are drawn in the manager Validation Dashboard mockup but are explicitly out of K5 scope.
+
+## Track K · K5 — spec K5⊥K3 dependency edge CORRECTED (banked K5, 2026-06-25, resolved)
+
+The design-spec dependency graph (`docs/track-k-financing-new-agent-design.md`) drew **K5 as independent of K3** (K5 depending only on K1+K2). This is **corrected**: `actualAPI` is the contract's **credit-filtered Gross New Settled API** (owner-confirmed), which is exactly K3's `computeApiChain` Gross arm — so **K5 reuses the K3 engine** and depends on K3. K5's `financingProration.monthlyGross` imports `computeApiChain` from `financingBonusEngine.js` (no re-implementation of the A.3 credit filter). The K5 kickoff brief superseded the spec edge; this note records the correction for the K8 dashboard dependency map.
+
+## Track K · K5 — `getOwnPolicies` → shared `getPoliciesByAgent` rename (banked K5, 2026-06-25, LOW — clarity)
+
+`FinancingProrationPanel` reads the selected agent's policy ledger via `policiesService.getOwnPolicies(tenantId, agentId)` — a pure `where('agentId','==',agentId)` fetch that a BM-and-up caller is permitted to run (the policies `list` manager arm; the `agentId+createdAt` composite index already exists). The function **name** ("Own") is misleading for a manager reading **another** agent's policies. **To resolve:** rename to a neutral `getPoliciesByAgent(tenantId, agentId)` (or add it as the canonical export and keep `getOwnPolicies` as a thin alias), shared by the agent-own view and the manager-proration read. Pure clarity; no behavior/rules/index change.
+
+## Track K · K3+K5 — `managerSettledAPI` precedence in financing/bonus Gross (banked K5, 2026-06-25, LOW — cross-cutting decision)
+
+`src/lib/policyLedgerDerivation.js` `policyValue` prefers `managerSettledAPI > settledAPI > proposedAPI` (the manager's settled override). Both K3 (`computeApiChain`) and K5 (`monthlyGross`, settled basis) deliberately read **raw `settledAPI`** so the financing proration Gross and the bonus Gross stay identical (lock c). **If** the manager-settled override is ever meant to flow into the financing/bonus Gross, that is a **deliberate cross-cutting decision for BOTH K3 and K5** (and any K8 consumer) — not a silent K5-only divergence. **To resolve (if needed):** decide whether `managerSettledAPI` supersedes `settledAPI` for credit-filtered Gross; if yes, apply it in `financingBonusEngine` (the single normalization point) so K3/K5/K8 all inherit it consistently.
 
 ## Money Needs merged allocator — general 6% premium-tax handling (banked merged-allocator PR, 2026-06-24, MEDIUM — money-correctness)
 

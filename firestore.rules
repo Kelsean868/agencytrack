@@ -672,21 +672,40 @@ service cloud.firestore {
       // settlements (composite-ID doc with a stored `agentId` field — keyed on
       // resource.data.agentId, NOT a path var). Write is BM-and-up (unit_manager
       // EXCLUDED per contract 5.3), identical to the K1 financingTerms posture.
-      // Coarse validation only (U2 single-boundary): the statement numerics are
-      // numbers (financingPaid/netCommission/bonusOffset >= 0; runningBalance may
-      // be negative), month matches YYYY_MM, agentId/tenantId present. No
-      // key-allowlist / no hasOnly — the K4/K5 fields slot in later with no rules
-      // change. basisSource is render-derived (not written). delete denied.
+      // Coarse validation only (U2 single-boundary): month matches YYYY_MM,
+      // agentId/tenantId present. The K2 STATEMENT core (runningBalance /
+      // financingPaid / netCommission / bonusOffset) is required only when the
+      // write carries any statement field — so a K5 PRORATION-only write (no
+      // statement fields, forward of any statement) is permitted while a partial
+      // statement still fails. The K5 proration fields are coarse type-checked
+      // when present (numbers; basisSource in the 3-enum; adjustmentPct may be
+      // negative). Still NO key-allowlist / no hasOnly — the permissive posture is
+      // preserved (additional fields pass). basisSource IS written by K5. delete denied.
       match /financing/{docId} {
-        function validFinancingMonth() {
-          return request.resource.data.agentId       is string
-              && request.resource.data.tenantId      == tenantId
-              && request.resource.data.month         is string
-              && request.resource.data.month.matches('^[0-9]{4}_[0-9]{2}$')
-              && request.resource.data.runningBalance is number
+        function hasAnyStatementField() {
+          return request.resource.data.keys().hasAny(['runningBalance', 'financingPaid', 'netCommission', 'bonusOffset']);
+        }
+        function validStatementCore() {
+          return request.resource.data.runningBalance is number
               && request.resource.data.financingPaid  is number && request.resource.data.financingPaid  >= 0
               && request.resource.data.netCommission  is number && request.resource.data.netCommission  >= 0
               && request.resource.data.bonusOffset    is number && request.resource.data.bonusOffset    >= 0;
+        }
+        function validProrationFields() {
+          return (!('validatingAPI'      in request.resource.data) || (request.resource.data.validatingAPI      is number && request.resource.data.validatingAPI      >= 0))
+              && (!('actualAPI'          in request.resource.data) || (request.resource.data.actualAPI          is number && request.resource.data.actualAPI          >= 0))
+              && (!('suggestedFinancing' in request.resource.data) || (request.resource.data.suggestedFinancing is number && request.resource.data.suggestedFinancing >= 0))
+              && (!('managerFinancing'   in request.resource.data) || (request.resource.data.managerFinancing   is number && request.resource.data.managerFinancing   >= 0))
+              && (!('adjustmentPct'      in request.resource.data) || request.resource.data.adjustmentPct       is number)
+              && (!('basisSource'        in request.resource.data) || request.resource.data.basisSource in ['submitted-final', 'submitted-provisional', 'settled-confirmed']);
+        }
+        function validFinancingMonth() {
+          return request.resource.data.agentId  is string
+              && request.resource.data.tenantId == tenantId
+              && request.resource.data.month    is string
+              && request.resource.data.month.matches('^[0-9]{4}_[0-9]{2}$')
+              && (!hasAnyStatementField() || validStatementCore())
+              && validProrationFields();
         }
 
         allow get:  if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
