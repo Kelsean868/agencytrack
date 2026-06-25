@@ -414,7 +414,7 @@ describe('computeFinancingBonus — edges and defaults', () => {
     expect(r.gates.qualified).toBe(true);
   });
 
-  it('negative net (heavy lapses) flows through without throwing', () => {
+  it('negative net (heavy lapses) flows through without throwing; raw bases stay negative', () => {
     const r = computeFinancingBonus({
       yearInAgreement: 1,
       quarter: 2,
@@ -423,10 +423,53 @@ describe('computeFinancingBonus — edges and defaults', () => {
       persistency: 0.99,
     }, RS);
     expect(r.gross).toBeCloseTo(40000, 6);
-    expect(r.netPersistency).toBeCloseTo(-60000, 6);
-    // qualified on gross+persistency, so the (negative) base still yields a negative bonus figure
+    expect(r.netPersistency).toBeCloseTo(-60000, 6); // raw base unclamped
+    expect(r.netProduction).toBeCloseTo(-60000, 6);  // raw base unclamped
+    // qualified on gross+persistency, but the negative base must FLOOR the payable bonuses to 0
     expect(r.gates.qualified).toBe(true);
-    expect(r.consistencyBonus).toBeCloseTo(-9000, 6);
+    expect(r.consistencyBonus).toBe(0);
+    expect(r.productionBonus).toBe(0);
+  });
+});
+
+// ──────────────────────────────────────────────────────
+// Payable bonuses floor at $0 (contract never pays a negative; K4 waterfall safety)
+// ──────────────────────────────────────────────────────
+describe('computeFinancingBonus — payable bonuses floor at $0 on a negative base', () => {
+  it('negative Net-for-Persistency → consistencyBonus 0 (not negative)', () => {
+    const r = computeFinancingBonus({
+      yearInAgreement: 1,
+      quarter: 2,
+      policies: [{ newBusinessType: 'nb_ordinary', settledAPI: 40000 }],
+      lapsedSurrenderedUnder2yrAPI: 90000, // netPersistency = -50000
+      persistency: 0.99,
+    }, RS);
+    expect(r.netPersistency).toBeCloseTo(-50000, 6); // base stays raw
+    expect(r.consistencyBonus).toBe(0);
+  });
+
+  it('negative Net-for-Persistency → productionBonus 0 (year 2 rate path too)', () => {
+    const r = computeFinancingBonus({
+      yearInAgreement: 2,
+      quarter: 2,
+      policies: [{ newBusinessType: 'nb_ordinary', settledAPI: 40000 }],
+      lapsedSurrenderedUnder2yrAPI: 90000,
+      persistency: 0.95,
+    }, RS);
+    expect(r.productionBonus).toBe(0);
+  });
+
+  it('negative annual Net-for-Production → annualAdjustment 0 (not negative)', () => {
+    const r = computeFinancingBonus({
+      yearInAgreement: 1,
+      quarter: 2,
+      policies: [{ newBusinessType: 'nb_ordinary', settledAPI: 60000 }],
+      persistency: 0.96,
+      annual: { grossAPI: 180000, netProductionAPI: -50000, netPoliciesSettled: 80, priorBonusesPaidYTD: 0 },
+    }, RS);
+    expect(r.rateTier.apiRate).toBe(0.20);       // tier still resolves
+    expect(r.annualQualifyingAmount).toBeCloseTo(-12500, 6); // intermediate stays raw
+    expect(r.annualAdjustment).toBe(0);          // payable floors
   });
 });
 

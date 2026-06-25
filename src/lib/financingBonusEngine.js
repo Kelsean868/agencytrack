@@ -158,10 +158,13 @@ export function computeFinancingBonus(input = {}, ruleset = DEFAULT_FINANCING_RU
     rs,
   );
 
-  // Quarterly bonuses — base is Net-for-Persistency (A.2). Paid only when qualified.
+  // Quarterly bonuses — base is Net-for-Persistency (A.2). Paid only when qualified, and
+  // FLOORED at 0: a negative base (heavy lapses) must never pay a negative bonus (the
+  // contract never pays one, and K4 would otherwise multiply a negative through the
+  // take-home waterfall). The raw bases above stay unclamped — only payables floor.
   const productionRate = yia === 2 ? rs.productionRateY2 : rs.productionRateY1;
-  const consistencyBonus = gates.qualified ? rs.consistencyRate * netPersistency : 0;
-  const productionBonus = gates.qualified ? productionRate * netPersistency : 0;
+  const consistencyBonus = gates.qualified ? Math.max(0, rs.consistencyRate * netPersistency) : 0;
+  const productionBonus = gates.qualified ? Math.max(0, productionRate * netPersistency) : 0;
 
   // Annual Bonus Adjustment — base is Net-for-Production (A.2 / 1.8); top-up only.
   let rateTier = null;
