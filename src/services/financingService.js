@@ -222,15 +222,23 @@ function financingMonthDocRef(tenantId, agentId, month) {
 // 1-based ledger month number for a statement month relative to effectiveDate.
 // effectiveDate's own calendar month is month 1. Drives the "MONTH n" chip + the
 // basis derivation. Day-of-month is irrelevant (a ledger month is whole-calendar).
+// Returns null on a malformed effectiveDate/statementMonth so render consumers
+// can fall back rather than crash (Gemini #3).
 export function financingMonthIndex(effectiveDate, statementMonth) {
-  return monthsBetweenKeys(monthKeyFromDate(effectiveDate), statementMonth) + 1;
+  try {
+    return monthsBetweenKeys(monthKeyFromDate(effectiveDate), statementMonth) + 1;
+  } catch {
+    return null;
+  }
 }
 
 // Render-derived basis (Decision 5): months 1–3 → submitted-final; month 4+ →
 // settled-confirmed (historical/closed statement months are confirmed records).
-// submitted-provisional is K5-only and never returned here.
+// submitted-provisional is K5-only and never returned here. A null index
+// (malformed effectiveDate) falls back to submitted-final.
 export function deriveBasisSource(effectiveDate, statementMonth) {
   const idx = financingMonthIndex(effectiveDate, statementMonth);
+  if (idx === null) return 'submitted-final';
   return idx <= 3 ? 'submitted-final' : 'settled-confirmed';
 }
 
@@ -278,7 +286,11 @@ export async function listFinancingMonths(tenantId, agentId, range) {
   if (!agentId)  throw new Error('listFinancingMonths: agentId required');
   const col = collection(db, `tenants/${tenantId}/financing`);
   const snap = await getDocs(query(col, where('agentId', '==', agentId)));
-  let rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  // Drop any malformed-month docs before month math (Gemini #2) — guards the
+  // range filter's monthsBetweenKeys against a bad stored value.
+  let rows = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((r) => typeof r.month === 'string' && MONTH_KEY_RE.test(r.month));
   if (range?.from) rows = rows.filter((r) => monthsBetweenKeys(range.from, r.month) >= 0);
   if (range?.to)   rows = rows.filter((r) => monthsBetweenKeys(r.month, range.to) >= 0);
   return rows.sort((a, b) => (a.month < b.month ? -1 : a.month > b.month ? 1 : 0));

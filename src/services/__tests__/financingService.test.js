@@ -283,11 +283,21 @@ describe('K2 basis + ceiling + gap helpers', () => {
     expect(financingMonthIndex('2025-11-20', '2026_02')).toBe(4);
   });
 
+  it('financingMonthIndex — returns null on a malformed effectiveDate/month (Gemini #3)', () => {
+    expect(financingMonthIndex('not-a-date', '2026_01')).toBeNull();
+    expect(financingMonthIndex('2026-01-15', 'bad')).toBeNull();
+    expect(financingMonthIndex(null, '2026_01')).toBeNull();
+  });
+
   it('deriveBasisSource — months 1–3 final, month 4+ confirmed; never provisional', () => {
     expect(deriveBasisSource('2026-01-15', '2026_01')).toBe('submitted-final');
     expect(deriveBasisSource('2026-01-15', '2026_03')).toBe('submitted-final');
     expect(deriveBasisSource('2026-01-15', '2026_04')).toBe('settled-confirmed');
     expect(deriveBasisSource('2026-01-15', '2026_09')).toBe('settled-confirmed');
+  });
+
+  it('deriveBasisSource — malformed effectiveDate falls back to submitted-final', () => {
+    expect(deriveBasisSource('not-a-date', '2026_01')).toBe('submitted-final');
   });
 
   it('financingCeiling — 6 × currentMonthlyFinancing (corrected basis), null when unusable', () => {
@@ -442,6 +452,17 @@ describe('listFinancingMonths', () => {
     ]));
     const out = await listFinancingMonths(TENANT, AGENT, { from: '2026_02', to: '2026_03' });
     expect(out.map((r) => r.month)).toEqual(['2026_02', '2026_03']);
+  });
+
+  it('drops malformed-month docs before month math (Gemini #2)', async () => {
+    mockGetDocs.mockResolvedValue(docsSnap([
+      { month: '2026_01', runningBalance: 8000, agentId: AGENT },
+      { month: 'garbage', runningBalance: 999, agentId: AGENT },
+      { runningBalance: 111, agentId: AGENT }, // missing month
+      { month: '2026_02', runningBalance: 11000, agentId: AGENT },
+    ]));
+    const out = await listFinancingMonths(TENANT, AGENT, { from: '2026_01' });
+    expect(out.map((r) => r.month)).toEqual(['2026_01', '2026_02']);
   });
 
   it('requires tenantId and agentId', async () => {

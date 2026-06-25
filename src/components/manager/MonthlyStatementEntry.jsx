@@ -101,6 +101,26 @@ export default function MonthlyStatementEntry() {
       });
   }, [tenantId, toast]);
 
+  // Sync the form to the selected statement month (Gemini #1 — HIGH): switching
+  // to a NEW month clears the figures (no carry-over of the prior month's values
+  // — a money-data-entry hazard); switching to an EXISTING month pre-populates it
+  // for editing. Only the statement fields are touched; `month` is preserved.
+  useEffect(() => {
+    const key = toMonthKey(form.month);
+    if (!key) return;
+    const existing = months.find((m) => m.month === key);
+    setForm((f) => existing
+      ? {
+          ...f,
+          financingPaid:  String(existing.financingPaid ?? ''),
+          netCommission:  String(existing.netCommission ?? ''),
+          bonusOffset:    String(existing.bonusOffset ?? ''),
+          runningBalance: String(existing.runningBalance ?? ''),
+          notes:          existing.notes ?? '',
+        }
+      : { ...f, financingPaid: '', netCommission: '', bonusOffset: '', runningBalance: '', notes: '' });
+  }, [form.month, months]);
+
   function handleSelectAgent(e) {
     const id = e.target.value;
     setSelectedAgent(id);
@@ -121,6 +141,18 @@ export default function MonthlyStatementEntry() {
 
     const monthKey = toMonthKey(form.month);
     if (!monthKey) { setValidationError('Select a statement month.'); return; }
+
+    // A statement month before the effective date has no valid ledger position
+    // (month 1 = effectiveDate's month) — block it (Gemini #4).
+    if (terms?.effectiveDate) {
+      try {
+        const firstKey = monthKeyFromDate(terms.effectiveDate);
+        if (monthsBetweenKeys(firstKey, monthKey) < 0) {
+          setValidationError(`Statement month can't be before the financing effective date (${monthLabel(firstKey)}).`);
+          return;
+        }
+      } catch { /* malformed effectiveDate — fall through, the ledger guards elsewhere */ }
+    }
 
     const financingPaid = parseFloat(form.financingPaid);
     const netCommission = parseFloat(form.netCommission);
@@ -305,7 +337,7 @@ export default function MonthlyStatementEntry() {
                 <p className="text-sm font-semibold text-ink">Enter statement · {agentName(selectedAgent)}</p>
                 {formMonthKey && (
                   <span className="text-[10px] font-bold uppercase tracking-wide text-gold bg-gold-tint rounded-full px-2 py-0.5">
-                    {monthLabel(formMonthKey)} · Month {financingMonthIndex(effectiveDate, formMonthKey)}
+                    {monthLabel(formMonthKey)} · Month {financingMonthIndex(effectiveDate, formMonthKey) ?? '—'}
                   </span>
                 )}
               </div>
@@ -324,6 +356,7 @@ export default function MonthlyStatementEntry() {
                     <input
                       id="financing-month" data-testid="financing-month"
                       type="month"
+                      min={terms?.effectiveDate ? terms.effectiveDate.slice(0, 7) : undefined}
                       value={form.month}
                       onChange={(e) => setForm((f) => ({ ...f, month: e.target.value }))}
                       className={inputCls}
