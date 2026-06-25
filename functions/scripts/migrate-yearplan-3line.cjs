@@ -245,7 +245,12 @@ async function main() {
       continue;
     }
     aMigrated += 1;
-    console.log(`  ${APPLY ? '✓ migrate' : '· would migrate'} ${doc.ref.path} — status=${data.status ?? 'n/a'} · ΣtargetAPI ${before} (preserved)`);
+    // PR-U2 hardening: a COMMITTED doc folding to a ZERO total is suspicious
+    // (an empty committed plan, likely a test artifact) — surface it for review
+    // instead of a silent "(preserved)" so a future re-run never hides it.
+    const committedZero = data.status === 'committed' && Math.abs(after) < 0.0001;
+    const note = committedZero ? '⚠ REVIEW (committed → zero total)' : '(preserved)';
+    console.log(`  ${APPLY ? '✓ migrate' : '· would migrate'} ${doc.ref.path} — status=${data.status ?? 'n/a'} · ΣtargetAPI ${before} ${note}`);
     if (APPLY) {
       await doc.ref.update({ lines: folded, lineTaxonomy: '3line', updatedAt: FieldValue.serverTimestamp(), updatedBy: 'migrate-yearplan-3line' });
     }

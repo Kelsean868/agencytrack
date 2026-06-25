@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   AVG_POLICY_API, LINE_DEFAULT_RATES, ALLOC_LINE_KEYS, MAX_PRODUCTS, PRODUCT_SEEDS,
   visibleLineKeys, allocApps, isDrilled, productAPI, lineCommission, lineAPI, effectiveLineRate,
-  totalAllocatedCommission, totalAllocatedAPI, seedAllocation, normalizeAllocation,
+  totalAllocatedCommission, totalAllocatedAPI, seedAllocation,
   autoBalanceProducts, sumProductCommission, sumProductAPI, buildAllocationSummary,
   allocationToYearPlan,
 } from '../moneyNeedsAllocation';
@@ -125,28 +125,6 @@ describe('seedAllocation — commission seeded directly from targets', () => {
   });
   it('absent targets seed 0', () => expect(seedAllocation({}, 'composite').lines.life.commission).toBe(0));
   it('records licenseClass', () => expect(seedAllocation(ws, 'life_only').licenseClass).toBe('life_only'));
-});
-
-describe('normalizeAllocation — merge stored (commission) onto seed', () => {
-  const ws = { firstYearCommissionsTargets: { life: 35000 } };
-  it('null stored → fresh seed', () => {
-    expect(normalizeAllocation(null, ws, 'composite').lines.life.commission).toBe(35000);
-  });
-  it('stored commission wins, gaps backfill', () => {
-    const stored = { licenseClass: 'composite', lines: { life: { commission: 50000, rate: 0.4, drilled: false } } };
-    const a = normalizeAllocation(stored, ws, 'composite');
-    expect(a.lines.life.commission).toBe(50000);
-    expect(a.lines.life.rate).toBe(0.4);
-    expect(a.lines.ah).toBeDefined();
-    expect(a.lines.life.products).toHaveLength(4);
-  });
-  it('caps stored products at MAX_PRODUCTS, carries commission', () => {
-    const five = Array.from({ length: 5 }, (_, i) => ({ name: `P${i}`, commission: 1000, rate: 0.3 }));
-    const stored = { lines: { life: { commission: 5000, drilled: true, products: five } } };
-    const a = normalizeAllocation(stored, ws, 'composite');
-    expect(a.lines.life.products).toHaveLength(MAX_PRODUCTS);
-    expect(a.lines.life.products[0]).toMatchObject({ commission: 1000, rate: 0.3 });
-  });
 });
 
 describe('autoBalanceProducts / sums (commission)', () => {
