@@ -6,6 +6,21 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## CLAUDE.md persistency annotation — `0-100` annotation is stale (banked K4, 2026-06-25, LOW doc-fix)
+
+CLAUDE.md § Persistency Document Shape states `persistency, // parseFloat, 0–100`. The stored value is a **0–1 fraction** — confirmed by `financingBonusEngine.js` gate comparisons (`PERS_GATE = 0.90`, `PERS_FLOOR = 0.80`) and the K4 adapter's no-normalization design. The `0-100` annotation misleads future adapters.
+
+**To resolve:** change the CLAUDE.md persistency doc comment to `persistency, // parseFloat, 0–1 fraction (e.g. 0.92 = 92%)`. One-line docs-only edit. **Falsification:** overturned if a write path is found that stores 0–100 scale values — grep `persistency` writes in `persistencyService.js` to verify before applying.
+
+## Track K · K3 adapter — doc note correction: `isStaff` and `lapsedSurrenderedUnder2yrAPI` sourcing (banked K4, 2026-06-25, LOW doc-fix)
+
+The K3 live-data adapter FU body (above) was updated in K4 to correct the persistency normalization claim. Two remaining sourcing notes need doc-only fixes when the K8 adapter lands:
+
+1. **`isStaff`** — listed as "sourced from policy ledger" but no ledger field sets it today. The K4 adapter passes `undefined` (A.4 inert). The FU body should clarify this is gated on A.4 resolution, not a missing ledger read.
+2. **`lapsedSurrenderedUnder2yrAPI`** — the FU says "lapsed/surrendered + reinstatement under-2yr figures" as separate sources; in the current ledger only `status === 'lapsed'` exists. The K8 adapter note should document the policy-ledger status values that map to each engine input.
+
+**To resolve:** update the K3 live-data adapter FU body + the JSDoc in `financingProjectedBonus.js` sourcing notes when K8 lands and the full adapter shape is final. No code change needed today.
+
 ## Track K · K6 — DerivedTermsPanel reconciliation CLOCKS (carry from K1/K2; ceiling portion RESOLVED in K2)
 
 **Ceiling portion RESOLVED (K2):** the 6× ceiling (`6 × currentMonthlyFinancing`, contract 2.4/6.3 — corrected basis) is built and surfaced in the K2 monthly-ledger running-balance-vs-ceiling indicator (`financingCeiling()` in `financingService.js`), and the wrong "drives the 6× ceiling" hint on the K1 `FinancingTermsSetup` agreed field was removed (Rule 9 fix). The ceiling no longer needs a separate DerivedTermsPanel — it lives in the ledger.
@@ -26,7 +41,7 @@ The K1 `financingService.transitionFinancingStatus` enforces the **forward-only*
 
 ## Track K · K3 — live-data wiring adapter for the bonus engine (banked K3, 2026-06-25, lands with K8)
 
-K3 (PR #751) shipped `src/lib/financingBonusEngine.js` as a **pure module that fetches nothing** — callers pass in normalized per-agent per-period production. **To resolve:** build a thin adapter (lands with **K8** dashboard, or **K4** if take-home needs it first) that reads the real sources — the Track H policy ledger (`policies`: `newBusinessType`, `settledAPI`, `isSelfOrFamily`, settled/submitted dates), settlements + submissions fallback (`usesPolicyLedger: false`), the app-validated persistency figure (`persistencyService` — **normalize 0–100 → fraction 0–1** before passing to the engine, which compares on the 0–1 scale), lapsed/surrendered + reinstatement under-2yr figures, and the agent's `yearInAgreement` / quarter / annual roll-up — and assembles the engine's `input` shape. The adapter owns the period bucketing (quarter aggregation, Q1 submitted-vs-settled basis selection per CD#3) and the annual roll-up (`grossAPI`/`netProductionAPI`/`netPoliciesSettled`/`priorBonusesPaidYTD`). **Falsification:** the engine's input contract is in its JSDoc; if K4/K8 need a different shape, re-scope the engine signature then (no consumer exists yet).
+K3 (PR #751) shipped `src/lib/financingBonusEngine.js` as a **pure module that fetches nothing** — callers pass in normalized per-agent per-period production. **To resolve:** build a thin adapter (lands with **K8** dashboard, or **K4** if take-home needs it first) that reads the real sources — the Track H policy ledger (`policies`: `newBusinessType`, `settledAPI`, `isSelfOrFamily`, settled/submitted dates), settlements + submissions fallback (`usesPolicyLedger: false`), the app-validated persistency figure (`persistencyService` — **pass as-is; the stored value IS already a 0–1 fraction** — PERS_GATE comparisons in `financingBonusEngine.js` use `0.90`/`0.95` to confirm this; CLAUDE.md's `0-100` annotation is stale, see doc-fix FU below), lapsed/surrendered + reinstatement under-2yr figures, and the agent's `yearInAgreement` / quarter / annual roll-up — and assembles the engine's `input` shape. The adapter owns the period bucketing (quarter aggregation, Q1 submitted-vs-settled basis selection per CD#3) and the annual roll-up (`grossAPI`/`netProductionAPI`/`netPoliciesSettled`/`priorBonusesPaidYTD`). **Falsification:** the engine's input contract is in its JSDoc; if K4/K8 need a different shape, re-scope the engine signature then (no consumer exists yet).
 
 ## Track K · K3 — ruleset figures are 2026 placeholders pending confirmation (banked K3, 2026-06-25, LOW)
 

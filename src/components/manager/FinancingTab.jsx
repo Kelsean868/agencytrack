@@ -8,10 +8,12 @@
 import React, { useState } from 'react';
 import FinancingTermsSetup from './FinancingTermsSetup';
 import MonthlyStatementEntry from './MonthlyStatementEntry';
+import TakeHomeWaterfallView from './TakeHomeWaterfallView';
 
 const SUBVIEWS = [
-  { id: 'terms',  label: 'Terms' },
-  { id: 'ledger', label: 'Monthly Ledger' },
+  { id: 'terms',     label: 'Terms' },
+  { id: 'ledger',    label: 'Monthly Ledger' },
+  { id: 'takehome',  label: 'Take-Home' },
 ];
 
 export default function FinancingTab() {
@@ -45,7 +47,9 @@ export default function FinancingTab() {
         })}
       </div>
 
-      {view === 'terms' ? <FinancingTermsSetup /> : <MonthlyStatementEntry />}
+      {view === 'terms'    && <FinancingTermsSetup />}
+      {view === 'ledger'   && <MonthlyStatementEntry />}
+      {view === 'takehome' && <TakeHomeWaterfallView />}
     </div>
   );
 }
