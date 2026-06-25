@@ -5,7 +5,8 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import useFocusTrap from '../../hooks/useFocusTrap';
 import { formatCurrency } from '../../utils/formatters';
-import { saveAllocation, PLAYGROUND_INCOME_GOAL_KEY } from '../../services/moneyNeedsService';
+import { PLAYGROUND_INCOME_GOAL_KEY } from '../../services/moneyNeedsService';
+import { saveYearPlan } from '../../services/yearPlanService';
 import { updateUserProfile } from '../../services/userService';
 import { getMergedAwardsRuleset } from '../../services/awardsRulesetService';
 import { DEFAULT_RULESET_2026 } from '../../config/awardsRuleset/2026';
@@ -15,6 +16,7 @@ import {
   visibleLineKeys, allocApps, isDrilled, lineCommission, lineAPI, productAPI,
   effectiveLineRate, totalAllocatedCommission, normalizeAllocation,
   autoBalanceProducts, sumProductCommission, buildAllocationSummary,
+  allocationToYearPlan,
 } from '../../lib/moneyNeedsAllocation';
 
 const LICENSE_OPTIONS = [
@@ -516,7 +518,7 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
   }, [worksheet?.year, worksheet?.allocation, licenseProfile]);
 
   // Real awards ruleset (graceful fallback to bundled default). Read-only path
-  // already in prod use (AgentDashboard / YearPlanModal) — no rules change.
+  // already in prod use (AgentDashboard) — no rules change.
   useEffect(() => {
     if (!tenantId) return undefined;
     let alive = true;
@@ -531,17 +533,20 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
   const visibleKeys = useMemo(() => visibleLineKeys(licenseProfile), [licenseProfile]);
   const allocatedCommission = totalAllocatedCommission(alloc.lines, visibleKeys);
 
+  // Direction 1.5 (PR-U1): the merged surface writes the canonical yearPlan
+  // store directly via the shape adapter — the decoupled moneyNeeds.allocation
+  // write is cut. The yearPlan writer sets status:'draft' on create/update.
   const persist = useCallback(async (next) => {
     if (!tenantId || !uid || !year) return;
     setSaving(true); setSaveError('');
     try {
-      await saveAllocation(tenantId, uid, year, next);
+      await saveYearPlan(tenantId, uid, year, allocationToYearPlan(next), next?.licenseClass ?? licenseProfile);
     } catch {
       setSaveError('Save failed — check connection.');
     } finally {
       setSaving(false);
     }
-  }, [tenantId, uid, year]);
+  }, [tenantId, uid, year, licenseProfile]);
 
   // ── License first-run ───────────────────────────────────────────────────
   // setLicenseProfile triggers the re-seed effect above (which sets licenseClass +

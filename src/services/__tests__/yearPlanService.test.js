@@ -27,8 +27,8 @@ vi.mock('firebase/firestore', () => ({
 }));
 
 import {
-  createYearPlan, getYearPlan,
-  resolveLicenseProfile, LICENSE_PROFILES,
+  createYearPlan, getYearPlan, saveYearPlan,
+  resolveLicenseProfile, LICENSE_PROFILES, LINE_KEYS,
 } from '../yearPlanService';
 
 const TENANT_ID = 'tenant-1';
@@ -40,10 +40,9 @@ const EXISTING_DOC_DATA = {
   status: 'draft',
   licenseProfile: 'composite',
   lines: {
-    life:     { targetAPI: 100, pct: 25, derivedApps: 0, derivedCommission: 0, enabled: true },
-    ah:       { targetAPI: 0,   pct: 0,  derivedApps: 0, derivedCommission: 0, enabled: true },
-    property: { targetAPI: 0,   pct: 0,  derivedApps: 0, derivedCommission: 0, enabled: true },
-    motor:    { targetAPI: 0,   pct: 0,  derivedApps: 0, derivedCommission: 0, enabled: true },
+    life:    { targetAPI: 100, pct: 25, derivedApps: 0, derivedCommission: 0, enabled: true, rate: 0, products: [] },
+    ah:      { targetAPI: 0,   pct: 0,  derivedApps: 0, derivedCommission: 0, enabled: true, rate: 0, products: [] },
+    general: { targetAPI: 0,   pct: 0,  derivedApps: 0, derivedCommission: 0, enabled: true, rate: 0, products: [] },
   },
 };
 
@@ -87,14 +86,16 @@ describe('resolveLicenseProfile', () => {
 // ── createYearPlan ────────────────────────────────────────────────────────────
 
 describe('createYearPlan', () => {
-  it('scaffolds all four lines with zeroed numeric fields and enabled:true', async () => {
+  it('scaffolds the three canonical lines (life/ah/general) with zeroed fields + additive rate/products', async () => {
     await createYearPlan(TENANT_ID, UID, YEAR);
 
     const payload = hoisted.mockSetDoc.mock.calls[0][1];
     const { lines } = payload;
-    for (const key of ['life', 'ah', 'property', 'motor']) {
+    expect(Object.keys(lines)).toEqual(['life', 'ah', 'general']);
+    for (const key of ['life', 'ah', 'general']) {
       expect(lines[key]).toEqual({
         targetAPI: 0, pct: 0, derivedApps: 0, derivedCommission: 0, enabled: true,
+        rate: 0, products: [],
       });
     }
   });
@@ -199,5 +200,59 @@ describe('getYearPlan', () => {
     await expect(getYearPlan(TENANT_ID, UID, '')).resolves.toBeNull();
     await expect(getYearPlan(TENANT_ID, UID, null)).resolves.toBeNull();
     expect(hoisted.mockGetDoc).not.toHaveBeenCalled();
+  });
+});
+
+// ── LINE_KEYS (Direction 1.5) ─────────────────────────────────────────────────
+
+describe('LINE_KEYS', () => {
+  it('is the shared 3-line taxonomy life/ah/general', () => {
+    expect(LINE_KEYS).toEqual(['life', 'ah', 'general']);
+  });
+});
+
+// ── saveYearPlan — additive rate/products sanitization ────────────────────────
+
+describe('saveYearPlan — 3-key write with additive rate/products', () => {
+  it('writes the 3 canonical lines, preserving rate + products (≤4) on life/general', async () => {
+    const lines = {
+      life: {
+        targetAPI: 100000, rate: 0.35, enabled: true,
+        products: [
+          { name: 'Whole Life', api: 60000, rate: 0.35 },
+          { name: 'Term',       api: 40000, rate: 0.20 },
+        ],
+      },
+      ah:      { targetAPI: 40000, rate: 0.25, enabled: true },
+      general: { targetAPI: 200000, rate: 0.10, enabled: true, products: [] },
+    };
+
+    await saveYearPlan(TENANT_ID, UID, YEAR, lines, 'composite');
+
+    const payload = hoisted.mockSetDoc.mock.calls[0][1];
+    expect(Object.keys(payload.lines)).toEqual(['life', 'ah', 'general']);
+    expect(payload.status).toBe('draft');
+    expect(payload.lines.life.targetAPI).toBe(100000);
+    expect(payload.lines.life.rate).toBe(0.35);
+    expect(payload.lines.life.products).toEqual([
+      { name: 'Whole Life', api: 60000, rate: 0.35 },
+      { name: 'Term',       api: 40000, rate: 0.20 },
+    ]);
+    expect(payload.lines.general.targetAPI).toBe(200000);
+  });
+
+  it('caps products at 4 and never carries products on the A&H line', async () => {
+    const five = Array.from({ length: 5 }, (_, i) => ({ name: `P${i}`, api: 1000, rate: 0.3 }));
+    const lines = {
+      life:    { targetAPI: 5000, rate: 0.35, products: five },
+      ah:      { targetAPI: 1000, rate: 0.25, products: [{ name: 'X', api: 1, rate: 1 }] },
+      general: { targetAPI: 0, rate: 0.1 },
+    };
+
+    await saveYearPlan(TENANT_ID, UID, YEAR, lines, 'composite');
+
+    const payload = hoisted.mockSetDoc.mock.calls[0][1];
+    expect(payload.lines.life.products).toHaveLength(4);
+    expect(payload.lines.ah.products).toEqual([]); // A&H is never a product line
   });
 });

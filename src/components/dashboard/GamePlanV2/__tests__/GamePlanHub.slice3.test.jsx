@@ -5,66 +5,129 @@ import StepRail from '../StepRail';
 import PlanCascade from '../PlanCascade';
 import PlanAnchorStrip from '../PlanAnchorStrip';
 
-// ── StepRail — Slice 3 ──────────────────────────────────────────────────────
+// Direction 1.5 (PR-U1): the rail/cascade collapsed from 4 steps to 3 —
+// Money Needs + Year Plan merged into one "Money Needs" step (the merged
+// allocator writes the yearPlan). Rail: Money Needs → Monthly → Review & Commit.
 
-describe('StepRail — flag OFF (no onOpenYearPlan)', () => {
-  it('Step 2 shows Next/non-interactive state unchanged', () => {
+// ── StepRail — Step 1 (merged Money Needs) ──────────────────────────────────
+
+describe('StepRail — Step 1 not allocated (yearPlanFilled false)', () => {
+  it('worksheet started but not allocated → "In progress" current state', () => {
+    render(
+      <StepRail
+        moneyNeedsFilled={true}
+        onOpenMoneyNeeds={() => {}}
+        yearPlanFilled={false}
+      />
+    );
+    expect(screen.getByText('In progress')).toBeInTheDocument();
+    expect(screen.getByText('What you need & how you write it')).toBeInTheDocument();
+    // Money Needs is always clickable
+    expect(screen.getByRole('button', { name: /money needs/i })).toBeInTheDocument();
+    // Monthly + Commit are non-interactive (flag off / not yet reachable)
+    expect(screen.getAllByText('Coming soon')).toHaveLength(2);
+  });
+
+  it('nothing started → "Start" kicker', () => {
     render(
       <StepRail
         moneyNeedsFilled={false}
         onOpenMoneyNeeds={() => {}}
-        onOpenYearPlan={undefined}
-        yearPlanFilled={false}
-      />
-    );
-    expect(screen.getByText('Next')).toBeInTheDocument();
-    // 3 "Coming soon" subs: Step 2 (flag off) + Step 3 + Step 4
-    expect(screen.getAllByText('Coming soon')).toHaveLength(3);
-    // Step 2 card is aria-disabled (no onClick handler)
-    expect(screen.getByText('Year Plan').closest('[aria-disabled="true"]')).toBeTruthy();
-  });
-});
-
-describe('StepRail — flag ON, no plan', () => {
-  it('Step 2 shows Start/current state and is clickable', () => {
-    const onOpenYearPlan = vi.fn();
-    render(
-      <StepRail
-        moneyNeedsFilled={true}
-        onOpenMoneyNeeds={() => {}}
-        onOpenYearPlan={onOpenYearPlan}
         yearPlanFilled={false}
       />
     );
     expect(screen.getByText('Start')).toBeInTheDocument();
-    expect(screen.getByText('Allocate API by line')).toBeInTheDocument();
-    // Step 2 is a clickable button
-    expect(screen.getByRole('button', { name: /year plan/i })).toBeInTheDocument();
   });
 });
 
-describe('StepRail — flag ON, saved plan', () => {
-  it('Step 2 shows Done/settled state and remains clickable', () => {
+describe('StepRail — Step 1 allocated (yearPlanFilled true)', () => {
+  it('merged Money Needs step shows Done', () => {
     render(
       <StepRail
         moneyNeedsFilled={true}
         onOpenMoneyNeeds={() => {}}
-        onOpenYearPlan={() => {}}
         yearPlanFilled={true}
+        onOpenMonthlyPlan={() => {}}
       />
     );
-    // Both Step 1 and Step 2 show "Done" kicker
-    expect(screen.getAllByText('Done')).toHaveLength(2);
-    expect(screen.getByText('API allocated by line')).toBeInTheDocument();
-    // Step 2 is still a button (clickable → opens modal)
-    expect(screen.getByRole('button', { name: /year plan/i })).toBeInTheDocument();
+    // Step 1 Done (allocated); Step 2 Monthly becomes the current step
+    expect(screen.getByText('Allocated by line')).toBeInTheDocument();
+    expect(screen.getByText('Split into months')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /money needs/i })).toBeInTheDocument();
   });
 });
 
-// ── PlanCascade — Slice 3 ───────────────────────────────────────────────────
+// ── StepRail — Step 2 (Monthly Plan) live status ────────────────────────────
+
+describe('StepRail — Step 2 Monthly Plan', () => {
+  it('Done when monthly filled (Steps 1 + 2 both Done)', () => {
+    render(
+      <StepRail
+        moneyNeedsFilled={true}
+        onOpenMoneyNeeds={() => {}}
+        yearPlanFilled={true}
+        onOpenMonthlyPlan={() => {}}
+        monthlyPlanFilled={true}
+      />
+    );
+    expect(screen.getAllByText('Done')).toHaveLength(2);
+    expect(screen.getByRole('button', { name: /monthly plan/i })).toBeInTheDocument();
+  });
+
+  it('Start when year allocated but monthly not yet', () => {
+    render(
+      <StepRail
+        moneyNeedsFilled={true}
+        onOpenMoneyNeeds={() => {}}
+        yearPlanFilled={true}
+        onOpenMonthlyPlan={() => {}}
+        monthlyPlanFilled={false}
+      />
+    );
+    const startButtons = screen.getAllByText('Start');
+    expect(startButtons).toHaveLength(1); // Step 2 is the first-incomplete step
+    expect(screen.getByText('Split into months')).toBeInTheDocument();
+  });
+});
+
+// ── StepRail — Step 3 (Review & Commit) ─────────────────────────────────────
+
+describe('StepRail — Step 3 Review & Commit', () => {
+  it('flag OFF (no onOpenReviewCommit) → Coming', () => {
+    render(
+      <StepRail
+        moneyNeedsFilled={true}
+        onOpenMoneyNeeds={() => {}}
+        yearPlanFilled={true}
+        onOpenMonthlyPlan={() => {}}
+        monthlyPlanFilled={true}
+      />
+    );
+    // Step 3 not reachable without onOpenReviewCommit
+    expect(screen.getByText('Coming soon')).toBeInTheDocument();
+  });
+
+  it('reachable + committed → Done / Plan committed', () => {
+    render(
+      <StepRail
+        moneyNeedsFilled={true}
+        onOpenMoneyNeeds={() => {}}
+        yearPlanFilled={true}
+        onOpenMonthlyPlan={() => {}}
+        monthlyPlanFilled={true}
+        onOpenReviewCommit={vi.fn()}
+        committed={true}
+      />
+    );
+    expect(screen.getByText('Plan committed')).toBeInTheDocument();
+    expect(screen.getAllByText('Done')).toHaveLength(3); // all three steps
+  });
+});
+
+// ── PlanCascade — 3-rung (Money Needs merged) ───────────────────────────────
 
 describe('PlanCascade — flag OFF', () => {
-  it('Year Plan and Monthly Plan both show Coming badge', () => {
+  it('Monthly Plan + Review & Commit show Coming (Money Needs rung is live, no planned-API sub-line)', () => {
     render(
       <PlanCascade
         commissionNeed={50000}
@@ -74,13 +137,15 @@ describe('PlanCascade — flag OFF', () => {
         yearPlanFilled={false}
       />
     );
-    // Three ComingRungs rendered — Year Plan + Monthly Plan + Commit
-    expect(screen.getAllByText('Coming')).toHaveLength(3);
+    // Two ComingRungs — Monthly + Commit (Year Plan rung is gone, merged into Money Needs)
+    expect(screen.getAllByText('Coming')).toHaveLength(2);
+    // No planned-API sub-line when the loop is gated off
+    expect(screen.queryByText('Planned annual API')).not.toBeInTheDocument();
   });
 });
 
-describe('PlanCascade — flag ON, no plan', () => {
-  it('Year Plan and Monthly Plan both show honest empty live rungs, no Coming badges', () => {
+describe('PlanCascade — flag ON, not allocated', () => {
+  it('Money Needs rung shows "Allocate to set"; Monthly shows honest empty; no Coming', () => {
     render(
       <PlanCascade
         commissionNeed={50000}
@@ -90,16 +155,16 @@ describe('PlanCascade — flag ON, no plan', () => {
         yearPlanFilled={false}
       />
     );
-    // Both live rungs show "Set in your plan" when neither plan is filled
-    expect(screen.getAllByText('Set in your plan')).toHaveLength(2);
     expect(screen.getByText('Planned annual API')).toBeInTheDocument();
-    // No ComingRung badges — both Step 2 and Step 3 are live rungs
+    expect(screen.getByText('Allocate to set')).toBeInTheDocument();
+    // Monthly live rung honest-empty
+    expect(screen.getByText('Set in your plan')).toBeInTheDocument();
     expect(screen.queryByText('Coming')).not.toBeInTheDocument();
   });
 });
 
-describe('PlanCascade — flag ON, year plan saved, no monthly plan', () => {
-  it('Year Plan shows total, Monthly rung shows honest empty, no Coming badges', () => {
+describe('PlanCascade — flag ON, allocated, no monthly plan', () => {
+  it('Money Needs rung shows the planned API total; Monthly shows honest empty', () => {
     render(
       <PlanCascade
         commissionNeed={50000}
@@ -109,59 +174,14 @@ describe('PlanCascade — flag ON, year plan saved, no monthly plan', () => {
         yearPlanFilled={true}
       />
     );
-    // Year plan total is rendered (TTD currency)
     expect(screen.getByText(/120,000/)).toBeInTheDocument();
-    // Monthly live rung shows honest empty
-    expect(screen.getByText('Set in your plan')).toBeInTheDocument();
-    // No ComingRung badges — both Step 2 and Step 3 are live rungs
+    expect(screen.getByText('Set in your plan')).toBeInTheDocument(); // Monthly only
     expect(screen.queryByText('Coming')).not.toBeInTheDocument();
   });
 });
 
-// ── StepRail — Step 3 live status (Slice 3) ────────────────────────────────
-
-describe('StepRail — Step 3 done when monthlyPlanFilled', () => {
-  it('shows Done kicker for Step 3 when year and monthly plans both filled', () => {
-    render(
-      <StepRail
-        moneyNeedsFilled={true}
-        onOpenMoneyNeeds={() => {}}
-        onOpenYearPlan={() => {}}
-        yearPlanFilled={true}
-        onOpenMonthlyPlan={() => {}}
-        monthlyPlanFilled={true}
-      />
-    );
-    // Steps 1, 2, and 3 all Done
-    expect(screen.getAllByText('Done')).toHaveLength(3);
-    expect(screen.getByRole('button', { name: /monthly plan/i })).toBeInTheDocument();
-  });
-});
-
-describe('StepRail — Step 3 current when year filled, monthly not', () => {
-  it('shows Start kicker for Step 3 when year plan done and monthly not started', () => {
-    render(
-      <StepRail
-        moneyNeedsFilled={true}
-        onOpenMoneyNeeds={() => {}}
-        onOpenYearPlan={() => {}}
-        yearPlanFilled={true}
-        onOpenMonthlyPlan={() => {}}
-        monthlyPlanFilled={false}
-      />
-    );
-    // Step 3 is first-incomplete — shows Start (current variant)
-    const startButtons = screen.getAllByText('Start');
-    expect(startButtons).toHaveLength(1);
-    expect(screen.getByText('Split into months')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /monthly plan/i })).toBeInTheDocument();
-  });
-});
-
-// ── PlanCascade — Monthly plan filled (Slice 3) ─────────────────────────────
-
 describe('PlanCascade — flag ON, monthly plan filled', () => {
-  it('Monthly rung shows total and YTD ahead badge', () => {
+  it('Monthly rung shows per-month total and YTD ahead badge', () => {
     render(
       <PlanCascade
         commissionNeed={50000}
@@ -174,13 +194,11 @@ describe('PlanCascade — flag ON, monthly plan filled', () => {
         monthlyYtdDelta={5000}
       />
     );
-    // Step 2 still shows the annual figure; step 3 shows per-month (120000 / 12 = 10,000)
+    // Money Needs rung shows the annual figure; Monthly shows per-month (120000 / 12 = 10,000)
     expect(screen.getAllByText(/120,000/).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/10,000/)).toBeInTheDocument();
-    // YTD badge shown with ahead indicator
     expect(screen.getByTestId('monthly-ytd-badge')).toBeInTheDocument();
     expect(screen.getByTestId('monthly-ytd-badge').textContent).toMatch(/ahead/);
-    // No ComingRung
     expect(screen.queryByText('Coming')).not.toBeInTheDocument();
   });
 
@@ -201,10 +219,10 @@ describe('PlanCascade — flag ON, monthly plan filled', () => {
   });
 });
 
-// ── PlanAnchorStrip — completeness ──────────────────────────────────────────
+// ── PlanAnchorStrip — completeness (3 steps) ────────────────────────────────
 
-describe('PlanAnchorStrip — completeness when Year Plan filled', () => {
-  it('shows 50% with 2 of 4 steps built', () => {
+describe('PlanAnchorStrip — completeness', () => {
+  it('shows 33% with 1 of 3 steps built (allocated only)', () => {
     render(
       <PlanAnchorStrip
         year={2026}
@@ -213,14 +231,14 @@ describe('PlanAnchorStrip — completeness when Year Plan filled', () => {
         renewalsCover={10000}
         grossNeed={90000}
         apiCommitment={null}
-        planBuiltPct={50}
-        stepsBuilt={2}
-        totalSteps={4}
+        planBuiltPct={33}
+        stepsBuilt={1}
+        totalSteps={3}
         moneyNeedsFilled={true}
       />
     );
-    expect(screen.getByText('50%')).toBeInTheDocument();
-    expect(screen.getByText('2 of 4 steps')).toBeInTheDocument();
+    expect(screen.getByText('33%')).toBeInTheDocument();
+    expect(screen.getByText('1 of 3 steps')).toBeInTheDocument();
   });
 
   it('API Commitment chip stays on goals value — not the plan total', () => {
@@ -232,35 +250,13 @@ describe('PlanAnchorStrip — completeness when Year Plan filled', () => {
         renewalsCover={10000}
         grossNeed={90000}
         apiCommitment={null}
-        planBuiltPct={50}
-        stepsBuilt={2}
-        totalSteps={4}
+        planBuiltPct={33}
+        stepsBuilt={1}
+        totalSteps={3}
         moneyNeedsFilled={true}
       />
     );
-    // Goals API unset → chip shows "—" and "Set in your plan" hint
     expect(screen.getByText('—')).toBeInTheDocument();
     expect(screen.getByText('Set in your plan')).toBeInTheDocument();
-  });
-});
-
-describe('PlanAnchorStrip — completeness when Monthly Plan also filled', () => {
-  it('shows 75% with 3 of 4 steps built', () => {
-    render(
-      <PlanAnchorStrip
-        year={2026}
-        commissionNeed={50000}
-        afterTaxNeed={80000}
-        renewalsCover={10000}
-        grossNeed={90000}
-        apiCommitment={null}
-        planBuiltPct={75}
-        stepsBuilt={3}
-        totalSteps={4}
-        moneyNeedsFilled={true}
-      />
-    );
-    expect(screen.getByText('75%')).toBeInTheDocument();
-    expect(screen.getByText('3 of 4 steps')).toBeInTheDocument();
   });
 });

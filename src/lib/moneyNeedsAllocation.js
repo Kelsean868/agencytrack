@@ -250,3 +250,59 @@ export function buildAllocationSummary(alloc, visibleKeys, required) {
   const allocatedPct = req > 0 ? totalCommission / req : 0;
   return { lines, totalCommission, totalAPI, allocatedPct, required: req };
 }
+
+// ── Adapter: 3-line commission allocation → yearPlan keyed object (Direction 1.5) ──
+// Maps the allocator's commission-canonical 3-line model onto the canonical
+// `yearPlan/{year}` line shape (targetAPI-canonical), over the SHARED 3 keys
+// ['life','ah','general']. `general` is always carried, so its API never
+// vanishes from the committed total (the money-undercount fix — PR-U1 §0).
+//
+// Per line:
+//   • targetAPI         = lineAPI (commission ÷ rate; Σ productAPI when drilled)
+//   • derivedCommission = lineCommission (the canonical commission)
+//   • rate              = effectiveLineRate (weighted when drilled)
+//   • enabled           = whether the line is visible for the license profile
+//   • products          = [{ name, api, rate }] (≤4) for drilled life/general
+//   • pct               = share of the total enabled targetAPI
+//
+// Round-trip invariant: Σ targetAPI over enabled keys === totalAllocatedAPI over
+// the visible keys (targetAPI === lineAPI per line). One direction only — the
+// allocator re-seeds from worksheet targets on reload (`.allocation` reader
+// retired in PR-U2). Returns the `lines` object for saveYearPlan(...).
+export function allocationToYearPlan(allocation) {
+  const licenseClass = ALLOC_LINE_GATING[allocation?.licenseClass] ? allocation.licenseClass : 'composite';
+  const visible = new Set(visibleLineKeys(licenseClass));
+
+  const lines = {};
+  for (const key of ALLOC_LINE_KEYS) {
+    const line = allocation?.lines?.[key] ?? {};
+    const enabled = visible.has(key);
+    const api = enabled ? lineAPI(line) : 0;
+    const commission = enabled ? lineCommission(line) : 0;
+    const drilled = enabled && isDrilled(line);
+    const products = drilled
+      ? line.products.slice(0, MAX_PRODUCTS).map((p) => ({
+          name: p.name ?? '',
+          api: productAPI(p),
+          rate: num(p.rate),
+        }))
+      : [];
+    lines[key] = {
+      targetAPI: api,
+      pct: 0,
+      derivedApps: Math.round(allocApps(api)),
+      derivedCommission: commission,
+      enabled,
+      rate: effectiveLineRate(line),
+      products,
+    };
+  }
+
+  const totalAPI = ALLOC_LINE_KEYS.reduce((s, k) => s + (lines[k].enabled ? lines[k].targetAPI : 0), 0);
+  if (totalAPI > 0) {
+    for (const k of ALLOC_LINE_KEYS) {
+      if (lines[k].enabled) lines[k].pct = parseFloat(((lines[k].targetAPI / totalAPI) * 100).toFixed(2));
+    }
+  }
+  return lines;
+}

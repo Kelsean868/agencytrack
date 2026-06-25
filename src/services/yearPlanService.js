@@ -3,13 +3,32 @@ import {
   doc, getDoc, setDoc, updateDoc, serverTimestamp,
 } from 'firebase/firestore';
 
-export const LINE_KEYS = ['life', 'ah', 'property', 'motor'];
+// Direction 1.5 (PR-U1): the canonical loop line taxonomy is the allocator's
+// product-blessed 3-line model. `general` subsumes the legacy property+motor
+// lines (award-neutral, total-preserving). Every yearPlan reader adopts this
+// shared constant — see GamePlanV2/index.jsx (hub total) and ReviewCommitModal.
+export const LINE_KEYS = ['life', 'ah', 'general'];
 
 export const LICENSE_PROFILES = ['composite', 'life_only', 'general_only'];
+
+// Lines that can carry per-product detail (mirrors the allocator's drillable set).
+const PRODUCT_LINE_KEYS = ['life', 'general'];
+const MAX_LINE_PRODUCTS = 4;
 
 export function resolveLicenseProfile(userDoc) {
   const p = userDoc?.licenseProfile;
   return LICENSE_PROFILES.includes(p) ? p : 'composite';
+}
+
+// Sanitize a products array onto the additive { name, api, rate } shape (≤4).
+// Numeric fields parseFloat-enforced; non-arrays / empty → [].
+function sanitizeProducts(products) {
+  if (!Array.isArray(products)) return [];
+  return products.slice(0, MAX_LINE_PRODUCTS).map((p) => ({
+    name: typeof p?.name === 'string' ? p.name : '',
+    api:  parseFloat(p?.api)  || 0,
+    rate: parseFloat(p?.rate) || 0,
+  }));
 }
 
 const LINE_SCAFFOLD = () => ({
@@ -18,6 +37,9 @@ const LINE_SCAFFOLD = () => ({
   derivedApps: 0,
   derivedCommission: 0,
   enabled: true,
+  // Additive (Direction 1.5) — per-line commission rate + ≤4 named products.
+  rate: 0,
+  products: [],
 });
 
 const BLANK_SCAFFOLD = (tenantId, uid, year, licenseProfile) => ({
@@ -27,10 +49,9 @@ const BLANK_SCAFFOLD = (tenantId, uid, year, licenseProfile) => ({
   licenseProfile,
   status: 'draft',
   lines: {
-    life:     LINE_SCAFFOLD(),
-    ah:       LINE_SCAFFOLD(),
-    property: LINE_SCAFFOLD(),
-    motor:    LINE_SCAFFOLD(),
+    life:    LINE_SCAFFOLD(),
+    ah:      LINE_SCAFFOLD(),
+    general: LINE_SCAFFOLD(),
   },
   createdAt: serverTimestamp(),
   updatedAt: serverTimestamp(),
@@ -69,7 +90,9 @@ export async function getYearPlan(tenantId, uid, year) {
  * the lines/licenseProfile in-place (preserving any Slice-3+ fields already
  * on the doc).
  *
- * Each line: { targetAPI, pct, derivedApps, derivedCommission, enabled }.
+ * Each line: { targetAPI, pct, derivedApps, derivedCommission, enabled,
+ * rate, products: [{ name, api, rate }] }. `rate`/`products` are additive
+ * (Direction 1.5) and only meaningful on the product lines (life/general).
  * All numeric fields are parseFloat-enforced before write.
  */
 export async function saveYearPlan(tenantId, uid, year, lines, licenseProfile) {
@@ -90,6 +113,8 @@ export async function saveYearPlan(tenantId, uid, year, lines, licenseProfile) {
       derivedApps:       parseFloat(line.derivedApps)       || 0,
       derivedCommission: parseFloat(line.derivedCommission) || 0,
       enabled:           line.enabled !== false,
+      rate:              parseFloat(line.rate)              || 0,
+      products:          PRODUCT_LINE_KEYS.includes(k) ? sanitizeProducts(line.products) : [],
     };
   }
 

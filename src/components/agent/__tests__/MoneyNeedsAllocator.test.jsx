@@ -10,10 +10,14 @@ vi.mock('../../../context/AuthContext', () => ({
   useAuth: () => ({ user: mockUser, tenantId: mockTenantId }),
 }));
 
-const mockSaveAllocation = vi.fn().mockResolvedValue(undefined);
-vi.mock('../../../services/moneyNeedsService', async (importActual) => {
+// Direction 1.5 (PR-U1): the allocator now writes the canonical yearPlan store
+// via saveYearPlan (the moneyNeeds.allocation write is cut). Mock the yearPlan
+// writer to capture the adapted line payload; keep moneyNeedsService real for
+// the PLAYGROUND_INCOME_GOAL_KEY export.
+const mockSaveYearPlan = vi.fn().mockResolvedValue(undefined);
+vi.mock('../../../services/yearPlanService', async (importActual) => {
   const actual = await importActual();
-  return { ...actual, saveAllocation: (...a) => mockSaveAllocation(...a) };
+  return { ...actual, saveYearPlan: (...a) => mockSaveYearPlan(...a) };
 });
 
 const mockUpdateUserProfile = vi.fn().mockResolvedValue(undefined);
@@ -135,8 +139,10 @@ describe('MoneyNeedsAllocator — commission-first input model', () => {
     expect(rateField.value).toBe('35'); // 0.35 shown as 35
     fireEvent.change(rateField, { target: { value: '50' } }); // 50% → 0.5
     fireEvent.blur(rateField);
-    await waitFor(() => expect(mockSaveAllocation).toHaveBeenCalled());
-    expect(mockSaveAllocation.mock.calls.at(-1)[3].lines.life.rate).toBe(0.5);
+    // Writer repoint: persist → saveYearPlan(tenantId, uid, year, adaptedLines, profile).
+    // The adapted lines are keyed directly (life/ah/general); rate is preserved.
+    await waitFor(() => expect(mockSaveYearPlan).toHaveBeenCalled());
+    expect(mockSaveYearPlan.mock.calls.at(-1)[3].life.rate).toBe(0.5);
   });
 
   it('rate change KEEPS commission fixed and re-derives API', () => {
@@ -146,6 +152,23 @@ describe('MoneyNeedsAllocator — commission-first input model', () => {
     // commission unchanged, API re-derived 35000/0.5 = 70000
     expect(screen.getByTestId('alloc-line-commission-input-life').value).toBe('35000');
     expect(within(screen.getByTestId('alloc-line-api-label-life')).getByText(/TTD 70,000/)).toBeTruthy();
+  });
+});
+
+describe('MoneyNeedsAllocator — writer repoint (yearPlan, general carried)', () => {
+  it('persists the yearPlan with general API present (the money-undercount fix)', async () => {
+    // Seed general from property+motor = 20000 commission @ 0.10 → 200000 API.
+    render(<MoneyNeedsAllocator worksheet={makeWorksheet()} />);
+    // Edit a line and blur to trigger persist → saveYearPlan.
+    const lifeComm = screen.getByTestId('alloc-line-commission-input-life');
+    fireEvent.change(lifeComm, { target: { value: '35000' } });
+    fireEvent.blur(lifeComm);
+    await waitFor(() => expect(mockSaveYearPlan).toHaveBeenCalled());
+    const adaptedLines = mockSaveYearPlan.mock.calls.at(-1)[3];
+    // General is one of the 3 keys and its derived API is carried (never dropped).
+    expect(Object.keys(adaptedLines)).toEqual(['life', 'ah', 'general']);
+    expect(adaptedLines.general.targetAPI).toBeCloseTo(200000);
+    expect(adaptedLines.general.enabled).toBe(true);
   });
 });
 

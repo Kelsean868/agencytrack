@@ -7,17 +7,16 @@ import PlanAnchorStrip from '../components/dashboard/GamePlanV2/PlanAnchorStrip'
 
 // ── StepRail ──────────────────────────────────────────────────────────────────
 
-describe('StepRail — Step 4 committed wiring', () => {
+describe('StepRail — Step 3 (Review & Commit) wiring', () => {
   const baseProps = {
     moneyNeedsFilled: true,
     onOpenMoneyNeeds: vi.fn(),
-    onOpenYearPlan: vi.fn(),
     yearPlanFilled: true,
     onOpenMonthlyPlan: vi.fn(),
     monthlyPlanFilled: true,
   };
 
-  it('flag OFF (no onOpenReviewCommit) → Step 4 shows Coming', () => {
+  it('flag OFF (no onOpenReviewCommit) → Step 3 shows Coming', () => {
     render(<StepRail {...baseProps} />);
     // Step 4 card — coming variant: aria-disabled, "Coming" kicker
     const rail = screen.getByTestId('game-plan-rail');
@@ -25,7 +24,7 @@ describe('StepRail — Step 4 committed wiring', () => {
     expect(screen.getByText('Coming soon')).toBeTruthy();
   });
 
-  it('flag ON + not committed → Step 4 shows Review (current)', () => {
+  it('flag ON + not committed → Step 3 shows Review (current)', () => {
     render(
       <StepRail
         {...baseProps}
@@ -37,7 +36,7 @@ describe('StepRail — Step 4 committed wiring', () => {
     expect(screen.getByText('Review & commit your plan')).toBeTruthy();
   });
 
-  it('flag ON + committed → Step 4 shows Done / Plan committed', () => {
+  it('flag ON + committed → Step 3 shows Done / Plan committed', () => {
     render(
       <StepRail
         {...baseProps}
@@ -45,9 +44,9 @@ describe('StepRail — Step 4 committed wiring', () => {
         committed={true}
       />
     );
-    // "Done" kicker appears twice (Step 2 yearPlanFilled + Step 4 committed)
+    // All three steps Done (Money Needs allocated + Monthly + committed)
     const donePills = screen.getAllByText('Done');
-    expect(donePills.length).toBeGreaterThanOrEqual(1);
+    expect(donePills.length).toBe(3);
     expect(screen.getByText('Plan committed')).toBeTruthy();
   });
 });
@@ -65,12 +64,11 @@ describe('PlanCascade — Commit rung', () => {
     monthlyYtdDelta: 0,
   };
 
-  it('flag OFF → Step 4 shows ComingRung (Coming pill)', () => {
+  it('flag OFF → Step 3 (Review & Commit) shows ComingRung (Coming pill)', () => {
     render(<PlanCascade {...baseProps} yearPlanEnabled={false} />);
-    // Three Coming rungs: Year Plan, Monthly Plan, Commit (all gated off)
-    const comingPills = screen.getAllByText(/coming/i);
-    // At least one "Coming" pill for the Commit rung
-    expect(comingPills.length).toBeGreaterThanOrEqual(1);
+    // Two Coming rungs: Monthly Plan + Review & Commit (Year Plan merged into Money Needs)
+    const comingPills = screen.getAllByText('Coming');
+    expect(comingPills).toHaveLength(2);
     // No committed rung
     expect(screen.queryByTestId('commit-rung-committed')).toBeNull();
   });
@@ -138,29 +136,29 @@ describe('PlanAnchorStrip — completeness 100% when committed', () => {
     moneyNeedsFilled: true,
   };
 
-  it('4 of 4 steps = 100% when all four steps built', () => {
-    render(
-      <PlanAnchorStrip
-        {...baseProps}
-        stepsBuilt={4}
-        totalSteps={4}
-        planBuiltPct={100}
-      />
-    );
-    expect(screen.getByText('100%')).toBeTruthy();
-    expect(screen.getByText('4 of 4 steps')).toBeTruthy();
-  });
-
-  it('3 of 4 steps = 75% when not yet committed', () => {
+  it('3 of 3 steps = 100% when all three steps built', () => {
     render(
       <PlanAnchorStrip
         {...baseProps}
         stepsBuilt={3}
-        totalSteps={4}
-        planBuiltPct={75}
+        totalSteps={3}
+        planBuiltPct={100}
       />
     );
-    expect(screen.getByText('75%')).toBeTruthy();
-    expect(screen.getByText('3 of 4 steps')).toBeTruthy();
+    expect(screen.getByText('100%')).toBeTruthy();
+    expect(screen.getByText('3 of 3 steps')).toBeTruthy();
+  });
+
+  it('2 of 3 steps = 67% when not yet committed', () => {
+    render(
+      <PlanAnchorStrip
+        {...baseProps}
+        stepsBuilt={2}
+        totalSteps={3}
+        planBuiltPct={67}
+      />
+    );
+    expect(screen.getByText('67%')).toBeTruthy();
+    expect(screen.getByText('2 of 3 steps')).toBeTruthy();
   });
 });
