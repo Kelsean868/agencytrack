@@ -43,6 +43,7 @@ import {
   detectSkippedMonths,
   getFinancingMonth,
   setFinancingMonth,
+  setFinancingProration,
   listFinancingMonths,
 } from '../financingService';
 
@@ -424,6 +425,125 @@ describe('setFinancingMonth', () => {
     await expect(setFinancingMonth(TENANT, AGENT, '2026_01', VALID_STATEMENT, ACTOR)).rejects.toThrow(/signed-in/);
     hoisted.mockAuth.currentUser = { uid: 'mgr-uid' };
     await expect(setFinancingMonth(TENANT, AGENT, '2026_01', VALID_STATEMENT, {})).rejects.toThrow(/actor\.role/);
+  });
+});
+
+describe('setFinancingProration (K5)', () => {
+  const SUGGESTION = {
+    validatingAPI: 30000,
+    actualAPI: 15000,
+    suggestedFinancing: 4000,
+    basisSource: 'submitted-final',
+  };
+
+  it('forward create (no statement) writes proration-only + entry audit', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    const out = await setFinancingProration(TENANT, AGENT, '2026_02', SUGGESTION, ACTOR);
+
+    expect(mockSetDoc).toHaveBeenCalledTimes(1);
+    const [, payload, opts] = mockSetDoc.mock.calls[0];
+    expect(opts).toBeUndefined(); // full write on first proration
+    expect(payload).toMatchObject({
+      agentId: AGENT,
+      tenantId: TENANT,
+      month: '2026_02',
+      validatingAPI: 30000,
+      actualAPI: 15000,
+      suggestedFinancing: 4000,
+      basisSource: 'submitted-final',
+      source: 'manager_entry',
+      prorationEnteredBy: 'mgr-uid',
+      prorationEnteredByName: 'B. Manager',
+    });
+    expect(payload.prorationEnteredAt).toBe('__SERVER_TIMESTAMP__');
+    expect(payload.prorationUpdatedAt).toBe('__SERVER_TIMESTAMP__');
+    // proration-only create never writes the statement core
+    expect(payload).not.toHaveProperty('runningBalance');
+    expect(payload).not.toHaveProperty('financingPaid');
+    // no managerFinancing / adjustmentPct on a bare suggestion (lock b)
+    expect(payload).not.toHaveProperty('managerFinancing');
+    expect(payload).not.toHaveProperty('adjustmentPct');
+    expect(out.month).toBe('2026_02');
+  });
+
+  it('merge onto an existing statement doc — preserves statement core, never re-stamps entry audit', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap({
+      ...VALID_STATEMENT, month: '2026_02', agentId: AGENT,
+      enteredBy: 'orig-mgr', runningBalance: 22400,
+    }));
+    await setFinancingProration(TENANT, AGENT, '2026_02', SUGGESTION, ACTOR);
+
+    const [, payload, opts] = mockSetDoc.mock.calls[0];
+    expect(opts).toEqual({ merge: true });
+    expect(payload.actualAPI).toBe(15000);
+    expect(payload.prorationUpdatedAt).toBe('__SERVER_TIMESTAMP__');
+    // merge write never touches the authoritative statement, nor the entry audit
+    expect(payload).not.toHaveProperty('runningBalance');
+    expect(payload).not.toHaveProperty('prorationEnteredBy');
+  });
+
+  it('stores managerFinancing + adjustmentPct once the manager confirms', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await setFinancingProration(TENANT, AGENT, '2026_02', {
+      ...SUGGESTION, managerFinancing: 4000, adjustmentPct: 0.5,
+    }, ACTOR);
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.managerFinancing).toBe(4000);
+    expect(payload.adjustmentPct).toBe(0.5);
+  });
+
+  it('accepts a NEGATIVE adjustmentPct (managerFinancing above current)', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await setFinancingProration(TENANT, AGENT, '2026_02', {
+      ...SUGGESTION, managerFinancing: 9000, adjustmentPct: -0.125,
+    }, ACTOR);
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.adjustmentPct).toBe(-0.125);
+  });
+
+  it('omits adjustmentPct when managerFinancing is unset, even if a pct is passed (lock b)', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await setFinancingProration(TENANT, AGENT, '2026_02', { ...SUGGESTION, adjustmentPct: 0.5 }, ACTOR);
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload).not.toHaveProperty('managerFinancing');
+    expect(payload).not.toHaveProperty('adjustmentPct');
+  });
+
+  it('parseFloat-coerces string proration numerics', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await setFinancingProration(TENANT, AGENT, '2026_02', {
+      validatingAPI: '30000', actualAPI: '15000', suggestedFinancing: '4000',
+      basisSource: 'settled-confirmed', managerFinancing: '4000', adjustmentPct: '0.5',
+    }, ACTOR);
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.actualAPI).toBe(15000);
+    expect(payload.managerFinancing).toBe(4000);
+    expect(payload.adjustmentPct).toBe(0.5);
+  });
+
+  it('rejects a bad basisSource enum', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await expect(setFinancingProration(TENANT, AGENT, '2026_02', { ...SUGGESTION, basisSource: 'bogus' }, ACTOR))
+      .rejects.toThrow(/basisSource/);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('rejects negative / non-number proration numerics', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await expect(setFinancingProration(TENANT, AGENT, '2026_02', { ...SUGGESTION, actualAPI: -1 }, ACTOR))
+      .rejects.toThrow(/actualAPI/);
+    await expect(setFinancingProration(TENANT, AGENT, '2026_02', { ...SUGGESTION, validatingAPI: 'NaN' }, ACTOR))
+      .rejects.toThrow(/validatingAPI/);
+    await expect(setFinancingProration(TENANT, AGENT, '2026_02', { ...SUGGESTION, managerFinancing: -5 }, ACTOR))
+      .rejects.toThrow(/managerFinancing/);
+  });
+
+  it('rejects a bad month key, missing auth, and missing actor.role', async () => {
+    await expect(setFinancingProration(TENANT, AGENT, '2026-02', SUGGESTION, ACTOR)).rejects.toThrow(/YYYY_MM/);
+    hoisted.mockAuth.currentUser = null;
+    await expect(setFinancingProration(TENANT, AGENT, '2026_02', SUGGESTION, ACTOR)).rejects.toThrow(/signed-in/);
+    hoisted.mockAuth.currentUser = { uid: 'mgr-uid' };
+    await expect(setFinancingProration(TENANT, AGENT, '2026_02', SUGGESTION, {})).rejects.toThrow(/actor\.role/);
   });
 });
 

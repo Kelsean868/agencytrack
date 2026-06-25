@@ -358,3 +358,102 @@ export async function setFinancingMonth(tenantId, agentId, month, statement, act
   await setDoc(ref, created);
   return { id: ref.id, ...created };
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Track K · K5 — validation-schedule proration
+//
+// Writes the proration fields onto the SAME financing/{agentId}_{YYYY_MM} doc
+// (the K2 ledger doc). Proration is FORWARD — it sets the coming month's draw
+// before any statement exists — so this method MAY create the doc with proration
+// fields only (no statement core). The K2 rules block was restructured (K5) so the
+// statement-core fields are required only when a statement field is present; a
+// proration-only write is permitted (no hasOnly / no key-allowlist preserved).
+//
+// All numerics parseFloat-enforced. basisSource is validated against BASIS_SOURCES
+// (K5 IS the writer of basisSource — K2 reserved it, derived-at-render only).
+// managerFinancing + adjustmentPct are OPTIONAL: a bare system suggestion writes
+// neither; once the manager confirms, both are stored (adjustmentPct is computed by
+// the caller via financingProration.computeAdjustmentPct on the CONFIRMED figure —
+// lock b). runningBalance and the statement core are NEVER touched here (merge:true
+// preserves them); proration never overwrites the authoritative statement.
+export async function setFinancingProration(tenantId, agentId, month, proration, actor) {
+  const writerUid = auth?.currentUser?.uid;
+  if (!writerUid)                      throw new Error('setFinancingProration: no signed-in user');
+  if (!tenantId)                       throw new Error('setFinancingProration: tenantId required');
+  if (!agentId)                        throw new Error('setFinancingProration: agentId required');
+  if (!MONTH_KEY_RE.test(month ?? '')) throw new Error('setFinancingProration: month must be YYYY_MM');
+  if (!actor || !actor.role)           throw new Error('setFinancingProration: actor.role required');
+
+  const validatingAPI      = parseFloat(proration?.validatingAPI);
+  const actualAPI          = parseFloat(proration?.actualAPI);
+  const suggestedFinancing = parseFloat(proration?.suggestedFinancing);
+  const { basisSource } = proration ?? {};
+
+  if (!Number.isFinite(validatingAPI)      || validatingAPI      < 0) throw new Error('setFinancingProration: validatingAPI must be a non-negative number');
+  if (!Number.isFinite(actualAPI)          || actualAPI          < 0) throw new Error('setFinancingProration: actualAPI must be a non-negative number');
+  if (!Number.isFinite(suggestedFinancing) || suggestedFinancing < 0) throw new Error('setFinancingProration: suggestedFinancing must be a non-negative number');
+  if (!BASIS_SOURCES.includes(basisSource)) throw new Error(`setFinancingProration: basisSource must be one of ${BASIS_SOURCES.join(', ')}`);
+
+  // managerFinancing is optional — present only once the manager confirms a figure.
+  let managerFinancing;
+  const hasManager = proration?.managerFinancing !== undefined
+    && proration?.managerFinancing !== null
+    && proration?.managerFinancing !== '';
+  if (hasManager) {
+    managerFinancing = parseFloat(proration.managerFinancing);
+    if (!Number.isFinite(managerFinancing) || managerFinancing < 0) {
+      throw new Error('setFinancingProration: managerFinancing must be a non-negative number when present');
+    }
+  }
+
+  // adjustmentPct rides with the confirmed figure: stored only when managerFinancing
+  // is set (lock b). The caller computes it; the service stores the typed value. May
+  // be negative (managerFinancing above the current amount in effect).
+  let adjustmentPct;
+  const hasAdjustment = hasManager
+    && proration?.adjustmentPct !== undefined
+    && proration?.adjustmentPct !== null
+    && proration?.adjustmentPct !== '';
+  if (hasAdjustment) {
+    adjustmentPct = parseFloat(proration.adjustmentPct);
+    if (!Number.isFinite(adjustmentPct)) {
+      throw new Error('setFinancingProration: adjustmentPct must be a number when present');
+    }
+  }
+
+  const ref = financingMonthDocRef(tenantId, agentId, month);
+  const existing = await getDoc(ref);
+  const now = serverTimestamp();
+
+  const core = {
+    agentId,
+    tenantId,
+    month,
+    validatingAPI,
+    actualAPI,
+    suggestedFinancing,
+    basisSource,
+    prorationUpdatedAt: now,
+    prorationUpdatedBy: writerUid,
+  };
+  if (hasManager)    core.managerFinancing = managerFinancing;
+  if (hasAdjustment) core.adjustmentPct    = adjustmentPct;
+
+  if (existing.exists()) {
+    // Merge onto the existing doc (statement and/or prior proration) — never touch
+    // runningBalance or the statement core; preserve first-proration audit.
+    await setDoc(ref, core, { merge: true });
+    return { id: ref.id, ...existing.data(), ...core };
+  }
+
+  // Forward proration before any statement — create the doc with proration only.
+  const created = {
+    ...core,
+    source: 'manager_entry',
+    prorationEnteredBy:     writerUid,
+    prorationEnteredByName: actor.name ?? '',
+    prorationEnteredAt:     now,
+  };
+  await setDoc(ref, created);
+  return { id: ref.id, ...created };
+}

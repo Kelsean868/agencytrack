@@ -1,18 +1,22 @@
 // Track K — FinancingTab container.
 //
-// Mounts the financing manager surface as two sub-views under one tab (mirroring
+// Mounts the financing manager surface as sub-views under one tab (mirroring
 // how settlements / persistency coexist in one area): the K1 Terms setup
-// (FinancingTermsSetup, unchanged) and the K2 Monthly Ledger (MonthlyStatementEntry).
-// A segmented control switches between them. Each sub-view owns its own agent
-// dropdown for now; a future LOW FU lifts the selection into this container.
+// (FinancingTermsSetup), the K2 Monthly Ledger (MonthlyStatementEntry), the K5
+// Proration override (FinancingProrationPanel), and the K4 Take-Home waterfall
+// (TakeHomeWaterfallView). A segmented control switches between them. Each
+// sub-view owns its own agent dropdown for now; a future LOW FU lifts the
+// selection into this container.
 import React, { useState } from 'react';
 import FinancingTermsSetup from './FinancingTermsSetup';
 import MonthlyStatementEntry from './MonthlyStatementEntry';
+import FinancingProrationPanel from './FinancingProrationPanel';
 import TakeHomeWaterfallView from './TakeHomeWaterfallView';
 
 const SUBVIEWS = [
   { id: 'terms',     label: 'Terms' },
   { id: 'ledger',    label: 'Monthly Ledger' },
+  { id: 'proration', label: 'Proration' },
   { id: 'takehome',  label: 'Take-Home' },
 ];
 
@@ -47,9 +51,10 @@ export default function FinancingTab() {
         })}
       </div>
 
-      {view === 'terms'    && <FinancingTermsSetup />}
-      {view === 'ledger'   && <MonthlyStatementEntry />}
-      {view === 'takehome' && <TakeHomeWaterfallView />}
+      {view === 'terms'     && <FinancingTermsSetup />}
+      {view === 'ledger'    && <MonthlyStatementEntry />}
+      {view === 'proration' && <FinancingProrationPanel />}
+      {view === 'takehome'  && <TakeHomeWaterfallView />}
     </div>
   );
 }

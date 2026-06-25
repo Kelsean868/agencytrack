@@ -43,6 +43,14 @@
  *   18. Negative financingPaid (>= 0 enforced)             → DENY
  *   DELETE
  *   19. BM delete                                          → DENY
+ *   K5 PRORATION (forward-create + restructured statement-core gate)
+ *   20. BM proration-only create (no statement fields)     → ALLOW
+ *   21. Proration-only, non-number validatingAPI           → DENY
+ *   22. Proration-only, bad basisSource enum               → DENY
+ *   23. UM proration-only write (excluded 5.3)             → DENY
+ *   24. Cross-tenant proration write                       → DENY
+ *   25. PARTIAL statement (one core field, rest missing)   → DENY
+ *   26. Proration MERGE onto existing statement doc        → ALLOW
  */
 
 import {
@@ -50,7 +58,7 @@ import {
   assertFails,
   assertSucceeds,
 } from '@firebase/rules-unit-testing';
-import { getDoc, getDocs, setDoc, deleteDoc, doc, collection, query, where } from 'firebase/firestore';
+import { getDoc, getDocs, setDoc, updateDoc, deleteDoc, doc, collection, query, where } from 'firebase/firestore';
 
 const PROJECT_ID   = process.env.GCLOUD_PROJECT ?? 'agencytrack-2a610';
 const TENANT_ID    = 'fin-ledger-test-tenant';
@@ -73,6 +81,21 @@ function finRef(db, agentId, month = SEED_MONTH, tenantId = TENANT_ID) {
 
 function ledgerCol(db, tenantId = TENANT_ID) {
   return collection(db, `tenants/${tenantId}/financing`);
+}
+
+// K5 proration-only payload — NO statement-core fields (forward of any statement).
+function prorationPayload(agentId, tenantId = TENANT_ID, overrides = {}) {
+  return {
+    agentId,
+    tenantId,
+    month:              SEED_MONTH,
+    validatingAPI:      30000,
+    actualAPI:          15000,
+    suggestedFinancing: 4000,
+    basisSource:        'submitted-final',
+    source:             'manager_entry',
+    ...overrides,
+  };
 }
 
 function statementPayload(agentId, tenantId = TENANT_ID, overrides = {}) {
@@ -221,6 +244,51 @@ async function main() {
   await t('19. BM delete → DENY', async () => {
     const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
     await assertFails(deleteDoc(finRef(db, AGENT_A)));
+  });
+
+  // ── K5 PRORATION ────────────────────────────────────────────────────────────
+  // Use AGENT_B's doc for proration-create cases (setDoc full-replaces, so prior
+  // statement writes to AGENT_B don't interfere — the post-write state is proration-only).
+  await t('20. BM proration-only create (no statement fields) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    await assertSucceeds(setDoc(finRef(db, AGENT_B), prorationPayload(AGENT_B)));
+  });
+
+  await t('21. Proration-only, non-number validatingAPI → DENY', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    await assertFails(setDoc(finRef(db, AGENT_B), prorationPayload(AGENT_B, TENANT_ID, { validatingAPI: '30000' })));
+  });
+
+  await t('22. Proration-only, bad basisSource enum → DENY', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    await assertFails(setDoc(finRef(db, AGENT_B), prorationPayload(AGENT_B, TENANT_ID, { basisSource: 'bogus' })));
+  });
+
+  await t('23. UM proration-only write (excluded 5.3) → DENY', async () => {
+    const db = testEnv.authenticatedContext('um1', authToken('unit_manager')).firestore();
+    await assertFails(setDoc(finRef(db, AGENT_B), prorationPayload(AGENT_B)));
+  });
+
+  await t('24. Cross-tenant proration write → DENY', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager', OTHER_TENANT)).firestore();
+    await assertFails(setDoc(finRef(db, AGENT_B), prorationPayload(AGENT_B)));
+  });
+
+  await t('25. PARTIAL statement (one core field, rest missing) → DENY', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    await assertFails(setDoc(finRef(db, AGENT_B), {
+      agentId: AGENT_B, tenantId: TENANT_ID, month: SEED_MONTH, runningBalance: 100,
+    }));
+  });
+
+  await t('26. Proration MERGE onto existing statement doc → ALLOW', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    // AGENT_A's seeded doc is a full statement; adding proration fields keeps the
+    // statement core present (post-merge state) → validStatementCore still holds.
+    await assertSucceeds(updateDoc(finRef(db, AGENT_A), {
+      validatingAPI: 30000, actualAPI: 15000, suggestedFinancing: 4000,
+      basisSource: 'settled-confirmed', managerFinancing: 4000, adjustmentPct: 0.5,
+    }));
   });
 
   console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed.`);
