@@ -1,4 +1,4 @@
-﻿---
+---
 description: Execute a kickoff brief through Phases 0-5, PINNED TO SONNET 4.6 (mechanical builds).
 argument-hint: <brief-path>
 model: sonnet

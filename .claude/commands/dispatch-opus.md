@@ -1,4 +1,4 @@
-﻿---
+---
 description: Execute a kickoff brief through Phases 0-5, PINNED TO OPUS 4.8 (judgment-dense builds).
 argument-hint: <brief-path>
 model: opus

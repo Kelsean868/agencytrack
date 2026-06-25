@@ -1,4 +1,4 @@
-﻿---
+---
 description: Land a brief to main + dispatch it, pinned to Sonnet 4.6 (mechanical builds â€” U0/harness-class)
 model: sonnet
 disable-model-invocation: true

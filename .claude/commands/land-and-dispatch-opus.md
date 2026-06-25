@@ -1,4 +1,4 @@
-﻿---
+---
 description: Land a brief to main + dispatch it, pinned to Opus 4.8 (judgment-dense builds â€” U1/U2-class)
 model: opus
 disable-model-invocation: true

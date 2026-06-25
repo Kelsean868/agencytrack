@@ -1,4 +1,4 @@
-﻿---
+---
 description: Run the canonical post-merge sequence after dispatcher confirms PR squash-merge.
 argument-hint: <pr-number>
 model: sonnet
