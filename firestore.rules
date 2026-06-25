@@ -1354,13 +1354,17 @@ service cloud.firestore {
         // ≤4 (when present). Deep per-product field validation stays in the
         // saveYearPlan sanitizer. All arms are guarded by `'x' in line` so a
         // write omitting the additive fields still passes (additive, not required).
+        // `is map` guards precede every `in` — in CEL, `in` on a non-map throws an
+        // evaluation error; the guard makes a malformed write a graceful DENY.
         function validYearPlanLine(line) {
-          return (!('rate' in line) || (line.rate is number && line.rate >= 0 && line.rate <= 1))
+          return line is map
+            && (!('rate' in line) || (line.rate is number && line.rate >= 0 && line.rate <= 1))
             && (!('products' in line) || (line.products is list && line.products.size() <= 4));
         }
         function validYearPlanLines(data) {
           return !('lines' in data) || (
-            (!('life' in data.lines)    || validYearPlanLine(data.lines.life))
+            data.lines is map
+            && (!('life' in data.lines)    || validYearPlanLine(data.lines.life))
             && (!('ah' in data.lines)      || validYearPlanLine(data.lines.ah))
             && (!('general' in data.lines) || validYearPlanLine(data.lines.general))
           );
