@@ -25,7 +25,7 @@ import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
 import useToast from '../../hooks/useToast';
 import { getTenantUsers } from '../../services/managerService';
-import { getFinancingTerms, getFinancingMonth, setFinancingProration } from '../../services/financingService';
+import { getFinancingTerms, listFinancingMonths, setFinancingProration } from '../../services/financingService';
 import { getOwnPolicies } from '../../services/policiesService';
 import { computeProration } from '../../lib/financingProration';
 import { getTodayTT, monthKeyFromDate, monthsBetweenKeys } from '../../utils/dateInputs';
@@ -42,6 +42,16 @@ const monthLabel = (key) => {
   return `${MON[Number(m) - 1] ?? m} ${y.slice(2)}`;
 };
 const pctLabel = (frac) => (frac == null || Number.isNaN(frac) ? '—' : `${Math.round(frac * 100)}%`);
+// Signed adjustment readout — adjustmentPct > 0 is a cut BELOW current (shown −X%),
+// < 0 is ABOVE current (shown +X%). Computes the sign from the magnitude so a
+// negative pct never double-signs (e.g. "−-13%").
+const adjustmentLabel = (frac) => {
+  if (frac == null || Number.isNaN(frac)) return '—';
+  const pct = Math.round(Math.abs(frac) * 100);
+  if (frac > 0) return `−${pct}%`;
+  if (frac < 0) return `+${pct}%`;
+  return '0%';
+};
 
 const EMPTY_FORM = { month: '', validatingAPI: '', managerFinancing: '' };
 
@@ -56,6 +66,7 @@ export default function FinancingProrationPanel() {
   const [selectedAgent, setSelectedAgent] = useState('');
   const [terms, setTerms]                 = useState(null);   // financingTerms doc
   const [policies, setPolicies]           = useState([]);     // agent's policy ledger
+  const [months, setMonths]               = useState([]);     // agent's financing ledger rows (stored proration)
   const [loading, setLoading]             = useState(false);
 
   const [form, setForm]                   = useState(EMPTY_FORM);
@@ -89,14 +100,19 @@ export default function FinancingProrationPanel() {
   // index already exists. (LOW FU: rename to a shared getPoliciesByAgent.)
   const loadAgent = useCallback((agentId) => {
     latestAgentReqRef.current = agentId;
-    if (!tenantId || !agentId) { setTerms(null); setPolicies([]); setForm(EMPTY_FORM); return; }
+    if (!tenantId || !agentId) { setTerms(null); setPolicies([]); setMonths([]); setForm(EMPTY_FORM); return; }
     setLoading(true);
     setValidationError('');
-    Promise.all([getFinancingTerms(tenantId, agentId), getOwnPolicies(tenantId, agentId)])
-      .then(([termsDoc, pols]) => {
+    Promise.all([
+      getFinancingTerms(tenantId, agentId),
+      getOwnPolicies(tenantId, agentId),
+      listFinancingMonths(tenantId, agentId),
+    ])
+      .then(([termsDoc, pols, ledger]) => {
         if (latestAgentReqRef.current !== agentId) return;
         setTerms(termsDoc);
         setPolicies(pols || []);
+        setMonths(ledger || []);
         setForm({ ...EMPTY_FORM, month: getTodayTT().slice(0, 7) });
       })
       .catch((e) => {
@@ -107,23 +123,22 @@ export default function FinancingProrationPanel() {
       .finally(() => { if (latestAgentReqRef.current === agentId) setLoading(false); });
   }, [tenantId, toast]);
 
-  // ── On month change, pre-populate from any stored proration for that month ──
+  // ── Sync the form to the selected month from the PRE-LOADED ledger ──────────
+  // Synchronous (no per-month fetch) — mirrors MonthlyStatementEntry. This avoids
+  // the race where a late async fetch clobbers the manager's in-progress edits
+  // (the effect re-fires only on month/ledger change, never on a keystroke).
+  // Selecting a stored month pre-fills its validatingAPI + managerFinancing;
+  // selecting an unsaved month clears them.
   const statementMonth = toMonthKey(form.month);
   useEffect(() => {
-    if (!tenantId || !selectedAgent || !statementMonth) return;
-    let cancelled = false;
-    getFinancingMonth(tenantId, selectedAgent, statementMonth)
-      .then((row) => {
-        if (cancelled || latestAgentReqRef.current !== selectedAgent) return;
-        setForm((f) => ({
-          ...f,
-          validatingAPI:    row?.validatingAPI != null ? String(row.validatingAPI) : '',
-          managerFinancing: row?.managerFinancing != null ? String(row.managerFinancing) : '',
-        }));
-      })
-      .catch((e) => { if (!cancelled) console.error(e); });
-    return () => { cancelled = true; };
-  }, [tenantId, selectedAgent, statementMonth]);
+    if (!statementMonth) return;
+    const row = months.find((m) => m.month === statementMonth);
+    setForm((f) => ({
+      ...f,
+      validatingAPI:    row?.validatingAPI != null ? String(row.validatingAPI) : '',
+      managerFinancing: row?.managerFinancing != null ? String(row.managerFinancing) : '',
+    }));
+  }, [statementMonth, months]);
 
   function handleSelectAgent(e) {
     const id = e.target.value;
@@ -206,6 +221,10 @@ export default function FinancingProrationPanel() {
         },
         actor,
       );
+      // Refresh the ledger so the saved proration persists in the synced form
+      // (and survives a re-selection of this month).
+      const ledger = await listFinancingMonths(tenantId, selectedAgent);
+      if (latestAgentReqRef.current === selectedAgent) setMonths(ledger);
       toast.show({ variant: 'success', message: `${monthLabel(statementMonth)} financing confirmed for ${agentName(selectedAgent)}.` });
     } catch (err) {
       console.error(err);
@@ -375,7 +394,7 @@ export default function FinancingProrationPanel() {
                           'text-xl font-extrabold',
                           readout.adjustmentPct == null ? 'text-ink-muted' : readout.adjustmentPct > 0 ? 'text-ink' : 'text-success-ink',
                         ].join(' ')}>
-                          {readout.adjustmentPct == null ? '—' : `−${pctLabel(readout.adjustmentPct)}`}
+                          {adjustmentLabel(readout.adjustmentPct)}
                         </p>
                       </div>
 

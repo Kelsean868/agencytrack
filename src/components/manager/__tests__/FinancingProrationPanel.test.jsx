@@ -6,7 +6,7 @@ const hoisted = vi.hoisted(() => ({
   authValue: { userProfile: { name: 'B. Manager' }, role: 'branch_manager', tenantId: 't1' },
   getTenantUsers: vi.fn(),
   getFinancingTerms: vi.fn(),
-  getFinancingMonth: vi.fn(),
+  listFinancingMonths: vi.fn(),
   getOwnPolicies: vi.fn(),
   setFinancingProration: vi.fn(),
   showToast: vi.fn(),
@@ -17,7 +17,7 @@ vi.mock('../../../hooks/useToast', () => ({ default: () => ({ show: hoisted.show
 vi.mock('../../../services/managerService', () => ({ getTenantUsers: (...a) => hoisted.getTenantUsers(...a) }));
 vi.mock('../../../services/financingService', () => ({
   getFinancingTerms: (...a) => hoisted.getFinancingTerms(...a),
-  getFinancingMonth: (...a) => hoisted.getFinancingMonth(...a),
+  listFinancingMonths: (...a) => hoisted.listFinancingMonths(...a),
   setFinancingProration: (...a) => hoisted.setFinancingProration(...a),
   // FinancingBasisBadge (rendered by the panel) reads these from the service.
   BASIS_SOURCE_LABELS: {
@@ -57,7 +57,7 @@ describe('FinancingProrationPanel', () => {
     hoisted.getTenantUsers.mockResolvedValue([{ id: 'agent-1', name: 'Ana Agent', role: 'agent' }]);
     hoisted.getFinancingTerms.mockResolvedValue(TERMS);
     hoisted.getOwnPolicies.mockResolvedValue(FEB_POLICIES);
-    hoisted.getFinancingMonth.mockResolvedValue(null);
+    hoisted.listFinancingMonths.mockResolvedValue([]);
     hoisted.setFinancingProration.mockResolvedValue({ id: 'agent-1_2026_02' });
     hoisted.showToast.mockReset();
   });
@@ -118,6 +118,23 @@ describe('FinancingProrationPanel', () => {
     expect(readout).toHaveAttribute('data-basis', 'submitted-provisional');
     expect(screen.getByTestId('proration-provisional-note')).toBeInTheDocument();
     expect(screen.queryByTestId('proration-manager-input')).not.toBeInTheDocument();
+  });
+
+  it('renders a negative adjustment as +X% (no double-negative sign)', async () => {
+    render(<FinancingProrationPanel />);
+    fireEvent.change(await screen.findByTestId('proration-agent-select'), { target: { value: 'agent-1' } });
+    fireEvent.change(await screen.findByTestId('proration-month'), { target: { value: '2026-02' } });
+    await screen.findByTestId('proration-readout');
+
+    // managerFinancing 7000 > current 8000 → adjustmentPct = (8000−7000)/8000 = +0.125 (a 13% cut) → −13%
+    fireEvent.change(screen.getByTestId('proration-manager-input'), { target: { value: '7000' } });
+    expect(screen.getByTestId('proration-adjustment')).toHaveTextContent('−13%');
+
+    // managerFinancing 8500 (above current 8000, still ≤ agreed) → adjustmentPct = −0.0625 → +6% (no "−-6%")
+    fireEvent.change(screen.getByTestId('proration-manager-input'), { target: { value: '8500' } });
+    const adj = screen.getByTestId('proration-adjustment');
+    expect(adj).toHaveTextContent('+6%');
+    expect(adj.textContent).not.toMatch(/−-|\+-|-−/);
   });
 
   it('rejects a confirmed figure above the agreed ceiling', async () => {
