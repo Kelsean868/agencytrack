@@ -663,6 +663,43 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ── Track K · K2 — per-agent monthly financing ledger ────────────────────
+      // /tenants/{tid}/financing/{agentId}_{YYYY_MM}  (composite doc ID; one doc
+      // per agent-month). The agent's monthly statement, entered manually:
+      // financingPaid / netCommission / bonusOffset / runningBalance + notes.
+      // runningBalance is AUTHORITATIVE (stored from the statement, never derived)
+      // and MAY be negative (= surplus owed back to the agent). Read mirrors
+      // settlements (composite-ID doc with a stored `agentId` field — keyed on
+      // resource.data.agentId, NOT a path var). Write is BM-and-up (unit_manager
+      // EXCLUDED per contract 5.3), identical to the K1 financingTerms posture.
+      // Coarse validation only (U2 single-boundary): the statement numerics are
+      // numbers (financingPaid/netCommission/bonusOffset >= 0; runningBalance may
+      // be negative), month matches YYYY_MM, agentId/tenantId present. No
+      // key-allowlist / no hasOnly — the K4/K5 fields slot in later with no rules
+      // change. basisSource is render-derived (not written). delete denied.
+      match /financing/{docId} {
+        function validFinancingMonth() {
+          return request.resource.data.agentId       is string
+              && request.resource.data.tenantId      == tenantId
+              && request.resource.data.month         is string
+              && request.resource.data.month.matches('^[0-9]{4}_[0-9]{2}$')
+              && request.resource.data.runningBalance is number
+              && request.resource.data.financingPaid  is number && request.resource.data.financingPaid  >= 0
+              && request.resource.data.netCommission  is number && request.resource.data.netCommission  >= 0
+              && request.resource.data.bonusOffset    is number && request.resource.data.bonusOffset    >= 0;
+        }
+
+        allow get:  if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
+        allow list: if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
+
+        allow create, update: if validFinancingMonth() && (
+          (getRole() in ['branch_manager', 'sales_manager', 'tenant_admin'] && getTenantId() == tenantId)
+          || getRole() == 'platform_admin'
+        );
+
+        allow delete: if false;
+      }
+
       match /unitGoals/{docId} {
         allow read: if request.auth != null
           && request.auth.token.tenantId == tenantId;

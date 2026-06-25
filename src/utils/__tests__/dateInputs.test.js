@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { parseDateOnlyTT, getTodayTT } from '../dateInputs';
+import {
+  parseDateOnlyTT,
+  getTodayTT,
+  monthKeyFromDate,
+  monthsBetweenKeys,
+  enumerateMonthKeys,
+} from '../dateInputs';
 
 describe('parseDateOnlyTT', () => {
   it('returns a Date at 04:00 UTC for a standard date', () => {
@@ -73,5 +79,65 @@ describe('getTodayTT', () => {
   it('mid-month control — UTC 2025-06-15T12:00:00Z is June 15 TT', () => {
     vi.useFakeTimers({ now: new Date('2025-06-15T12:00:00Z') });
     expect(getTodayTT()).toBe('2025-06-15');
+  });
+});
+
+// ── Track K · K2 — ledger month-key helpers ─────────────────────────────────
+describe('monthKeyFromDate', () => {
+  it('maps a YYYY-MM-DD date to its YYYY_MM month key (verbatim calendar month)', () => {
+    expect(monthKeyFromDate('2026-01-15')).toBe('2026_01');
+    expect(monthKeyFromDate('2026-12-31')).toBe('2026_12');
+  });
+
+  it('takes the month verbatim — no timezone skew on a month boundary', () => {
+    // Jan 1 stays January (unlike a naive UTC parse that would skew to Dec).
+    expect(monthKeyFromDate('2026-01-01')).toBe('2026_01');
+  });
+
+  it('throws on a non-YYYY-MM-DD input', () => {
+    expect(() => monthKeyFromDate('2026-01')).toThrow('monthKeyFromDate');
+    expect(() => monthKeyFromDate('2026_01_15')).toThrow('monthKeyFromDate');
+    expect(() => monthKeyFromDate(null)).toThrow('monthKeyFromDate');
+  });
+});
+
+describe('monthsBetweenKeys', () => {
+  it('returns 0 for the same month', () => {
+    expect(monthsBetweenKeys('2026_03', '2026_03')).toBe(0);
+  });
+
+  it('counts forward months within a year', () => {
+    expect(monthsBetweenKeys('2026_01', '2026_04')).toBe(3);
+  });
+
+  it('counts across a year boundary', () => {
+    expect(monthsBetweenKeys('2025_11', '2026_02')).toBe(3);
+  });
+
+  it('is negative when the target precedes the start', () => {
+    expect(monthsBetweenKeys('2026_04', '2026_01')).toBe(-3);
+  });
+
+  it('throws on a malformed key', () => {
+    expect(() => monthsBetweenKeys('2026-01', '2026_02')).toThrow('monthsBetweenKeys');
+    expect(() => monthsBetweenKeys('2026_01', 'bad')).toThrow('monthsBetweenKeys');
+  });
+});
+
+describe('enumerateMonthKeys', () => {
+  it('lists an inclusive single-year span', () => {
+    expect(enumerateMonthKeys('2026_01', '2026_04')).toEqual(['2026_01', '2026_02', '2026_03', '2026_04']);
+  });
+
+  it('returns a single element when from == to', () => {
+    expect(enumerateMonthKeys('2026_06', '2026_06')).toEqual(['2026_06']);
+  });
+
+  it('crosses a year boundary correctly', () => {
+    expect(enumerateMonthKeys('2025_11', '2026_02')).toEqual(['2025_11', '2025_12', '2026_01', '2026_02']);
+  });
+
+  it('returns [] when the target precedes the start', () => {
+    expect(enumerateMonthKeys('2026_04', '2026_01')).toEqual([]);
   });
 });

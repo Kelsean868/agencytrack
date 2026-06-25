@@ -22,7 +22,7 @@ import MasterSheet from '../manager/MasterSheet';
 import CompliancePanel from '../manager/CompliancePanel';
 import PersistencyTab from '../manager/PersistencyTab';
 import SettlementPanel from '../manager/SettlementPanel';
-import FinancingTermsSetup from '../manager/FinancingTermsSetup';
+import FinancingTab from '../manager/FinancingTab';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
 import ProductionLeaderboardSurface from '../leaderboard/ProductionLeaderboardSurface';
@@ -486,7 +486,7 @@ export default function ManagerDashboard() {
 
         {activeTab === 'settlements' && <SettlementPanel />}
 
-        {activeTab === 'financing' && <FinancingTermsSetup />}
+        {activeTab === 'financing' && <FinancingTab />}
 
         {activeTab === 'policy-reconciliation' && <PolicyReconciliationPanel />}
 
