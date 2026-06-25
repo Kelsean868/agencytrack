@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Track K — Reconciliation Event — Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:790px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:36px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.reuse{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.flag{background:var(--dangerTint);color:var(--danger)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:152px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+  .nav .nt{font-family:var(--mono);font-size:8px;font-weight:700;color:#fff;background:var(--gold);padding:1px 5px;border-radius:99px;margin-left:auto}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+
+  /* event banner */
+  .eventbar{display:flex;align-items:center;gap:14px;background:var(--goldTint);border:1px solid color-mix(in srgb,var(--gold) 34%,transparent);border-radius:13px;padding:13px 18px;flex-wrap:wrap}
+  .eventbar .statebadge{display:inline-flex;align-items:center;gap:8px;padding:6px 13px;border-radius:99px;font-weight:700;font-size:12.5px;background:var(--goldTint);color:var(--goldInk);border:1px solid color-mix(in srgb,var(--gold) 40%,transparent);white-space:nowrap}
+  .eventbar .statebadge .sd{width:8px;height:8px;border-radius:50%;background:var(--gold)}
+  .eventbar .evt{font-size:12.5px;color:var(--goldInk);line-height:1.4}
+  .eventbar .evt b{font-weight:700}
+  .eventbar .seg{display:flex;gap:4px;padding:4px;background:var(--surface);border:1px solid color-mix(in srgb,var(--gold) 26%,transparent);border-radius:9px;margin-left:auto}
+  .eventbar .seg .s{padding:7px 12px;border-radius:6px;font-family:var(--mono);font-size:10px;font-weight:700;color:var(--inkMute);white-space:nowrap}
+  .eventbar .seg .s.on{background:var(--gold);color:#fff}
+
+  /* worksheet */
+  .recongrid{display:grid;grid-template-columns:1.1fr .9fr;gap:13px;align-items:start}
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+  .card-h{padding:13px 16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:9px}
+  .card-h .ct{font-family:var(--display);font-weight:800;font-size:14.5px}
+  .card-h .grow{flex:1}
+  .card-h .av{width:30px;height:30px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px}
+  .card-b{padding:6px 16px 16px}
+
+  .wsrow{display:grid;grid-template-columns:1fr 130px;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--rule)}
+  .wsrow .wl{font-size:12.5px}
+  .wsrow .wl .ws{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);display:block;margin-top:2px}
+  .wsrow .wv{font-family:var(--mono);font-size:14px;font-weight:700;text-align:right;white-space:nowrap}
+  .wsrow .wv.add{color:var(--ink)}
+  .wsrow .wv.sub{color:var(--success)}
+  .wsrow .wv.waive{color:var(--goldInk)}
+  .wsrow.subtotal{background:var(--surfaceSoft);margin:0 -16px;padding:12px 16px;border-bottom:1px solid var(--ruleStrong)}
+  .wsrow.subtotal .wl{font-weight:700}
+  .wsrow.subtotal .wv{font-family:var(--display);font-size:16px}
+  .wsrow.closing{margin:0 -16px;padding:15px 16px;border-bottom:none}
+  .wsrow.closing.owing{background:var(--dangerTint)}
+  .wsrow.closing .wl{font-family:var(--display);font-weight:800;font-size:15px}
+  .wsrow.closing.owing .wl{color:var(--danger)}
+  .wsrow.closing .wv{font-family:var(--display);font-weight:800;font-size:24px}
+  .wsrow.closing.owing .wv{color:var(--danger)}
+
+  /* waiver control */
+  .waivercard .card-b{padding:16px;display:flex;flex-direction:column;gap:13px}
+  .waiverline{display:flex;gap:11px;background:var(--goldTint);border:1px solid color-mix(in srgb,var(--gold) 34%,transparent);border-radius:11px;padding:13px 15px}
+  .waiverline .wi{color:var(--goldInk);flex-shrink:0;font-size:15px}
+  .waiverline .wt{font-size:11.5px;color:var(--goldInk);line-height:1.45}
+  .waiverline .wt b{font-weight:700}
+  .waivertoggle{display:flex;flex-direction:column;gap:9px}
+  .wtopt{display:flex;align-items:flex-start;gap:11px;padding:12px 14px;border-radius:11px;border:1px solid var(--rule);background:var(--surface)}
+  .wtopt.active{border-color:color-mix(in srgb,var(--success) 45%,transparent);background:var(--successTint)}
+  .wtopt.active.repay{border-color:color-mix(in srgb,var(--warning) 45%,transparent);background:var(--warningTint)}
+  .wtopt .radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--ruleStrong);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center}
+  .wtopt.active .radio{border-color:var(--success)}
+  .wtopt.active .radio::after{content:'';width:9px;height:9px;border-radius:50%;background:var(--success)}
+  .wtopt.active.repay .radio{border-color:var(--warning)}
+  .wtopt.active.repay .radio::after{background:var(--warning)}
+  .wtopt .wc{flex:1}
+  .wtopt .wn{font-size:12.5px;font-weight:700}
+  .wtopt .wd{font-size:11px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .wtopt .wamt{font-family:var(--display);font-weight:800;font-size:15px;white-space:nowrap}
+  .wtopt.active .wamt{color:var(--success)}
+  .wtopt.active.repay .wamt{color:var(--warning)}
+
+  /* outcome branches */
+  .outcomes{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:stretch;margin-top:2px}
+  .outcome{border-radius:16px;overflow:hidden;border:1px solid var(--rule);display:flex;flex-direction:column}
+  .outcome.owing{border-color:color-mix(in srgb,var(--danger) 32%,transparent)}
+  .outcome.surplus{border-color:color-mix(in srgb,var(--success) 32%,transparent)}
+  .outcome.inactive{opacity:.62}
+  .oc-h{padding:14px 18px;display:flex;align-items:center;gap:10px}
+  .outcome.owing .oc-h{background:var(--dangerTint)}
+  .outcome.surplus .oc-h{background:var(--successTint)}
+  .oc-h .verdict{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:4px 11px;border-radius:99px;white-space:nowrap}
+  .outcome.owing .verdict{background:var(--surface);color:var(--danger)}
+  .outcome.surplus .verdict{background:var(--surface);color:var(--success)}
+  .oc-h .ot{font-family:var(--display);font-weight:800;font-size:15px}
+  .outcome.owing .ot{color:var(--danger)}
+  .outcome.surplus .ot{color:var(--success)}
+  .oc-h .live{font-family:var(--mono);font-size:8px;font-weight:700;color:#fff;padding:2px 8px;border-radius:99px;margin-left:auto;white-space:nowrap}
+  .outcome.owing .live{background:var(--danger)}
+  .outcome.surplus .live{background:var(--inkFaint)}
+  .oc-b{padding:16px 18px;display:flex;flex-direction:column;gap:13px;flex:1;background:var(--surface)}
+  .ocbig{display:flex;align-items:baseline;gap:9px}
+  .ocbig .ov{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.02em;line-height:1;white-space:nowrap}
+  .outcome.owing .ocbig .ov{color:var(--danger)}
+  .outcome.surplus .ocbig .ov{color:var(--success)}
+  .ocbig .ol{font-size:11.5px;color:var(--inkMute);text-wrap:pretty}
+  .mechrow{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px}
+  .mechrow .mi{width:26px;height:26px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+  .outcome.owing .mechrow .mi{background:var(--dangerTint);color:var(--danger)}
+  .outcome.surplus .mechrow .mi{background:var(--successTint);color:var(--success)}
+  .mechrow .mc .mn{font-size:12px;font-weight:700}
+  .mechrow .mc .md{font-size:11px;color:var(--inkMute);margin-top:2px;text-wrap:pretty}
+  .mechrow .mc .md code{font-family:var(--mono);font-size:10px;background:var(--surfaceMute);padding:1px 4px;border-radius:4px;color:var(--tealDark)}
+  .statusmove{display:flex;align-items:center;gap:9px;padding:11px 13px;border-radius:10px;border:1px dashed}
+  .outcome.owing .statusmove{border-color:color-mix(in srgb,var(--warning) 40%,transparent);background:var(--warningTint)}
+  .outcome.surplus .statusmove{border-color:color-mix(in srgb,var(--success) 40%,transparent);background:var(--successTint)}
+  .statusmove .sm-from{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--inkMute)}
+  .statusmove .sm-ar{color:var(--inkFaint)}
+  .statusmove .sm-to{font-family:var(--mono);font-size:10px;font-weight:700;padding:3px 9px;border-radius:99px}
+  .outcome.owing .sm-to{background:var(--warning);color:#fff}
+  .outcome.surplus .sm-to{background:var(--success);color:#fff}
+  .oc-foot{padding:13px 18px;border-top:1px solid var(--rule);background:var(--surfaceSoft)}
+  .oc-foot .btn{width:100%;padding:12px;border-radius:9px;font-size:13px;font-weight:700;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .outcome.owing .btn{background:var(--warning);color:#fff}
+  .outcome.surplus .btn{background:var(--success);color:#fff}
+  .outcome.inactive .btn{background:var(--surface);border:1px solid var(--ruleStrong);color:var(--inkMute)}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.reusec{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.reusec .ad b{color:var(--tealDark)}
+  .anno.flagc{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .anno.flagc .ad b{color:var(--danger)}
+
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:140px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:6px}
+  .msg .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .msg.empty .ic{background:var(--tealTint);color:var(--teal)} .msg.err .ic{background:var(--dangerTint);color:var(--danger)}
+  .msg .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .msg .d{font-size:11px;color:var(--inkMute);line-height:1.45;max-width:280px}
+  .msg .eb{margin-top:3px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .flagnote{display:flex;gap:13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:13px;padding:15px 18px;margin-top:16px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:215px 1fr 96px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.reuse{background:var(--tealTint);color:var(--tealDark)}
+
+  @media(max-width:1040px){
+    .recongrid,.outcomes,.annos,.states{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}
+    .dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Track K · New-Agent Financing &amp; Bonus · Build annotation · RECONCILIATION</div>
+      <h1>Reconciliation event — total drawn vs total offsets, then settle.</h1>
+      <p class="subt">The K6 event at end of year 1, or earlier on election to come off (6.5b). Tallies <b>total drawn vs total offsets</b>, applies the <b>first-3-months waiver</b> (only once 12 months' continuous service is met — earlier exit makes those 3 months repayable), and settles to one of two outcomes: <b>OWING</b> → post-financing garnish begins, or <b>SURPLUS</b> → balance cleared + lump sum paid to the agent.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />TRACK K · K6 · BRANCH_MANAGER<br />financingReconciliation/{id}_{year}<br />REV 2026-06-06</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Data canon</span>
+    <p><b>Writes the reconciliation record.</b> <code>financingReconciliation/{agentId}_{year}</code>: <code>totalFinancingDrawn</code>, <code>totalOffsets</code>, <code>waiverApplied</code>, <code>closingPosition</code>, <code>outcome ∈ owing | surplus</code>, <code>surplusPaid</code> / <code>garnishStarted</code>. The waiver (6.6) applies <b>only at 12 months' continuous service</b>; an earlier exit makes the first 3 months' financing repayable. OWING → status <code>post_financing_repayment</code> + 6.2 garnish (10% commissions + 50% net bonuses + incentives) until cleared. SURPLUS → status <code>cleared</code> + lump sum. Worklist surface — no glass (census).</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip new">NEW</span> net-new Track-K surface / data</span>
+    <span class="it"><span class="pchip reuse">REUSE</span> shipped pattern (reconciliation worklist, status machine, nudge)</span>
+    <span class="it"><span class="pchip flag">FLAG</span> open item — pending build verdict, not invented</span>
+  </div>
+
+  <!-- THE SURFACE -->
+  <div class="secttl">The surface — reconciliation worksheet + waiver</div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">BRANCH</div>
+      <div class="nav"><span class="ic"></span>Dashboard</div>
+      <div class="nav on"><span class="ic"></span>Financing<span class="nt">K</span></div>
+      <div class="nav"><span class="ic"></span>Persistency</div>
+      <div class="nav"><span class="ic"></span>Compliance</div>
+    </div>
+    <div class="canvas">
+      <div class="topbar"><span class="pt">Reconciliation</span><span class="ps">· R. SEEPERSAD · S·04 · YEAR 1 · BY T. RAMCHARAN</span></div>
+
+      <!-- event banner -->
+      <div class="eventbar">
+        <span class="statebadge"><span class="sd"></span>Reconciling</span>
+        <div class="evt"><b>Month-12 reconciliation.</b> Effective 1 Dec 2025 → term complete 30 Nov 2026. 12 months' continuous service <b>met</b> — the first-3-months waiver applies.</div>
+        <div class="seg"><span class="s on">Month-12</span><span class="s">Early exit (6.5b)</span></div>
+      </div>
+
+      <div class="recongrid">
+        <!-- worksheet -->
+        <div class="card">
+          <div class="card-h"><span class="av">RS</span><span class="ct">Worksheet · drawn vs offsets</span></div>
+          <div class="card-b">
+            <div class="wsrow"><div class="wl">Total financing drawn<span class="ws">Σ financingPaid · 12 months</span></div><div class="wv add">TTD 48,200</div></div>
+            <div class="wsrow"><div class="wl">− Total offsets<span class="ws">Σ 10% commissions + 50% net bonuses</span></div><div class="wv sub">− TTD 30,000</div></div>
+            <div class="wsrow subtotal"><div class="wl">Gross position before waiver</div><div class="wv">TTD 18,200</div></div>
+            <div class="wsrow"><div class="wl">− First-3-months waiver<span class="ws">months 1–3 · applied at 12-mo service (6.6)</span></div><div class="wv waive">− TTD 12,000</div></div>
+            <div class="wsrow closing owing"><div class="wl">Closing position</div><div class="wv">TTD 6,200 owing</div></div>
+          </div>
+        </div>
+
+        <!-- waiver control -->
+        <div class="card waivercard">
+          <div class="card-h"><span class="ct">First-3-months waiver</span><span class="grow"></span><span style="font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--gold);background:var(--goldTint);padding:2px 8px;border-radius:99px">CLAUSE 6.6</span></div>
+          <div class="card-b">
+            <div class="waiverline"><span class="wi">◷</span><div class="wt"><b>Service-gated.</b> The first 3 months' financing is forgiven <b>only</b> once the agent reaches 12 months' continuous service. An earlier exit makes those months <b>repayable</b> — the toggle below reflects which clock applies.</div></div>
+            <div class="waivertoggle">
+              <div class="wtopt active"><span class="radio"></span><div class="wc"><div class="wn">12-mo service met — waiver applied</div><div class="wd">Months 1–3 financing forgiven. Reduces the closing position.</div></div><span class="wamt">− TTD 12,000</span></div>
+              <div class="wtopt repay"><span class="radio"></span><div class="wc"><div class="wn">Early exit — first 3 months repayable</div><div class="wd">Service &lt; 12 months. The waiver reverses; months 1–3 are added back as owing.</div></div><span class="wamt" style="color:var(--inkFaint)">+ TTD 12,000</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OUTCOMES -->
+  <div class="secttl">Two outcomes — both drawn; the closing position selects one</div>
+  <div class="outcomes">
+    <!-- OWING (live for this agent) -->
+    <div class="outcome owing">
+      <div class="oc-h"><span class="verdict">▼ OWING</span><span class="ot">Post-financing garnish</span><span class="live">THIS AGENT</span></div>
+      <div class="oc-b">
+        <div class="ocbig"><span class="ov">TTD 6,200</span><span class="ol">still owed after waiver — repaid by garnish, not a lump demand</span></div>
+        <div class="mechrow"><span class="mi">%</span><div class="mc"><div class="mn">10% of commissions</div><div class="md">Withheld monthly from ongoing commission until the balance clears (6.2).</div></div></div>
+        <div class="mechrow"><span class="mi">½</span><div class="mc"><div class="mn">50% of net bonuses + incentives</div><div class="md">The take-home split continues post-financing — the <span style="font-family:var(--mono);font-size:10px;color:var(--warning)">while-owing</span> waterfall still applies.</div></div></div>
+        <div class="statusmove"><span class="sm-from">reconciling</span><span class="sm-ar">→</span><span class="sm-to">post_financing_repayment</span></div>
+      </div>
+      <div class="oc-foot"><span class="btn">Start garnish · write record →</span></div>
+    </div>
+
+    <!-- SURPLUS (alternate) -->
+    <div class="outcome surplus inactive">
+      <div class="oc-h"><span class="verdict">▲ SURPLUS</span><span class="ot">Clear + pay lump sum</span><span class="live">IF IN CREDIT</span></div>
+      <div class="oc-b">
+        <div class="ocbig"><span class="ov">−TTD 3,100</span><span class="ol">example credit — offsets exceeded draws; owed back to the agent</span></div>
+        <div class="mechrow"><span class="mi">✓</span><div class="mc"><div class="mn">Balance cleared</div><div class="md">Financing closed at zero; no further deduction. The 50% split stops next bonus.</div></div></div>
+        <div class="mechrow"><span class="mi">↑</span><div class="mc"><div class="mn">Surplus paid as a lump sum</div><div class="md">The credit is paid out to the agent in one payment (<code>surplusPaid</code>).</div></div></div>
+        <div class="statusmove"><span class="sm-from">reconciling</span><span class="sm-ar">→</span><span class="sm-to">cleared</span></div>
+      </div>
+      <div class="oc-foot"><span class="btn">Clear + pay surplus →</span></div>
+    </div>
+  </div>
+
+  <!-- ANNOTATIONS -->
+  <div class="annos">
+    <div class="anno newc"><span class="mk n">1</span><div><div class="at">One worksheet, two triggers</div><div class="ad">The same drawn-vs-offsets tally runs at <b>month-12</b> or on an <b>early-exit election (6.5b)</b>. The event-bar toggle picks the trigger; the only thing it changes downstream is whether the waiver applies or reverses.</div></div></div>
+    <div class="anno newc"><span class="mk n">2</span><div><div class="at">Waiver is service-gated, not automatic</div><div class="ad"><b>LOCKED (§2.6):</b> the first-3-months waiver (6.6) is forgiven <b>only at 12 months' continuous service</b>. Early exit reverses it — months 1–3 become repayable and are added back. The toggle makes the consequence explicit before the manager commits.</div></div></div>
+    <div class="anno flagc"><span class="mk f">3</span><div><div class="at">OWING → garnish, not a lump demand</div><div class="ad"><b>LOCKED (§2.7):</b> a closing debit moves status to <code>post_financing_repayment</code> and starts the 6.2 garnish — <b>10% commissions + 50% net bonuses + incentives, monthly until cleared</b>. It is a repayment schedule, never a one-shot clawback.</div></div></div>
+    <div class="anno newc"><span class="mk n">4</span><div><div class="at">SURPLUS → clear + lump sum</div><div class="ad">A closing credit (negative balance) moves status to <code>cleared</code>, closes financing at zero and pays the surplus to the agent as a single lump sum. The credit was a first-class value all along (Screens 1 + 4) — here it pays out.</div></div></div>
+    <div class="anno reusec"><span class="mk e">5</span><div><div class="at">Restyle of the reconciliation worklist</div><div class="ad">Mirrors the <b>Policy Reconciliation</b> surface: a worksheet → outcome → status-write pattern. New collection (<code>financingReconciliation</code>), same worklist chrome, same audit discipline.</div></div></div>
+    <div class="anno reusec"><span class="mk e">6</span><div><div class="at">Outcome drives the status machine forward</div><div class="ad">Reconciliation is the <i>only</i> path from <code>reconciling</code> to a terminal state. The two buttons are the two legal transitions — there is no direct manager move to <code>cleared</code> or <code>post_financing_repayment</code> (Screen 3).</div></div></div>
+  </div>
+
+  <div class="flagnote">
+    <span class="tag">⚑ Flags</span>
+    <p><b>Confirm before the brief locks.</b> (1) <b>Skipped-month gate</b> — should an open reconciliation flag (Screen 4) <b>block</b> reconciliation until resolved, or run with a carried note? (2) <b>Garnish on incentives</b> — confirm "incentive payments" in 6.2 maps to the awards-engine payouts the app already tracks, so the 10%/50% withholding reaches them. The waiver-gating, the two outcomes and the forward-only status moves are <b>locked</b> by §2.6 / §2.7, not flagged.</p>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">B</span>Blocked · open gap</div>
+      <div class="sc-b"><div class="msg err"><div class="ic">⚑</div><div class="t" style="font-size:13.5px">March still unreconciled</div><div class="d" style="font-size:11px">An open skipped-month flag means the drawn total is incomplete. Resolve or carry-with-note before settling. (Pending §10 verdict.)</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">Z</span>Even · closes at zero</div>
+      <div class="sc-b"><div class="msg empty"><div class="ic">✓</div><div class="t">Settles exactly</div><div class="d">Closing position is TTD 0 — no garnish, no surplus. Status → <code style="font-family:var(--mono);font-size:10px">cleared</code>, no payment either way.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error · write failed</div>
+      <div class="sc-b"><div class="msg err"><div class="ic">↻</div><div class="t" style="font-size:13.5px">Couldn't write record</div><div class="d" style="font-size:11px">Don't advance the status until the reconciliation record persists. Keep the computed position; let the manager retry.</div><div class="eb">↻ Retry</div></div></div>
+    </div>
+  </div>
+
+  <!-- COMPONENT LIST -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · K6 scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">ReconciliationWorksheet</div><div class="cd">Drawn − offsets − waiver = closing position. Writes <code>financingReconciliation/{id}_{year}</code>.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">WaiverControl</div><div class="cd">12-mo-service-met (apply) vs early-exit (reverse) toggle; adjusts the closing position live (6.6).</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">OutcomeBranch</div><div class="cd">OWING (garnish) + SURPLUS (clear + lump sum) cards; the closing position activates one.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">GarnishTracker</div><div class="cd">Post-reconciliation 6.2 schedule: 10% commissions + 50% net bonuses + incentives, until cleared.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">financingStatusMachine</div><div class="cd">Drives <code>reconciling → post_financing_repayment | cleared</code>. The terminal transitions only reachable here.</div><div class="co"><span class="ptag reuse">REUSE</span></div></div>
+    <div class="crow"><div class="cn">ReconWorklist chrome</div><div class="cd">Policy-Reconciliation worksheet + status-pill + audit pattern, re-pointed at the financing record.</div><div class="co"><span class="ptag reuse">REUSE</span></div></div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

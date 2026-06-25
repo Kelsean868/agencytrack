@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Track K — Financing Terms Setup — Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:790px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:36px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.reuse{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.flag{background:var(--dangerTint);color:var(--danger)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)}
+
+  /* ── state-machine badge gallery ── */
+  .statebadge{display:inline-flex;align-items:center;gap:8px;padding:6px 13px;border-radius:99px;font-weight:700;font-size:12.5px;white-space:nowrap}
+  .statebadge .sd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .statebadge.not{background:var(--surfaceMute);color:var(--inkMute);border:1px solid var(--ruleStrong)}
+  .statebadge.not .sd{background:var(--inkFaint)}
+  .statebadge.on{background:var(--teal);color:#fff}
+  .statebadge.on .sd{background:#7fe0d6;box-shadow:0 0 0 3px rgba(127,224,214,.3)}
+  .statebadge.recon{background:var(--goldTint);color:var(--goldInk);border:1px solid color-mix(in srgb,var(--gold) 35%,transparent)}
+  .statebadge.recon .sd{background:var(--gold)}
+  .statebadge.repay{background:var(--warningTint);color:var(--warning);border:1px solid color-mix(in srgb,var(--warning) 32%,transparent)}
+  .statebadge.repay .sd{background:var(--warning)}
+  .statebadge.cleared{background:var(--successTint);color:var(--success);border:1px solid color-mix(in srgb,var(--success) 32%,transparent)}
+  .statebadge.cleared .sd{background:var(--success)}
+
+  .badgegallery{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .bg-item{background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 14px;display:flex;flex-direction:column;gap:9px}
+  .bg-item .enum{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--tealDark);letter-spacing:.02em}
+  .bg-item .bgd{font-size:11px;color:var(--inkMute);text-wrap:pretty;line-height:1.45}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:152px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+  .nav .nt{font-family:var(--mono);font-size:8px;font-weight:700;color:#fff;background:var(--gold);padding:1px 5px;border-radius:99px;margin-left:auto}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+
+  .setupgrid{display:grid;grid-template-columns:1.25fr .75fr;gap:13px;align-items:start}
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+  .card-h{padding:13px 16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:9px}
+  .card-h .ct{font-family:var(--display);font-weight:800;font-size:14.5px}
+  .card-h .grow{flex:1}
+  .card-h .who{display:flex;align-items:center;gap:9px}
+  .card-h .av{width:30px;height:30px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px}
+  .card-b{padding:16px;display:flex;flex-direction:column;gap:14px}
+
+  /* form fields */
+  .fld{display:flex;flex-direction:column;gap:6px}
+  .fld .lab{font-size:12px;font-weight:700}
+  .fld .hint{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);letter-spacing:.02em}
+  .fldinput{display:flex;align-items:center;gap:10px;background:var(--surfaceSoft);border:1px solid var(--ruleStrong);border-radius:10px;padding:11px 13px;min-height:44px}
+  .fldinput.focus{background:var(--surface);border:2px solid var(--teal);padding:10px 12px}
+  .fldinput .cu{font-family:var(--mono);font-size:11px;color:var(--inkFaint)}
+  .fldinput .num{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-.015em;flex:1}
+  .fldinput .caret{width:1.5px;height:20px;background:var(--teal)}
+  .fldinput .ph{flex:1;color:var(--inkFaint);font-size:14px}
+  .fldinput .cal{color:var(--inkMute);font-size:14px}
+  .fld2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  /* derived panel */
+  .derivedpanel{background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 26%,transparent);border-radius:12px;padding:14px 15px;display:flex;flex-direction:column;gap:12px}
+  .derivedpanel .dh{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--tealDark)}
+  .drow{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .drow .dl{font-size:12px;color:var(--tealDark)}
+  .drow .dv{font-family:var(--display);font-weight:800;font-size:18px;color:var(--teal);letter-spacing:-.015em;white-space:nowrap}
+  .drow .dv.sm{font-size:14px}
+  .clockrow{display:flex;flex-direction:column;gap:6px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--teal) 20%,transparent)}
+  .clockrow .cl{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;color:var(--tealDark);display:flex;justify-content:space-between}
+  .clocktrack{position:relative;height:7px;border-radius:5px;background:rgba(255,255,255,.6);overflow:hidden}
+  .clocktrack .cf{position:absolute;left:0;top:0;bottom:0;background:var(--teal);border-radius:5px}
+  .clocktrack .waiv{position:absolute;left:0;top:0;bottom:0;width:25%;background:repeating-linear-gradient(45deg,color-mix(in srgb,var(--gold) 30%,transparent),color-mix(in srgb,var(--gold) 30%,transparent) 4px,transparent 4px,transparent 8px)}
+
+  /* state machine control */
+  .smcard .card-b{gap:16px}
+  .smflow{display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding-bottom:4px}
+  .smnode{display:flex;flex-direction:column;align-items:center;gap:7px;flex:1;min-width:84px;position:relative}
+  .smnode .no{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-weight:700;font-size:11px;border:2px solid var(--rule);background:var(--surface);color:var(--inkFaint)}
+  .smnode.done .no{background:var(--teal);border-color:var(--teal);color:#fff}
+  .smnode.cur .no{background:var(--gold);border-color:var(--gold);color:#fff;box-shadow:0 0 0 4px var(--goldTint)}
+  .smnode .nl{font-size:10.5px;font-weight:700;text-align:center;line-height:1.25;white-space:nowrap}
+  .smnode.cur .nl{color:var(--goldInk)}
+  .smnode.done .nl{color:var(--tealDark)}
+  .smnode .nf{font-family:var(--mono);font-size:8px;color:var(--inkFaint);text-align:center}
+  .smconn{flex:0 0 22px;height:2px;background:var(--rule);margin-top:14px}
+  .smconn.done{background:var(--teal)}
+  /* manager-set control */
+  .setctl{display:flex;flex-direction:column;gap:9px}
+  .setctl .scl{font-size:12px;font-weight:700;display:flex;align-items:center;gap:8px}
+  .setctl .scl .tag{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--gold);background:var(--goldTint);padding:2px 8px;border-radius:99px}
+  .transopts{display:flex;gap:9px;flex-wrap:wrap}
+  .transopt{display:flex;align-items:center;gap:8px;padding:9px 13px;border-radius:10px;border:1px solid var(--rule);background:var(--surface);font-size:12px;font-weight:700;min-height:42px}
+  .transopt.allowed{border-color:color-mix(in srgb,var(--teal) 45%,transparent);background:var(--tealTint);color:var(--tealDark);cursor:pointer}
+  .transopt.allowed .ar{color:var(--teal)}
+  .transopt.blocked{opacity:.45;text-decoration:line-through;color:var(--inkFaint)}
+  .transhint{display:flex;gap:9px;background:var(--surfaceSoft);border:1px dashed var(--ruleStrong);border-radius:9px;padding:10px 12px;font-size:11px;color:var(--inkMute);text-wrap:pretty}
+  .transhint code{font-family:var(--mono);font-size:10.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .dw-foot{padding:14px 16px;border-top:1px solid var(--rule);background:var(--surfaceSoft);display:flex;gap:10px}
+  .dw-foot .btn{padding:12px 18px;border-radius:9px;font-size:13px;font-weight:700;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn.primary{background:var(--teal);color:#fff;flex:1}
+  .btn.ghost{background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink)}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.reusec{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.reusec .ad b{color:var(--tealDark)}
+  .anno.flagc{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .anno.flagc .ad b{color:var(--danger)}
+
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:140px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:6px}
+  .msg .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .msg.empty .ic{background:var(--tealTint);color:var(--teal)} .msg.err .ic{background:var(--dangerTint);color:var(--danger)}
+  .msg .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .msg .d{font-size:11px;color:var(--inkMute);line-height:1.45;max-width:280px}
+  .msg .eb{margin-top:3px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .flagnote{display:flex;gap:13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:13px;padding:15px 18px;margin-top:16px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:215px 1fr 96px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.reuse{background:var(--tealTint);color:var(--tealDark)}
+
+  @media(max-width:1040px){
+    .setupgrid,.annos,.states{grid-template-columns:1fr}
+    .badgegallery{grid-template-columns:1fr 1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}
+    .dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Track K · New-Agent Financing &amp; Bonus · Build annotation · TERMS SETUP</div>
+      <h1>Financing Terms Setup — the per-agent agreement &amp; status machine.</h1>
+      <p class="subt">The K1 foundation (manager-only, no ledger dependency). Sets <code style="font-family:var(--mono);font-size:12px">financingTerms/{agentId}</code>: <b>agreed</b> + <b>current monthly financing</b>, <b>validating API</b>, <b>effective date</b> — and the <b>manager-set status state machine</b> that gates every other financing module. A badge is designed for all five states.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />TRACK K · K1 · BRANCH_MANAGER<br />PER-AGENT · TTD<br />REV 2026-06-06</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Data canon</span>
+    <p><b>Foundation, no ledger dependency.</b> Writes the per-agent <code>financingTerms/{agentId}</code> doc. <code>agreedMonthlyFinancing</code> drives the <b>6× ceiling</b>; <code>currentMonthlyFinancing</code> is tracked separately (clause 5 can adjust it down); <code>validatingAPI</code> is the proration denominator; <code>effectiveDate</code> anchors the 24-month term, 12-month-service and first-3-months-waiver clocks (same anchor as <code>contractDate</code>). <code>financingStatus</code> is <b>manager-set</b> — not an agent checkbox — and gates all financing surfaces (§2.10). Per-agent terms can change; the monthly ledger preserves the amount in effect.</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip new">NEW</span> net-new Track-K surface / data</span>
+    <span class="it"><span class="pchip reuse">REUSE</span> shipped pattern (form fields, config-tile chrome)</span>
+    <span class="it"><span class="pchip flag">FLAG</span> open item — pending build verdict, not invented</span>
+  </div>
+
+  <!-- BADGE GALLERY: the state machine -->
+  <div class="secttl">A badge for every state — <code style="font-family:var(--mono);text-transform:none;letter-spacing:0;color:var(--tealDark)">financingStatus</code> (§5)</div>
+  <div class="badgegallery">
+    <div class="bg-item"><span class="statebadge not"><span class="sd"></span>Not on financing</span><div class="enum">not_on_financing</div><div class="bgd">Declined — straight commission. No draw, no ceiling, no 50% offset.</div></div>
+    <div class="bg-item"><span class="statebadge on"><span class="sd"></span>On Financing</span><div class="enum">on_financing</div><div class="bgd">Months 1–12. Draws + 50%-of-net offset; balance may cross to credit.</div></div>
+    <div class="bg-item"><span class="statebadge recon"><span class="sd"></span>Reconciling</span><div class="enum">reconciling</div><div class="bgd">Month-12 / exit event. Waiver applied; debit-or-surplus computed.</div></div>
+    <div class="bg-item"><span class="statebadge repay"><span class="sd"></span>Post-fin. repayment</span><div class="enum">post_financing_repayment</div><div class="bgd">6.2 garnish: 10% commissions + 50% net bonuses, until repaid.</div></div>
+    <div class="bg-item"><span class="statebadge cleared"><span class="sd"></span>Cleared</span><div class="enum">cleared</div><div class="bgd">Debt repaid or surplus paid out. Terminal state.</div></div>
+  </div>
+
+  <!-- THE SURFACE -->
+  <div class="secttl">The surface — terms form + status control</div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">BRANCH</div>
+      <div class="nav"><span class="ic"></span>Dashboard</div>
+      <div class="nav on"><span class="ic"></span>Financing<span class="nt">K</span></div>
+      <div class="nav"><span class="ic"></span>Persistency</div>
+      <div class="nav"><span class="ic"></span>Compliance</div>
+    </div>
+    <div class="canvas">
+      <div class="topbar"><span class="pt">Financing Terms</span><span class="ps">· SET UP · R. SEEPERSAD · S·04 · BY T. RAMCHARAN</span></div>
+
+      <div class="setupgrid">
+        <!-- form -->
+        <div class="card">
+          <div class="card-h"><div class="who"><span class="av">RS</span><span class="ct">Agreement · R. Seepersad</span></div><span class="grow"></span><span class="statebadge on" style="font-size:11px;padding:5px 11px"><span class="sd"></span>On Financing</span></div>
+          <div class="card-b">
+            <div class="fld2">
+              <div class="fld">
+                <div class="lab">Agreed monthly financing</div>
+                <div class="fldinput focus"><span class="cu">TTD</span><span class="num">8,000</span><span class="caret"></span></div>
+                <div class="hint">FULL / MAX DRAW · DRIVES THE 6× CEILING</div>
+              </div>
+              <div class="fld">
+                <div class="lab">Current monthly financing</div>
+                <div class="fldinput"><span class="cu">TTD</span><span class="num">8,000</span></div>
+                <div class="hint">TRACKED SEPARATELY · CLAUSE 5 MAY ADJUST DOWN</div>
+              </div>
+            </div>
+            <div class="fld2">
+              <div class="fld">
+                <div class="lab">Validating API</div>
+                <div class="fldinput"><span class="cu">TTD</span><span class="num">30,000</span></div>
+                <div class="hint">API FOR FULL FINANCING · PRORATION DENOMINATOR</div>
+              </div>
+              <div class="fld">
+                <div class="lab">Effective date</div>
+                <div class="fldinput"><span class="num" style="font-size:16px">1 Dec 2025</span><span class="cal">▦</span></div>
+                <div class="hint">ANCHORS 24-MO TERM · 12-MO SERVICE · WAIVER CLOCKS</div>
+              </div>
+            </div>
+            <div class="derivedpanel">
+              <div class="dh">Derived from these terms</div>
+              <div class="drow"><span class="dl">6× financing ceiling</span><span class="dv">TTD 48,000</span></div>
+              <div class="drow"><span class="dl">Validation schedule denominator</span><span class="dv sm">TTD 30,000 / mo</span></div>
+              <div class="clockrow">
+                <div class="cl"><span>TERM CLOCK · MONTH 7 / 24</span><span>EXPIRES 1 DEC 2027</span></div>
+                <div class="clocktrack"><div class="waiv"></div><div class="cf" style="width:29%"></div></div>
+                <div class="cl" style="color:var(--inkMute);font-weight:400;font-family:var(--mono);font-size:8.5px"><span style="color:var(--goldInk)">▨ first-3-months waiver zone (repayable before 12-mo service)</span><span>12-MO SERVICE: 1 DEC 2026</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- state machine control -->
+        <div class="card smcard">
+          <div class="card-h"><span class="ct">Financing status</span><span class="grow"></span><span style="font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--gold);background:var(--goldTint);padding:2px 8px;border-radius:99px">MANAGER-SET</span></div>
+          <div class="card-b">
+            <div class="smflow">
+              <div class="smnode done"><div class="no">✓</div><div class="nl">Not on<br>financing</div></div>
+              <div class="smconn done"></div>
+              <div class="smnode cur"><div class="no">●</div><div class="nl">On<br>Financing</div><div class="nf">CURRENT</div></div>
+              <div class="smconn"></div>
+              <div class="smnode"><div class="no">3</div><div class="nl">Reconciling</div></div>
+              <div class="smconn"></div>
+              <div class="smnode"><div class="no">4</div><div class="nl">Post-fin.<br>repayment</div></div>
+              <div class="smconn"></div>
+              <div class="smnode"><div class="no">5</div><div class="nl">Cleared</div></div>
+            </div>
+            <div class="setctl">
+              <div class="scl">Set status<span class="tag">GATES ALL MODULES</span></div>
+              <div class="transopts">
+                <div class="transopt allowed"><span class="ar">→</span>Reconciling</div>
+                <div class="transopt blocked">Cleared</div>
+                <div class="transopt blocked">Post-fin.</div>
+              </div>
+              <div class="transhint"><div><b style="color:var(--ink)">Forward-only machine.</b> From <code>on_financing</code> the only manager move is <code>→ reconciling</code> (month-12 or early-exit election). <code>cleared</code> / <code>post_financing_repayment</code> are reached <i>through</i> reconciliation, never set directly.</div></div>
+            </div>
+          </div>
+          <div class="dw-foot"><span class="btn ghost">Cancel</span><span class="btn primary">Save terms</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANNOTATIONS -->
+  <div class="annos">
+    <div class="anno newc"><span class="mk n">1</span><div><div class="at">Four fields, two write distinct numbers</div><div class="ad"><b>agreed</b> ≠ <b>current</b>: agreed is the immutable ceiling driver (6×); current is the live, clause-5-adjustable draw. Keeping both lets a downward adjustment lower the draw <i>without</i> moving the ceiling. validatingAPI is the proration denominator; effectiveDate anchors every clock.</div></div></div>
+    <div class="anno newc"><span class="mk n">2</span><div><div class="at">Derived, never entered</div><div class="ad">Ceiling = <code>6 × agreedMonthlyFinancing</code>; the 24-month term, 12-month-service line and first-3-months waiver zone all compute off <code>effectiveDate</code>. Shown read-only so the manager sees the consequences of the figures they typed.</div></div></div>
+    <div class="anno newc"><span class="mk n">3</span><div><div class="at">Status is manager-set &amp; forward-only</div><div class="ad"><b>LOCKED (§2.10):</b> <code>financingStatus</code> is a manager control, not an agent checkbox. The machine advances forward; from <code>on_financing</code> the only direct move is <code>→ reconciling</code>. <code>cleared</code> and <code>post_financing_repayment</code> are outcomes of the reconciliation event (Screen 6).</div></div></div>
+    <div class="anno flagc"><span class="mk f">4</span><div><div class="at">Status gates every other module</div><div class="ad">The dashboard hero, the proration engine, the take-home 50%-deduction and the garnish all read this enum. A mis-set status mis-renders the agent's whole picture — so the control is deliberate, audited (<code>enteredBy</code> / <code>enteredAt</code>), and confirmation-gated on save.</div></div></div>
+    <div class="anno reusec"><span class="mk e">5</span><div><div class="at">Form chrome reuses shipped primitives</div><div class="ad">Fields use the shipped <code>.input</code> / <code>.label</code> at ≥44px; the surface sits in the tenant-config tile pattern. Currency formatting via <code>formatCurrency</code> → <code>TTD 8,000</code>. No new field components.</div></div></div>
+    <div class="anno reusec"><span class="mk e">6</span><div><div class="at">Per-agent, not global — schedule history preserved</div><div class="ad">Terms are per-agent and mutable. A downward adjustment issues a new validation schedule; the monthly ledger stores the <code>validatingAPI</code> in effect that month so history never rewrites (§11).</div></div></div>
+  </div>
+
+  <div class="flagnote">
+    <span class="tag">⚑ Flags</span>
+    <p><b>One verify before the brief locks.</b> <b>Status transition guardrails</b> — confirm the build enforces forward-only (no direct <code>on_financing → cleared</code>) and whether any backward move (e.g. <code>reconciling → on_financing</code> to correct a mis-set event) is permitted with an audit note. The four field semantics, the 6× ceiling derivation, and manager-set ownership are <b>locked</b> by §2 / §6, not flagged.</p>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">N</span>New · no terms yet</div>
+      <div class="sc-b"><div class="msg empty"><div class="ic">＋</div><div class="t">No financing terms set</div><div class="d">This agent has no <code style="font-family:var(--mono);font-size:10px">financingTerms</code> doc. Default status is <code style="font-family:var(--mono);font-size:10px">not_on_financing</code> until you enter and save terms.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">V</span>Validation · agreed &lt; current</div>
+      <div class="sc-b"><div class="msg err"><div class="ic">!</div><div class="t" style="font-size:13.5px">Current exceeds agreed</div><div class="d" style="font-size:11px">Current monthly financing can't exceed the agreed maximum. Block save; surface inline on the field.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error · save failed</div>
+      <div class="sc-b"><div class="msg err"><div class="ic">↻</div><div class="t" style="font-size:13.5px">Couldn't save terms</div><div class="d" style="font-size:11px">Keep the entered values; let the manager retry without re-typing.</div><div class="eb">↻ Retry save</div></div></div>
+    </div>
+  </div>
+
+  <!-- COMPONENT LIST -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · K1 scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">FinancingTermsForm</div><div class="cd">agreed / current / validatingAPI / effectiveDate fields → <code>financingTerms/{agentId}</code>. Validation: current ≤ agreed.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">DerivedTermsPanel</div><div class="cd">Read-only 6× ceiling + clocks (24-mo term, 12-mo service, waiver zone) computed from the entered figures.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">FinancingStatusMachine</div><div class="cd">5-state forward-only control; current node + allowed-transition options. Manager-set; gates all modules.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">financingStatusBadge</div><div class="cd">The five designed badges (not / on / reconciling / repayment / cleared). Shared across every Track-K surface.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">CurrencyField / DateField</div><div class="cd">Shipped <code>.input</code> primitives at ≥44px; <code>formatCurrency</code> for TTD. No new field components.</div><div class="co"><span class="ptag reuse">REUSE</span></div></div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>
