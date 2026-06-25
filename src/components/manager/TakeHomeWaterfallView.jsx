@@ -114,7 +114,7 @@ function ResultBand({ takeHome }) {
     : 'bg-success/10 border-t border-success/20 text-success';
   return (
     <div className={`flex items-center justify-between gap-4 px-4 py-3 rounded-b-xl ${bannerClass}`}>
-      <p className="text-sm leading-snug max-w-[220px] text-pretty">
+      <p className="text-sm leading-snug max-w-[220px] text-pretty text-ink">
         {isOwing
           ? <><strong>50% of net goes to repayment.</strong> The remaining take-home is below.</>
           : <><strong>Debt cleared — full net take-home.</strong> No financing split.</>
@@ -124,7 +124,7 @@ function ResultBand({ takeHome }) {
         <p className="font-display font-extrabold text-2xl tracking-tight leading-none">
           {formatCurrency(th)}
         </p>
-        <p className="font-mono text-[10px] font-bold mt-1 opacity-70">
+        <p className="font-mono text-[10px] font-bold mt-1 text-ink-muted">
           {pct}% OF GROSS
         </p>
       </div>
@@ -171,7 +171,7 @@ function BreakdownTable({ takeHome }) {
             {isOwing ? '− 50% of net → financing' : '− Financing split'}
           </td>
           <td className={`py-2 px-4 text-right font-mono border-b border-border ${isOwing ? 'text-warning' : 'text-ink-muted'}`}>
-            {isOwing ? `− ${formatCurrency(financingPortion)}` : <span className="opacity-50">— 0</span>}
+            {isOwing ? `− ${formatCurrency(financingPortion)}` : '— 0'}
           </td>
         </tr>
         <tr className="bg-primary/5 dark:bg-primary-dark/5">
