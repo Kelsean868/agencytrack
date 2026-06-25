@@ -7,7 +7,7 @@ import {
   Users, TrendingUp, FileCheck, Presentation, Download,
   BarChart2, Gift, Trophy, ClipboardList, CheckCircle2, Award, Star, UserCircle, LineChart, Tv,
   Activity, UserPlus, ClipboardCheck, BookOpen, LayoutList,
-  NotebookPen, Target, Wallet, History, Zap,
+  NotebookPen, Target, Wallet, History, Zap, Banknote,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
@@ -22,6 +22,7 @@ import MasterSheet from '../manager/MasterSheet';
 import CompliancePanel from '../manager/CompliancePanel';
 import PersistencyTab from '../manager/PersistencyTab';
 import SettlementPanel from '../manager/SettlementPanel';
+import FinancingTermsSetup from '../manager/FinancingTermsSetup';
 import MeetingMode from '../manager/MeetingMode';
 import Leaderboard from '../gamification/Leaderboard';
 import ProductionLeaderboardSurface from '../leaderboard/ProductionLeaderboardSurface';
@@ -86,6 +87,10 @@ const NAV_ITEMS = [
   { id: 'team-perf',  label: 'Team Roster',  tabId: 'team-perf',  Icon: LayoutList },
   { id: 'goals',       label: 'Goals',        tabId: 'goals',       Icon: Award },
   { id: 'settlements',           label: 'Settlements',          tabId: 'settlements',           Icon: FileCheck },
+  // Track K · K1 — financing terms setup. BM/SM/TA/PA only (unit_manager excluded
+  // per contract 5.3). UM/BM reach it via navConfig; this NAV_ITEMS entry serves
+  // the SM/TA/PA (non-producing-manager) path.
+  { id: 'financing',             label: 'Financing',            tabId: 'financing',             Icon: Banknote, roles: ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'] },
   // H2a: Policy Reconciliation — manager confirms settled policies. Visibility gated
   // in-component (mirrors SettlementPanel canAccess: BM / tenant_admin / platform_admin
   // / canConfirmSettlements). Nav item visible to all manager roles; component handles
@@ -480,6 +485,8 @@ export default function ManagerDashboard() {
         {activeTab === 'goals' && <GoalsPanel />}
 
         {activeTab === 'settlements' && <SettlementPanel />}
+
+        {activeTab === 'financing' && <FinancingTermsSetup />}
 
         {activeTab === 'policy-reconciliation' && <PolicyReconciliationPanel />}
 

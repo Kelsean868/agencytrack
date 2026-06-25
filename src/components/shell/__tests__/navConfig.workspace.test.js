@@ -75,14 +75,14 @@ describe('getWorkspaceGroups — partition (Decision B + ruling #7)', () => {
 });
 
 describe('getWorkspaceGroups — role gating', () => {
-  it('unit_manager My Team excludes branch-only items (team-wars, agent-of-month, kiosk)', () => {
+  it('unit_manager My Team excludes branch-only items (team-wars, agent-of-month, kiosk, financing)', () => {
     const umTeam = ids(getWorkspaceGroups('producingManager', { role: 'unit_manager', workspace: 'team' }));
-    ['team-wars', 'agent-of-month', 'kiosk'].forEach((bmOnly) => expect(umTeam).not.toContain(bmOnly));
+    ['team-wars', 'agent-of-month', 'kiosk', 'financing'].forEach((bmOnly) => expect(umTeam).not.toContain(bmOnly));
   });
 
   it('branch_manager My Team includes branch-only items', () => {
     const bmTeam = ids(getWorkspaceGroups('producingManager', { role: 'branch_manager', workspace: 'team' }));
-    ['team-wars', 'agent-of-month', 'kiosk'].forEach((bmOnly) => expect(bmTeam).toContain(bmOnly));
+    ['team-wars', 'agent-of-month', 'kiosk', 'financing'].forEach((bmOnly) => expect(bmTeam).toContain(bmOnly));
   });
 });
 

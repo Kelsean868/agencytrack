@@ -41,7 +41,8 @@ describe('getNavConfig — agent', () => {
 
 describe('getNavConfig — producingManager (no-regression mapping)', () => {
   // Items the shared NAV_ITEMS gated to branch_manager+ (unit_manager excluded).
-  const BM_ONLY = ['team-wars', 'agent-of-month', 'kiosk'];
+  // 'financing' (Track K · K1) joins this set — BM-and-up per contract 5.3.
+  const BM_ONLY = ['team-wars', 'agent-of-month', 'kiosk', 'financing'];
   // Destinations the dispatcher ruling requires to survive the re-grouping.
   const MUST_KEEP = ['my-war', 'settlements', 'team-perf', 'team', 'mp-money-needs'];
 

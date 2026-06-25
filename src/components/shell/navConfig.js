@@ -37,7 +37,7 @@ import {
   // producing manager / manager (reuse the dashboards' existing icon set)
   ClipboardList, Activity, UserPlus, Users, Gift, LineChart, Trophy,
   CheckCircle2, TrendingUp, LayoutList, FileCheck, ClipboardCheck, Tv, Award,
-  Presentation,
+  Presentation, Banknote,
 } from 'lucide-react';
 import { COMING_SOON_TABS } from '../../config/comingSoonTabs';
 
@@ -106,6 +106,9 @@ const PRODUCING_MANAGER_NAV = [
   { id: 'awards',                label: 'Team Awards',    tabId: 'awards',                Icon: Trophy,       scope: 'TEAM' },
   { id: 'team-perf',             label: 'Team Roster',    tabId: 'team-perf',             Icon: LayoutList },
   { id: 'settlements',           label: 'Settlements',    tabId: 'settlements',           Icon: FileCheck },
+  // Track K · K1 — financing terms setup. BM-and-up only (unit_manager excluded
+  // per contract 5.3) via the existing per-item roles gate.
+  { id: 'financing',             label: 'Financing',      tabId: 'financing',             Icon: Banknote, roles: ['branch_manager'] },
   { id: 'policy-reconciliation', label: 'Reconciliation', tabId: 'policy-reconciliation', Icon: ClipboardCheck },
   { id: 'agent-of-month',        label: 'Agent of Month', tabId: 'agent-of-month',        Icon: Trophy,       roles: ['branch_manager'] },
   { id: 'kiosk',                 label: 'Kiosk Mode',     tabId: 'kiosk',                 Icon: Tv,           roles: ['branch_manager'] },
@@ -241,7 +244,7 @@ const WORKSPACE_TEAM_SECTIONS = [
   { label: 'My Team', ids: [
     'overview', 'team', 'mastersheet', 'team-wars', 'monthly-recruiting', 'goals',
     'persistency', 'compliance', 'campaigns', 'production-report', 'awards',
-    'team-perf', 'settlements', 'policy-reconciliation', 'agent-of-month', 'kiosk',
+    'team-perf', 'settlements', 'financing', 'policy-reconciliation', 'agent-of-month', 'kiosk',
   ] },
 ];
 const WORKSPACE_RECOGNITION_IDS = ['leaderboard'];
