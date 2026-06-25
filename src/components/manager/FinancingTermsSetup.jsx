@@ -248,7 +248,7 @@ export default function FinancingTermsSetup() {
                       onChange={(e) => setForm((f) => ({ ...f, agreed: e.target.value }))}
                       placeholder="0" className={inputCls}
                     />
-                    <p className="text-[10px] text-ink-muted mt-1 uppercase tracking-wide">Full / max draw · drives the 6× ceiling</p>
+                    <p className="text-[10px] text-ink-muted mt-1 uppercase tracking-wide">Full / max draw</p>
                   </div>
                   <div>
                     <label htmlFor="financing-current" className={labelCls}>Current monthly financing (TTD)</label>
