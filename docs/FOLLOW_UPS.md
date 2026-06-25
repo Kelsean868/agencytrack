@@ -6,11 +6,11 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
-## Track K · K1 — DerivedTermsPanel (read-only ceiling + clocks) DEFERRED + ceiling-basis correction (banked K1, 2026-06-25, MEDIUM — money-correctness)
+## Track K · K6 — DerivedTermsPanel reconciliation CLOCKS (carry from K1/K2; ceiling portion RESOLVED in K2)
 
-The K1 mockup (`design_handoff_track_k/Track K Financing Terms Setup - Build.html`) draws a **DerivedTermsPanel** — a read-only block showing the financing **ceiling** + the **24-month term / 12-month service / first-3-months waiver** clocks computed off `effectiveDate`. **Deferred from K1** (dispatcher lock, 2026-06-25): K1 ships only Decision 5's surface (terms form + 5-state machine + status badge). Build the DerivedTermsPanel with **K2** (ceiling vs running balance) and **K6** (reconciliation clocks) as a **pure exported clock helper** (parses `effectiveDate` via `parseDateOnlyTT` from `src/utils/dateInputs.js`).
+**Ceiling portion RESOLVED (K2):** the 6× ceiling (`6 × currentMonthlyFinancing`, contract 2.4/6.3 — corrected basis) is built and surfaced in the K2 monthly-ledger running-balance-vs-ceiling indicator (`financingCeiling()` in `financingService.js`), and the wrong "drives the 6× ceiling" hint on the K1 `FinancingTermsSetup` agreed field was removed (Rule 9 fix). The ceiling no longer needs a separate DerivedTermsPanel — it lives in the ledger.
 
-**⚠ CEILING-BASIS CORRECTION (locked, supersedes design-spec §6 + the mockup):** the 6× financing ceiling is **`6 × currentMonthlyFinancing`** per contract **2.4 / 6.3** — **NOT** `agreedMonthlyFinancing`. The design-spec §6 text and the mockup annotation ("agreed drives the 6× ceiling") are **wrong**; the running standing amount (`currentMonthlyFinancing`) is the ceiling basis. Implement the corrected basis when DerivedTermsPanel is built. (K1 stores both fields; no K1 math depends on the ceiling, so no K1 code is affected.)
+**Carried to K6:** the remaining DerivedTermsPanel content is the **24-month term / 12-month service / first-3-months-waiver clocks** computed off `effectiveDate`. Build these with K6 (reconciliation) as a **pure exported clock helper** (parse `effectiveDate` via `parseDateOnlyTT` from `src/utils/dateInputs.js`; the month-index helpers `monthKeyFromDate`/`monthsBetweenKeys` shipped in K2 are reusable). **Falsification:** if the clocks are needed before K6 (e.g. a K2 follow-on surfaces them), re-scope; today nothing reads them.
 
 ## Track K · K1 — admin corrective / backward status transition (banked K1, 2026-06-25, deferred per Addendum B.9)
 
@@ -24,13 +24,23 @@ The K1 `financingService.transitionFinancingStatus` enforces the **forward-only*
 
 ## SettlementPanel / FinancingTermsSetup — latest-request guard parity + race tests (banked K1, 2026-06-25, LOW)
 
-K1 added a `useRef` **latest-request guard** to `FinancingTermsSetup.loadTerms` (Gemini #2): on rapid agent switching a slower `getFinancingTerms` could resolve last and overwrite the form, and because Save targets `selectedAgent` with the displayed values, that is a money-write hazard (agent A's figures onto agent B's doc). **`SettlementPanel` has the same latent shape** in its per-agent flows but was out of scope for K1 (the locked mount mirrors it; K1 didn't modify it).
+K1 added a `useRef` **latest-request guard** to `FinancingTermsSetup.loadTerms` (Gemini #2): on rapid agent switching a slower `getFinancingTerms` could resolve last and overwrite the form, and because Save targets `selectedAgent` with the displayed values, that is a money-write hazard (agent A's figures onto agent B's doc). **K2 added the same guard to `MonthlyStatementEntry.loadLedger`** (+ a `getTenantUsers` `|| []` nullish fallback). **`SettlementPanel` still has the same latent shape** in its per-agent flows — the only one of the three without the guard.
 
-**To resolve (keep the two panels true mirrors):** (1) apply the same latest-request `useRef` guard to `SettlementPanel`'s async per-agent loads; (2) add a focused **race test** to both panels (stale resolution must not overwrite the current selection); (3) add a defensive `getTenantUsers` **nullish fallback** (`|| []`) to both `loadAgents` paths — Gemini #1; `getTenantUsers` resolves to an array today so this is defense-in-depth, applied to both for consistency, not just one.
+**To resolve (keep the panels true mirrors):** (1) apply the same latest-request `useRef` guard to `SettlementPanel`'s async per-agent loads; (2) add a focused **race test** to all three panels (stale resolution must not overwrite the current selection — K1/K2 shipped the guard but no race test); (3) add the defensive `getTenantUsers` `|| []` nullish fallback to `SettlementPanel`'s and `FinancingTermsSetup`'s `loadAgents` (Gemini #1; only K2's `MonthlyStatementEntry` carries it today).
 
-## Track K · K2 — `basisBadge` primitive lands with K2 (banked K1, 2026-06-25, scope note)
+## ~~Track K · K2 — `basisBadge` primitive lands with K2~~ — RESOLVED (K2, 2026-06-25)
 
-The `basisBadge` (submitted-provisional / submitted-final / settled-confirmed quarter-basis indicator, CD#3) is a **K2** primitive, not K1. K1 ships only `FinancingStatusBadge` (the 5-state financing-status badge). No action until K2.
+**RESOLVED by K2.** `FinancingBasisBadge` (3-state: submitted-final / submitted-provisional / settled-confirmed) shipped in `src/components/manager/FinancingBasisBadge.jsx`, with labels + the render-derive helper (`deriveBasisSource`) in `financingService.js`. In K2 the basis is **render-derived** (never stored): months 1–3 → submitted-final, month 4+ → settled-confirmed. `submitted-provisional` is built into the primitive but **reserved for K5's live current-month projection** — K2 never produces it.
+
+## Track K · K2 — RollForwardCheck reconciliation advisory (banked K2, 2026-06-25, MEDIUM — design carefully, land with/after K4)
+
+The K2 mockup draws a **RollForwardCheck** advisory panel (client roll-forward estimate vs the stored authoritative `runningBalance`, with the self-correcting delta). **Omitted from K2** (dispatcher lock): a naive flow model (`prev + financingPaid − netCommission − bonusOffset`) would **false-positive** against the statement balance, which legitimately includes interest / managing-director-discretion adjustments the model can't see. Building it before `bonusOffset` is a projected value (K4) risks surfacing a "drift" that is actually correct.
+
+**To resolve:** design the roll-forward model carefully (account for interest + MD-discretion adjustments, or scope it as advisory-only with an explicit "estimate may differ from statement for known reasons" caveat); land with or after **K4** when `bonusOffset` projection exists. Advisory only — never blocks the authoritative stored balance.
+
+## Track K — lift agent-selection into FinancingTab (banked K2, 2026-06-25, LOW — UX)
+
+K2 mounted the financing surface as a `FinancingTab` container with a segmented control (Terms · Monthly Ledger). Each sub-view (`FinancingTermsSetup`, `MonthlyStatementEntry`) keeps its **own** internal agent dropdown — so switching sub-views re-selects the agent. **To resolve:** lift the agent selection into `FinancingTab` and pass `selectedAgent` as a prop to both sub-views (drop each one's internal dropdown), so the selected agent persists across the Terms/Ledger toggle. Touches the K1 `FinancingTermsSetup` (accept a prop). Pure UX; no behavior/security change.
 
 ## Money Needs merged allocator — general 6% premium-tax handling (banked merged-allocator PR, 2026-06-24, MEDIUM — money-correctness)
 
