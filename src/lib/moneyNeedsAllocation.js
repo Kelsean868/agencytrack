@@ -164,31 +164,10 @@ export function seedAllocation(worksheet, licenseProfile) {
   };
 }
 
-// Merge a stored allocation onto a fresh seed so a sparse/legacy doc never leaves
-// a line or product list undefined (defensive, mirrors normalizeWorksheet's intent).
-export function normalizeAllocation(stored, worksheet, licenseProfile) {
-  const base = seedAllocation(worksheet, licenseProfile);
-  if (!stored || typeof stored !== 'object' || !stored.lines) return base;
-  const out = { licenseClass: stored.licenseClass ?? base.licenseClass, lines: {} };
-  for (const key of ALLOC_LINE_KEYS) {
-    const s = stored.lines[key];
-    const b = base.lines[key];
-    if (!s) { out.lines[key] = b; continue; }
-    out.lines[key] = {
-      ...b,
-      ...s,
-      commission: num(s.commission),
-      rate: s.rate === undefined ? b.rate : num(s.rate),
-    };
-    if (b.products) {
-      out.lines[key].products = Array.isArray(s.products) && s.products.length > 0
-        ? s.products.slice(0, MAX_PRODUCTS).map((p) => ({ name: p.name ?? '', commission: num(p.commission), rate: num(p.rate) }))
-        : b.products;
-      out.lines[key].drilled = !!s.drilled;
-    }
-  }
-  return out;
-}
+// PR-U2: `normalizeAllocation` (merge a stored `.allocation` onto a fresh seed)
+// was retired alongside the `.allocation` writer/reader. Nothing persists
+// `.allocation` since PR-U1, so the allocator seeds directly from the worksheet's
+// per-line commission targets via `seedAllocation`. See MoneyNeedsAllocator.jsx.
 
 // Distribute a line COMMISSION total evenly across its products (auto-balance),
 // preserving names + rates. Used when drilling, or on "Distribute evenly".

@@ -202,24 +202,11 @@ describe('MoneyNeedsAllocator — per-product drill (Life)', () => {
     expect(screen.getByTestId('alloc-product-name-life-0').value).toBe('Endowment');
   });
 
-  it('a persisted-drilled line shows its drawer on load (no toggle needed)', () => {
-    const ws = makeWorksheet({
-      allocation: {
-        licenseClass: 'composite',
-        lines: {
-          life: { commission: 17500, rate: 0.35, drilled: true, products: [{ name: 'Whole Life', commission: 17500, rate: 0.35 }] },
-          ah: { commission: 0, rate: 0.25 },
-          general: { commission: 0, rate: 0.10, drilled: false, products: [] },
-        },
-      },
-    });
-    render(<MoneyNeedsAllocator worksheet={ws} />);
-    // Drawer is present immediately — proves drawer gates on isDrilled, not UI state.
-    expect(screen.getByTestId('alloc-drill-life')).toBeTruthy();
-    expect(screen.getByTestId('alloc-product-name-life-0').value).toBe('Whole Life');
-    // Derived product API = 17500 / 0.35 = 50000
-    expect(within(screen.getByTestId('alloc-product-api-life-0')).getByText(/TTD 50,000/)).toBeTruthy();
-  });
+  // PR-U2: the "persisted-drilled line hydrates its drawer on load" test was
+  // removed — it exercised the `.allocation` hydration path that PR-U2 retired.
+  // Post-U1 nothing persists `.allocation`, so a pre-drilled-on-load state can no
+  // longer occur; the allocator seeds collapsed from the worksheet and the user
+  // drills via the toggle (covered by the test above).
 
   it('caps products at 4 (no Add button when full)', async () => {
     render(<MoneyNeedsAllocator worksheet={makeWorksheet()} />);
@@ -261,34 +248,38 @@ describe('MoneyNeedsAllocator — Send → Game Plan', () => {
 });
 
 describe('MoneyNeedsAllocator — AllocationSummaryCard', () => {
-  // Fixture: a drilled Life line (2 products) so we can assert product subtotal rows.
-  function makeDrilledWorksheet() {
-    return makeWorksheet({
-      allocation: {
-        licenseClass: 'composite',
-        lines: {
-          life: {
-            commission: 29000, rate: 0.35, drilled: true,
-            products: [
-              { name: 'Whole Life', commission: 21000, rate: 0.35 }, // api 60000
-              { name: 'Term',       commission: 8000,  rate: 0.20 }, // api 40000
-            ],
-          },
-          ah:      { commission: 10000, rate: 0.25, drilled: false },
-          general: { commission: 0,     rate: 0.10, drilled: false, products: [] },
-        },
-      },
-    });
+  // PR-U2: the `.allocation` hydration seam was retired, so drilled state can no
+  // longer be injected via a fixture — it is driven through the real UI (drill
+  // toggle → per-product commission/rate entry). This worksheet seeds Life + A&H
+  // targets and zeroes General (property+motor = 0) so General is filtered from
+  // the ack and totals stay clean.
+  function makeSummaryWorksheet() {
+    return makeWorksheet({ firstYearCommissionsTargets: { life: 35000, ah: 10000, property: 0, motor: 0 } });
   }
 
-  it('renders summary card with line row + product subtotals + totals for a drilled fixture', () => {
-    render(<MoneyNeedsAllocator worksheet={makeDrilledWorksheet()} />);
+  it('renders summary card with line row + product subtotals + totals for a drilled fixture', async () => {
+    render(<MoneyNeedsAllocator worksheet={makeSummaryWorksheet()} />);
+
+    // Drive the drilled Life state via the UI: drill → enter 2 products (Whole
+    // Life 21000 @ 35%, Term 8000 @ 20%), zero the other two. Σ = 29000.
+    fireEvent.click(screen.getByTestId('alloc-drill-toggle-life'));
+    await screen.findByTestId('alloc-drill-life');
+    fireEvent.change(screen.getByTestId('alloc-product-commission-life-0'), { target: { value: '21000' } });
+    fireEvent.change(screen.getByTestId('alloc-product-rate-life-0'), { target: { value: '35' } });
+    fireEvent.change(screen.getByTestId('alloc-product-name-life-1'), { target: { value: 'Term' } });
+    fireEvent.change(screen.getByTestId('alloc-product-commission-life-1'), { target: { value: '8000' } });
+    fireEvent.change(screen.getByTestId('alloc-product-rate-life-1'), { target: { value: '20' } });
+    fireEvent.change(screen.getByTestId('alloc-product-commission-life-2'), { target: { value: '0' } });
+    fireEvent.change(screen.getByTestId('alloc-product-commission-life-3'), { target: { value: '0' } });
+
+    // Life line row (drilled): Σ product commissions = 29000
+    await waitFor(() => expect(
+      within(screen.getByTestId('summary-line-life')).getByText(/TTD 29,000/),
+    ).toBeTruthy());
+
     const card = screen.getByTestId('alloc-summary-card');
     expect(card).toBeTruthy();
-
-    // Life line row (drilled): should show commission 29000
     const lifeLine = within(card).getByTestId('summary-line-life');
-    expect(within(lifeLine).getByText(/TTD 29,000/)).toBeTruthy();
     expect(within(lifeLine).getByText(/Life/)).toBeTruthy();
 
     // Per-product subtotal rows
@@ -299,6 +290,13 @@ describe('MoneyNeedsAllocator — AllocationSummaryCard', () => {
     const p1 = within(card).getByTestId('summary-product-life-1');
     expect(within(p1).getByText('Term')).toBeTruthy();
     expect(within(p1).getByText(/TTD 8,000/)).toBeTruthy();
+
+    // Exactly the seeded product set renders (4): the two funded above + the two
+    // remaining seeds left at $0 (drilling seeds the full PRODUCT_SEEDS.life set).
+    const p2 = within(card).getByTestId('summary-product-life-2');
+    expect(within(p2).getByText('Critical Illness')).toBeTruthy();
+    expect(within(p2).getByText('TTD 0')).toBeTruthy(); // exact: the commission span, not the "TTD 0 API · 35.0%" span
+    expect(within(card).queryByTestId('summary-product-life-4')).toBeNull(); // no 5th row
 
     // A&H line (collapsed, no product rows for ah)
     const ahLine = within(card).getByTestId('summary-line-ah');
@@ -318,10 +316,10 @@ describe('MoneyNeedsAllocator — AllocationSummaryCard', () => {
   });
 
   it('ack modal (no regression) still shows the line-level subset from buildAllocationSummary', async () => {
-    render(<MoneyNeedsAllocator worksheet={makeDrilledWorksheet()} onOpenTab={vi.fn()} />);
+    render(<MoneyNeedsAllocator worksheet={makeSummaryWorksheet()} onOpenTab={vi.fn()} />);
     fireEvent.click(screen.getByTestId('alloc-send-btn'));
     const ack = await screen.findByTestId('alloc-ack-modal');
-    // Ack renders Life + A&H (both have commission > 0); General (0) is filtered out.
+    // Ack renders Life + A&H (both seeded > 0); General (0) is filtered out.
     expect(within(ack).getByText('Life')).toBeTruthy();
     expect(within(ack).getByText('A&H')).toBeTruthy();
     expect(within(ack).queryByText('General')).toBeNull();

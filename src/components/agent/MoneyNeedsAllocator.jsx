@@ -14,7 +14,7 @@ import AwardProjectionStrip from './AwardProjectionStrip';
 import {
   ALLOC_LINE_META, LINE_DEFAULT_RATES, MAX_PRODUCTS, PRODUCT_SEEDS,
   visibleLineKeys, allocApps, isDrilled, lineCommission, lineAPI, productAPI,
-  effectiveLineRate, totalAllocatedCommission, normalizeAllocation,
+  effectiveLineRate, totalAllocatedCommission, seedAllocation,
   autoBalanceProducts, sumProductCommission, buildAllocationSummary,
   allocationToYearPlan,
 } from '../../lib/moneyNeedsAllocation';
@@ -492,7 +492,7 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
 
   const [licenseProfile, setLicenseProfile] = useState(user?.licenseProfile ?? null);
   const [licenseSaving, setLicenseSaving] = useState(false);
-  const [alloc, setAlloc] = useState(() => normalizeAllocation(worksheet?.allocation, worksheet, user?.licenseProfile));
+  const [alloc, setAlloc] = useState(() => seedAllocation(worksheet, user?.licenseProfile));
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [showAck, setShowAck] = useState(false);
@@ -506,16 +506,18 @@ export default function MoneyNeedsAllocator({ worksheet, onOpenTab }) {
     if (user?.licenseProfile && !licenseProfile) setLicenseProfile(user.licenseProfile);
   }, [user?.licenseProfile, licenseProfile]);
 
-  // Re-seed when the worksheet identity OR the license profile changes. Returning
-  // agents keep their stored allocation (normalizeAllocation merges it); a first-run
-  // license pick re-seeds with the correct licenseClass/visible lines. The `worksheet`
-  // OBJECT is intentionally excluded — the parent recreates it on every expense edit,
-  // and re-seeding then would wipe in-progress allocation edits. Only year /
-  // persisted-allocation / license are meaningful re-seed triggers.
+  // Re-seed when the worksheet identity OR the license profile changes. The seed
+  // is derived from the worksheet's per-line commission targets (PR-U2: the
+  // decoupled `.allocation` hydration path was retired — nothing persists it
+  // anymore, so seeding from the worksheet IS the source). A first-run license
+  // pick re-seeds with the correct licenseClass/visible lines. The `worksheet`
+  // OBJECT is intentionally excluded — the parent recreates it on every expense
+  // edit, and re-seeding then would wipe in-progress allocation edits. Only
+  // year / license are meaningful re-seed triggers.
   useEffect(() => {
-    setAlloc(normalizeAllocation(worksheet?.allocation, worksheet, licenseProfile));
+    setAlloc(seedAllocation(worksheet, licenseProfile));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [worksheet?.year, worksheet?.allocation, licenseProfile]);
+  }, [worksheet?.year, licenseProfile]);
 
   // Real awards ruleset (graceful fallback to bundled default). Read-only path
   // already in prod use (AgentDashboard) — no rules change.

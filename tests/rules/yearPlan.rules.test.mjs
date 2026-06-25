@@ -41,6 +41,21 @@ const VALID_PAYLOAD = {
   },
 };
 
+// PR-U2: canonical 3-key shape carrying the additive `rate`/`products` fields the
+// new Option-2 constraints police. `rate` is a 0..1 decimal; `products` is ≤4.
+const VALID_3KEY = {
+  year: 2026,
+  tenantId: TENANT_ID,
+  uid: 'agent-a',
+  licenseProfile: 'composite',
+  status: 'draft',
+  lines: {
+    life:    { targetAPI: 100000, pct: 50, derivedApps: 8, derivedCommission: 35000, enabled: true, rate: 0.35, products: [{ name: 'Whole Life', api: 100000, rate: 0.35 }] },
+    ah:      { targetAPI: 0, pct: 0, derivedApps: 0, derivedCommission: 0, enabled: true, rate: 0.25, products: [] },
+    general: { targetAPI: 0, pct: 0, derivedApps: 0, derivedCommission: 0, enabled: true, rate: 0.10, products: [] },
+  },
+};
+
 function ypDocPath(uid, year) {
   return `tenants/${TENANT_ID}/users/${uid}/yearPlan/${year}`;
 }
@@ -133,12 +148,50 @@ async function main() {
     setDoc(doc(agentBDb, ypDocPath('agent-a', '2025')), { ...VALID_PAYLOAD, uid: 'agent-b' })
   );
 
-  await run('unit_manager CREATE at own path → DENY (isAgent() guard)', false, () =>
+  await run('unit_manager CREATE own yearPlan → ALLOW (producing manager files own plan)', true, () =>
     setDoc(doc(umDb, ypDocPath('um-1', '2026')), { ...VALID_PAYLOAD, uid: 'um-1' })
+  );
+
+  await run('unit_manager CREATE at agent-a path (uid mismatch) → DENY (own-path only)', false, () =>
+    setDoc(doc(umDb, ypDocPath('agent-a', '2027')), { ...VALID_PAYLOAD, uid: 'um-1', year: 2027 })
   );
 
   await run('unauthenticated CREATE → DENY', false, () =>
     setDoc(doc(anonDb, ypDocPath('agent-a', '2023')), { ...VALID_PAYLOAD })
+  );
+
+  // ── CREATE: PR-U2 additive field constraints (Option 2) ─────────────────────────
+
+  await run('agent-a CREATE 3-key with valid rate (0..1) + ≤4 products → ALLOW', true, () =>
+    setDoc(doc(agentADb, ypDocPath('agent-a', '2022')), { ...VALID_3KEY, year: 2022 })
+  );
+
+  await run('agent-a CREATE omitting rate/products (additive, not required) → ALLOW', true, () =>
+    setDoc(doc(agentADb, ypDocPath('agent-a', '2021')), { ...VALID_PAYLOAD, year: 2021, uid: 'agent-a' })
+  );
+
+  await run('agent-a CREATE with rate > 1 → DENY', false, () =>
+    setDoc(doc(agentADb, ypDocPath('agent-a', '2020')), {
+      ...VALID_3KEY, year: 2020,
+      lines: { ...VALID_3KEY.lines, life: { ...VALID_3KEY.lines.life, rate: 1.5 } },
+    })
+  );
+
+  await run('agent-a CREATE with rate < 0 → DENY', false, () =>
+    setDoc(doc(agentADb, ypDocPath('agent-a', '2019')), {
+      ...VALID_3KEY, year: 2019,
+      lines: { ...VALID_3KEY.lines, general: { ...VALID_3KEY.lines.general, rate: -0.1 } },
+    })
+  );
+
+  await run('agent-a CREATE with products.size() > 4 → DENY', false, () =>
+    setDoc(doc(agentADb, ypDocPath('agent-a', '2018')), {
+      ...VALID_3KEY, year: 2018,
+      lines: {
+        ...VALID_3KEY.lines,
+        life: { ...VALID_3KEY.lines.life, products: Array.from({ length: 5 }, (_, i) => ({ name: `P${i}`, api: 1000, rate: 0.3 })) },
+      },
+    })
   );
 
   // ── UPDATE ────────────────────────────────────────────────────────────────────
@@ -157,6 +210,23 @@ async function main() {
 
   await run('unauthenticated UPDATE → DENY', false, () =>
     updateDoc(doc(anonDb, ypDocPath('agent-a', '2026')), { 'lines.life.targetAPI': 1 })
+  );
+
+  // ── UPDATE: PR-U2 additive field constraints (Option 2) ─────────────────────────
+  // agent-b's own 2026 doc (seeded draft, never flipped) is the mutation target.
+
+  await run('agent-b UPDATE own life.rate to 0.5 (in range) → ALLOW', true, () =>
+    updateDoc(doc(agentBDb, ypDocPath('agent-b', '2026')), { 'lines.life.rate': 0.5 })
+  );
+
+  await run('agent-b UPDATE own life.rate to 2 (out of range) → DENY', false, () =>
+    updateDoc(doc(agentBDb, ypDocPath('agent-b', '2026')), { 'lines.life.rate': 2 })
+  );
+
+  await run('agent-b UPDATE own life.products to 5 elements → DENY', false, () =>
+    updateDoc(doc(agentBDb, ypDocPath('agent-b', '2026')), {
+      'lines.life.products': Array.from({ length: 5 }, (_, i) => ({ name: `P${i}`, api: 1000, rate: 0.3 })),
+    })
   );
 
   // ── status flip: draft → committed (Step 4 commit transaction path) ──────────
