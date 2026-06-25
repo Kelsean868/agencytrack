@@ -30,6 +30,32 @@
  *
  * Operator-run with admin creds (service-account-key.json), post-merge,
  * pre-cutover (human/deploy-class — CC never runs the apply path).
+ *
+ * ── RUN ORDER (SAFETY-CRITICAL) ──────────────────────────────────────────────
+ * Run this AFTER PR-U1 (#744) is merged. The merge repoints the live merged
+ * surface to write `yearPlan` directly; only then is this a history cleanup
+ * rather than a writer racing live agents.
+ *
+ *   - If `VITE_MONEY_NEEDS_MERGED_ENABLED` is/was ON in prod, the old code path
+ *     was writing `moneyNeeds.allocation` for live agents. Migrating WHILE that
+ *     writer is still live (i.e. before merge) re-creates the exact stranding
+ *     this fixes: an agent who allocates between `--apply` and the merge lands
+ *     a fresh `.allocation` with no `yearPlan`. So: merge first (preferred), or
+ *     flip the flag OFF first.
+ *   - Merge-first is structurally safe regardless of the flag: post-merge the
+ *     live writer creates a `yearPlan` doc, and ARM B SKIPS any agent that has a
+ *     `yearPlan` doc — so it cannot re-strand a live allocator. It only seeds
+ *     agents who never got a `yearPlan` doc (true stranded history).
+ *   - If the flag is currently OFF, the `.allocation` docs are static history
+ *     and there is no race; run whenever (merge-first still cleaner).
+ *
+ * ── ROLLBACK ─────────────────────────────────────────────────────────────────
+ * ARM A is LOSSY in one direction: once `property`+`motor` fold into `general`,
+ * the per-line split is NOT recoverable from the 3-key doc (it is deliberately
+ * collapsed — Direction 1.5). The dry-run per-doc log is the backstop; for
+ * belt-and-suspenders on committed money data, export the affected `yearPlan`
+ * docs (or take a Firestore backup) BEFORE `--apply`. ARM A is total-preserving
+ * and award-neutral, so a forward re-run is safe; reversing a fold is not.
  */
 const path = require('path');
 const fs = require('fs');
