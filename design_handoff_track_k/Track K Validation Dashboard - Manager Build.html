@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Track K — Validation Dashboard (Manager) — Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:790px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:36px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.reuse{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.flag{background:var(--dangerTint);color:var(--danger)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)}
+
+  /* status-chip vocabulary */
+  .statusvocab{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .sv{background:var(--surface);border:1px solid var(--rule);border-radius:11px;padding:12px 13px}
+  .sv .chip-status{margin-bottom:8px}
+  .sv .svd{font-size:11px;color:var(--inkMute);text-wrap:pretty}
+  .chip-status{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:4px 10px;border-radius:99px;text-transform:uppercase;white-space:nowrap;display:inline-flex;align-items:center;gap:6px}
+  .chip-status.ontrack{background:var(--successTint);color:var(--success)}
+  .chip-status.atrisk{background:var(--warningTint);color:var(--warning)}
+  .chip-status.qualified{background:var(--tealTint);color:var(--tealDark)}
+  .chip-status.missed{background:var(--dangerTint);color:var(--danger)}
+  .chip-status.recon{background:var(--goldTint);color:var(--goldInk)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:152px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+  .nav .nt{font-family:var(--mono);font-size:8px;font-weight:700;color:#fff;background:var(--gold);padding:1px 5px;border-radius:99px;margin-left:auto}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+
+  /* reality strip */
+  .reality{display:flex;align-items:center;gap:18px;background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:13px 18px;flex-wrap:wrap}
+  .rb-agg{display:flex;align-items:center;gap:11px}
+  .rb-agg .lbl{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint);line-height:1.3}
+  .rb-agg .v{font-family:var(--display);font-weight:800;font-size:30px;letter-spacing:-.02em;line-height:1}
+  .rb-div{width:1px;height:34px;background:var(--rule)}
+  .rb-stats{display:flex;gap:24px;margin-left:auto}
+  .rb-stat{text-align:right}
+  .rb-stat .k{font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.1em;color:var(--inkFaint)}
+  .rb-stat .v{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.015em;margin-top:3px;white-space:nowrap}
+
+  /* termination-risk monitor */
+  .monitor{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+  .moncard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .moncard.warnedge{border-color:color-mix(in srgb,var(--warning) 32%,transparent)}
+  .moncard.warnedge .mon-h{background:var(--warningTint)}
+  .mon-h{padding:11px 16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:9px}
+  .mon-h .mt{font-family:var(--display);font-weight:800;font-size:13.5px}
+  .moncard.warnedge .mt{color:var(--warning)}
+  .mon-h .badge{font-family:var(--mono);font-size:9px;font-weight:700;padding:2px 9px;border-radius:99px;margin-left:auto;background:var(--surface);color:var(--warning);border:1px solid color-mix(in srgb,var(--warning) 30%,transparent)}
+  .mon-b{padding:15px 16px;display:flex;flex-direction:column;gap:13px}
+  /* consecutive-miss counter */
+  .missrow{display:flex;align-items:center;gap:13px}
+  .missdots{display:flex;gap:8px}
+  .missdot{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:15px;border:2px solid var(--rule);color:var(--inkFaint);background:var(--surfaceSoft)}
+  .missdot.hit{background:var(--warningTint);border-color:var(--warning);color:var(--warning)}
+  .missdot.crit{background:var(--dangerTint);border-color:var(--danger);color:var(--danger)}
+  .missdot.next{border-style:dashed;border-color:var(--danger);color:var(--danger);background:var(--surface)}
+  .missmeta{flex:1}
+  .missmeta .mm-n{font-family:var(--display);font-weight:800;font-size:15px}
+  .missmeta .mm-d{font-size:11.5px;color:var(--inkMute);margin-top:2px;text-wrap:pretty}
+  .pendingbasis{display:flex;gap:9px;align-items:center;background:var(--surfaceSoft);border:1px dashed var(--ruleStrong);border-radius:10px;padding:10px 13px;font-size:11px;color:var(--inkMute);text-wrap:pretty}
+  .pendingbasis .basis{flex-shrink:0}
+  .basis{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.03em;padding:3px 9px;border-radius:99px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+  .basis::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+  .basis.settled{background:var(--tealTint);color:var(--tealDark)}.basis.settled::before{background:var(--teal)}
+  .basis.subprov{background:var(--warningTint);color:var(--warning)}.basis.subprov::before{background:var(--warning)}
+
+  /* downward-adjustment flag → BM notify obligation */
+  .obligation{display:flex;flex-direction:column;gap:11px}
+  .adjbig{display:flex;align-items:baseline;gap:13px}
+  .adjbig .av{font-family:var(--display);font-weight:800;font-size:34px;color:var(--danger);letter-spacing:-.02em;line-height:1;flex-shrink:0}
+  .adjbig .al{font-size:12px;color:var(--inkMute);text-wrap:pretty}
+  .adjbig .al b{color:var(--ink)}
+  .duty{display:flex;gap:11px;background:var(--goldTint);border:1px solid color-mix(in srgb,var(--gold) 35%,transparent);border-radius:11px;padding:12px 14px}
+  .duty .di{color:var(--goldInk);flex-shrink:0;font-size:15px}
+  .duty .dt{font-size:11.5px;color:var(--goldInk);line-height:1.45}
+  .duty .dt b{font-weight:700}
+  .duty .dt .note{display:block;margin-top:4px;font-family:var(--mono);font-size:9.5px;color:var(--inkMute);letter-spacing:.02em}
+  .notbtn{display:inline-flex;align-items:center;gap:7px;padding:9px 14px;border-radius:9px;background:var(--gold);color:#fff;font-size:12px;font-weight:700;min-height:40px;align-self:flex-start;white-space:nowrap}
+
+  /* roster */
+  .roster{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .ro-legend{display:flex;align-items:center;gap:14px;padding:9px 16px;border-bottom:1px solid var(--rule);font-size:10.5px;color:var(--inkMute);flex-wrap:wrap}
+  .ro-legend .note{margin-left:auto;font-family:var(--mono);font-size:10px}
+  .rohead,.rorow{display:grid;grid-template-columns:34px 1.5fr 118px 132px 150px 90px 70px;gap:10px;align-items:center}
+  .rohead{padding:10px 16px;border-bottom:1px solid var(--ruleStrong);background:var(--surfaceSoft)}
+  .rohead .h{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--inkMute)}
+  .rorow{padding:11px 16px;border-bottom:1px solid var(--rule)}
+  .rorow:last-child{border-bottom:none}
+  .rorow.zebra{background:var(--surfaceRaised)}
+  .rorow .rk{text-align:center;font-family:var(--display);font-weight:800;font-size:12px;color:var(--inkFaint)}
+  .rorow .who{display:flex;align-items:center;gap:10px;min-width:0}
+  .rorow .av{width:32px;height:32px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px;flex-shrink:0}
+  .rorow .nm{font-size:13px;font-weight:600;white-space:nowrap}
+  .rorow .un{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);margin-top:1px}
+  .termcell{display:flex;flex-direction:column;gap:4px}
+  .termcell .tm{font-family:var(--mono);font-size:9.5px;color:var(--inkMute)}
+  .miniterm{display:flex;gap:3px;margin-top:1px}
+  .miniterm i{width:14px;height:5px;border-radius:2px;background:var(--surfaceMute)}
+  .miniterm i.done{background:var(--teal)}
+  /* suggested vs confirmed */
+  .svc{display:flex;flex-direction:column;gap:5px}
+  .svc .sline{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .svc .slbl{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--inkFaint);letter-spacing:.04em}
+  .svc .sval{font-family:var(--mono);font-size:12px;color:var(--inkMute)}
+  .svc .ovr{display:flex;align-items:center;gap:6px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 30%,transparent);border-radius:8px;padding:4px 9px}
+  .svc .ovr .ov{font-family:var(--display);font-weight:800;font-size:14px;color:var(--teal);letter-spacing:-.01em}
+  .svc .ovr .oc{font-family:var(--mono);font-size:8px;color:var(--inkMute)}
+  /* balance/ceiling mini */
+  .balcell{display:flex;flex-direction:column;gap:5px}
+  .balcell .bv{font-family:var(--display);font-weight:800;font-size:14px}
+  .balcell .bv.neg{color:var(--success)}
+  .baltrack{position:relative;height:6px;border-radius:4px;background:var(--surfaceMute);overflow:hidden}
+  .baltrack .bf{position:absolute;left:0;top:0;bottom:0;background:var(--teal);border-radius:4px}
+  .baltrack .bf.hi{background:var(--warning)}
+  .balcell .bc{font-family:var(--mono);font-size:8px;color:var(--inkFaint)}
+  /* adjustment pct cell */
+  .adjcell{text-align:center}
+  .adjcell .ap{font-family:var(--display);font-weight:800;font-size:15px}
+  .adjcell .ap.flag{color:var(--danger)}
+  .adjcell .ap.ok{color:var(--inkMute)}
+  .adjcell .as{font-family:var(--mono);font-size:8px;color:var(--inkFaint);margin-top:1px}
+  .adjcell .flagdot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--danger);margin-left:4px;vertical-align:1px}
+  .rorow .acts{display:flex;justify-content:flex-end}
+  .rorow .ab{padding:6px 11px;border-radius:8px;font-size:11px;font-weight:700;min-height:34px;display:inline-flex;align-items:center;gap:4px;background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink)}
+
+  /* override drawer */
+  .drawer{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(38,35,28,.08);max-width:520px}
+  .dw-h{padding:14px 18px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:10px}
+  .dw-h .av{width:34px;height:34px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:13px}
+  .dw-h .dt{font-family:var(--display);font-weight:800;font-size:15px}
+  .dw-h .ds{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);margin-top:1px}
+  .dw-b{padding:16px 18px;display:flex;flex-direction:column;gap:13px}
+  .calc{display:flex;align-items:stretch;gap:8px}
+  .calc .cc{flex:1;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:9px;padding:10px 11px;text-align:center}
+  .calc .cc .ck{font-family:var(--mono);font-size:8px;font-weight:700;color:var(--inkMute);letter-spacing:.06em}
+  .calc .cc .cv{font-family:var(--display);font-weight:800;font-size:15px;margin-top:4px}
+  .calc .cop{display:flex;align-items:center;color:var(--inkFaint);font-size:14px}
+  .suggested{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px}
+  .suggested .sl{font-size:12px;font-weight:700;color:var(--inkMute)}
+  .suggested .sv{font-family:var(--display);font-weight:800;font-size:20px;letter-spacing:-.015em}
+  .override{display:flex;flex-direction:column;gap:7px}
+  .override .ol{font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:space-between}
+  .override .ol .tag{font-family:var(--mono);font-size:8.5px;font-weight:700;color:var(--teal);background:var(--tealTint);padding:2px 8px;border-radius:99px}
+  .ovinput{display:flex;align-items:center;gap:10px;background:var(--surface);border:2px solid var(--teal);border-radius:10px;padding:11px 14px}
+  .ovinput .cu{font-family:var(--mono);font-size:11px;color:var(--inkFaint)}
+  .ovinput .num{font-family:var(--display);font-weight:800;font-size:22px;color:var(--ink);letter-spacing:-.02em;flex:1}
+  .ovinput .caret{width:1.5px;height:22px;background:var(--teal);animation:none}
+  .ovinput .step{display:flex;flex-direction:column;gap:3px}
+  .ovinput .step b{width:24px;height:18px;border-radius:5px;background:var(--surfaceSoft);border:1px solid var(--rule);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--inkMute)}
+  .adjreadout{display:flex;align-items:center;justify-content:space-between;padding:11px 14px;border-radius:10px;background:var(--warningTint);border:1px solid color-mix(in srgb,var(--warning) 30%,transparent)}
+  .adjreadout .arl{font-size:11.5px;color:var(--warning);font-weight:700;line-height:1.4}
+  .adjreadout .arv{font-family:var(--display);font-weight:800;font-size:20px;color:var(--warning)}
+  .capnote{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);text-align:center;text-wrap:pretty}
+  .dw-foot{padding:13px 18px;border-top:1px solid var(--rule);background:var(--surfaceSoft);display:flex;gap:10px}
+  .dw-foot .btn{flex:1;padding:12px;border-radius:9px;font-size:13px;font-weight:700;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn.primary{background:var(--teal);color:#fff}
+  .btn.ghost{background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink);flex:0 0 auto;padding-left:18px;padding-right:18px}
+
+  .splitwrap{display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start}
+  .annocol{display:flex;flex-direction:column;gap:12px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.reusec{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.reusec .ad b{color:var(--tealDark)}
+  .anno.flagc{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .anno.flagc .ad b{color:var(--danger)}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:148px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:6px}
+  .msg .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .msg.empty .ic{background:var(--tealTint);color:var(--teal)} .msg.err .ic{background:var(--dangerTint);color:var(--danger)}
+  .msg .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .msg .d{font-size:11px;color:var(--inkMute);line-height:1.45;max-width:280px}
+  .msg .eb{margin-top:3px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .flagnote{display:flex;gap:13px;background:var(--dangerTint);border:1px solid color-mix(in srgb,var(--danger) 30%,transparent);border-radius:13px;padding:15px 18px;margin-top:16px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--danger);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--danger)}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:215px 1fr 96px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.reuse{background:var(--tealTint);color:var(--tealDark)}
+
+  @media(max-width:1040px){
+    .monitor,.statusvocab,.splitwrap,.annos,.states{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}
+    .rohead,.rorow{grid-template-columns:28px 1.4fr 110px 130px}
+    .rohead .h:nth-child(5),.rohead .h:nth-child(6),.rohead .h:nth-child(7),.rorow .balcell,.rorow .adjcell,.rorow .acts{display:none}
+    .dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Track K · New-Agent Financing &amp; Bonus · Build annotation · MANAGER view</div>
+      <h1>Manager financing roster — confirm the draw, watch the triggers.</h1>
+      <p class="subt">The branch-manager surface (K7 + K8). A <b>roster of new agents on financing</b> with status chips and key numbers, a per-agent <b>suggested-vs-confirmed override</b> with <code style="font-family:var(--mono);font-size:12px">adjustmentPct</code>, and the <b>termination-risk monitor</b>: a consecutive-miss counter on the <b>confirmed basis only</b> and the <b>&gt;10% downward-adjustment</b> flag that raises a <b>notify-Sales-Admin-by-the-1st obligation</b> — a notification duty, never an automatic termination.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />TRACK K · K7 / K8 · BRANCH_MANAGER<br />SOUTH BRANCH · TTD<br />REV 2026-06-06</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Data canon</span>
+    <p><b>Determinations read the confirmed basis.</b> The roster fans <code>financingTerms</code> + the latest <code>financing/{agentId}_{YYYY_MM}</code> per new agent (Compliance-v2 fan-out pattern). Suggested proration is computed; <b>managerFinancing</b> is the manager's confirmed override (caps at 100% of agreed). <code>adjustmentPct</code> = distance below full. The consecutive-miss counter reads <b>only settled-confirmed</b> rows — pending months show "pending settlement". The &gt;10% flag surfaces clause 5.3's <b>BM-notify-by-the-1st</b> obligation. Both themes via Nexus tokens; no glass on this data surface (census).</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip new">NEW</span> net-new Track-K surface / data</span>
+    <span class="it"><span class="pchip reuse">REUSE</span> shipped pattern (fan-out, roster, nudge, source-badge)</span>
+    <span class="it"><span class="pchip flag">FLAG</span> open item — pending build verdict, not invented</span>
+  </div>
+
+  <!-- STATUS VOCABULARY -->
+  <div class="secttl">Status-chip vocabulary — quarter outcome</div>
+  <div class="statusvocab">
+    <div class="sv"><span class="chip-status ontrack">On track</span><div class="svd">Projecting to clear both gates this quarter.</div></div>
+    <div class="sv"><span class="chip-status atrisk">⚠ At risk</span><div class="svd">One gate short; recoverable before quarter-end.</div></div>
+    <div class="sv"><span class="chip-status qualified">✓ Qualified</span><div class="svd">Both gates met on the <b>confirmed</b> basis. Bonus posts.</div></div>
+    <div class="sv"><span class="chip-status missed">✕ Missed</span><div class="svd">Quarter closed below gate — counts as a miss.</div></div>
+    <div class="sv"><span class="chip-status recon">◷ Reconciling</span><div class="svd">Month-12 / early-exit event in progress (§5).</div></div>
+  </div>
+
+  <!-- THE SURFACE -->
+  <div class="secttl">The surface — financing roster + termination-risk monitor</div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">BRANCH</div>
+      <div class="nav"><span class="ic"></span>Dashboard</div>
+      <div class="nav"><span class="ic"></span>Master Sheet</div>
+      <div class="nav on"><span class="ic"></span>Financing<span class="nt">K</span></div>
+      <div class="nav"><span class="ic"></span>Persistency</div>
+      <div class="nav"><span class="ic"></span>Compliance</div>
+    </div>
+    <div class="canvas">
+      <div class="topbar"><span class="pt">New-Agent Financing</span><span class="ps">· SOUTH BRANCH · T. RAMCHARAN · JUN 2026</span></div>
+
+      <!-- reality strip -->
+      <div class="reality">
+        <div class="rb-agg">
+          <div class="lbl">ON<br>FINANCING</div>
+          <div class="v">6</div>
+        </div>
+        <div class="rb-div"></div>
+        <div class="rb-stats" style="margin-left:0">
+          <div class="rb-stat"><div class="k">TOTAL DRAWN · BRANCH</div><div class="v">TTD 134K</div></div>
+          <div class="rb-stat"><div class="k">SUGGESTED · THIS MO</div><div class="v">TTD 23.5K</div></div>
+        </div>
+        <div class="rb-stats">
+          <div class="rb-stat"><div class="k">AT RISK</div><div class="v" style="color:var(--warning)">2</div></div>
+          <div class="rb-stat"><div class="k">≥2 MISSES</div><div class="v" style="color:var(--danger)">1</div></div>
+          <div class="rb-stat"><div class="k">&gt;10% ADJ FLAGS</div><div class="v" style="color:var(--danger)">1</div></div>
+        </div>
+      </div>
+
+      <!-- termination-risk monitor -->
+      <div class="monitor">
+        <div class="moncard warnedge">
+          <div class="mon-h"><span style="color:var(--warning);font-size:14px">▲</span><span class="mt">Consecutive-miss monitor — R. Seepersad</span><span class="badge">CONFIRMED BASIS</span></div>
+          <div class="mon-b">
+            <div class="missrow">
+              <div class="missdots">
+                <div class="missdot hit">1</div>
+                <div class="missdot hit">2</div>
+                <div class="missdot next">3</div>
+              </div>
+              <div class="missmeta">
+                <div class="mm-n" style="color:var(--warning)">2 consecutive misses</div>
+                <div class="mm-d">Amber at 2 · the <b>3rd confirmed</b> miss approaches the termination trigger. Coach now.</div>
+              </div>
+            </div>
+            <div class="pendingbasis"><span class="basis subprov">Q2 pending</span><div>Q2 is still on the provisional basis. The counter <b>will not advance to 3</b> until the branch manager confirms Q2 settlement — pending months are shown but never counted.</div></div>
+          </div>
+        </div>
+        <div class="moncard">
+          <div class="mon-h"><span style="color:var(--danger);font-size:14px">⚑</span><span class="mt" style="color:var(--ink)">Downward-adjustment flag — M. Baptiste</span></div>
+          <div class="mon-b">
+            <div class="obligation">
+              <div class="adjbig"><span class="av">−14%</span><span class="al"><b>Confirmed financing adjusted down 14%</b> vs the agreed schedule — past the 10% threshold (clause 5.3).</span></div>
+              <div class="duty"><span class="di">✉</span><div class="dt"><b>Notification duty — not a termination.</b> A &gt;10% downward adjustment obliges the branch manager to <b>notify Sales Admin by the 1st</b> of the month. The agent stays on financing; this is a reporting step.<span class="note">DUE: 1 JUL · OBLIGATION OPEN</span></div></div>
+              <span class="notbtn">✉ Notify Sales Admin →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- roster -->
+      <div class="roster">
+        <div class="ro-legend">
+          <span style="font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.08em;color:var(--inkFaint)">NEW AGENTS ON FINANCING · 6</span>
+          <span class="note" style="color:var(--inkMute)">Suggested = computed proration · Confirmed = your override (caps at agreed)</span>
+        </div>
+        <div class="rohead">
+          <span class="h" style="text-align:center">#</span>
+          <span class="h">Agent · status</span>
+          <span class="h">Term · misses</span>
+          <span class="h">Suggested → confirmed</span>
+          <span class="h">Balance vs ceiling</span>
+          <span class="h" style="text-align:center">Adj %</span>
+          <span class="h" style="text-align:right">Act</span>
+        </div>
+        <!-- Seepersad (flagship agent) -->
+        <div class="rorow">
+          <div class="rk">1</div>
+          <div class="who"><div class="av">RS</div><div><div class="nm">R. Seepersad</div><div class="un">S·04 · <span style="color:var(--warning)">⚠ At risk</span></div></div></div>
+          <div class="termcell"><div class="tm">Month 7 / 12</div><div class="miniterm"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i><i></i><i></i><i></i><i></i></div><div class="tm" style="color:var(--warning)">2 misses · confirmed</div></div>
+          <div class="svc"><div class="sline"><span class="slbl">SUGGESTED</span><span class="sval">TTD 4,000</span></div><div class="ovr"><span class="oc">CONF</span><span class="ov">TTD 4,000</span></div></div>
+          <div class="balcell"><div class="bv">TTD 22,400</div><div class="baltrack"><div class="bf" style="width:47%"></div></div><div class="bc">47% of 48,000 ceiling</div></div>
+          <div class="adjcell"><div class="ap ok">0%</div><div class="as">at full</div></div>
+          <div class="acts"><span class="ab">Open</span></div>
+        </div>
+        <!-- Baptiste (>10% flag) -->
+        <div class="rorow zebra">
+          <div class="rk">2</div>
+          <div class="who"><div class="av">MB</div><div><div class="nm">M. Baptiste</div><div class="un">S·02 · <span style="color:var(--success)">On track</span></div></div></div>
+          <div class="termcell"><div class="tm">Month 9 / 12</div><div class="miniterm"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i><i></i><i></i></div><div class="tm">0 misses</div></div>
+          <div class="svc"><div class="sline"><span class="slbl">SUGGESTED</span><span class="sval">TTD 5,000</span></div><div class="ovr"><span class="oc">CONF</span><span class="ov">TTD 4,300</span></div></div>
+          <div class="balcell"><div class="bv">TTD 31,200</div><div class="baltrack"><div class="bf hi" style="width:65%"></div></div><div class="bc">65% of 48,000 ceiling</div></div>
+          <div class="adjcell"><div class="ap flag">−14%<span class="flagdot"></span></div><div class="as">notify due</div></div>
+          <div class="acts"><span class="ab">Open</span></div>
+        </div>
+        <!-- Mohan (negative balance = surplus) -->
+        <div class="rorow">
+          <div class="rk">3</div>
+          <div class="who"><div class="av">PM</div><div><div class="nm">P. Mohan</div><div class="un">S·01 · <span style="color:var(--tealDark)">✓ Qualified</span></div></div></div>
+          <div class="termcell"><div class="tm">Month 11 / 12</div><div class="miniterm"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i></div><div class="tm">0 misses</div></div>
+          <div class="svc"><div class="sline"><span class="slbl">SUGGESTED</span><span class="sval">TTD 8,000</span></div><div class="ovr"><span class="oc">CONF</span><span class="ov">TTD 8,000</span></div></div>
+          <div class="balcell"><div class="bv neg">−TTD 3,100</div><div class="baltrack"><div class="bf" style="width:8%"></div></div><div class="bc" style="color:var(--success)">surplus — owed to agent</div></div>
+          <div class="adjcell"><div class="ap ok">0%</div><div class="as">at full</div></div>
+          <div class="acts"><span class="ab">Open</span></div>
+        </div>
+        <!-- Ali (missed) -->
+        <div class="rorow zebra">
+          <div class="rk">4</div>
+          <div class="who"><div class="av">KA</div><div><div class="nm">K. Ali</div><div class="un">S·03 · <span style="color:var(--danger)">✕ Missed</span></div></div></div>
+          <div class="termcell"><div class="tm">Month 5 / 12</div><div class="miniterm"><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i class="done"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="tm" style="color:var(--inkMute)">1 miss · confirmed</div></div>
+          <div class="svc"><div class="sline"><span class="slbl">SUGGESTED</span><span class="sval">TTD 2,800</span></div><div class="ovr"><span class="oc">CONF</span><span class="ov">TTD 2,800</span></div></div>
+          <div class="balcell"><div class="bv">TTD 14,900</div><div class="baltrack"><div class="bf" style="width:31%"></div></div><div class="bc">31% of 48,000 ceiling</div></div>
+          <div class="adjcell"><div class="ap ok">−6%</div><div class="as">within 10%</div></div>
+          <div class="acts"><span class="ab">Open</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERRIDE DRAWER + ANNOTATIONS -->
+  <div class="secttl">Per-agent drawer — suggested vs confirmed override</div>
+  <div class="splitwrap">
+    <div class="drawer">
+      <div class="dw-h"><span class="av">RS</span><div><div class="dt">Confirm financing · R. Seepersad</div><div class="ds">S·04 · MONTH 7 / 12 · JUN 2026</div></div></div>
+      <div class="dw-b">
+        <div class="calc">
+          <div class="cc"><div class="ck">ACTUAL API</div><div class="cv">TTD 15,000</div></div>
+          <div class="cop">÷</div>
+          <div class="cc"><div class="ck">VALIDATING</div><div class="cv">TTD 30,000</div></div>
+          <div class="cop">=</div>
+          <div class="cc"><div class="ck">PRORATION</div><div class="cv" style="color:var(--teal)">50%</div></div>
+        </div>
+        <div class="suggested"><span class="sl">Suggested financing · 50% × TTD 8,000</span><span class="sv">TTD 4,000</span></div>
+        <div class="override">
+          <div class="ol">Manager-confirmed financing<span class="tag">YOUR CALL · FINAL</span></div>
+          <div class="ovinput"><span class="cu">TTD</span><span class="num">4,000</span><span class="caret"></span><span class="step"><b>▲</b><b>▼</b></span></div>
+        </div>
+        <div class="adjreadout"><div class="arl">adjustmentPct vs agreed<br><span style="font-weight:400;font-family:var(--mono);font-size:9px;color:var(--inkMute)">distance below TTD 8,000 full</span></div><div class="arv">−50%</div></div>
+        <div class="capnote">Override caps at <b>TTD 8,000</b> (agreed = ceiling). A confirmed figure &gt;10% below the agreed schedule raises the Sales-Admin notification duty. Writes <code style="font-family:var(--mono);font-size:10px;color:var(--tealDark)">managerFinancing</code> + <code style="font-family:var(--mono);font-size:10px;color:var(--tealDark)">adjustmentPct</code> to <code style="font-family:var(--mono);font-size:10px;color:var(--tealDark)">financing/{id}_{YYYY_MM}</code>.</div>
+      </div>
+      <div class="dw-foot"><span class="btn ghost">Cancel</span><span class="btn primary">Confirm TTD 4,000 →</span></div>
+    </div>
+    <div class="annocol">
+      <div class="anno newc"><span class="mk n">1</span><div><div class="at">Roster — fan-out over new agents on financing</div><div class="ad">One row per agent with <code>financingStatus = on_financing</code>: status chip, term progress + miss count, suggested→confirmed, balance vs ceiling, <code>adjustmentPct</code>. <b>Per-agent GETs</b>, the Compliance-v2 fan-out — no collection query.</div></div></div>
+      <div class="anno newc"><span class="mk n">2</span><div><div class="at">Override is the manager's final call</div><div class="ad">Suggested proration is advisory; <b>managerFinancing</b> is what posts. Caps at agreed (100%). The drawer shows the live <code>adjustmentPct</code> so the manager sees when a cut crosses the &gt;10% notify line <i>before</i> saving.</div></div></div>
+      <div class="anno flagc"><span class="mk f">3</span><div><div class="at">Miss counter — confirmed basis ONLY</div><div class="ad"><b>LOCKED (§2.4):</b> the 0→3 counter advances only on <b>settled-confirmed</b> quarters. A provisional/at-risk quarter shows but <b>never increments</b> the counter — "pending settlement" until the BM confirms. No one is fired off a projection.</div></div></div>
+      <div class="anno newc"><span class="mk n">4</span><div><div class="at">&gt;10% flag = a duty, not a trigger</div><div class="ad">A confirmed downward adjustment past 10% raises the <b>"notify Sales Admin by the 1st"</b> obligation (5.3) in gold — a reporting step. <b>It is explicitly not a termination</b>; copy and color keep it a notification, not an alarm.</div></div></div>
+      <div class="anno reusec"><span class="mk e">5</span><div><div class="at">Surplus rows read as credit, not error</div><div class="ad">A negative running balance (P. Mohan, −TTD 3,100) renders in <b>success green = "owed to agent"</b>, with the ceiling bar near empty. The balance machine permits credit — the roster states it plainly.</div></div></div>
+      <div class="anno reusec"><span class="mk e">6</span><div><div class="at">Notify rides the existing nudge primitive</div><div class="ad">"Notify Sales Admin" reuses the <b>Compliance-v2 nudge</b> transport (bell + email via the CF pattern). New recipient + template, established channel — not a new pipe.</div></div></div>
+    </div>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">S</span>Skeleton · fan-out loading</div>
+      <div class="sc-b"><div class="shimmer" style="width:40%;height:12px"></div><div class="shimmer" style="width:100%;height:30px;border-radius:9px"></div><div class="shimmer" style="width:100%"></div><div class="shimmer" style="width:100%"></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">E</span>Empty · none on financing</div>
+      <div class="sc-b"><div class="msg empty"><div class="ic">○</div><div class="t">No agents on financing</div><div class="d">No new agents in this branch currently have <code style="font-family:var(--mono);font-size:10px">financingStatus = on_financing</code>. Set terms from Financing Terms Setup.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error · partial fan-out</div>
+      <div class="sc-b"><div class="msg err"><div class="ic">!</div><div class="t" style="font-size:13.5px">Some agents didn't load</div><div class="d" style="font-size:11px">Show resolved rows + a miss-count; never compute a branch total or a trigger from a partial read.</div><div class="eb">↻ Retry misses</div></div></div>
+    </div>
+  </div>
+
+  <div class="flagnote">
+    <span class="tag">⚑ Flags</span>
+    <p><b>Confirm before the brief locks.</b> (1) <b>Partial-fan-out semantics</b> — when some roster GETs fail, show-resolved + miss-count is proposed; never derive a trigger from an incomplete branch read. (2) <b>Notify-duty audit</b> — confirm the obligation is logged (who notified, when) for the 5.3 paper trail, not just sent. The miss-counter-on-confirmed-basis and the override→<code>adjustmentPct</code> write are <b>locked</b> by §2.4 / §6, not flagged.</p>
+  </div>
+
+  <!-- COMPONENT LIST -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · manager scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">FinancingRoster</div><div class="cd">Fan-out of new agents on financing: status chip, term + misses, suggested→confirmed, balance vs ceiling, adjustmentPct.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">FinancingOverrideDrawer</div><div class="cd">actual÷validating → suggested, confirmed override input (caps at agreed), live adjustmentPct. Writes <code>managerFinancing</code>.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">ConsecutiveMissMonitor</div><div class="cd">0→3 counter, amber@2, critical approaching 3. <b>Confirmed basis only</b>; pending months show, never count.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">DownwardAdjustFlag</div><div class="cd">&gt;10% confirmed cut → BM-notify-by-the-1st obligation callout (5.3). A duty, not a termination.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">notifySalesAdmin</div><div class="cd">Rides the Compliance-v2 nudge (bell + email). New recipient/template, established transport.</div><div class="co"><span class="ptag reuse">REUSE</span></div></div>
+    <div class="crow"><div class="cn">statusChip / basisBadge</div><div class="cd">Quarter-outcome chip + the shared three-state basis badge (settled / submitted-final / provisional).</div><div class="co"><span class="ptag reuse">REUSE</span></div></div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>

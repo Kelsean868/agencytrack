@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Track K — Monthly Statement Entry — Build Annotation</title>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&f[]=cabinet-grotesk@700,800&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#F7F6F2; --surface:#FFFFFF; --surfaceRaised:#FAFAF8; --surfaceSoft:#F4F2EC; --surfaceMute:#F0EFE9;
+    --ink:#28251D; --inkMute:#6B6560; --inkFaint:#A8A39C; --inkDim:#CFCBC2;
+    --rule:#E5E2DB; --ruleStrong:#CFCBC2;
+    --teal:#01696F; --tealLight:#018A91; --tealDark:#014E52; --tealTint:#E6F4F4;
+    --gold:#B07D1A; --goldTint:#FAEFD3; --goldInk:#8A6010;
+    --success:#2D7A4F; --successTint:#E8F5EE;
+    --warning:#B45309; --warningTint:#FEF3E2;
+    --danger:#C0392B; --dangerTint:#FDE8E7;
+    --display:'Cabinet Grotesk',sans-serif; --sans:'Satoshi',sans-serif; --mono:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);font-family:var(--sans);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;padding:44px 0 96px}
+  .wrap{max-width:1240px;margin:0 auto;padding:0 40px}
+
+  .dochead{display:flex;align-items:flex-start;gap:20px;padding-bottom:24px;border-bottom:1px solid var(--rule);margin-bottom:24px}
+  .logo{width:52px;height:52px;border-radius:14px;flex-shrink:0}
+  .eyebrow{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal)}
+  h1{font-family:var(--display);font-weight:800;font-size:31px;letter-spacing:-.025em;line-height:1.12;margin-top:8px}
+  .subt{color:var(--inkMute);font-size:14.5px;margin-top:9px;max-width:790px;text-wrap:pretty}
+  .meta{margin-left:auto;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--inkFaint);letter-spacing:.04em;line-height:1.7;flex-shrink:0}
+
+  .scopebar{display:flex;gap:14px;background:var(--tealTint);border:1px solid color-mix(in srgb,var(--teal) 28%,transparent);border-radius:14px;padding:15px 20px;margin-bottom:8px}
+  .scopebar .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);flex-shrink:0;padding-top:2px}
+  .scopebar p{font-size:13.5px;color:var(--ink);text-wrap:pretty}
+  .scopebar b{font-weight:700}
+  .scopebar code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .secttl{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);margin:36px 0 14px;display:flex;align-items:center;gap:10px}
+  .secttl::after{content:'';flex:1;height:1px;background:var(--rule)}
+
+  .keylegend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--inkMute);align-items:center}
+  .keylegend span.it{display:inline-flex;align-items:center;gap:7px}
+  .pchip{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:6px}
+  .pchip.new{background:var(--goldTint);color:var(--goldInk)}
+  .pchip.reuse{background:var(--tealTint);color:var(--tealDark)}
+  .pchip.flag{background:var(--dangerTint);color:var(--danger)}
+
+  .mk{display:inline-flex;align-items:center;justify-content:center;width:21px;height:21px;border-radius:50%;color:#fff;font-family:var(--mono);font-weight:700;font-size:11px;flex-shrink:0}
+  .mk.e{background:var(--teal)} .mk.n{background:var(--gold)} .mk.i{background:var(--inkFaint)} .mk.f{background:var(--danger)}
+
+  /* app frame */
+  .appframe{background:var(--bg);border:1px solid var(--ruleStrong);border-radius:16px;padding:16px;box-shadow:0 14px 40px rgba(38,35,28,.10);display:flex;gap:14px}
+  .sidebar{width:152px;flex-shrink:0;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:12px 9px;display:flex;flex-direction:column;gap:3px}
+  .sb-logo{display:flex;align-items:center;gap:8px;padding:4px 6px 12px}
+  .sb-logo .lm{width:24px;height:24px;border-radius:7px;background:var(--teal)}
+  .sb-logo .lt{font-family:var(--display);font-weight:800;font-size:13px}
+  .sb-grp{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.12em;color:var(--inkFaint);padding:9px 8px 4px}
+  .nav{display:flex;align-items:center;gap:8px;padding:7px 9px;border-radius:8px;font-size:11.5px;font-weight:600;color:var(--inkMute)}
+  .nav .ic{width:14px;height:14px;border-radius:4px;background:var(--inkDim);flex-shrink:0}
+  .nav.on{background:var(--tealTint);color:var(--tealDark);font-weight:700}
+  .nav.on .ic{background:var(--teal)}
+  .nav .nt{font-family:var(--mono);font-size:8px;font-weight:700;color:#fff;background:var(--gold);padding:1px 5px;border-radius:99px;margin-left:auto}
+
+  .canvas{flex:1;min-width:0;display:flex;flex-direction:column;gap:13px}
+  .topbar{display:flex;align-items:center;gap:10px;padding:2px 2px 0}
+  .topbar .pt{font-family:var(--display);font-weight:800;font-size:16px;white-space:nowrap}
+  .topbar .ps{font-family:var(--mono);font-size:10px;color:var(--inkFaint);letter-spacing:.05em}
+
+  /* ledger timeline strip */
+  .ledgerstrip{background:var(--surface);border:1px solid var(--rule);border-radius:13px;padding:13px 16px}
+  .ls-h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px;flex-wrap:wrap}
+  .ls-h .lt{font-family:var(--display);font-weight:800;font-size:13.5px}
+  .ls-leg{display:flex;gap:14px;flex-wrap:wrap}
+  .ls-leg span{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.04em;color:var(--inkMute)}
+  .ls-leg i{width:10px;height:10px;border-radius:3px}
+  .months{display:flex;gap:6px}
+  .mo{flex:1;border-radius:9px;padding:9px 6px 8px;text-align:center;border:1px solid var(--rule);background:var(--surfaceSoft);position:relative}
+  .mo .mn{font-family:var(--mono);font-size:8px;font-weight:700;color:var(--inkFaint);letter-spacing:.04em}
+  .mo .mb{font-family:var(--display);font-weight:800;font-size:12.5px;margin-top:5px;letter-spacing:-.01em;white-space:nowrap}
+  .mo.entered{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 28%,transparent)}
+  .mo.entered .mb{color:var(--tealDark)}
+  .mo.entered .mn{color:var(--tealDark)}
+  .mo.skipped{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 30%,transparent)}
+  .mo.skipped .mb{color:var(--danger)}
+  .mo.skipped .mn{color:var(--danger)}
+  .mo.current{border:2px solid var(--gold);background:var(--goldTint);padding:8px 5px 7px}
+  .mo.current .mb{color:var(--goldInk)}
+  .mo.future{opacity:.5}
+  .mo .flag{position:absolute;top:-7px;right:-5px;width:16px;height:16px;border-radius:50%;background:var(--danger);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center}
+
+  /* entry layout */
+  .entrygrid{display:grid;grid-template-columns:1.2fr .8fr;gap:13px;align-items:start}
+  .card{background:var(--surface);border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+  .card-h{padding:13px 16px;border-bottom:1px solid var(--rule);display:flex;align-items:center;gap:9px}
+  .card-h .ct{font-family:var(--display);font-weight:800;font-size:14.5px}
+  .card-h .av{width:30px;height:30px;border-radius:50%;background:var(--tealTint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:11px}
+  .card-h .grow{flex:1}
+  .card-h .mochip{font-family:var(--mono);font-size:9.5px;font-weight:700;background:var(--goldTint);color:var(--goldInk);padding:4px 10px;border-radius:99px}
+  .card-b{padding:16px;display:flex;flex-direction:column;gap:13px}
+
+  .precedence{display:flex;gap:11px;background:var(--goldTint);border:1px solid color-mix(in srgb,var(--gold) 35%,transparent);border-radius:11px;padding:12px 14px}
+  .precedence .pi{color:var(--goldInk);flex-shrink:0;font-size:15px}
+  .precedence .pt{font-size:11.5px;color:var(--goldInk);line-height:1.45}
+  .precedence .pt b{font-weight:700}
+
+  .fld{display:flex;flex-direction:column;gap:6px}
+  .fld .lab{font-size:12px;font-weight:700;display:flex;align-items:center;gap:7px}
+  .fld .lab .auth{font-family:var(--mono);font-size:8px;font-weight:700;color:#fff;background:var(--teal);padding:2px 7px;border-radius:99px;letter-spacing:.04em}
+  .fld .hint{font-family:var(--mono);font-size:9.5px;color:var(--inkFaint);letter-spacing:.02em}
+  .fldinput{display:flex;align-items:center;gap:10px;background:var(--surfaceSoft);border:1px solid var(--ruleStrong);border-radius:10px;padding:11px 13px;min-height:44px}
+  .fldinput.auth{background:var(--surface);border:2px solid var(--teal);padding:10px 12px}
+  .fldinput .cu{font-family:var(--mono);font-size:11px;color:var(--inkFaint)}
+  .fldinput .num{font-family:var(--display);font-weight:800;font-size:18px;letter-spacing:-.015em;flex:1}
+  .fldinput.auth .num{font-size:21px}
+  .fldinput .num.neg{color:var(--success)}
+  .fldinput .caret{width:1.5px;height:22px;background:var(--teal)}
+  .fld3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
+  .notesarea{background:var(--surfaceSoft);border:1px solid var(--ruleStrong);border-radius:10px;padding:11px 13px;min-height:62px;font-size:12.5px;color:var(--inkMute)}
+  .notesarea .pl{color:var(--inkFaint)}
+
+  /* recompute hint (derived vs stored) */
+  .recompute{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--surfaceSoft);border:1px dashed var(--ruleStrong);border-radius:10px}
+  .recompute .rl{font-size:11px;color:var(--inkMute);text-wrap:pretty;line-height:1.4}
+  .recompute .rl b{color:var(--ink)}
+  .recompute .rv{text-align:right;flex-shrink:0}
+  .recompute .rv .x{font-family:var(--mono);font-size:11px;color:var(--inkMute);text-decoration:line-through}
+  .recompute .rv .a{font-family:var(--display);font-weight:800;font-size:18px;color:var(--teal);letter-spacing:-.015em}
+  .recompute .rv .ak{font-family:var(--mono);font-size:8px;color:var(--inkFaint);letter-spacing:.04em}
+
+  .dw-foot{padding:14px 16px;border-top:1px solid var(--rule);background:var(--surfaceSoft);display:flex;gap:10px}
+  .dw-foot .btn{padding:12px 18px;border-radius:9px;font-size:13px;font-weight:700;text-align:center;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn.primary{background:var(--teal);color:#fff;flex:1}
+  .btn.ghost{background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink)}
+
+  /* skipped-month reconciliation flag panel */
+  .skipcard{background:var(--surface);border:1px solid color-mix(in srgb,var(--danger) 28%,transparent);border-radius:14px;overflow:hidden}
+  .skip-h{padding:12px 16px;border-bottom:1px solid var(--rule);background:var(--dangerTint);display:flex;align-items:center;gap:9px}
+  .skip-h .st{font-family:var(--display);font-weight:800;font-size:13.5px;color:var(--danger)}
+  .skip-h .sc{font-family:var(--mono);font-size:9px;font-weight:700;color:var(--danger);background:var(--surface);padding:2px 8px;border-radius:99px;margin-left:auto}
+  .skip-b{padding:15px 16px;display:flex;flex-direction:column;gap:13px}
+  .skiprow{display:flex;align-items:center;gap:11px;padding:11px 13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:10px}
+  .skiprow .sd{width:36px;height:36px;border-radius:10px;background:var(--dangerTint);color:var(--danger);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:12px;flex-shrink:0}
+  .skiprow .sb{flex:1;min-width:0}
+  .skiprow .sn{font-size:12.5px;font-weight:700}
+  .skiprow .ss{font-size:11px;color:var(--inkMute);margin-top:1px;text-wrap:pretty}
+  .skiprow .reconflag{font-family:var(--mono);font-size:8.5px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--dangerTint);color:var(--danger);white-space:nowrap;text-transform:uppercase}
+  .skipnote{display:flex;gap:9px;font-size:11.5px;color:var(--inkMute);line-height:1.45;text-wrap:pretty;padding:0 2px}
+  .skipnote b{color:var(--ink)}
+  .skipacts{display:flex;gap:9px}
+  .skipacts .sab{flex:1;padding:10px;border-radius:9px;font-size:12px;font-weight:700;text-align:center;min-height:42px;display:flex;align-items:center;justify-content:center;gap:6px}
+  .sab.enter{background:var(--teal);color:#fff}
+  .sab.carry{background:var(--surface);border:1px solid var(--ruleStrong);color:var(--ink)}
+
+  .annos{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+  .anno{display:flex;gap:12px;background:var(--surface);border:1px solid var(--rule);border-radius:12px;padding:13px 15px}
+  .anno .at{font-size:13px;font-weight:700}
+  .anno .ad{font-size:12px;color:var(--inkMute);margin-top:3px;text-wrap:pretty}
+  .anno .ad code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .anno.newc{background:var(--goldTint);border-color:color-mix(in srgb,var(--gold) 30%,transparent)}
+  .anno.newc .ad b{color:var(--goldInk)}
+  .anno.reusec{background:var(--tealTint);border-color:color-mix(in srgb,var(--teal) 26%,transparent)}
+  .anno.reusec .ad b{color:var(--tealDark)}
+  .anno.flagc{background:var(--dangerTint);border-color:color-mix(in srgb,var(--danger) 28%,transparent)}
+  .anno.flagc .ad b{color:var(--danger)}
+
+  .states{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .statecard{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .sc-h{padding:11px 14px;border-bottom:1px solid var(--rule);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkMute);display:flex;align-items:center;gap:8px}
+  .sc-b{padding:15px 14px;min-height:140px;display:flex;flex-direction:column;gap:10px}
+  .shimmer{height:9px;border-radius:5px;background:linear-gradient(90deg,var(--surfaceMute),var(--rule),var(--surfaceMute))}
+  .msg{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:9px;padding:6px}
+  .msg .ic{width:40px;height:40px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:19px}
+  .msg.empty .ic{background:var(--tealTint);color:var(--teal)} .msg.err .ic{background:var(--dangerTint);color:var(--danger)}
+  .msg .t{font-family:var(--display);font-weight:800;font-size:14px}
+  .msg .d{font-size:11px;color:var(--inkMute);line-height:1.45;max-width:280px}
+  .msg .eb{margin-top:3px;padding:8px 14px;background:var(--surface);border:1px solid var(--rule);color:var(--ink);border-radius:9px;font-size:12px;font-weight:700}
+
+  .flagnote{display:flex;gap:13px;background:var(--surfaceSoft);border:1px solid var(--rule);border-radius:13px;padding:15px 18px;margin-top:16px}
+  .flagnote .tag{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);flex-shrink:0;padding-top:2px}
+  .flagnote p{font-size:12.5px;color:var(--ink);text-wrap:pretty}
+  .flagnote b{font-weight:700}
+  .flagnote code{font-family:var(--mono);font-size:11.5px;background:var(--surface);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+
+  .complist{background:var(--surface);border:1px solid var(--rule);border-radius:13px;overflow:hidden}
+  .crow{display:grid;grid-template-columns:215px 1fr 96px;gap:14px;padding:11px 16px;border-top:1px solid var(--rule);align-items:center}
+  .crow:first-child{border-top:none;background:var(--surfaceSoft)}
+  .crow .cn{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--tealDark)}
+  .crow:first-child .cn,.crow:first-child .cd,.crow:first-child .co{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--inkFaint)}
+  .crow .cd{font-size:12.5px;color:var(--inkMute)}
+  .crow .cd code{font-family:var(--mono);font-size:11px;background:var(--surfaceMute);padding:1px 5px;border-radius:4px;color:var(--tealDark)}
+  .crow .co{text-align:right}
+  .ptag{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;padding:2px 7px;border-radius:99px;white-space:nowrap;text-transform:uppercase}
+  .ptag.new{background:var(--goldTint);color:var(--goldInk)}
+  .ptag.reuse{background:var(--tealTint);color:var(--tealDark)}
+
+  @media(max-width:1040px){
+    .entrygrid,.annos,.states,.fld3{grid-template-columns:1fr}
+    .appframe{flex-direction:column}.sidebar{width:100%;flex-direction:row;flex-wrap:wrap;gap:6px}.sb-logo,.sb-grp{display:none}
+    .crow{grid-template-columns:1fr}.crow .co{text-align:left}
+    .months{flex-wrap:wrap}.mo{min-width:62px}
+    .dochead{flex-wrap:wrap}.meta{margin-left:0;text-align:left}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="dochead">
+    <svg class="logo" viewBox="0 0 200 200" aria-label="AgencyTrack">
+      <rect width="200" height="200" rx="46" fill="#01696F" />
+      <rect x="58" y="104" width="20" height="46" rx="5" fill="#fff" />
+      <rect x="90" y="82" width="20" height="68" rx="5" fill="#fff" />
+      <rect x="122" y="58" width="20" height="92" rx="5" fill="#fff" />
+      <circle cx="132" cy="44" r="11" fill="#018A91" />
+    </svg>
+    <div>
+      <div class="eyebrow">Track K · New-Agent Financing &amp; Bonus · Build annotation · STATEMENT ENTRY</div>
+      <h1>Monthly Statement Entry — the statement value wins.</h1>
+      <p class="subt">The K2 monthly ledger write. Manual entry from the agent's <b>monthly statement</b>: <b>financing paid</b>, <b>net commission</b>, <b>bonus offset</b>, and the <b>running balance</b> — which is <b>stored, authoritative and self-correcting</b>, not derived. Plus the <b>reconciliation-flag treatment</b> for a skipped month, so a ledger gap never silently corrupts the balance.</p>
+    </div>
+    <div class="meta">AGENCYTRACK · TATIL LIFE<br />TRACK K · K2 · BRANCH_MANAGER<br />FLAT · financing/{id}_{YYYY_MM}<br />REV 2026-06-06</div>
+  </header>
+
+  <div class="scopebar">
+    <span class="tag">Data canon</span>
+    <p><b>One flat doc per month.</b> Writes <code>financing/{agentId}_{YYYY_MM}</code> with <code>financingPaid</code>, <code>netCommission</code>, <code>bonusOffset</code>, <code>runningBalance</code> + <code>notes</code> (all <code>parseFloat</code>). <b>The statement's <code>runningBalance</code> is authoritative</b> — it overrides any client-side roll-forward, may be negative (= owed back to the agent), and self-corrects drift. The month also stores the <code>validatingAPI</code> / <code>actualAPI</code> in effect + the <code>basisSource</code>. A missing month is <b>reconciliation-flagged</b>, never auto-filled.</p>
+  </div>
+
+  <div class="secttl">Reading this sheet</div>
+  <div class="keylegend">
+    <span class="it"><span class="pchip new">NEW</span> net-new Track-K surface / data</span>
+    <span class="it"><span class="pchip reuse">REUSE</span> shipped pattern (entry drawer, manager-wins write, fields)</span>
+    <span class="it"><span class="pchip flag">FLAG</span> open item — pending build verdict, not invented</span>
+  </div>
+
+  <!-- THE SURFACE -->
+  <div class="secttl">The surface — ledger timeline + statement entry</div>
+  <div class="appframe">
+    <div class="sidebar">
+      <div class="sb-logo"><div class="lm"></div><div class="lt">AgencyTrack</div></div>
+      <div class="sb-grp">BRANCH</div>
+      <div class="nav"><span class="ic"></span>Dashboard</div>
+      <div class="nav on"><span class="ic"></span>Financing<span class="nt">K</span></div>
+      <div class="nav"><span class="ic"></span>Persistency</div>
+      <div class="nav"><span class="ic"></span>Compliance</div>
+    </div>
+    <div class="canvas">
+      <div class="topbar"><span class="pt">Statement Entry</span><span class="ps">· R. SEEPERSAD · S·04 · LEDGER YEAR 1 · TTD</span></div>
+
+      <!-- ledger timeline -->
+      <div class="ledgerstrip">
+        <div class="ls-h">
+          <span class="lt">Monthly ledger · running balance</span>
+          <div class="ls-leg">
+            <span><i style="background:var(--teal)"></i>ENTERED</span>
+            <span><i style="background:var(--gold)"></i>ENTERING NOW</span>
+            <span><i style="background:var(--danger)"></i>SKIPPED · FLAGGED</span>
+            <span><i style="background:var(--inkDim)"></i>FUTURE</span>
+          </div>
+        </div>
+        <div class="months">
+          <div class="mo entered"><div class="mn">DEC</div><div class="mb">8.0K</div></div>
+          <div class="mo entered"><div class="mn">JAN</div><div class="mb">11.5K</div></div>
+          <div class="mo entered"><div class="mn">FEB</div><div class="mb">14.2K</div></div>
+          <div class="mo skipped"><div class="mn">MAR</div><div class="mb">—</div><div class="flag">!</div></div>
+          <div class="mo entered"><div class="mn">APR</div><div class="mb">18.9K</div></div>
+          <div class="mo entered"><div class="mn">MAY</div><div class="mb">22.4K</div></div>
+          <div class="mo current"><div class="mn">JUN</div><div class="mb">⌖</div></div>
+          <div class="mo future"><div class="mn">JUL</div><div class="mb">—</div></div>
+          <div class="mo future"><div class="mn">AUG</div><div class="mb">—</div></div>
+          <div class="mo future"><div class="mn">SEP</div><div class="mb">—</div></div>
+          <div class="mo future"><div class="mn">OCT</div><div class="mb">—</div></div>
+          <div class="mo future"><div class="mn">NOV</div><div class="mb">—</div></div>
+        </div>
+      </div>
+
+      <div class="entrygrid">
+        <!-- entry form -->
+        <div class="card">
+          <div class="card-h"><span class="av">RS</span><span class="ct">Enter statement</span><span class="grow"></span><span class="mochip">JUN 2026 · MONTH 7</span></div>
+          <div class="card-b">
+            <div class="precedence"><span class="pi">🔒</span><div class="pt"><b>The statement value wins.</b> Enter the four figures exactly as they appear on R. Seepersad's June statement. The <b>running balance you type is stored as authoritative</b> — it overrides any rolled-forward estimate and self-corrects past drift.</div></div>
+            <div class="fld3">
+              <div class="fld">
+                <div class="lab">Financing paid</div>
+                <div class="fldinput"><span class="cu">TTD</span><span class="num">4,000</span></div>
+                <div class="hint">DRAW THIS MONTH</div>
+              </div>
+              <div class="fld">
+                <div class="lab">Net commission</div>
+                <div class="fldinput"><span class="cu">TTD</span><span class="num">6,200</span></div>
+                <div class="hint">AFTER 10% OFFSET</div>
+              </div>
+              <div class="fld">
+                <div class="lab">Bonus offset</div>
+                <div class="fldinput"><span class="cu">TTD</span><span class="num">0</span></div>
+                <div class="hint">50% OF NET BONUS</div>
+              </div>
+            </div>
+            <div class="fld">
+              <div class="lab">Running balance <span class="auth">AUTHORITATIVE</span></div>
+              <div class="fldinput auth"><span class="cu">TTD</span><span class="num">22,400</span><span class="caret"></span></div>
+              <div class="hint">FROM THE STATEMENT · MAY BE NEGATIVE (= OWED TO AGENT) · STORED, NOT DERIVED</div>
+            </div>
+            <div class="recompute">
+              <div class="rl"><b>Client roll-forward would say TTD 22,650.</b> The statement says TTD 22,400 — we store the statement. The TTD 250 delta self-corrects here; no back-posting.</div>
+              <div class="rv"><div class="x">≈ 22,650 est.</div><div class="a">TTD 22,400</div><div class="ak">STORED</div></div>
+            </div>
+            <div class="fld">
+              <div class="lab">Notes</div>
+              <div class="notesarea"><span class="pl">e.g. "Statement reissued 3 Jun; balance reflects corrected April lapse adjustment."</span></div>
+            </div>
+          </div>
+          <div class="dw-foot"><span class="btn ghost">Cancel</span><span class="btn primary">Save June statement</span></div>
+        </div>
+
+        <!-- skipped-month reconciliation flag -->
+        <div class="skipcard">
+          <div class="skip-h"><span style="color:var(--danger);font-size:14px">⚑</span><span class="st">Skipped month — reconciliation flag</span><span class="sc">1 GAP</span></div>
+          <div class="skip-b">
+            <div class="skiprow">
+              <div class="sd">MAR</div>
+              <div class="sb"><div class="sn">March 2026 has no statement</div><div class="ss">No <code style="font-family:var(--mono);font-size:10px;color:var(--tealDark)">financing/seepersad_2026_03</code> doc. The balance jumps Feb → Apr across an unrecorded month.</div></div>
+              <span class="reconflag">⚑ Reconcile</span>
+            </div>
+            <div class="skipnote"><span>↳</span><div><b>A gap is flagged, never inferred.</b> We don't interpolate a skipped month — the missing draw/offset would silently distort the running balance and the 6× ceiling read. The flag carries forward until March is entered (statement found) or formally <b>carried</b> with a note into the reconciliation record.</div></div>
+            <div class="skipacts">
+              <span class="sab enter">＋ Enter March</span>
+              <span class="sab carry">Carry with note →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANNOTATIONS -->
+  <div class="annos">
+    <div class="anno newc"><span class="mk n">1</span><div><div class="at">Running balance is stored, not rolled</div><div class="ad"><b>LOCKED (§6):</b> <code>runningBalance</code> is written <i>from the statement</i> and is authoritative. The UI may show a client roll-forward estimate for sanity, but <b>the typed statement value is what persists</b> — self-correcting, drift-proof, and the single source the dashboard ceiling reads.</div></div></div>
+    <div class="anno newc"><span class="mk n">2</span><div><div class="at">Negative balance is a first-class value</div><div class="ad">The authoritative field accepts a negative number = <b>surplus owed back to the agent</b>. No validation blocks it; the dashboard renders it left-of-zero in green. It is never treated as an error or clamped to zero.</div></div></div>
+    <div class="anno newc"><span class="mk n">3</span><div><div class="at">Four figures + month-in-effect context</div><div class="ad">financingPaid · netCommission · bonusOffset · runningBalance, all <code>parseFloat</code>. The save also stamps the <code>validatingAPI</code> / <code>actualAPI</code> in effect and the <code>basisSource</code> so the month is self-describing for later reconciliation.</div></div></div>
+    <div class="anno flagc"><span class="mk f">4</span><div><div class="at">Skipped month → reconciliation flag, not interpolation</div><div class="ad"><b>LOCKED:</b> a missing monthly doc is <b>flagged</b>, never auto-filled. Interpolating a gap would distort the balance and ceiling. The flag persists until the month is entered or explicitly carried (with a note) into the reconciliation record.</div></div></div>
+    <div class="anno reusec"><span class="mk e">5</span><div><div class="at">Restyle of the manager-wins entry drawer</div><div class="ad">This is the <b>Persistency-v2 entry-drawer pattern</b> re-pointed at the financing ledger: gold precedence banner, solid ≥44px fields, Save. Same write discipline (manager value authoritative), new target collection.</div></div></div>
+    <div class="anno reusec"><span class="mk e">6</span><div><div class="at">Audit fields on every write</div><div class="ad"><code>enteredBy</code> / <code>enteredByName</code> / <code>enteredAt</code> / <code>source</code> stamp each save — the same audit shape the persistency and settlement writes use. The notes field is the human trail for a corrected or reissued statement.</div></div></div>
+  </div>
+
+  <div class="flagnote">
+    <span class="tag">⚑ Flags</span>
+    <p><b>One verify before the brief locks.</b> <b>Carry-with-note semantics</b> — confirm whether a permanently-skipped month is allowed to be "carried" into the reconciliation record (proposed) or must always be entered before month-12 reconciliation can run. The authoritative-stored-balance and the no-interpolation rules are <b>locked</b> by §6, not flagged.</p>
+  </div>
+
+  <!-- STATES -->
+  <div class="secttl">States</div>
+  <div class="states">
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">E</span>Empty · first month</div>
+      <div class="sc-b"><div class="msg empty"><div class="ic">＋</div><div class="t">No statements yet</div><div class="d">Month 1 of the ledger. Enter the opening statement; the running balance you type becomes the baseline.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">O</span>Overwrite · month exists</div>
+      <div class="sc-b"><div class="msg err"><div class="ic">↻</div><div class="t" style="font-size:13.5px">June already entered</div><div class="d" style="font-size:11px">Re-entering replaces the stored figures (statement reissued). Confirm before overwrite; keep the prior in history.</div></div></div>
+    </div>
+    <div class="statecard">
+      <div class="sc-h"><span class="mk i" style="width:18px;height:18px;font-size:9px">!</span>Error · save failed</div>
+      <div class="sc-b"><div class="msg err"><div class="ic">!</div><div class="t" style="font-size:13.5px">Couldn't save statement</div><div class="d" style="font-size:11px">Hold the typed figures; let the manager retry without re-keying the statement.</div><div class="eb">↻ Retry</div></div></div>
+    </div>
+  </div>
+
+  <!-- COMPONENT LIST -->
+  <div class="secttl">Component list</div>
+  <div class="complist">
+    <div class="crow"><div class="cn">Component</div><div class="cd">Role · K2 scope</div><div class="co">Provenance</div></div>
+    <div class="crow"><div class="cn">LedgerTimelineStrip</div><div class="cd">12-month entered / current / skipped / future band; skipped months carry the reconciliation flag.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">StatementEntryForm</div><div class="cd">financingPaid · netCommission · bonusOffset · <b>authoritative</b> runningBalance · notes → <code>financing/{id}_{YYYY_MM}</code>.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">RollForwardCheck</div><div class="cd">Shows the client-estimate vs the stored statement value + the self-correcting delta. Advisory only.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">SkippedMonthFlag</div><div class="cd">Gap detector → reconcile flag; Enter / Carry-with-note actions. Never interpolates.</div><div class="co"><span class="ptag new">NEW</span></div></div>
+    <div class="crow"><div class="cn">EntryDrawer (restyle)</div><div class="cd">Persistency-v2 manager-wins drawer re-pointed at the financing ledger. Gold precedence, ≥44px fields.</div><div class="co"><span class="ptag reuse">REUSE</span></div></div>
+    <div class="crow"><div class="cn">CurrencyField + audit stamp</div><div class="cd">Shipped <code>.input</code> + <code>parseFloat</code>; <code>enteredBy/At/source</code> on save. <code>formatCurrency</code> for TTD.</div><div class="co"><span class="ptag reuse">REUSE</span></div></div>
+  </div>
+
+</div>
+<style id="__om-edit-overrides"></style>
+</body>
+</html>
