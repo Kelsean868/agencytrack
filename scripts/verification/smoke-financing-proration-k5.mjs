@@ -62,6 +62,16 @@ const BYPASS_TOKEN = requireEnv('VERCEL_BYPASS_TOKEN');
 const BASE_URL = (process.env.SMOKE_BASE_URL || '').replace(/\/+$/, '');
 if (!BASE_URL) throw new Error('Set SMOKE_BASE_URL to the preview (or prod) URL');
 
+// Seeded write-read-verify mode (Phase 6 — rules LIVE). Set both to target a
+// seeded fixture agent (seed-financing-fixture.mjs) carrying a real policy, so
+// actualAPI > 0, the cap is exercised, and the CONFIRM write round-trips. When
+// unset, the read-side flow runs (no write — deploy gate).
+const SEED_AGENT_UID = process.env.SEED_AGENT_UID || '';
+const SEED_MONTH     = process.env.SEED_MONTH || '';   // "YYYY-MM"
+// An M4+ current/future month for the seeded agent → submitted-provisional (a live
+// projection): read-only, no override form, so NO determination is stored.
+const SEED_PROVISIONAL_MONTH = process.env.SEED_PROVISIONAL_MONTH || '';   // "YYYY-MM"
+
 const results = [];
 const pass = (id, note = '') => { results.push({ id, ok: true, note }); console.log(`  PASS ${id}${note ? ' — ' + note : ''}`); };
 const fail = (id, note = '') => { results.push({ id, ok: false, note }); console.log(`  FAIL ${id}${note ? ' — ' + note : ''}`); };
@@ -235,11 +245,112 @@ async function run(browser) {
   await ctx.close();
 }
 
+// ── Seeded write-read-verify (Phase 6, rules LIVE) ──────────────────────────
+// Targets a seeded fixture agent (financingTerms + a real policy) so the full
+// chain is exercised end-to-end: actualAPI (credit-filtered Gross) → suggested
+// (capped) → CONFIRM managerFinancing → reload → persisted + adjustmentPct.
+async function runSeeded(browser) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await setupBypassSession(ctx, BASE_URL, BYPASS_TOKEN);
+  const page = await ctx.newPage();
+  const cap = captureConsoleAndNetwork(page);
+  await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
+
+  try {
+    await login(page, requireEnv('A11Y_BRANCH_MANAGER_EMAIL'), requireEnv('A11Y_BRANCH_MANAGER_PASSWORD'));
+  } catch (e) { fail('bm-login', e.message); formatCaptureReport(cap); await ctx.close(); return; }
+  pass('bm-login', 'branch manager signed in');
+
+  if (!(await openFinancingTab(page))) {
+    fail('proration-subview', 'nav-financing or Proration sub-view not present');
+    formatCaptureReport(cap); await ctx.close(); return;
+  }
+  pass('proration-subview', 'Proration sub-view present');
+
+  // Select the seeded agent directly (fixture supplies its financingTerms — no UI seed).
+  await openSubview(page, 'proration');
+  const sel = page.locator('[data-testid="proration-agent-select"]');
+  const opts = await sel.locator('option').evaluateAll((o) => o.map((x) => x.value).filter(Boolean));
+  if (!opts.includes(SEED_AGENT_UID)) {
+    fail('seed-agent-present', `${SEED_AGENT_UID} not in dropdown (seed missing or out of BM scope)`);
+    formatCaptureReport(cap); await ctx.close(); return;
+  }
+  await selectProrationMonth(page, SEED_AGENT_UID, SEED_MONTH);
+
+  // Readout — real policy → actualAPI $50,000 > validating $37,500 → ratio caps at 100%.
+  const readout = page.locator('[data-testid="proration-readout"]');
+  const basis = await readout.getAttribute('data-basis').catch(() => null);
+  const actual = await page.locator('[data-testid="proration-actual-api"]').textContent().catch(() => '');
+  const ratio  = await page.locator('[data-testid="proration-ratio"]').textContent().catch(() => '');
+  const sugg   = await page.locator('[data-testid="proration-suggested"]').textContent().catch(() => '');
+  (basis === 'submitted-final' && /50,000/.test(actual))
+    ? pass('seeded-readout', `basis=${basis} actualAPI=${actual.trim()}`)
+    : fail('seeded-readout', `basis=${basis} actualAPI=${actual.trim()}`);
+  (/100\s*%/.test(ratio) && /2,000/.test(sugg))
+    ? pass('cap-100pct', `ratio=${ratio.trim()} suggested=${sugg.trim()} (capped at agreed)`)
+    : fail('cap-100pct', `ratio=${ratio.trim()} suggested=${sugg.trim()} (expected 100% / 2,000)`);
+
+  // CONFIRM a managerFinancing ≠ suggested (1500 ≤ agreed 2000) → write.
+  const managerInput = page.locator('[data-testid="proration-manager-input"]');
+  if (!(await vis(managerInput, 6000))) {
+    fail('write-read-verify', 'override form not shown (unexpected — month 1 should be operative)');
+    formatCaptureReport(cap); await ctx.close(); return;
+  }
+  await managerInput.fill('1500');
+  await page.waitForTimeout(300);
+  const adjBefore = await page.locator('[data-testid="proration-adjustment"]').getAttribute('data-adjustment').catch(() => null);
+  await page.getByRole('button', { name: /confirm financing/i }).click();
+  await page.waitForTimeout(3000);
+
+  // Reload → re-select → managerFinancing persisted, adjustmentPct stored.
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(() => document.body && document.body.textContent.replace(/\s+/g, '').length > 200, { timeout: 30_000 });
+  await page.waitForTimeout(1800);
+  await openFinancingTab(page);
+  await selectProrationMonth(page, SEED_AGENT_UID, SEED_MONTH);
+  const managerVal = await page.locator('[data-testid="proration-manager-input"]').inputValue().catch(() => '');
+  const adjAfter = await page.locator('[data-testid="proration-adjustment"]').getAttribute('data-adjustment').catch(() => null);
+  (parseFloat(managerVal) === 1500)
+    ? pass('write-read-verify', `managerFinancing persisted ${managerVal} ≠ suggested 2000 — rules LIVE`)
+    : fail('write-read-verify', `managerFinancing=${managerVal} (expected 1500 persisted)`);
+  (Math.abs(parseFloat(adjAfter) - 0.25) < 1e-9)
+    ? pass('adjustment-stored', `adjustmentPct=${adjAfter} = (2000−1500)/2000 (was ${adjBefore} pre-reload)`)
+    : fail('adjustment-stored', `adjustmentPct=${adjAfter} (expected 0.25)`);
+
+  // Provisional negative check — an M4+ current/future month is a live projection:
+  // read-only, NO override form → no determination can be written.
+  if (SEED_PROVISIONAL_MONTH) {
+    await selectProrationMonth(page, SEED_AGENT_UID, SEED_PROVISIONAL_MONTH);
+    const provBasis = await page.locator('[data-testid="proration-readout"]').getAttribute('data-basis').catch(() => null);
+    const provNote  = await vis(page.locator('[data-testid="proration-provisional-note"]'), 5000);
+    const noOverride = !(await vis(page.locator('[data-testid="proration-manager-input"]'), 2000));
+    (provBasis === 'submitted-provisional' && provNote && noOverride)
+      ? pass('provisional-readonly', `${SEED_PROVISIONAL_MONTH} basis=${provBasis}; note shown; no override form → no determination stored`)
+      : fail('provisional-readonly', `basis=${provBasis} note=${provNote} noOverride=${noOverride}`);
+    // Restore the confirmed month for the axe pass.
+    await selectProrationMonth(page, SEED_AGENT_UID, SEED_MONTH);
+  }
+
+  // axe both themes.
+  await setTheme(ctx, 'light');
+  await page.waitForTimeout(500);
+  await axeScreen(page, 'light');
+  await setTheme(ctx, 'dark');
+  await page.waitForTimeout(700);
+  await axeScreen(page, 'dark');
+
+  formatCaptureReport(cap);
+  await ctx.close();
+}
+
 (async () => {
   console.log(`\nFinancing K5 proration smoke → ${BASE_URL}`);
-  console.log(`  months: M1=${MONTH_1} (submitted-final) M4=${MONTH_4} (settled-confirmed) (eff ${EFF_DATE})`);
+  const seeded = SEED_AGENT_UID && SEED_MONTH;
+  console.log(seeded
+    ? `  SEEDED write-read-verify: agent=${SEED_AGENT_UID} month=${SEED_MONTH}`
+    : `  read-side: M1=${MONTH_1} (submitted-final) M4=${MONTH_4} (settled-confirmed) (eff ${EFF_DATE})`);
   const browser = await chromium.launch();
-  try { await run(browser); } finally { await browser.close(); }
+  try { await (seeded ? runSeeded(browser) : run(browser)); } finally { await browser.close(); }
 
   const failed = results.filter((r) => !r.ok);
   console.log(`\n──────────── RESULT: ${results.length - failed.length}/${results.length} PASS ────────────`);
