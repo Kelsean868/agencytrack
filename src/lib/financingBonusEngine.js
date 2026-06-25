@@ -31,9 +31,10 @@ const p = (v) => parseFloat(v) || 0;
 // ──────────────────────────────────────────────────────
 export function creditWeight(policy, ruleset = DEFAULT_FINANCING_RULESET_2026) {
   const pol = policy ?? {};
-  if (pol.isSelfOrFamily === true) return ruleset.selfOrFamilyWeight ?? 0;
-  if (ruleset.staffPolicyTreatment === 'exclude' && pol.isStaff === true) return 0;
-  const w = ruleset.creditMap?.[pol.newBusinessType];
+  const rs = ruleset ?? DEFAULT_FINANCING_RULESET_2026; // explicit null bypasses the default param
+  if (pol.isSelfOrFamily === true) return rs.selfOrFamilyWeight ?? 0;
+  if (rs.staffPolicyTreatment === 'exclude' && pol.isStaff === true) return 0;
+  const w = rs.creditMap?.[pol.newBusinessType];
   return typeof w === 'number' ? w : 0;
 }
 
@@ -50,21 +51,23 @@ export function creditWeight(policy, ruleset = DEFAULT_FINANCING_RULESET_2026) {
 // ──────────────────────────────────────────────────────
 export function computeApiChain(policies, opts = {}, ruleset = DEFAULT_FINANCING_RULESET_2026) {
   const lines = Array.isArray(policies) ? policies : [];
+  const rs = ruleset ?? DEFAULT_FINANCING_RULESET_2026; // explicit null bypasses the default param
+  const o = opts ?? {};
   let gross = 0;
   let lsdIncPppCredit = 0;
 
   for (const pol of lines) {
-    const credited = p(pol?.settledAPI) * creditWeight(pol, ruleset);
+    const credited = p(pol?.settledAPI) * creditWeight(pol, rs);
     gross += credited;
     if (pol?.newBusinessType === 'lumpsum' || pol?.newBusinessType === 'inc_ppp') {
       lsdIncPppCredit += credited;
     }
   }
 
-  gross -= p(opts.notTakenAPI);
+  gross -= p(o.notTakenAPI);
 
   const netPersistency =
-    gross - p(opts.lapsedSurrenderedUnder2yrAPI) + p(opts.reinstatedUnder2yrAPI);
+    gross - p(o.lapsedSurrenderedUnder2yrAPI) + p(o.reinstatedUnder2yrAPI);
   const netProduction = netPersistency - lsdIncPppCredit;
 
   return { gross, netPersistency, netProduction, lsdIncPppCredit };
@@ -78,10 +81,15 @@ export function computeApiChain(policies, opts = {}, ruleset = DEFAULT_FINANCING
 // (95% year 1 / 90% year 2).
 // ──────────────────────────────────────────────────────
 export function computeQuarterGate(args = {}, ruleset = DEFAULT_FINANCING_RULESET_2026) {
-  const isQ1Exception = args.quarter === 1;
-  const grossGateMet = p(args.gross) >= ruleset.quarterlyGrossMin;
-  const persGate = args.yearInAgreement === 2 ? ruleset.persistencyY2 : ruleset.persistencyY1;
-  const persistencyGateMet = isQ1Exception ? true : p(args.persistency) >= persGate;
+  const a = args ?? {};
+  const rs = ruleset ?? DEFAULT_FINANCING_RULESET_2026; // explicit null bypasses the default param
+  // parseInt so string '1'/'2' don't silently break the Q1 exception or the year gate.
+  const q = parseInt(a.quarter, 10) || 0;
+  const yia = parseInt(a.yearInAgreement, 10) || 1; // unknown → year 1 (the stricter 95% gate)
+  const isQ1Exception = q === 1;
+  const grossGateMet = p(a.gross) >= rs.quarterlyGrossMin;
+  const persGate = yia === 2 ? rs.persistencyY2 : rs.persistencyY1;
+  const persistencyGateMet = isQ1Exception ? true : p(a.persistency) >= persGate;
   return {
     grossGateMet,
     persistencyGateMet,
@@ -97,7 +105,8 @@ export function computeQuarterGate(args = {}, ruleset = DEFAULT_FINANCING_RULESE
 // ──────────────────────────────────────────────────────
 export function resolveRateTier(annualGross, ruleset = DEFAULT_FINANCING_RULESET_2026) {
   const g = p(annualGross);
-  for (const tier of ruleset.rateTiers ?? []) {
+  const rs = ruleset ?? DEFAULT_FINANCING_RULESET_2026; // explicit null bypasses the default param
+  for (const tier of rs.rateTiers ?? []) {
     if (g >= tier.minGross && (tier.maxGross === null || g <= tier.maxGross)) return tier;
   }
   return null;
@@ -125,30 +134,33 @@ export function resolveRateTier(annualGross, ruleset = DEFAULT_FINANCING_RULESET
 //   totalBonusRate, annualQualifyingAmount, annualGateMet, annualAdjustment }
 // ──────────────────────────────────────────────────────
 export function computeFinancingBonus(input = {}, ruleset = DEFAULT_FINANCING_RULESET_2026) {
+  const inp = input ?? {};
+  const rs = ruleset ?? DEFAULT_FINANCING_RULESET_2026; // explicit null bypasses the default param
+  const yia = parseInt(inp.yearInAgreement, 10) || 1;   // string '2' must select the year-2 rates
+
   const { gross, netPersistency, netProduction, lsdIncPppCredit } = computeApiChain(
-    input.policies,
+    inp.policies,
     {
-      notTakenAPI: input.notTakenAPI,
-      lapsedSurrenderedUnder2yrAPI: input.lapsedSurrenderedUnder2yrAPI,
-      reinstatedUnder2yrAPI: input.reinstatedUnder2yrAPI,
+      notTakenAPI: inp.notTakenAPI,
+      lapsedSurrenderedUnder2yrAPI: inp.lapsedSurrenderedUnder2yrAPI,
+      reinstatedUnder2yrAPI: inp.reinstatedUnder2yrAPI,
     },
-    ruleset,
+    rs,
   );
 
   const gates = computeQuarterGate(
     {
       gross,
-      persistency: input.persistency,
-      quarter: input.quarter,
-      yearInAgreement: input.yearInAgreement,
+      persistency: inp.persistency,
+      quarter: inp.quarter,
+      yearInAgreement: yia,
     },
-    ruleset,
+    rs,
   );
 
   // Quarterly bonuses — base is Net-for-Persistency (A.2). Paid only when qualified.
-  const productionRate =
-    input.yearInAgreement === 2 ? ruleset.productionRateY2 : ruleset.productionRateY1;
-  const consistencyBonus = gates.qualified ? ruleset.consistencyRate * netPersistency : 0;
+  const productionRate = yia === 2 ? rs.productionRateY2 : rs.productionRateY1;
+  const consistencyBonus = gates.qualified ? rs.consistencyRate * netPersistency : 0;
   const productionBonus = gates.qualified ? productionRate * netPersistency : 0;
 
   // Annual Bonus Adjustment — base is Net-for-Production (A.2 / 1.8); top-up only.
@@ -159,18 +171,18 @@ export function computeFinancingBonus(input = {}, ruleset = DEFAULT_FINANCING_RU
   let annualGateMet = false;
   let annualAdjustment = 0;
 
-  if (input.annual) {
-    const annualGross = p(input.annual.grossAPI);
-    rateTier = resolveRateTier(annualGross, ruleset);
-    annualGateMet = annualGross >= ruleset.minAnnualGross;
-    livesQualified = p(input.annual.netPoliciesSettled) >= ruleset.livesPolicyMin;
+  if (inp.annual) {
+    const annualGross = p(inp.annual.grossAPI);
+    rateTier = resolveRateTier(annualGross, rs);
+    annualGateMet = annualGross >= rs.minAnnualGross;
+    livesQualified = p(inp.annual.netPoliciesSettled) >= rs.livesPolicyMin;
     if (rateTier) {
       totalBonusRate = rateTier.apiRate + (livesQualified ? rateTier.livesRate : 0);
-      annualQualifyingAmount = p(input.annual.netProductionAPI) * totalBonusRate;
+      annualQualifyingAmount = p(inp.annual.netProductionAPI) * totalBonusRate;
       if (annualGateMet) {
         annualAdjustment = Math.max(
           0,
-          annualQualifyingAmount - p(input.annual.priorBonusesPaidYTD),
+          annualQualifyingAmount - p(inp.annual.priorBonusesPaidYTD),
         );
       }
     }

@@ -429,3 +429,62 @@ describe('computeFinancingBonus — edges and defaults', () => {
     expect(r.consistencyBonus).toBeCloseTo(-9000, 6);
   });
 });
+
+// ──────────────────────────────────────────────────────
+// Robustness hardening (Gemini review) — string coercion of quarter/year + explicit-null guards
+// ──────────────────────────────────────────────────────
+describe('robustness — string quarter / year coercion', () => {
+  it("string quarter '1' still triggers the Q1 exception", () => {
+    const g = computeQuarterGate({ gross: 40000, persistency: 0, quarter: '1', yearInAgreement: 1 }, RS);
+    expect(g.isQ1Exception).toBe(true);
+    expect(g.qualified).toBe(true);
+  });
+  it("string yearInAgreement '2' selects the year-2 90% gate (not the year-1 95% gate)", () => {
+    // 0.91 passes the year-2 0.90 gate but would FAIL the year-1 0.95 gate
+    const g = computeQuarterGate({ gross: 40000, persistency: 0.91, quarter: 2, yearInAgreement: '2' }, RS);
+    expect(g.persistencyGateMet).toBe(true);
+  });
+  it("orchestrator: string yearInAgreement '2' applies the 20% production rate", () => {
+    const r = computeFinancingBonus({
+      yearInAgreement: '2',
+      quarter: 2,
+      policies: [{ newBusinessType: 'nb_ordinary', settledAPI: 60000 }],
+      persistency: 0.91,
+    }, RS);
+    expect(r.gates.qualified).toBe(true);
+    expect(r.productionBonus).toBeCloseTo(12000, 6); // 0.20 × 60000 — year-2 rate via string coercion
+  });
+});
+
+describe('robustness — explicit null params do not throw (default-param bypass)', () => {
+  it('creditWeight(policy, null) falls back to the default ruleset', () => {
+    expect(creditWeight({ newBusinessType: 'nb_ordinary' }, null)).toBe(1.0);
+  });
+  it('computeApiChain(policies, null, null) uses defaults', () => {
+    const r = computeApiChain([{ newBusinessType: 'nb_ordinary', settledAPI: 50000 }], null, null);
+    expect(r.gross).toBeCloseTo(50000, 6);
+  });
+  it('computeQuarterGate(null) returns a safe not-qualified result', () => {
+    const g = computeQuarterGate(null);
+    expect(g.grossGateMet).toBe(false);
+    expect(g.qualified).toBe(false);
+  });
+  it('resolveRateTier(g, null) uses the default tiers', () => {
+    expect(resolveRateTier(180000, null).apiRate).toBe(0.20);
+  });
+  it('computeFinancingBonus(null) → safe zeros', () => {
+    const r = computeFinancingBonus(null);
+    expect(r.gross).toBe(0);
+    expect(r.gates.qualified).toBe(false);
+    expect(r.annualAdjustment).toBe(0);
+  });
+  it('computeFinancingBonus(input, null) falls back to the default ruleset', () => {
+    const r = computeFinancingBonus({
+      yearInAgreement: 1,
+      quarter: 2,
+      policies: [{ newBusinessType: 'nb_ordinary', settledAPI: 50000 }],
+      persistency: 0.96,
+    }, null);
+    expect(r.consistencyBonus).toBeCloseTo(7500, 6);
+  });
+});
