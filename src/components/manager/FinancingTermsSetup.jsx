@@ -6,7 +6,7 @@
 // form (agreed / current / validatingAPI / effectiveDate), and the forward-only
 // status machine control. Derived ceiling/clocks are intentionally NOT here
 // (deferred to K2/K6 — see FOLLOW_UPS).
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowRight } from 'lucide-react';
 import SaveButton from '../ui/SaveButton';
 import { useAuth } from '../../context/AuthContext';
@@ -48,6 +48,14 @@ export default function FinancingTermsSetup() {
   const [pendingTransition, setPendingTransition] = useState('');
   const [transitioning, setTransitioning]   = useState(false);
 
+  // Latest-request guard (Gemini #2): on rapid agent switching, a slower
+  // getFinancingTerms for a previously selected agent can resolve last and
+  // overwrite the form. Because Save targets `selectedAgent` with the DISPLAYED
+  // values, a stale resolution is a money-write hazard (agent A's figures onto
+  // agent B's doc), not just a display glitch. Track the latest requested agentId
+  // and drop any resolution that is no longer current.
+  const latestAgentReqRef = useRef('');
+
   const canWrite = WRITE_ROLES.includes(role);
 
   // ── Load agents (mirror SettlementPanel) ────────────────────────────────────
@@ -65,12 +73,14 @@ export default function FinancingTermsSetup() {
 
   // ── Load the selected agent's terms ─────────────────────────────────────────
   const loadTerms = useCallback((agentId) => {
+    latestAgentReqRef.current = agentId;
     if (!tenantId || !agentId) { setTerms(null); setStatus(DEFAULT_FINANCING_STATUS); setForm(EMPTY_FORM); return; }
     setLoadingTerms(true);
     setValidationError('');
     setPendingTransition('');
     getFinancingTerms(tenantId, agentId)
       .then((doc) => {
+        if (latestAgentReqRef.current !== agentId) return; // stale — a newer agent was selected
         if (doc) {
           setTerms(doc);
           setStatus(doc.financingStatus ?? DEFAULT_FINANCING_STATUS);
@@ -86,8 +96,15 @@ export default function FinancingTermsSetup() {
           setForm({ ...EMPTY_FORM, effectiveDate: getTodayTT() });
         }
       })
-      .catch((e) => { console.error(e); toast.show({ variant: 'error', message: "Couldn't load financing terms." }); })
-      .finally(() => setLoadingTerms(false));
+      .catch((e) => {
+        if (latestAgentReqRef.current !== agentId) return; // stale — ignore
+        console.error(e);
+        toast.show({ variant: 'error', message: "Couldn't load financing terms." });
+      })
+      .finally(() => {
+        if (latestAgentReqRef.current !== agentId) return; // stale — leave the newer request's loading state alone
+        setLoadingTerms(false);
+      });
   }, [tenantId, toast]);
 
   function handleSelectAgent(e) {

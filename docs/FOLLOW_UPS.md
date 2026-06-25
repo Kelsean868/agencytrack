@@ -22,6 +22,12 @@ The K1 `financingService.transitionFinancingStatus` enforces the **forward-only*
 
 `docs/design/track-k-locked-decisions.md` **A.4 is OPEN**: the product owner says staff policies are **counted** toward the bonus credit; contract 1.2 says **excluded**. Pending explicit confirmation. **Gates K3 only** (the bonus engine / credit filter) — **not K1/K2**. If counted → operative-practice divergence documented, no staff flag needed on the ledger (K3 simplifies). If excluded → staff identification required (new ledger flag, or a pilot out-of-scope call). Resolve before dispatching K3.
 
+## SettlementPanel / FinancingTermsSetup — latest-request guard parity + race tests (banked K1, 2026-06-25, LOW)
+
+K1 added a `useRef` **latest-request guard** to `FinancingTermsSetup.loadTerms` (Gemini #2): on rapid agent switching a slower `getFinancingTerms` could resolve last and overwrite the form, and because Save targets `selectedAgent` with the displayed values, that is a money-write hazard (agent A's figures onto agent B's doc). **`SettlementPanel` has the same latent shape** in its per-agent flows but was out of scope for K1 (the locked mount mirrors it; K1 didn't modify it).
+
+**To resolve (keep the two panels true mirrors):** (1) apply the same latest-request `useRef` guard to `SettlementPanel`'s async per-agent loads; (2) add a focused **race test** to both panels (stale resolution must not overwrite the current selection); (3) add a defensive `getTenantUsers` **nullish fallback** (`|| []`) to both `loadAgents` paths — Gemini #1; `getTenantUsers` resolves to an array today so this is defense-in-depth, applied to both for consistency, not just one.
+
 ## Track K · K2 — `basisBadge` primitive lands with K2 (banked K1, 2026-06-25, scope note)
 
 The `basisBadge` (submitted-provisional / submitted-final / settled-confirmed quarter-basis indicator, CD#3) is a **K2** primitive, not K1. K1 ships only `FinancingStatusBadge` (the 5-state financing-status badge). No action until K2.
