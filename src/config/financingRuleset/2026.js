@@ -53,6 +53,13 @@ export const DEFAULT_FINANCING_RULESET_2026 = {
   //             (banked FU). Flipping this is config, not code (Decision 3).
   staffPolicyTreatment: 'count',
 
+  // ── Take-home calc (K4) ──
+  // Tax deducted from gross bonus before the 50% financing split (locked §2.1 / A.1).
+  // Both are configurable ruleset placeholders — financingTakeHome.js reads them;
+  // the calc NEVER hardcodes them. Update here when the contract is renegotiated.
+  taxRate: 0.25,              // 25% income tax (2017-vintage; configurable)
+  financingPortionRate: 0.50, // 50% of net bonus → financing repayment while owing
+
   // ── Annual bonus-rate tiers (annual Gross New Settled API; A.1 confirms 2026) ──
   // totalRate = apiRate + (livesQualified ? livesRate : 0). Lives portion requires
   // livesPolicyMin net policies settled. Bands evaluated in order; maxGross is
