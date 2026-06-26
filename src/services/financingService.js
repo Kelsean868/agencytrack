@@ -215,6 +215,14 @@ export const BASIS_SOURCE_LABELS = {
   'settled-confirmed':     'Settled · confirmed',
 };
 
+// Provenance flag for a monthly statement (K6 amendment). A normal ledger entry is
+// 'manager_entry'; a statement written by the K6 reconciliation gap-fill (a manager
+// affirmatively confirming a previously-missing month, including a genuine $0) is
+// 'reconciliation_gap_fill' so the two are auditably distinct. The deployed K2 rule
+// (validFinancingMonth) has no source constraint, so this needs NO rules change. Default
+// stays 'manager_entry' — existing callers pass no source and are unaffected.
+export const FINANCING_MONTH_SOURCES = ['manager_entry', 'reconciliation_gap_fill'];
+
 function financingMonthDocRef(tenantId, agentId, month) {
   return doc(db, `tenants/${tenantId}/financing/${agentId}_${month}`);
 }
@@ -325,6 +333,10 @@ export async function setFinancingMonth(tenantId, agentId, month, statement, act
 
   const notes = typeof statement?.notes === 'string' ? statement.notes : '';
 
+  // Provenance flag (K6 amendment): a gap-fill write passes source:'reconciliation_gap_fill';
+  // anything else (including legacy callers that pass none) falls back to 'manager_entry'.
+  const source = FINANCING_MONTH_SOURCES.includes(statement?.source) ? statement.source : 'manager_entry';
+
   const ref = financingMonthDocRef(tenantId, agentId, month);
   const existing = await getDoc(ref);
   const now = serverTimestamp();
@@ -339,7 +351,7 @@ export async function setFinancingMonth(tenantId, agentId, month, statement, act
     netCommission,
     bonusOffset,
     notes,
-    source: 'manager_entry',
+    source,
     updatedAt: now,
   };
 
@@ -456,4 +468,140 @@ export async function setFinancingProration(tenantId, agentId, month, proration,
   };
   await setDoc(ref, created);
   return { id: ref.id, ...created };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Track K · K6 — reconciliation event + record
+//
+// Schema: /tenants/{tid}/financingReconciliation/{agentId}_{year}  (composite doc
+// ID; one record per agent-year). The year-1 wind-down event (or earlier on a 6.5b
+// election): applies the service-gated waiver, computes surplus-or-owing, writes the
+// record, and drives the status machine forward. The reconciliation MATH is the pure
+// lib (src/lib/financingReconciliation.js) — this method persists the computed record
+// and drives K1's machine (it does NOT re-implement the state machine or the calc).
+// See docs/track-k-financing-new-agent-design.md §5/§6 and the K6 build annotation
+// (design_handoff_track_k/Track K Reconciliation - Build.html).
+// ─────────────────────────────────────────────────────────────────────────────
+
+// The two reconciliation outcomes / triggers (mirror the lib's exports; defined here
+// too so the data layer validates without importing the calc module — same pattern as
+// FINANCING_STATUSES / BASIS_SOURCES).
+export const RECONCILIATION_OUTCOMES = ['owing', 'surplus'];
+export const RECONCILIATION_TRIGGERS = ['auto_month12', 'manual_election'];
+
+const YEAR_RE = /^\d{4}$/;
+
+function financingReconciliationDocRef(tenantId, agentId, year) {
+  return doc(db, `tenants/${tenantId}/financingReconciliation/${agentId}_${year}`);
+}
+
+export async function getFinancingReconciliation(tenantId, agentId, year) {
+  if (!tenantId)               throw new Error('getFinancingReconciliation: tenantId required');
+  if (!agentId)                throw new Error('getFinancingReconciliation: agentId required');
+  if (!YEAR_RE.test(String(year ?? ''))) throw new Error('getFinancingReconciliation: year must be YYYY');
+  const snap = await getDoc(financingReconciliationDocRef(tenantId, agentId, year));
+  if (!snap.exists()) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+// Persist the reconciliation record AND drive the status machine to the terminal state.
+//
+// Precondition: the agent is ALREADY in `reconciling` (the begin-reconciliation step —
+// on_financing → reconciling — is a separate transitionFinancingStatus call, mirroring
+// the mockup's event-bar before the worksheet). Ordering matters (mockup "Error · write
+// failed" state): the record is written FIRST and the status is advanced ONLY after the
+// write resolves, so a failed write never strands the agent in a half-settled state.
+//
+// `reconciliation` is the computeReconciliation output (numerics + outcome + triggeredBy).
+// nextStatus is RE-DERIVED from outcome here (never trusted from the caller). Numerics are
+// parseFloat-enforced; outcome/triggeredBy validated against the enums. On overwrite (a
+// re-reconciliation) the first-create audit is preserved.
+export async function reconcileFinancing(tenantId, agentId, year, reconciliation, actor) {
+  const writerUid = auth?.currentUser?.uid;
+  if (!writerUid)            throw new Error('reconcileFinancing: no signed-in user');
+  if (!tenantId)             throw new Error('reconcileFinancing: tenantId required');
+  if (!agentId)              throw new Error('reconcileFinancing: agentId required');
+  if (!YEAR_RE.test(String(year ?? ''))) throw new Error('reconcileFinancing: year must be YYYY');
+  if (!actor || !actor.role) throw new Error('reconcileFinancing: actor.role required');
+
+  const rec = reconciliation ?? {};
+  const outcome     = rec.outcome;
+  const triggeredBy = rec.triggeredBy;
+  if (!RECONCILIATION_OUTCOMES.includes(outcome))     throw new Error(`reconcileFinancing: outcome must be one of ${RECONCILIATION_OUTCOMES.join(', ')}`);
+  if (!RECONCILIATION_TRIGGERS.includes(triggeredBy)) throw new Error(`reconcileFinancing: triggeredBy must be one of ${RECONCILIATION_TRIGGERS.join(', ')}`);
+
+  const totalFinancingDrawn = parseFloat(rec.totalFinancingDrawn);
+  const totalOffsets        = parseFloat(rec.totalOffsets);
+  const closingBalance      = parseFloat(rec.closingBalance);
+  const waiverApplied       = parseFloat(rec.waiverApplied);
+  const reconciledPosition  = parseFloat(rec.reconciledPosition);
+  const surplusPaid         = parseFloat(rec.surplusPaid);
+  const serviceMonths       = parseFloat(rec.serviceMonths);
+  if (!Number.isFinite(totalFinancingDrawn)) throw new Error('reconcileFinancing: totalFinancingDrawn must be a number');
+  if (!Number.isFinite(totalOffsets))        throw new Error('reconcileFinancing: totalOffsets must be a number');
+  if (!Number.isFinite(closingBalance))      throw new Error('reconcileFinancing: closingBalance must be a number');
+  if (!Number.isFinite(waiverApplied) || waiverApplied < 0) throw new Error('reconcileFinancing: waiverApplied must be a non-negative number');
+  if (!Number.isFinite(reconciledPosition))  throw new Error('reconcileFinancing: reconciledPosition must be a number');
+  if (!Number.isFinite(surplusPaid) || surplusPaid < 0)     throw new Error('reconcileFinancing: surplusPaid must be a non-negative number');
+  if (!Number.isFinite(serviceMonths) || serviceMonths < 0) throw new Error('reconcileFinancing: serviceMonths must be a non-negative number');
+
+  // Status precondition — must be mid-reconciliation. Begin-reconciliation
+  // (on_financing → reconciling) is a separate explicit transition.
+  const termsRef  = financingDocRef(tenantId, agentId);
+  const termsSnap = await getDoc(termsRef);
+  if (!termsSnap.exists()) throw new Error('reconcileFinancing: no financing terms for this agent');
+  const currentStatus = termsSnap.data().financingStatus ?? DEFAULT_FINANCING_STATUS;
+  if (currentStatus !== 'reconciling') {
+    throw new Error(`reconcileFinancing: agent must be in 'reconciling' (is '${currentStatus}') — begin reconciliation first`);
+  }
+
+  const nextStatus = outcome === 'surplus' ? 'cleared' : 'post_financing_repayment';
+
+  // 1) Write the record FIRST (mockup error-state rule: never advance status on an
+  //    unpersisted record).
+  const ref = financingReconciliationDocRef(tenantId, agentId, year);
+  const existing = await getDoc(ref);
+  const now = serverTimestamp();
+  const core = {
+    agentId,
+    tenantId,
+    year: Number(year),
+    totalFinancingDrawn,
+    totalOffsets,
+    closingBalance,
+    waiverApplied,
+    serviceMet:       !!rec.serviceMet,
+    serviceMonths,
+    reconciledPosition,
+    outcome,
+    surplusPaid,
+    garnishStarted:   outcome === 'owing',
+    triggeredBy,
+    updatedAt: now,
+    updatedBy: writerUid,
+  };
+
+  let record;
+  if (existing.exists()) {
+    await setDoc(ref, core, { merge: true });
+    record = { id: ref.id, ...existing.data(), ...core };
+  } else {
+    const created = {
+      ...core,
+      reconciledBy:     writerUid,
+      reconciledByName: actor.name ?? '',
+      reconciledAt:     now,
+      createdAt:        now,
+    };
+    await setDoc(ref, created);
+    record = { id: ref.id, ...created };
+  }
+
+  // 2) Advance the machine reconciling → terminal ONLY after the record persists.
+  await transitionFinancingStatus(
+    tenantId, agentId, nextStatus, actor,
+    `K6 reconciliation — ${outcome} (${triggeredBy})`,
+  );
+
+  return record;
 }

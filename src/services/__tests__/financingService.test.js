@@ -45,6 +45,10 @@ import {
   setFinancingMonth,
   setFinancingProration,
   listFinancingMonths,
+  RECONCILIATION_OUTCOMES,
+  RECONCILIATION_TRIGGERS,
+  getFinancingReconciliation,
+  reconcileFinancing,
 } from '../financingService';
 
 const TENANT = 'tenant-1';
@@ -426,6 +430,31 @@ describe('setFinancingMonth', () => {
     hoisted.mockAuth.currentUser = { uid: 'mgr-uid' };
     await expect(setFinancingMonth(TENANT, AGENT, '2026_01', VALID_STATEMENT, {})).rejects.toThrow(/actor\.role/);
   });
+
+  // K6 amendment — source-override (gap-fill provenance flag).
+  it('defaults source to manager_entry when none is passed', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await setFinancingMonth(TENANT, AGENT, '2026_01', VALID_STATEMENT, ACTOR);
+    expect(mockSetDoc.mock.calls[0][1].source).toBe('manager_entry');
+  });
+
+  it('writes source:reconciliation_gap_fill when the gap-fill flag is passed', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await setFinancingMonth(
+      TENANT, AGENT, '2026_02',
+      { financingPaid: 0, netCommission: 0, bonusOffset: 0, runningBalance: 0, source: 'reconciliation_gap_fill' },
+      ACTOR,
+    );
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.source).toBe('reconciliation_gap_fill');
+    expect(payload.runningBalance).toBe(0); // a manager-confirmed genuine $0 month
+  });
+
+  it('falls back to manager_entry for an unrecognised source value', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await setFinancingMonth(TENANT, AGENT, '2026_03', { ...VALID_STATEMENT, source: 'totally_bogus' }, ACTOR);
+    expect(mockSetDoc.mock.calls[0][1].source).toBe('manager_entry');
+  });
 });
 
 describe('setFinancingProration (K5)', () => {
@@ -588,5 +617,161 @@ describe('listFinancingMonths', () => {
   it('requires tenantId and agentId', async () => {
     await expect(listFinancingMonths(null, AGENT)).rejects.toThrow(/tenantId/);
     await expect(listFinancingMonths(TENANT, null)).rejects.toThrow(/agentId/);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Track K · K6 — reconciliation
+// ─────────────────────────────────────────────────────────────────────────────
+const YEAR = '2026';
+// computeReconciliation output shape (owing path) the panel hands to the service.
+const RECON_OWING = {
+  totalFinancingDrawn: 48000,
+  totalOffsets: 29800,
+  closingBalance: 18200,
+  waiverApplied: 12000,
+  serviceMet: true,
+  serviceMonths: 12,
+  reconciledPosition: 6200,
+  outcome: 'owing',
+  surplusPaid: 0,
+  garnishStarted: true,
+  triggeredBy: 'auto_month12',
+  nextStatus: 'post_financing_repayment',
+};
+const RECON_SURPLUS = {
+  ...RECON_OWING,
+  closingBalance: -3100,
+  reconciledPosition: -15100,
+  outcome: 'surplus',
+  surplusPaid: 15100,
+  garnishStarted: false,
+  nextStatus: 'cleared',
+};
+const termsSnap = (status) => snap({ ...VALID_TERMS, financingStatus: status, statusHistory: [] });
+
+describe('RECONCILIATION constants', () => {
+  it('exports the two outcomes + two triggers', () => {
+    expect(RECONCILIATION_OUTCOMES).toEqual(['owing', 'surplus']);
+    expect(RECONCILIATION_TRIGGERS).toEqual(['auto_month12', 'manual_election']);
+  });
+});
+
+describe('getFinancingReconciliation', () => {
+  it('returns null when the record does not exist', async () => {
+    mockGetDoc.mockResolvedValue(snap(null));
+    expect(await getFinancingReconciliation(TENANT, AGENT, YEAR)).toBeNull();
+  });
+  it('returns { id, ...data } when present', async () => {
+    mockGetDoc.mockResolvedValue(snap({ ...RECON_OWING, agentId: AGENT }));
+    const out = await getFinancingReconciliation(TENANT, AGENT, YEAR);
+    expect(out).toMatchObject({ outcome: 'owing', reconciledPosition: 6200 });
+  });
+  it('rejects a non-YYYY year and missing ids', async () => {
+    await expect(getFinancingReconciliation(TENANT, AGENT, '26')).rejects.toThrow(/year/);
+    await expect(getFinancingReconciliation(null, AGENT, YEAR)).rejects.toThrow(/tenantId/);
+    await expect(getFinancingReconciliation(TENANT, null, YEAR)).rejects.toThrow(/agentId/);
+  });
+});
+
+describe('reconcileFinancing', () => {
+  it('owing → writes record FIRST, then advances reconciling → post_financing_repayment', async () => {
+    mockGetDoc
+      .mockResolvedValueOnce(termsSnap('reconciling')) // status precondition
+      .mockResolvedValueOnce(snap(null))               // recon doc (create)
+      .mockResolvedValueOnce(termsSnap('reconciling')); // transition fromStatus
+    const out = await reconcileFinancing(TENANT, AGENT, YEAR, RECON_OWING, ACTOR);
+
+    expect(mockSetDoc).toHaveBeenCalledTimes(2);
+    // 1st write = the reconciliation record (full create with audit).
+    const [recRef, recPayload, recOpts] = mockSetDoc.mock.calls[0];
+    expect(recRef.__ref).toBe(`tenants/${TENANT}/financingReconciliation/${AGENT}_${YEAR}`);
+    expect(recOpts).toBeUndefined();
+    expect(recPayload).toMatchObject({
+      agentId: AGENT, tenantId: TENANT, year: 2026,
+      outcome: 'owing', garnishStarted: true, surplusPaid: 0,
+      waiverApplied: 12000, reconciledPosition: 6200, serviceMet: true,
+      triggeredBy: 'auto_month12', reconciledBy: 'mgr-uid', reconciledByName: 'B. Manager',
+    });
+    expect(recPayload.reconciledAt).toBe('__SERVER_TIMESTAMP__');
+    // 2nd write = the status transition on the terms doc.
+    const [termsRef, transPayload] = mockSetDoc.mock.calls[1];
+    expect(termsRef.__ref).toBe(`tenants/${TENANT}/financingTerms/${AGENT}`);
+    expect(transPayload.financingStatus).toBe('post_financing_repayment');
+    expect(out.outcome).toBe('owing');
+  });
+
+  it('surplus → advances reconciling → cleared, pays surplus', async () => {
+    mockGetDoc
+      .mockResolvedValueOnce(termsSnap('reconciling'))
+      .mockResolvedValueOnce(snap(null))
+      .mockResolvedValueOnce(termsSnap('reconciling'));
+    await reconcileFinancing(TENANT, AGENT, YEAR, RECON_SURPLUS, ACTOR);
+    const [, recPayload] = mockSetDoc.mock.calls[0];
+    expect(recPayload).toMatchObject({ outcome: 'surplus', surplusPaid: 15100, garnishStarted: false });
+    const [, transPayload] = mockSetDoc.mock.calls[1];
+    expect(transPayload.financingStatus).toBe('cleared');
+  });
+
+  it('RE-DERIVES nextStatus from outcome — ignores a tampered nextStatus', async () => {
+    mockGetDoc
+      .mockResolvedValueOnce(termsSnap('reconciling'))
+      .mockResolvedValueOnce(snap(null))
+      .mockResolvedValueOnce(termsSnap('reconciling'));
+    // outcome owing but caller passes nextStatus 'cleared' → service still goes to repayment.
+    await reconcileFinancing(TENANT, AGENT, YEAR, { ...RECON_OWING, nextStatus: 'cleared' }, ACTOR);
+    const [, transPayload] = mockSetDoc.mock.calls[1];
+    expect(transPayload.financingStatus).toBe('post_financing_repayment');
+  });
+
+  it('overwrite preserves first-create audit (merge), never re-stamps reconciledBy', async () => {
+    mockGetDoc
+      .mockResolvedValueOnce(termsSnap('reconciling'))
+      .mockResolvedValueOnce(snap({ ...RECON_OWING, agentId: AGENT, reconciledBy: 'orig', reconciledAt: '__ORIG__' }))
+      .mockResolvedValueOnce(termsSnap('reconciling'));
+    await reconcileFinancing(TENANT, AGENT, YEAR, RECON_OWING, ACTOR);
+    const [, recPayload, recOpts] = mockSetDoc.mock.calls[0];
+    expect(recOpts).toEqual({ merge: true });
+    expect(recPayload).not.toHaveProperty('reconciledBy');
+    expect(recPayload).not.toHaveProperty('reconciledAt');
+    expect(recPayload.updatedAt).toBe('__SERVER_TIMESTAMP__');
+  });
+
+  it('rejects when the agent is NOT in reconciling (begin reconciliation first)', async () => {
+    mockGetDoc.mockResolvedValueOnce(termsSnap('on_financing'));
+    await expect(reconcileFinancing(TENANT, AGENT, YEAR, RECON_OWING, ACTOR))
+      .rejects.toThrow(/must be in 'reconciling'/);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('rejects when no financing terms exist', async () => {
+    mockGetDoc.mockResolvedValueOnce(snap(null));
+    await expect(reconcileFinancing(TENANT, AGENT, YEAR, RECON_OWING, ACTOR))
+      .rejects.toThrow(/no financing terms/);
+  });
+
+  it('rejects bad outcome / triggeredBy enums', async () => {
+    await expect(reconcileFinancing(TENANT, AGENT, YEAR, { ...RECON_OWING, outcome: 'bogus' }, ACTOR))
+      .rejects.toThrow(/outcome/);
+    await expect(reconcileFinancing(TENANT, AGENT, YEAR, { ...RECON_OWING, triggeredBy: 'bogus' }, ACTOR))
+      .rejects.toThrow(/triggeredBy/);
+    expect(mockSetDoc).not.toHaveBeenCalled();
+  });
+
+  it('rejects non-number / negative money fields', async () => {
+    await expect(reconcileFinancing(TENANT, AGENT, YEAR, { ...RECON_OWING, closingBalance: 'x' }, ACTOR))
+      .rejects.toThrow(/closingBalance/);
+    await expect(reconcileFinancing(TENANT, AGENT, YEAR, { ...RECON_OWING, waiverApplied: -1 }, ACTOR))
+      .rejects.toThrow(/waiverApplied/);
+    await expect(reconcileFinancing(TENANT, AGENT, YEAR, { ...RECON_OWING, surplusPaid: -1 }, ACTOR))
+      .rejects.toThrow(/surplusPaid/);
+  });
+
+  it('rejects a bad year, missing auth, and missing actor.role', async () => {
+    await expect(reconcileFinancing(TENANT, AGENT, '26', RECON_OWING, ACTOR)).rejects.toThrow(/year/);
+    hoisted.mockAuth.currentUser = null;
+    await expect(reconcileFinancing(TENANT, AGENT, YEAR, RECON_OWING, ACTOR)).rejects.toThrow(/signed-in/);
+    hoisted.mockAuth.currentUser = { uid: 'mgr-uid' };
+    await expect(reconcileFinancing(TENANT, AGENT, YEAR, RECON_OWING, {})).rejects.toThrow(/actor\.role/);
   });
 });

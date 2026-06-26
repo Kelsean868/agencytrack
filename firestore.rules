@@ -719,6 +719,48 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // ── Track K · K6 — per-agent-year reconciliation record ───────────────────
+      // /tenants/{tid}/financingReconciliation/{agentId}_{year}  (composite doc ID;
+      // one record per agent-year). The year-1 wind-down event: total drawn vs
+      // offsets, the service-gated first-3-months waiver, and the surplus/owing
+      // outcome. Written by financingService.reconcileFinancing (the calc lives in
+      // src/lib/financingReconciliation.js; status transitions ride K1's machine).
+      // Mirrors the K2 ledger posture exactly: read keyed on the STORED agentId field
+      // (composite ID, so the {agentId} path-var trick K1 uses does not apply — the
+      // settlements/K2 read shape), write BM/SM/TA same-tenant + PA (unit_manager
+      // EXCLUDED, contract 5.3). Coarse type/enum validation only (U2 single-boundary):
+      // agentId string, tenantId == path tenant, outcome in the 2-enum, triggeredBy in
+      // the 2-enum, the money fields are numbers (closingBalance / reconciledBalance MAY
+      // be negative = surplus; waiverApplied / surplusPaid >= 0). No key-allowlist / no
+      // hasOnly (permissive posture preserved). delete denied.
+      match /financingReconciliation/{docId} {
+        function validReconciliation() {
+          return request.resource.data.agentId  is string
+              && request.resource.data.tenantId == tenantId
+              && request.resource.data.year        is int
+              && request.resource.data.outcome     in ['owing', 'surplus']
+              && request.resource.data.triggeredBy in ['auto_month12', 'manual_election']
+              && request.resource.data.totalFinancingDrawn is number
+              && request.resource.data.totalOffsets        is number
+              && request.resource.data.closingBalance      is number
+              && request.resource.data.reconciledPosition  is number
+              && request.resource.data.waiverApplied is number && request.resource.data.waiverApplied >= 0
+              && request.resource.data.surplusPaid   is number && request.resource.data.surplusPaid   >= 0
+              && request.resource.data.serviceMet    is bool
+              && request.resource.data.garnishStarted is bool;
+        }
+
+        allow get:  if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
+        allow list: if canAccessOwn(tenantId, resource.data.agentId) || canManage(tenantId);
+
+        allow create, update: if validReconciliation() && (
+          (getRole() in ['branch_manager', 'sales_manager', 'tenant_admin'] && getTenantId() == tenantId)
+          || getRole() == 'platform_admin'
+        );
+
+        allow delete: if false;
+      }
+
       match /unitGoals/{docId} {
         allow read: if request.auth != null
           && request.auth.token.tenantId == tenantId;
