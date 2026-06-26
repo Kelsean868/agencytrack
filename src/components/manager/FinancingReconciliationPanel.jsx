@@ -125,7 +125,12 @@ export default function FinancingReconciliationPanel() {
     setActionError('');
     setGapEdits({});
     setGapError('');
-    if (!tenantId || !agentId) { setTerms(null); setMonths([]); setRecord(null); setLoading(false); return; }
+    // Clear the prior agent's data immediately (Gemini) — no stale terms/months/record
+    // while the new agent loads, and no stale data left behind if the load fails.
+    setTerms(null);
+    setMonths([]);
+    setRecord(null);
+    if (!tenantId || !agentId) { setLoading(false); return; }
     setLoading(true);
     Promise.all([
       getFinancingTerms(tenantId, agentId),
@@ -384,6 +389,10 @@ export default function FinancingReconciliationPanel() {
               value={selectedAgent}
               onChange={handleSelectAgent}
               className={inputCls}
+              // Lock the selector while any write is in flight (Gemini) — switching agents
+              // mid-transaction (begin/settle/mark-cleared OR a gap confirm) would desync the
+              // dropdown against the data the resolving write reloads.
+              disabled={busy || !!confirmingGap}
             >
               <option value="">Select agent…</option>
               {agents.map((a) => (

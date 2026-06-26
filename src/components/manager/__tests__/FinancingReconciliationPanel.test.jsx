@@ -177,6 +177,10 @@ describe('FinancingReconciliationPanel — gap-fill (K6 amendment)', () => {
       screen.getAllByRole('button', { name: /confirm month/i }).forEach((b) => expect(b).toBeDisabled());
     }, { timeout: 5000 });
 
+    // The agent selector is also locked while the write is in flight (Gemini: switching
+    // agents mid-transaction would desync the dropdown against the reloaded data).
+    expect(screen.getByTestId('recon-agent-select')).toBeDisabled();
+
     // Resolving the write releases the guard (buttons re-enable after the reload).
     resolveWrite({ id: 'agent-1_2026_03' });
     await waitFor(() => {
