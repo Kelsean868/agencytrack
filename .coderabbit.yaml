@@ -26,7 +26,7 @@ reviews:
 
   path_instructions:
     # --- Money / rules / engine: highest scrutiny ---
-    - path: "src/lib/financing**"
+    - path: "src/lib/financing/**"
       instructions: >
         This is money-math engine code (insurance financing/bonus/reconciliation).
         Currency is ALWAYS TTD. All numeric Firestore reads/writes go through
