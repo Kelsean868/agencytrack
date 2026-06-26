@@ -61,7 +61,9 @@ const db = admin.firestore();
 // ── seeded-doc tracking for cleanup ───────────────────────────────────────────
 let TENANT = null;
 const seededDocPaths = [];      // terms / ledger / user docs
-let originalConfig = undefined; // undefined = doc absent; else the prior data
+// Tri-state: null = NOT yet loaded (setup failed before the read — cleanup must NOT touch
+// the live config); undefined = loaded and the doc was absent; else = the prior data.
+let originalConfig = null;
 
 const ledgerPath = (m) => `tenants/${TENANT}/financing/${AGENT_UID}_${m}`;
 const cooldownPath = (m) => `tenants/${TENANT}/nudges/${AGENT_UID}_${NOTIFY_TYPE}_${m}`;
@@ -234,10 +236,25 @@ async function main() {
     ];
     for (const ref of toDelete) await ref.delete().catch(() => {});
 
-    // Restore the original financingConfig (or delete if it was absent before).
+    // Restore the original financingConfig (or delete if it was absent before). CRITICAL
+    // data-safety guard: act ONLY if we actually loaded the original state. originalConfig
+    // === null means setup failed BEFORE the read — we never saw the live config, so we must
+    // never delete or overwrite it. A restore FAILURE must be loud (not swallowed): a silently
+    // failed restore would leave the tenant's notifyRecipientUid pointing at the throw-away
+    // test recipient.
     const cfgRef = db.doc(`tenants/${TENANT}/config/financingConfig`);
-    if (originalConfig === undefined) await cfgRef.delete().catch(() => {});
-    else await cfgRef.set(originalConfig).catch(() => {});
+    if (originalConfig !== null) {
+      try {
+        if (originalConfig === undefined) await cfgRef.delete();
+        else await cfgRef.set(originalConfig);
+      } catch (restoreErr) {
+        console.error(
+          `[verify-financing-notify-k7-live] FAILED to restore financingConfig for tenant ${TENANT} — ` +
+          `MANUAL CHECK REQUIRED (notifyRecipientUid may still point at the test recipient):`,
+          restoreErr?.stack ?? restoreErr,
+        );
+      }
+    }
 
     // Value-level clean confirm.
     const bellsLeft = (await db.collection(`tenants/${TENANT}/notifications`).where('userId', '==', RECIPIENT_UID).get().catch(() => ({ size: -1 }))).size;
@@ -247,7 +264,10 @@ async function main() {
     const recipLeft = (await db.doc(`tenants/${TENANT}/users/${RECIPIENT_UID}`).get()).exists;
     const termsLeft = (await db.doc(`tenants/${TENANT}/financingTerms/${AGENT_UID}`).get()).exists;
     const cfgNow = await cfgRef.get();
-    const cfgRestored = originalConfig === undefined ? !cfgNow.exists : JSON.stringify(cfgNow.data()) === JSON.stringify(originalConfig);
+    // null = config was never loaded/touched (pre-load setup failure) → vacuously restored.
+    const cfgRestored = originalConfig === null
+      ? true
+      : (originalConfig === undefined ? !cfgNow.exists : JSON.stringify(cfgNow.data()) === JSON.stringify(originalConfig));
     const clean = bellsLeft === 0 && auditsLeft === 0 && nudgesLeft === 0 && !agentLeft && !recipLeft && !termsLeft && cfgRestored;
     clean
       ? pass('L6 cleanup — tenant clean (value-level)', `bells/audits/nudges=0; agent/recipient/terms gone; config restored`)
