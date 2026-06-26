@@ -60,6 +60,14 @@ export const DEFAULT_FINANCING_RULESET_2026 = {
   taxRate: 0.25,              // 25% income tax (2017-vintage; configurable)
   financingPortionRate: 0.50, // 50% of net bonus → financing repayment while owing
 
+  // ── Post-financing garnish (K6 · contract 6.2) ──
+  // Once a closing debit moves an agent to post_financing_repayment, the 6.2
+  // garnish withholds 10% of ongoing commissions (the bonus arm continues to use
+  // financingPortionRate — 50% of net bonus — so it is NOT redefined here). The
+  // incentive-payments arm (6.2) has no ledger source today and is omitted from the
+  // projection (Decision 6 / banked FU). Configurable ruleset value; never hardcoded.
+  garnishCommissionRate: 0.10, // 10% of commissions → post-financing garnish
+
   // ── Annual bonus-rate tiers (annual Gross New Settled API; A.1 confirms 2026) ──
   // totalRate = apiRate + (livesQualified ? livesRate : 0). Lives portion requires
   // livesPolicyMin net policies settled. Bands evaluated in order; maxGross is

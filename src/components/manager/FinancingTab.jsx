@@ -12,12 +12,14 @@ import FinancingTermsSetup from './FinancingTermsSetup';
 import MonthlyStatementEntry from './MonthlyStatementEntry';
 import FinancingProrationPanel from './FinancingProrationPanel';
 import TakeHomeWaterfallView from './TakeHomeWaterfallView';
+import FinancingReconciliationPanel from './FinancingReconciliationPanel';
 
 const SUBVIEWS = [
-  { id: 'terms',     label: 'Terms' },
-  { id: 'ledger',    label: 'Monthly Ledger' },
-  { id: 'proration', label: 'Proration' },
-  { id: 'takehome',  label: 'Take-Home' },
+  { id: 'terms',          label: 'Terms' },
+  { id: 'ledger',         label: 'Monthly Ledger' },
+  { id: 'proration',      label: 'Proration' },
+  { id: 'takehome',       label: 'Take-Home' },
+  { id: 'reconciliation', label: 'Reconciliation' },
 ];
 
 export default function FinancingTab() {
@@ -51,10 +53,11 @@ export default function FinancingTab() {
         })}
       </div>
 
-      {view === 'terms'     && <FinancingTermsSetup />}
-      {view === 'ledger'    && <MonthlyStatementEntry />}
-      {view === 'proration' && <FinancingProrationPanel />}
-      {view === 'takehome'  && <TakeHomeWaterfallView />}
+      {view === 'terms'          && <FinancingTermsSetup />}
+      {view === 'ledger'         && <MonthlyStatementEntry />}
+      {view === 'proration'      && <FinancingProrationPanel />}
+      {view === 'takehome'       && <TakeHomeWaterfallView />}
+      {view === 'reconciliation' && <FinancingReconciliationPanel />}
     </div>
   );
 }
