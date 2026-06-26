@@ -35,6 +35,15 @@ vi.mock('../../../utils/dateInputs', async (orig) => {
 
 import FinancingProrationPanel from '../FinancingProrationPanel';
 
+// Externally-resolvable promise — lets a test control async resolution ORDER
+// (used by the latest-request-race test below).
+function makeDeferred() {
+  let resolve, reject;
+  const promise = new Promise((res, rej) => { resolve = res; reject = rej; });
+  return { promise, resolve, reject };
+}
+const flush = () => new Promise((r) => setTimeout(r, 0));
+
 const ttTs = (ymd) => ({ toDate: () => new Date(`${ymd}T04:00:00Z`) });
 
 const TERMS = {
@@ -148,5 +157,39 @@ describe('FinancingProrationPanel', () => {
 
     expect(await screen.findByTestId('proration-validation-error')).toHaveTextContent(/can't exceed the agreed/i);
     expect(hoisted.setFinancingProration).not.toHaveBeenCalled();
+  });
+
+  // Latest-request guard (latestAgentReqRef): on rapid agent switching a slower
+  // first load resolving LAST must not overwrite the newer agent's view — a
+  // money-write hazard, since Save targets the displayed values.
+  it('drops a stale agent load — a slow first request does not overwrite the latest agent', async () => {
+    hoisted.getTenantUsers.mockResolvedValue([
+      { id: 'agent-1', name: 'Ana Agent', role: 'agent' },
+      { id: 'agent-2', name: 'Bo Agent',  role: 'agent' },
+    ]);
+    const d1 = makeDeferred();
+    const d2 = makeDeferred();
+    hoisted.getFinancingTerms.mockImplementation((_t, id) =>
+      id === 'agent-1' ? d1.promise : id === 'agent-2' ? d2.promise : Promise.resolve(null));
+    hoisted.getOwnPolicies.mockResolvedValue([]);
+    hoisted.listFinancingMonths.mockResolvedValue([]);
+
+    render(<FinancingProrationPanel />);
+    const select = await screen.findByTestId('proration-agent-select');
+
+    // Select agent-1 (slow), then immediately agent-2 (fast).
+    fireEvent.change(select, { target: { value: 'agent-1' } });
+    fireEvent.change(select, { target: { value: 'agent-2' } });
+
+    // Resolve the LATEST (agent-2) first → its validating API (50,000) displays.
+    d2.resolve({ ...TERMS, validatingAPI: 50000 });
+    const validating = await screen.findByTestId('proration-validating-api');
+    await waitFor(() => expect(validating).toHaveTextContent(/50,000/));
+
+    // Now resolve the STALE (agent-1, 30,000) → the guard must drop it.
+    d1.resolve({ ...TERMS, validatingAPI: 30000 });
+    await flush();
+    expect(screen.getByTestId('proration-validating-api')).toHaveTextContent(/50,000/);
+    expect(screen.getByTestId('proration-validating-api')).not.toHaveTextContent(/30,000/);
   });
 });
