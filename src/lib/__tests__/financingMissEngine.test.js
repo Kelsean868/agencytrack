@@ -81,6 +81,25 @@ describe('computeMonthlyMiss — confirmed-basis verdict', () => {
     expect(computeMonthlyMiss(null)).toBe(PENDING);
     expect(computeMonthlyMiss(undefined)).toBe(PENDING);
   });
+  // Strict-parse guards (the parser must reject malformed numerics as PENDING).
+  it('null actualAPI on a confirmed row STAYS pending (NOT a 0-miss)', () => {
+    // The exact regression a bare Number() parse would introduce: Number(null) === 0,
+    // which would read as actualAPI 0 < validating 30000 → a false MISS. parseFloat/
+    // strict-parse both yield NaN → PENDING. Lock it.
+    expect(computeMonthlyMiss({ month: '2026_07', actualAPI: null, validatingAPI: 30000, basisSource: 'settled-confirmed' })).toBe(PENDING);
+  });
+  it('empty-string actualAPI on a confirmed row → pending (not coerced to 0)', () => {
+    expect(computeMonthlyMiss({ month: '2026_07', actualAPI: '', validatingAPI: 30000, basisSource: 'settled-confirmed' })).toBe(PENDING);
+  });
+  it('trailing-garbage numeric string → pending (parseFloat would have accepted it)', () => {
+    // parseFloat("20000usd") === 20000 (a false MISS vs 30000); strict-parse → NaN.
+    expect(computeMonthlyMiss({ month: '2026_07', actualAPI: '20000usd', validatingAPI: 30000, basisSource: 'settled-confirmed' })).toBe(PENDING);
+    expect(computeMonthlyMiss({ month: '2026_07', actualAPI: 20000, validatingAPI: '30000abc', basisSource: 'settled-confirmed' })).toBe(PENDING);
+  });
+  it('clean numeric strings still parse (valid data unaffected)', () => {
+    expect(computeMonthlyMiss({ month: '2026_07', actualAPI: '20000', validatingAPI: '30000', basisSource: 'settled-confirmed' })).toBe(MISS);
+    expect(computeMonthlyMiss({ month: '2026_07', actualAPI: '31000', validatingAPI: '30000', basisSource: 'settled-confirmed' })).toBe(MEET);
+  });
 });
 
 describe('computeConsecutiveMisses — the counter (CD#4)', () => {
@@ -226,6 +245,10 @@ describe('isAdjustmentNotifyFlag — clause-5.3 >10% predicate', () => {
   it('non-numeric → false', () => {
     expect(isAdjustmentNotifyFlag('abc')).toBe(false);
     expect(isAdjustmentNotifyFlag(NaN)).toBe(false);
+  });
+  it('trailing-garbage string → false (parseFloat would have read "0.14%" as 0.14 → a false flag)', () => {
+    expect(isAdjustmentNotifyFlag('0.14%')).toBe(false);
+    expect(isAdjustmentNotifyFlag('0.2 cut')).toBe(false);
   });
 });
 

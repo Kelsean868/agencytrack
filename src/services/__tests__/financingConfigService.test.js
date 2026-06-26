@@ -90,6 +90,23 @@ describe('setFinancingConfig', () => {
     }
   });
 
+  it('trims surrounding whitespace from a recipient uid', async () => {
+    mockSetDoc.mockResolvedValue();
+    const res = await setFinancingConfig('tenant1', { notifyRecipientUid: '  cro-uid  ' }, actor);
+    expect(res).toEqual({ notifyRecipientUid: 'cro-uid' });
+    expect(mockSetDoc.mock.calls[0][1].notifyRecipientUid).toBe('cro-uid');
+  });
+
+  it('clears (null) a whitespace-only recipient instead of storing spaces', async () => {
+    mockSetDoc.mockResolvedValue();
+    for (const val of ['   ', '\t', ' \n ']) {
+      mockSetDoc.mockClear();
+      const res = await setFinancingConfig('tenant1', { notifyRecipientUid: val }, actor);
+      expect(res).toEqual({ notifyRecipientUid: null });
+      expect(mockSetDoc.mock.calls[0][1].notifyRecipientUid).toBeNull();
+    }
+  });
+
   it('defaults updatedByName to "" when actor has no name', async () => {
     mockSetDoc.mockResolvedValue();
     await setFinancingConfig('tenant1', { notifyRecipientUid: 'x' }, { uid: 'ta1' });

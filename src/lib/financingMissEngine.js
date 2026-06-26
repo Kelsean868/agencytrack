@@ -34,11 +34,22 @@
 //     "neither counts nor resets"). FLAG ONLY: a human reads the per-month
 //     verdicts and exercises judgment on the 7.2c disposition.
 
-// parseFloat (NOT -or-zero): a non-finite numeric must surface as PENDING, not
-// be silently coerced to a 0 that could read as a meet/miss. Confirmed ledger
-// rows always carry finite non-negative actualAPI/validatingAPI (service-enforced);
-// the finite guard is belt-and-suspenders for a statement-only row.
-const p = (v) => parseFloat(v);
+// Strict numeric parse: a non-finite OR malformed numeric must surface as PENDING,
+// never be silently coerced into a value that reads as a meet/miss. Unlike
+// parseFloat, this REJECTS trailing-garbage strings ("30000usd", "0.14%") — a
+// corrupted ledger value must not become a real legal verdict. null / undefined /
+// empty / whitespace → NaN (preserving parseFloat's null→NaN). Plain Number() is
+// deliberately NOT used directly: Number(null) === 0 would turn a null actualAPI
+// into a false 0-verdict. Confirmed ledger rows carry finite non-negative numerics
+// (service-enforced); this is belt-and-suspenders for a corrupt/statement-only row.
+const p = (v) => {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
+  if (typeof v !== 'string') return NaN; // null / undefined / boolean / object → PENDING
+  const t = v.trim();
+  if (t === '') return NaN;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
+};
 
 // basisSource values that represent a CONFIRMED determination (Decision 1).
 // submitted-provisional is a live projection — never a stored miss/meet verdict.

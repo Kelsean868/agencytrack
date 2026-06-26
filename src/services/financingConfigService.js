@@ -43,11 +43,14 @@ export async function setFinancingConfig(tenantId, data, actor) {
 
   let notifyRecipientUid = null;
   const raw = data?.notifyRecipientUid;
-  if (raw !== undefined && raw !== null && raw !== '') {
+  if (raw !== undefined && raw !== null) {
     if (typeof raw !== 'string') {
       throw new Error('setFinancingConfig: notifyRecipientUid must be a string uid or null');
     }
-    notifyRecipientUid = raw;
+    // Trim and treat a whitespace-only value as a clear — never store accidental
+    // surrounding spaces (the CF would resolve them to recipient-not-found).
+    const trimmed = raw.trim();
+    notifyRecipientUid = trimmed === '' ? null : trimmed;
   }
 
   const ref = doc(db, `tenants/${tenantId}/config/financingConfig`);
