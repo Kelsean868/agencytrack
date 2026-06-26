@@ -29,6 +29,7 @@ import {
 import {
   computeConsecutiveMisses,
   findAdjustmentFlags,
+  MISS_AMBER_AT,
   MISS_CRITICAL_AT,
 } from '../../lib/financingMissEngine';
 
@@ -63,7 +64,15 @@ function dotClass(i, count, severity) {
       ? 'bg-warning/15 border-warning text-warning-ink'
       : 'bg-warning/10 border-warning/50 text-warning-ink';
   }
-  if (i === count + 1) return 'border-dashed border-danger text-danger bg-card';
+  if (i === count + 1) {
+    // The "next" dot escalates toward red only as the streak nears critical (3):
+    // red must mean danger-NOW, not danger-someday. count 0 → neutral, count 1 →
+    // amber (next miss = amber-2), count 2 → danger (next miss = the 7.2c trigger).
+    const next = count + 1;
+    if (next >= MISS_CRITICAL_AT) return 'border-dashed border-danger text-danger bg-card';
+    if (next >= MISS_AMBER_AT)    return 'border-dashed border-warning text-warning-ink bg-card';
+    return 'border-dashed border-border text-ink-muted bg-card';
+  }
   return 'border-border text-ink-muted';
 }
 
@@ -140,7 +149,7 @@ export default function FinancingRiskPanel() {
     // a mismatched read (masked by the skeleton, but spurious).
     setMonths([]);
     setRecipientUid(null);
-    if (!tenantId || !agentId) { setLoading(false); return; }
+    if (!tenantId || !agentId) { setLoading(false); setNotifying(false); return; }
     setLoading(true);
     Promise.all([
       listFinancingMonths(tenantId, agentId),
@@ -246,7 +255,7 @@ export default function FinancingRiskPanel() {
             >
               <option value="">Select agent…</option>
               {agents.map((a) => (
-                <option key={a.id} value={a.id}>{a.name ?? a.email}</option>
+                <option key={a.id} value={a.id}>{a.name ?? a.email ?? a.id}</option>
               ))}
             </select>
           </div>

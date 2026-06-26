@@ -367,9 +367,10 @@ test('a confirmed >10% cut on a submitted-final basis fires (records that basis)
 
 // ── Internals ─────────────────────────────────────────────────────────────────
 
-test('pctLabel formats a ratio as whole percent; non-finite → ""', () => {
-  expect(_internals.pctLabel(0.14)).toBe('14%');
-  expect(_internals.pctLabel(0.205)).toBe('21%');
+test('pctLabel: whole percents clean, one decimal for non-integers; non-finite → ""', () => {
+  expect(_internals.pctLabel(0.14)).toBe('14%');     // whole → no decimal
+  expect(_internals.pctLabel(0.205)).toBe('20.5%');  // non-integer → one decimal (was rounded to 21%)
+  expect(_internals.pctLabel(0.101)).toBe('10.1%');  // a fireable 10.1% cut must NOT read "10%"
   expect(_internals.pctLabel(undefined)).toBe('');
   expect(_internals.pctLabel('x')).toBe('');
 });

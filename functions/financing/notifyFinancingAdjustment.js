@@ -70,12 +70,16 @@ function agentInScope(actorRole, caller, agent) {
   return false;
 }
 
-// Format a ratio (0.14) as a whole-percent string ("14%") for copy. Non-finite
-// → "" so a bad payload never throws or prints "NaN%".
+// Format a ratio (0.14 → "14%") for copy. ONE DECIMAL for non-integer percents so a
+// fireable >10% cut never displays AT the threshold — a 10.1% cut must read "10.1%",
+// not a rounded "10%" that looks like it does not meet the strictly-">10%" condition.
+// Round to 1 dp first (avoids 0.14*100 = 14.0000…02 noise); whole percents stay clean
+// ("14%", not "14.0%"). Non-finite → "" so a bad value never prints "NaN%".
 function pctLabel(ratio) {
   const n = parseFloat(ratio);
   if (!Number.isFinite(n)) return '';
-  return `${Math.round(n * 100)}%`;
+  const pct = Math.round(n * 1000) / 10;
+  return `${pct}%`;
 }
 
 exports.notifyFinancingAdjustment = functions.https.onCall(async (data, context) => {
