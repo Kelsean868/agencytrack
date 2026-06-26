@@ -16,7 +16,6 @@ reviews:
   # Don't spend review budget on generated/vendored/doc-only noise.
   path_filters:
     - "!**/*.md"
-    - "docs/briefs/**"    # re-include kickoff briefs — dispatch-critical specs
     - "!**/dist/**"
     - "!**/build/**"
     - "!**/node_modules/**"
@@ -82,14 +81,6 @@ reviews:
       instructions: >
         Verification/smoke/seed scripts. Lower scrutiny. Flag only correctness
         bugs (wrong arithmetic in seeds, missing cleanup) — not style.
-    # --- Kickoff briefs: spec falsification, not prose review ---
-    - path: "docs/briefs/**"
-      instructions: >
-        These are dispatch-critical implementation specs. Review as a
-        SPEC-TO-FALSIFY: flag internal contradictions between locked decisions,
-        money-math in worked examples that does not check out, fabricated or
-        inconsistent file-path or line claims, and scope that conflicts with the
-        out-of-scope list. Do NOT nitpick prose, heading style, or formatting.
 
   auto_review:
     enabled: true
