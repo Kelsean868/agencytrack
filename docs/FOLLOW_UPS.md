@@ -51,7 +51,7 @@ K3 (PR #751) shipped `src/lib/financingBonusEngine.js` as a **pure module that f
 
 In `financingProjectedBonus.js`, Q2+ settled-basis filtering uses `dateSubmitted` to place a policy in a quarter range. A policy submitted in late Q2 but not yet settled when Q2 ends is excluded from Q2 (not settled) and excluded from Q3 (submitted date outside Q3 range). **To resolve with K8:** add a `datePlaced` (or `dateSettled`) field to the policy ledger and use that field for Q2+ quarter bucketing instead of `dateSubmitted`. Until then, the adapter documents this as a known limitation: cross-quarter settlement lag policies are under-counted in projected quarters. **Falsification:** overturned if `datePlaced` turns out to exist in the current ledger schema — grep `policiesService.js` `VALID_*` before landing the K8 adapter.
 
-## ~~SettlementPanel / FinancingTermsSetup — latest-request guard parity + race tests~~ (banked K1, 2026-06-25) — RESOLVED (re-scoped) in FU-H1 (PR #TBD, 2026-06-25)
+## ~~SettlementPanel / FinancingTermsSetup — latest-request guard parity + race tests~~ (banked K1, 2026-06-25) — RESOLVED (re-scoped) in FU-H1 (PR #757, 2026-06-25)
 
 K1 added a `useRef` **latest-request guard** to `FinancingTermsSetup.loadTerms` (Gemini #2): on rapid agent switching a slower `getFinancingTerms` could resolve last and overwrite the form, and because Save targets `selectedAgent` with the displayed values, that is a money-write hazard (agent A's figures onto agent B's doc). K2 added the same guard to `MonthlyStatementEntry.loadLedger`; K5 to `FinancingProrationPanel.loadAgent`.
 
