@@ -40,6 +40,15 @@ const { APP_URL, CONTACT_EMAIL } = require('../lib/config');
 const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { buildMailDoc } = require('../utils/email');
+// CJS twin of the src/lib predicates — kept in lock-step by
+// src/lib/__tests__/financingMissPredicates.cross-check.test.js. The CF RECOMPUTES
+// the clause-5.3 >10% condition from canonical ledger data; it never trusts the
+// client-supplied adjustmentPct (a fabricable value would defeat the 5.3 audit trail).
+const {
+  computeAdjustmentPct,
+  isAdjustmentNotifyFlag,
+  CONFIRMED_BASES,
+} = require('../lib/financingMissPredicates');
 
 // BM-and-up (CD#5 "BM; UM excluded"). platform_admin has no tenant context to
 // fire within (tenantId:null) — excluded by design; the tenant precondition would
@@ -120,6 +129,26 @@ exports.notifyFinancingAdjustment = functions.https.onCall(async (data, context)
   }
   const agentName = agent.name || payload.agentName || 'the agent';
 
+  // ── RECOMPUTE the clause-5.3 condition server-side (legal-integrity gate) ─────
+  // NEVER trust the client's payload.adjustmentPct — a fabricated value would let
+  // any in-scope manager mint a false clause-5.3 paper-trail entry. Read the
+  // canonical terms + ledger-month docs (Admin SDK) and recompute the cut from
+  // currentMonthlyFinancing (terms) and managerFinancing (ledger month) via the
+  // SAME predicates the panel uses (the CJS twin). Fire ONLY when the cut is
+  // genuinely > 10% on a CONFIRMED basis; otherwise return a structured
+  // "condition-not-met" and write NOTHING. Covers: missing terms / unconfirmed
+  // managerFinancing → computeAdjustmentPct null → no fire; missing ledger month →
+  // no basis → no fire; provisional/unconfirmed basis → no fire.
+  const termsSnap  = await db.doc(`tenants/${actorTenant}/financingTerms/${agentId}`).get();
+  const ledgerSnap = await db.doc(`tenants/${actorTenant}/financing/${agentId}_${month}`).get();
+  const currentMonthlyFinancing = termsSnap.exists ? termsSnap.data().currentMonthlyFinancing : null;
+  const ledger      = ledgerSnap.exists ? ledgerSnap.data() : null;
+  const basisSource = ledger ? ledger.basisSource : null;
+  const serverPct   = computeAdjustmentPct(currentMonthlyFinancing, ledger ? ledger.managerFinancing : null);
+  if (!CONFIRMED_BASES.includes(basisSource) || !isAdjustmentNotifyFlag(serverPct)) {
+    return { success: false, reason: 'condition-not-met' };
+  }
+
   // ── Resolve the configured recipient SERVER-SIDE (config-driven) ─────────────
   const cfgSnap = await db.doc(`tenants/${actorTenant}/config/financingConfig`).get();
   const recipientUid = cfgSnap.exists ? cfgSnap.data().notifyRecipientUid : null;
@@ -138,7 +167,7 @@ exports.notifyFinancingAdjustment = functions.https.onCall(async (data, context)
 
   // ── Copy ─────────────────────────────────────────────────────────────────────
   const monthLabel = typeof payload.monthLabel === 'string' && payload.monthLabel ? payload.monthLabel : month;
-  const adjLabel = pctLabel(payload.adjustmentPct);
+  const adjLabel = pctLabel(serverPct);
   const adjClause = adjLabel ? `${adjLabel} ` : '';
   const notifTitle = 'Financing adjustment notice (clause 5.3)';
   const notifBody =
@@ -147,9 +176,9 @@ exports.notifyFinancingAdjustment = functions.https.onCall(async (data, context)
 
   // ── Write transport artifacts (a + b + c) in one atomic batch ────────────────
   const ts = admin.firestore.FieldValue.serverTimestamp();
-  // Sanitize once — a non-finite payload value stores null in BOTH the audit and
-  // the cooldown record (consistent; never a raw NaN/string in the paper trail).
-  const adjustmentPct = Number.isFinite(parseFloat(payload.adjustmentPct)) ? parseFloat(payload.adjustmentPct) : null;
+  // The audit + cooldown record the SERVER-recomputed adjustmentPct (the gate above
+  // proved it is a finite > 10% cut on a confirmed basis) — never the client's payload.
+  const adjustmentPct = serverPct;
   const batch = db.batch();
 
   const notifRef = db.collection(`tenants/${actorTenant}/notifications`).doc();
@@ -173,6 +202,7 @@ exports.notifyFinancingAdjustment = functions.https.onCall(async (data, context)
     recipientUid,
     month,
     adjustmentPct,
+    basisSource,
     at: ts,
   });
 

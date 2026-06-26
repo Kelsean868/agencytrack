@@ -88,6 +88,12 @@ function seedUser(uid, fields) {
 function seedConfig(notifyRecipientUid) {
   docData[`tenants/${TENANT}/config/financingConfig`] = { notifyRecipientUid };
 }
+function seedTerms(agentId, currentMonthlyFinancing) {
+  docData[`tenants/${TENANT}/financingTerms/${agentId}`] = { agentId, tenantId: TENANT, currentMonthlyFinancing };
+}
+function seedLedger(agentId, month, fields) {
+  docData[`tenants/${TENANT}/financing/${agentId}_${month}`] = { agentId, tenantId: TENANT, month, ...fields };
+}
 function ctx(role, uid, tenantId = TENANT) {
   return { auth: { uid, token: { role, tenantId } } };
 }
@@ -118,6 +124,13 @@ beforeEach(() => {
   seedUser('agentB', { role: 'agent', name: 'Bill', email: 'bill@x.com', unitId: 'unit-2', branchId: 'branch-b' });
   // The configured recipient (CRO-function holder, tenant-level)
   seedUser('cro1', { role: 'tenant_admin', name: 'Cleo CRO', email: 'cro@x.com', unitId: null, branchId: null });
+  // Canonical financing state — a CONFIRMED 14% cut (5000 → 4300) so the happy
+  // paths clear the server-side clause-5.3 recompute gate. Condition-not-met tests
+  // override the ledger row.
+  seedTerms('agentA', 5000);
+  seedLedger('agentA', MONTH, { managerFinancing: 4300, basisSource: 'settled-confirmed' });
+  seedTerms('agentB', 5000);
+  seedLedger('agentB', MONTH, { managerFinancing: 4300, basisSource: 'settled-confirmed' });
 });
 
 // ── Auth + role gate ──────────────────────────────────────────────────────────
@@ -236,7 +249,8 @@ test('BM same-branch + configured recipient → success, batch of 3, mail queued
     agentId: 'agentA',
     recipientUid: 'cro1',
     month: MONTH,
-    adjustmentPct: 0.14,
+    adjustmentPct: 0.14,        // SERVER-recomputed (5000 → 4300), not the client payload
+    basisSource: 'settled-confirmed',
   });
 
   const cooldown = ops.find((o) => o.path.includes('/nudges/'));
@@ -275,14 +289,80 @@ test('mail write failure is non-fatal (batch still committed, success returned)'
   expect(committedBatches).toHaveLength(1);
 });
 
-test('a missing/garbage adjustmentPct payload → audit null, no NaN in copy', async () => {
+// ── Server-side clause-5.3 recompute (legal-integrity gate) ───────────────────
+
+test('IGNORES the client payload.adjustmentPct — audit records the server-recomputed value', async () => {
   seedConfig('cro1');
-  const res = await handler(callData({ payload: { monthLabel: 'Jul 2026' } }), ctx('branch_manager', 'bm1'));
+  // Client LIES: claims a 99% cut. Ledger says 14% (5000 → 4300, confirmed).
+  const res = await handler(
+    callData({ payload: { adjustmentPct: 0.99, monthLabel: 'Jul 2026', agentName: 'Ann' } }),
+    ctx('branch_manager', 'bm1'),
+  );
   expect(res.success).toBe(true);
-  const bell = committedBatches[0].find((o) => o.path.includes('/notifications/'));
-  expect(bell.data.body).not.toContain('NaN');
   const audit = committedBatches[0].find((o) => o.path.includes('/auditNudges/'));
-  expect(audit.data.adjustmentPct).toBeNull();
+  expect(audit.data.adjustmentPct).toBe(0.14);  // the server value, NOT the client's 0.99
+  expect(audit.data.basisSource).toBe('settled-confirmed');
+  const bell = committedBatches[0].find((o) => o.path.includes('/notifications/'));
+  expect(bell.data.body).toContain('14%');
+  expect(bell.data.body).not.toContain('99%');
+});
+
+test('client claims a cut but ledger shows <=10% → condition-not-met, nothing written', async () => {
+  seedConfig('cro1');
+  seedLedger('agentA', MONTH, { managerFinancing: 4800, basisSource: 'settled-confirmed' }); // (5000-4800)/5000 = 4%
+  const res = await handler(callData({ payload: { adjustmentPct: 0.50 } }), ctx('branch_manager', 'bm1'));
+  expect(res).toEqual({ success: false, reason: 'condition-not-met' });
+  expect(committedBatches).toHaveLength(0);
+  expect(mailAdds).toHaveLength(0);
+});
+
+test('exactly 10% cut → condition-not-met (CD#5 requires strictly >10%)', async () => {
+  seedConfig('cro1');
+  seedLedger('agentA', MONTH, { managerFinancing: 4500, basisSource: 'settled-confirmed' }); // 0.10 exact
+  const res = await handler(callData(), ctx('branch_manager', 'bm1'));
+  expect(res).toEqual({ success: false, reason: 'condition-not-met' });
+  expect(committedBatches).toHaveLength(0);
+});
+
+test('provisional basis (even with a real >10% cut) → condition-not-met', async () => {
+  seedConfig('cro1');
+  seedLedger('agentA', MONTH, { managerFinancing: 4300, basisSource: 'submitted-provisional' }); // 14% but unconfirmed
+  const res = await handler(callData(), ctx('branch_manager', 'bm1'));
+  expect(res).toEqual({ success: false, reason: 'condition-not-met' });
+  expect(committedBatches).toHaveLength(0);
+});
+
+test('missing ledger month → condition-not-met', async () => {
+  seedConfig('cro1');
+  delete docData[`tenants/${TENANT}/financing/agentA_${MONTH}`];
+  const res = await handler(callData(), ctx('branch_manager', 'bm1'));
+  expect(res).toEqual({ success: false, reason: 'condition-not-met' });
+  expect(committedBatches).toHaveLength(0);
+});
+
+test('unconfirmed managerFinancing (no manager figure) → condition-not-met', async () => {
+  seedConfig('cro1');
+  seedLedger('agentA', MONTH, { basisSource: 'settled-confirmed' }); // managerFinancing undefined
+  const res = await handler(callData(), ctx('branch_manager', 'bm1'));
+  expect(res).toEqual({ success: false, reason: 'condition-not-met' });
+  expect(committedBatches).toHaveLength(0);
+});
+
+test('missing terms doc → condition-not-met (cannot recompute the denominator)', async () => {
+  seedConfig('cro1');
+  delete docData[`tenants/${TENANT}/financingTerms/agentA`];
+  const res = await handler(callData(), ctx('branch_manager', 'bm1'));
+  expect(res).toEqual({ success: false, reason: 'condition-not-met' });
+  expect(committedBatches).toHaveLength(0);
+});
+
+test('a confirmed >10% cut on a submitted-final basis fires (records that basis)', async () => {
+  seedConfig('cro1');
+  seedLedger('agentA', MONTH, { managerFinancing: 4300, basisSource: 'submitted-final' });
+  const res = await handler(callData(), ctx('branch_manager', 'bm1'));
+  expect(res.success).toBe(true);
+  const audit = committedBatches[0].find((o) => o.path.includes('/auditNudges/'));
+  expect(audit.data.basisSource).toBe('submitted-final');
 });
 
 // ── Internals ─────────────────────────────────────────────────────────────────
