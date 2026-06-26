@@ -32,7 +32,11 @@ import {
   MISS_CRITICAL_AT,
 } from '../../lib/financingMissEngine';
 
-const WRITE_ROLES = ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'];
+// Mirrors notifyFinancingAdjustment's NOTIFY_ACTOR_ROLES exactly — platform_admin
+// is excluded (tenantId:null → no tenant context to monitor or fire within; the CF
+// rejects it on the tenant precondition regardless). Keeping the panel gate in
+// lock-step with the CF avoids surfacing a notify affordance the server would reject.
+const WRITE_ROLES = ['branch_manager', 'sales_manager', 'tenant_admin'];
 
 const MON = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const monthLabel = (key) => {
@@ -115,7 +119,7 @@ export default function FinancingRiskPanel() {
 
   // ── Load agents (mirror FinancingProrationPanel) ────────────────────────────
   const loadAgents = useCallback(() => {
-    if (!tenantId) return;
+    if (!tenantId) { setLoadingAgents(false); return; }
     setLoadingAgents(true);
     setAgentsError('');
     getTenantUsers(tenantId)

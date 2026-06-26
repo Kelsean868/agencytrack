@@ -146,4 +146,58 @@ describe('FinancingRiskPanel', () => {
     expect(flag).toHaveAttribute('data-month', '2026_07');
     expect(screen.getByTestId('financing-risk-adjustment-pct')).toHaveTextContent('−18%');
   });
+
+  // ── Async switch races (latestAgentReqRef guard) ──────────────────────────
+  it('drops a stale ledger load when the agent is switched mid-flight', async () => {
+    hoisted.getTenantUsers.mockResolvedValue([
+      { id: 'agent-1', name: 'Ana Agent', role: 'agent' },
+      { id: 'agent-2', name: 'Bob Agent', role: 'agent' },
+    ]);
+    let resolveAgent1;
+    hoisted.listFinancingMonths.mockImplementation((_t, agentId) =>
+      agentId === 'agent-1'
+        ? new Promise((res) => { resolveAgent1 = res; }) // hangs until we resolve it
+        : Promise.resolve([]),                            // agent-2: empty ledger
+    );
+    render(<FinancingRiskPanel />);
+    await waitFor(() => expect(screen.getByTestId('financing-risk-agent-select')).toBeInTheDocument());
+
+    // Select agent-1 (load hangs), then switch to agent-2 (resolves empty).
+    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-1' } });
+    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-2' } });
+    await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
+
+    // The stale agent-1 load now resolves with a critical 3-miss ledger — it must
+    // NOT paint agent-1's termination flag onto agent-2's view.
+    resolveAgent1([miss('2026_01'), miss('2026_02'), miss('2026_03')]);
+    await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
+    expect(screen.queryByTestId('financing-risk-termination-flag')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('financing-risk-miss-monitor')).not.toBeInTheDocument();
+  });
+
+  it('does not stamp the cooldown on a new agent when a notify resolves after a switch', async () => {
+    hoisted.getTenantUsers.mockResolvedValue([
+      { id: 'agent-1', name: 'Ana Agent', role: 'agent' },
+      { id: 'agent-2', name: 'Bob Agent', role: 'agent' },
+    ]);
+    hoisted.listFinancingMonths.mockImplementation((_t, agentId) =>
+      agentId === 'agent-1' ? Promise.resolve([flagRow('2026_05', 0.14)]) : Promise.resolve([]),
+    );
+    let resolveNotify;
+    hoisted.notifyFinancingAdjustment.mockImplementation(() => new Promise((res) => { resolveNotify = res; }));
+    render(<FinancingRiskPanel />);
+    await waitFor(() => expect(screen.getByTestId('financing-risk-agent-select')).toBeInTheDocument());
+
+    // Fire the notify for agent-1 (CF in flight), then switch to agent-2.
+    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-1' } });
+    const btn = await screen.findByTestId('financing-notify-btn');
+    fireEvent.click(btn);
+    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-2' } });
+    await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
+
+    // The stale notify success must NOT paint a cooldown chip on agent-2's view.
+    resolveNotify({ success: true, recipientUid: 'cro-1' });
+    await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
+    expect(screen.queryByTestId('financing-notify-cooldown')).not.toBeInTheDocument();
+  });
 });
