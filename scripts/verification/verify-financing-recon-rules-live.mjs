@@ -45,10 +45,14 @@ const main = async () => {
   const ruleset = await rsRes.json();
 
   const source = (ruleset.source?.files ?? []).map((f) => f.content).join('\n');
-  const hasMatch         = /match\s+\/financingReconciliation\/\{docId\}/.test(source);
-  const hasValidFn       = /function\s+validReconciliation\s*\(\)/.test(source);
-  const hasYearInt       = /request\.resource\.data\.year\s+is\s+int/.test(source);
-  const hasServiceMonths = /request\.resource\.data\.serviceMonths\s+is\s+int/.test(source);
+  const hasMatch               = /match\s+\/financingReconciliation\/\{docId\}/.test(source);
+  const hasValidFn             = /function\s+validReconciliation\s*\(\)/.test(source);
+  const hasYearInt             = /request\.resource\.data\.year\s+is\s+int/.test(source);
+  const hasServiceMonthsInt    = /request\.resource\.data\.serviceMonths\s+is\s+int/.test(source);
+  const hasServiceMonthsNonNeg = /request\.resource\.data\.serviceMonths\s+>=\s+0/.test(source);
+  // Both halves of the serviceMonths clause must be live — the int gate alone would pass
+  // even if a future edit dropped the >= 0 constraint, re-opening the negative-value hole.
+  const hasServiceMonths       = hasServiceMonthsInt && hasServiceMonthsNonNeg;
 
   console.log('── Rule 23/24 — live ruleset gate ──');
   console.log(`active ruleset : ${rulesetName.split('/').pop()}`);
@@ -56,13 +60,14 @@ const main = async () => {
   console.log(`match /financingReconciliation/{docId} : ${hasMatch}`);
   console.log(`function validReconciliation()         : ${hasValidFn}`);
   console.log(`year is int (Gemini fix present)       : ${hasYearInt}`);
-  console.log(`serviceMonths is int (K6 fast-follow)  : ${hasServiceMonths}`);
+  console.log(`serviceMonths is int (K6 fast-follow)  : ${hasServiceMonthsInt}`);
+  console.log(`serviceMonths >= 0 (K6 fast-follow)    : ${hasServiceMonthsNonNeg}`);
 
   if (hasMatch && hasValidFn && hasYearInt && hasServiceMonths) {
-    console.log('\n✓ LIVE — financingReconciliation block (incl. the year-is-int and serviceMonths-is-int constraints) is in the active ruleset. Deploy landed.');
+    console.log('\n✓ LIVE — financingReconciliation block (incl. year-is-int and serviceMonths is-int + >= 0 constraints) is in the active ruleset. Deploy landed.');
     process.exit(0);
   }
-  console.error('\n✗ INCOMPLETE — the active ruleset is missing the financingReconciliation match, validReconciliation(), the year-is-int constraint, or the serviceMonths-is-int constraint. Deploy did not land the full block.');
+  console.error('\n✗ INCOMPLETE — the active ruleset is missing the financingReconciliation match, validReconciliation(), the year-is-int constraint, or the serviceMonths is-int / >= 0 constraints. Deploy did not land the full block.');
   process.exit(1);
 };
 

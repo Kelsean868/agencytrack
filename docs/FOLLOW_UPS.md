@@ -12,6 +12,12 @@ Several `Recently shipped` / archived table rows contain **unescaped literal pip
 
 **To resolve:** escape each embedded pipe as `\|` (or rewrite the code span) so every row renders as a single description cell. **Cosmetic only — do NOT change any factual content, SHA, or row meaning.** Surfaced by CodeRabbit on PR #756 (findings #1/#3); deferred from the `serviceMonths` rules fast-follow to avoid diluting a live-rules fix with unrelated historical churn. **Falsification:** line numbers drift as docs grow — re-scan with an unescaped-pipe detector (table rows with >4 unescaped `|`) before applying, rather than trusting the L-numbers above.
 
+## Client-side `serviceMonths` integer validation in `reconcileFinancing()` (banked K6 fast-follow, 2026-06-26, LOW defense-in-depth)
+
+PR #760 tightened the **rules-layer** gate (`validReconciliation()` now requires `serviceMonths is int && >= 0`), so a malformed value is rejected at the Firestore boundary. The **client-side** writer `reconcileFinancing()` (`src/services/financingService.js`, parse at `:539`, validate at `:546`) still accepts any non-negative finite number — a `12.5` would be parsed, included in `core`, and rejected only by the deployed rule (a generic permission-denied, not a friendly message). CodeRabbit (PR #760 review on `289b9c3`) suggested the writer reject non-integers up front with a clear "`serviceMonths` must be a non-negative integer" error.
+
+**To resolve:** add an integer check to the `reconcileFinancing()` input validation (alongside the existing `:546` guard) and surface a specific error message; add an RTL case for the `12.5`-rejected path. **Out-of-scope for #760** (locked rules-only — no app code); this is app-code + test + smoke surface. **Falsification:** overturned if `serviceMonths` can only ever reach the writer as an already-integer value (today it flows from `computeMonthsFromDate`, pure integer arithmetic) AND no other caller path can inject a fraction — re-trace the writer's inputs before deciding the friendly-error is worth the surface.
+
 ## CLAUDE.md persistency annotation — `0-100` annotation is stale (banked K4, 2026-06-25, LOW doc-fix)
 
 CLAUDE.md § Persistency Document Shape states `persistency, // parseFloat, 0–100`. The stored value is a **0–1 fraction** — confirmed by `financingBonusEngine.js` gate comparisons (`PERS_GATE = 0.90`, `PERS_FLOOR = 0.80`) and the K4 adapter's no-normalization design. The `0-100` annotation misleads future adapters.
