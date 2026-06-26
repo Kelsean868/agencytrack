@@ -30,7 +30,9 @@ export default function FinancingBasisBadge({ basis, className = '' }) {
   // DEV-only surface for an unexpected basisSource key (GLM nit): warn so a typo
   // or a new unwired state is caught in development, then fall back to the
   // existing 'submitted-final' default. No production behavior change.
-  if (!isKnown && import.meta.env.DEV) {
+  // Only warn on a truthy-but-unrecognized key — a falsy/absent basis (initial
+  // load, before data is fetched) legitimately falls back and should stay quiet.
+  if (basis && !isKnown && import.meta.env.DEV) {
     console.warn(`[FinancingBasisBadge] unexpected basisSource "${basis}" — falling back to "submitted-final".`);
   }
   const key = isKnown ? basis : 'submitted-final';
