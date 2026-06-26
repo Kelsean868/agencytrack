@@ -101,7 +101,10 @@ export default function FinancingRiskPanel() {
   const labelCls = 'block text-xs font-semibold text-ink-muted mb-1';
 
   const agentName = useCallback(
-    (id) => agents.find((a) => a.id === id)?.name ?? agents.find((a) => a.id === id)?.email ?? 'the agent',
+    (id) => {
+      const a = agents.find((x) => x.id === id);
+      return a?.name ?? a?.email ?? 'the agent';
+    },
     [agents],
   );
 
@@ -127,7 +130,7 @@ export default function FinancingRiskPanel() {
   const loadAgent = useCallback((agentId) => {
     latestAgentReqRef.current = agentId;
     setNotifyRecord(null);
-    if (!tenantId || !agentId) { setMonths([]); setRecipientUid(null); return; }
+    if (!tenantId || !agentId) { setMonths([]); setRecipientUid(null); setLoading(false); return; }
     setLoading(true);
     Promise.all([
       listFinancingMonths(tenantId, agentId),
@@ -167,15 +170,18 @@ export default function FinancingRiskPanel() {
 
   const handleNotify = async () => {
     if (!activeFlag || !recipientConfigured || onCooldown || notifying) return;
+    const firedAgent = selectedAgent; // pin the target against an agent switch mid-flight
     setNotifying(true);
     try {
-      const res = await notifyFinancingAdjustment(selectedAgent, activeFlag.month, {
+      const res = await notifyFinancingAdjustment(firedAgent, activeFlag.month, {
         adjustmentPct: activeFlag.adjustmentPct,
         monthLabel: monthLabel(activeFlag.month),
-        agentName: agentName(selectedAgent),
+        agentName: agentName(firedAgent),
       });
       if (res?.success) {
-        setNotifyRecord(Date.now());
+        // Only stamp the cooldown if the panel still shows the agent we fired for —
+        // an agent switch mid-request must not paint a cooldown chip on the new view.
+        if (latestAgentReqRef.current === firedAgent) setNotifyRecord(Date.now());
         toast.show({ variant: 'success', message: 'Sales Admin notified — clause 5.3 duty logged.' });
       } else if (res?.reason === 'no-recipient') {
         toast.show({ variant: 'error', message: 'No notify recipient configured for this tenant.' });

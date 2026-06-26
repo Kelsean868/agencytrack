@@ -147,6 +147,9 @@ exports.notifyFinancingAdjustment = functions.https.onCall(async (data, context)
 
   // ── Write transport artifacts (a + b + c) in one atomic batch ────────────────
   const ts = admin.firestore.FieldValue.serverTimestamp();
+  // Sanitize once — a non-finite payload value stores null in BOTH the audit and
+  // the cooldown record (consistent; never a raw NaN/string in the paper trail).
+  const adjustmentPct = Number.isFinite(parseFloat(payload.adjustmentPct)) ? parseFloat(payload.adjustmentPct) : null;
   const batch = db.batch();
 
   const notifRef = db.collection(`tenants/${actorTenant}/notifications`).doc();
@@ -169,7 +172,7 @@ exports.notifyFinancingAdjustment = functions.https.onCall(async (data, context)
     agentId,
     recipientUid,
     month,
-    adjustmentPct: Number.isFinite(parseFloat(payload.adjustmentPct)) ? parseFloat(payload.adjustmentPct) : null,
+    adjustmentPct,
     at: ts,
   });
 
@@ -180,7 +183,7 @@ exports.notifyFinancingAdjustment = functions.https.onCall(async (data, context)
   batch.set(cooldownRef, {
     type: NOTIFY_TYPE,
     audienceUid: agentId,
-    payload: { month, monthLabel, recipientUid, managerName, adjustmentPct: payload.adjustmentPct ?? null },
+    payload: { month, monthLabel, recipientUid, managerName, adjustmentPct },
     createdBy: actorUid,
     createdAt: ts,
   }, { merge: true });
