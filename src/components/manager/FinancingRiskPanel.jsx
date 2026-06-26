@@ -29,6 +29,7 @@ import {
 import {
   computeConsecutiveMisses,
   findAdjustmentFlags,
+  CONFIRMED_BASES,
   MISS_AMBER_AT,
   MISS_CRITICAL_AT,
 } from '../../lib/financingMissEngine';
@@ -123,7 +124,16 @@ export default function FinancingRiskPanel() {
 
   // ── Derived verdicts (pure engine) ──────────────────────────────────────────
   const missResult = useMemo(() => computeConsecutiveMisses(months), [months]);
-  const flags = useMemo(() => findAdjustmentFlags(months), [months]);
+  // findAdjustmentFlags filters by the >10% threshold ONLY; the clause-5.3 notify
+  // duty additionally requires a CONFIRMED determination. Mirror the CF's server-side
+  // gate (notifyFinancingAdjustment.js: !CONFIRMED_BASES.includes(basisSource) →
+  // condition-not-met) so a provisional month past 10% never surfaces a clickable
+  // Notify the server would reject as a dead-end. Reuse the engine's CONFIRMED_BASES
+  // (the same set computeMonthlyMiss gates on) — never re-derive the basis set here.
+  const flags = useMemo(
+    () => findAdjustmentFlags(months).filter((row) => CONFIRMED_BASES.includes(row?.basisSource)),
+    [months],
+  );
   const activeFlag = flags.length > 0 ? flags[flags.length - 1] : null;
 
   // ── Load agents (mirror FinancingProrationPanel) ────────────────────────────
