@@ -161,7 +161,9 @@ export function computeAdjustmentPct(currentMonthlyFinancing, managerFinancing) 
   // on corrupt ledger data). Reject trailing garbage; non-string/non-finite → NaN.
   const current = strictNum(currentMonthlyFinancing);
   const manager = strictNum(managerFinancing);
-  if (!Number.isFinite(current) || current <= 0 || !Number.isFinite(manager)) return null;
+  // Domain guard: a negative managerFinancing is impossible — it would compute a
+  // >100% "cut" and falsely trip the >10% gate. PENDING-equivalent → null.
+  if (!Number.isFinite(current) || current <= 0 || !Number.isFinite(manager) || manager < 0) return null;
   return (current - manager) / current;
 }
 

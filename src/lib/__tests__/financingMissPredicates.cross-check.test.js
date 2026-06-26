@@ -32,6 +32,7 @@ const PCT_FIXTURES = [
   [5000, '4300xyz'], // trailing-garbage manager → null
   ['  5000  ', 4300],// whitespace-padded numeric → 0.14 (trimmed)
   ['abc', 4300],     // non-numeric current → null
+  [5000, -100],      // negative manager (impossible) → null (would be a >100% "cut")
 ];
 
 // ── isAdjustmentNotifyFlag: raw adjustmentPct inputs ──────────────────────────
@@ -76,6 +77,10 @@ describe('financingMissPredicates twin — known expected values', () => {
     expect(twin.computeAdjustmentPct(5000, '4300xyz')).toBeNull();
     expect(esmComputeAdjustmentPct('5000abc', 4300)).toBeNull();
     expect(esmComputeAdjustmentPct(5000, '4300xyz')).toBeNull();
+  });
+  it('negative managerFinancing → null (impossible domain, never a >100% cut)', () => {
+    expect(twin.computeAdjustmentPct(5000, -100)).toBeNull();
+    expect(esmComputeAdjustmentPct(5000, -100)).toBeNull();
   });
   it('confirmed bases are submitted-final + settled-confirmed only', () => {
     expect(twin.CONFIRMED_BASES).toContain('submitted-final');

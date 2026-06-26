@@ -91,7 +91,10 @@ export function computeMonthlyMiss(monthRow) {
   if (!CONFIRMED_BASES.includes(row.basisSource)) return PENDING;
   const actual = p(row.actualAPI);
   const validating = p(row.validatingAPI);
-  if (!Number.isFinite(actual) || !Number.isFinite(validating)) return PENDING;
+  // Domain guard: a NEGATIVE API is impossible ledger data — treat as PENDING
+  // (unknown), never a computed miss/meet. The legal-trigger engine must not derive
+  // a verdict from out-of-domain values even though the proration writer enforces >= 0.
+  if (!Number.isFinite(actual) || actual < 0 || !Number.isFinite(validating) || validating < 0) return PENDING;
   return actual < validating ? MISS : MEET;
 }
 

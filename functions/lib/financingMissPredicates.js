@@ -40,7 +40,9 @@ function computeAdjustmentPct(currentMonthlyFinancing, managerFinancing) {
   if (managerFinancing === null || managerFinancing === undefined || managerFinancing === '') return null;
   const current = p(currentMonthlyFinancing);
   const manager = p(managerFinancing);
-  if (!Number.isFinite(current) || current <= 0 || !Number.isFinite(manager)) return null;
+  // Domain guard (mirrors the ESM): negative managerFinancing → null (would compute
+  // a >100% "cut" and falsely trip the >10% gate).
+  if (!Number.isFinite(current) || current <= 0 || !Number.isFinite(manager) || manager < 0) return null;
   return (current - manager) / current;
 }
 

@@ -100,6 +100,15 @@ describe('computeMonthlyMiss — confirmed-basis verdict', () => {
     expect(computeMonthlyMiss({ month: '2026_07', actualAPI: '20000', validatingAPI: '30000', basisSource: 'settled-confirmed' })).toBe(MISS);
     expect(computeMonthlyMiss({ month: '2026_07', actualAPI: '31000', validatingAPI: '30000', basisSource: 'settled-confirmed' })).toBe(MEET);
   });
+  it('negative actualAPI → pending (impossible domain value, not a computed miss)', () => {
+    expect(computeMonthlyMiss({ month: '2026_07', actualAPI: -1, validatingAPI: 30000, basisSource: 'settled-confirmed' })).toBe(PENDING);
+  });
+  it('negative validatingAPI → pending (impossible domain value, not a computed meet)', () => {
+    expect(computeMonthlyMiss({ month: '2026_07', actualAPI: 20000, validatingAPI: -30000, basisSource: 'settled-confirmed' })).toBe(PENDING);
+  });
+  it('validatingAPI === 0 (no-target) still computes — actual >= 0 → meet (boundary unchanged)', () => {
+    expect(computeMonthlyMiss({ month: '2026_07', actualAPI: 0, validatingAPI: 0, basisSource: 'settled-confirmed' })).toBe(MEET);
+  });
 });
 
 describe('computeConsecutiveMisses — the counter (CD#4)', () => {
