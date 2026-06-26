@@ -1,0 +1,99 @@
+# .coderabbit.yaml — AgencyTrack
+# CodeRabbit reads this from the repo root. Free tier honors path_instructions,
+# review tone, and per-path filters. Keep advisory (NOT a required check) — bots
+# are a quality signal dispositioned under Rule 21, never a merge gate.
+
+language: en-US
+
+reviews:
+  profile: chill            # fewer nitpicks, focus on real issues (assertive = noisier)
+  request_changes_workflow: false   # never auto-block the PR; human-merge gate stands
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+
+  # Don't spend review budget on generated/vendored/doc-only noise.
+  path_filters:
+    - "!**/*.md"
+    - "docs/briefs/**"    # re-include kickoff briefs — dispatch-critical specs
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/node_modules/**"
+    - "!repomix-output.xml"
+    - "!graphify-out/**"
+    - "!**/*.snap"
+
+  path_instructions:
+    # --- Money / rules / engine: highest scrutiny ---
+    - path: "src/lib/financing/**"
+      instructions: >
+        This is money-math engine code (insurance financing/bonus/reconciliation).
+        Currency is ALWAYS TTD. All numeric Firestore reads/writes go through
+        parseFloat — flag any numeric stored or compared as a raw string.
+        DESIGN INVARIANT: runningBalance / closingBalance is the AUTHORITATIVE
+        value (may be negative = surplus); totalOffsets and similar are DERIVED
+        BACKWARD from the authoritative balance, NOT recomputed from components.
+        Do NOT flag a "mismatch" between drawn-minus-offsets and the authoritative
+        balance as a bug — the decoupling is intentional. Focus on: off-by-one in
+        month enumeration, sign errors (owing vs surplus), unfloored negative
+        payouts, and waiver/service-gate logic.
+    - path: "src/services/**"
+      instructions: >
+        Firestore service layer — all writes go through here, never from
+        components. Flag direct Firestore access that bypasses a service.
+        Numeric writes use parseFloat. Validate that provenance/source fields
+        use the established whitelist-with-default pattern.
+    - path: "firestore.rules"
+      instructions: >
+        Security rules use DELIBERATELY COARSE validation (type/enum/tenant
+        checks; NO hasOnly / key-allowlists) so forward-compatible fields can be
+        added without a rules edit — this is a recorded design decision, do NOT
+        flag the absence of strict key allowlists or cross-field co-constraints as
+        a vulnerability. DO flag: missing tenant-isolation, a missing is-int/is-
+        string/is-number type check on a NEW field, read paths that leak across
+        tenants, or write paths that skip the role gate.
+    - path: "functions/**"
+      instructions: >
+        Cloud Functions. serverTimestamp() is REJECTED inside arrays — array
+        elements must use Timestamp.now(). Flag serverTimestamp() used in any
+        array context.
+    # --- UI: money-write surfaces get concurrency scrutiny ---
+    - path: "src/components/manager/**"
+      instructions: >
+        Manager surfaces, several are money-write (financing, settlements,
+        reconciliation). Scrutinize async races: agent-switch-during-write,
+        stale-resolution overwriting the displayed agent, concurrent submit
+        buttons, and load paths that don't clear prior state on switch. Colors
+        MUST use Nexus CSS-variable tokens — flag any hardcoded hex (#xxxxxx) in
+        JSX/inline styles. 44px minimum touch targets.
+    - path: "src/components/**"
+      instructions: >
+        React 19 function components only. No hardcoded hex — Nexus design tokens
+        (CSS variables / Tailwind token classes) only. Every component handles
+        loading, error, and empty states.
+    # --- Tests / verification scripts: light touch ---
+    - path: "**/*.test.{js,jsx,mjs}"
+      instructions: >
+        Test files. Don't nitpick style. DO flag assertions that only check
+        non-null/length rather than actual values (value-level assertions are the
+        standard here), and tests that can't fail (tautological mocks).
+    - path: "scripts/**"
+      instructions: >
+        Verification/smoke/seed scripts. Lower scrutiny. Flag only correctness
+        bugs (wrong arithmetic in seeds, missing cleanup) — not style.
+    # --- Kickoff briefs: spec falsification, not prose review ---
+    - path: "docs/briefs/**"
+      instructions: >
+        These are dispatch-critical implementation specs. Review as a
+        SPEC-TO-FALSIFY: flag internal contradictions between locked decisions,
+        money-math in worked examples that does not check out, fabricated or
+        inconsistent file-path or line claims, and scope that conflicts with the
+        out-of-scope list. Do NOT nitpick prose, heading style, or formatting.
+
+  auto_review:
+    enabled: true
+    drafts: false           # don't review draft PRs
+
+chat:
+  auto_reply: true

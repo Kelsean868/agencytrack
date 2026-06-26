@@ -45,7 +45,7 @@ REV 1 was a verification harness: seed the smoke tenant so the flag-ON drive-thr
 ## 4. Phases 4–6 — docs / PR / hold
 
 - **Phase 4:** `FOLLOW_UPS.md` — record that `delete-stranded-allocation.cjs` is now a dormant no-op (B=0 reached via the post-deploy smoke side-effect; keep as a safety net or retire — dispatcher's call). Resolve the U0 follow-up. *(Note: `yearPlanAllocation.js` orphan remains a separately-banked FU from U2 — do not action here.)*
-- **Phase 5:** branch off `3545429`; **Rule 15** verbatim paste-back; **Rule 20** name HEAD SHA. **Smoke waiver:** docs-only, no runtime surface touched → Rule 9 waiver, justified inline. **Rule 21** poll Gemini + GLM (GLM has been 429 across #744/#745 — note if still absent).
+- **Phase 5:** branch off `3545429`; **Rule 15** verbatim paste-back; **Rule 20** name HEAD SHA. **Smoke waiver:** docs-only, no runtime surface touched → Rule 9 waiver, justified inline. **Rule 21** poll Gemini + CodeRabbit (both channels per CLAUDE.md Rule 21).
 - **Phase 6:** **Rule 22** ≥1 named gap. Then **STOP and wait for dispatcher**.
 
 ---

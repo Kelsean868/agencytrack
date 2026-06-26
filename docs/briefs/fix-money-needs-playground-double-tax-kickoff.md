@@ -3,7 +3,7 @@
 **Type:** Bug fix (S) — money-calculation correctness + a display-hierarchy swap. No engine change, no rules, no Firestore schema, no functions.
 **Merge channel:** HUMAN-MERGE (money-affecting agent surface).
 **Run model:** **Sonnet.**
-**First live dual-review PR** — poll BOTH Gemini and GLM per Rule 21 (GLM is now on main; expect a `## 🤖` comment — real flash review or a clean "unavailable" — disposition whichever).
+**First live dual-review PR** — poll BOTH Gemini and CodeRabbit per Rule 21.
 **Trigger:** Audit of Money Needs PAYE handling found the engine (`payeEngine.js grossFromNet`) is CORRECT (43/43, `grossFromNet(840_000)===1_090_000`) and the service path is clean. Two downstream defects remain: (1) the Money Needs "Send to Playground" path feeds an already-gross figure into the Commission Playground, which treats its input as net take-home and grosses-up a second time; (2) MoneyNeedsPanel shows the after-tax need in the headline slot instead of the gross income target.
 
 ---
@@ -61,7 +61,7 @@
 ## Phase 4 — docs + PR
 - `docs/CONTEXT.md` active-track + `docs/FOLLOW_UPS.md` (note the bracket-vs-flat reconciliation decision taken). Rule 16 caps.
 - Open PR (base main). Body: the quantified before/after (840k → 1,453,333 wrong → correct gross), the ruling taken, the end-to-end vector result, Rule 22 self-critique, Rule 23 falsification ("overturned if the saved playground goal for net=840k is not the gross target / is 1,453,333").
-- **Rule 21 — poll BOTH reviewers:** Gemini (`.reviews[]`/`gemini-code-assist`) AND GLM (`.comments[]`/`github-actions[bot]`/`## 🤖`). Disposition every comment from each; if GLM posts "unavailable", record it as absent-with-reason (not "no comments"). Rule 20 HEAD SHA. **Rule 19 — HOLD at PR-open.**
+- **Rule 21 — poll BOTH reviewers:** Gemini (`.reviews[]`/`gemini-code-assist`) AND CodeRabbit (`.reviews[]` + `.comments[]`/`coderabbitai`). Disposition every finding from each. Rule 20 HEAD SHA. **Rule 19 — HOLD at PR-open.**
 
 ---
 
@@ -72,7 +72,7 @@
 
 ## Standing rule reminders
 - Fresh branch; `git branch --show-current` before every commit; Rule 17 source-verify.
-- Rule 12 STOP phrasing for the Phase 0 reconciliation STOP; Rules 15/19/20/22/23; Rule 21 NOW DUAL-REVIEWER (Gemini + GLM).
+- Rule 12 STOP phrasing for the Phase 0 reconciliation STOP; Rules 15/19/20/22/23; Rule 21 DUAL-REVIEWER (Gemini + CodeRabbit).
 - Money-math class: the end-to-end value vector is the merge proof; no untracked smoke; no unconditional SKIP.
 
 ## Acceptance checklist
@@ -81,4 +81,4 @@
 - [ ] MoneyNeedsPanel headline = gross income target; after-tax = clearly-labelled subtext.
 - [ ] `payeEngine` 43/43 intact; new end-to-end vector green; lint/build/test green.
 - [ ] Smoke proves headline value + corrected playground goal (preview + prod); harness committed.
-- [ ] Both reviewers polled and dispositioned (Gemini + GLM).
+- [ ] Both reviewers polled and dispositioned (Gemini + CodeRabbit).
