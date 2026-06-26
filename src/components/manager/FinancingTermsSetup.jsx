@@ -64,7 +64,7 @@ export default function FinancingTermsSetup() {
     setLoadingAgents(true);
     setAgentsError('');
     getTenantUsers(tenantId)
-      .then((userList) => setAgents(userList.filter((u) => u.role === 'agent')))
+      .then((userList) => setAgents((userList ?? []).filter((u) => u.role === 'agent')))
       .catch((e) => { console.error(e); setAgentsError('Failed to load agents.'); })
       .finally(() => setLoadingAgents(false));
   }, [tenantId]);
