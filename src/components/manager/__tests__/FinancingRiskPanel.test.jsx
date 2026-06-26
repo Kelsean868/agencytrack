@@ -200,4 +200,27 @@ describe('FinancingRiskPanel', () => {
     await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
     expect(screen.queryByTestId('financing-notify-cooldown')).not.toBeInTheDocument();
   });
+
+  it('clears ledger-derived state on switch so no mismatched cooldown read fires', async () => {
+    hoisted.getTenantUsers.mockResolvedValue([
+      { id: 'agent-1', name: 'Ana Agent', role: 'agent' },
+      { id: 'agent-2', name: 'Bob Agent', role: 'agent' },
+    ]);
+    hoisted.listFinancingMonths.mockImplementation((_t, agentId) =>
+      agentId === 'agent-1' ? Promise.resolve([flagRow('2026_05', 0.14)]) : Promise.resolve([]),
+    );
+    render(<FinancingRiskPanel />);
+    await waitFor(() => expect(screen.getByTestId('financing-risk-agent-select')).toBeInTheDocument());
+
+    // agent-1 carries a flag at 2026_05.
+    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-1' } });
+    await screen.findByTestId('financing-risk-adjustment-flag');
+    hoisted.getFinancingNotifyRecord.mockClear();
+
+    // Switching to agent-2 must clear the derived activeFlag immediately — the
+    // cooldown read must NEVER fire with the new agent + the previous agent's month.
+    fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-2' } });
+    await waitFor(() => expect(screen.getByText(/No financing ledger for Bob Agent/i)).toBeInTheDocument());
+    expect(hoisted.getFinancingNotifyRecord).not.toHaveBeenCalledWith('t1', 'agent-2', '2026_05');
+  });
 });

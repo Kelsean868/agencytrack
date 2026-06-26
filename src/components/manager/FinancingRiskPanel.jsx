@@ -134,7 +134,13 @@ export default function FinancingRiskPanel() {
   const loadAgent = useCallback((agentId) => {
     latestAgentReqRef.current = agentId;
     setNotifyRecord(null);
-    if (!tenantId || !agentId) { setMonths([]); setRecipientUid(null); setLoading(false); return; }
+    // Clear ledger-derived state up front so the derived activeFlag / missResult
+    // never reflect the PREVIOUS agent during the load window — otherwise the
+    // cooldown useEffect would fire getFinancingNotifyRecord(newAgent, oldFlagMonth),
+    // a mismatched read (masked by the skeleton, but spurious).
+    setMonths([]);
+    setRecipientUid(null);
+    if (!tenantId || !agentId) { setLoading(false); return; }
     setLoading(true);
     Promise.all([
       listFinancingMonths(tenantId, agentId),
