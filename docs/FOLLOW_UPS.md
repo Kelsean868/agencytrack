@@ -6,6 +6,12 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Escape unescaped table-cell pipes in CONTEXT docs (banked K6 fast-follow, 2026-06-26, LOW cosmetic)
+
+Several `Recently shipped` / archived table rows contain **unescaped literal pipe characters** inside inline-code spans (e.g. `` `canAccessOwn||canManage` ``, `` `on_financing`|`post_financing_repayment` ``). GFM parses these as extra column separators, so the rows render as broken tables. Affected rows: **`docs/CONTEXT.md`** L167–169, L180; **`docs/CONTEXT-history.md`** L14, L108, L112, L200, L216, L221, L222, L231 — **12 rows**, several predating K6.
+
+**To resolve:** escape each embedded pipe as `\|` (or rewrite the code span) so every row renders as a single description cell. **Cosmetic only — do NOT change any factual content, SHA, or row meaning.** Surfaced by CodeRabbit on PR #756 (findings #1/#3); deferred from the `serviceMonths` rules fast-follow to avoid diluting a live-rules fix with unrelated historical churn. **Falsification:** line numbers drift as docs grow — re-scan with an unescaped-pipe detector (table rows with >4 unescaped `|`) before applying, rather than trusting the L-numbers above.
+
 ## CLAUDE.md persistency annotation — `0-100` annotation is stale (banked K4, 2026-06-25, LOW doc-fix)
 
 CLAUDE.md § Persistency Document Shape states `persistency, // parseFloat, 0–100`. The stored value is a **0–1 fraction** — confirmed by `financingBonusEngine.js` gate comparisons (`PERS_GATE = 0.90`, `PERS_FLOOR = 0.80`) and the K4 adapter's no-normalization design. The `0-100` annotation misleads future adapters.

@@ -746,6 +746,7 @@ service cloud.firestore {
               && request.resource.data.reconciledPosition  is number
               && request.resource.data.waiverApplied is number && request.resource.data.waiverApplied >= 0
               && request.resource.data.surplusPaid   is number && request.resource.data.surplusPaid   >= 0
+              && request.resource.data.serviceMonths is number && request.resource.data.serviceMonths >= 0
               && request.resource.data.serviceMet    is bool
               && request.resource.data.garnishStarted is bool;
         }

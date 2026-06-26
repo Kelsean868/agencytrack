@@ -17,10 +17,11 @@
  *                  tenant, outcome in [owing, surplus], triggeredBy in [auto_month12,
  *                  manual_election], money fields numbers (closingBalance /
  *                  reconciledPosition MAY be negative = surplus; waiverApplied /
- *                  surplusPaid >= 0), serviceMet / garnishStarted bool. No key-allowlist.
+ *                  surplusPaid >= 0; serviceMonths number >= 0), serviceMet /
+ *                  garnishStarted bool. No key-allowlist.
  *   delete:        nobody.
  *
- * Test matrix (22 cases):
+ * Test matrix (25 cases):
  *   GET / LIST
  *    1. Agent reads OWN record                             → ALLOW
  *    2. Agent reads PEER record                            → DENY
@@ -44,8 +45,11 @@
  *   19. Negative waiverApplied (>= 0 enforced)             → DENY
  *   20. Non-bool serviceMet                                → DENY
  *   21. Non-int year (composite-ID field)                  → DENY
+ *   22. Non-number serviceMonths (string)                  → DENY
+ *   23. Negative serviceMonths (>= 0 enforced)             → DENY
+ *   24. Valid serviceMonths (boundary 0)                   → ALLOW
  *   DELETE
- *   22. BM delete                                          → DENY
+ *   25. BM delete                                          → DENY
  */
 
 import {
@@ -243,8 +247,23 @@ async function main() {
     await assertFails(setDoc(reconRef(db, AGENT_B), reconPayload(AGENT_B, TENANT_ID, { year: '2026' })));
   });
 
+  await t('22. Non-number serviceMonths (string) → DENY', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    await assertFails(setDoc(reconRef(db, AGENT_B), reconPayload(AGENT_B, TENANT_ID, { serviceMonths: '12' })));
+  });
+
+  await t('23. Negative serviceMonths (>= 0 enforced) → DENY', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    await assertFails(setDoc(reconRef(db, AGENT_B), reconPayload(AGENT_B, TENANT_ID, { serviceMonths: -1 })));
+  });
+
+  await t('24. Valid serviceMonths (boundary 0) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    await assertSucceeds(setDoc(reconRef(db, AGENT_B), reconPayload(AGENT_B, TENANT_ID, { serviceMonths: 0, serviceMet: false })));
+  });
+
   // ── DELETE ────────────────────────────────────────────────────────────────
-  await t('22. BM delete → DENY', async () => {
+  await t('25. BM delete → DENY', async () => {
     const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
     await assertFails(deleteDoc(reconRef(db, AGENT_A)));
   });
