@@ -13,6 +13,7 @@ import MonthlyStatementEntry from './MonthlyStatementEntry';
 import FinancingProrationPanel from './FinancingProrationPanel';
 import TakeHomeWaterfallView from './TakeHomeWaterfallView';
 import FinancingReconciliationPanel from './FinancingReconciliationPanel';
+import FinancingRiskPanel from './FinancingRiskPanel';
 
 const SUBVIEWS = [
   { id: 'terms',          label: 'Terms' },
@@ -20,6 +21,7 @@ const SUBVIEWS = [
   { id: 'proration',      label: 'Proration' },
   { id: 'takehome',       label: 'Take-Home' },
   { id: 'reconciliation', label: 'Reconciliation' },
+  { id: 'risk',           label: 'Risk' },
 ];
 
 export default function FinancingTab() {
@@ -58,6 +60,7 @@ export default function FinancingTab() {
       {view === 'proration'      && <FinancingProrationPanel />}
       {view === 'takehome'       && <TakeHomeWaterfallView />}
       {view === 'reconciliation' && <FinancingReconciliationPanel />}
+      {view === 'risk'           && <FinancingRiskPanel />}
     </div>
   );
 }
