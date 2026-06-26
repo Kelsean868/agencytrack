@@ -430,6 +430,31 @@ describe('setFinancingMonth', () => {
     hoisted.mockAuth.currentUser = { uid: 'mgr-uid' };
     await expect(setFinancingMonth(TENANT, AGENT, '2026_01', VALID_STATEMENT, {})).rejects.toThrow(/actor\.role/);
   });
+
+  // K6 amendment — source-override (gap-fill provenance flag).
+  it('defaults source to manager_entry when none is passed', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await setFinancingMonth(TENANT, AGENT, '2026_01', VALID_STATEMENT, ACTOR);
+    expect(mockSetDoc.mock.calls[0][1].source).toBe('manager_entry');
+  });
+
+  it('writes source:reconciliation_gap_fill when the gap-fill flag is passed', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await setFinancingMonth(
+      TENANT, AGENT, '2026_02',
+      { financingPaid: 0, netCommission: 0, bonusOffset: 0, runningBalance: 0, source: 'reconciliation_gap_fill' },
+      ACTOR,
+    );
+    const [, payload] = mockSetDoc.mock.calls[0];
+    expect(payload.source).toBe('reconciliation_gap_fill');
+    expect(payload.runningBalance).toBe(0); // a manager-confirmed genuine $0 month
+  });
+
+  it('falls back to manager_entry for an unrecognised source value', async () => {
+    mockGetDoc.mockResolvedValue(ledgerSnap(null));
+    await setFinancingMonth(TENANT, AGENT, '2026_03', { ...VALID_STATEMENT, source: 'totally_bogus' }, ACTOR);
+    expect(mockSetDoc.mock.calls[0][1].source).toBe('manager_entry');
+  });
 });
 
 describe('setFinancingProration (K5)', () => {

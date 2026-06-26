@@ -31,17 +31,38 @@ import {
   getFinancingReconciliation,
   reconcileFinancing,
   transitionFinancingStatus,
+  setFinancingMonth,
 } from '../../services/financingService';
 import {
   computeReconciliation,
   computeGarnishProjection,
   computeWindDownClocks,
+  reconMonthIndex,
 } from '../../lib/financingReconciliation';
-import { computeMonthsFromDate, getTodayTT } from '../../utils/dateInputs';
+import { computeMonthsFromDate, getTodayTT, monthKeyFromDate, enumerateMonthKeys } from '../../utils/dateInputs';
 import { formatCurrency } from '../../utils/formatters';
 import FinancingStatusBadge from './FinancingStatusBadge';
 
 const WRITE_ROLES = ['branch_manager', 'sales_manager', 'tenant_admin', 'platform_admin'];
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// "YYYY_MM" plus N whole months (mirrors enumerateMonthKeys' internal ordinal math —
+// kept local so this panel adds no new exported date helper). Used to derive the
+// auto_month12 reconciliation month (effectiveDate-month + 11 = ledger month 12).
+function monthKeyPlus(key, n) {
+  const [y, m] = (key || '').split('_').map(Number);
+  if (!Number.isFinite(y) || !Number.isFinite(m)) return key;
+  const total = (y * 12 + (m - 1)) + n;
+  return `${String(Math.floor(total / 12)).padStart(4, '0')}_${String((total % 12) + 1).padStart(2, '0')}`;
+}
+
+// Human label for a "YYYY_MM" key ("2026_05" → "May 2026").
+function monthLabel(key) {
+  const [y, m] = (key || '').split('_');
+  const idx = parseInt(m, 10) - 1;
+  return MONTH_NAMES[idx] ? `${MONTH_NAMES[idx]} ${y}` : key;
+}
 
 export default function FinancingReconciliationPanel() {
   const { userProfile, role, tenantId } = useAuth();
@@ -60,6 +81,14 @@ export default function FinancingReconciliationPanel() {
   const [earlyElection, setEarlyElection] = useState(false); // 6.5b opt-in (service < 12)
   const [busy, setBusy]                   = useState(false);
   const [actionError, setActionError]     = useState('');
+
+  // K6 amendment — gap-fill (no silent assume-zero). gapEdits holds ONLY the fields the
+  // manager has changed (sparse, keyed by monthKey); the displayed value falls back to a
+  // synchronous pre-fill default (see gapDefaults) so the field is populated on first
+  // render — no empty-flash, no render race. confirmingGap = month-key mid-write.
+  const [gapEdits, setGapEdits]           = useState({});  // { [monthKey]: { field: value } } — overrides only
+  const [confirmingGap, setConfirmingGap] = useState('');  // monthKey mid-write
+  const [gapError, setGapError]           = useState('');
 
   // Latest-request guard (money-write hazard parity with the proration panel).
   const latestAgentReqRef = useRef('');
@@ -94,6 +123,8 @@ export default function FinancingReconciliationPanel() {
     latestAgentReqRef.current = agentId;
     setEarlyElection(false);
     setActionError('');
+    setGapEdits({});
+    setGapError('');
     if (!tenantId || !agentId) { setTerms(null); setMonths([]); setRecord(null); setLoading(false); return; }
     setLoading(true);
     Promise.all([
@@ -141,6 +172,64 @@ export default function FinancingReconciliationPanel() {
     [terms],
   );
   const triggeredBy = serviceMonths >= 12 ? 'auto_month12' : 'manual_election';
+
+  // K6 amendment — gap detection (no silent assume-zero). The reconciliation month
+  // (end-bound) is the LATER of the trigger month (auto_month12 → effectiveDate-month + 11
+  // = ledger month 12; manual_election → current TT month) and the latest entered ledger
+  // month, so trailing gaps before the event are surfaced too. enumerateMonthKeys over
+  // [effectiveDate-month … end-bound] minus the entered set = the gaps. detectSkippedMonths
+  // is deliberately NOT used here — it bounds at the latest-entered month and would miss
+  // trailing gaps (the exact case this amendment fixes).
+  const reconMonthKey = useMemo(() => {
+    if (!terms?.effectiveDate) return null;
+    try {
+      const anchor = monthKeyFromDate(terms.effectiveDate);
+      const triggerKey = triggeredBy === 'auto_month12'
+        ? monthKeyPlus(anchor, 11)
+        : monthKeyFromDate(getTodayTT());
+      const latestEntered = months.reduce((a, b) => (a && a.month >= b.month ? a : b), null)?.month;
+      return [triggerKey, latestEntered].filter(Boolean).reduce((a, b) => (a >= b ? a : b));
+    } catch {
+      return null;
+    }
+  }, [terms, months, triggeredBy]);
+
+  const gapKeys = useMemo(() => {
+    if (!terms?.effectiveDate || !reconMonthKey) return [];
+    try {
+      const anchor = monthKeyFromDate(terms.effectiveDate);
+      const entered = new Set(months.map((m) => m.month).filter(Boolean));
+      return enumerateMonthKeys(anchor, reconMonthKey).filter((k) => !entered.has(k));
+    } catch {
+      return [];
+    }
+  }, [terms, months, reconMonthKey]);
+
+  // Synchronous pre-fill defaults per gap: flows = 0; runningBalance = the chronologically-
+  // preceding ENTERED month's runningBalance (carry-forward). Computed in render (a useMemo,
+  // not an effect) so the field is populated the first frame the gap card appears — no flash,
+  // no race. The manager must still affirmatively confirm — a pre-fill silently accepted does
+  // not count (Decision 3); gapEdits captures any manual change on top of these defaults.
+  const gapDefaults = useMemo(() => {
+    const carry = (gapKey) => {
+      const prior = months
+        .filter((m) => typeof m.month === 'string' && m.month < gapKey
+          && m.runningBalance != null && Number.isFinite(parseFloat(m.runningBalance)))
+        .reduce((a, b) => (a && a.month >= b.month ? a : b), null);
+      return prior ? parseFloat(prior.runningBalance) : 0;
+    };
+    const out = {};
+    for (const k of gapKeys) {
+      out[k] = {
+        financingPaid: '0', netCommission: '0', bonusOffset: '0',
+        runningBalance: String(carry(k)), notes: '',
+      };
+    }
+    return out;
+  }, [gapKeys, months]);
+
+  // Effective field value = manager edit (if any) over the synchronous default.
+  const gapValue = (key, field) => gapEdits[key]?.[field] ?? gapDefaults[key]?.[field] ?? '';
 
   const clocks = useMemo(
     () => computeWindDownClocks({ serviceMonths, currentMonthlyFinancing: terms?.currentMonthlyFinancing }),
@@ -219,6 +308,47 @@ export default function FinancingReconciliationPanel() {
       setActionError("Couldn't mark cleared. Please retry.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // ── Gap-fill (K6 amendment) ──────────────────────────────────────────────────
+  function updateGapField(key, field, value) {
+    setGapEdits((prev) => ({ ...prev, [key]: { ...prev[key], [field]: value } }));
+  }
+
+  // Badge a gap that moves the reconciliation math: the reconciliation/closing month
+  // ("affects closing"), or months 1–3 ("affects waiver"). Middle gaps are unbadged
+  // (completeness only). Closing takes precedence when a month is both.
+  function gapBadge(key) {
+    if (key === reconMonthKey) return { label: 'affects closing', cls: 'bg-danger/15 text-danger-ink' };
+    const idx = reconMonthIndex(terms?.effectiveDate, key);
+    if (idx !== null && idx >= 1 && idx <= 3) return { label: 'affects waiver', cls: 'bg-gold/15 text-gold' };
+    return null;
+  }
+
+  // Write one confirmed gap month through the deployed K2 path (source flag set), then
+  // reload so the month drops out of the gap list and the worksheet recomputes.
+  async function handleConfirmGap(monthKey) {
+    setGapError('');
+    const draft = { ...gapDefaults[monthKey], ...gapEdits[monthKey] };
+    if (!gapDefaults[monthKey]) return;
+    setConfirmingGap(monthKey);
+    try {
+      await setFinancingMonth(tenantId, selectedAgent, monthKey, {
+        financingPaid:  draft.financingPaid,
+        netCommission:  draft.netCommission,
+        bonusOffset:    draft.bonusOffset,
+        runningBalance: draft.runningBalance,
+        notes:          draft.notes,
+        source:         'reconciliation_gap_fill',
+      }, actor);
+      toast.show({ variant: 'success', message: `Confirmed ${monthLabel(monthKey)} for ${agentName(selectedAgent)}.` });
+      loadAgent(selectedAgent);
+    } catch (err) {
+      console.error(err);
+      setGapError(`Couldn't confirm ${monthLabel(monthKey)}. Please retry.`);
+    } finally {
+      setConfirmingGap('');
     }
   }
 
@@ -331,11 +461,64 @@ export default function FinancingReconciliationPanel() {
               </div>
             )}
 
-            {/* reconciling — worksheet + outcome */}
+            {/* reconciling — gap-fill guard + worksheet + outcome */}
             {status === 'reconciling' && readout && (
               <>
+                {/* Gap-fill (K6 amendment): no silent assume-zero. Confirm each missing
+                    month — including a genuine $0 — before reconciling. */}
+                {gapKeys.length > 0 && (
+                  <div className="card border border-warning/40" data-testid="recon-gaps">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle size={16} className="text-warning" aria-hidden="true" />
+                      <p className="text-sm font-semibold text-ink">
+                        {gapKeys.length} missing {gapKeys.length === 1 ? 'month' : 'months'} — confirm before reconciling
+                      </p>
+                    </div>
+                    <p className="text-xs text-ink-muted leading-relaxed mb-4">
+                      Reconciliation runs over a complete ledger. Each missing month must be confirmed — including a
+                      genuine $0 — so an assumed zero is never silently used. Confirm each month to write its
+                      authoritative statement; the worksheet recomputes as the ledger fills.
+                    </p>
+                    <div className="flex flex-col gap-3">
+                      {gapKeys.map((key) => {
+                        const badge = gapBadge(key);
+                        return (
+                          <div key={key} className="rounded-lg border border-border p-3" data-testid={`recon-gap-${key}`}>
+                            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                              <p className="text-sm font-semibold text-ink">{monthLabel(key)}</p>
+                              {badge && (
+                                <span className={['font-mono text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full', badge.cls].join(' ')}>
+                                  {badge.label}
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
+                              <GapField id={`gap-${key}-fp`} label="Financing paid"  value={gapValue(key, 'financingPaid')}  onChange={(v) => updateGapField(key, 'financingPaid', v)} />
+                              <GapField id={`gap-${key}-nc`} label="Net commission"  value={gapValue(key, 'netCommission')}  onChange={(v) => updateGapField(key, 'netCommission', v)} />
+                              <GapField id={`gap-${key}-bo`} label="Bonus offset"    value={gapValue(key, 'bonusOffset')}    onChange={(v) => updateGapField(key, 'bonusOffset', v)} />
+                              <GapField id={`gap-${key}-rb`} label="Running balance" value={gapValue(key, 'runningBalance')} onChange={(v) => updateGapField(key, 'runningBalance', v)} />
+                            </div>
+                            <SaveButton
+                              onClick={() => handleConfirmGap(key)}
+                              saving={confirmingGap === key}
+                              label="Confirm month"
+                              className="self-start"
+                            />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {gapError && <p className="text-xs text-danger-ink mt-3" data-testid="recon-gap-error">{gapError}</p>}
+                  </div>
+                )}
+
                 <div className="card" data-testid="recon-worksheet" data-outcome={readout.outcome}>
                   <p className="text-sm font-semibold text-ink mb-3">Worksheet · drawn vs offsets</p>
+                  {gapKeys.length > 0 && (
+                    <p className="text-[11px] text-warning-ink mb-3" data-testid="recon-worksheet-preliminary">
+                      Preliminary — {gapKeys.length} unconfirmed {gapKeys.length === 1 ? 'month' : 'months'}. Confirm the missing months above for an accurate close.
+                    </p>
+                  )}
                   <WsRow label="Total financing drawn" sub="Σ financingPaid" value={formatCurrency(readout.totalFinancingDrawn)} />
                   <WsRow label="− Total offsets" sub="from the monthly statements" value={`− ${formatCurrency(readout.totalOffsets)}`} tone="success" />
                   <WsRow label="Gross position before waiver" value={formatCurrency(readout.closingBalance)} bold />
@@ -381,7 +564,12 @@ export default function FinancingReconciliationPanel() {
                         <span className="px-2 py-0.5 rounded-full bg-warning text-white">post_financing_repayment</span>
                       </div>
                       {actionError && <p className="text-xs text-danger-ink" data-testid="recon-action-error">{actionError}</p>}
-                      <SaveButton onClick={handleSettle} saving={busy} label="Start garnish · write record" className="self-start" />
+                      {gapKeys.length > 0 && (
+                        <p className="text-[11px] text-warning-ink" data-testid="recon-gated-owing">
+                          Confirm the {gapKeys.length} missing {gapKeys.length === 1 ? 'month' : 'months'} above before reconciling.
+                        </p>
+                      )}
+                      <SaveButton onClick={handleSettle} saving={busy} disabled={gapKeys.length > 0} label="Start garnish · write record" className="self-start" />
                     </div>
                   ) : (
                     <div className="flex flex-col gap-3">
@@ -398,7 +586,12 @@ export default function FinancingReconciliationPanel() {
                         <span className="px-2 py-0.5 rounded-full bg-success text-white">cleared</span>
                       </div>
                       {actionError && <p className="text-xs text-danger-ink" data-testid="recon-action-error">{actionError}</p>}
-                      <SaveButton onClick={handleSettle} saving={busy} label="Clear + pay surplus" className="self-start" />
+                      {gapKeys.length > 0 && (
+                        <p className="text-[11px] text-warning-ink" data-testid="recon-gated-surplus">
+                          Confirm the {gapKeys.length} missing {gapKeys.length === 1 ? 'month' : 'months'} above before reconciling.
+                        </p>
+                      )}
+                      <SaveButton onClick={handleSettle} saving={busy} disabled={gapKeys.length > 0} label="Clear + pay surplus" className="self-start" />
                     </div>
                   )}
                 </div>
@@ -470,6 +663,24 @@ function Clock_({ label, value, sub, highlight = false }) {
       <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">{label}</p>
       <p className={['text-lg font-extrabold', highlight ? 'text-success-ink' : 'text-ink'].join(' ')}>{value}</p>
       {sub && <p className="text-[10px] text-ink-muted mt-0.5">{sub}</p>}
+    </div>
+  );
+}
+
+// Gap-fill numeric input (K6 amendment). 44px touch target (h-11), decimal keypad.
+function GapField({ id, label, value, onChange }) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-[10px] font-bold uppercase tracking-wide text-ink-muted mb-1">{label}</label>
+      <input
+        id={id}
+        data-testid={id}
+        type="number"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="h-11 px-3 rounded-lg border border-border bg-card text-ink text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 w-full"
+      />
     </div>
   );
 }

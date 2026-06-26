@@ -215,6 +215,14 @@ export const BASIS_SOURCE_LABELS = {
   'settled-confirmed':     'Settled · confirmed',
 };
 
+// Provenance flag for a monthly statement (K6 amendment). A normal ledger entry is
+// 'manager_entry'; a statement written by the K6 reconciliation gap-fill (a manager
+// affirmatively confirming a previously-missing month, including a genuine $0) is
+// 'reconciliation_gap_fill' so the two are auditably distinct. The deployed K2 rule
+// (validFinancingMonth) has no source constraint, so this needs NO rules change. Default
+// stays 'manager_entry' — existing callers pass no source and are unaffected.
+export const FINANCING_MONTH_SOURCES = ['manager_entry', 'reconciliation_gap_fill'];
+
 function financingMonthDocRef(tenantId, agentId, month) {
   return doc(db, `tenants/${tenantId}/financing/${agentId}_${month}`);
 }
@@ -325,6 +333,10 @@ export async function setFinancingMonth(tenantId, agentId, month, statement, act
 
   const notes = typeof statement?.notes === 'string' ? statement.notes : '';
 
+  // Provenance flag (K6 amendment): a gap-fill write passes source:'reconciliation_gap_fill';
+  // anything else (including legacy callers that pass none) falls back to 'manager_entry'.
+  const source = FINANCING_MONTH_SOURCES.includes(statement?.source) ? statement.source : 'manager_entry';
+
   const ref = financingMonthDocRef(tenantId, agentId, month);
   const existing = await getDoc(ref);
   const now = serverTimestamp();
@@ -339,7 +351,7 @@ export async function setFinancingMonth(tenantId, agentId, month, statement, act
     netCommission,
     bonusOffset,
     notes,
-    source: 'manager_entry',
+    source,
     updatedAt: now,
   };
 

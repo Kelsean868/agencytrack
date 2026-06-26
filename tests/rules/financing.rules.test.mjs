@@ -20,7 +20,7 @@
  *                  netCommission / bonusOffset are numbers >= 0. No key-allowlist.
  *   delete:        nobody.
  *
- * Test matrix (19 cases):
+ * Test matrix (27 cases):
  *   GET / LIST
  *    1. Agent reads OWN month                              → ALLOW
  *    2. Agent reads PEER month                             → DENY
@@ -51,6 +51,8 @@
  *   24. Cross-tenant proration write                       → DENY
  *   25. PARTIAL statement (one core field, rest missing)   → DENY
  *   26. Proration MERGE onto existing statement doc        → ALLOW
+ *   K6 GAP-FILL (reconciliation_gap_fill provenance — no rules change; no source constraint)
+ *   27. BM gap-fill statement (source:reconciliation_gap_fill) → ALLOW
  */
 
 import {
@@ -289,6 +291,17 @@ async function main() {
       validatingAPI: 30000, actualAPI: 15000, suggestedFinancing: 4000,
       basisSource: 'settled-confirmed', managerFinancing: 4000, adjustmentPct: 0.5,
     }));
+  });
+
+  // ── K6 GAP-FILL ───────────────────────────────────────────────────────────
+  await t('27. BM gap-fill statement (source:reconciliation_gap_fill) → ALLOW', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    // A manager-confirmed previously-missing month (here a genuine $0). The K2 rule has
+    // no source constraint, so the gap-fill provenance flag is accepted unchanged.
+    await assertSucceeds(setDoc(finRef(db, AGENT_B, '2026_07'), statementPayload(AGENT_B, TENANT_ID, {
+      month: '2026_07', source: 'reconciliation_gap_fill',
+      financingPaid: 0, netCommission: 0, bonusOffset: 0, runningBalance: 16000,
+    })));
   });
 
   console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed.`);
