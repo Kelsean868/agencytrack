@@ -71,7 +71,9 @@ export default function SettlementPanel() {
     setError('');
     getTenantUsers(tenantId)
       .then((userList) => {
-        const agentList = userList.filter((u) => u.role === 'agent');
+        // Nullish guard (parity with the financing panels): a null/undefined
+        // resolution must not throw on .filter — fall back to an empty list.
+        const agentList = (userList ?? []).filter((u) => u.role === 'agent');
         setAgents(agentList);
         const agentIds = agentList.map((a) => a.id);
         return getSettlementsForUnit(tenantId, agentIds, CURRENT_YEAR);
