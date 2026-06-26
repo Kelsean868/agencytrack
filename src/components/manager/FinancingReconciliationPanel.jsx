@@ -94,7 +94,7 @@ export default function FinancingReconciliationPanel() {
     latestAgentReqRef.current = agentId;
     setEarlyElection(false);
     setActionError('');
-    if (!tenantId || !agentId) { setTerms(null); setMonths([]); setRecord(null); return; }
+    if (!tenantId || !agentId) { setTerms(null); setMonths([]); setRecord(null); setLoading(false); return; }
     setLoading(true);
     Promise.all([
       getFinancingTerms(tenantId, agentId),
@@ -108,7 +108,11 @@ export default function FinancingReconciliationPanel() {
         const latest = (ledger || []).reduce((a, b) => (a && a.month >= b.month ? a : b), null);
         const year = latest?.month ? latest.month.slice(0, 4) : getTodayTT().slice(0, 4);
         let rec = null;
-        try { rec = await getFinancingReconciliation(tenantId, agentId, year); } catch { /* no record yet */ }
+        try {
+          rec = await getFinancingReconciliation(tenantId, agentId, year);
+        } catch (e) {
+          console.error('Failed to fetch financing reconciliation record:', e);
+        }
         if (latestAgentReqRef.current === agentId) setRecord(rec);
       })
       .catch((e) => {

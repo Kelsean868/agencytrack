@@ -20,7 +20,7 @@
  *                  surplusPaid >= 0), serviceMet / garnishStarted bool. No key-allowlist.
  *   delete:        nobody.
  *
- * Test matrix (18 cases):
+ * Test matrix (22 cases):
  *   GET / LIST
  *    1. Agent reads OWN record                             → ALLOW
  *    2. Agent reads PEER record                            → DENY
@@ -43,8 +43,9 @@
  *   18. Non-number money field                             → DENY
  *   19. Negative waiverApplied (>= 0 enforced)             → DENY
  *   20. Non-bool serviceMet                                → DENY
+ *   21. Non-int year (composite-ID field)                  → DENY
  *   DELETE
- *   21. BM delete                                          → DENY
+ *   22. BM delete                                          → DENY
  */
 
 import {
@@ -237,8 +238,13 @@ async function main() {
     await assertFails(setDoc(reconRef(db, AGENT_B), reconPayload(AGENT_B, TENANT_ID, { serviceMet: 'yes' })));
   });
 
+  await t('21. Non-int year (composite-ID field) → DENY', async () => {
+    const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
+    await assertFails(setDoc(reconRef(db, AGENT_B), reconPayload(AGENT_B, TENANT_ID, { year: '2026' })));
+  });
+
   // ── DELETE ────────────────────────────────────────────────────────────────
-  await t('21. BM delete → DENY', async () => {
+  await t('22. BM delete → DENY', async () => {
     const db = testEnv.authenticatedContext('bm1', authToken('branch_manager')).firestore();
     await assertFails(deleteDoc(reconRef(db, AGENT_A)));
   });

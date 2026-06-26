@@ -737,6 +737,7 @@ service cloud.firestore {
         function validReconciliation() {
           return request.resource.data.agentId  is string
               && request.resource.data.tenantId == tenantId
+              && request.resource.data.year        is int
               && request.resource.data.outcome     in ['owing', 'surplus']
               && request.resource.data.triggeredBy in ['auto_month12', 'manual_election']
               && request.resource.data.totalFinancingDrawn is number
