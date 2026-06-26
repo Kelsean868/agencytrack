@@ -52,7 +52,7 @@ Flag-ON local smoke (existing harness), both themes: allocate a line → card sh
 
 - **Phase 4:** CONTEXT note.
 - **Phase 5:** new branch off main; commit `feat(money-needs): allocator summary card (shared buildAllocationSummary)`; push; open PR.
-- **Phase 6:** Gemini + GLM poll/disposition (Rule 21); hex-grep; ≥1 named gap; **HOLD for human merge**.
+- **Phase 6:** Gemini + CodeRabbit poll/disposition (Rule 21); hex-grep; ≥1 named gap; **HOLD for human merge**.
 
 ---
 
