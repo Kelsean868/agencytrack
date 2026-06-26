@@ -56,11 +56,11 @@ const main = async () => {
   console.log(`function validReconciliation()         : ${hasValidFn}`);
   console.log(`year is int (Gemini fix present)       : ${hasYearInt}`);
 
-  if (hasMatch && hasValidFn) {
-    console.log('\n✓ LIVE — financingReconciliation block is in the active ruleset. Deploy landed.');
+  if (hasMatch && hasValidFn && hasYearInt) {
+    console.log('\n✓ LIVE — financingReconciliation block (incl. the year-is-int constraint) is in the active ruleset. Deploy landed.');
     process.exit(0);
   }
-  console.error('\n✗ ABSENT — the active ruleset does NOT contain the financingReconciliation block. Deploy did not land.');
+  console.error('\n✗ INCOMPLETE — the active ruleset is missing the financingReconciliation match, validReconciliation(), or the year-is-int constraint. Deploy did not land the full block.');
   process.exit(1);
 };
 
