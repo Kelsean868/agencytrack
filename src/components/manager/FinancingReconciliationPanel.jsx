@@ -501,6 +501,7 @@ export default function FinancingReconciliationPanel() {
                             <SaveButton
                               onClick={() => handleConfirmGap(key)}
                               saving={confirmingGap === key}
+                              disabled={!!confirmingGap}
                               label="Confirm month"
                               className="self-start"
                             />

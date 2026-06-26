@@ -156,4 +156,31 @@ describe('FinancingReconciliationPanel — gap-fill (K6 amendment)', () => {
     const settle = screen.getByRole('button', { name: /start garnish/i });
     expect(settle).toBeEnabled();
   });
+
+  it('disables every Confirm-month button while one gap write is in flight (Gemini: concurrent-submission guard)', async () => {
+    // Two gaps (2026_03, 2026_04); the write is held open so we can observe the in-flight state.
+    hoisted.listFinancingMonths.mockResolvedValue([M('2026_01', 8000), M('2026_02', 16000)]);
+    let resolveWrite;
+    hoisted.setFinancingMonth.mockReturnValue(new Promise((r) => { resolveWrite = r; }));
+    render(<FinancingReconciliationPanel />);
+    await selectAgent();
+    await screen.findByTestId('recon-gap-2026_03', {}, { timeout: 5000 });
+
+    const buttons = screen.getAllByRole('button', { name: /confirm month/i });
+    expect(buttons).toHaveLength(2);
+
+    // Confirm the first gap; its write stays pending.
+    fireEvent.click(buttons[0]);
+
+    // Both rows' Confirm-month buttons disabled while any write is in progress.
+    await waitFor(() => {
+      screen.getAllByRole('button', { name: /confirm month/i }).forEach((b) => expect(b).toBeDisabled());
+    }, { timeout: 5000 });
+
+    // Resolving the write releases the guard (buttons re-enable after the reload).
+    resolveWrite({ id: 'agent-1_2026_03' });
+    await waitFor(() => {
+      screen.getAllByRole('button', { name: /confirm month/i }).forEach((b) => expect(b).toBeEnabled());
+    }, { timeout: 5000 });
+  });
 });
