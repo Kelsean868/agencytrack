@@ -29,6 +29,9 @@ import FinancingRiskPanel from '../FinancingRiskPanel';
 const miss = (month) => ({ month, actualAPI: 20000, validatingAPI: 30000, basisSource: 'settled-confirmed' });
 const meet = (month) => ({ month, actualAPI: 31000, validatingAPI: 30000, basisSource: 'settled-confirmed' });
 const flagRow = (month, adjustmentPct) => ({ month, actualAPI: 30000, validatingAPI: 30000, basisSource: 'settled-confirmed', managerFinancing: 1000, adjustmentPct });
+// A >10% cut on a PROVISIONAL (unconfirmed) basis — the CF rejects this as
+// condition-not-met, so the panel must not surface a clickable Notify for it.
+const provisionalFlagRow = (month, adjustmentPct) => ({ month, actualAPI: 30000, validatingAPI: 30000, basisSource: 'submitted-provisional', managerFinancing: 1000, adjustmentPct });
 
 async function selectAgent() {
   await waitFor(() => expect(screen.getByTestId('financing-risk-agent-select')).toBeInTheDocument());
@@ -103,6 +106,33 @@ describe('FinancingRiskPanel', () => {
     await selectAgent();
     await waitFor(() => expect(screen.getByText(/No .*10% downward adjustments flagged/i)).toBeInTheDocument());
     expect(screen.queryByTestId('financing-notify-btn')).not.toBeInTheDocument();
+  });
+
+  it('does NOT surface a notify affordance for a PROVISIONAL >10% month (CF gate parity)', async () => {
+    // A provisional cut past 10% is unconfirmed — the CF returns condition-not-met
+    // and writes nothing. The panel must filter it out so no dead-end Notify shows.
+    hoisted.listFinancingMonths.mockResolvedValue([provisionalFlagRow('2026_05', 0.14)]);
+    render(<FinancingRiskPanel />);
+    await selectAgent();
+    await waitFor(() => expect(screen.getByText(/No .*10% downward adjustments flagged/i)).toBeInTheDocument());
+    expect(screen.queryByTestId('financing-risk-adjustment-flag')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('financing-notify-btn')).not.toBeInTheDocument();
+  });
+
+  it('ignores a more-recent PROVISIONAL flag and surfaces the CONFIRMED month as the active duty', async () => {
+    // Confirmed 0.14 cut at 2026_05 + a later provisional 0.18 cut at 2026_07.
+    // The confirmed-basis filter must run BEFORE the most-recent selection, so the
+    // active duty is the confirmed 2026_05 — NOT the more-recent provisional 2026_07.
+    hoisted.listFinancingMonths.mockResolvedValue([
+      flagRow('2026_05', 0.14),
+      provisionalFlagRow('2026_07', 0.18),
+    ]);
+    render(<FinancingRiskPanel />);
+    await selectAgent();
+    const flag = await screen.findByTestId('financing-risk-adjustment-flag');
+    expect(flag).toHaveAttribute('data-month', '2026_05');
+    expect(screen.getByTestId('financing-risk-adjustment-pct')).toHaveTextContent('−14%');
+    expect(screen.getByTestId('financing-notify-btn')).toBeEnabled();
   });
 
   it('disables the affordance with a "no recipient configured" state when unset', async () => {
