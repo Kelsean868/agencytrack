@@ -156,10 +156,26 @@ export function computeSuggestedFinancing(agreedMonthlyFinancing, actualAPI, val
 // ──────────────────────────────────────────────────────
 export function computeAdjustmentPct(currentMonthlyFinancing, managerFinancing) {
   if (managerFinancing === null || managerFinancing === undefined || managerFinancing === '') return null;
-  const current = parseFloat(currentMonthlyFinancing);
-  const manager = parseFloat(managerFinancing);
-  if (!Number.isFinite(current) || current <= 0 || !Number.isFinite(manager)) return null;
+  // Strict parse for the clause-5.3 gate arithmetic — the legal recompute must NOT
+  // trust parseFloat (which accepts "5000abc" as 5000 and could trip the >10% gate
+  // on corrupt ledger data). Reject trailing garbage; non-string/non-finite → NaN.
+  const current = strictNum(currentMonthlyFinancing);
+  const manager = strictNum(managerFinancing);
+  // Domain guard: a negative managerFinancing is impossible — it would compute a
+  // >100% "cut" and falsely trip the >10% gate. PENDING-equivalent → null.
+  if (!Number.isFinite(current) || current <= 0 || !Number.isFinite(manager) || manager < 0) return null;
   return (current - manager) / current;
+}
+
+// Strict numeric parse (mirrors financingMissEngine `p` + the financingMissPredicates
+// CJS twin; kept in parity by financingMissPredicates.cross-check.test.js).
+function strictNum(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
+  if (typeof v !== 'string') return NaN;
+  const t = v.trim();
+  if (t === '') return NaN;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : NaN;
 }
 
 // ──────────────────────────────────────────────────────

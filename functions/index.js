@@ -39,6 +39,10 @@ exports.recomputeLeaderboardOnDemand  = require('./leaderboard/leaderboardAggreg
 // Compliance v2 Slice 2: manager-initiated filing nudge (notification + email)
 exports.sendComplianceNudge = require('./compliance/sendComplianceNudge').sendComplianceNudge;
 
+// Track K · K7: clause-5.3 >10%-financing-adjustment notify duty (manager-confirmed,
+// server-resolved recipient, transport reuse — NOT sendComplianceNudge)
+exports.notifyFinancingAdjustment = require('./financing/notifyFinancingAdjustment').notifyFinancingAdjustment;
+
 const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
 
 // CSV bulk-import allow-list. tenant_admin and platform_admin are explicitly

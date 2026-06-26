@@ -1,0 +1,16 @@
+Hi {{recipientName}},
+
+{{managerName}} has flagged a financing adjustment that requires your attention under clause 5.3.
+
+Agent: {{agentName}}
+Month: {{monthLabel}}
+Downward adjustment: {{adjustmentPct}} below the amount in effect (past the 10% threshold)
+
+This is a notification duty, not a termination — the agent stays on financing. Please review and action per the clause-5.3 process.
+
+Open AgencyTrack:
+{{appUrl}}
+
+—
+AgencyTrack · Tatil Life
+Questions? Contact {{contactEmail}}
