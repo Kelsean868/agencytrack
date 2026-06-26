@@ -27,7 +27,11 @@ const PCT_FIXTURES = [
   [5000, ''],        // unconfirmed → null
   [0, 4300],         // current <= 0 → null
   [null, 4300],      // current non-finite → null
-  ['5000', '4300'],  // string numerics → 0.14
+  ['5000', '4300'],  // clean string numerics → 0.14
+  ['5000abc', 4300], // trailing-garbage current → null (parseFloat would read 5000)
+  [5000, '4300xyz'], // trailing-garbage manager → null
+  ['  5000  ', 4300],// whitespace-padded numeric → 0.14 (trimmed)
+  ['abc', 4300],     // non-numeric current → null
 ];
 
 // ── isAdjustmentNotifyFlag: raw adjustmentPct inputs ──────────────────────────
@@ -66,6 +70,12 @@ describe('financingMissPredicates twin — known expected values', () => {
   });
   it('a malformed "0.14%" string is rejected (not read as 0.14)', () => {
     expect(twin.isAdjustmentNotifyFlag('0.14%')).toBe(false);
+  });
+  it('trailing-garbage current/manager → null (parseFloat would partially parse)', () => {
+    expect(twin.computeAdjustmentPct('5000abc', 4300)).toBeNull();
+    expect(twin.computeAdjustmentPct(5000, '4300xyz')).toBeNull();
+    expect(esmComputeAdjustmentPct('5000abc', 4300)).toBeNull();
+    expect(esmComputeAdjustmentPct(5000, '4300xyz')).toBeNull();
   });
   it('confirmed bases are submitted-final + settled-confirmed only', () => {
     expect(twin.CONFIRMED_BASES).toContain('submitted-final');

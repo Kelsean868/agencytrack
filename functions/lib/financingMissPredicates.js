@@ -33,11 +33,13 @@ const ADJUSTMENT_NOTIFY_THRESHOLD = 0.10;
 
 // Verbatim from src/lib/financingProration.js — adjustmentPct =
 // (currentMonthlyFinancing − managerFinancing) / currentMonthlyFinancing. Returns
-// null until managerFinancing is confirmed (a bare suggestion never flags).
+// null until managerFinancing is confirmed (a bare suggestion never flags). Uses the
+// strict `p` parse (matching the ESM's strictNum) so the legal-gate arithmetic never
+// trusts parseFloat on corrupt ledger data ("5000abc" → null, not 5000).
 function computeAdjustmentPct(currentMonthlyFinancing, managerFinancing) {
   if (managerFinancing === null || managerFinancing === undefined || managerFinancing === '') return null;
-  const current = parseFloat(currentMonthlyFinancing);
-  const manager = parseFloat(managerFinancing);
+  const current = p(currentMonthlyFinancing);
+  const manager = p(managerFinancing);
   if (!Number.isFinite(current) || current <= 0 || !Number.isFinite(manager)) return null;
   return (current - manager) / current;
 }
