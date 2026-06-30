@@ -9,6 +9,7 @@ Firebase project: agencytrack-2a610 | App: portal.agencytrack.app | Marketing: a
 - `npm run dev` — Start dev server at localhost:5173
 - `npm run build` — Production build to dist/
 - `npm run repomix` — Generate Claude context snapshot (run before every session)
+  - Scope: pack only the active track's src/ subtree for pure React tracks (K9, planner, goals). Pack full — or grep full — the moment a brief touches functions/. That tree has no trusted structural index, so a scoped pack there is building on stale anchors (Rule 17). Never scope a functions/-touching pack.
 - `firebase deploy --only functions` — Deploy Cloud Functions
 - `firebase deploy --only firestore:rules` — Deploy Firestore rules
 - `firebase deploy --only firestore:indexes` — Deploy Firestore composite indexes
@@ -672,6 +673,10 @@ Before a finding is banked as a locked decision (CONTEXT.md § Locked decisions)
 ### 24. Currency verification
 
 Any time-sensitive or current-world fact handed to the operator — role holders, prices, laws/regulatory status, product or model availability, recent events — is web-searched and verified current at answer time, not asserted from training priors. Rule 17 extended from brief-authoring to live answers: training-era confidence on a present-tense fact is the trigger to search, not to assert. State the as-of date or source when the fact could have changed. Applies to the dispatcher's chat answers and CC's knowledge-work outputs alike.
+
+### 25. Session & cache hygiene
+
+Load repomix once per session; never re-paste a fresh pack mid-session. Don't edit CLAUDE.md or add/remove MCP servers mid-build — batch those at session boundaries. Keep the task/volatile instruction last in the turn. Batch related work into one session; spin a fresh context only when isolation buys tangle-safety.
 
 ---
 
