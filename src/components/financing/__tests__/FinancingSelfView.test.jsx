@@ -192,8 +192,10 @@ describe('FinancingSelfView — reconciliation SHOWN path', () => {
     expect((await screen.findByTestId('fsv-recon-closing')).textContent).toMatch(/7,200/);
     expect(screen.getByTestId('fsv-recon-drawn').textContent).toMatch(/9,000/);
     expect(screen.getByTestId('fsv-recon-waiver').textContent).toMatch(/1,800/);
-    expect(screen.getByTestId('fsv-recon-outcome')).toBeInTheDocument();
-    // recon audit attribution must not leak
+    // outcome 'owing' → its rendered label, not just presence
+    expect(screen.getByTestId('fsv-recon-outcome').textContent).toMatch(/owing/i);
+    // recon audit attribution + trigger metadata must not leak
     expect(container.innerHTML).not.toMatch(/Jane Manager/);
+    expect(container.innerHTML).not.toMatch(/auto_month12/);
   });
 });

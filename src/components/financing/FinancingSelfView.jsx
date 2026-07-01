@@ -181,9 +181,11 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
   const [state, setState] = useState({ status: 'loading' });
 
   useEffect(() => {
-    // Auth/tenant context may resolve a tick after mount — stay in the loading
-    // state until both ids are present rather than flashing the empty state
-    // (Gemini review). The parent always supplies them once auth resolves.
+    // Reset to loading on every identity change so a subject switch never leaves
+    // the previous subject's data on screen (CodeRabbit). This also keeps the
+    // pre-auth state as loading, not empty — auth/tenant context may resolve a
+    // tick after mount (Gemini). The parent always supplies both once resolved.
+    setState({ status: 'loading' });
     if (!tenantId || !subjectUid) return;
     let active = true;
 
@@ -197,12 +199,15 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
         }
 
         // Reconciliation record — only when the status implies one exists. The
-        // candidate-year reads run in parallel (Gemini review); pick the first
-        // non-null in year order.
+        // candidate-year reads run in parallel (Gemini); pick the first non-null in
+        // year order. A missing year resolves to null WITHOUT rejecting (getDoc on a
+        // non-existent doc), so we do NOT swallow rejections here — a genuine
+        // permission/network error bubbles to the catch and surfaces the error state
+        // rather than silently hiding reconciliation (CodeRabbit).
         const reconPromise = RECONCILED_STATUSES.includes(terms.financingStatus)
           ? Promise.all(
               reconCandidateYears(terms.effectiveDate).map((y) =>
-                getFinancingReconciliation(tenantId, subjectUid, y).catch(() => null),
+                getFinancingReconciliation(tenantId, subjectUid, y),
               ),
             ).then((recs) => recs.find(Boolean) ?? null)
           : Promise.resolve(null);
@@ -403,7 +408,13 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
         <Card title="Status history" testId="fsv-status-history">
           <ol className="flex flex-col gap-2">
             {terms.statusHistory.map((entry, i) => (
-              <li key={i} className="flex items-center gap-2 text-sm text-ink-muted" data-testid="fsv-status-entry">
+              <li key={i} className="flex items-center gap-2 flex-wrap text-sm text-ink-muted" data-testid="fsv-status-entry">
+                {entry.from && (
+                  <>
+                    <FinancingStatusBadge status={entry.from} />
+                    <span className="text-ink-muted" aria-hidden="true">→</span>
+                  </>
+                )}
                 <FinancingStatusBadge status={entry.to} />
                 <span className="font-mono text-[10px] text-ink-muted">
                   {formatDateDisplay(tsToDateStr(entry.at))}
