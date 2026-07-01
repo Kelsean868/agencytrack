@@ -44,7 +44,14 @@ import FinancingStatusBadge from '../manager/FinancingStatusBadge';
 import CoachingNotesModal from '../manager/CoachingNotesModal';
 import AgentFinancingDrawer from './AgentFinancingDrawer';
 
-const AGREEMENT_TERM_MONTHS = 12; // the year-1 financing term (contract) — display only.
+// The financing DRAW window (SPEC §5: `on_financing` = months 1–12, then `reconciling`).
+// This is a FIXED contract clock, not a per-agent value and NOT the agreement term —
+// the 24-month agreement term is a separate clock (SPEC §6;
+// financingReconciliation.AGREEMENT_TERM_MONTHS = 24, surfaced on the K9 self-view +
+// reconciliation panel via computeWindDownClocks). A wind-down agent (reconciling /
+// post_financing_repayment, months 12–24) clamps to 12/12 = "draw complete" and is
+// disambiguated by their financingStatus badge — it never reads as over-term.
+const FINANCING_DRAW_MONTHS = 12;
 
 // Sort worst-risk first (critical miss > adj flag > amber miss > clean), then name.
 function riskScore(row) {
@@ -356,7 +363,7 @@ export default function UnitFinancingRoster({ tenantId }) {
             </thead>
             <tbody>
               {rows.map((r, idx) => {
-                const serviceMonths = r.effectiveDate ? Math.min(computeMonthsFromDate(r.effectiveDate), AGREEMENT_TERM_MONTHS) : null;
+                const drawMonthIndex = r.effectiveDate ? Math.min(computeMonthsFromDate(r.effectiveDate), FINANCING_DRAW_MONTHS) : null;
                 const ceilPct = (r.ceiling && r.runningBalance != null && r.ceiling > 0)
                   ? Math.max(0, Math.min(100, Math.round((r.runningBalance / r.ceiling) * 100)))
                   : null;
@@ -373,7 +380,7 @@ export default function UnitFinancingRoster({ tenantId }) {
                       </div>
                     </td>
                     <td className="py-2.5 px-3 border-b border-border">
-                      <p className="font-mono text-[11px] text-ink-muted">{serviceMonths != null ? `Month ${serviceMonths} / ${AGREEMENT_TERM_MONTHS}` : '—'}</p>
+                      <p className="font-mono text-[11px] text-ink-muted">{drawMonthIndex != null ? `Fin. month ${drawMonthIndex} / ${FINANCING_DRAW_MONTHS}` : '—'}</p>
                       <div className="mt-1 flex items-center gap-2">
                         <MissDots count={r.missCount} />
                         <span className={`font-mono text-[10px] ${r.missSeverity === 'critical' ? 'text-danger-ink' : r.missSeverity === 'amber' ? 'text-warning-ink' : 'text-ink-muted'}`}>
