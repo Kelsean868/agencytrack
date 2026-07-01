@@ -21,9 +21,15 @@ const provisional = (month, fields = {}) => ({ ...confirmed(month, fields), basi
 
 describe('isActivelyFinanced', () => {
   it('includes on_financing / reconciling / post_financing_repayment', () => {
-    ACTIVE_FINANCING_STATUSES.forEach((s) => {
+    // Hardcode the supported statuses (not derived from the exported constant) so
+    // this test catches contract drift if the set is changed incorrectly.
+    ['on_financing', 'reconciling', 'post_financing_repayment'].forEach((s) => {
       expect(isActivelyFinanced({ financingStatus: s })).toBe(true);
     });
+    // And pin the exported membership set to exactly those three.
+    expect([...ACTIVE_FINANCING_STATUSES].sort()).toEqual(
+      ['on_financing', 'post_financing_repayment', 'reconciling'],
+    );
   });
 
   it('excludes not_on_financing, cleared, missing terms', () => {

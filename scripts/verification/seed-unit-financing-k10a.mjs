@@ -181,7 +181,10 @@ async function writeAgent(uid, name, unitId, terms, months) {
   await db.doc(`tenants/${TENANT_ID}/users/${uid}`).set(userDoc(uid, name, unitId), { merge: true });
   await db.doc(`tenants/${TENANT_ID}/financingTerms/${uid}`).set(termsDoc(uid, terms), { merge: true });
   for (const m of months) {
-    await db.doc(`tenants/${TENANT_ID}/financing/${uid}_${m.month}`).set(monthDoc(uid, m.month, m), { merge: true });
+    // Full overwrite (NOT merge): monthDoc omits managerFinancing/adjustmentPct for
+    // provisional rows, so a merge could leave stale confirmation fields on a rerun
+    // and make a provisional month read as confirmed.
+    await db.doc(`tenants/${TENANT_ID}/financing/${uid}_${m.month}`).set(monthDoc(uid, m.month, m));
   }
   console.log(`  [fs] ${uid} (unit=${unitId === UM_UID ? 'UM' : unitId}) — ${months.length} ledger month(s)`);
 }

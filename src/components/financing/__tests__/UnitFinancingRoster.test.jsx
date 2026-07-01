@@ -198,6 +198,8 @@ describe('UnitFinancingRoster', () => {
     await screen.findByTestId('unit-financing-row-a2');
     fireEvent.click(screen.getByTestId('unit-financing-view-a2'));
     await screen.findByTestId('unit-financing-drawer');
-    expect(screen.getByTestId('financing-basis-badge')).toBeInTheDocument();
+    // Value-level: assert the actual basis, not just badge presence — catches a
+    // regression to the wrong basisSource fallback.
+    expect(screen.getByTestId('financing-basis-badge')).toHaveAttribute('data-basis', 'settled-confirmed');
   });
 });

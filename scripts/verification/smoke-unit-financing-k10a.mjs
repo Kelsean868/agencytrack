@@ -143,6 +143,12 @@ async function assertBasisBadge(page) {
   (await count(page, '[data-testid="unit-financing-drawer"] [data-testid="financing-basis-badge"]')) > 0
     ? pass('5.8-basis-badge', 'confirmed figure carries its basisSource badge')
     : fail('5.8-basis-badge', 'no basis badge in the read-only drawer');
+  // 5.4 (drawer scope) — the read-only detail drawer itself carries no write affordances.
+  const drawerNoInput = (await drawer.locator('[data-testid="proration-manager-input"]').count()) === 0;
+  const drawerNoConfirm = (await drawer.locator('text=Confirm financing').count()) === 0;
+  (drawerNoInput && drawerNoConfirm)
+    ? pass('5.4-drawer-no-write', 'read-only drawer has no proration input / Confirm button')
+    : fail('5.4-drawer-no-write', `drawer input=${!drawerNoInput} confirm=${!drawerNoConfirm}`);
   // Deferred Flag-to-BM must degrade, not be a dead write.
   const flag = page.locator('[data-testid="unit-financing-drawer-flag"]');
   (await flag.count() > 0 && await flag.isDisabled())
@@ -174,6 +180,10 @@ async function assertCoachNote(page) {
 async function run(browser, theme) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await setupBypassSession(ctx, BASE_URL, BYPASS_TOKEN);
+  // setTheme only registers a context init script (localStorage), so it must be
+  // primed BEFORE the app's first navigation — otherwise the document loads on the
+  // default (light) theme and the dark leg never actually exercises dark mode.
+  await setTheme(ctx, theme);
   const page = await ctx.newPage();
   const cap = captureConsoleAndNetwork(page);
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
@@ -181,9 +191,6 @@ async function run(browser, theme) {
     await login(page, requireEnv('A11Y_UNIT_MANAGER_EMAIL'), requireEnv('A11Y_UNIT_MANAGER_PASSWORD'));
     pass(`um-login[${theme}]`, 'unit manager signed in');
   } catch (e) { fail(`um-login[${theme}]`, e.message); formatCaptureReport(cap); await ctx.close(); return; }
-
-  await setTheme(ctx, theme);
-  await page.waitForTimeout(400);
 
   if (!(await gotoUnitFinancing(page))) {
     fail(`nav[${theme}]`, 'Unit Financing nav (nav-unit-financing) not reachable');

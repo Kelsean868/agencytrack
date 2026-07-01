@@ -23,7 +23,7 @@
 // Fan-out = per-agent GETs (Compliance-v2 pattern). On PARTIAL failure: show the
 // resolved rows ONLY and suppress the unit aggregates — never imply a complete
 // unit picture (or a trigger count) from a partial read.
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Lock, AlertTriangle, ShieldAlert, MessageSquare, RefreshCw } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getTenantUsers } from '../../services/managerService';
@@ -33,7 +33,7 @@ import {
   financingCeiling,
 } from '../../services/financingService';
 import { computeMonthsFromDate } from '../../utils/dateInputs';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatAdjustmentPct, initials } from '../../utils/formatters';
 import { MISS_CRITICAL_AT } from '../../lib/financingMissEngine';
 import {
   assembleRosterRow,
@@ -45,21 +45,6 @@ import CoachingNotesModal from '../manager/CoachingNotesModal';
 import AgentFinancingDrawer from './AgentFinancingDrawer';
 
 const AGREEMENT_TERM_MONTHS = 12; // the year-1 financing term (contract) — display only.
-
-// adjustmentPct > 0 = a cut below the amount in effect (−X%); < 0 = above (+X%).
-function adjustmentLabel(frac) {
-  if (frac == null || Number.isNaN(frac)) return '—';
-  const pct = Math.round(Math.abs(frac) * 100);
-  if (frac > 0) return `−${pct}%`;
-  if (frac < 0) return `+${pct}%`;
-  return '0%';
-}
-
-function initials(name) {
-  return String(name ?? '')
-    .split(/\s+/).filter(Boolean).slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '').join('') || '—';
-}
 
 // Sort worst-risk first (critical miss > adj flag > amber miss > clean), then name.
 function riskScore(row) {
@@ -110,8 +95,12 @@ export default function UnitFinancingRoster({ tenantId }) {
   const [state, setState] = useState({ status: 'loading' });
   const [drawerRow, setDrawerRow] = useState(null);
   const [coachTarget, setCoachTarget] = useState(null);
+  // Guards against a stale fan-out completing after a newer load (e.g. a slow
+  // mount-load resolving after a Retry) and overwriting fresh state.
+  const loadSeq = useRef(0);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     setState({ status: 'loading' });
     if (!tenantId) return;
 
@@ -143,6 +132,8 @@ export default function UnitFinancingRoster({ tenantId }) {
 
       rows.sort((a, b) => (riskScore(b) - riskScore(a)) || a.agentName.localeCompare(b.agentName));
 
+      if (seq !== loadSeq.current) return; // a newer load superseded this one
+
       if (rows.length === 0) {
         // A total fan-out failure (some agents failed, none resolved) is an error,
         // not a legitimate "empty unit".
@@ -155,6 +146,7 @@ export default function UnitFinancingRoster({ tenantId }) {
       const aggregates = anyFailed ? null : computeRosterAggregates(rows);
       setState({ status: 'ready', rows, aggregates, partial: anyFailed });
     } catch (e) {
+      if (seq !== loadSeq.current) return; // stale failure — a newer load owns the state
       console.error('[UnitFinancingRoster] load failed', e);
       setState({ status: 'error' });
     }
@@ -302,7 +294,7 @@ export default function UnitFinancingRoster({ tenantId }) {
               <div className="p-4 flex flex-col gap-3">
                 <div className="flex items-baseline gap-3 flex-wrap">
                   <span className="font-display text-2xl font-extrabold text-danger-ink" data-testid={`unit-financing-adj-pct-${r.agentId}`}>
-                    {adjustmentLabel(r.adjFlagPct)}
+                    {formatAdjustmentPct(r.adjFlagPct)}
                   </span>
                   <span className="text-sm text-ink-muted">Confirmed draw is more than 10% below the agreed schedule (clause 5.3).</span>
                 </div>
@@ -418,7 +410,7 @@ export default function UnitFinancingRoster({ tenantId }) {
                     </td>
                     <td className="py-2.5 px-3 text-center border-b border-border" data-testid={`unit-financing-adjcell-${r.agentId}`}>
                       <div className="inline-flex items-center gap-1">
-                        <span className={`font-display font-extrabold text-sm ${r.hasAdjFlag ? 'text-danger-ink' : 'text-ink-muted'}`}>{adjustmentLabel(r.adjustmentPct)}</span>
+                        <span className={`font-display font-extrabold text-sm ${r.hasAdjFlag ? 'text-danger-ink' : 'text-ink-muted'}`}>{formatAdjustmentPct(r.adjustmentPct)}</span>
                         {r.hasAdjFlag && <span className="h-1.5 w-1.5 rounded-full bg-danger" aria-hidden="true" />}
                       </div>
                       <p className="font-mono text-[8px] text-ink-muted uppercase mt-0.5">{r.hasAdjFlag ? 'with BM' : r.adjustmentPct ? 'confirmed' : 'at full'}</p>

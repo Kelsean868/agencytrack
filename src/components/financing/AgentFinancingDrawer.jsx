@@ -12,7 +12,7 @@
 // assembled row carries them, so the drawer is pure presentation.
 import React, { useEffect, useRef } from 'react';
 import { X, Lock, MessageSquare, Flag } from 'lucide-react';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatAdjustmentPct, initials } from '../../utils/formatters';
 import { deriveBasisSource } from '../../services/financingService';
 import FinancingStatusBadge from '../manager/FinancingStatusBadge';
 import FinancingBasisBadge from '../manager/FinancingBasisBadge';
@@ -23,22 +23,6 @@ function monthKeyLabel(key) {
   const [y, m] = key.split('_').map(Number);
   if (!Number.isFinite(y) || !Number.isFinite(m) || m < 1 || m > 12) return key;
   return `${MONTH_NAMES[m - 1]} ${y}`;
-}
-
-// adjustmentPct > 0 is a cut BELOW the amount in effect (shown −X%); < 0 is above
-// (shown +X%). Sign is derived from the magnitude so a value never double-signs.
-function adjustmentLabel(frac) {
-  if (frac == null || Number.isNaN(frac)) return '—';
-  const pct = Math.round(Math.abs(frac) * 100);
-  if (frac > 0) return `−${pct}%`;
-  if (frac < 0) return `+${pct}%`;
-  return '0%';
-}
-
-function initials(name) {
-  return String(name ?? '')
-    .split(/\s+/).filter(Boolean).slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '').join('') || '—';
 }
 
 function Calc({ label, value, testId }) {
@@ -66,7 +50,7 @@ export default function AgentFinancingDrawer({ row, onClose, onCoach }) {
   // The confirmed-draw month carries the proration calc (actual/validating) + the
   // stored basis. Fall back to a render-derived basis if the stored one is absent.
   const drawMonth = row.confirmedDrawMonth
-    ? row.ledger.find((r) => r.month === row.confirmedDrawMonth)
+    ? row.ledger?.find((r) => r.month === row.confirmedDrawMonth)
     : null;
   const actualAPI = drawMonth?.actualAPI;
   const validatingAPI = drawMonth?.validatingAPI;
@@ -119,9 +103,9 @@ export default function AgentFinancingDrawer({ row, onClose, onCoach }) {
               <>
                 {/* Proration calc */}
                 <div className="flex items-stretch gap-2" data-testid="unit-financing-drawer-calc">
-                  <Calc label="Actual API" value={formatCurrency(actualAPI)} testId="ufd-actual-api" />
+                  <Calc label="Actual API" value={actualAPI != null ? formatCurrency(actualAPI) : '—'} testId="ufd-actual-api" />
                   <div className="flex items-center text-ink-muted">÷</div>
-                  <Calc label="Validating" value={formatCurrency(validatingAPI)} testId="ufd-validating-api" />
+                  <Calc label="Validating" value={validatingAPI != null ? formatCurrency(validatingAPI) : '—'} testId="ufd-validating-api" />
                   <div className="flex items-center text-ink-muted">=</div>
                   <Calc
                     label="Proration"
@@ -162,7 +146,7 @@ export default function AgentFinancingDrawer({ row, onClose, onCoach }) {
                     ].join(' ')}
                     data-testid="ufd-adjustment-pct"
                   >
-                    {adjustmentLabel(row.adjustmentPct)}
+                    {formatAdjustmentPct(row.adjustmentPct)}
                   </span>
                 </div>
 
