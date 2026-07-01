@@ -117,6 +117,11 @@ const PRODUCING_MANAGER_NAV = [
   // Track K · K1 — financing terms setup. BM-and-up only (unit_manager excluded
   // per contract 5.3) via the existing per-item roles gate.
   { id: 'financing',             label: 'Financing',      tabId: 'financing',             Icon: Banknote, roles: ['branch_manager'] },
+  // Track K · K10a — Unit Financing (UM view + coach, read-only). UM-ONLY: a
+  // SEPARATE tabId from the BM `financing` tab, never a reuse. Gated to
+  // unit_manager because getTenantUsers only UNIT-scopes for a UM (a BM would get
+  // a branch-wide list mislabeled "unit").
+  { id: 'unit-financing',        label: 'Unit Financing', tabId: 'unit-financing',        Icon: Banknote, roles: ['unit_manager'] },
   { id: 'policy-reconciliation', label: 'Reconciliation', tabId: 'policy-reconciliation', Icon: ClipboardCheck },
   { id: 'agent-of-month',        label: 'Agent of Month', tabId: 'agent-of-month',        Icon: Trophy,       roles: ['branch_manager'] },
   { id: 'kiosk',                 label: 'Kiosk Mode',     tabId: 'kiosk',                 Icon: Tv,           roles: ['branch_manager'] },
@@ -252,7 +257,7 @@ const WORKSPACE_TEAM_SECTIONS = [
   { label: 'My Team', ids: [
     'overview', 'team', 'mastersheet', 'team-wars', 'monthly-recruiting', 'goals',
     'persistency', 'compliance', 'campaigns', 'production-report', 'awards',
-    'team-perf', 'settlements', 'financing', 'policy-reconciliation', 'agent-of-month', 'kiosk',
+    'team-perf', 'settlements', 'financing', 'unit-financing', 'policy-reconciliation', 'agent-of-month', 'kiosk',
   ] },
 ];
 const WORKSPACE_RECOGNITION_IDS = ['leaderboard'];

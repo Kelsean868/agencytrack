@@ -55,3 +55,21 @@ export const formatDateFriendly = (isoString) => {
     weekday: 'short', day: 'numeric', month: 'short', year: 'numeric',
   });
 };
+
+// Signed financing-adjustment label. adjustmentPct > 0 is a cut BELOW the amount
+// in effect (shown −X%); < 0 is above (+X%); 0 is "0%". Sign is derived from the
+// magnitude so a value never double-signs (e.g. "−-13%"). Shared by the Track K
+// unit-financing roster + read-only drawer.
+export const formatAdjustmentPct = (frac) => {
+  if (frac == null || Number.isNaN(frac)) return '—';
+  const pct = Math.round(Math.abs(frac) * 100);
+  if (frac > 0) return `−${pct}%`;
+  if (frac < 0) return `+${pct}%`;
+  return '0%';
+};
+
+// Up-to-two-letter uppercase initials for an avatar chip; '—' when empty.
+export const initials = (name) =>
+  String(name ?? '')
+    .split(/\s+/).filter(Boolean).slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '').join('') || '—';
