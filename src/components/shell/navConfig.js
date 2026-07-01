@@ -63,6 +63,10 @@ const AGENT_NAV = [
   { id: 'commission',        label: 'Commission',        tabId: 'commission',             Icon: Zap,         sectionLabel: 'Tools', testId: 'agent-tab-commission' },
   { id: 'persistency',       label: 'Persistency',       tabId: 'persistency',            Icon: Repeat,      testId: 'agent-tab-persistency' },
   { id: 'policy-ledger',     label: 'Policy Ledger',     tabId: 'policy-ledger',          Icon: BookOpen,    testId: 'agent-tab-policy-ledger' },
+  // Track K · K9 — read-only financing self-view. Always present; the component
+  // renders a neutral "not on financing" empty state for non-financed agents
+  // (financed = financingTerms doc exists + status past not_on_financing).
+  { id: 'financing',         label: 'Financing',         tabId: 'financing',              Icon: Banknote,    testId: 'agent-tab-financing' },
   { id: 'prospect-info',     label: 'Prospect Prep',     tabId: 'prospect-info',          Icon: Search,      testId: 'agent-tab-prospect-info' },
   { id: 'production-report', label: 'Production Report', tabId: 'production-report',      Icon: BarChart2,   testId: 'agent-tab-production-report' },
   // Recognition
@@ -87,6 +91,10 @@ const PRODUCING_MANAGER_NAV = [
   { id: 'mp-policies',           label: 'Policy Ledger',  tabId: 'mp-policies',           Icon: BookOpen },
   { id: 'my-war',                label: 'My WAR',         tabId: 'my-war',                Icon: ClipboardList },
   { id: 'mp-history',            label: 'History',        tabId: 'mp-history',            Icon: History },
+  // Track K · K9 — financed-UM own financing self-view (agent-style, scoped to the
+  // UM's own uid). Own-half of the composite; the unit-management half is K10.
+  // No `roles` → both UM+BM producing managers see it (either may be financed).
+  { id: 'mp-financing',          label: 'Financing',      tabId: 'mp-financing',          Icon: Banknote,     testId: 'mp-tab-financing' },
   // Planning
   { id: 'mp-game-plan',          label: 'Game Plan',      tabId: 'mp-game-plan',          Icon: BarChart2,    sectionLabel: 'Planning' },
   { id: 'mp-money-needs',        label: 'Money Needs',    tabId: 'mp-money-needs',        Icon: Wallet,       child: true },
@@ -237,7 +245,7 @@ export function getPinnedSeed(configKey) {
 // Invariant: My Work ∪ My Team ∪ Recognition destinations == the pinned-layout
 // producingManager destinations, per role (enforced by unit test).
 const WORKSPACE_WORK_SECTIONS = [
-  { label: 'My Production', ids: ['mp-report', 'mp-commission', 'mp-policies', 'my-war', 'mp-history'] },
+  { label: 'My Production', ids: ['mp-report', 'mp-commission', 'mp-policies', 'my-war', 'mp-history', 'mp-financing'] },
   { label: 'Planning',      ids: ['mp-game-plan', 'mp-money-needs', 'mp-goals', 'planner'] },
 ];
 const WORKSPACE_TEAM_SECTIONS = [

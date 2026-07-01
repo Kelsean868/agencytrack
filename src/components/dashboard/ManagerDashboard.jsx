@@ -61,6 +61,7 @@ import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
 import { useMyProduction } from '../../hooks/useMyProduction';
+import FinancingSelfView from '../financing/FinancingSelfView';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -135,7 +136,7 @@ const BOTTOM_NAV_PRODUCING = [
   { id: 'profile',     label: 'Profile',   tabId: 'profile',     Icon: UserCircle    },
 ];
 
-const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies']);
+const MP_TABS = new Set(['mp-report', 'mp-goals', 'mp-game-plan', 'mp-money-needs', 'mp-history', 'mp-commission', 'mp-policies', 'mp-financing']);
 
 export default function ManagerDashboard() {
   const { user, userProfile, role, tenantId } = useAuth();
@@ -582,6 +583,10 @@ export default function ManagerDashboard() {
         )}
 
         {activeTab === 'mp-policies' && <PolicyLedgerPanel key={ptrRevision} />}
+
+        {/* Track K · K9 — financed-UM own financing self-view (agent-style, own uid).
+            The unit-management half is K10 and is NOT mounted here. */}
+        {activeTab === 'mp-financing' && <FinancingSelfView tenantId={tenantId} subjectUid={user?.uid} />}
 
         {/* Quick-Add FAB (desktop pencil) — shown on any My Production tab
             when in daily/hybrid mode. Hides on mobile (<768px) via DailyFAB.

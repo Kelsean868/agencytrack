@@ -54,6 +54,7 @@ import GapAnalysisPanel from '../goals/GapAnalysisPanel';
 import DerivedIncomePanel from '../goals/DerivedIncomePanel';
 import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
+import FinancingSelfView from '../financing/FinancingSelfView';
 
 // Agent sidebar nav is centralized in shell/navConfig.js (Nav redesign PR-1) —
 // resolved per-render via getNavConfig('agent', { showDailyCapture }) so the
@@ -792,6 +793,9 @@ export default function AgentDashboard() {
 
       {/* ── PRODUCTION REPORT TAB ── */}
       {activeTab === 'production-report' && <ProductionReportTab userRole={role} />}
+
+      {/* ── FINANCING SELF-VIEW TAB (Track K · K9 — read-only, own uid) ── */}
+      {activeTab === 'financing' && <FinancingSelfView tenantId={tenantId} subjectUid={user?.uid} />}
 
       {/* ── LEADERBOARD TAB (Track J P6 — production-based, nav-driven) ── */}
       {activeTab === 'production-leaderboard' && <ProductionLeaderboardSurface key={ptrRevision} />}
