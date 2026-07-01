@@ -41,6 +41,19 @@ import FinancingStatusBadge from '../manager/FinancingStatusBadge';
 // extra read when it could return something). on_financing has no recon yet.
 const RECONCILED_STATUSES = ['reconciling', 'post_financing_repayment', 'cleared'];
 
+// A Firestore Timestamp → "YYYY-MM-DD", guarded against a malformed/invalid value
+// (a bad toDate() would otherwise throw on .toISOString()). Returns '' on any fault.
+function tsToDateStr(ts) {
+  try {
+    if (!ts || typeof ts.toDate !== 'function') return '';
+    const d = ts.toDate();
+    if (!(d instanceof Date) || Number.isNaN(d.getTime())) return '';
+    return d.toISOString().slice(0, 10);
+  } catch {
+    return '';
+  }
+}
+
 // "YYYY_MM" → "May 2026" for a stored ledger month key.
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 function monthKeyLabel(key) {
@@ -168,7 +181,10 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
   const [state, setState] = useState({ status: 'loading' });
 
   useEffect(() => {
-    if (!tenantId || !subjectUid) { setState({ status: 'empty' }); return; }
+    // Auth/tenant context may resolve a tick after mount — stay in the loading
+    // state until both ids are present rather than flashing the empty state
+    // (Gemini review). The parent always supplies them once auth resolves.
+    if (!tenantId || !subjectUid) return;
     let active = true;
 
     (async () => {
@@ -180,19 +196,22 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
           return;
         }
 
-        const [ledger, projected] = await Promise.all([
+        // Reconciliation record — only when the status implies one exists. The
+        // candidate-year reads run in parallel (Gemini review); pick the first
+        // non-null in year order.
+        const reconPromise = RECONCILED_STATUSES.includes(terms.financingStatus)
+          ? Promise.all(
+              reconCandidateYears(terms.effectiveDate).map((y) =>
+                getFinancingReconciliation(tenantId, subjectUid, y).catch(() => null),
+              ),
+            ).then((recs) => recs.find(Boolean) ?? null)
+          : Promise.resolve(null);
+
+        const [ledger, projected, recon] = await Promise.all([
           listFinancingMonths(tenantId, subjectUid),
           getProjectedBonus(tenantId, subjectUid).catch(() => null),
+          reconPromise,
         ]);
-
-        // Reconciliation record — only when the status implies one exists.
-        let recon = null;
-        if (RECONCILED_STATUSES.includes(terms.financingStatus)) {
-          for (const y of reconCandidateYears(terms.effectiveDate)) {
-            const r = await getFinancingReconciliation(tenantId, subjectUid, y);
-            if (r) { recon = r; break; }
-          }
-        }
 
         const serviceMonths = terms.effectiveDate ? computeMonthsFromDate(terms.effectiveDate) : 0;
         const clocks = computeWindDownClocks({
@@ -306,7 +325,7 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
               <thead>
                 <tr className="bg-card-raised">
                   {['Month', 'Financing paid', 'Net commission', 'Bonus offset', 'Validating API', 'Actual API', 'Your draw', 'Basis', 'Running balance'].map((h) => (
-                    <th key={h} className="text-left py-2 px-3 font-mono text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-border">
+                    <th key={h} className={`${h === 'Running balance' ? 'text-right' : 'text-left'} py-2 px-3 font-mono text-[10px] font-bold uppercase tracking-wider text-ink-muted border-b border-border`}>
                       {h}
                     </th>
                   ))}
@@ -387,7 +406,7 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
               <li key={i} className="flex items-center gap-2 text-sm text-ink-muted" data-testid="fsv-status-entry">
                 <FinancingStatusBadge status={entry.to} />
                 <span className="font-mono text-[10px] text-ink-muted">
-                  {entry.at?.toDate ? formatDateDisplay(entry.at.toDate().toISOString().slice(0, 10)) : ''}
+                  {formatDateDisplay(tsToDateStr(entry.at))}
                 </span>
               </li>
             ))}

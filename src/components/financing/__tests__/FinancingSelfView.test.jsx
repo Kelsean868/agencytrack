@@ -137,17 +137,63 @@ describe('FinancingSelfView — PRIVATE absence (falsifier)', () => {
   });
 
   it('never renders adjustmentPct, suggestedFinancing, notes, or audit attribution', async () => {
-    render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+    const { container } = render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
     await screen.findByTestId('fsv-current-monthly');
+    const html = container.innerHTML;
     // suggestedFinancing 3333 (distinct from take-home 3,750)
     expect(screen.queryByText(/3,333/)).not.toBeInTheDocument();
+    expect(html).not.toMatch(/3333|3,333/);
     // adjustmentPct — the clause-5.3 trigger ratio, in any rendered form
     expect(screen.queryByText(/6\.67|0\.0667|6\.7%/)).not.toBeInTheDocument();
+    expect(html).not.toMatch(/0\.0667|6\.67/);
     // manager statement notes
     expect(screen.queryByText(/internal statement note/i)).not.toBeInTheDocument();
+    expect(html).not.toMatch(/internal statement note/i);
     // audit attribution (statusHistory byName + ledger enteredByName)
     expect(screen.queryByText(/Jane Manager/)).not.toBeInTheDocument();
-    // suppressed status-history note
+    expect(html).not.toMatch(/Jane Manager/);
+    // suppressed status-history note — also guard non-text surfaces (attrs)
     expect(screen.queryByText(/secret manager note/i)).not.toBeInTheDocument();
+    expect(html).not.toMatch(/secret manager note/i);
+  });
+});
+
+describe('FinancingSelfView — reconciliation SHOWN path', () => {
+  const RECON = {
+    id: `${UID}_2026`,
+    agentId: UID,
+    tenantId: TENANT,
+    year: 2026,
+    totalFinancingDrawn: 9000,
+    totalOffsets: 1800,
+    closingBalance: 7200,
+    waiverApplied: 1800,
+    serviceMet: false,
+    serviceMonths: 6,
+    reconciledPosition: 7200,
+    outcome: 'owing',
+    surplusPaid: 0,
+    garnishStarted: true,
+    triggeredBy: 'auto_month12',
+    // PRIVATE audit that must NOT render
+    reconciledByName: 'Jane Manager',
+  };
+
+  beforeEach(() => {
+    // post_financing_repayment ∈ RECONCILED_STATUSES → the view fetches recon.
+    financingService.getFinancingTerms.mockResolvedValue({ ...TERMS, financingStatus: 'post_financing_repayment' });
+    financingService.listFinancingMonths.mockResolvedValue(LEDGER);
+    financingService.getFinancingReconciliation.mockResolvedValue(RECON);
+    getProjectedBonus.mockResolvedValue({ ...PROJECTED, financingStatus: 'post_financing_repayment' });
+  });
+
+  it('renders reconciliation SHOWN figures and suppresses recon audit', async () => {
+    const { container } = render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+    expect((await screen.findByTestId('fsv-recon-closing')).textContent).toMatch(/7,200/);
+    expect(screen.getByTestId('fsv-recon-drawn').textContent).toMatch(/9,000/);
+    expect(screen.getByTestId('fsv-recon-waiver').textContent).toMatch(/1,800/);
+    expect(screen.getByTestId('fsv-recon-outcome')).toBeInTheDocument();
+    // recon audit attribution must not leak
+    expect(container.innerHTML).not.toMatch(/Jane Manager/);
   });
 });

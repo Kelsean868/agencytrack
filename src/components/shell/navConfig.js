@@ -94,7 +94,7 @@ const PRODUCING_MANAGER_NAV = [
   // Track K · K9 — financed-UM own financing self-view (agent-style, scoped to the
   // UM's own uid). Own-half of the composite; the unit-management half is K10.
   // No `roles` → both UM+BM producing managers see it (either may be financed).
-  { id: 'mp-financing',          label: 'Financing',      tabId: 'mp-financing',          Icon: Banknote },
+  { id: 'mp-financing',          label: 'Financing',      tabId: 'mp-financing',          Icon: Banknote,     testId: 'mp-tab-financing' },
   // Planning
   { id: 'mp-game-plan',          label: 'Game Plan',      tabId: 'mp-game-plan',          Icon: BarChart2,    sectionLabel: 'Planning' },
   { id: 'mp-money-needs',        label: 'Money Needs',    tabId: 'mp-money-needs',        Icon: Wallet,       child: true },

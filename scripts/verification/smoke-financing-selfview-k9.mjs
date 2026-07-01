@@ -198,8 +198,8 @@ async function runUM(browser) {
     pass('um-login', 'unit manager signed in');
   } catch (e) { fail('um-login', e.message); formatCaptureReport(cap); await ctx.close(); return; }
 
-  const tab = page.locator('[data-testid="nav-mp-financing"]');
-  if (!(await vis(tab, 10000))) { fail('um-financing-nav', 'nav-mp-financing not present (My Production)'); formatCaptureReport(cap); await ctx.close(); return; }
+  const tab = page.locator('[data-testid="mp-tab-financing"]');
+  if (!(await vis(tab, 10000))) { fail('um-financing-nav', 'mp-tab-financing not present (My Production)'); formatCaptureReport(cap); await ctx.close(); return; }
   await tab.click();
   await waitReady(page);
   await assertSubject(page, 'um');
