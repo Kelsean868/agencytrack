@@ -62,6 +62,7 @@ import AwardsReachPanel from '../goals/AwardsReachPanel';
 import MdrtTracker from '../goals/MdrtTracker';
 import { useMyProduction } from '../../hooks/useMyProduction';
 import FinancingSelfView from '../financing/FinancingSelfView';
+import UnitFinancingRoster from '../financing/UnitFinancingRoster';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -488,6 +489,11 @@ export default function ManagerDashboard() {
         {activeTab === 'settlements' && <SettlementPanel />}
 
         {activeTab === 'financing' && <FinancingTab />}
+
+        {/* Track K · K10a — UM-only unit financing roster (distinct from the BM
+            `financing` tab). Nav gates it to unit_manager; the component guards
+            the role defensively (getTenantUsers only unit-scopes for a UM). */}
+        {activeTab === 'unit-financing' && <UnitFinancingRoster tenantId={tenantId} />}
 
         {activeTab === 'policy-reconciliation' && <PolicyReconciliationPanel />}
 
