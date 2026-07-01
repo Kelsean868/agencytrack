@@ -200,14 +200,20 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
 
         // Reconciliation record — only when the status implies one exists. The
         // candidate-year reads run in parallel (Gemini); pick the first non-null in
-        // year order. A missing year resolves to null WITHOUT rejecting (getDoc on a
-        // non-existent doc), so we do NOT swallow rejections here — a genuine
-        // permission/network error bubbles to the catch and surfaces the error state
-        // rather than silently hiding reconciliation (CodeRabbit).
+        // year order. Per-year .catch(() => null) is LOAD-BEARING, not defensive
+        // noise: the financingReconciliation `allow get` rule keys the agent arm on
+        // canAccessOwn(tenantId, resource.data.agentId), and for an ABSENT year the
+        // doc's resource is null → resource.data.agentId is null → the agent arm
+        // cannot match → Firestore returns PERMISSION-DENIED (not a clean not-found)
+        // for a subject-agent probing a year with no record. Managers pass via
+        // canManage, but agents MUST tolerate the denial on absent years. Removing
+        // this catch surfaces a false error state for every financed agent (caught by
+        // the K9 subject-signed-in smoke — CodeRabbit suggested removing it; the rules
+        // model requires it).
         const reconPromise = RECONCILED_STATUSES.includes(terms.financingStatus)
           ? Promise.all(
               reconCandidateYears(terms.effectiveDate).map((y) =>
-                getFinancingReconciliation(tenantId, subjectUid, y),
+                getFinancingReconciliation(tenantId, subjectUid, y).catch(() => null),
               ),
             ).then((recs) => recs.find(Boolean) ?? null)
           : Promise.resolve(null);
