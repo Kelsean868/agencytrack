@@ -292,7 +292,16 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
         {ledger.length === 0 ? (
           <p className="text-sm text-ink-muted">No monthly statements entered yet.</p>
         ) : (
-          <div className="overflow-x-auto">
+          // WCAG scrollable-region-focusable: a horizontally-scrollable region must be
+          // keyboard-focusable. role="region" + tabIndex 0 is the canonical fix; the
+          // jsx-a11y rule is a known false-positive for this exact pattern.
+          <div
+            className="overflow-x-auto"
+            role="region"
+            aria-label="Monthly statements (scroll horizontally to see all columns)"
+            // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex
+            tabIndex={0}
+          >
             <table className="w-full text-sm border-separate border-spacing-0 whitespace-nowrap">
               <thead>
                 <tr className="bg-card-raised">
