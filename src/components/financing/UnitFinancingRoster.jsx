@@ -167,7 +167,7 @@ export default function UnitFinancingRoster({ tenantId }) {
   // render switch itself is not role-gated, so guard here.
   if (role && role !== 'unit_manager') {
     return (
-      <div className="card text-center py-10" data-testid="unit-financing-roster">
+      <div className="card text-center py-10" data-testid="unit-financing-roster" data-loading="false">
         <p className="text-sm text-ink-muted">Unit Financing is the Unit Manager's view of their own unit. Branch Managers use the full Financing tab.</p>
       </div>
     );
@@ -175,7 +175,7 @@ export default function UnitFinancingRoster({ tenantId }) {
 
   if (state.status === 'loading') {
     return (
-      <div className="flex flex-col gap-4" data-testid="unit-financing-roster">
+      <div className="flex flex-col gap-4" data-testid="unit-financing-roster" data-loading="true">
         <div className="h-8 w-48 rounded-lg bg-border/40 animate-pulse" />
         <div className="h-16 rounded-xl bg-border/30 animate-pulse" />
         <div className="h-40 rounded-xl bg-border/30 animate-pulse" />
@@ -185,7 +185,7 @@ export default function UnitFinancingRoster({ tenantId }) {
 
   if (state.status === 'error') {
     return (
-      <div className="flex flex-col gap-4" data-testid="unit-financing-roster">
+      <div className="flex flex-col gap-4" data-testid="unit-financing-roster" data-loading="false">
         <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger-ink text-sm flex items-center justify-between gap-3 flex-wrap">
           <span>We couldn't load your unit's financing right now. Nothing is shown rather than a partial picture.</span>
           <button
@@ -203,7 +203,7 @@ export default function UnitFinancingRoster({ tenantId }) {
 
   if (state.status === 'empty') {
     return (
-      <div className="flex flex-col gap-4" data-testid="unit-financing-roster">
+      <div className="flex flex-col gap-4" data-testid="unit-financing-roster" data-loading="false">
         <Topbar />
         <div className="p-8 rounded-xl border border-border bg-card-raised text-center" data-testid="unit-financing-empty">
           <p className="text-ink font-semibold mb-1">No agents on financing in your unit.</p>
@@ -218,7 +218,7 @@ export default function UnitFinancingRoster({ tenantId }) {
   const flagRows = rows.filter((r) => r.hasAdjFlag);
 
   return (
-    <div className="flex flex-col gap-5" data-testid="unit-financing-roster">
+    <div className="flex flex-col gap-5" data-testid="unit-financing-roster" data-loading="false">
       <Topbar />
 
       {/* Partial-read notice — resolved rows only, no aggregates */}
