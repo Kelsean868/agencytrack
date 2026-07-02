@@ -182,6 +182,17 @@ async function gotoAgentFinancing(page) {
   return true;
 }
 
+// FIX 3 (FU financing-display-polish) observable win: the K9 view now performs ONE
+// reconciliation read for the derived year (latest ledger month's year) instead of
+// probing candidate years — so a financed-subject load must no longer emit ANY
+// permission-denied console noise. Asserted per leg against the console capture.
+function assertNoPermDeniedConsole(cap, tag) {
+  const noise = cap.consoleMessages.filter((m) => /permission.?denied|insufficient permissions/i.test(m.text));
+  noise.length === 0
+    ? pass(`no-perm-denied-console[${tag}]`, 'no permission-denied console noise on the financed-subject load (FIX 3)')
+    : fail(`no-perm-denied-console[${tag}]`, noise.map((m) => m.text.slice(0, 140)).join(' | '));
+}
+
 // One agent leg per theme, each in its OWN context primed BEFORE the first
 // navigation (apply-before-nav) — the robust shape (mirrors runUM and the proven
 // per-theme-context pattern). No mid-page reload: the init script is in place when
@@ -210,6 +221,7 @@ async function runAgentTheme(browser, theme) {
   } catch (e) {
     fail(`agent-theme[${theme}]`, e.message);
   } finally {
+    assertNoPermDeniedConsole(cap, `agent-${theme}`);
     formatCaptureReport(cap);
     await ctx.close();
   }
@@ -246,6 +258,7 @@ async function runUM(browser) {
   } catch (e) {
     fail('um-theme', e.message);
   } finally {
+    assertNoPermDeniedConsole(cap, 'um-dark');
     formatCaptureReport(cap);
     await ctx.close();
   }

@@ -35,6 +35,8 @@ vi.mock('../../manager/CoachingNotesModal', () => ({
 }));
 
 import UnitFinancingRoster from '../UnitFinancingRoster';
+import { financingMonthIndex } from '../../../services/financingService';
+import { computeMonthsFromDate, monthKeyFromDate, getTodayTT } from '../../../utils/dateInputs';
 
 // Confirmed-basis ledger month.
 const confirmed = (month, f = {}) => ({ month, basisSource: 'settled-confirmed', ...f });
@@ -201,5 +203,51 @@ describe('UnitFinancingRoster', () => {
     // Value-level: assert the actual basis, not just badge presence — catches a
     // regression to the wrong basisSource fallback.
     expect(screen.getByTestId('financing-basis-badge')).toHaveAttribute('data-basis', 'settled-confirmed');
+  });
+
+  // ── FIX 2 (FU financing-display-polish): 1-based draw-month chip ────────────
+  // The shipped convention (financingService.financingMonthIndex + the recon
+  // panel's "effectiveDate-month + 11 = ledger month 12" math) is 1-BASED: the
+  // effectiveDate's own calendar month is month 1. computeMonthsFromDate returns
+  // whole months ELAPSED (0 during the first month), so the roster chip must
+  // render elapsed + 1 — not the raw elapsed count.
+  describe('1-based draw-month chip (roster == shipped MONTH-n convention)', () => {
+    const pad = (n) => String(n).padStart(2, '0');
+    // First-of-month effectiveDate N calendar months back (same shape as the
+    // K10a seed). Day-01 keeps computeMonthsFromDate's day-aware decrement inert,
+    // so elapsed === whole calendar-month diff regardless of today's date.
+    const effMonthsBack = (n) => {
+      const now = new Date();
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - n, 1));
+      return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-01`;
+    };
+
+    it('renders the SAME month N as the shipped 1-based convention for the same effectiveDate', async () => {
+      const eff = effMonthsBack(6); // K10a-seed shape → 6 elapsed → 1-based month 7
+      const expected = financingMonthIndex(eff, monthKeyFromDate(getTodayTT()));
+      expect(expected).toBe(7);
+      // convention cross-check: chip index === elapsed + 1 for a day-01 date
+      expect(computeMonthsFromDate(eff) + 1).toBe(expected);
+      mockUnit([MISS_AGENT], { a1: MISS_LEDGER }, { a1: TERMS({ effectiveDate: eff }) });
+      render(<UnitFinancingRoster tenantId="t1" />);
+      const chip = await screen.findByTestId('unit-financing-term-a1');
+      expect(chip).toHaveTextContent(`Fin. month ${expected} / 12`);
+    });
+
+    it('shows "Fin. month 1 / 12" during the effectiveDate month itself (never month 0)', async () => {
+      const eff = effMonthsBack(0);
+      mockUnit([MISS_AGENT], { a1: MISS_LEDGER }, { a1: TERMS({ effectiveDate: eff }) });
+      render(<UnitFinancingRoster tenantId="t1" />);
+      const chip = await screen.findByTestId('unit-financing-term-a1');
+      expect(chip).toHaveTextContent('Fin. month 1 / 12');
+    });
+
+    it('clamps at the 12-month draw window', async () => {
+      const eff = effMonthsBack(20);
+      mockUnit([MISS_AGENT], { a1: MISS_LEDGER }, { a1: TERMS({ effectiveDate: eff }) });
+      render(<UnitFinancingRoster tenantId="t1" />);
+      const chip = await screen.findByTestId('unit-financing-term-a1');
+      expect(chip).toHaveTextContent('Fin. month 12 / 12');
+    });
   });
 });

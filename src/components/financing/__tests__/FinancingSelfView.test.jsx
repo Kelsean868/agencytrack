@@ -11,6 +11,7 @@ import { render, screen } from '@testing-library/react';
 import FinancingSelfView from '../FinancingSelfView';
 import * as financingService from '../../../services/financingService';
 import { getProjectedBonus } from '../../../lib/financingProjectedBonus';
+import { getTodayTT } from '../../../utils/dateInputs';
 
 // Keep the real labels / badge / deriveBasisSource; stub only the async reads.
 vi.mock('../../../services/financingService', async (importActual) => {
@@ -197,5 +198,63 @@ describe('FinancingSelfView — reconciliation SHOWN path', () => {
     // recon audit attribution + trigger metadata must not leak
     expect(container.innerHTML).not.toMatch(/Jane Manager/);
     expect(container.innerHTML).not.toMatch(/auto_month12/);
+  });
+});
+
+// ── FIX 3 (FU financing-display-polish): single derived recon year ────────────
+// The view no longer probes candidate years (which emitted benign permission-
+// denied console noise on every financed-subject load). It reads ONE year —
+// derived the same way FinancingReconciliationPanel derives it (the year of the
+// LATEST entered ledger month, else the current TT year — the same year
+// reconcileFinancing wrote the record under), tolerates ONLY the absent-doc
+// permission-denied as "no recon", and rethrows anything else.
+describe('FinancingSelfView — single derived reconciliation year', () => {
+  beforeEach(() => {
+    financingService.getFinancingTerms.mockResolvedValue({ ...TERMS, financingStatus: 'post_financing_repayment' });
+    financingService.listFinancingMonths.mockResolvedValue(LEDGER);
+    getProjectedBonus.mockResolvedValue({ ...PROJECTED, financingStatus: 'post_financing_repayment' });
+  });
+
+  it('reads exactly ONE reconciliation year, derived from the latest ledger month', async () => {
+    financingService.getFinancingReconciliation.mockResolvedValue(null);
+    render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+    await screen.findByTestId('fsv-current-monthly');
+    expect(financingService.getFinancingReconciliation).toHaveBeenCalledTimes(1);
+    // LEDGER's latest entered month is 2026_03 → year '2026'
+    expect(financingService.getFinancingReconciliation).toHaveBeenCalledWith(TENANT, UID, '2026');
+  });
+
+  it('falls back to the current TT year when no ledger months exist', async () => {
+    financingService.listFinancingMonths.mockResolvedValue([]);
+    financingService.getFinancingReconciliation.mockResolvedValue(null);
+    render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+    await screen.findByTestId('fsv-current-monthly');
+    expect(financingService.getFinancingReconciliation).toHaveBeenCalledTimes(1);
+    expect(financingService.getFinancingReconciliation).toHaveBeenCalledWith(TENANT, UID, getTodayTT().slice(0, 4));
+  });
+
+  it('tolerates the ABSENT-doc permission-denied as "no recon" (load-bearing — rules return permission-denied, not not-found, for a subject reading an absent year)', async () => {
+    const denied = Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' });
+    financingService.getFinancingReconciliation.mockRejectedValue(denied);
+    render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+    // View is READY (not error): SHOWN values render, recon card simply absent.
+    expect((await screen.findByTestId('fsv-current-monthly')).textContent).toMatch(/4,500/);
+    expect(screen.queryByTestId('fsv-recon')).not.toBeInTheDocument();
+    expect(screen.queryByText(/couldn't load your financing/i)).not.toBeInTheDocument();
+  });
+
+  it('REJECTS a non-permission failure — a genuine read error surfaces the error state instead of being swallowed as "no recon" (Rule 23 falsifier)', async () => {
+    const genuine = Object.assign(new Error('Failed to get document because the client is offline.'), { code: 'unavailable' });
+    financingService.getFinancingReconciliation.mockRejectedValue(genuine);
+    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
+      expect(await screen.findByText(/couldn't load your financing/i)).toBeInTheDocument();
+      expect(screen.queryByTestId('fsv-current-monthly')).not.toBeInTheDocument();
+      // the genuine error reached the outer catch (logged), not silently nulled
+      expect(errSpy).toHaveBeenCalled();
+    } finally {
+      errSpy.mockRestore();
+    }
   });
 });

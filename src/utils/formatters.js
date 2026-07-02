@@ -58,11 +58,13 @@ export const formatDateFriendly = (isoString) => {
 
 // Signed financing-adjustment label. adjustmentPct > 0 is a cut BELOW the amount
 // in effect (shown −X%); < 0 is above (+X%); 0 is "0%". Sign is derived from the
-// magnitude so a value never double-signs (e.g. "−-13%"). Shared by the Track K
-// unit-financing roster + read-only drawer.
+// magnitude so a value never double-signs (e.g. "−-13%"). A magnitude that ROUNDS
+// to zero renders the unsigned "0%" — never "−0%" / "+0%" (PR #769 Rule-21
+// backstop). Shared by the Track K unit-financing roster + read-only drawer.
 export const formatAdjustmentPct = (frac) => {
   if (frac == null || Number.isNaN(frac)) return '—';
   const pct = Math.round(Math.abs(frac) * 100);
+  if (pct === 0) return '0%';
   if (frac > 0) return `−${pct}%`;
   if (frac < 0) return `+${pct}%`;
   return '0%';

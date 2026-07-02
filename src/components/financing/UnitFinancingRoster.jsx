@@ -363,7 +363,14 @@ export default function UnitFinancingRoster({ tenantId }) {
             </thead>
             <tbody>
               {rows.map((r, idx) => {
-                const drawMonthIndex = r.effectiveDate ? Math.min(computeMonthsFromDate(r.effectiveDate), FINANCING_DRAW_MONTHS) : null;
+                // 1-BASED draw-month chip — the shipped MONTH-n convention
+                // (financingService.financingMonthIndex / reconMonthIndex:
+                // effectiveDate's own calendar month is month 1; the recon panel's
+                // trigger math reads "effectiveDate-month + 11 = ledger month 12").
+                // computeMonthsFromDate returns whole months ELAPSED (0 during the
+                // first month), so +1 converts to the 1-based index; clamped to the
+                // 12-month draw window.
+                const drawMonthIndex = r.effectiveDate ? Math.min(computeMonthsFromDate(r.effectiveDate) + 1, FINANCING_DRAW_MONTHS) : null;
                 const ceilPct = (r.ceiling && r.runningBalance != null && r.ceiling > 0)
                   ? Math.max(0, Math.min(100, Math.round((r.runningBalance / r.ceiling) * 100)))
                   : null;
@@ -380,7 +387,7 @@ export default function UnitFinancingRoster({ tenantId }) {
                       </div>
                     </td>
                     <td className="py-2.5 px-3 border-b border-border">
-                      <p className="font-mono text-[11px] text-ink-muted">{drawMonthIndex != null ? `Fin. month ${drawMonthIndex} / ${FINANCING_DRAW_MONTHS}` : '—'}</p>
+                      <p className="font-mono text-[11px] text-ink-muted" data-testid={`unit-financing-term-${r.agentId}`}>{drawMonthIndex != null ? `Fin. month ${drawMonthIndex} / ${FINANCING_DRAW_MONTHS}` : '—'}</p>
                       <div className="mt-1 flex items-center gap-2">
                         <MissDots count={r.missCount} />
                         <span className={`font-mono text-[10px] ${r.missSeverity === 'critical' ? 'text-danger-ink' : r.missSeverity === 'amber' ? 'text-warning-ink' : 'text-ink-muted'}`}>
