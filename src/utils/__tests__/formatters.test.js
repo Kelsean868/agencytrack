@@ -27,6 +27,13 @@ describe('formatAdjustmentPct', () => {
     expect(formatAdjustmentPct(NaN)).toBe('—');
   });
 
+  it('never renders NaN for a non-numeric string; numeric strings coerce (parseFloat idiom)', () => {
+    expect(formatAdjustmentPct('abc')).toBe('—');
+    expect(formatAdjustmentPct('')).toBe('—');
+    expect(formatAdjustmentPct('0.14')).toBe('−14%');
+    expect(formatAdjustmentPct('-0.14')).toBe('+14%');
+  });
+
   // THE -0% EDGE (reproduced first, per the kickoff brief Phase 0.1): an
   // adjustment that ROUNDS to zero must never display a signed zero.
   it('never renders a signed zero — a fraction that rounds to 0 displays "0%"', () => {

@@ -62,11 +62,13 @@ export const formatDateFriendly = (isoString) => {
 // to zero renders the unsigned "0%" — never "−0%" / "+0%" (PR #769 Rule-21
 // backstop). Shared by the Track K unit-financing roster + read-only drawer.
 export const formatAdjustmentPct = (frac) => {
-  if (frac == null || Number.isNaN(frac)) return '—';
-  const pct = Math.round(Math.abs(frac) * 100);
+  // parseFloat coercion (codebase idiom): Number.isNaN alone doesn't coerce, so a
+  // non-numeric string would otherwise slip past the guard and render "+NaN%".
+  const num = parseFloat(frac);
+  if (frac == null || Number.isNaN(num)) return '—';
+  const pct = Math.round(Math.abs(num) * 100);
   if (pct === 0) return '0%';
-  if (frac > 0) return `−${pct}%`;
-  return `+${pct}%`;
+  return num > 0 ? `−${pct}%` : `+${pct}%`;
 };
 
 // Up-to-two-letter uppercase initials for an avatar chip; '—' when empty.
