@@ -38,6 +38,7 @@ import {
   captureConsoleAndNetwork,
   formatCaptureReport,
   setTheme,
+  waitForTheme,
 } from './lib/walk-helpers.mjs';
 
 function loadEnv() {
@@ -164,27 +165,44 @@ async function axeScreen(page, tag) {
   } catch (e) { fail(`axe-${tag}`, e.message); }
 }
 
-async function runAgent(browser) {
+// Navigate to the agent Financing surface. Generous vis wait absorbs the agent
+// dashboard's heavier initial load.
+async function gotoAgentFinancing(page) {
+  const tab = page.locator('[data-testid="agent-tab-financing"]');
+  if (!(await vis(tab, 15000))) return false;
+  await tab.click();
+  await waitReady(page);
+  return true;
+}
+
+// One agent leg per theme, each in its OWN context primed BEFORE the first
+// navigation (apply-before-nav) — the robust shape (mirrors runUM and the proven
+// per-theme-context pattern). No mid-page reload: the init script is in place when
+// main.jsx reads localStorage at first paint, and waitForTheme asserts it took
+// effect before axe. Subject VALUE assertions (theme-independent) run once, on light.
+async function runAgentTheme(browser, theme) {
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await setupBypassSession(ctx, BASE_URL, BYPASS_TOKEN);
   const page = await ctx.newPage();
   const cap = captureConsoleAndNetwork(page);
+  await setTheme(ctx, theme);
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   try {
     await login(page, requireEnv('A11Y_AGENT_EMAIL'), requireEnv('A11Y_AGENT_PASSWORD'));
-    pass('agent-login', 'agent signed in');
-  } catch (e) { fail('agent-login', e.message); formatCaptureReport(cap); await ctx.close(); return; }
+    if (theme === 'light') pass('agent-login', 'agent signed in');
+  } catch (e) { fail(`agent-login[${theme}]`, e.message); formatCaptureReport(cap); await ctx.close(); return; }
 
-  const tab = page.locator('[data-testid="agent-tab-financing"]');
-  if (!(await vis(tab, 10000))) { fail('agent-financing-nav', 'agent-tab-financing not present'); formatCaptureReport(cap); await ctx.close(); return; }
-  await tab.click();
-  await waitReady(page);
-  await assertSubject(page, 'agent');
+  if (!(await gotoAgentFinancing(page))) { fail(`agent-financing-nav[${theme}]`, 'agent-tab-financing not present'); formatCaptureReport(cap); await ctx.close(); return; }
+  if (theme === 'light') await assertSubject(page, 'agent');
 
-  await setTheme(ctx, 'light'); await page.waitForTimeout(400); await axeScreen(page, 'agent-light');
-  await setTheme(ctx, 'dark');  await page.waitForTimeout(600); await axeScreen(page, 'agent-dark');
+  await waitForTheme(page, theme); await axeScreen(page, `agent-${theme}`);
   formatCaptureReport(cap);
   await ctx.close();
+}
+
+async function runAgent(browser) {
+  await runAgentTheme(browser, 'light');
+  await runAgentTheme(browser, 'dark');
 }
 
 async function runUM(browser) {
@@ -192,6 +210,8 @@ async function runUM(browser) {
   await setupBypassSession(ctx, BASE_URL, BYPASS_TOKEN);
   const page = await ctx.newPage();
   const cap = captureConsoleAndNetwork(page);
+  // UM runs a dark-only leg: prime dark BEFORE the first navigation.
+  await setTheme(ctx, 'dark');
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   try {
     await login(page, requireEnv('A11Y_UNIT_MANAGER_EMAIL'), requireEnv('A11Y_UNIT_MANAGER_PASSWORD'));
@@ -204,7 +224,7 @@ async function runUM(browser) {
   await waitReady(page);
   await assertSubject(page, 'um');
 
-  await setTheme(ctx, 'dark'); await page.waitForTimeout(600); await axeScreen(page, 'um-dark');
+  await waitForTheme(page, 'dark'); await axeScreen(page, 'um-dark');
   formatCaptureReport(cap);
   await ctx.close();
 }

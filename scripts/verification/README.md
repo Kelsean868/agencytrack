@@ -73,7 +73,9 @@ drift; consolidation is out of scope for FU-G.
 
 ## Shared helpers
 
-Screen-agnostic smoke primitives live in [`lib/walk-helpers.mjs`](lib/walk-helpers.mjs) — `setupBypassSession`, `resolvePreviewUrl` (use `SMOKE_PREVIEW_URL`), `setTheme` / `runBothThemes` (light+dark runner), `waitForLoaded` (`data-loading="false"` wait), plus the React-19 / overflow / console-capture helpers. Import these in new per-screen smokes instead of re-deriving the banked lessons (see `daily-capture-v2-smoke.mjs` for the canonical consumer).
+Screen-agnostic smoke primitives live in [`lib/walk-helpers.mjs`](lib/walk-helpers.mjs) — `setupBypassSession`, `resolvePreviewUrl` (use `SMOKE_PREVIEW_URL`), `setTheme` / `waitForTheme` / `runBothThemes` (light+dark runner), `waitForLoaded` (`data-loading="false"` wait), plus the React-19 / overflow / console-capture helpers. Import these in new per-screen smokes instead of re-deriving the banked lessons (see `daily-capture-v2-smoke.mjs` for the canonical consumer).
+
+**Theme invariant (dark-leg trust repair, banked from the FU smoke theme harness fix):** `setTheme` only registers a context-level `addInitScript` — it takes effect on the *next* navigation, not the current document. A `setTheme(...)` call placed AFTER `page.goto()` (or passed a boolean instead of the literal string `'light'`/`'dark'`) leaves the document on the default LIGHT theme while a "dark leg" axe/assertion silently runs against it. The invariant going forward: **theme is applied BEFORE the page navigates, AND asserted via `waitForTheme(page, theme)` immediately before any axe/assertion run.** `setTheme` now throws on a non-`'light'`/`'dark'` argument (catches the boolean-arg mistake at the source); `waitForTheme` throws if the DOM's `html.dark` class doesn't match the intended theme within the timeout (catches mis-ordering). A mis-ordered or mis-typed dark leg can no longer silently pass as light.
 
 ## Reusable patterns (banked from E2 development)
 

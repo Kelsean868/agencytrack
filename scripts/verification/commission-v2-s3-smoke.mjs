@@ -29,6 +29,7 @@ import {
   captureConsoleAndNetwork,
   formatCaptureReport,
   setTheme,
+  waitForTheme,
   safeLog,
   resolveSmokeBaseUrl,
   installGlobalTimeout,
@@ -386,8 +387,10 @@ async function runSmoke() {
   const lightCapture = captureConsoleAndNetwork(lightPage);
 
   try {
+    // Prime theme BEFORE nav (init scripts apply on the next navigation) with the
+    // literal 'light' string, not a boolean — the helper guard rejects a boolean.
+    await setTheme(lightCtx, 'light');
     await loginAsAgent(lightPage);
-    await setTheme(lightPage, false);
 
     await navigateToCommission(lightPage);
     const stripBeforeWrite = await waitForStripState(lightPage);
@@ -492,6 +495,7 @@ async function runSmoke() {
     }
 
     // Axe — light
+    await waitForTheme(lightPage, 'light'); // assert the applied theme before the axe scan
     const axeLight = await new AxeBuilder({ page: lightPage })
       .withTags(['wcag2a', 'wcag2aa']).analyze();
     const newSeriousLight = axeLight.violations.filter(
@@ -545,8 +549,11 @@ async function runSmoke() {
   const darkCapture = captureConsoleAndNetwork(darkPage);
 
   try {
+    // Prime theme BEFORE nav (init scripts apply on the next navigation) with the
+    // literal 'dark' string, not a boolean — a boolean silently booted LIGHT and the
+    // dark axe leg asserted the light DOM. The helper guard now rejects a boolean.
+    await setTheme(darkCtx, 'dark');
     await loginAsAgent(darkPage);
-    await setTheme(darkPage, true);
 
     await navigateToCommission(darkPage);
     await darkPage.waitForTimeout(2000);
@@ -563,6 +570,7 @@ async function runSmoke() {
     await darkPage.screenshot({ path: resolve(SS_DIR, 'dark-strip-restored.png'), fullPage: false });
 
     // Axe — dark
+    await waitForTheme(darkPage, 'dark'); // assert the applied theme before the axe scan
     const axeDark = await new AxeBuilder({ page: darkPage })
       .withTags(['wcag2a', 'wcag2aa']).analyze();
     const newSeriousDark = axeDark.violations.filter(
