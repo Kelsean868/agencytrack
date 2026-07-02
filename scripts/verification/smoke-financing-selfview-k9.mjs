@@ -196,15 +196,23 @@ async function runAgentTheme(browser, theme) {
   await page.goto(BASE_URL, { waitUntil: 'domcontentloaded' });
   try {
     await login(page, requireEnv('A11Y_AGENT_EMAIL'), requireEnv('A11Y_AGENT_PASSWORD'));
-    if (theme === 'light') pass('agent-login', 'agent signed in');
+    pass(`agent-login[${theme}]`, 'agent signed in');
   } catch (e) { fail(`agent-login[${theme}]`, e.message); formatCaptureReport(cap); await ctx.close(); return; }
 
   if (!(await gotoAgentFinancing(page))) { fail(`agent-financing-nav[${theme}]`, 'agent-tab-financing not present'); formatCaptureReport(cap); await ctx.close(); return; }
   if (theme === 'light') await assertSubject(page, 'agent');
 
-  await waitForTheme(page, theme); await axeScreen(page, `agent-${theme}`);
-  formatCaptureReport(cap);
-  await ctx.close();
+  // waitForTheme now throws loudly on mismatch/timeout — record it as a failed leg
+  // and still clean up + report, rather than leaking ctx and aborting remaining legs.
+  try {
+    await waitForTheme(page, theme);
+    await axeScreen(page, `agent-${theme}`);
+  } catch (e) {
+    fail(`agent-theme[${theme}]`, e.message);
+  } finally {
+    formatCaptureReport(cap);
+    await ctx.close();
+  }
 }
 
 async function runAgent(browser) {
@@ -231,9 +239,16 @@ async function runUM(browser) {
   await waitReady(page);
   await assertSubject(page, 'um');
 
-  await waitForTheme(page, 'dark'); await axeScreen(page, 'um-dark');
-  formatCaptureReport(cap);
-  await ctx.close();
+  // waitForTheme now throws loudly on mismatch/timeout — record + clean up gracefully.
+  try {
+    await waitForTheme(page, 'dark');
+    await axeScreen(page, 'um-dark');
+  } catch (e) {
+    fail('um-theme', e.message);
+  } finally {
+    formatCaptureReport(cap);
+    await ctx.close();
+  }
 }
 
 (async () => {
