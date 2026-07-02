@@ -258,12 +258,66 @@ export function finishSmoke(results, { clearTimeout: clear } = {}) {
  * @param {'light'|'dark'} theme
  */
 export async function setTheme(context, theme) {
+  // GUARD (dark-leg trust repair): reject anything that is not the literal
+  // 'light' / 'dark'. A boolean arg (e.g. setTheme(page, theme === 'dark')) can
+  // never equal the string 'dark' inside the init script, so it silently booted
+  // the app in LIGHT while the caller believed it was priming dark. Throw loudly
+  // instead of letting a "dark leg" quietly assert the light DOM.
+  if (theme !== 'light' && theme !== 'dark') {
+    throw new TypeError(
+      `setTheme: theme must be the string 'light' or 'dark', got ${JSON.stringify(theme)} `
+      + `(${typeof theme}). A boolean or mis-typed value silently boots the app in LIGHT.`,
+    );
+  }
   await context.addInitScript((t) => {
     try {
       if (t === 'dark') localStorage.setItem('agencytrack-dark', '1');
       else localStorage.removeItem('agencytrack-dark');
     } catch {}
   }, theme);
+}
+
+/**
+ * waitForTheme — asserts the app ACTUALLY booted (or switched) into the intended
+ * theme BEFORE any a11y/axe assertion runs. The durable half of the dark-leg
+ * trust repair.
+ *
+ * LESSON: setTheme only registers a context init script, so it applies on the
+ * NEXT navigation. A setTheme call placed AFTER page.goto() (or a boolean arg
+ * that never matched 'dark') left the document on the default LIGHT theme while
+ * the "dark leg" axe scan ran — silently asserting the light DOM. The invariant
+ * is now: theme is applied before nav AND asserted here before axe. A mis-ordered
+ * or mis-typed theme can no longer silently pass — this throws.
+ *
+ * Theme is the `dark` class on <html> (document.documentElement), set from
+ * localStorage['agencytrack-dark'] === '1' in main.jsx before first paint.
+ *
+ * @param {import('playwright').Page} page
+ * @param {'light'|'dark'} theme
+ * @param {number} [timeout=5000]
+ */
+export async function waitForTheme(page, theme, timeout = 5_000) {
+  if (theme !== 'light' && theme !== 'dark') {
+    throw new TypeError(`waitForTheme: theme must be 'light' or 'dark', got ${JSON.stringify(theme)} (${typeof theme}).`);
+  }
+  const wantDark = theme === 'dark';
+  try {
+    await page.waitForFunction(
+      (dark) => document.documentElement.classList.contains('dark') === dark,
+      wantDark,
+      { timeout },
+    );
+  } catch {
+    const actualDark = await page
+      .evaluate(() => document.documentElement.classList.contains('dark'))
+      .catch(() => 'unknown');
+    throw new Error(
+      `waitForTheme: expected the app in ${theme} mode (html.dark=${wantDark}) but the DOM `
+      + `read html.dark=${actualDark} after ${timeout}ms. The theme was not applied before this `
+      + `axe/assert run — ensure setTheme() ran BEFORE the page navigated (init scripts only take `
+      + `effect on the next navigation), or reload after priming.`,
+    );
+  }
 }
 
 /**

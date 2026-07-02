@@ -30,6 +30,7 @@ import {
   captureConsoleAndNetwork,
   formatCaptureReport,
   setTheme,
+  waitForTheme,
   safeLog,
   resolveSmokeBaseUrl,
   installGlobalTimeout,
@@ -138,8 +139,11 @@ async function runTheme(browser, theme, recompute) {
   const capture = captureConsoleAndNetwork(page);
 
   try {
+    // Prime theme BEFORE nav (init scripts apply on the next navigation) and pass
+    // the literal 'light'/'dark' string, not a boolean — the helper guard rejects a
+    // boolean, and a mis-ordered call would leave the dark leg asserting the light DOM.
+    await setTheme(context, theme);
     await loginAsAgent(page);
-    await setTheme(page, theme === 'dark');
 
     // ── LEG 1: TRIO CERTIFICATION ──────────────────────────────────────────
     // 1a. Goals tab
@@ -240,6 +244,7 @@ async function runTheme(browser, theme, recompute) {
     record(`${theme}-page-promotion-no-accordion`, noAccordion, noAccordion ? 'no accordion toggle inside CommissionPlayground (D4 promotion)' : 'WARNING: accordion button found inside CommissionPlayground');
 
     // ── LEG 4: AXE + console errors ───────────────────────────────────────
+    await waitForTheme(page, theme); // assert the applied theme before the axe scan
     const axeResults = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
     const seriousViolations = axeResults.violations.filter(
       (v) => v.impact === 'serious' || v.impact === 'critical'
