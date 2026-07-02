@@ -105,7 +105,9 @@ async function runTheme(browser, theme) {
     await loginAsAgent(page);
 
     await page.click('[data-testid="agent-tab-commission"]');
-    await page.waitForTimeout(3000);
+    // Wait deterministically for GoalDecomposition (default tab) to render rather
+    // than an arbitrary timeout — the save-goal button is a stable in-tab anchor.
+    await page.waitForSelector('[data-testid="commission-save-goal-btn"]', { state: 'visible', timeout: 15_000 });
     await waitForTheme(page, theme);           // assert the applied theme before axe
 
     // ── Leg DEFAULT ──────────────────────────────────────────────────────────
@@ -127,12 +129,13 @@ async function runTheme(browser, theme) {
     // which we never click).
     let dialogOpened = false;
     try {
-      await page.waitForSelector('#gdt-income-goal-ttd', { timeout: 8000 });
+      await page.waitForSelector('#gdt-income-goal-ttd', { state: 'visible', timeout: 8000 });
       await page.fill('#gdt-income-goal-ttd', '250000');
-      await page.waitForTimeout(500);
       await page.click('[data-testid="commission-save-goal-btn"]');
-      await page.waitForTimeout(600);
-      dialogOpened = await page.isVisible('[data-testid="commission-confirm-dialog"]');
+      // The dialog only renders when apiToWrite > 0, so waiting for it directly
+      // (Playwright auto-waits; no arbitrary timeout) also confirms the compute settled.
+      await page.waitForSelector('[data-testid="commission-confirm-dialog"]', { state: 'visible', timeout: 5000 });
+      dialogOpened = true;
     } catch (e) {
       safeLog(`[dialog] could not open confirm dialog: ${e.message}`);
     }
