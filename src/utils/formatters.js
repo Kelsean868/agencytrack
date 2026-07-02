@@ -66,8 +66,7 @@ export const formatAdjustmentPct = (frac) => {
   const pct = Math.round(Math.abs(frac) * 100);
   if (pct === 0) return '0%';
   if (frac > 0) return `−${pct}%`;
-  if (frac < 0) return `+${pct}%`;
-  return '0%';
+  return `+${pct}%`;
 };
 
 // Up-to-two-letter uppercase initials for an avatar chip; '—' when empty.

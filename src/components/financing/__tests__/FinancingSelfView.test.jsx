@@ -251,8 +251,9 @@ describe('FinancingSelfView — single derived reconciliation year', () => {
       render(<FinancingSelfView tenantId={TENANT} subjectUid={UID} />);
       expect(await screen.findByText(/couldn't load your financing/i)).toBeInTheDocument();
       expect(screen.queryByTestId('fsv-current-monthly')).not.toBeInTheDocument();
-      // the genuine error reached the outer catch (logged), not silently nulled
-      expect(errSpy).toHaveBeenCalled();
+      // the genuine error reached the outer catch (logged), not silently nulled —
+      // value-level: the exact error object, not just "some console.error fired"
+      expect(errSpy).toHaveBeenCalledWith('[FinancingSelfView] load failed', genuine);
     } finally {
       errSpy.mockRestore();
     }

@@ -31,8 +31,9 @@ import {
   getFinancingTerms,
   listFinancingMonths,
   financingCeiling,
+  financingMonthIndex,
 } from '../../services/financingService';
-import { computeMonthsFromDate } from '../../utils/dateInputs';
+import { monthKeyFromDate, getTodayTT } from '../../utils/dateInputs';
 import { formatCurrency, formatAdjustmentPct, initials } from '../../utils/formatters';
 import { MISS_CRITICAL_AT } from '../../lib/financingMissEngine';
 import {
@@ -363,14 +364,17 @@ export default function UnitFinancingRoster({ tenantId }) {
             </thead>
             <tbody>
               {rows.map((r, idx) => {
-                // 1-BASED draw-month chip — the shipped MONTH-n convention
-                // (financingService.financingMonthIndex / reconMonthIndex:
-                // effectiveDate's own calendar month is month 1; the recon panel's
-                // trigger math reads "effectiveDate-month + 11 = ledger month 12").
-                // computeMonthsFromDate returns whole months ELAPSED (0 during the
-                // first month), so +1 converts to the 1-based index; clamped to the
-                // 12-month draw window.
-                const drawMonthIndex = r.effectiveDate ? Math.min(computeMonthsFromDate(r.effectiveDate) + 1, FINANCING_DRAW_MONTHS) : null;
+                // 1-BASED draw-month chip — the shipped MONTH-n convention, via the
+                // canonical helper (financingService.financingMonthIndex: the
+                // effectiveDate's own calendar month is month 1; whole-calendar-month,
+                // day-of-month irrelevant — same math as reconMonthIndex and the recon
+                // panel's "effectiveDate-month + 11 = ledger month 12"). Clamped to
+                // [1, 12]: a malformed date → null chip ('—'); a future effectiveDate
+                // (negative index) floors at month 1 rather than rendering 0/negative.
+                const rawMonthIdx = r.effectiveDate ? financingMonthIndex(r.effectiveDate, monthKeyFromDate(getTodayTT())) : null;
+                const drawMonthIndex = rawMonthIdx != null && Number.isFinite(rawMonthIdx)
+                  ? Math.max(1, Math.min(rawMonthIdx, FINANCING_DRAW_MONTHS))
+                  : null;
                 const ceilPct = (r.ceiling && r.runningBalance != null && r.ceiling > 0)
                   ? Math.max(0, Math.min(100, Math.round((r.runningBalance / r.ceiling) * 100)))
                   : null;
