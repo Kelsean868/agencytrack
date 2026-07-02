@@ -108,6 +108,45 @@ describe('NotificationDrawer Mark-all-read: dark hover primary-light passes AA',
   });
 });
 
+// ── Commission GoalDecompositionTab — dark teal text pairing lock ─────────────
+//
+// FU fix (commission dark-contrast): the ladder value/connector/toggle/settle
+// text spans used `text-primary dark:text-primary-dark`, which resolves to the
+// UN-lifted teal #01696f in dark mode (2.33–2.50:1 on the dark card / bg-primary/5
+// — a real color-contrast regression surfaced by PR #771's dark axe legs). The
+// fix DELETES the dark override so bare `text-primary` (= #4ab5b8 lifted in dark)
+// renders instead. This block locks the correct pairing so a re-introduced
+// override is caught deterministically, not only by a live axe run.
+//
+// Channel values MUST match src/index.css .dark:
+//   --primary-channels: 74 181 184   (#4ab5b8, bare text-primary in dark — the fix)
+//   --primary-dark-channels: 1 105 111 (#01696f, text-primary-dark in dark — the bug)
+//   --surface-channels: 37 32 25     (#252019, dark bg-card)
+describe('commission GoalDecompositionTab: dark lifted-teal text clears AA (regression lock)', () => {
+  const darkCard    = [37, 32, 25];                      // dark bg-card #252019
+  const bgPrimary5  = composite([74, 181, 184], 0.05, darkCard); // dark bg-primary/5 (act-ladder value bg)
+  const bgPrimary10 = composite([74, 181, 184], 0.10, darkCard); // dark bg-primary/10 (history-pill bg)
+  const liftedTeal  = [74, 181, 184];                    // #4ab5b8 — bare text-primary in dark (fix)
+  const unliftedTeal = [1, 105, 111];                    // #01696f — text-primary-dark in dark (the bug)
+
+  test('fix: #4ab5b8 on dark bg-card ≥ 4.5', () => {
+    expect(contrastRatio(liftedTeal, darkCard)).toBeGreaterThanOrEqual(4.5);
+  });
+  test('fix: #4ab5b8 on dark bg-primary/5 ≥ 4.5', () => {
+    expect(contrastRatio(liftedTeal, bgPrimary5)).toBeGreaterThanOrEqual(4.5);
+  });
+  test('fix: #4ab5b8 on dark bg-primary/10 (history pill) ≥ 4.5', () => {
+    expect(contrastRatio(liftedTeal, bgPrimary10)).toBeGreaterThanOrEqual(4.5);
+  });
+  // Rule 23 falsifier — this block goes red if the dark override is re-introduced.
+  test('bug guard: #01696f (dark override) on dark bg-card was < 4.5', () => {
+    expect(contrastRatio(unliftedTeal, darkCard)).toBeLessThan(4.5);
+  });
+  test('bug guard: #01696f (dark override) on dark bg-primary/5 was < 3:1 (large-text floor)', () => {
+    expect(contrastRatio(unliftedTeal, bgPrimary5)).toBeLessThan(3.0);
+  });
+});
+
 // ── Nexus Glass — glassPair ink × tint × theme matrix ─────────────────────────
 //
 // NOTE ON RECIPE DIVERGENCE (banked):

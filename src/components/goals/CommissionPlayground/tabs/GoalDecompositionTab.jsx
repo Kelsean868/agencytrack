@@ -57,7 +57,7 @@ function LadderStage({ label, sublabel, value, variant = 'plain' }) {
   const valueStyles = {
     head:  'text-gold',
     plain: 'text-ink',
-    act:   'text-primary dark:text-primary-dark',
+    act:   'text-primary',
   };
   return (
     <div
@@ -87,7 +87,7 @@ function LadderConnector({ children, isActivity }) {
       </div>
       <span className={`font-mono text-[9.5px] border rounded-md px-2 py-0.5 leading-none whitespace-nowrap ${
         isActivity
-          ? 'text-primary dark:text-primary-dark font-bold bg-card border-primary/30'
+          ? 'text-primary font-bold bg-card border-primary/30'
           : 'text-ink-muted bg-card border-border'
       }`}>
         {children}
@@ -123,7 +123,7 @@ function DecompositionLadder({ computed, inputs, freqKey, onFreqChange, hasHisto
               aria-pressed={freqKey === p.key}
               className={`px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
                 freqKey === p.key
-                  ? 'bg-card border border-primary/30 text-primary dark:text-primary-dark shadow-sm'
+                  ? 'bg-card border border-primary/30 text-primary shadow-sm'
                   : 'text-ink-muted hover:text-ink'
               }`}
             >
@@ -138,7 +138,7 @@ function DecompositionLadder({ computed, inputs, freqKey, onFreqChange, hasHisto
         <LadderConnector>{taxConnector}</LadderConnector>
         <LadderStage label="1st-year commission" sublabel="NET NEW NEEDED"                         value={formatCurrency(roundTo10(firstYearCommRequired / divisor))}     variant="plain" />
         <LadderConnector>
-          ÷ {inputs.commissionRate}% comm · <span className="text-primary dark:text-primary-dark font-bold">× {inputs.settlementRate}% settle</span>
+          ÷ {inputs.commissionRate}% comm · <span className="text-primary font-bold">× {inputs.settlementRate}% settle</span>
         </LadderConnector>
         <LadderStage label="API to write"        sublabel="ANNUAL PREMIUM"                         value={formatCurrency(roundTo10(computed.apiToWrite / divisor))}       variant="plain" />
         <LadderConnector>÷ {formatCurrency(Math.round(inputs.avgPolicyAPI / 1000) * 1000)} avg policy API</LadderConnector>
@@ -148,7 +148,7 @@ function DecompositionLadder({ computed, inputs, freqKey, onFreqChange, hasHisto
         <LadderConnector isActivity>
           × {inputs.dialsToCIRatio} calls→CI
           {hasHistory && (
-            <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-primary/10 text-primary dark:text-primary-dark">
+            <span className="ml-1.5 inline-flex px-1.5 py-0.5 rounded text-[8.5px] font-bold bg-primary/10 text-primary">
               From your history
             </span>
           )}
@@ -356,8 +356,8 @@ export default function GoalDecompositionTab({ submissions = [], agentId, tenant
               </span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <span className="font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-primary dark:text-primary-dark">New</span>
-              <span className="font-display text-base font-extrabold text-primary dark:text-primary-dark" data-testid="commission-confirm-new">
+              <span className="font-mono text-[9px] font-bold uppercase tracking-[0.1em] text-primary">New</span>
+              <span className="font-display text-base font-extrabold text-primary" data-testid="commission-confirm-new">
                 {formatCurrency(Math.round(computed.apiToWrite))}
               </span>
             </div>
