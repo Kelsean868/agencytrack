@@ -63,22 +63,6 @@ function monthKeyLabel(key) {
   return `${MONTH_NAMES[m - 1]} ${y}`;
 }
 
-// Candidate years for the reconciliation doc ({uid}_{year}). The record's year is
-// the trigger year — auto_month12 lands at effectiveDate-month + 11 (this year or
-// next), an early election lands in the effectiveDate year. Cover the 24-month term
-// window plus the current calendar year; the loop takes the first non-null. Bounded
-// (≤4 reads), gated behind a status that implies a record exists.
-function reconCandidateYears(effectiveDate) {
-  const years = new Set();
-  if (typeof effectiveDate === 'string' && effectiveDate.length >= 4) {
-    const y = parseInt(effectiveDate.slice(0, 4), 10);
-    if (Number.isFinite(y)) { years.add(y); years.add(y + 1); years.add(y + 2); }
-  }
-  const nowY = parseInt(getTodayTT().slice(0, 4), 10);
-  if (Number.isFinite(nowY)) years.add(nowY);
-  return [...years];
-}
-
 // ── Small presentational helpers (Nexus tokens only — no hex, no inline styles) ──
 
 function Card({ title, children, testId }) {
@@ -198,31 +182,37 @@ export default function FinancingSelfView({ tenantId, subjectUid }) {
           return;
         }
 
-        // Reconciliation record — only when the status implies one exists. The
-        // candidate-year reads run in parallel (Gemini); pick the first non-null in
-        // year order. Per-year .catch(() => null) is LOAD-BEARING, not defensive
-        // noise: the financingReconciliation `allow get` rule keys the agent arm on
-        // canAccessOwn(tenantId, resource.data.agentId), and for an ABSENT year the
-        // doc's resource is null → resource.data.agentId is null → the agent arm
-        // cannot match → Firestore returns PERMISSION-DENIED (not a clean not-found)
-        // for a subject-agent probing a year with no record. Managers pass via
-        // canManage, but agents MUST tolerate the denial on absent years. Removing
-        // this catch surfaces a false error state for every financed agent (caught by
-        // the K9 subject-signed-in smoke — CodeRabbit suggested removing it; the rules
-        // model requires it).
-        const reconPromise = RECONCILED_STATUSES.includes(terms.financingStatus)
-          ? Promise.all(
-              reconCandidateYears(terms.effectiveDate).map((y) =>
-                getFinancingReconciliation(tenantId, subjectUid, y).catch(() => null),
-              ),
-            ).then((recs) => recs.find(Boolean) ?? null)
-          : Promise.resolve(null);
-
-        const [ledger, projected, recon] = await Promise.all([
+        const [ledger, projected] = await Promise.all([
           listFinancingMonths(tenantId, subjectUid),
           getProjectedBonus(tenantId, subjectUid).catch(() => null),
-          reconPromise,
         ]);
+
+        // Reconciliation record — only when the status implies one exists, and ONE
+        // read for the derived year (no candidate-year probing, which emitted a
+        // benign permission-denied console error on every financed-subject load).
+        // The year mirrors FinancingReconciliationPanel's derivation: the year of
+        // the LATEST entered ledger month, else the current TT year — the same year
+        // reconcileFinancing wrote the record under, so subject and manager read the
+        // same doc.
+        let recon = null;
+        if (RECONCILED_STATUSES.includes(terms.financingStatus)) {
+          const latest = (ledger ?? []).reduce((a, b) => (a && a.month >= b.month ? a : b), null);
+          const year = latest?.month ? String(latest.month).slice(0, 4) : getTodayTT().slice(0, 4);
+          // The narrow permission-denied tolerance below is LOAD-BEARING — do not
+          // remove: the financingReconciliation `allow get` rule keys the agent arm
+          // on canAccessOwn(tenantId, resource.data.agentId), and for an ABSENT doc
+          // the resource is null → resource.data.agentId is null → the agent arm
+          // cannot match → Firestore returns PERMISSION-DENIED (not a clean
+          // not-found) for a subject reading a year with no record. Managers pass
+          // via canManage, but subjects MUST tolerate the denial on an absent year
+          // (#767 CodeRabbit DISAGREE — the rules model requires it). Anything that
+          // is NOT permission-denied rethrows to the outer catch → the error state,
+          // so a GENUINE read failure is no longer masked as "no recon".
+          recon = await getFinancingReconciliation(tenantId, subjectUid, year).catch((err) => {
+            if (err?.code === 'permission-denied') return null;
+            throw err;
+          });
+        }
 
         const serviceMonths = terms.effectiveDate ? computeMonthsFromDate(terms.effectiveDate) : 0;
         const clocks = computeWindDownClocks({

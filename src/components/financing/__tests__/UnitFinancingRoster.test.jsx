@@ -35,6 +35,8 @@ vi.mock('../../manager/CoachingNotesModal', () => ({
 }));
 
 import UnitFinancingRoster from '../UnitFinancingRoster';
+import { financingMonthIndex } from '../../../services/financingService';
+import { monthKeyFromDate, getTodayTT } from '../../../utils/dateInputs';
 
 // Confirmed-basis ledger month.
 const confirmed = (month, f = {}) => ({ month, basisSource: 'settled-confirmed', ...f });
@@ -201,5 +203,74 @@ describe('UnitFinancingRoster', () => {
     // Value-level: assert the actual basis, not just badge presence — catches a
     // regression to the wrong basisSource fallback.
     expect(screen.getByTestId('financing-basis-badge')).toHaveAttribute('data-basis', 'settled-confirmed');
+  });
+
+  // ── FIX 2 (FU financing-display-polish): 1-based draw-month chip ────────────
+  // The shipped convention (financingService.financingMonthIndex + the recon
+  // panel's "effectiveDate-month + 11 = ledger month 12" math) is 1-BASED and
+  // whole-calendar-month (day-of-month irrelevant): the effectiveDate's own
+  // calendar month is month 1. The chip now calls financingMonthIndex directly
+  // (CodeRabbit #775 Major: day-aware elapsed+1 lagged the convention by one when
+  // today's day-of-month precedes the effectiveDate's day-of-month).
+  describe('1-based draw-month chip (roster == shipped MONTH-n convention)', () => {
+    const pad = (n) => String(n).padStart(2, '0');
+    // effectiveDate N calendar months back on the given day-of-month.
+    const effMonthsBack = (n, day = 1) => {
+      const now = new Date();
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - n, 1));
+      return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(day)}`;
+    };
+
+    it('renders the SAME month N as the shipped 1-based convention for the same effectiveDate', async () => {
+      const eff = effMonthsBack(6); // K10a-seed shape → 1-based month 7
+      const expected = financingMonthIndex(eff, monthKeyFromDate(getTodayTT()));
+      expect(expected).toBe(7);
+      mockUnit([MISS_AGENT], { a1: MISS_LEDGER }, { a1: TERMS({ effectiveDate: eff }) });
+      render(<UnitFinancingRoster tenantId="t1" />);
+      const chip = await screen.findByTestId('unit-financing-term-a1');
+      expect(chip).toHaveTextContent(`Fin. month ${expected} / 12`);
+    });
+
+    it('matches the calendar convention for a NON-day-1 effectiveDate (day-of-month never shifts the chip)', async () => {
+      // Day 28: under the old day-aware math the chip would read one month low
+      // whenever today's day-of-month is before the 28th; the calendar convention
+      // is invariant — 3 calendar months back is always month 4.
+      const eff = effMonthsBack(3, 28);
+      const expected = financingMonthIndex(eff, monthKeyFromDate(getTodayTT()));
+      expect(expected).toBe(4);
+      mockUnit([MISS_AGENT], { a1: MISS_LEDGER }, { a1: TERMS({ effectiveDate: eff }) });
+      render(<UnitFinancingRoster tenantId="t1" />);
+      const chip = await screen.findByTestId('unit-financing-term-a1');
+      expect(chip).toHaveTextContent('Fin. month 4 / 12');
+    });
+
+    it('shows "Fin. month 1 / 12" during the effectiveDate month itself (never month 0)', async () => {
+      const eff = effMonthsBack(0);
+      mockUnit([MISS_AGENT], { a1: MISS_LEDGER }, { a1: TERMS({ effectiveDate: eff }) });
+      render(<UnitFinancingRoster tenantId="t1" />);
+      const chip = await screen.findByTestId('unit-financing-term-a1');
+      expect(chip).toHaveTextContent('Fin. month 1 / 12');
+    });
+
+    it('clamps at the 12-month draw window', async () => {
+      const eff = effMonthsBack(20);
+      mockUnit([MISS_AGENT], { a1: MISS_LEDGER }, { a1: TERMS({ effectiveDate: eff }) });
+      render(<UnitFinancingRoster tenantId="t1" />);
+      const chip = await screen.findByTestId('unit-financing-term-a1');
+      expect(chip).toHaveTextContent('Fin. month 12 / 12');
+    });
+
+    it('floors a FUTURE effectiveDate at month 1 (defensive clamp — Gemini #775) and renders — for a malformed date', async () => {
+      const future = effMonthsBack(-2); // 2 months ahead → negative raw index
+      mockUnit(
+        [MISS_AGENT, ADJ_AGENT],
+        { a1: MISS_LEDGER, a2: ADJ_LEDGER },
+        { a1: TERMS({ effectiveDate: future }), a2: TERMS({ effectiveDate: 'not-a-date' }) },
+      );
+      render(<UnitFinancingRoster tenantId="t1" />);
+      const chip = await screen.findByTestId('unit-financing-term-a1');
+      expect(chip).toHaveTextContent('Fin. month 1 / 12');
+      expect(screen.getByTestId('unit-financing-term-a2')).toHaveTextContent('—');
+    });
   });
 });

@@ -55,6 +55,15 @@ const fail = (id, note = '') => { results.push({ id, ok: false, note }); console
 const count = (page, sel) => page.locator(sel).count();
 const NOTE_BODY = `K10A-SMOKE-NOTE-${process.pid}-${Date.now()}`;
 
+// FIX 2 (FU financing-display-polish) — expected 1-BASED draw-month chip value.
+// Mirrors the seed's effectiveDate math (seed-unit-financing-k10a.mjs: eff = 1st of
+// the month 6 calendar months back → 6 whole months elapsed → 1-based month 7).
+// Same UTC-vs-TT month-boundary caveat as the K9 smoke's month keys.
+const _now = new Date();
+const _eff = new Date(Date.UTC(_now.getUTCFullYear(), _now.getUTCMonth() - 6, 1));
+const _elapsed = (_now.getUTCFullYear() - _eff.getUTCFullYear()) * 12 + (_now.getUTCMonth() - _eff.getUTCMonth());
+const EXPECTED_DRAW_MONTH = Math.min(_elapsed + 1, 12); // = 7
+
 async function login(page, email, password) {
   await page.waitForSelector('input[type="email"]', { timeout: 30_000 });
   await page.fill('input[type="email"]', email);
@@ -133,6 +142,14 @@ async function assertRoster(page, theme) {
   (await surplus.count() > 0 && /owed to agent/i.test((await surplus.textContent()) ?? ''))
     ? pass(t('5.6-surplus'), 'negative balance → "owed to agent"')
     : fail(t('5.6-surplus'), 'surplus row did not render the owed-to-agent note');
+
+  // 5.9 (FIX 2) — the term chip is 1-BASED (effectiveDate's own month = month 1;
+  // the shipped MONTH-n convention). Value-level against the seed's effectiveDate.
+  const term = page.locator('[data-testid="unit-financing-term-k10a_adj"]');
+  const termText = (await term.count()) > 0 ? ((await term.textContent()) ?? '') : null;
+  (termText !== null && termText.includes(`Fin. month ${EXPECTED_DRAW_MONTH} / 12`))
+    ? pass(t('5.9-month-chip-1based'), `term chip reads "Fin. month ${EXPECTED_DRAW_MONTH} / 12"`)
+    : fail(t('5.9-month-chip-1based'), `expected "Fin. month ${EXPECTED_DRAW_MONTH} / 12", got ${JSON.stringify(termText)}`);
 }
 
 // 5.8 — a confirmed figure never renders without its basisSource badge (drawer).

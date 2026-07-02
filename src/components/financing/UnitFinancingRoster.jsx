@@ -31,8 +31,9 @@ import {
   getFinancingTerms,
   listFinancingMonths,
   financingCeiling,
+  financingMonthIndex,
 } from '../../services/financingService';
-import { computeMonthsFromDate } from '../../utils/dateInputs';
+import { monthKeyFromDate, getTodayTT } from '../../utils/dateInputs';
 import { formatCurrency, formatAdjustmentPct, initials } from '../../utils/formatters';
 import { MISS_CRITICAL_AT } from '../../lib/financingMissEngine';
 import {
@@ -363,7 +364,17 @@ export default function UnitFinancingRoster({ tenantId }) {
             </thead>
             <tbody>
               {rows.map((r, idx) => {
-                const drawMonthIndex = r.effectiveDate ? Math.min(computeMonthsFromDate(r.effectiveDate), FINANCING_DRAW_MONTHS) : null;
+                // 1-BASED draw-month chip — the shipped MONTH-n convention, via the
+                // canonical helper (financingService.financingMonthIndex: the
+                // effectiveDate's own calendar month is month 1; whole-calendar-month,
+                // day-of-month irrelevant — same math as reconMonthIndex and the recon
+                // panel's "effectiveDate-month + 11 = ledger month 12"). Clamped to
+                // [1, 12]: a malformed date → null chip ('—'); a future effectiveDate
+                // (negative index) floors at month 1 rather than rendering 0/negative.
+                const rawMonthIdx = r.effectiveDate ? financingMonthIndex(r.effectiveDate, monthKeyFromDate(getTodayTT())) : null;
+                const drawMonthIndex = rawMonthIdx != null && Number.isFinite(rawMonthIdx)
+                  ? Math.max(1, Math.min(rawMonthIdx, FINANCING_DRAW_MONTHS))
+                  : null;
                 const ceilPct = (r.ceiling && r.runningBalance != null && r.ceiling > 0)
                   ? Math.max(0, Math.min(100, Math.round((r.runningBalance / r.ceiling) * 100)))
                   : null;
@@ -380,7 +391,7 @@ export default function UnitFinancingRoster({ tenantId }) {
                       </div>
                     </td>
                     <td className="py-2.5 px-3 border-b border-border">
-                      <p className="font-mono text-[11px] text-ink-muted">{drawMonthIndex != null ? `Fin. month ${drawMonthIndex} / ${FINANCING_DRAW_MONTHS}` : '—'}</p>
+                      <p className="font-mono text-[11px] text-ink-muted" data-testid={`unit-financing-term-${r.agentId}`}>{drawMonthIndex != null ? `Fin. month ${drawMonthIndex} / ${FINANCING_DRAW_MONTHS}` : '—'}</p>
                       <div className="mt-1 flex items-center gap-2">
                         <MissDots count={r.missCount} />
                         <span className={`font-mono text-[10px] ${r.missSeverity === 'critical' ? 'text-danger-ink' : r.missSeverity === 'amber' ? 'text-warning-ink' : 'text-ink-muted'}`}>
