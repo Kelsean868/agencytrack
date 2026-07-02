@@ -169,7 +169,14 @@ async function axeScreen(page, tag) {
 // dashboard's heavier initial load.
 async function gotoAgentFinancing(page) {
   const tab = page.locator('[data-testid="agent-tab-financing"]');
-  if (!(await vis(tab, 15000))) return false;
+  // waitFor (not the vis() helper): Playwright's locator.isVisible() is an
+  // immediate check that ignores its timeout arg, so vis(tab, 15000) would not
+  // actually wait for the tab to mount. waitFor auto-waits up to the timeout.
+  try {
+    await tab.waitFor({ state: 'visible', timeout: 15000 });
+  } catch {
+    return false;
+  }
   await tab.click();
   await waitReady(page);
   return true;
