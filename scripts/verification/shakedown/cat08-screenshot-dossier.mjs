@@ -17,6 +17,7 @@ import {
   screenshot, sleep,
   setDesktopViewport, setMobileViewport,
 } from './auth-helpers.mjs';
+import { waitForTheme } from '../lib/walk-helpers.mjs';
 
 const DESKTOP = { width: 1280, height: 800 };
 const MOBILE  = { width: 390,  height: 844 };
@@ -37,13 +38,27 @@ export async function runCat08ScreenshotDossier({ log, ssDir } = {}) {
     shotCount++;
   }
 
-  async function setTheme(page, dark) {
-    await page.evaluate((d) => {
-      if (d) { localStorage.setItem('agencytrack-dark', '1'); document.documentElement.classList.add('dark'); }
-      else   { localStorage.removeItem('agencytrack-dark'); document.documentElement.classList.remove('dark'); }
-    }, dark);
+  // setTheme — local to this dossier (does NOT go through walk-helpers.mjs's
+  // context-level setTheme(); this file shares one browser context across both
+  // light and dark captures per role via UI login, so a fresh-context-per-theme
+  // shape à la runBothThemes is not structurally available here). Full #771
+  // conformance is still applied: string theme arg (never boolean), and
+  // waitForTheme asserts the DOM actually landed on the target theme (via the
+  // shared walk-helpers guard) before returning control to any caller — no
+  // capture can run against a not-yet-applied theme.
+  async function setTheme(page, theme) {
+    if (theme !== 'light' && theme !== 'dark') {
+      throw new TypeError(
+        `setTheme: theme must be the string 'light' or 'dark', got ${JSON.stringify(theme)} `
+        + `(${typeof theme}). A boolean silently boots/keeps the app in the wrong theme.`,
+      );
+    }
+    await page.evaluate((t) => {
+      if (t === 'dark') { localStorage.setItem('agencytrack-dark', '1'); }
+      else               { localStorage.removeItem('agencytrack-dark'); }
+    }, theme);
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await sleep(600);
+    await waitForTheme(page, theme);
   }
 
   // ── Agent surfaces ────────────────────────────────────────────────────────
@@ -75,13 +90,13 @@ export async function runCat08ScreenshotDossier({ log, ssDir } = {}) {
     }
 
     // Dark mode pass (desktop only)
-    await setTheme(page, true);
+    await setTheme(page, 'dark');
     for (const { tab, dir } of agentTabs) {
       await navigateToTab(page, tab);
       await sleep(600);
       await ss(page, 'agent', dir, 'dark-desktop.png');
     }
-    await setTheme(page, false);
+    await setTheme(page, 'light');
 
     // Wizard screens
     await navigateToTab(page, 'Dashboard');
@@ -138,13 +153,13 @@ export async function runCat08ScreenshotDossier({ log, ssDir } = {}) {
     }
 
     // Dark desktop
-    await setTheme(page, true);
+    await setTheme(page, 'dark');
     for (const { tab, dir } of umTabs.slice(0, 3)) {
       await navigateToTab(page, tab);
       await sleep(600);
       await ss(page, 'unit-manager', dir, 'dark-desktop.png');
     }
-    await setTheme(page, false);
+    await setTheme(page, 'light');
 
     await browser.close();
     _log(`  Unit Manager: ${shotCount} shots so far`);
@@ -182,13 +197,13 @@ export async function runCat08ScreenshotDossier({ log, ssDir } = {}) {
     }
 
     // Dark desktop pass
-    await setTheme(page, true);
+    await setTheme(page, 'dark');
     for (const { tab, dir } of bmTabs.slice(0, 4)) {
       await navigateToTab(page, tab);
       await sleep(600);
       await ss(page, 'branch-manager', dir, 'dark-desktop.png');
     }
-    await setTheme(page, false);
+    await setTheme(page, 'light');
 
     await browser.close();
     _log(`  Branch Manager: ${shotCount} shots so far`);
@@ -225,11 +240,11 @@ export async function runCat08ScreenshotDossier({ log, ssDir } = {}) {
       await setDesktopViewport(page);
     }
 
-    await setTheme(page, true);
+    await setTheme(page, 'dark');
     await navigateToTab(page, 'Dashboard');
     await sleep(600);
     await ss(page, 'tenant-admin', 'dashboard', 'dark-desktop.png');
-    await setTheme(page, false);
+    await setTheme(page, 'light');
 
     await browser.close();
     _log(`  Tenant Admin: ${shotCount} shots so far`);
