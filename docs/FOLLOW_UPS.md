@@ -6,7 +6,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
-## ~~Commission v2 S1 (CommissionPlayground ladder) — dark-mode `color-contrast` axe regression~~ — RESOLVED (fix/commission-dark-contrast-goaldecomp, PR #TBD, 2026-07-01)
+## ~~Commission v2 S1 (CommissionPlayground ladder) — dark-mode `color-contrast` axe regression~~ — RESOLVED (fix/commission-dark-contrast-goaldecomp, PR #773, `fad9a1b6`, 2026-07-01)
 
 **RESOLVED note:** Root cause confirmed — the 8 failing nodes are all `text-primary dark:text-primary-dark` **text** spans in `GoalDecompositionTab.jsx`. In dark mode the `dark:text-primary-dark` override resolves to `--primary-dark-channels` = #01696f (a button-background-intended token) → 2.33–2.50:1 as text on `bg-card`/`bg-primary/5`. Fix: DELETE the override from the 7 text sites so bare `text-primary` renders (#4ab5b8 lifted in dark = 6.14–6.61:1). It was **not** a specificity/purge-ordering issue and **not** a missing dark variant (the two hypotheses in the note below) — the override was actively landing the wrong token. Deterministic lock added to `contrast.test.js`; dark axe re-run clean (Phase 5). Original investigation notes retained below for the drift trail.
 
@@ -16,7 +16,7 @@ The dark-leg trust-repair re-run of `commission-v2-s1-smoke.mjs` against **produ
 
 This looks like the same class of bug CLAUDE.md's D6 rule was banked for ("white-text primary buttons always pair `bg-primary` with `dark:bg-primary-dark`") but inverted — here the `dark:text-primary-dark` class IS present in several nodes' class lists yet the DOM still computed `#01696f`, which suggests either a CSS specificity/ordering issue or a `text-primary` utility that isn't cleanly overridden by `dark:text-primary-dark` in this component's render context. Root cause was NOT investigated (out of scope per brief). **To resolve:** a dedicated a11y-fix PR scoped to `CommissionPlayground` (or wherever the ladder markup lives) — first confirm root cause (specificity vs. missing `dark:` variant vs. Tailwind purge ordering), then apply the fix, then re-run `commission-v2-s1-smoke.mjs --prod` dark leg to confirm `axe-no-new` goes clean. **Falsification:** moot if CommissionPlayground's ladder is redesigned/replaced before a fix ships.
 
-## ~~Commission v2 S3 (AnchorStrip, post-write dark re-derive) — dark-mode `color-contrast` axe regression~~ — RESOLVED (subsumed by S1 fix, fix/commission-dark-contrast-goaldecomp, PR #TBD, 2026-07-01)
+## ~~Commission v2 S3 (AnchorStrip, post-write dark re-derive) — dark-mode `color-contrast` axe regression~~ — RESOLVED (subsumed by S1 fix, fix/commission-dark-contrast-goaldecomp, PR #773, `fad9a1b6`, 2026-07-01)
 
 **RESOLVED note:** Confirmed SINGLE root cause (this entry's own falsification condition). The S3 dark axe leg runs on the Commission tab, which renders `GoalDecompositionTab` (default `'goal'` tab) — the same 8 nodes as S1. `CommissionAnchorStrip.jsx` itself carries **zero** `text-primary` (it uses `--hero-*` tokens); the "AnchorStrip" attribution was a page-adjacency mislabel. Cleared by the same fix; s3-style violation-count re-run clean (Phase 5). Original notes retained below.
 
