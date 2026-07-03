@@ -83,6 +83,18 @@ beforeEach(() => { vi.clearAllMocks(); });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
+describe('MoneyNeedsPanel — Fork B1 honesty copy', () => {
+  it('share toggle carries the budget-only scope helper line', async () => {
+    await renderLoaded();
+    expect(
+      screen.getByText(/This controls your budget worksheet only\./i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/visible to your managers, like your weekly plan\./i)
+    ).toBeInTheDocument();
+  });
+});
+
 describe('MoneyNeedsPanel — floating calculators', () => {
   it('renders a trigger next to each calc-fed line, with the car trigger on BOTH car lines', async () => {
     await renderLoaded();
