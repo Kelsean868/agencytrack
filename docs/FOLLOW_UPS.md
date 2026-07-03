@@ -21,6 +21,22 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## PR-B2 deferred verification — value-level plan-review legs post-B1-deploy (banked 2026-07-03, PR-B2, Rule 13 waiver — MEDIUM)
+
+**Origin:** PR-B2 (plan-review drawer tabs + plan health) ships manager-side reads that exercise PR-B1's yearPlan/monthlyPlan upline arms at runtime. At B2's Phase 5, B1 (#787) was open (not merged, not deployed) — every plan read denies in production, so the preview smoke could only prove the **denied→neutral** contract (which IS the correct pre-deploy behavior). The value-level legs cannot run until the operator merges B1 and deploys the rules.
+
+**Unverified acceptance criteria (verbatim from the B2 brief's Phase 5):**
+> IF B1 arms are LIVE (merged + deployed at smoke time): value-level plan legs - seeded yearPlan targets render exactly; plan-health verdicts match hand-computed fixture (one above-floor, one below-floor agent); monthly tab shows the 12-split; foil out-of-unit drawer denied->neutral.
+
+**Re-run steps (exact):**
+1. B1 (#787) merged + operator `firebase deploy --only firestore:rules`.
+2. From the main worktree (`.env.local` present), against `tatillife_smoke`: seed via the A11Y agent's client token a `yearPlan/2026` (known `lines.{life,ah,general}.targetAPI/derivedCommission`; run the fixture once ABOVE the agent's tenure floor and once BELOW via a re-seed) + a `monthlyPlan/2026` (12-split of a known anchor).
+3. UM leg: open the shared agent's drawer → Year Plan tab shows the seeded per-line figures exactly; `tpd-health-floor` `data-ok` matches the hand-computed verdict for each fixture; Monthly tab `tpd-month-0..11` match the seeded split.
+4. Foil leg: out-of-unit UM fetches the same agent's plans → `tpd-year-unavailable` / `tpd-monthly-unavailable` neutral (post-deploy denial = out-of-scope).
+5. Cleanup: delete the seeded plan docs, re-confirm 0 orphans. Paste results in the PR-B2 thread or the post-merge fill; close this FU.
+
+---
+
 ## Vercel branch-alias preview URLs silently exceed the 63-char DNS label limit (banked 2026-07-03, PR #785 post-merge fill, LOW — tooling/docs)
 
 **Origin:** PR #785's Phase 5 smoke could not use the documented preview URL pattern — `agencytrack-git-feat-gpm1-team-plans-reader-kyron-marchan-s-projects.vercel.app` is a 68-char DNS label, over the RFC-1035 63-char limit, so the hostname does not resolve at all. The smoke fell back to the immutable per-deployment URL (`agencytrack-<hash>-kyron-marchan-s-projects.vercel.app`) read from the GitHub deployment status (`gh api repos/{owner}/{repo}/deployments` → statuses → `environment_url`, state `success`).
