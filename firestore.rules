@@ -1524,12 +1524,12 @@ service cloud.firestore {
           );
         }
         // Single-doc get: owner OR upline. Existence-oracle guard mirrors weeklyPlans:
-        // when the doc is absent (resource == null) only the owner arm can succeed —
-        // managers must hit an existing doc (no existence oracle for non-owners).
+        // the upline arm requires an EXISTING doc (resource != null) — managers get
+        // deny, not not-found, on absent docs. The owner arm is path-uid-based, so
+        // it needs no existence branch (unlike weeklyPlans' ID-prefix split).
         allow get: if isSignedIn()
-          && (resource == null
-              ? (getTenantId() == tenantId && request.auth.uid == uid)
-              : ((getTenantId() == tenantId && request.auth.uid == uid) || uplineCanReadUserPlan()));
+          && ((getTenantId() == tenantId && request.auth.uid == uid)
+              || (resource != null && uplineCanReadUserPlan()));
         // LIST stays owner-only — manager reads are deterministic-ID get-fan-out
         // (no manager list arm, no composite index, no collectionGroup wildcard).
         allow list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
@@ -1558,11 +1558,11 @@ service cloud.firestore {
           );
         }
         // Single-doc get: owner OR upline, with the weeklyPlans existence-oracle
-        // guard (absent doc → owner arm only; no existence oracle for non-owners).
+        // guard — the upline arm requires an EXISTING doc (resource != null);
+        // the owner arm is path-uid-based and needs no existence branch.
         allow get: if isSignedIn()
-          && (resource == null
-              ? (getTenantId() == tenantId && request.auth.uid == uid)
-              : ((getTenantId() == tenantId && request.auth.uid == uid) || uplineCanReadUserPlan()));
+          && ((getTenantId() == tenantId && request.auth.uid == uid)
+              || (resource != null && uplineCanReadUserPlan()));
         // LIST stays owner-only — manager reads are deterministic-ID get-fan-out
         // (no manager list arm, no composite index, no collectionGroup wildcard).
         allow list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
