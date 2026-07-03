@@ -93,12 +93,34 @@ export async function createFinancingEscalation({
   if (!ESCALATION_REASON_VALUES.includes(reason)) {
     throw new Error(`createFinancingEscalation: invalid reason "${reason}"`);
   }
-  // The rules bind agentUnitId == raisedByUid (a UM raises only on their own unit);
-  // enforce it client-side too so a stale roster row surfaces as a clear error
-  // rather than a "already raised" false positive.
+  // K10c: the rules now get()-bind unitId + branchId to the RAISED agent's real
+  // user doc. A binding miss (roster row incoherent with server truth) surfaces as
+  // permission-denied, which the catch below maps to "already raised" — misleading.
+  // Pre-validate the roster row's coherence so that mapping is RARE:
+  //   • agentUnitId/branchId must be non-empty strings — a stale/partial roster row
+  //     with a numeric or blank value fails here with a clear error, not a false
+  //     "already raised" (the required-field check above catches falsy; this also
+  //     rejects a non-string, matching the rules' `branchId is string` type guard).
+  //   • agentUnitId == raisedByUid — the rules bind raisedAgent().unitId == auth.uid,
+  //     and a UM's own uid IS the unitId of their own-unit agents; a mismatch means
+  //     the agent is outside the raising UM's unit.
+  if (typeof agentUnitId !== 'string' || agentUnitId.length === 0
+      || typeof branchId !== 'string' || branchId.length === 0) {
+    throw new Error('createFinancingEscalation: agentUnitId and branchId must be non-empty strings (stale roster row?)');
+  }
   if (agentUnitId !== raisedByUid) {
     throw new Error('createFinancingEscalation: agent is outside your unit (agentUnitId != raisedByUid)');
   }
+  // RESIDUAL (documented, accepted for pilot): this validation cannot verify SERVER
+  // truth — whether the passed branchId/unitId actually MATCH the agent's real user
+  // doc. Only the rules get()-binding can (a UM has no read arm on another agent's
+  // user doc, so the client cannot pre-check it). A roster row that is internally
+  // coherent (agentUnitId == raisedByUid, string branchId) but STALE vs the server
+  // (agent moved unit/branch since the roster loaded) still trips the rules binding
+  // and surfaces below as { alreadyRaised: true }. Acceptable: that exact staleness
+  // is rare, fails CLOSED at the rules layer (no misroute, no orphan), and the K10c
+  // deferred-verification FU notes upgrading this to a pre-write getDoc() of the
+  // agent doc if it proves confusing in practice.
 
   const monthKey = monthKeyFromDate(getTodayTT());
   const id = escalationDocId(agentId, reason, monthKey);

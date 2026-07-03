@@ -81,6 +81,13 @@ describe('createFinancingEscalation — validation (fail closed BEFORE any write
     await expect(createFinancingEscalation({ ...VALID, agentUnitId: 'otherUnit' })).rejects.toThrow(/unit/i);
     expect(hoisted.mockSetDoc).not.toHaveBeenCalled();
   });
+  // K10c 2a: roster-row coherence — a non-string branchId (stale/partial roster row)
+  // fails with a clear error rather than reaching the rules and mapping to
+  // "already raised". Mirrors the rules' `branchId is string` type guard.
+  it('throws on a non-string branchId (stale roster row → clear error, not "already raised")', async () => {
+    await expect(createFinancingEscalation({ ...VALID, branchId: 12345 })).rejects.toThrow(/non-empty strings|branchId/i);
+    expect(hoisted.mockSetDoc).not.toHaveBeenCalled();
+  });
 });
 
 describe('createFinancingEscalation — write + idempotency', () => {

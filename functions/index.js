@@ -43,6 +43,9 @@ exports.sendComplianceNudge = require('./compliance/sendComplianceNudge').sendCo
 // server-resolved recipient, transport reuse — NOT sendComplianceNudge)
 exports.notifyFinancingAdjustment = require('./financing/notifyFinancingAdjustment').notifyFinancingAdjustment;
 
+// Track K · K10c: on a financing-escalation create, ping same-branch BMs (bell only)
+exports.onFinancingEscalationCreate = require('./financing/onFinancingEscalationCreate').onFinancingEscalationCreate;
+
 const TENANT_ID = 'tatillife_south'; // SEC-9c: hardcoded; scheduled-function isolation deferred
 
 // CSV bulk-import allow-list. tenant_admin and platform_admin are explicitly

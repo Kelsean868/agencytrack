@@ -1603,11 +1603,26 @@ service cloud.firestore {
       //   real pilot data (K10b Phase 1 probe: tatillife_smoke 6/6, south 12/12).
       // Index: financingEscalations (branchId ASC, status ASC, createdAt DESC).
       //
-      // branchId-denorm trust: the UM's client writes branchId from the roster row
-      //   (the agent's real branchId). A UM mis-writing branchId could only mis-route
-      //   their OWN-unit agent's escalation to another branch's BM — the SAME denorm
-      //   trust coachingNotes carries on agentUnitId. Accepted residual (pilot).
+      // branchId-denorm trust (K10c): the create arm now get()-binds the
+      //   denormalized branchId AND unitId to the RAISED agent's real user doc, so
+      //   a UM can neither misroute an escalation to another branch's BM nor raise
+      //   on an agent outside their own unit (both were pre-K10c residuals). See
+      //   raisedAgent() below and the two get()-binding clauses on the create arm.
       match /financingEscalations/{escalationId} {
+
+        // K10c get()-binding: read the RAISED agent's real user doc (keyed on the
+        //   escalation's request.resource.data.agentId) to bind the denormalized
+        //   unitId/branchId against ground truth. Mirrors the persistency block's
+        //   newDocAgentBranchId() precedent (get() on request.resource.data.agentId,
+        //   firestore.rules ~L515) and the callerBranchId()/callerUnitId() get()-on-
+        //   user-doc helpers (~L59/L64). A single get() serves BOTH bindings below —
+        //   Firestore dedupes repeated get()s of the same document within one rule
+        //   evaluation, so the branchId + unitId checks cost one document read total.
+        //   Fail-closed: if the agent doc (or a bound field) is absent, the field
+        //   read is null and every equality comparison against it is false → DENY.
+        function raisedAgent() {
+          return get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.resource.data.agentId)).data;
+        }
 
         // Who may READ an escalation: SM/TA/PA tenant-wide, or a BM whose own
         // branchId matches the doc's denormalized branchId. UM has NO read arm;
@@ -1652,7 +1667,18 @@ service cloud.firestore {
           && request.resource.data.raisedByName is string
           && request.resource.data.raisedByRole is string
           && request.resource.data.note is string
-          && request.resource.data.createdAt is timestamp;
+          && request.resource.data.createdAt is timestamp
+          // K10c get()-bindings — bind the denormalized unitId/branchId to the
+          //   RAISED agent's real user doc (one get(), deduped for both checks):
+          //   1. unitId: the agent must actually belong to the raising UM's unit.
+          //      The prior arm bound agentUnitId == auth.uid but NEVER checked the
+          //      agent truly sits in that unit — a UM could raise on ANY agentId
+          //      while stamping their own uid as agentUnitId. This closes that hole.
+          //   2. branchId: the denormalized branchId must equal the agent's real
+          //      branchId — a UM can no longer misroute an escalation to another
+          //      branch's BM inbox. Fail-closed: a null field → false → DENY.
+          && raisedAgent().unitId == request.auth.uid
+          && request.resource.data.branchId == raisedAgent().branchId;
 
         // update: the ACK, by a caller who may read the escalation. Field-restricted
         //   to the ack triple (SEC-10 hasOnly precedent); new status must be

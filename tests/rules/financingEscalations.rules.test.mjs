@@ -23,8 +23,14 @@
  * callerBranchId reads tenants/{tid}/users/{uid}.branchId, so the BM/UM caller
  * user docs are seeded with rules disabled.
  *
- * Test matrix (20 cases — ack DENY cases run before the successful ack so each
- * isolates its own violation, not the status=='open' precondition):
+ * K10c hardening: the create arm now get()-binds the RAISED agent's real user doc
+ *   (raisedAgent().unitId == auth.uid AND request.branchId == raisedAgent().branchId).
+ *   The harness therefore ALSO seeds the raised agent user docs (AGENT_A own-unit,
+ *   AGENT_B other-unit, AGENT_NB missing-branchId) that the get() reads.
+ *
+ * Test matrix (25 cases — labels 1–19 + 13b + K10c 20–24; ack DENY cases run before
+ * the successful ack so each isolates its own violation, not the status=='open'
+ * precondition):
  *    1. UM own-unit create                                   → ALLOW
  *    2. UM other-unit create (agentUnitId != uid)            → DENY
  *    3. Agent create                                         → DENY
@@ -34,14 +40,22 @@
  *    7. UM list (no read arm)                                → DENY
  *    8. SM read                                              → ALLOW
  *    9. TA read                                              → ALLOW
- *   10. BM same-branch ack                                   → ALLOW
- *   11. BM other-branch ack                                  → DENY
+ *   10. BM other-branch ack                                  → DENY
+ *   11. Ack forged acknowledgedByUid                         → DENY
  *   12. Ack touching an extra field                          → DENY
- *   13. Delete                                               → DENY
- *   14. Cross-tenant read                                    → DENY
- *   15. Create with status != 'open'                         → DENY
- *   16. Create with reason outside enum                      → DENY
- *   17. Create missing a required key (branchId)             → DENY
+ *   13. BM same-branch ack                                   → ALLOW
+ *  13b. Re-ack an already-acknowledged doc                   → DENY
+ *   14. Delete                                               → DENY
+ *   15. Cross-tenant read                                    → DENY
+ *   16. Create with status != 'open'                         → DENY
+ *   17. Create with reason outside enum                      → DENY
+ *   18. Create missing a required key (branchId)             → DENY
+ *   19. Create with a non-string branchId                    → DENY
+ *   20. K10c correct-binding create (real unit + real branch)→ ALLOW
+ *   21. K10c forged agentId (agent in another unit)          → DENY
+ *   22. K10c wrong branchId (not agent's real branch)        → DENY
+ *   23. K10c agent doc missing branchId (fail closed)        → DENY
+ *   24. K10c wholly nonexistent agentId (absent doc)         → DENY
  *
  * hasOnly gotcha (PR #365): the ack deny-test (#12) MUST change status to a value
  * that DIFFERS from the seed ('open' → 'acknowledged') so the touched extra field
@@ -68,6 +82,8 @@ const UM_B      = 'umB';          // unit B, branch B
 const BM_A_UID  = 'bmA';          // branch A
 const BM_B_UID  = 'bmB';          // branch B
 const AGENT_A   = 'agentA';       // unitId == UM_A, branchId == 'branchA'
+const AGENT_B   = 'agentB';       // unitId == UM_B, branchId == 'branchB' (other unit)
+const AGENT_NB  = 'agentNoBranch';// unitId == UM_A, but NO branchId (fail-closed case)
 const BRANCH_A  = 'branchA';
 const BRANCH_B  = 'branchB';
 const REASON    = 'draw_decision';
@@ -112,6 +128,16 @@ async function seed(testEnv) {
     await setDoc(doc(db, `tenants/${TENANT_ID}/users/${BM_A_UID}`), { role: 'branch_manager', branchId: BRANCH_A, tenantId: TENANT_ID });
     await setDoc(doc(db, `tenants/${TENANT_ID}/users/${BM_B_UID}`), { role: 'branch_manager', branchId: BRANCH_B, tenantId: TENANT_ID });
     await setDoc(doc(db, `tenants/${TENANT_ID}/users/${UM_A}`),     { role: 'unit_manager',  branchId: BRANCH_A, tenantId: TENANT_ID });
+    // K10c: the create arm now get()s the RAISED agent's real user doc to bind
+    //   unitId (== raising UM uid) and branchId (== denormalized branchId). Seed
+    //   the agent user docs the get() reads:
+    //   • AGENT_A — real unit UM_A, real branch branchA (the coherent, own-unit case).
+    //   • AGENT_B — real unit UM_B, real branch branchB (used for the forged-agentId
+    //     DENY: UM_A raising on AGENT_B while stamping agentUnitId=UM_A).
+    //   • AGENT_NB — unit UM_A but NO branchId field (fail-closed DENY case).
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/${AGENT_A}`),  { role: 'agent', unitId: UM_A, branchId: BRANCH_A, tenantId: TENANT_ID });
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/${AGENT_B}`),  { role: 'agent', unitId: UM_B, branchId: BRANCH_B, tenantId: TENANT_ID });
+    await setDoc(doc(db, `tenants/${TENANT_ID}/users/${AGENT_NB}`), { role: 'agent', unitId: UM_A, tenantId: TENANT_ID });
     // A seeded OPEN escalation for read/ack cases.
     await setDoc(escRef(db), createPayload());
   });
@@ -255,6 +281,48 @@ async function main() {
   await t('19. Create with a non-string branchId → DENY (type guard)', async () => {
     await assertFails(setDoc(escRef(umA(), `${AGENT_A}_confirm_request_2026_09`),
       createPayload({ reason: 'confirm_request', branchId: 12345 })));
+  });
+
+  // ── K10c get()-BINDING CASES ──────────────────────────────────────────────────
+  // The new create arm get()s the RAISED agent's real user doc and binds
+  //   raisedAgent().unitId == auth.uid  AND  request.resource.data.branchId ==
+  //   raisedAgent().branchId. These cases exercise both bindings.
+
+  await t('20. K10c: correct-binding create (agent really in UM unit + real branch) → ALLOW', async () => {
+    // UM_A raises on AGENT_A: agent.unitId==UM_A==auth.uid, branchId==agent.branchId==branchA.
+    await assertSucceeds(setDoc(escRef(umA(), `${AGENT_A}_notify_5_3_${MONTH}`),
+      createPayload({ reason: 'notify_5_3' })));
+  });
+
+  await t('21. K10c: forged agentId (agent in ANOTHER unit, agentUnitId stamped as own) → DENY', async () => {
+    // UM_A raises on AGENT_B (whose real unitId is UM_B) but stamps agentUnitId=UM_A
+    //   (== auth.uid, so the OLD arm would have PASSED). branchId set to AGENT_B's real
+    //   branch so ONLY the unitId binding (raisedAgent().unitId != auth.uid) trips.
+    await assertFails(setDoc(escRef(umA(), `${AGENT_B}_draw_decision_${MONTH}`),
+      createPayload({ agentId: AGENT_B, agentName: 'Agent B', agentUnitId: UM_A, branchId: BRANCH_B })));
+  });
+
+  await t('22. K10c: wrong branchId (string, but not the agent\'s real branch) → DENY', async () => {
+    // UM_A raises on own-unit AGENT_A (unitId binding passes) but denormalizes a
+    //   WRONG branchId (branchB, not agent's real branchA) → branchId binding trips.
+    await assertFails(setDoc(escRef(umA(), `${AGENT_A}_confirm_request_2026_10`),
+      createPayload({ reason: 'confirm_request', branchId: BRANCH_B })));
+  });
+
+  await t('23. K10c: agent user doc missing branchId → DENY (fail closed on null branchId)', async () => {
+    // AGENT_NB is in UM_A's unit (unitId binding passes) but has NO branchId field;
+    //   raisedAgent().branchId is null → request branchId == null is false → DENY.
+    await assertFails(setDoc(escRef(umA(), `${AGENT_NB}_draw_decision_${MONTH}`),
+      createPayload({ agentId: AGENT_NB, agentName: 'Agent NB', agentUnitId: UM_A, branchId: BRANCH_A })));
+  });
+
+  await t('24. K10c: wholly nonexistent agentId → DENY (raisedAgent() get() on absent doc, fail closed)', async () => {
+    // The raisedAgent() get() reads a doc that does NOT exist → .data is null →
+    //   raisedAgent().unitId is null → == auth.uid is false → DENY. Covers the
+    //   fail-closed path raisedAgent()'s doc-comment calls out (CodeRabbit PR #783).
+    const ghost = 'no-such-agent-uid';
+    await assertFails(setDoc(escRef(umA(), `${ghost}_draw_decision_${MONTH}`),
+      createPayload({ agentId: ghost, agentName: 'Ghost', agentUnitId: UM_A, branchId: BRANCH_A })));
   });
 
   console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed.`);
