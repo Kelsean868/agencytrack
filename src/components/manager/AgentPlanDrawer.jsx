@@ -27,6 +27,7 @@ import { formatCurrency, initials } from '../../utils/formatters';
 import { getAgentYearPlan, getAgentMonthlyPlan, getAgentAnnualFloor } from '../../services/planReviewService';
 import { checkAboveFloor, checkLineMix, checkNotOverCommitted } from '../../utils/planHealth';
 import { enumerateFocusables } from '../../utils/focusables';
+import { getTodayTT } from '../../utils/dateInputs';
 
 const LINE_LABELS = { life: 'Life', ah: 'A&H', property: 'Property', motor: 'Motor' };
 const PLAN_LINE_LABELS = { life: 'Life', ah: 'A&H', general: 'General' };
@@ -90,11 +91,18 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
   const panelRef = useRef(null);
   const [tab, setTab] = useState('overview');
   const [planState, setPlanState] = useState({ status: 'loading' });
+  // Guards against a stale fetch completing after an agent switch (or unmount-
+  // adjacent close) and overwriting fresh state — K10a loadSeq pattern, same
+  // as TeamPlansRoster (Gemini isMounted + CodeRabbit stale-race, PR #789).
+  const loadSeq = useRef(0);
 
-  const planYear = row?.plan?.year ?? new Date().getFullYear();
+  // TT-local year — new Date().getFullYear() drifts at year-end (Dec 31 TT is
+  // already Jan 1 UTC); getTodayTT is the house timezone-safe source.
+  const planYear = row?.plan?.year ?? parseInt(getTodayTT().split('-')[0], 10);
 
   const loadPlans = useCallback(async () => {
     if (!tenantId || !row?.agentId) return;
+    const seq = ++loadSeq.current;
     setPlanState({ status: 'loading' });
     try {
       const [yearRes, monthlyRes, floor] = await Promise.all([
@@ -102,8 +110,10 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
         getAgentMonthlyPlan(tenantId, row.agentId, planYear),
         getAgentAnnualFloor(tenantId, row.agentId),
       ]);
+      if (seq !== loadSeq.current) return; // a newer load owns the state
       setPlanState({ status: 'ready', year: yearRes, monthly: monthlyRes, floor });
     } catch (e) {
+      if (seq !== loadSeq.current) return; // stale failure — discard
       console.error('[AgentPlanDrawer] plan fetch failed', e);
       setPlanState({ status: 'error' });
     }
@@ -197,6 +207,7 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
             {TABS.map((t) => (
               <button
                 key={t.id}
+                id={`tpd-tab-${t.id}`}
                 role="tab"
                 type="button"
                 aria-selected={tab === t.id}
@@ -218,7 +229,7 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
           <div className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-4">
             {/* ── Overview tab — SHOWN projection only (GPM1, unchanged) ── */}
             {tab === 'overview' && (
-              <div id="tpd-panel-overview" role="tabpanel" className="flex flex-col gap-4">
+              <div id="tpd-panel-overview" role="tabpanel" aria-labelledby="tpd-tab-overview" className="flex flex-col gap-4">
                 {/* Commissions-required hero */}
                 <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 text-center" data-testid="team-plans-drawer-hero">
                   <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-ink-muted">First-year commissions required</p>
@@ -266,7 +277,7 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
 
             {/* ── Year Plan tab (B2) ── */}
             {tab === 'year' && (
-              <div id="tpd-panel-year" role="tabpanel" className="flex flex-col gap-4">
+              <div id="tpd-panel-year" role="tabpanel" aria-labelledby="tpd-tab-year" className="flex flex-col gap-4">
                 {planState.status === 'loading' && <TabLoading />}
                 {planState.status === 'error' && (
                   <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger-ink text-sm flex items-center justify-between gap-3 flex-wrap" data-testid="tpd-year-error">
@@ -314,7 +325,7 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
                     {/* Targets by line (API + share + derived commission) */}
                     <div className="rounded-xl border border-border overflow-hidden">
                       {Object.entries(PLAN_LINE_LABELS).map(([key, label]) => {
-                        const l = yearRes.plan.lines[key];
+                        const l = yearRes.plan.lines?.[key] ?? {};
                         return (
                           <div key={key} className="flex items-center gap-3 px-4 py-2.5 border-b border-border last:border-b-0" data-testid={`tpd-line-${key}`}>
                             <span className="text-sm font-semibold text-ink w-20">{label}</span>
@@ -344,7 +355,7 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
 
             {/* ── Monthly tab (B2) ── */}
             {tab === 'monthly' && (
-              <div id="tpd-panel-monthly" role="tabpanel" className="flex flex-col gap-4">
+              <div id="tpd-panel-monthly" role="tabpanel" aria-labelledby="tpd-tab-monthly" className="flex flex-col gap-4">
                 {planState.status === 'loading' && <TabLoading />}
                 {planState.status === 'error' && (
                   <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger-ink text-sm flex items-center justify-between gap-3 flex-wrap" data-testid="tpd-monthly-error">

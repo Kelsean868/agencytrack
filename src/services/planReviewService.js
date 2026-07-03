@@ -23,10 +23,13 @@ const num = (v) => {
 };
 
 async function readPlanDoc(tenantId, agentId, collectionName, year) {
+  // Defensive: doc() throws synchronously on missing segments — guard and keep
+  // the ref construction inside the try (Gemini PR #789).
+  if (!tenantId || !agentId) return { empty: true };
   const parsedYear = parseInt(year, 10);
   if (!parsedYear) return { empty: true };
-  const ref = doc(db, 'tenants', tenantId, 'users', agentId, collectionName, String(parsedYear));
   try {
+    const ref = doc(db, 'tenants', tenantId, 'users', agentId, collectionName, String(parsedYear));
     const snap = await getDoc(ref);
     if (!snap.exists()) return { empty: true };
     return { data: snap.data() };
@@ -74,7 +77,10 @@ export async function getAgentMonthlyPlan(tenantId, agentId, year) {
   const res = await readPlanDoc(tenantId, agentId, 'monthlyPlan', year);
   if (!res.data) return res;
   const src = res.data;
-  const targets = Array.isArray(src.targets) ? src.targets.map(num) : [];
+  // Normalize to exactly 12 months — month indices 0–11 are an invariant of
+  // every monthly-plan consumer; malformed docs must not leak a short/long
+  // array through (CodeRabbit PR #789).
+  const targets = Array.from({ length: 12 }, (_, i) => num(src.targets?.[i]));
   return {
     plan: {
       year: src.year ?? null,
@@ -95,19 +101,18 @@ export async function getAgentMonthlyPlan(tenantId, agentId, year) {
  * the floor check still renders, on the resolver's own fallback semantics.
  */
 export async function getAgentAnnualFloor(tenantId, agentId) {
-  let contractStartDate = null;
-  let tenureApiFloors;
-  try {
-    const snap = await getDoc(doc(db, 'tenants', tenantId, 'users', agentId));
-    if (snap.exists()) contractStartDate = snap.data().contractStartDate ?? null;
-  } catch {
-    contractStartDate = null; // denied/failed → flat fallback below
+  if (!tenantId || !agentId) {
+    return resolveAnnualAPIFloor({ contractStartDate: null, tenureApiFloors: undefined });
   }
-  try {
-    const mins = await getCompanyMinimums(tenantId);
-    tenureApiFloors = mins?.tenureApiFloors;
-  } catch {
-    tenureApiFloors = undefined; // resolver defaults-merges
-  }
+  // Independent reads run in parallel; each failure degrades to the resolver's
+  // fallback independently (denied agent doc → flat; missing config → defaults).
+  const [contractStartDate, tenureApiFloors] = await Promise.all([
+    getDoc(doc(db, 'tenants', tenantId, 'users', agentId))
+      .then((snap) => (snap.exists() ? snap.data().contractStartDate ?? null : null))
+      .catch(() => null),
+    getCompanyMinimums(tenantId)
+      .then((mins) => mins?.tenureApiFloors)
+      .catch(() => undefined),
+  ]);
   return resolveAnnualAPIFloor({ contractStartDate, tenureApiFloors });
 }

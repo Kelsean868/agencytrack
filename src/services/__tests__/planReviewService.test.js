@@ -65,6 +65,23 @@ describe('planReviewService — shape normalization', () => {
     expect(r.plan.lines.general.targetAPI).toBe(0);
   });
 
+  it('malformed targets normalize to exactly 12 months (pad/truncate)', async () => {
+    hoisted.getDoc.mockReturnValue(snap({
+      year: 2026, status: 'draft', split: 'even', anchorAPI: 120000,
+      targets: [5000, '6000', 7000], // short + mixed types
+    }));
+    const r = await getAgentMonthlyPlan('t', 'agent-a', 2026);
+    expect(r.plan.targets).toHaveLength(12);
+    expect(r.plan.targets.slice(0, 3)).toEqual([5000, 6000, 7000]);
+    expect(r.plan.targets[11]).toBe(0);
+  });
+
+  it('missing tenantId/agentId returns empty without touching Firestore (sync-throw guard)', async () => {
+    await expect(getAgentYearPlan(undefined, 'agent-a', 2026)).resolves.toEqual({ empty: true });
+    await expect(getAgentMonthlyPlan('t', undefined, 2026)).resolves.toEqual({ empty: true });
+    expect(hoisted.getDoc).not.toHaveBeenCalled();
+  });
+
   it('monthlyPlan targets normalize to numbers; anchorAPI guarded', async () => {
     hoisted.getDoc.mockReturnValue(snap({
       year: 2026, status: 'draft', split: 'custom', anchorAPI: '120000',

@@ -164,6 +164,9 @@ async function assertTabsAndNeutral(page, agentUid, themeTag) {
 
   const worksheetPath = `tenants/${TENANT_ID}/users/${AGENT_UID}/moneyNeeds/${YEAR}`;
   const originalDoc = await restGet(agentToken, worksheetPath);
+  // Track ABSENCE separately — restoring 'private' onto a doc that never had a
+  // visibility field would write a field that wasn't there (CodeRabbit PR #789).
+  const hadVisibility = originalDoc.fields?.visibility !== undefined;
   const originalVisibility = originalDoc.fields?.visibility?.stringValue ?? 'private';
   let flipped = false;
 
@@ -199,14 +202,24 @@ async function assertTabsAndNeutral(page, agentUid, themeTag) {
   } catch (e) {
     fail('smoke', `crashed: ${e.message}`);
   } finally {
-    // Cleanup — restore visibility exactly; the smoke wrote nothing else.
+    // Cleanup — restore visibility EXACTLY; the smoke wrote nothing else.
+    // If the field never existed, restore = DELETE it (updateMask without the
+    // field removes it), not a write of 'private' that was never there.
     try {
       if (flipped) {
-        await restPatch(agentToken, worksheetPath, { visibility: { stringValue: originalVisibility } }, ['visibility']);
-        const check = await restGet(agentToken, worksheetPath);
-        (check.fields?.visibility?.stringValue === originalVisibility)
-          ? pass('6-cleanup', `visibility restored to "${originalVisibility}", 0 orphans`)
-          : fail('6-cleanup', `visibility restore mismatch: ${check.fields?.visibility?.stringValue}`);
+        if (hadVisibility) {
+          await restPatch(agentToken, worksheetPath, { visibility: { stringValue: originalVisibility } }, ['visibility']);
+          const check = await restGet(agentToken, worksheetPath);
+          (check.fields?.visibility?.stringValue === originalVisibility)
+            ? pass('6-cleanup', `visibility restored to "${originalVisibility}", 0 orphans`)
+            : fail('6-cleanup', `visibility restore mismatch: ${check.fields?.visibility?.stringValue}`);
+        } else {
+          await restPatch(agentToken, worksheetPath, {}, ['visibility']); // mask-only → field deleted
+          const check = await restGet(agentToken, worksheetPath);
+          (check.fields?.visibility === undefined)
+            ? pass('6-cleanup', 'visibility field removed (was absent originally), 0 orphans')
+            : fail('6-cleanup', `visibility field still present: ${check.fields?.visibility?.stringValue}`);
+        }
       } else {
         pass('6-cleanup', 'nothing seeded (worksheet already shared), 0 orphans');
       }

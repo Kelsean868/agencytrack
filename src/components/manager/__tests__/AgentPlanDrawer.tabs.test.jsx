@@ -82,6 +82,20 @@ describe('AgentPlanDrawer — tab shell', () => {
     expect(screen.getByTestId('team-plans-drawer-income')).toBeInTheDocument();
   });
 
+  it('a stale fetch never overwrites the switched-to agent (loadSeq guard)', async () => {
+    let resolveStale;
+    hoisted.getAgentYearPlan.mockImplementationOnce(() => new Promise((r) => { resolveStale = r; }));
+    const { rerender } = renderDrawer(); // agent-a fetch left pending
+    rerender(
+      <AgentPlanDrawer row={{ ...ROW, agentId: 'agent-b' }} tenantId="tenant-1" onClose={vi.fn()} onCoach={vi.fn()} />,
+    );
+    await flush(); // agent-b load resolves (default mocks → status Draft)
+    await act(async () => { resolveStale({ plan: { ...YEAR_PLAN.plan, status: 'committed' } }); });
+    fireEvent.click(screen.getByTestId('tpd-tab-year'));
+    // Stale agent-a resolution (Committed) must NOT have overwritten agent-b (Draft).
+    expect(screen.getByTestId('tpd-year-status').textContent).toBe('Draft');
+  });
+
   it('fetches plans once on open (drawer-open contract, not per-tab)', async () => {
     renderDrawer();
     await flush();
