@@ -24,7 +24,13 @@ import { fileURLToPath } from 'url';
 // ESM-safe project root (avoids `process.cwd()` which is not a browser global).
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
-const MASK_ATTR = 'data-clarity-mask="True"';
+// Matches data-clarity-mask set to a TRUTHY value, tolerant of formatting
+// (quote style, casing, or a {true} JSX expression) so a valid reformat doesn't
+// false-fail the guard — but deliberately NOT a bare attribute-name match:
+// data-clarity-mask={false} / "false" masks nothing and must still fail here
+// (Gemini #786). Mirrors the regex-based foreign-ink-guard precedent.
+const MASK_ATTR_REGEX = /data-clarity-mask\s*=\s*(?:["']True["']|["']true["']|\{\s*true\s*\})/;
+const MASK_ATTR_DISPLAY = 'data-clarity-mask="True"';
 
 // Every surface that renders personal financial data. Each container's mask
 // attribute is verified present. Keep this list in sync with the mask points in
@@ -46,7 +52,7 @@ const MASKED_SURFACES = [
 
 describe('Clarity mask-attribute guard', () => {
   for (const { name, path } of MASKED_SURFACES) {
-    it(`${name}: data container carries ${MASK_ATTR}`, () => {
+    it(`${name}: data container carries ${MASK_ATTR_DISPLAY}`, () => {
       const fullPath = resolve(ROOT, path);
       let src;
       try {
@@ -55,10 +61,11 @@ describe('Clarity mask-attribute guard', () => {
         throw new Error(`Cannot read Clarity-masked surface: ${path}`);
       }
       expect(
-        src.includes(MASK_ATTR),
-        `${path} is missing ${MASK_ATTR}. This attribute is the code-enforced ` +
-          `defense keeping personal financial data out of Clarity recordings ` +
-          `(mode is dashboard-only). Do not remove it — see docs/clarity-integration.md.`,
+        MASK_ATTR_REGEX.test(src),
+        `${path} is missing ${MASK_ATTR_DISPLAY} (or an equivalent truthy form). ` +
+          `This attribute is the code-enforced defense keeping personal financial ` +
+          `data out of Clarity recordings (mode is dashboard-only). Do not remove ` +
+          `it — see docs/clarity-integration.md.`,
       ).toBe(true);
     });
   }

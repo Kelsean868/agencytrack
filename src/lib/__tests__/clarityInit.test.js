@@ -20,6 +20,11 @@ describe('initClarity — privacy gate', () => {
   beforeEach(() => {
     initMock.mockClear();
     vi.unstubAllEnvs();
+    // Pin the gate inputs to a known-closed baseline so a developer's local
+    // .env.local (which Vitest loads) can't leak a real VITE_CLARITY_PROJECT_ID
+    // into the PROD-stubbed cases and flip the gate open (Gemini #786).
+    vi.stubEnv('PROD', false);
+    vi.stubEnv('VITE_CLARITY_PROJECT_ID', '');
   });
   afterEach(() => {
     vi.unstubAllEnvs();
