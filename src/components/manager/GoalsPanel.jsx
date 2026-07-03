@@ -143,7 +143,7 @@ function CommittedBadge() {
 function LockedBadge({ locked }) {
   if (locked === true) {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary dark:text-primary-dark">
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">
         <Lock size={10} />
         Locked
       </span>
@@ -179,7 +179,7 @@ function LockToggle({ locked, onChange }) {
         onClick={() => onChange(true)}
         className={`flex-1 h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
           locked
-            ? 'bg-primary/10 border-primary/40 text-primary dark:text-primary-dark'
+            ? 'bg-primary/10 border-primary/40 text-primary'
             : 'bg-transparent border-border text-ink-muted'
         }`}
       >
@@ -322,7 +322,7 @@ function UnitGoalsTab({ role, userProfile, allUsers }) {
           )}
           <LockToggle locked={locked} onChange={setLocked} />
           {locked && (
-            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/8 border border-primary/25 dark:bg-primary-dark/10 dark:border-primary-dark/30 text-sm text-primary dark:text-primary-dark">
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/8 border border-primary/25 dark:bg-primary-dark/10 dark:border-primary-dark/30 text-sm text-primary">
               <Lock size={15} className="mt-0.5 shrink-0" />
               Agents' commitments must meet or exceed this unit target.
             </div>
@@ -421,7 +421,7 @@ function BranchGoalsTab({ userProfile }) {
           )}
           <LockToggle locked={locked} onChange={setLocked} />
           {locked && (
-            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/8 border border-primary/25 dark:bg-primary-dark/10 dark:border-primary-dark/30 text-sm text-primary dark:text-primary-dark">
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/8 border border-primary/25 dark:bg-primary-dark/10 dark:border-primary-dark/30 text-sm text-primary">
               <Lock size={15} className="mt-0.5 shrink-0" />
               Units and agents must commit to totals that meet or exceed this branch target.
             </div>
@@ -532,7 +532,7 @@ function SalesManagerGoalsTab({ userProfile }) {
           )}
           <LockToggle locked={locked} onChange={setLocked} />
           {locked && (
-            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/8 border border-primary/25 dark:bg-primary-dark/10 dark:border-primary-dark/30 text-sm text-primary dark:text-primary-dark">
+            <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/8 border border-primary/25 dark:bg-primary-dark/10 dark:border-primary-dark/30 text-sm text-primary">
               <Lock size={15} className="mt-0.5 shrink-0" />
               Branch targets must align to meet or exceed this company-wide target.
             </div>
@@ -709,7 +709,7 @@ function AgentGoalRow({
               {hasManagerTarget ? (
                 <span className="text-xs text-ink-muted">
                   Manager target: <span className="font-semibold text-ink">{formatCurrency(parseFloat(goalsDoc?.targetAnnualAPI) || 0)}</span>
-                  {targetLocked === true && <span className="ml-1 text-primary dark:text-primary-dark font-semibold">(locked)</span>}
+                  {targetLocked === true && <span className="ml-1 text-primary font-semibold">(locked)</span>}
                   {targetLocked === false && <span className="ml-1 text-warning-ink font-semibold">(suggested)</span>}
                 </span>
               ) : (
@@ -720,7 +720,7 @@ function AgentGoalRow({
               <button
                 type="button"
                 onClick={onSetTarget}
-                className="h-9 px-4 rounded-lg text-xs font-semibold border border-primary/40 text-primary dark:text-primary-dark hover:bg-primary/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 shrink-0"
+                className="h-9 px-4 rounded-lg text-xs font-semibold border border-primary/40 text-primary hover:bg-primary/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 shrink-0"
               >
                 {hasManagerTarget ? 'Edit target' : 'Set target'}
               </button>

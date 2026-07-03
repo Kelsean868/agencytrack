@@ -122,7 +122,7 @@ export default function PersistencyEntryForm({
       >
         {/* Header */}
         <div className="shrink-0 flex items-center gap-3 px-4 py-4 border-b border-border">
-          <div className="h-9 w-9 rounded-full bg-primary/15 dark:bg-primary/20 flex items-center justify-center shrink-0 text-sm font-bold text-primary dark:text-primary-dark select-none">
+          <div className="h-9 w-9 rounded-full bg-primary/15 dark:bg-primary/20 flex items-center justify-center shrink-0 text-sm font-bold text-primary select-none">
             {agentName ? agentName.split(' ').map((s) => s[0]).slice(0, 2).join('').toUpperCase() : '?'}
           </div>
           <div className="min-w-0 flex-1">

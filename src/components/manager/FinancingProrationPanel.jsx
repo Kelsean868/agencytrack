@@ -322,7 +322,7 @@ export default function FinancingProrationPanel() {
                     </div>
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Proration</p>
-                      <p className="text-lg font-extrabold text-primary dark:text-primary-dark" data-testid="proration-ratio">{pctLabel(readout.prorationRatio)}</p>
+                      <p className="text-lg font-extrabold text-primary" data-testid="proration-ratio">{pctLabel(readout.prorationRatio)}</p>
                     </div>
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-wide text-ink-muted">Suggested</p>

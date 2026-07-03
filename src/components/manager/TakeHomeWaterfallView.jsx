@@ -32,7 +32,7 @@ function WaterfallBar({ heightPx, marginBottomPx = 0, variant, label, amountLabe
     deductTax:   'text-danger text-xs',
     net:         'text-ink-muted',
     deductFin:   'text-warning text-xs',
-    takeOwing:   'text-primary dark:text-primary-dark font-bold text-sm',
+    takeOwing:   'text-primary font-bold text-sm',
     takeClear:   'text-success font-bold text-sm',
   }[variant] ?? 'text-ink-muted';
 
@@ -368,7 +368,7 @@ export default function TakeHomeWaterfallView() {
                       Year {projection.yearInAgreement} · Q{projection.quarter}
                     </span>
                     <span className="font-mono text-[10px] text-ink-muted">·</span>
-                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-primary dark:text-primary-dark">
+                    <span className="font-mono text-[10px] font-bold uppercase tracking-wider text-primary">
                       Projected
                     </span>
                     {noBonus && (
