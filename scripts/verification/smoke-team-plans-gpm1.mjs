@@ -205,6 +205,7 @@ async function assertRosterAndDrawer(page, agentUid, themeTag) {
   for (const f of PATCH_FIELDS) {
     if (originalDoc.fields?.[f] !== undefined) originalFields[f] = originalDoc.fields[f];
   }
+  const hadOriginalVisibility = originalDoc.fields?.visibility !== undefined;
   const originalVisibility = originalDoc.fields?.visibility?.stringValue ?? 'private';
   safeLog(`[setup] original visibility=${originalVisibility}; captured ${Object.keys(originalFields).length}/${PATCH_FIELDS.length} restorable fields`);
 
@@ -302,10 +303,17 @@ async function assertRosterAndDrawer(page, agentUid, themeTag) {
     await openTeamPlans(umPage);
     const notSharedVisible = await umPage.locator(`[data-testid="team-plans-notshared-${AGENT_UID}"]`).isVisible().catch(() => false);
     const bodyAfterOff = await umPage.evaluate(() => document.body.innerHTML);
-    if (notSharedVisible && !bodyAfterOff.includes('85,417')) {
-      pass('5.2: consent-off round-trip — row shows "Not shared", seeded figures gone');
+    // EVERY seeded shared figure must be gone — not just the headline
+    // (CodeRabbit PR #785 review).
+    const SHOWN_MARKERS = [
+      '85,417', '51,250', '17,083', '8,542', '8,543',
+      '14,654', '187,456', '21,521', '208,977',
+    ];
+    const remainingShown = SHOWN_MARKERS.filter((m) => bodyAfterOff.includes(m));
+    if (notSharedVisible && remainingShown.length === 0) {
+      pass('5.2: consent-off round-trip — row shows "Not shared", all 9 seeded figures gone');
     } else {
-      fail('5.2: consent-off round-trip', `notShared=${notSharedVisible}, figuresGone=${!bodyAfterOff.includes('85,417')}`);
+      fail('5.2: consent-off round-trip', `notShared=${notSharedVisible}, remainingShown=[${remainingShown.join(', ')}]`);
     }
 
     const umErrors = umCapture.consoleMessages.filter((m) => m.type === 'error').length;
@@ -336,19 +344,20 @@ async function assertRosterAndDrawer(page, agentUid, themeTag) {
     // ── CLEANUP (non-negotiable) ─────────────────────────────────────────────
     try {
       if (seeded) {
-        const restoreMasks = PATCH_FIELDS;
-        const restoreFields = { ...originalFields };
-        if (!restoreFields.visibility) restoreFields.visibility = { stringValue: originalVisibility };
-        await restPatch(agentToken, worksheetPath, restoreFields, restoreMasks);
+        // Restore verbatim: fields absent from the original are DELETED by the
+        // mask (an originally-absent visibility is restored as absent, not
+        // defaulted to 'private' — CodeRabbit PR #785 review).
+        await restPatch(agentToken, worksheetPath, { ...originalFields }, PATCH_FIELDS);
         // Verify restoration: visibility + one seeded figure reverted.
         const after = await restGet(agentToken, worksheetPath);
         const visNow = after.fields?.visibility?.stringValue;
+        const visOk = hadOriginalVisibility ? visNow === originalVisibility : visNow === undefined;
         const fycNow = after.fields?.firstYearCommissionsRequired;
         const fycSeededStill = JSON.stringify(fycNow ?? null).includes('85417');
-        if (visNow === originalVisibility && !fycSeededStill) {
-          pass(`cleanup: worksheet restored (visibility=${visNow}, seeded figures reverted)`);
+        if (visOk && !fycSeededStill) {
+          pass(`cleanup: worksheet restored (visibility=${visNow ?? '(absent, as original)'}, seeded figures reverted)`);
         } else {
-          fail('cleanup: worksheet restore', `visibility=${visNow} (want ${originalVisibility}), seededFycStill=${fycSeededStill}`);
+          fail('cleanup: worksheet restore', `visibility=${visNow} (want ${hadOriginalVisibility ? originalVisibility : '(absent)'}), seededFycStill=${fycSeededStill}`);
         }
       }
       // Delete the smoke coaching note (Admin) + orphan check.

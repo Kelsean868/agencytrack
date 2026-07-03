@@ -36,6 +36,7 @@ function Stat({ label, value, testId }) {
 
 export default function AgentPlanDrawer({ row, onClose, onCoach }) {
   const closeRef = useRef(null);
+  const coachRef = useRef(null);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
@@ -44,6 +45,21 @@ export default function AgentPlanDrawer({ row, onClose, onCoach }) {
   }, [onClose]);
 
   useEffect(() => { closeRef.current?.focus(); }, []);
+
+  // Focus trap: the dialog has exactly two focusable elements (Close, Coach) —
+  // cycle Tab/Shift+Tab between them so focus never escapes to the page behind
+  // the overlay (CodeRabbit PR #785 review).
+  useEffect(() => {
+    const trap = (e) => {
+      if (e.key !== 'Tab') return;
+      const first = closeRef.current;
+      const last = coachRef.current ?? first;
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, []);
 
   if (!row?.plan) return null;
   const { plan } = row;
@@ -137,6 +153,7 @@ export default function AgentPlanDrawer({ row, onClose, onCoach }) {
           {/* Footer — Coach is the only action */}
           <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-border flex-shrink-0">
             <button
+              ref={coachRef}
               type="button"
               onClick={() => onCoach(row)}
               data-testid="team-plans-drawer-coach"

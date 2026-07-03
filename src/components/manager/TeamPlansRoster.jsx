@@ -120,6 +120,7 @@ export default function TeamPlansRoster({ tenantId }) {
   if (state.status === 'error') {
     return (
       <div className="flex flex-col gap-4" data-testid="team-plans-roster" data-loading="false">
+        <Topbar />
         <div className="p-4 rounded-xl border border-danger/30 bg-danger/10 text-danger-ink text-sm flex items-center justify-between gap-3 flex-wrap">
           <span>We couldn't load your team's plans right now. Nothing is shown rather than a partial picture.</span>
           <button
