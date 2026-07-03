@@ -166,11 +166,11 @@ async function assertBasisBadge(page) {
   (drawerNoInput && drawerNoConfirm)
     ? pass('5.4-drawer-no-write', 'read-only drawer has no proration input / Confirm button')
     : fail('5.4-drawer-no-write', `drawer input=${!drawerNoInput} confirm=${!drawerNoConfirm}`);
-  // Deferred Flag-to-BM must degrade, not be a dead write.
+  // K10b: Flag-to-BM is now a LIVE control (the escalation form), no longer disabled.
   const flag = page.locator('[data-testid="unit-financing-drawer-flag"]');
-  (await flag.count() > 0 && await flag.isDisabled())
-    ? pass('deferred-flag', 'Flag to BM disabled (K10b), not a dead button')
-    : fail('deferred-flag', 'Flag-to-BM affordance not safely disabled');
+  (await flag.count() > 0 && !(await flag.isDisabled()))
+    ? pass('k10b-flag-live', 'Flag to BM is a live control (K10b), not a disabled button')
+    : fail('k10b-flag-live', 'Flag-to-BM affordance not a live control');
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
 }

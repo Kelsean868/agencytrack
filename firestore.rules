@@ -1587,6 +1587,76 @@ service cloud.firestore {
         allow read, write: if false;
       }
 
+      // ── Track K · K10b: financing escalations (UM → same-branch BM) ────────────
+      // Flat collection /tenants/{tid}/financingEscalations/{escalationId}
+      //   ID = {agentId}_{reason}_{YYYY_MM} (idempotent per agent+reason+month).
+      //
+      // A Unit Manager raises a TRACKED escalation on one of their OWN-unit agents'
+      // financing; the SAME-BRANCH Branch Manager (and SM/TA/PA) reads an inbox and
+      // ACKS it. States: 'open' → 'acknowledged'. The agent is excluded entirely.
+      //
+      // UNRELATED to functions/war/escalationLogic.js (WAR missed-standard upline
+      //   notify) — different concept, no shared symbols.
+      //
+      // Read key: resource.data.branchId (the agent's branchId, denormalized at
+      //   create) == callerBranchId(tenantId). branchId completeness verified in
+      //   real pilot data (K10b Phase 1 probe: tatillife_smoke 6/6, south 12/12).
+      // Index: financingEscalations (branchId ASC, status ASC, createdAt DESC).
+      //
+      // branchId-denorm trust: the UM's client writes branchId from the roster row
+      //   (the agent's real branchId). A UM mis-writing branchId could only mis-route
+      //   their OWN-unit agent's escalation to another branch's BM — the SAME denorm
+      //   trust coachingNotes carries on agentUnitId. Accepted residual (pilot).
+      match /financingEscalations/{escalationId} {
+
+        // Who may READ an escalation: SM/TA/PA tenant-wide, or a BM whose own
+        // branchId matches the doc's denormalized branchId. UM has NO read arm;
+        // agent excluded. On `update` this reads resource.data (the pre-ack doc),
+        // so the branch check keys on the existing branchId — correct.
+        function canReadEscalation() {
+          return isManager() && getTenantId() == tenantId && (
+            getRole() in ['sales_manager', 'tenant_admin', 'platform_admin']
+            || (getRole() == 'branch_manager'
+                && callerBranchId(tenantId) != null
+                && resource.data.branchId == callerBranchId(tenantId))
+          );
+        }
+
+        allow get: if canReadEscalation();
+        // list: per-doc predicate identical to get. The BM inbox query MUST filter
+        // where('branchId','==',callerBranchId); SM/TA/PA may list tenant-wide.
+        allow list: if canReadEscalation();
+
+        // create: UM only, on an OWN-unit agent (agentUnitId == uid, mirrors
+        //   coachingNotes cnUMScopeOnWrite), self-stamped raiser, status 'open',
+        //   reason in enum, full key set present, tenantId == path tenant.
+        allow create: if isSignedIn()
+          && getTenantId() == tenantId
+          && getRole() == 'unit_manager'
+          && request.resource.data.agentUnitId == request.auth.uid
+          && request.resource.data.raisedByUid == request.auth.uid
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.status == 'open'
+          && request.resource.data.reason in
+               ['draw_decision', 'confirm_request', 'notify_5_3', 'termination_risk']
+          && request.resource.data.keys().hasAll([
+               'tenantId', 'agentId', 'agentName', 'agentUnitId', 'branchId',
+               'raisedByUid', 'raisedByName', 'raisedByRole', 'reason', 'note',
+               'status', 'createdAt'
+             ]);
+
+        // update: the ACK, by a caller who may read the escalation. Field-restricted
+        //   to the ack triple (SEC-10 hasOnly precedent); new status must be
+        //   'acknowledged'. This also blocks a UM same-month re-raise (a full-field
+        //   setDoc onto an existing doc fails hasOnly and canReadEscalation).
+        allow update: if canReadEscalation()
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['status', 'acknowledgedByUid', 'acknowledgedAt'])
+          && request.resource.data.status == 'acknowledged';
+
+        allow delete: if false;
+      }
+
     }
 
     // ── I1.2: collectionGroup author arm for jointCalls ───────────────────────

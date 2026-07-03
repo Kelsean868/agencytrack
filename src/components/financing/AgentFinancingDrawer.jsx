@@ -5,8 +5,8 @@
 // calc (actual ÷ validating = proration %), the LOCKED confirmed draw ("set by your
 // Branch Manager · date"), and the adjustmentPct readout — every figure read-only.
 // The two UM levers live in the footer: Coach (opens the reused CoachingNotesModal
-// via onCoach) and Flag to BM (DEFERRED to K10b — rendered disabled, never a dead
-// write). No managerFinancing / adjustmentPct write path exists for this role.
+// via onCoach) and Flag to BM (K10b — opens the FinancingEscalationModal via
+// onFlag). No managerFinancing / adjustmentPct write path exists for this role.
 //
 // Reads nothing: the parent already fanned out this agent's terms + ledger; the
 // assembled row carries them, so the drawer is pure presentation.
@@ -34,7 +34,7 @@ function Calc({ label, value, testId }) {
   );
 }
 
-export default function AgentFinancingDrawer({ row, onClose, onCoach }) {
+export default function AgentFinancingDrawer({ row, onClose, onCoach, onFlag }) {
   const closeRef = useRef(null);
 
   useEffect(() => {
@@ -176,18 +176,16 @@ export default function AgentFinancingDrawer({ row, onClose, onCoach }) {
             )}
           </div>
 
-          {/* Footer — the UM's two levers (Flag deferred to K10b) */}
+          {/* Footer — the UM's two levers: Flag to BM (K10b) + Coach */}
           <div className="flex gap-2 px-5 py-4 border-t border-border flex-shrink-0 bg-card">
             <button
               type="button"
-              disabled
-              aria-disabled="true"
-              title="Tracked escalation to your Branch Manager — coming soon"
+              onClick={() => onFlag?.(row)}
+              title="Raise a tracked escalation to your Branch Manager"
               data-testid="unit-financing-drawer-flag"
-              className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-lg border border-border text-sm font-semibold text-ink-muted bg-surface-muted opacity-60 cursor-not-allowed"
+              className="flex-1 min-h-[44px] inline-flex items-center justify-center gap-2 rounded-lg border border-border text-sm font-semibold text-ink bg-card hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <Flag size={15} aria-hidden="true" /> Flag to BM
-              <span className="font-mono text-[9px] uppercase tracking-wide">Soon</span>
             </button>
             <button
               type="button"

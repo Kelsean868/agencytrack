@@ -97,6 +97,7 @@ export function assembleRosterRow({ agent, terms, ledger, ceiling }) {
     agentId:   agent?.id ?? null,
     agentName: agent?.name ?? agent?.email ?? agent?.id ?? '—',
     agentUnitId: agent?.unitId ?? null,          // carried for the CoachNote agentUnitId denorm
+    branchId: agent?.branchId ?? null,           // K10b: the BM-inbox read key (escalation denorm)
     status: terms?.financingStatus ?? null,
     effectiveDate: terms?.effectiveDate ?? null,
     agreedMonthlyFinancing: numOrNull(terms?.agreedMonthlyFinancing),

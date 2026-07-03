@@ -41,7 +41,7 @@ describe('isActivelyFinanced', () => {
 });
 
 describe('assembleRosterRow', () => {
-  const agent = { id: 'a1', name: 'R. Seepersad', unitId: 'um-uid' };
+  const agent = { id: 'a1', name: 'R. Seepersad', unitId: 'um-uid', branchId: 'branchX' };
   const terms = {
     financingStatus: 'on_financing',
     effectiveDate: '2025-12-01',
@@ -49,11 +49,12 @@ describe('assembleRosterRow', () => {
     currentMonthlyFinancing: 8000,
   };
 
-  it('carries agent identity + agentUnitId for the CoachNote denorm', () => {
+  it('carries agent identity + agentUnitId + branchId for the CoachNote/escalation denorm', () => {
     const row = assembleRosterRow({ agent, terms, ledger: [], ceiling: 48000 });
     expect(row.agentId).toBe('a1');
     expect(row.agentName).toBe('R. Seepersad');
     expect(row.agentUnitId).toBe('um-uid');
+    expect(row.branchId).toBe('branchX');   // K10b: the BM-inbox read key
     expect(row.status).toBe('on_financing');
   });
 
