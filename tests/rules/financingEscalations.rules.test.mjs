@@ -28,7 +28,7 @@
  *   The harness therefore ALSO seeds the raised agent user docs (AGENT_A own-unit,
  *   AGENT_B other-unit, AGENT_NB missing-branchId) that the get() reads.
  *
- * Test matrix (24 cases — labels 1–19 + 13b + K10c 20–23; ack DENY cases run before
+ * Test matrix (25 cases — labels 1–19 + 13b + K10c 20–24; ack DENY cases run before
  * the successful ack so each isolates its own violation, not the status=='open'
  * precondition):
  *    1. UM own-unit create                                   → ALLOW
@@ -55,6 +55,7 @@
  *   21. K10c forged agentId (agent in another unit)          → DENY
  *   22. K10c wrong branchId (not agent's real branch)        → DENY
  *   23. K10c agent doc missing branchId (fail closed)        → DENY
+ *   24. K10c wholly nonexistent agentId (absent doc)         → DENY
  *
  * hasOnly gotcha (PR #365): the ack deny-test (#12) MUST change status to a value
  * that DIFFERS from the seed ('open' → 'acknowledged') so the touched extra field
@@ -313,6 +314,15 @@ async function main() {
     //   raisedAgent().branchId is null → request branchId == null is false → DENY.
     await assertFails(setDoc(escRef(umA(), `${AGENT_NB}_draw_decision_${MONTH}`),
       createPayload({ agentId: AGENT_NB, agentName: 'Agent NB', agentUnitId: UM_A, branchId: BRANCH_A })));
+  });
+
+  await t('24. K10c: wholly nonexistent agentId → DENY (raisedAgent() get() on absent doc, fail closed)', async () => {
+    // The raisedAgent() get() reads a doc that does NOT exist → .data is null →
+    //   raisedAgent().unitId is null → == auth.uid is false → DENY. Covers the
+    //   fail-closed path raisedAgent()'s doc-comment calls out (CodeRabbit PR #783).
+    const ghost = 'no-such-agent-uid';
+    await assertFails(setDoc(escRef(umA(), `${ghost}_draw_decision_${MONTH}`),
+      createPayload({ agentId: ghost, agentName: 'Ghost', agentUnitId: UM_A, branchId: BRANCH_A })));
   });
 
   console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed.`);
