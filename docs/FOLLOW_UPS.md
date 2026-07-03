@@ -6,7 +6,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
-## Track K · K10b → POST-DEPLOY write-read-ack verification (banked K10b, 2026-07-03, Rule 13 deferred-verification — DO AFTER the manual rules/index deploy)
+## ~~Track K · K10b → POST-DEPLOY write-read-ack verification~~ — RESOLVED (post-deploy prod-smoke 7/7, 2026-07-03, PR #779 `9bdf0120`)
+
+**RESOLVED note (2026-07-03):** Operator deployed `firebase deploy --only firestore:rules,firestore:indexes` post-merge; CC then ran the full write-read-ack cycle as **real subjects through the live production rules** (`tatillife_smoke`, natural A11Y UM/BM/agent — agent verified in the UM's unit AND the BM's branch). **7/7 PASS:** (1) UM raises on in-unit agent → ALLOW, value-level doc assert incl. `branchId=smoke_branch`/`agentUnitId==UM.uid` → **confirms rules DEPLOYED**; (2) out-of-unit raise (`agentUnitId != uid`) → DENY; (3) agent signed-in reads → DENY; (4a) BM same-branch lists via the composite index → ALLOW → **confirms index ENABLED** (no FAILED_PRECONDITION); (4b) BM ack → `open→acknowledged`, `acknowledgedByUid == BM.uid`; (5) same-month re-raise → DENY (surfaces "already raised this month"); (6) cleanup → 1 doc deleted, 0 orphans (collection re-confirmed empty). Reusable smoke `scripts/verification/smoke-financing-escalation-writeread-k10b.mjs` written and proven; being landed via a separate test-only PR + SMOKES.md entry. **Residual gap (Rule 22):** the SM/TA read arm and peer-BM (other-branch) denial were verified in the emulator matrix (20/20) only, not re-run live — they share the same `canReadEscalation()` predicate, so low-risk. Original waiver detail retained below for the drift trail.
 
 **Waiver basis:** PR-K10b (feat/k10b-financing-escalation, #779) ships the `financingEscalations` collection + rules block + composite index #22. Rules and indexes do NOT auto-deploy via Vercel, so the **write path (raise → read → ack) could not be smoked pre-merge** — the pre-merge smoke was UI-wiring only (16/16, both themes). This FU carries the deferred acceptance criteria verbatim.
 
@@ -22,6 +24,22 @@ node scripts/verification/seed-unit-financing-k10a.mjs --cleanup
 **Unverified acceptance criteria (copied verbatim from the brief Phase 5 POST-DEPLOY):** full write-read-ack cycle as real subjects in `tatillife_smoke` — UM raises on an in-unit agent (value-level doc assert incl. `branchId`), out-of-unit raise fails, agent signed-in cannot read it, BM same-branch sees + acks (status flip asserted), same-month duplicate surfaces the raised state. Cleanup, 0 orphans. (The current `smoke-financing-escalation-k10b.mjs` covers only UI wiring; the write-read-ack legs need to be added — or run ad-hoc as real subjects — once the rules are live, since the UM/BM/agent write paths can't be exercised until then.)
 
 **Falsification:** moot if the escalation collection is redesigned before the deploy, or if a post-deploy prod-smoke of the full cycle is completed and recorded on the PR (mark RESOLVED with the run output).
+
+## Track K · K10b → bind `financingEscalations.branchId` to the agent's real user-doc value at create (banked K10b, 2026-07-03, MEDIUM — fast-follow, K10c candidate)
+
+**Origin:** flagged pre-merge in PR #779 as the branchId-denorm trust residual. The K10b `create` rule verifies `branchId is string` but does NOT bind it to the agent's actual branch — the UM's client writes it from the roster row. A UM could (accidentally or maliciously) write a *wrong* branchId for their OWN-unit agent, mis-routing the escalation to a different branch's BM inbox. Same denorm trust `coachingNotes` carries on `agentUnitId`; accepted for pilot, but closable.
+
+**Fix:** in the `create` rule, add `request.resource.data.branchId == get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(request.resource.data.agentId)).data.branchId` (one extra `get()` — within the per-request limit; the create arm already reads no other doc). Binds the denormalized branchId to the source of truth so a mis-typed/forged branchId is rejected at the rules layer. Add an emulator case: create with a branchId that mismatches the agent's user-doc branchId → DENY. **Good candidate to ride with the escalation notification-bell ping** (the other banked K10b deferral) as a small K10c slice — both are additive rule/CF work on the same collection.
+
+**Falsification:** moot if the escalation collection is redesigned, or if a future slice denormalizes branchId onto a trusted server-written field (CF-authored escalations) making the client-supplied value non-authoritative.
+
+## PolicyLedgerPanel — F3.1 "prefill with planId pre-selects the catalog picker mode" is a CI flake (async-state race) (banked 2026-07-03, LOW — test stability; same family as #543)
+
+**Symptom:** `src/components/agent/__tests__/PolicyLedgerPanel.test.jsx:504` ("F3.1 prefill with planId pre-selects the catalog picker mode") fails intermittently in CI with `expected '' to be 'plan-001'` — the combobox `planId` value reads empty before React commits the prefill. Observed **~2/3 CI failure rate** during PR #779 (`lint-and-build` red on 2 of 3 runs on commits that changed **zero** `src/`/test code coupled to this file), while the **full local suite passed 4115/4115 twice** and the same test passed on CI commit `40796d0a`. Re-running the failed job cleared it. **Not a PR-K10b regression** — surfaced there, banked here.
+
+**Fix:** stabilize the assertion — `await waitFor(() => expect(picker).toHaveValue('plan-001'))` (or `findBy*`) instead of a synchronous read, matching the pattern used to fix the CompliancePanel nudge flake (open PR #543, `fix/nudge-flake-stabilization`). Verify by running the file in isolation under load (concurrent build) several times.
+
+**Falsification:** moot if PolicyLedgerPanel's catalog-picker prefill is refactored, or if the test is deleted/rewritten in a broader PolicyLedger test pass.
 
 ## ~~Commission v2 S1 (CommissionPlayground ladder) — dark-mode `color-contrast` axe regression~~ — RESOLVED (fix/commission-dark-contrast-goaldecomp, PR #773, `fad9a1b6`, 2026-07-01)
 
