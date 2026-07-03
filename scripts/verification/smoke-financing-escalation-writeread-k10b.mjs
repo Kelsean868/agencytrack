@@ -22,7 +22,6 @@
  * SAFETY: tatillife_smoke ONLY (aborts on tatillife_south). Client SDK for the real
  * rule-gated ops; Admin SDK for value-level asserts + cleanup. No credential is echoed.
  */
-import { readFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initializeApp } from 'firebase/app';
@@ -31,14 +30,12 @@ import {
   getFirestore, doc, setDoc, getDoc, getDocs, updateDoc,
   collection, query, where, orderBy, serverTimestamp,
 } from 'firebase/firestore';
+import { loadEnv } from '../lib/loadEnv.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const env = {};
-readFileSync(path.join(ROOT, '.env.local'), 'utf8').split(/\r?\n/).forEach((l) => {
-  const t = l.trim();
-  if (!t || t.startsWith('#')) return; // skip blank + commented lines (#780 FU item 4)
-  const i = l.indexOf('='); if (i > 0) env[l.slice(0, i).trim()] = l.slice(i + 1).trim().replace(/^["']|["']$/g, '');
-});
+// Shared strict parser (FU-F-1, PR #198): skips blank/# lines, strips quotes,
+// TOOLING-N embedded-key defense. Supersedes the inline parser (#780 FU item 4).
+const env = loadEnv(path.join(ROOT, '.env.local'));
 const need = (k) => { const v = env[k]; if (!v) throw new Error(`Missing env var: ${k}`); return v; };
 
 const TENANT = env.A11Y_TENANT_ID || 'tatillife_smoke';
