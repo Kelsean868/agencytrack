@@ -34,6 +34,17 @@ vi.mock('../../manager/CoachingNotesModal', () => ({
   ),
 }));
 
+// Light stub for the K10b escalation form — assert it receives the row (esp. the
+// denormalized branchId that assembleRosterRow now carries) without the real write.
+vi.mock('../FinancingEscalationModal', () => ({
+  default: ({ row, onClose }) => (
+    <div data-testid="escalation-modal" data-agent-id={row?.agentId} data-branch-id={row?.branchId}>
+      Flag — {row?.agentName}
+      <button onClick={onClose}>close</button>
+    </div>
+  ),
+}));
+
 import UnitFinancingRoster from '../UnitFinancingRoster';
 import { financingMonthIndex } from '../../../services/financingService';
 import { monthKeyFromDate, getTodayTT } from '../../../utils/dateInputs';
@@ -57,7 +68,7 @@ const MISS_LEDGER = [
 ];
 
 // M.Baptiste — confirmed −14% cut (>10% flag), on-ceiling balance.
-const ADJ_AGENT = { id: 'a2', name: 'M. Baptiste', role: 'agent', unitId: 'um-uid' };
+const ADJ_AGENT = { id: 'a2', name: 'M. Baptiste', role: 'agent', unitId: 'um-uid', branchId: 'branchX' };
 const ADJ_LEDGER = [
   confirmed('2026_02', { actualAPI: 30000, validatingAPI: 30000, managerFinancing: 4300, adjustmentPct: 0.14, runningBalance: 31200 }),
 ];
@@ -155,15 +166,21 @@ describe('UnitFinancingRoster', () => {
     expect(modal).toHaveAttribute('data-agent-unit-id', 'um-uid');
   });
 
-  it('opens the read-only drawer from View; it has no write inputs', async () => {
+  it('opens the read-only drawer from View; Flag-to-BM is a live control that opens the escalation form with the denormalized branchId', async () => {
     mockUnit([ADJ_AGENT], { a2: ADJ_LEDGER });
     render(<UnitFinancingRoster tenantId="t1" />);
     await screen.findByTestId('unit-financing-row-a2');
     fireEvent.click(screen.getByTestId('unit-financing-view-a2'));
     const drawer = await screen.findByTestId('unit-financing-drawer');
     expect(drawer).toHaveTextContent(/set by your Branch Manager/i);
-    // Deferred Flag-to-BM degrades to a disabled control, never a dead write.
-    expect(screen.getByTestId('unit-financing-drawer-flag')).toBeDisabled();
+    // K10b: Flag-to-BM is now a live control (no longer disabled) that opens the
+    // escalation form, carrying the agent's denormalized branchId (the BM read key).
+    const flagBtn = screen.getByTestId('unit-financing-drawer-flag');
+    expect(flagBtn).not.toBeDisabled();
+    fireEvent.click(flagBtn);
+    const escModal = await screen.findByTestId('escalation-modal');
+    expect(escModal).toHaveAttribute('data-agent-id', 'a2');
+    expect(escModal).toHaveAttribute('data-branch-id', 'branchX');
   });
 
   it('on a PARTIAL fan-out failure shows resolved rows only and hides the unit aggregates', async () => {

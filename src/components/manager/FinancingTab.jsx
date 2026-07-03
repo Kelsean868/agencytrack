@@ -14,6 +14,7 @@ import FinancingProrationPanel from './FinancingProrationPanel';
 import TakeHomeWaterfallView from './TakeHomeWaterfallView';
 import FinancingReconciliationPanel from './FinancingReconciliationPanel';
 import FinancingRiskPanel from './FinancingRiskPanel';
+import FinancingEscalationInbox from '../financing/FinancingEscalationInbox';
 
 const SUBVIEWS = [
   { id: 'terms',          label: 'Terms' },
@@ -22,6 +23,7 @@ const SUBVIEWS = [
   { id: 'takehome',       label: 'Take-Home' },
   { id: 'reconciliation', label: 'Reconciliation' },
   { id: 'risk',           label: 'Risk' },
+  { id: 'escalations',    label: 'Escalations' },
 ];
 
 export default function FinancingTab() {
@@ -61,6 +63,7 @@ export default function FinancingTab() {
       {view === 'takehome'       && <TakeHomeWaterfallView />}
       {view === 'reconciliation' && <FinancingReconciliationPanel />}
       {view === 'risk'           && <FinancingRiskPanel />}
+      {view === 'escalations'    && <FinancingEscalationInbox />}
     </div>
   );
 }

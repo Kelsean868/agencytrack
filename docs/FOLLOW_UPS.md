@@ -6,6 +6,23 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 ---
 
 
+## Track K · K10b → POST-DEPLOY write-read-ack verification (banked K10b, 2026-07-03, Rule 13 deferred-verification — DO AFTER the manual rules/index deploy)
+
+**Waiver basis:** PR-K10b (feat/k10b-financing-escalation, #779) ships the `financingEscalations` collection + rules block + composite index #22. Rules and indexes do NOT auto-deploy via Vercel, so the **write path (raise → read → ack) could not be smoked pre-merge** — the pre-merge smoke was UI-wiring only (16/16, both themes). This FU carries the deferred acceptance criteria verbatim.
+
+**Prerequisite (Rule 19 — Kyron/dispatcher action):** `firebase deploy --only firestore:rules,firestore:indexes` from a worktree at `origin/main` HEAD with `functions/node_modules` installed and authenticated against `agencytrack-2a610`; then confirm the `financingEscalations` composite index (`branchId ASC, status ASC, createdAt DESC`) shows **Enabled** in the Firebase Console (Firestore → Indexes → Composite).
+
+**Re-run steps (against `tatillife_smoke`, from the main worktree with `.env.local`):**
+```
+node scripts/verification/seed-unit-financing-k10a.mjs --apply
+SMOKE_BASE_URL="https://portal.agencytrack.app" node scripts/verification/smoke-financing-escalation-k10b.mjs   # UI legs re-confirm live
+node scripts/verification/seed-unit-financing-k10a.mjs --cleanup
+```
+
+**Unverified acceptance criteria (copied verbatim from the brief Phase 5 POST-DEPLOY):** full write-read-ack cycle as real subjects in `tatillife_smoke` — UM raises on an in-unit agent (value-level doc assert incl. `branchId`), out-of-unit raise fails, agent signed-in cannot read it, BM same-branch sees + acks (status flip asserted), same-month duplicate surfaces the raised state. Cleanup, 0 orphans. (The current `smoke-financing-escalation-k10b.mjs` covers only UI wiring; the write-read-ack legs need to be added — or run ad-hoc as real subjects — once the rules are live, since the UM/BM/agent write paths can't be exercised until then.)
+
+**Falsification:** moot if the escalation collection is redesigned before the deploy, or if a post-deploy prod-smoke of the full cycle is completed and recorded on the PR (mark RESOLVED with the run output).
+
 ## ~~Commission v2 S1 (CommissionPlayground ladder) — dark-mode `color-contrast` axe regression~~ — RESOLVED (fix/commission-dark-contrast-goaldecomp, PR #773, `fad9a1b6`, 2026-07-01)
 
 **RESOLVED note:** Root cause confirmed — the 8 failing nodes are all `text-primary dark:text-primary-dark` **text** spans in `GoalDecompositionTab.jsx`. In dark mode the `dark:text-primary-dark` override resolves to `--primary-dark-channels` = #01696f (a button-background-intended token) → 2.33–2.50:1 as text on `bg-card`/`bg-primary/5`. Fix: DELETE the override from the 7 text sites so bare `text-primary` renders (#4ab5b8 lifted in dark = 6.14–6.61:1). It was **not** a specificity/purge-ordering issue and **not** a missing dark variant (the two hypotheses in the note below) — the override was actively landing the wrong token. Deterministic lock added to `contrast.test.js`; dark axe re-run clean (Phase 5). Original investigation notes retained below for the drift trail.

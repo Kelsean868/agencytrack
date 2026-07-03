@@ -24,7 +24,7 @@
 // resolved rows ONLY and suppress the unit aggregates — never imply a complete
 // unit picture (or a trigger count) from a partial read.
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Lock, AlertTriangle, ShieldAlert, MessageSquare, RefreshCw } from 'lucide-react';
+import { Lock, AlertTriangle, ShieldAlert, MessageSquare, RefreshCw, Flag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getTenantUsers } from '../../services/managerService';
 import {
@@ -44,6 +44,7 @@ import {
 import FinancingStatusBadge from '../manager/FinancingStatusBadge';
 import CoachingNotesModal from '../manager/CoachingNotesModal';
 import AgentFinancingDrawer from './AgentFinancingDrawer';
+import FinancingEscalationModal from './FinancingEscalationModal';
 
 // The financing DRAW window (SPEC §5: `on_financing` = months 1–12, then `reconciling`).
 // This is a FIXED contract clock, not a per-agent value and NOT the agreement term —
@@ -103,6 +104,7 @@ export default function UnitFinancingRoster({ tenantId }) {
   const [state, setState] = useState({ status: 'loading' });
   const [drawerRow, setDrawerRow] = useState(null);
   const [coachTarget, setCoachTarget] = useState(null);
+  const [flagTarget, setFlagTarget] = useState(null);
   // Guards against a stale fan-out completing after a newer load (e.g. a slow
   // mount-load resolving after a Retry) and overwriting fresh state.
   const loadSeq = useRef(0);
@@ -277,14 +279,24 @@ export default function UnitFinancingRoster({ tenantId }) {
                       : 'Coach now — a 3rd confirmed miss approaches the termination trigger. Provisional months show but never count.'}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setCoachTarget(r)}
-                  data-testid={`unit-financing-coach-miss-${r.agentId}`}
-                  className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-                >
-                  <MessageSquare size={14} aria-hidden="true" /> Coach
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFlagTarget(r)}
+                    data-testid={`unit-financing-flag-miss-${r.agentId}`}
+                    className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
+                  >
+                    <Flag size={14} aria-hidden="true" /> Flag to BM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCoachTarget(r)}
+                    data-testid={`unit-financing-coach-miss-${r.agentId}`}
+                    className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                  >
+                    <MessageSquare size={14} aria-hidden="true" /> Coach
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -319,14 +331,24 @@ export default function UnitFinancingRoster({ tenantId }) {
                 >
                   <Lock size={10} aria-hidden="true" /> Notify Sales Admin · with Branch Manager
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setCoachTarget(r)}
-                  data-testid={`unit-financing-coach-adj-${r.agentId}`}
-                  className="self-start min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity"
-                >
-                  <MessageSquare size={14} aria-hidden="true" /> Coach
-                </button>
+                <div className="self-start flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setFlagTarget(r)}
+                    data-testid={`unit-financing-flag-adj-${r.agentId}`}
+                    className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg bg-card border border-border text-ink text-sm font-semibold hover:bg-surface transition-colors"
+                  >
+                    <Flag size={14} aria-hidden="true" /> Flag to BM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCoachTarget(r)}
+                    data-testid={`unit-financing-coach-adj-${r.agentId}`}
+                    className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                  >
+                    <MessageSquare size={14} aria-hidden="true" /> Coach
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -466,6 +488,7 @@ export default function UnitFinancingRoster({ tenantId }) {
           row={drawerRow}
           onClose={() => setDrawerRow(null)}
           onCoach={(r) => { setDrawerRow(null); setCoachTarget(r); }}
+          onFlag={(r) => { setDrawerRow(null); setFlagTarget(r); }}
         />
       )}
 
@@ -475,6 +498,13 @@ export default function UnitFinancingRoster({ tenantId }) {
           agentName={coachTarget.agentName}
           agentUnitId={coachTarget.agentUnitId}
           onClose={() => setCoachTarget(null)}
+        />
+      )}
+
+      {flagTarget && (
+        <FinancingEscalationModal
+          row={flagTarget}
+          onClose={() => setFlagTarget(null)}
         />
       )}
     </div>
