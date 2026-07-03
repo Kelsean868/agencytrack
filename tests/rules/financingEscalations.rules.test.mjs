@@ -23,7 +23,7 @@
  * callerBranchId reads tenants/{tid}/users/{uid}.branchId, so the BM/UM caller
  * user docs are seeded with rules disabled.
  *
- * Test matrix (17 cases):
+ * Test matrix (18 cases):
  *    1. UM own-unit create                                   → ALLOW
  *    2. UM other-unit create (agentUnitId != uid)            → DENY
  *    3. Agent create                                         → DENY
@@ -196,6 +196,12 @@ async function main() {
   await t('11. BM other-branch ack → DENY', async () => {
     await assertFails(updateDoc(escRef(bmB()), {
       status: 'acknowledged', acknowledgedByUid: BM_B_UID, acknowledgedAt: new Date(),
+    }));
+  });
+
+  await t('11b. Ack with a forged acknowledgedByUid → DENY (pinned to caller)', async () => {
+    await assertFails(updateDoc(escRef(bmA()), {
+      status: 'acknowledged', acknowledgedByUid: 'someOtherUid', acknowledgedAt: new Date(),
     }));
   });
 

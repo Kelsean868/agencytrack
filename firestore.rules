@@ -1647,12 +1647,15 @@ service cloud.firestore {
 
         // update: the ACK, by a caller who may read the escalation. Field-restricted
         //   to the ack triple (SEC-10 hasOnly precedent); new status must be
-        //   'acknowledged'. This also blocks a UM same-month re-raise (a full-field
-        //   setDoc onto an existing doc fails hasOnly and canReadEscalation).
+        //   'acknowledged'; the acknowledger is PINNED to the caller (no forging who
+        //   acked — mirrors coachingNotes authorUid == auth.uid). This also blocks a
+        //   UM same-month re-raise (a full-field setDoc onto an existing doc fails
+        //   hasOnly and canReadEscalation).
         allow update: if canReadEscalation()
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['status', 'acknowledgedByUid', 'acknowledgedAt'])
-          && request.resource.data.status == 'acknowledged';
+          && request.resource.data.status == 'acknowledged'
+          && request.resource.data.acknowledgedByUid == request.auth.uid;
 
         allow delete: if false;
       }

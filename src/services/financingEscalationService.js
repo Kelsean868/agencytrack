@@ -81,6 +81,25 @@ export async function createFinancingEscalation({
   tenantId, agentId, agentName, agentUnitId, branchId,
   raisedByUid, raisedByName, raisedByRole, reason, note,
 }) {
+  // Validate the payload BEFORE the write so a genuine rules rejection can only
+  // mean "the doc already exists" (the idempotency signal). Without this, a
+  // malformed payload (missing branchId, wrong-unit agent, bad reason) would also
+  // throw permission-denied and be mis-reported to the UM as "already raised".
+  // A missing branchId would additionally ORPHAN the escalation (no BM inbox keys
+  // on a null branchId) — fail closed here rather than write an unreachable doc.
+  if (!tenantId || !agentId || !agentUnitId || !branchId || !raisedByUid) {
+    throw new Error('createFinancingEscalation: missing required field (tenantId/agentId/agentUnitId/branchId/raisedByUid)');
+  }
+  if (!ESCALATION_REASON_VALUES.includes(reason)) {
+    throw new Error(`createFinancingEscalation: invalid reason "${reason}"`);
+  }
+  // The rules bind agentUnitId == raisedByUid (a UM raises only on their own unit);
+  // enforce it client-side too so a stale roster row surfaces as a clear error
+  // rather than a "already raised" false positive.
+  if (agentUnitId !== raisedByUid) {
+    throw new Error('createFinancingEscalation: agent is outside your unit (agentUnitId != raisedByUid)');
+  }
+
   const monthKey = monthKeyFromDate(getTodayTT());
   const id = escalationDocId(agentId, reason, monthKey);
   const trimmedNote = (note ?? '').trim().slice(0, 2000);

@@ -9,7 +9,7 @@
 // Mounted as the FinancingTab { id:'escalations' } subview (BM-only gating
 // inherited from the tab). Acknowledge is the BM's action; the write is
 // field-restricted to the ack triple by the rules.
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Flag, Check, AlertTriangle, RefreshCw, ChevronDown, Inbox } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -54,7 +54,7 @@ function EscalationCard({ esc, onAcknowledge, acking }) {
             </span>
           </div>
           <p className="mt-0.5 text-xs text-ink-muted">
-            Raised by {esc.raisedByName ?? 'Unit Manager'} · {ageLabel(esc.createdAt)}
+            Raised by {esc.raisedByName ?? 'Unit Manager'}{ageLabel(esc.createdAt) ? ` · ${ageLabel(esc.createdAt)}` : ''}
           </p>
           {esc.note ? (
             <p className="mt-2 text-sm text-ink whitespace-pre-wrap break-words">{esc.note}</p>
@@ -88,14 +88,22 @@ export default function FinancingEscalationInbox() {
   const [state, setState] = useState({ status: 'loading' });
   const [ackingId, setAckingId] = useState(null);
   const [showAcked, setShowAcked] = useState(false);
+  // Guards against a stale load (e.g. a slow mount-load resolving after a Retry)
+  // overwriting fresher state — mirrors UnitFinancingRoster's loadSeq pattern.
+  const loadSeq = useRef(0);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
     setState({ status: 'loading' });
-    if (!tenantId || !branchId) { setState({ status: 'ready', items: [] }); return; }
+    if (!tenantId || !branchId) {
+      if (seq === loadSeq.current) setState({ status: 'ready', items: [] });
+      return;
+    }
     try {
       const items = await listBranchEscalations({ tenantId, branchId });
-      setState({ status: 'ready', items });
+      if (seq === loadSeq.current) setState({ status: 'ready', items });
     } catch (e) {
+      if (seq !== loadSeq.current) return; // a newer load owns the state
       console.error('[FinancingEscalationInbox] load failed', e);
       setState({ status: 'error' });
     }
@@ -104,16 +112,18 @@ export default function FinancingEscalationInbox() {
   useEffect(() => { load(); }, [load]);
 
   const handleAcknowledge = useCallback(async (esc) => {
+    const uid = user?.uid;
+    if (!uid) return; // no authenticated caller → nothing to acknowledge as
     setAckingId(esc.id);
     try {
       await acknowledgeFinancingEscalation({
         tenantId,
         escalationId: esc.id,
-        acknowledgedByUid: user.uid,
+        acknowledgedByUid: uid,
       });
       // Optimistic local flip — no re-fetch needed.
       setState((prev) => prev.status === 'ready'
-        ? { ...prev, items: prev.items.map((it) => it.id === esc.id ? { ...it, status: 'acknowledged', acknowledgedByUid: user.uid } : it) }
+        ? { ...prev, items: prev.items.map((it) => it.id === esc.id ? { ...it, status: 'acknowledged', acknowledgedByUid: uid } : it) }
         : prev);
     } catch (e) {
       console.error('[FinancingEscalationInbox] acknowledge failed', e);

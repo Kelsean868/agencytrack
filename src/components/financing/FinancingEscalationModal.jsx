@@ -40,6 +40,13 @@ export default function FinancingEscalationModal({ row, onClose }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (submitting) return;
+    // Fail closed on a missing branch assignment — without a branchId the escalation
+    // would be orphaned (no BM inbox keys on a null branchId). Real pilot data has
+    // 100% branchId coverage, but guard rather than write an unreachable doc.
+    if (!row.branchId) {
+      setError('This agent has no branch assigned yet, so it can’t be routed to a Branch Manager. Ask your administrator to set the agent’s branch first.');
+      return;
+    }
     setSubmitting(true);
     setError('');
     try {
@@ -51,7 +58,7 @@ export default function FinancingEscalationModal({ row, onClose }) {
         branchId: row.branchId,
         raisedByUid: user.uid,
         raisedByName: userProfile?.name ?? userProfile?.email ?? 'Manager',
-        raisedByRole: role,
+        raisedByRole: role ?? 'unit_manager',
         reason,
         note,
       });
