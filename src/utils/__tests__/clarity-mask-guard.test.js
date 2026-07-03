@@ -24,12 +24,16 @@ import { fileURLToPath } from 'url';
 // ESM-safe project root (avoids `process.cwd()` which is not a browser global).
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '../../..');
 
-// Matches data-clarity-mask set to a TRUTHY value, tolerant of formatting
-// (quote style, casing, or a {true} JSX expression) so a valid reformat doesn't
-// false-fail the guard — but deliberately NOT a bare attribute-name match:
-// data-clarity-mask={false} / "false" masks nothing and must still fail here
-// (Gemini #786). Mirrors the regex-based foreign-ink-guard precedent.
-const MASK_ATTR_REGEX = /data-clarity-mask\s*=\s*(?:["']True["']|["']true["']|\{\s*true\s*\})/;
+// Matches data-clarity-mask set to a TRUTHY value INSIDE AN ACTUAL TAG, tolerant
+// of formatting (quote style, casing, {true} JSX expr, or the attribute on its
+// own line in a multi-line tag) so a valid reformat doesn't false-fail — but:
+//   • NOT a bare attribute-name match: data-clarity-mask={false} / "false" masks
+//     nothing and must still fail (Gemini #786).
+//   • The `<[^>]*…[^>]*>` wrap requires the attribute to sit within a real tag,
+//     so the string appearing only in a comment/prose does NOT satisfy the guard
+//     (CodeRabbit #786). `[^>]` spans newlines, covering multi-line JSX tags.
+// Mirrors the regex-based foreign-ink-guard precedent.
+const MASK_ATTR_REGEX = /<[^>]*\bdata-clarity-mask\s*=\s*(?:["']True["']|["']true["']|\{\s*true\s*\})[^>]*>/;
 const MASK_ATTR_DISPLAY = 'data-clarity-mask="True"';
 
 // Every surface that renders personal financial data. Each container's mask
