@@ -74,7 +74,9 @@ export default function AgentPlanDrawer({ row, onClose, onCoach }) {
         aria-labelledby="team-plans-drawer-title"
         className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none"
       >
+        {/* Clarity mask — personal financial data (shared Money Needs projection); do not remove. */}
         <div
+          data-clarity-mask="True"
           className="w-full max-w-lg max-h-[90vh] flex flex-col bg-card rounded-2xl shadow-lg border border-border overflow-hidden pointer-events-auto"
           data-testid="team-plans-drawer"
         >

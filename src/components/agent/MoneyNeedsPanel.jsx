@@ -1066,7 +1066,8 @@ export default function MoneyNeedsPanel({ onOpenTab }) {
   })();
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
+    // Clarity mask — personal financial data (household budget worksheet); do not remove.
+    <div data-clarity-mask="True" className="max-w-2xl mx-auto px-4 py-6 space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">

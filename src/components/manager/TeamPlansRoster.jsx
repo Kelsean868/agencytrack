@@ -184,7 +184,8 @@ export default function TeamPlansRoster({ tenantId }) {
           </span>
           <span className="ml-auto text-[11px] text-ink-muted">Read-only · {CURRENT_YEAR} worksheets</span>
         </div>
-        <ul className="divide-y divide-border">
+        {/* Clarity mask — personal financial data (shared Money Needs figures); do not remove. */}
+        <ul data-clarity-mask="True" className="divide-y divide-border">
           {rows.map((r) => (
             <li key={r.agentId} className="flex items-center gap-3 px-4 py-3 flex-wrap" data-testid={`team-plans-row-${r.agentId}`}>
               <span className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-display font-bold text-[12px] shrink-0">

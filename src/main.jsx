@@ -5,6 +5,10 @@ import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
 import KioskRoute from './components/kiosk/KioskRoute.jsx';
+import { initClarity } from './lib/clarityInit.js';
+
+// Privacy-gated Microsoft Clarity — no-op unless PROD build + VITE_CLARITY_PROJECT_ID.
+initClarity();
 
 const isKioskPath = window.location.pathname.startsWith('/kiosk/');
 
