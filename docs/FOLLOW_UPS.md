@@ -5,6 +5,18 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## `smoke-financing-escalation-k10c-postdeploy.mjs` — query-cost + explicit-return hardening (banked 2026-07-03, Rule 21 post-merge backstop, LOW — verification-script quality)
+
+**Origin:** Gemini's review of PR #784 (`86e0ad16`) landed at 12:21Z, before the 12:57Z merge, but was never dispositioned in-PR. Caught by the `/post-merge` Rule 21 backstop poll. Both findings are on a one-off admin/smoke script already proven 10/10 against production — banked as quality hardening, not a defect requiring a hotfix.
+
+**Findings:**
+1. **Query cost.** The subject-resolution step fetches the ENTIRE `tenants/{tid}/users` collection and filters client-side, instead of `where('email', 'in', [...])`. Legitimate — but low-value for a one-off admin script against the small `tatillife_smoke` tenant (~15–20 docs at time of writing); worth doing if the pattern is reused against a larger tenant.
+2. **Missing explicit `return` after the bell-notification-missing failure (leg 2).** **Partial disagree, banked anyway for clarity.** The code is `if (!notif) { fail(...) } else { ... }` — it does NOT fall through and misuse `notif`, so Gemini's stated mechanism ("subsequent legs run and potentially fail or produce misleading results") doesn't hold structurally. The smoke's design intentionally lets legs 2/3/3b/5 run independently even if one fails, so multiple CF/rules-dependent legs can corroborate the SAME root cause (e.g., if the CF isn't deployed, both leg 2 and leg 5 fail for the same reason — more diagnostic signal, not less). That said, adding `return;` after leg 2's failure costs nothing and makes intent explicit if a future editor assumes fall-through was accidental.
+
+**Falsification:** moot if the smoke is superseded by a future K-track post-deploy smoke that folds these fixes in from the start.
+
+---
+
 
 ## `onFinancingEscalationCreate` — filter inactive BM recipients + friendly reason labels (banked 2026-07-03, Rule 21 post-merge backstop, LOW — quality hardening)
 
