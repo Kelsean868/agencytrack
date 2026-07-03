@@ -35,6 +35,8 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const env = {};
 readFileSync(path.join(ROOT, '.env.local'), 'utf8').split(/\r?\n/).forEach((l) => {
+  const t = l.trim();
+  if (!t || t.startsWith('#')) return; // skip blank + commented lines (#780 FU item 4)
   const i = l.indexOf('='); if (i > 0) env[l.slice(0, i).trim()] = l.slice(i + 1).trim().replace(/^["']|["']$/g, '');
 });
 const need = (k) => { const v = env[k]; if (!v) throw new Error(`Missing env var: ${k}`); return v; };
@@ -52,9 +54,21 @@ const auth = getAuth(app);
 const cdb = getFirestore(app);
 
 // Admin SDK (value-level asserts + cleanup) — from functions/node_modules.
+// Actionable setup errors instead of bare MODULE_NOT_FOUND (#780 FU item 3).
 const require = (await import('module')).createRequire(import.meta.url);
-const admin = require(path.join(ROOT, 'functions', 'node_modules', 'firebase-admin'));
-const key = require(path.join(ROOT, 'functions', 'service-account-key.json'));
+let admin, key;
+try {
+  admin = require(path.join(ROOT, 'functions', 'node_modules', 'firebase-admin'));
+} catch {
+  console.error('SETUP: firebase-admin not found — run `npm install` in functions/ first.');
+  process.exit(2);
+}
+try {
+  key = require(path.join(ROOT, 'functions', 'service-account-key.json'));
+} catch {
+  console.error('SETUP: functions/service-account-key.json missing — place the Admin SDK key there (gitignored; never commit).');
+  process.exit(2);
+}
 admin.initializeApp({ credential: admin.credential.cert(key), projectId: key.project_id });
 const adb = admin.firestore();
 
@@ -83,6 +97,15 @@ async function main() {
   const BM = byEmail[need('A11Y_BRANCH_MANAGER_EMAIL').toLowerCase()];
   const AG = byEmail[need('A11Y_AGENT_EMAIL').toLowerCase()];
   if (!UM || !BM || !AG) throw new Error('Could not resolve UM/BM/agent in the smoke tenant.');
+  // Field-presence preconditions — fail early with a clear message instead of a
+  // cryptic Firestore undefined-field error downstream (#780 FU item 2).
+  for (const [who, u, fields] of [
+    ['UM', UM, ['uid']], ['BM', BM, ['uid', 'branchId']], ['agent', AG, ['uid', 'unitId', 'branchId']],
+  ]) {
+    for (const f of fields) {
+      if (!u[f]) throw new Error(`Precondition: resolved ${who} doc is missing required field "${f}"`);
+    }
+  }
   if (AG.unitId !== UM.uid) throw new Error(`Precondition: agent.unitId (${AG.unitId}) != UM.uid (${UM.uid})`);
   if (AG.branchId !== BM.branchId) throw new Error(`Precondition: agent.branchId (${AG.branchId}) != BM.branchId (${BM.branchId})`);
 
@@ -185,9 +208,12 @@ async function main() {
       await signOut(auth).catch(() => {});
       const MARKERS = ['writeread-smoke', 're-raise', 'out-of-unit'];
       let deleted = 0;
-      const snap = await adb.collection(`tenants/${TENANT}/financingEscalations`).where('note', 'in', MARKERS).get().catch(() => ({ docs: [] }));
+      // NO inline .catch on the cleanup queries (#780 FU item 1): a failed
+      // delete/verify query must propagate to the outer handler and register a
+      // FAIL — never report "0 orphans" it did not actually verify.
+      const snap = await adb.collection(`tenants/${TENANT}/financingEscalations`).where('note', 'in', MARKERS).get();
       for (const d of snap.docs) { await d.ref.delete(); deleted++; }
-      const remain = await adb.collection(`tenants/${TENANT}/financingEscalations`).where('note', 'in', MARKERS).get().catch(() => ({ size: 0 }));
+      const remain = await adb.collection(`tenants/${TENANT}/financingEscalations`).where('note', 'in', MARKERS).get();
       (remain.size === 0) ? pass('6-cleanup', `deleted ${deleted} smoke doc(s), 0 orphans`)
         : fail('6-cleanup', `${remain.size} smoke doc(s) remain`);
     } catch (e) { fail('6-cleanup', `cleanup error: ${e.message}`); }

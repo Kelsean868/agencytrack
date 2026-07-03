@@ -40,6 +40,8 @@ import {
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const env = {};
 readFileSync(path.join(ROOT, '.env.local'), 'utf8').split(/\r?\n/).forEach((l) => {
+  const t = l.trim();
+  if (!t || t.startsWith('#')) return; // skip blank + commented lines (#780 FU item 4 parity)
   const i = l.indexOf('='); if (i > 0) env[l.slice(0, i).trim()] = l.slice(i + 1).trim().replace(/^["']|["']$/g, '');
 });
 const need = (k) => { const v = env[k]; if (!v) throw new Error(`Missing env var: ${k}`); return v; };
@@ -55,9 +57,21 @@ const app = initializeApp({
 const auth = getAuth(app);
 const cdb = getFirestore(app);
 
+// Actionable setup errors instead of bare MODULE_NOT_FOUND (#780 FU item 3 parity).
 const require = (await import('module')).createRequire(import.meta.url);
-const admin = require(path.join(ROOT, 'functions', 'node_modules', 'firebase-admin'));
-const key = require(path.join(ROOT, 'functions', 'service-account-key.json'));
+let admin, key;
+try {
+  admin = require(path.join(ROOT, 'functions', 'node_modules', 'firebase-admin'));
+} catch {
+  console.error('SETUP: firebase-admin not found — run `npm install` in functions/ first.');
+  process.exit(2);
+}
+try {
+  key = require(path.join(ROOT, 'functions', 'service-account-key.json'));
+} catch {
+  console.error('SETUP: functions/service-account-key.json missing — place the Admin SDK key there (gitignored; never commit).');
+  process.exit(2);
+}
 admin.initializeApp({ credential: admin.credential.cert(key), projectId: key.project_id });
 const adb = admin.firestore();
 
@@ -100,6 +114,14 @@ async function main() {
   BM = byEmail[need('A11Y_BRANCH_MANAGER_EMAIL').toLowerCase()];
   AG = byEmail[need('A11Y_AGENT_EMAIL').toLowerCase()];
   if (!UM || !BM || !AG) throw new Error('Could not resolve UM/BM/agent.');
+  // Field-presence preconditions — fail early with a clear message (#780 FU item 2 parity).
+  for (const [who, u, fields] of [
+    ['UM', UM, ['uid']], ['BM', BM, ['uid', 'branchId']], ['agent', AG, ['uid', 'unitId', 'branchId']],
+  ]) {
+    for (const f of fields) {
+      if (!u[f]) throw new Error(`Precondition: resolved ${who} doc is missing required field "${f}"`);
+    }
+  }
   if (AG.unitId !== UM.uid) throw new Error(`Precondition: agent.unitId(${AG.unitId}) != UM.uid(${UM.uid})`);
   if (AG.branchId !== BM.branchId) throw new Error(`Precondition: agent.branchId(${AG.branchId}) != BM.branchId(${BM.branchId})`);
 
@@ -134,7 +156,10 @@ async function main() {
     if (s.exists) notif = s.data(); else await sleep(1500);
   }
   if (!notif) {
+    // Explicit stop (#784 FU item 2): the message says STOP — make the code match.
+    // Legs 3–5 are CF/rules-dependent; cleanup still runs in finally.
     fail('2-bm-bell-ping', `notification ${notifId} not written after ~30s — CF not deployed/fired; STOP`);
+    return;
   } else {
     (notif.userId === BM.uid && notif.type === 'manager_alert' && notif.escalationId === ESC_ID && notif.read === false)
       ? pass('2-bm-bell-ping', `CF wrote ${notifId} (userId==BM, type=manager_alert, escalationId==esc, read=false) — CF LIVE`)
@@ -216,20 +241,23 @@ async function main() {
     try {
       await signOut(auth).catch(() => {});
       let deleted = 0;
+      // NO inline .catch on the cleanup delete/verify queries (#780 FU item 1
+      // parity): a failed query must propagate to the outer handler and register
+      // a FAIL — never report "0 orphans" it did not actually verify.
       // Escalation docs from this run (note markers + the idem re-create).
-      const escSnap = await adb.collection(`tenants/${TENANT}/financingEscalations`).where('note', 'in', ['k10c-postdeploy', 'k10c-idem']).get().catch(() => ({ docs: [] }));
+      const escSnap = await adb.collection(`tenants/${TENANT}/financingEscalations`).where('note', 'in', ['k10c-postdeploy', 'k10c-idem']).get();
       for (const d of escSnap.docs) { await d.ref.delete(); deleted++; }
-      if (ESC_ID) { await adb.doc(`tenants/${TENANT}/financingEscalations/${ESC_ID}`).delete().catch(() => {}); }
+      if (ESC_ID) { await adb.doc(`tenants/${TENANT}/financingEscalations/${ESC_ID}`).delete(); }
       // CF notification docs for our escalation id.
       if (ESC_ID) {
-        const nSnap = await adb.collection(`tenants/${TENANT}/notifications`).where('escalationId', '==', ESC_ID).get().catch(() => ({ docs: [] }));
+        const nSnap = await adb.collection(`tenants/${TENANT}/notifications`).where('escalationId', '==', ESC_ID).get();
         for (const d of nSnap.docs) { await d.ref.delete(); deleted++; }
       }
       // Foil agent.
-      await adb.doc(`tenants/${TENANT}/users/${FOIL_UID}`).delete().catch(() => { });
+      await adb.doc(`tenants/${TENANT}/users/${FOIL_UID}`).delete();
       // Orphan check.
-      const remainEsc = ESC_ID ? (await adb.collection(`tenants/${TENANT}/financingEscalations`).where('note', 'in', ['k10c-postdeploy', 'k10c-idem']).get().catch(() => ({ size: 0 }))).size : 0;
-      const remainNotif = ESC_ID ? (await adb.collection(`tenants/${TENANT}/notifications`).where('escalationId', '==', ESC_ID).get().catch(() => ({ size: 0 }))).size : 0;
+      const remainEsc = ESC_ID ? (await adb.collection(`tenants/${TENANT}/financingEscalations`).where('note', 'in', ['k10c-postdeploy', 'k10c-idem']).get()).size : 0;
+      const remainNotif = ESC_ID ? (await adb.collection(`tenants/${TENANT}/notifications`).where('escalationId', '==', ESC_ID).get()).size : 0;
       const foilGone = !(await adb.doc(`tenants/${TENANT}/users/${FOIL_UID}`).get()).exists;
       (remainEsc === 0 && remainNotif === 0 && foilGone)
         ? pass('6-cleanup', `deleted ${deleted} doc(s) + foil; 0 orphans`)
