@@ -575,3 +575,71 @@ export async function updateVisibility(tenantId, uid, year, visibility) {
   await updateDoc(docRef, { visibility, updatedAt: serverTimestamp(), updatedBy: uid });
   return { visibility };
 }
+
+// ── PR-GPM1 — manager-side consent-gated reader (Team Plans) ─────────────────
+//
+// The G5 rules arms (firestore.rules moneyNeeds block) grant a UM/BM WHOLE-DOC
+// read when visibility === 'shared' and the caller is unit/branch-aligned. The
+// worksheet is an itemized household budget; managers coach on the DERIVED
+// layer only. Enforcement is a K9-style ALLOW-LIST projection at this service
+// boundary: components only ever receive the projection, so a PRIVATE field
+// (every expenseGroups line item, every subCalculators internal, PAYE bracket
+// snapshots, audit fields — anything not explicitly listed) can never reach
+// the DOM. If a field is ambiguous it is PRIVATE — extend the projection only
+// via a dispatcher-ruled contract change.
+
+const COMMISSION_LINES = ['life', 'ah', 'property', 'motor'];
+
+/**
+ * Project a raw shared worksheet doc down to the manager-SHOWN contract:
+ * totalAnnualAfterTax, totalAnnualPreTax, computedPAYE (aggregate only),
+ * estimatedRenewalIncome, firstYearCommissionsRequired,
+ * firstYearCommissionsTargets {life,ah,property,motor}, year, updatedAt.
+ * Everything else is dropped here, whole-field, no passthrough.
+ */
+export function projectSharedWorksheet(raw) {
+  const src = raw ?? {};
+  const pickLines = (obj) => COMMISSION_LINES.reduce((acc, line) => {
+    acc[line] = parseFloat(obj?.[line]) || 0;
+    return acc;
+  }, {});
+  return {
+    year: src.year ?? null,
+    updatedAt: src.updatedAt ?? null,
+    totalAnnualAfterTax: parseFloat(src.totalAnnualAfterTax) || 0,
+    totalAnnualPreTax: parseFloat(src.totalAnnualPreTax) || 0,
+    computedPAYE: parseFloat(src.computedPAYE) || 0,
+    // estimatedRenewalIncome is SHOWN as a whole (per-line + total) — the
+    // contract names the field unqualified.
+    estimatedRenewalIncome: {
+      ...pickLines(src.estimatedRenewalIncome),
+      total: parseFloat(src.estimatedRenewalIncome?.total) || 0,
+    },
+    firstYearCommissionsRequired: parseFloat(src.firstYearCommissionsRequired) || 0,
+    // Targets are contract-restricted to the four lines — `total` is NOT listed
+    // in the locked SHOWN set, so it stays PRIVATE (ambiguous → PRIVATE).
+    firstYearCommissionsTargets: pickLines(src.firstYearCommissionsTargets),
+  };
+}
+
+/**
+ * getSharedMoneyNeeds — path-addressed read of another agent's worksheet under
+ * the G5 consent arms. CRITICAL: under those arms, permission-denied means
+ * "not shared OR no worksheet" — a manager cannot and should not distinguish
+ * the two, so denied maps to `{ notShared: true }`, never an error state.
+ * Any non-permission failure (network, etc.) rethrows so the roster's
+ * fan-out can degrade to resolved-rows-only.
+ */
+export async function getSharedMoneyNeeds(tenantId, agentId, year) {
+  const parsedYear = parseInt(year, 10);
+  if (!parsedYear) return { notShared: true };
+  const docRef = doc(db, 'tenants', tenantId, 'users', agentId, 'moneyNeeds', String(parsedYear));
+  try {
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return { notShared: true };
+    return { shared: true, plan: projectSharedWorksheet(snap.data()) };
+  } catch (e) {
+    if (e?.code === 'permission-denied') return { notShared: true };
+    throw e;
+  }
+}

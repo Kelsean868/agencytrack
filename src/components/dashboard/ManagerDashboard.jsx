@@ -63,6 +63,7 @@ import MdrtTracker from '../goals/MdrtTracker';
 import { useMyProduction } from '../../hooks/useMyProduction';
 import FinancingSelfView from '../financing/FinancingSelfView';
 import UnitFinancingRoster from '../financing/UnitFinancingRoster';
+import TeamPlansRoster from '../manager/TeamPlansRoster';
 
 // Sidebar nav items — single layout for all 4 manager roles. Per-role
 // differentiation (tenant_admin: Company Config / Audit Log / Billing;
@@ -494,6 +495,11 @@ export default function ManagerDashboard() {
             `financing` tab). Nav gates it to unit_manager; the component guards
             the role defensively (getTenantUsers only unit-scopes for a UM). */}
         {activeTab === 'unit-financing' && <UnitFinancingRoster tenantId={tenantId} />}
+
+        {/* PR-GPM1 — UM/BM read-only roster of consent-shared Money Needs
+            worksheets. Nav gates it to UM/BM (matching the G5 rules arms — no
+            TA/PA read exists); the component guards the role defensively. */}
+        {activeTab === 'team-game-plans' && <TeamPlansRoster tenantId={tenantId} />}
 
         {activeTab === 'policy-reconciliation' && <PolicyReconciliationPanel />}
 

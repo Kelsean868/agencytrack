@@ -107,6 +107,10 @@ const PRODUCING_MANAGER_NAV = [
   { id: 'team-wars',             label: 'Weekly WARs',    tabId: 'team-wars',             Icon: Activity,     roles: ['branch_manager'] },
   { id: 'monthly-recruiting',    label: 'Recruiting',     tabId: 'monthly-recruiting',    Icon: UserPlus },
   { id: 'goals',                 label: 'Team Goals',     tabId: 'goals',                 Icon: Award,        scope: 'TEAM' },
+  // PR-GPM1 — Team Plans (consent-shared Money Needs reader). UM+BM only: the
+  // G5 rules arms grant no TA/PA read, so the nav gate matches the rules layer
+  // exactly (this config is already UM/BM-only; the explicit roles document it).
+  { id: 'team-game-plans',       label: 'Team Plans',     tabId: 'team-game-plans',       Icon: Wallet,       roles: ['unit_manager', 'branch_manager'] },
   { id: 'persistency',           label: 'Persistency Entry', tabId: 'persistency',        Icon: TrendingUp,   scope: 'TEAM' },
   { id: 'compliance',            label: 'Compliance',     tabId: 'compliance',            Icon: CheckCircle2 },
   { id: 'campaigns',             label: 'Campaigns',      tabId: 'campaigns',             Icon: Gift },
@@ -256,7 +260,7 @@ const WORKSPACE_WORK_SECTIONS = [
 const WORKSPACE_TEAM_SECTIONS = [
   { label: 'My Team', ids: [
     'overview', 'team', 'mastersheet', 'team-wars', 'monthly-recruiting', 'goals',
-    'persistency', 'compliance', 'campaigns', 'production-report', 'awards',
+    'team-game-plans', 'persistency', 'compliance', 'campaigns', 'production-report', 'awards',
     'team-perf', 'settlements', 'financing', 'unit-financing', 'policy-reconciliation', 'agent-of-month', 'kiosk',
   ] },
 ];
