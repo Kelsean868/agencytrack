@@ -93,6 +93,9 @@ verification/*
 !verification/atlas-*/
 !verification/atlas-*/**
 
+# codebase-memory-mcp — local graph cache (opt-in artifact, not committed for solo repo)
+.codebase-memory/
+
 # Playwright MCP local state
 .playwright-mcp/
 
