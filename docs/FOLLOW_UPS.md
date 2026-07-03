@@ -33,13 +33,35 @@ node scripts/verification/seed-unit-financing-k10a.mjs --cleanup
 
 **Falsification:** moot if the escalation collection is redesigned, or if a future slice denormalizes branchId onto a trusted server-written field (CF-authored escalations) making the client-supplied value non-authoritative.
 
-## PolicyLedgerPanel — F3.1 "prefill with planId pre-selects the catalog picker mode" is a CI flake (async-state race) (banked 2026-07-03, LOW — test stability; same family as #543)
+## ~~PolicyLedgerPanel — F3.1 "prefill with planId pre-selects the catalog picker mode" is a CI flake (async-state race)~~ — RESOLVED (test/flake-stabilization-f31, PR #782 `96be47e5`, 2026-07-03)
+
+**RESOLVED note (2026-07-03):** Fixed in the Lane A flake-stabilization window. Root cause confirmed by inspection: line 501 waited only for the create-form "back" button (the mode switch), but the picker's `planId` is set by a **separate prefill effect** that can commit a tick later — line 504's synchronous `picker.value` read raced it and read `''` under CI's parallel-suite contention. Fix (test-only): `await waitFor(() => expect(screen.getByTestId('plan-picker-select')).toHaveValue(CATALOG_PLAN.id))`, re-querying each tick. **Not locally reproducible** even under concurrent-build contention (14 attempts green — the local machine outpaces CI timing), so validated by inspection + fixed-file **10× consecutive green** + full suite 4115/4115. The CompliancePanel item (same family) was **dropped** — already handled by the open PR #543. Original diagnosis retained below for the drift trail.
 
 **Symptom:** `src/components/agent/__tests__/PolicyLedgerPanel.test.jsx:504` ("F3.1 prefill with planId pre-selects the catalog picker mode") fails intermittently in CI with `expected '' to be 'plan-001'` — the combobox `planId` value reads empty before React commits the prefill. Observed **~2/3 CI failure rate** during PR #779 (`lint-and-build` red on 2 of 3 runs on commits that changed **zero** `src/`/test code coupled to this file), while the **full local suite passed 4115/4115 twice** and the same test passed on CI commit `40796d0a`. Re-running the failed job cleared it. **Not a PR-K10b regression** — surfaced there, banked here.
 
 **Fix:** stabilize the assertion — `await waitFor(() => expect(picker).toHaveValue('plan-001'))` (or `findBy*`) instead of a synchronous read, matching the pattern used to fix the CompliancePanel nudge flake (open PR #543, `fix/nudge-flake-stabilization`). Verify by running the file in isolation under load (concurrent build) several times.
 
 **Falsification:** moot if PolicyLedgerPanel's catalog-picker prefill is refactored, or if the test is deleted/rewritten in a broader PolicyLedger test pass.
+
+## CI maintenance — workflows target deprecated Node 20 actions (banked 2026-07-03, LOW — CI hygiene)
+
+**Symptom:** the CI workflows use `actions/checkout@v4` and `actions/setup-node@v4`, which GitHub is deprecating in favour of the Node-24-based majors (GitHub Actions changelog, 2025-09-19). Runners are currently forcing these v4 actions onto Node 24 with a deprecation warning; the pinned actions will eventually stop working.
+
+**Fix:** bump `actions/checkout` and `actions/setup-node` (and any other pinned Node-20 actions) to their current majors per the changelog; verify `.github/workflows/*.yml` (`ci.yml` and any siblings) and confirm `node-version` in `setup-node` targets a supported LTS. Do NOT bundle with a feature PR — a standalone `chore(ci):` PR. **Explicitly out of scope for every lane in the 2026-07-03 window** (workflow changes touch no lane's surface); banked for a dedicated pass.
+
+**Falsification:** moot if the workflows are migrated to a different CI provider, or if GitHub extends the v4 support window such that no bump is needed before other CI work lands.
+
+## K10b write-read-ack smoke — hardening findings from the #780 Gemini review (banked 2026-07-03, LOW — verification-script robustness)
+
+**Origin:** Gemini flagged 4 MEDIUM items on `scripts/verification/smoke-financing-escalation-writeread-k10b.mjs` at #780; the script was already proven 7/7 in production so they were dispositioned OUT-OF-SCOPE-for-immediate-merge and banked here (avoiding a new CI cycle on a test-only PR mid-window).
+
+**Items (priority-ordered):**
+1. **(priority) `:192` cleanup false-positive.** The cleanup queries use `.get().catch(() => ({ docs: [] }))` / `({ size: 0 })` — a failed delete/verify query is swallowed and reports `PASS 6-cleanup, 0 orphans` even if docs remain. For a data-touching cleanup leg (Rule 3), remove the inline `.catch` so a real cleanup failure propagates to the outer handler and registers a `fail`.
+2. **`:87` precondition completeness.** Add an explicit check that the resolved UM/BM/agent docs carry `uid`/`unitId`/`branchId` before the legs run, so a missing field fails early with a clear message rather than a cryptic Firestore `undefined`-field error.
+3. **`:58` setup DX.** Wrap the `firebase-admin` / `service-account-key.json` requires in try/catch with actionable "run npm install in functions/" / "place the key at …" messages instead of a bare `MODULE_NOT_FOUND`.
+4. **`:39` env parser.** Skip blank/`#`-commented lines in the `.env.local` parser (mirrors the naive loader in the other smokes; low value but trivial).
+
+**Falsification:** moot if the smoke is superseded by the K10c post-deploy smoke (which extends this cycle — see the K10c brief Phase 5) and the write-read legs are re-authored there with these fixes folded in.
 
 ## ~~Commission v2 S1 (CommissionPlayground ladder) — dark-mode `color-contrast` axe regression~~ — RESOLVED (fix/commission-dark-contrast-goaldecomp, PR #773, `fad9a1b6`, 2026-07-01)
 
