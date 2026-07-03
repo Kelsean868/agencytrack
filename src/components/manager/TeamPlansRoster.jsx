@@ -227,6 +227,7 @@ export default function TeamPlansRoster({ tenantId }) {
       {drawerRow && (
         <AgentPlanDrawer
           row={drawerRow}
+          tenantId={tenantId}
           onClose={() => setDrawerRow(null)}
           onCoach={(r) => { setDrawerRow(null); setCoachTarget(r); }}
         />
