@@ -500,8 +500,12 @@ describe('PolicyLedgerPanel — plan catalog combobox', () => {
 
     await waitFor(() => screen.getByRole('button', { name: /back/i }));
 
-    const picker = screen.getByTestId('plan-picker-select');
-    expect(picker.value).toBe(CATALOG_PLAN.id);
+    // The create-form mode switch (the "back" button above) and the prefill that
+    // sets the picker's planId can commit in separate effect ticks — waiting only
+    // for the button and then reading picker.value synchronously races the prefill
+    // (reads '' under CI contention). Wait for the value itself, re-querying each
+    // tick so a re-render doesn't leave a stale node reference.
+    await waitFor(() => expect(screen.getByTestId('plan-picker-select')).toHaveValue(CATALOG_PLAN.id));
     expect(screen.queryByTestId('plan-name-freetext')).not.toBeInTheDocument();
   });
 });
