@@ -40,9 +40,20 @@ const E     = loadEnv(ROOT);
 
 const PROD_URL         = 'https://agencytrack.vercel.app';
 const FIREBASE_PROJECT = 'agencytrack-2a610';
-const TENANT_ID        = 'tatillife_south';
-const AGENT_UID        = 'J0j4uBqzTPcfm1IlGCPyDzo27RP2';
 const CURRENT_YEAR     = new Date().getFullYear();
+
+// TENANT_ID / AGENT_UID are resolved at RUNTIME from the A11Y_AGENT credential's
+// token claims (see B2). Hardcoding drifted once (stale tatillife_south + uid vs
+// the current tatillife_smoke fixture) and pointed a recurring smoke at a live
+// tenant. Runtime resolution pins the smoke to whatever account A11Y_AGENT_* is.
+
+const AGENT_NAV_SELECTOR = '[data-testid="agent-tab-money-needs"]';
+
+/** Deterministic post-login/post-reload settle: wait for the agent nav to mount
+ *  (condition-based, no fixed sleeps — post-#771 harness convention). */
+async function waitForAgentNav(page, timeout = 30_000) {
+  await page.waitForSelector(AGENT_NAV_SELECTOR, { state: 'visible', timeout });
+}
 
 // ── Firebase REST helpers ────────────────────────────────────────────────────
 
@@ -110,7 +121,8 @@ function fail(label, detail = '') {
     await setupBypassSession(agentCtx, PROD_URL, E.VERCEL_BYPASS_TOKEN);
     await loginAs(agentPage, E.A11Y_AGENT_EMAIL, E.A11Y_AGENT_PASSWORD, `${PROD_URL}/`);
 
-    safeLog('[B1] navigating to Money Needs tab');
+    safeLog('[B1] waiting for agent nav, then navigating to Money Needs tab');
+    await waitForAgentNav(agentPage);
     await navigateAgentTab(agentPage, 'money-needs');
 
     // Wait for worksheet OR "Start worksheet" CTA
@@ -153,7 +165,7 @@ function fail(label, detail = '') {
     safeLog('[B1] reloading (shared)');
     await agentPage.reload({ waitUntil: 'domcontentloaded' });
     await waitForFirebaseReady(agentPage, 25_000);
-    await agentPage.waitForTimeout(1500); // allow Firebase auth to settle + agent dashboard to render
+    await waitForAgentNav(agentPage); // deterministic: agent dashboard nav mounted
     await navigateAgentTab(agentPage, 'money-needs');
     await agentPage.waitForFunction(
       () => document.querySelector('input[aria-label="Share with my Unit Manager and Branch Manager"]') !== null,
@@ -172,7 +184,7 @@ function fail(label, detail = '') {
     safeLog('[B1] reloading (private)');
     await agentPage.reload({ waitUntil: 'domcontentloaded' });
     await waitForFirebaseReady(agentPage, 25_000);
-    await agentPage.waitForTimeout(1500);
+    await waitForAgentNav(agentPage); // deterministic: agent dashboard nav mounted
     await navigateAgentTab(agentPage, 'money-needs');
     await agentPage.waitForFunction(
       () => document.querySelector('input[aria-label="Share with my Unit Manager and Branch Manager"]') !== null,
@@ -204,6 +216,14 @@ function fail(label, detail = '') {
     console.log('══════════════════════════════════');
 
     const agentIdToken = await getIdToken(E.A11Y_AGENT_EMAIL, E.A11Y_AGENT_PASSWORD, E.VITE_FIREBASE_API_KEY);
+    const agentClaims  = decodeJwt(agentIdToken);
+    const AGENT_UID    = agentClaims.user_id;
+    const TENANT_ID    = agentClaims.tenantId;
+    if (!AGENT_UID || !TENANT_ID) {
+      throw new Error(`A11Y_AGENT token claims missing user_id/tenantId (tenantId=${TENANT_ID ?? 'undefined'})`);
+    }
+    safeLog(`[B2] runtime fixture: tenant=${TENANT_ID} agentUid=${AGENT_UID}`);
+
     const agentDoc     = await firestoreGetById(agentIdToken, `tenants/${TENANT_ID}/users/${AGENT_UID}`);
     const agentUnitId  = extractField(agentDoc, 'unitId');
     const agentBranchId = extractField(agentDoc, 'branchId');
