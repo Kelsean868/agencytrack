@@ -5,6 +5,46 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Game Plan manager surface — Fork B: whole-plan suggest-back (banked 2026-07-03, PR #785 post-merge fill, MEDIUM — follow-on track)
+
+**Origin:** PR-GPM1 (#785, `95529a75`) shipped Fork A only — the UM/BM read-only Team Plans reader on the G5 consent-share arms. The brief explicitly deferred Fork B as the follow-on track.
+
+**Scope (from the GPM1 brief's NOT-in-this-PR list):**
+1. **`yearPlan`/`monthlyPlan` manager read rules** — today those collections have NO manager read arm; the mockup's plan-health view needs consent-gated UM/BM reads (same shape as the G5 moneyNeeds arms: `visibility=='shared'` + unit/branch scoping). Rules change → HUMAN-MERGE + operator deploy.
+2. **Suggest-back card** — manager proposes an adjustment back to the agent (suggestion store, agent accepts/dismisses; NO lock/approve — design-forbidden).
+3. **Plan-health checklist cards** — derived plan-completeness/coherence signals on the roster/drawer.
+4. **SM surface stays dormant** (`shareWithSm` has no live write path — see the corrected `shareWithSm` FU below).
+
+**Reuse anchors:** `TeamPlansRoster`/`AgentPlanDrawer` (#785), `getSharedMoneyNeeds` denied→notShared mapping, the locked SHOWN/PRIVATE projection-contract test shape (`TeamPlansRoster.projection.test.jsx`).
+
+**Falsification:** moot if the Game Plan loop store is redesigned before Fork B lands, or if the product decision changes to keep managers out of yearPlan/monthlyPlan entirely (reader-only forever).
+
+---
+
+## Vercel branch-alias preview URLs silently exceed the 63-char DNS label limit (banked 2026-07-03, PR #785 post-merge fill, LOW — tooling/docs)
+
+**Origin:** PR #785's Phase 5 smoke could not use the documented preview URL pattern — `agencytrack-git-feat-gpm1-team-plans-reader-kyron-marchan-s-projects.vercel.app` is a 68-char DNS label, over the RFC-1035 63-char limit, so the hostname does not resolve at all. The smoke fell back to the immutable per-deployment URL (`agencytrack-<hash>-kyron-marchan-s-projects.vercel.app`) read from the GitHub deployment status (`gh api repos/{owner}/{repo}/deployments` → statuses → `environment_url`, state `success`).
+
+**Action:**
+1. Update the CLAUDE.md § Workflow preview-URL bullet to document the failure mode + the deployment-URL fallback (the branch-alias pattern is only valid when `len("agencytrack-git-" + branch + "-kyron-marchan-s-projects") ≤ 63`).
+2. Optional hardening: a `walk-helpers.mjs` helper that computes the alias length and resolves the deployment URL automatically when over-limit, so future smokes don't each rediscover this.
+
+**Falsification:** moot if branch naming conventions keep all branch names short enough that the alias never exceeds 63 chars, or if Vercel changes its alias scheme.
+
+---
+
+## `tatillife_south` null-unitId agent — data fix, live tenant (banked 2026-07-03, PR #785 Phase 0.4 probe, MEDIUM — production data integrity)
+
+**Finding:** the #785 Phase 0.4 read-only Admin-SDK population probe found exactly one agent with `unitId == null` in the live tenant: `tatillife_south` / uid `C94hjdd6GXfdim9EfgPYAAIbDOJ2` (12 agents probed, 0 null branchId; `tatillife_smoke` fully clean 6/6). A null unitId silently drops the agent from every UM roster surface (K10a Unit Financing roster, #785 Team Plans roster, and the `financingEscalations` create arm's unit check) — BM/branch surfaces are unaffected.
+
+**Cross-reference:** this is the SAME uid as the known orphan user tracked in [issue #25](https://github.com/Kelsean868/agencytrack/issues/25) (Firestore doc with no Auth user; "do not auto-delete; investigate first"). The two findings are almost certainly one root cause: an abandoned/half-provisioned account. Resolve jointly — if the investigation concludes the doc should be deleted, the null unitId goes with it; if the account is to be kept, the fix is populating `unitId` (and creating the Auth user).
+
+**Action:** operator/dispatcher investigation per issue #25 first; then either (a) delete the orphan doc (closes both), or (b) backfill `unitId` via an Admin-SDK script with the Rule 5/6 dry-run pattern. STOP-IMMEDIATELY territory for CC — live-tenant data mutation is a dispatched, operator-confirmed action only.
+
+**Falsification:** moot if issue #25's investigation deletes the doc, or if a future user-doc integrity sweep (validation dashboard K8 territory) supersedes single-doc fixes.
+
+---
+
 ## `smoke-financing-escalation-k10c-postdeploy.mjs` — query-cost + explicit-return hardening (banked 2026-07-03, Rule 21 post-merge backstop, LOW — verification-script quality)
 
 **Origin:** Gemini's review of PR #784 (`86e0ad16`) landed at 12:21Z, before the 12:57Z merge, but was never dispositioned in-PR. Caught by the `/post-merge` Rule 21 backstop poll. Both findings are on a one-off admin/smoke script already proven 10/10 against production — banked as quality hardening, not a defect requiring a hotfix.
@@ -2749,7 +2789,7 @@ Banked: PR #319 dispatch Phase 1 alignment, 2026-05-27.
 
 ## moneyNeeds `shareWithSm` owner-update arm is UI-gated only — no rule enforcement (LOW, banked 2026-05-27)
 
-**Scope:** `updateVisibility` in `moneyNeedsService.js` accepts a `shareWithSm` boolean and patches it onto the worksheet doc. The Firestore update rule for the owner arm (`request.auth.uid == agentId`) does not restrict which fields may be set — an owner could set `shareWithSm: true` via a raw `updateDoc` call without going through the UI toggle. The UI gate is the only enforcement today.
+**Scope:** ~~`updateVisibility` in `moneyNeedsService.js` accepts a `shareWithSm` boolean and patches it onto the worksheet doc.~~ **Stale-premise correction (post-merge fill PR #785, 2026-07-03, Rule 11 trail):** `updateVisibility(tenantId, uid, year, visibility)` no longer takes or patches `shareWithSm` — it patches `visibility` + `updatedAt`/`updatedBy` only (verified `moneyNeedsService.js:570`). `shareWithSm` exists solely as a scaffold default (`:355`, `false`) with no live write path. The rule-side concern remains valid as written: the owner update arm (`firestore.rules` ~:1480) does not field-restrict, so an owner could still set `shareWithSm: true` via raw `updateDoc`. The UI no longer offers the toggle; the field is dormant pending any SM surface.
 
 **Action:** When manager-owned worksheets ship (Track G extension or beyond), harden the update arm to enforce that only a BM can set `shareWithSm` — e.g., add `(!affectedKeys().hasAny(['shareWithSm']) || isRole('branch_manager'))` to the owner update predicate. Until manager-owned worksheets exist, the UI gate is sufficient: no BM-authored worksheet path exists, so the only actor who could self-set `shareWithSm` is the owning agent, and sharing their own data upstream has negligible privacy impact.
 
