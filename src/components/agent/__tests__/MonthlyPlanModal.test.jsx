@@ -92,6 +92,15 @@ describe('MonthlyPlanModal — no-yearPlan state', () => {
     expect(screen.getByText(/Nothing to split yet/i)).toBeTruthy();
   });
 
+  // Fork B1 honesty copy — the header disclosure renders in every phase.
+  it('header carries the manager-visibility disclosure line', async () => {
+    render(
+      <MonthlyPlanModal onClose={vi.fn()} yearPlanAPI={0} submissions={[]} year={YEAR} />,
+    );
+    await flush();
+    expect(screen.getByText(/Visible to your managers\./i)).toBeTruthy();
+  });
+
   it('does not call getMonthlyPlan when yearPlanAPI is 0', async () => {
     render(
       <MonthlyPlanModal onClose={vi.fn()} yearPlanAPI={0} submissions={[]} year={YEAR} />,
