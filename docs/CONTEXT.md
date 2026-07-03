@@ -221,7 +221,7 @@ These don't block anything, but they need to be resolved or carried forward each
 - **Orphan user** `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc exists but no Auth user. Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). Do not auto-delete; investigate first.
 - **Node.js 20 Functions runtime** deprecated 2026-04-30, decommission 2026-10-30 — migration to Node 22 is a separate ticket. Not blocking; CLAUDE.md locks v1 runtime for current track.
 - **`firebase-functions` SDK** at 4.9.0 — upgrade to ≥5.1.0 has breaking changes; schedule as own ticket post-pilot.
-- **Clarity operator activation (PR #786, 2026-07-03)** — code is merged but Clarity is fully inert until the operator runs 3 steps in order: (1) create the Clarity project, get the id; (2) **Clarity → Settings → Masking → set mode to STRICT (mandatory)** — its default-strict behavior only holds until server settings are fetched; (3) Vercel → `VITE_CLARITY_PROJECT_ID` (Production scope only) → redeploy → live playback check (browse Money Needs as an agent, confirm the session appears AND figures are masked). Figures visible in playback → STOP, report. Until step 2 runs, do not set the Production env var.
+- ~~**Clarity operator activation (PR #786, 2026-07-03)**~~ **RESOLVED 2026-07-03** — operator completed all 3 steps (project created, dashboard masking set to STRICT, `VITE_CLARITY_PROJECT_ID` set Production-only + redeployed) and playback-verified the live recording with Money Needs figures masked. Clarity is live and privacy-gated as designed.
 
 ---
 
