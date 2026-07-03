@@ -3,7 +3,7 @@ import { projectAwards, derivedApps, ASSUMED_PERSIST_DEFAULT } from '../../lib/y
 import { formatCurrency, formatCompactTTD } from '../../utils/formatters';
 
 const STATE_META = {
-  'on-track':      { dot: 'bg-primary dark:bg-primary-dark',          text: 'text-primary dark:text-primary-dark',          badge: 'bg-primary/10 dark:bg-primary-dark/15 border-primary/20 dark:border-primary-dark/30',          icon: '✓' },
+  'on-track':      { dot: 'bg-primary dark:bg-primary-dark',          text: 'text-primary',          badge: 'bg-primary/10 dark:bg-primary-dark/15 border-primary/20 dark:border-primary-dark/30',          icon: '✓' },
   'in-contention': { dot: 'bg-amber-500',                              text: 'text-amber-700 dark:text-amber-400',           badge: 'bg-amber-50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-700',                      icon: '↗' },
   'not-yet':       { dot: 'bg-ink-muted/40',                           text: 'text-ink-muted',                               badge: 'bg-surface-raised border-border',                                                              icon: '—' },
 };
@@ -31,7 +31,7 @@ function AwardPill({ id, label, state, persistNote, gapToNext = 0, nextLabel, to
         <span className="text-[10px] opacity-60" title={`Assumes ≥${ASSUMED_PERSIST_DEFAULT}% persistency`}>†</span>
       )}
       {topTier ? (
-        <span className="text-[10px] font-semibold text-primary dark:text-primary-dark" data-testid={`award-gap-${id}`}>
+        <span className="text-[10px] font-semibold text-primary" data-testid={`award-gap-${id}`}>
           top tier reached
         </span>
       ) : gapToNext > 0 ? (

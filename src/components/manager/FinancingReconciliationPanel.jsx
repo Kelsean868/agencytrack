@@ -443,7 +443,7 @@ export default function FinancingReconciliationPanel() {
             {status === 'on_financing' && readout && (
               <div className="card" data-testid="recon-begin">
                 <div className="flex items-center gap-2 mb-2">
-                  <Clock size={16} className="text-primary dark:text-primary-dark" aria-hidden="true" />
+                  <Clock size={16} className="text-primary" aria-hidden="true" />
                   <p className="text-sm font-semibold text-ink">
                     {serviceMonths >= 12 ? 'Month-12 reached — ready to reconcile' : 'Early election (6.5b)'}
                   </p>

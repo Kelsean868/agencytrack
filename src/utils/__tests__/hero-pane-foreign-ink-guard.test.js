@@ -48,7 +48,10 @@ const FORBIDDEN_PATTERNS = [
   { label: 'text-success (use hero-dot-success + hero-ink)', re: /\btext-success\b(?!-ink)/ },
   { label: 'text-warning (use hero-dot-warning + hero-ink)',  re: /\btext-warning\b(?!-ink)/ },
   { label: 'text-danger (use hero-dot-danger + hero-ink)',    re: /\btext-danger\b(?!-ink)/ },
-  { label: 'text-primary (use hero tokens)',                  re: /\btext-primary\b(?!-dark)/ },
+  // No (?!-dark) exemption: text-primary-dark as hero text is equally foreign
+  // (dark-ink sweep FU — the dark:text-primary-dark-as-text anti-pattern; the
+  // repo-wide ban lives in dark-ink-static-guard.test.js).
+  { label: 'text-primary (any variant — use hero tokens)',    re: /\btext-primary\b/ },
   { label: 'text-ink-faint (banned globally — D5)',           re: /\btext-ink-faint\b/ },
 ];
 

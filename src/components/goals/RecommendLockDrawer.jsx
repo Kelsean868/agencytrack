@@ -168,7 +168,7 @@ export default function RecommendLockDrawer({
               onClick={() => setLocked(true)}
               className={`flex-1 h-11 rounded-xl text-sm font-semibold flex items-center justify-center gap-2 border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 ${
                 locked
-                  ? 'bg-primary/10 border-primary/40 text-primary dark:text-primary-dark'
+                  ? 'bg-primary/10 border-primary/40 text-primary'
                   : 'bg-transparent border-border text-ink-muted'
               }`}
             >
@@ -187,8 +187,8 @@ export default function RecommendLockDrawer({
             </div>
           ) : (
             <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/8 border border-primary/25 dark:bg-primary-dark/10 dark:border-primary-dark/30">
-              <Lock size={16} className="text-primary dark:text-primary-dark mt-0.5 shrink-0" />
-              <p className="text-sm text-primary dark:text-primary-dark">
+              <Lock size={16} className="text-primary mt-0.5 shrink-0" />
+              <p className="text-sm text-primary">
                 <span className="font-semibold">Binding floor</span> — the agent's personal commitment must meet or exceed these targets.
               </p>
             </div>

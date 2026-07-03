@@ -104,7 +104,7 @@ export default function MonthChart({ targets, actuals, year, currentMonthIndex, 
             <span
               className={`text-[9px] leading-tight ${
                 isCurrent
-                  ? 'font-bold text-primary dark:text-primary-dark'
+                  ? 'font-bold text-primary'
                   : 'text-ink-muted'
               }`}
             >

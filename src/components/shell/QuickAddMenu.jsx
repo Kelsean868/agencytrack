@@ -74,7 +74,7 @@ export default function QuickAddMenu({ actions, onSelect, onClose, todayLogged }
           isSoon
             ? 'text-ink-muted opacity-50 cursor-not-allowed'
             : action.primary
-              ? 'bg-primary/10 text-primary dark:bg-primary-dark/15 dark:text-primary-dark font-semibold hover:bg-primary/15 dark:hover:bg-primary-dark/20'
+              ? 'bg-primary/10 text-primary dark:bg-primary-dark/15 font-semibold hover:bg-primary/15 dark:hover:bg-primary-dark/20'
               : 'text-ink hover:bg-surface-raised',
         ].join(' ')}
         aria-disabled={isSoon || undefined}

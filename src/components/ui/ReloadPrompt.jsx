@@ -86,7 +86,7 @@ export default function ReloadPrompt() {
       data-testid="reload-prompt"
     >
       <div className="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-lg">
-        <RefreshCw size={18} className="shrink-0 text-primary dark:text-primary-dark" aria-hidden="true" />
+        <RefreshCw size={18} className="shrink-0 text-primary" aria-hidden="true" />
         <p className="flex-1 text-sm font-medium leading-snug text-ink">
           A new version is available.
         </p>

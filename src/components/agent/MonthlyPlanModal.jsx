@@ -172,7 +172,7 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
       : `${formatCurrency(deltaAbs)} remaining to place`;
   const balanceClass =
     delta === 0
-      ? 'text-primary dark:text-primary-dark'
+      ? 'text-primary'
       : 'text-danger-ink';
 
   return (
@@ -336,7 +336,7 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
                             currentPace.state === 'ahead'
                               ? 'font-semibold text-amber-600 dark:text-amber-400'
                               : currentPace.state === 'on-track'
-                              ? 'font-semibold text-primary dark:text-primary-dark'
+                              ? 'font-semibold text-primary'
                               : 'font-semibold text-danger-ink'
                           }
                         >
@@ -361,7 +361,7 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
                   <p
                     className={`mt-1 font-display text-base font-extrabold ${
                       ytd >= 0
-                        ? 'text-primary dark:text-primary-dark'
+                        ? 'text-primary'
                         : 'text-danger-ink'
                     }`}
                   >

@@ -71,7 +71,7 @@ export default function StepSocialContent({ data = {}, onChange }) {
           <button
             type="button"
             onClick={() => setShowBreakdown((v) => !v)}
-            className="flex items-center gap-1.5 text-sm font-medium text-primary dark:text-primary-dark self-start"
+            className="flex items-center gap-1.5 text-sm font-medium text-primary self-start"
             aria-expanded={showBreakdown}
           >
             {showBreakdown ? (
