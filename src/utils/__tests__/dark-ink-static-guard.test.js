@@ -40,8 +40,10 @@ const SRC = resolve(ROOT, 'src');
 // The anti-pattern: `dark:` (with any extra variant chain, e.g. dark:hover:)
 // applied to `text-primary-dark`. Does NOT match `dark:bg-primary-dark`
 // (D6-legitimate button backgrounds), bare `text-primary-dark` (a light-mode
-// color, e.g. DerivedIncomePanel), or light-mode `hover:text-primary-dark`.
-const DARK_INK_AS_TEXT = /\bdark:(?:[a-z-]+:)*text-primary-dark\b/;
+// color, e.g. DerivedIncomePanel), light-mode `hover:text-primary-dark`, or
+// any longer class sharing the prefix (trailing negative lookahead instead of
+// `\b`, which would match through the hyphen — Gemini review, PR #777).
+const DARK_INK_AS_TEXT = /\bdark:(?:[a-z-]+:)*text-primary-dark(?![a-zA-Z0-9_-])/;
 
 // Sites where the dark override is contrast-CORRECT (persistent-light
 // backgrounds — see header). Paths are POSIX-style, relative to repo root.
