@@ -1643,7 +1643,16 @@ service cloud.firestore {
                'tenantId', 'agentId', 'agentName', 'agentUnitId', 'branchId',
                'raisedByUid', 'raisedByName', 'raisedByRole', 'reason', 'note',
                'status', 'createdAt'
-             ]);
+             ])
+          // Type guards (mirrors sibling K-track collections): a non-string
+          // branchId/createdAt would break the BM inbox where/orderBy.
+          && request.resource.data.agentId is string
+          && request.resource.data.agentName is string
+          && request.resource.data.branchId is string
+          && request.resource.data.raisedByName is string
+          && request.resource.data.raisedByRole is string
+          && request.resource.data.note is string
+          && request.resource.data.createdAt is timestamp;
 
         // update: the ACK, by a caller who may read the escalation. Field-restricted
         //   to the ack triple (SEC-10 hasOnly precedent); new status must be
@@ -1652,6 +1661,7 @@ service cloud.firestore {
         //   UM same-month re-raise (a full-field setDoc onto an existing doc fails
         //   hasOnly and canReadEscalation).
         allow update: if canReadEscalation()
+          && resource.data.status == 'open'                    // strict open→acknowledged; no re-ack
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['status', 'acknowledgedByUid', 'acknowledgedAt'])
           && request.resource.data.status == 'acknowledged'

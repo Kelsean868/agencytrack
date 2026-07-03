@@ -23,7 +23,8 @@
  * callerBranchId reads tenants/{tid}/users/{uid}.branchId, so the BM/UM caller
  * user docs are seeded with rules disabled.
  *
- * Test matrix (18 cases):
+ * Test matrix (20 cases — ack DENY cases run before the successful ack so each
+ * isolates its own violation, not the status=='open' precondition):
  *    1. UM own-unit create                                   → ALLOW
  *    2. UM other-unit create (agentUnitId != uid)            → DENY
  *    3. Agent create                                         → DENY
@@ -187,19 +188,15 @@ async function main() {
   });
 
   // ── UPDATE (ack) ──────────────────────────────────────────────────────────────
-  await t('10. BM same-branch ack → ALLOW', async () => {
-    await assertSucceeds(updateDoc(escRef(bmA()), {
-      status: 'acknowledged', acknowledgedByUid: BM_A_UID, acknowledgedAt: new Date(),
-    }));
-  });
-
-  await t('11. BM other-branch ack → DENY', async () => {
+  // The DENY cases run FIRST, while ESC_ID is still 'open', so each isolates its own
+  // violation (branch / forged-uid / extra-field) rather than the status precondition.
+  await t('10. BM other-branch ack → DENY', async () => {
     await assertFails(updateDoc(escRef(bmB()), {
       status: 'acknowledged', acknowledgedByUid: BM_B_UID, acknowledgedAt: new Date(),
     }));
   });
 
-  await t('11b. Ack with a forged acknowledgedByUid → DENY (pinned to caller)', async () => {
+  await t('11. Ack with a forged acknowledgedByUid → DENY (pinned to caller)', async () => {
     await assertFails(updateDoc(escRef(bmA()), {
       status: 'acknowledged', acknowledgedByUid: 'someOtherUid', acknowledgedAt: new Date(),
     }));
@@ -212,32 +209,52 @@ async function main() {
     }));
   });
 
+  // The successful ack flips ESC_ID open→acknowledged (must run after the DENY cases).
+  await t('13. BM same-branch ack → ALLOW', async () => {
+    await assertSucceeds(updateDoc(escRef(bmA()), {
+      status: 'acknowledged', acknowledgedByUid: BM_A_UID, acknowledgedAt: new Date(),
+    }));
+  });
+
+  // Re-acking an already-acknowledged doc is blocked by the status=='open' precondition
+  // — no silent overwrite of who/when acknowledged.
+  await t('13b. Re-ack an already-acknowledged doc → DENY (status != open)', async () => {
+    await assertFails(updateDoc(escRef(bmA()), {
+      status: 'acknowledged', acknowledgedByUid: BM_A_UID, acknowledgedAt: new Date(),
+    }));
+  });
+
   // ── DELETE ────────────────────────────────────────────────────────────────────
-  await t('13. Delete → DENY', async () => {
+  await t('14. Delete → DENY', async () => {
     await assertFails(deleteDoc(escRef(bmA())));
   });
 
   // ── CROSS-TENANT ────────────────────────────────────────────────────────────
-  await t('14. Cross-tenant read → DENY', async () => {
+  await t('15. Cross-tenant read → DENY', async () => {
     const db = testEnv.authenticatedContext(BM_A_UID, authToken('branch_manager', OTHER_TENANT)).firestore();
     await assertFails(getDoc(escRef(db)));
   });
 
   // ── CREATE VALIDATION ──────────────────────────────────────────────────────────
-  await t("15. Create with status != 'open' → DENY", async () => {
+  await t("16. Create with status != 'open' → DENY", async () => {
     await assertFails(setDoc(escRef(umA(), `${AGENT_A}_draw_decision_2026_08`),
       createPayload({ status: 'acknowledged' })));
   });
 
-  await t('16. Create with reason outside enum → DENY', async () => {
+  await t('17. Create with reason outside enum → DENY', async () => {
     await assertFails(setDoc(escRef(umA(), `${AGENT_A}_bogus_${MONTH}`),
       createPayload({ reason: 'bogus_reason' })));
   });
 
-  await t('17. Create missing a required key (branchId) → DENY', async () => {
+  await t('18. Create missing a required key (branchId) → DENY', async () => {
     const p = createPayload({ reason: 'confirm_request' });
     delete p.branchId;
     await assertFails(setDoc(escRef(umA(), `${AGENT_A}_confirm_request_2026_08`), p));
+  });
+
+  await t('19. Create with a non-string branchId → DENY (type guard)', async () => {
+    await assertFails(setDoc(escRef(umA(), `${AGENT_A}_confirm_request_2026_09`),
+      createPayload({ reason: 'confirm_request', branchId: 12345 })));
   });
 
   console.log(`\n${passed + failed} tests: ${passed} passed, ${failed} failed.`);

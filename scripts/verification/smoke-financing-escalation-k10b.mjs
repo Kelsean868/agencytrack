@@ -118,7 +118,12 @@ async function runUM(browser, theme) {
     : fail(t('A1-riskcard-flag'), 'risk-card Flag-to-BM action missing');
 
   // A2: open the read-only drawer → the footer Flag control is LIVE (not disabled).
-  await page.locator('[data-testid="unit-financing-view-k10a_adj"]').first().click();
+  const viewBtn = page.locator('[data-testid="unit-financing-view-k10a_adj"]');
+  if (await viewBtn.count() === 0) {
+    fail(t('A2-drawer-flag-live'), 'k10a_adj View button missing (seed applied?)');
+    formatCaptureReport(cap); await ctx.close(); return;
+  }
+  await viewBtn.first().click();
   const drawer = page.locator('[data-testid="unit-financing-drawer"]');
   await drawer.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {});
   const flag = page.locator('[data-testid="unit-financing-drawer-flag"]');
@@ -202,4 +207,4 @@ async function runBM(browser, theme) {
     process.exit(1);
   }
   console.log('All legs green.');
-})();
+})().catch((e) => { console.error('SMOKE CRASHED:', e); process.exit(1); });
