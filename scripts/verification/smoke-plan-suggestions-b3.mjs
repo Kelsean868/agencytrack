@@ -130,9 +130,12 @@ async function assertAgentHubQuiet(page, themeTag) {
   } catch {
     fail(`M3${themeTag}: hub did not render`, 'game-plan-anchor absent');
   }
+  // PRE-DEPLOY invariant: the planSuggestions rules are not live, so the agent-
+  // own read DENIES → the card must render NOTHING (quiet). A rendered card here
+  // means the read unexpectedly succeeded — a real regression, not a soft note.
   const cardCount = await page.locator('[data-testid="plan-suggestions-card"]').count();
   if (cardCount === 0) pass(`M3${themeTag}: PlanSuggestionsCard quiet (agent-own read denies pre-deploy → renders nothing, no hub crash)`);
-  else pass(`M3${themeTag}: hub renders with ${cardCount} suggestion card(s) present`);
+  else fail(`M3${themeTag}: PlanSuggestionsCard rendered pre-deploy`, `expected 0, got ${cardCount} — the agent-own read should deny (rules not live)`);
 }
 
 (async () => {
