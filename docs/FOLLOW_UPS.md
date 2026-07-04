@@ -39,6 +39,8 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 **Deviations (honest):** (1) fixtures seeded via the Admin SDK rather than the agent client token the pre-deploy FU text named — so the agent's REAL plan docs restore to exact captured bytes; the owner WRITE path is already emulator-proven 41/41+30/30 and is not this FU's subject (the manager READ verdicts are, and those ran through the live rules + real drawer). (2) The foil leg asserts the drawer's exact data-path input (out-of-unit UM `getDoc` → permission-denied → `{unavailable}`) rather than a UI click — an out-of-unit UM cannot reach this agent's drawer via the roster (own-unit only), so the neutral-render leg is a composition of the live 403 (proven here) × the `{unavailable}→tpd-*-unavailable` UI mapping (locked by `AgentPlanDrawer.tabs.test.jsx` + the b2 preview smoke 12/12). Original superseded FU body retained below for the drift trail.
 
+**Rule 22 gap CLOSED (2026-07-04, PR-B3 post-deploy run):** the 9/9 table above asserts checks 1 (`tpd-health-floor`) and 2 (`tpd-health-mix`) but never hand-pinned check 3 (`tpd-health-commit`, "not over-committed") against a fixture — a real gap, noted on the B2 PR's own "Known gaps (Rule 22)" line. Closed as part of the PR-B3 live-cycle run: with the agent's real (restored) yearPlan + moneyNeeds docs and the worksheet flipped to `shared`, `planTotalCommission` (Σ `derivedCommission` across `life`/`ah`/`general`) computed to **53,650** against a real `firstYearCommissionsRequired` of **0** — independently computed in the verification script and asserted against the live-rendered `tpd-health-commit` `data-ok` attribute in the drawer: **match, `data-ok="true"`** (53,650 ≥ 0). Honest note: the real fixture's `required=0` makes this a low-signal assertion (any non-negative commission trivially passes) — it proves the rendered value equals the hand-computed value, not that the RED branch renders correctly (that branch was already proven structurally by `AgentPlanDrawer.tabs.test.jsx` + the Rule 23 red-demonstration in `planHealth.js`'s own unit tests). No re-seed-to-BELOW fixture was run for check 3 specifically (would require mutating the agent's real moneyNeeds `firstYearCommissionsRequired`, out of scope for this hand-pin).
+
 **Origin:** PR-B2 (plan-review drawer tabs + plan health) ships manager-side reads that exercise PR-B1's yearPlan/monthlyPlan upline arms at runtime. At B2's Phase 5, B1 (#787) was open (not merged, not deployed) — every plan read denies in production, so the preview smoke could only prove the **denied→neutral** contract (which IS the correct pre-deploy behavior). The value-level legs cannot run until the operator merges B1 and deploys the rules.
 
 **Unverified acceptance criteria (verbatim from the B2 brief's Phase 5):**
@@ -76,25 +78,37 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## PR-B3 deferred verification — POST-DEPLOY live suggest-back cycle (banked 2026-07-04, Rule 13 waiver — MEDIUM, deploy-gated)
+## ~~PR-B3 deferred verification — POST-DEPLOY live suggest-back cycle~~ — RESOLVED (2026-07-04, live cycle 9/9 vs production)
 
-**Origin:** PR-B3 (planSuggestions suggest-back loop) ships a NEW subcollection + rules block (`match /users/{uid}/planSuggestions/{suggestionId}`) + the manager Send card + the agent hub card. Pre-merge verification covered the emulator matrix (**37/37**, every DENY genuinely denies), B1-sibling regression (yearPlan 41/41 + monthlyPlan 30/30 unchanged), lint/suite (4198/4198)/build, unit tests (service arg-shape, card render + unread emphasis + mark-seen, mask-guard entry + Rule 23 red demo), and the PRE-MERGE preview smoke (`smoke-plan-suggestions-b3.mjs`: manager Send card renders both themes + trap pickup; agent hub quiet-empty — the agent-own read DENIES pre-deploy → renders nothing, which IS the correct pre-deploy contract). The LIVE write-read-ack cycle cannot run until the planSuggestions rules are deployed — they do not exist in prod until `firebase deploy --only firestore:rules`.
+**RESOLVED note (2026-07-04):** planSuggestions rules deployed (`firebase deploy --only firestore:rules`, confirmed live); ran the full live write-read-ack cycle against **production `portal.agencytrack.app`** (main HEAD `16a66bcb`, PR #790) via a new script (`scripts/verification/live-b3-post-deploy.mjs`) as the natural A11Y UM + A11Y agent through the LIVE deployed rules + the real Send card + the real Game Plan hub. **9/9 PASS:**
 
-**Waiver:** merge authorized with verification of the live legs waived because the planSuggestions rules block is not yet deployed to production (HUMAN-MERGE channel; operator deploys post-merge). Deploy is a dispatcher/operator action (CC never deploys — Rule 19).
+| Leg | Fixture | Result |
+|---|---|---|
+| B2 check-3 hand-pin | real yearPlan/moneyNeeds (Σ derivedCommission 53,650 vs required 0) | `tpd-health-commit` `data-ok=true` — matches hand-computed expectation (closes the B2 Rule 22 gap, see the PR-B2 FU note above) |
+| L1 create | UM sends via the real `tpd-suggest-card` Send button on an in-unit smoke agent | doc lands with `raisedByUid` pinned to the UM uid, `status:'open'`, `seenAt:null` — REST-verified |
+| L3a foil create | out-of-unit UM (admin-discovered foil agent, `unitId != UM uid`) attempts create | **403** |
+| L3b self-create | agent attempts create on own path | **403** |
+| L3c manager ack | UM attempts `update` (status→seen) on the still-`open` doc | **403** |
+| L2 unread render | agent opens the Game Plan hub | `plan-suggestions-card` renders with 1 item |
+| L2 ack | card's fire-and-forget `markSuggestionSeen` on view | `status` flips `open`→`seen`, `seenAt` a live timestamp within 10s — REST-verified |
+| L4 cleanup | Admin SDK delete (`delete:false` blocks token deletes) | planSuggestions collection empty — **0 orphans** |
+| cleanup | moneyNeeds visibility restored | back to `private` (original value) |
 
-**Unverified acceptance criteria (verbatim from the B3 brief's Phase 5 POST-DEPLOY):**
-> live cycle as real subjects — UM sends on an in-unit agent (value-level doc assert incl. pinned raisedByUid); agent sees it unread, opens, marks seen (status flip + seenAt live); out-of-unit UM create DENIED; agent self-create DENIED; manager ack DENIED; cleanup 0 orphans.
+Also re-ran the PRE-MERGE `smoke-plan-suggestions-b3.mjs` against production for regression: **8/8 PASS** (Send card both themes, focus-trap pickup, hub quiet-empty leg — note the quiet-empty leg's inline comment ("agent-own read denies pre-deploy") is now stale phrasing post-deploy; it still passes because zero suggestions existed for the agent at that point in the run, not because of a rules denial — cosmetic label drift only, not a defect, banked below as a LOW housekeeping item).
 
-**Re-run steps (exact):**
-1. Operator deploys: `firebase deploy --only firestore:rules` (from a worktree at `origin/main` HEAD, per CLAUDE.md pre-flight; wait ~2–5 min for rollout propagation — see the PR-B1 FU propagation caveat before treating a partial-deny as a real failure).
-2. From the main worktree (`.env.local` present), against `tatillife_smoke`:
-   - **L1 create:** sign in as the smoke UM (`A11Y_UNIT_MANAGER_*`) → create a planSuggestion on an in-unit smoke agent (`tenants/{tid}/users/{agentUid}/planSuggestions/{auto}`, the locked ten fields, `status:'open'`, `seenAt:null`) via the UM's own client token → assert ALLOW + the landed doc has `raisedByUid == UM uid` (pinned).
-   - **L2 read + ack:** sign in as the smoke agent → `listPlanSuggestions` sees it `status:'open'` (unread) → `markSuggestionSeen` → assert `status:'seen'` + `seenAt` is a live timestamp.
-   - **L3 denials:** out-of-unit UM foil create → `permission-denied`; agent self-create on own path → `permission-denied`; UM ack (update) → `permission-denied`.
-   - **L4 cleanup:** `delete:false` blocks all token deletes — remove the test suggestion via the Admin SDK (`require('../functions/node_modules/firebase-admin')`, ambient creds), confirm **0 orphans**.
-3. Close this FU with the results pasted into the PR-B3 thread (or the post-merge fill).
+**Deviations (honest):** (1) the live-cycle script is new tooling (`scripts/verification/live-b3-post-deploy.mjs`), written during this closure since no pre-existing script exercised the POST-DEPLOY L1–L4 protocol end-to-end — it has not itself been through a PR/review cycle; a follow-up should land it properly (see LOW item below). (2) The out-of-unit foil agent was discovered via Admin SDK enumeration (`unitId != UM uid`, same convention as `smoke-team-plans-gpm1.mjs`'s 5.4 leg), not a dedicated second UM account — matches the established pattern for this tenant's fixture set. (3) `firstYearCommissionsRequired` on the real agent doc is 0, so the check-3 hand-pin (above) is a low-signal "matches" assertion, not a red/green contrast proof — noted in the PR-B2 FU addendum.
 
-**Operator option (noted in the PR body):** the additive-rules pre-merge deploy carve-out applies — the planSuggestions block is a purely additive new `match` block, so it may be deployed from the feature worktree pre-merge; if so, run L1–L4 pre-merge and close the waiver early.
+**Original banked context (superseded, retained for the drift trail):** PR-B3 (planSuggestions suggest-back loop) shipped a NEW subcollection + rules block (`match /users/{uid}/planSuggestions/{suggestionId}`) + the manager Send card + the agent hub card. Pre-merge verification covered the emulator matrix (37/37), B1-sibling regression (yearPlan 41/41 + monthlyPlan 30/30 unchanged), lint/suite (4198/4198)/build, unit tests, and the PRE-MERGE preview smoke. The live write-read-ack cycle was deferred (Rule 13 waiver) until the rules deployed — now closed above.
+
+---
+
+## PR-B3 housekeeping — stale pre-deploy comment in `smoke-plan-suggestions-b3.mjs` (banked 2026-07-04, LOW)
+
+**Origin:** the M3 quiet-empty assertion's inline comment/label ("agent-own read denies pre-deploy → renders nothing") no longer describes reality now that the planSuggestions rules are deployed — the leg still passes post-deploy, but because the agent has zero suggestions at that point in the run, not because of a permission denial. Cosmetic only; not a defect (confirmed via a fresh production run, 2026-07-04, 8/8 PASS).
+
+**Scope:** reword the M3 assertion label/comment in `scripts/verification/smoke-plan-suggestions-b3.mjs` to describe the post-deploy "empty state" contract rather than the pre-deploy "denied" contract, so a future reader isn't misled about why the leg is green.
+
+**Falsification:** moot if the script is retired in favor of a unified pre+post-deploy smoke (see the tooling follow-up above).
 
 ---
 
