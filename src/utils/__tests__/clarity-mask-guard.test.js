@@ -52,6 +52,10 @@ const MASKED_SURFACES = [
     name: 'AgentPlanDrawer (shared Money Needs projection)',
     path: 'src/components/manager/AgentPlanDrawer.jsx',
   },
+  {
+    name: 'PlanSuggestionsCard (agent hub — manager plan-suggestion notes)',
+    path: 'src/components/dashboard/GamePlanV2/PlanSuggestionsCard.jsx',
+  },
 ];
 
 describe('Clarity mask-attribute guard', () => {

@@ -49,6 +49,7 @@ Two layers, defense-in-depth:
    | Money Needs worksheet | outer worksheet `<div>` | `src/components/agent/MoneyNeedsPanel.jsx` |
    | Team Plans roster rows | roster `<ul>` | `src/components/manager/TeamPlansRoster.jsx` |
    | Agent Plan drawer | drawer panel `<div>` | `src/components/manager/AgentPlanDrawer.jsx` |
+   | Plan suggestions card (agent hub) | card outer `<div>` | `src/components/dashboard/GamePlanV2/PlanSuggestionsCard.jsx` |
 
    This attribute is the **load-bearing defense** now that mode is dashboard-only.
    A silent refactor dropping it must fail the suite — that is enforced by
