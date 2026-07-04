@@ -120,11 +120,9 @@ async function assertSendCard(page, agentUid, themeTag) {
 
 async function assertAgentHubQuiet(page, themeTag) {
   await waitForFirebaseReady(page, 25_000);
-  await page.waitForSelector('[data-testid^="nav-"]', { state: 'attached', timeout: 30_000 });
-  const navSel = '[data-testid="nav-game-plan"]';
-  if (await page.locator(navSel).first().isVisible().catch(() => false)) {
-    await page.locator(navSel).first().click();
-  }
+  // Agent nav uses `agent-tab-*` testids (the manager shell uses `nav-*`).
+  await page.waitForSelector('[data-testid="agent-tab-game-plan"]', { state: 'visible', timeout: 30_000 });
+  await page.locator('[data-testid="agent-tab-game-plan"]').first().click();
   // The hub root renders (the anchor strip is the first always-present rung).
   try {
     await page.waitForSelector('[data-testid="game-plan-anchor"]', { timeout: 20_000 });
@@ -133,7 +131,7 @@ async function assertAgentHubQuiet(page, themeTag) {
     fail(`M3${themeTag}: hub did not render`, 'game-plan-anchor absent');
   }
   const cardCount = await page.locator('[data-testid="plan-suggestions-card"]').count();
-  if (cardCount === 0) pass(`M3${themeTag}: hub renders, PlanSuggestionsCard quiet (no suggestions → nothing)`);
+  if (cardCount === 0) pass(`M3${themeTag}: PlanSuggestionsCard quiet (agent-own read denies pre-deploy → renders nothing, no hub crash)`);
   else pass(`M3${themeTag}: hub renders with ${cardCount} suggestion card(s) present`);
 }
 
@@ -154,7 +152,7 @@ async function assertAgentHubQuiet(page, themeTag) {
     console.error(`HARD GUARD: A11Y agent resolves to tenant "${TENANT_ID}" — aborting before any write.`);
     process.exit(1);
   }
-  safeLog(`[setup] tenant=${TENANT_ID} agent=${AGENT_UID} live=${LIVE}`);
+  safeLog(`[setup] tenant=${TENANT_ID} agent=${AGENT_UID}`);
 
   const worksheetPath = `tenants/${TENANT_ID}/users/${AGENT_UID}/moneyNeeds/${YEAR}`;
   const originalDoc = await restGet(agentToken, worksheetPath);
