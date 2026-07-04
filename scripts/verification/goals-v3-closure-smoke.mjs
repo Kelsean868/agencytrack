@@ -39,6 +39,17 @@ const BYPASS_TOKEN = process.env.VERCEL_BYPASS_TOKEN;
 const AGENT_EMAIL  = process.env.A11Y_AGENT_EMAIL;
 const AGENT_PASS   = process.env.A11Y_AGENT_PASSWORD;
 
+for (const [name, val] of [
+  ['VERCEL_BYPASS_TOKEN', BYPASS_TOKEN],
+  ['A11Y_AGENT_EMAIL', AGENT_EMAIL],
+  ['A11Y_AGENT_PASSWORD', AGENT_PASS],
+]) {
+  if (!val) {
+    console.error(`Missing required env var: ${name} (set in .env.local or the shell environment)`);
+    process.exit(1);
+  }
+}
+
 const SCREENSHOTS_DIR = join(__dirname, '../../tmp/screenshots');
 mkdirSync(SCREENSHOTS_DIR, { recursive: true });
 
@@ -121,128 +132,148 @@ try {
   console.log('\n── Leg 1: Agent Goals tab — light ──────────────────────────');
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
-    const page = await ctx.newPage();
-    const capture = captureConsoleAndNetwork(page);
-    await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
-    report('Leg 1 — dashboard loaded', (await page.evaluate(() => document.body.textContent.length)) > 200);
-    const reached = await navigateToTab(page, 'goals');
-    report('Leg 1 — Goals tab navigable', reached);
-    if (reached) {
-      await assertGoalsTabPanels(page, 'Leg 1');
-      await page.screenshot({ path: join(SCREENSHOTS_DIR, 'goals-v3-closure-light.png'), fullPage: true });
+    try {
+      await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
+      const page = await ctx.newPage();
+      const capture = captureConsoleAndNetwork(page);
+      await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
+      report('Leg 1 — dashboard loaded', (await page.evaluate(() => document.body.textContent.length)) > 200);
+      const reached = await navigateToTab(page, 'goals');
+      report('Leg 1 — Goals tab navigable', reached);
+      if (reached) {
+        await assertGoalsTabPanels(page, 'Leg 1');
+        await page.screenshot({ path: join(SCREENSHOTS_DIR, 'goals-v3-closure-light.png'), fullPage: true });
+      }
+      formatCaptureReport(capture);
+    } catch (e) {
+      report('Leg 1 — crashed', false, String(e).slice(0, 200));
+    } finally {
+      await ctx.close();
     }
-    formatCaptureReport(capture);
-    await ctx.close();
   }
 
   // ── Leg 2: Agent Goals tab — dark ───────────────────────────────────────
   console.log('\n── Leg 2: Agent Goals tab — dark ───────────────────────────');
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
-    const page = await ctx.newPage();
-    const capture = captureConsoleAndNetwork(page);
-    await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
-    await page.evaluate(() => {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('agencytrack-dark', 'true');
-    });
-    await page.waitForTimeout(300);
-    report('Leg 2 — dark mode applied', await page.evaluate(() => document.documentElement.classList.contains('dark')));
-    const reached = await navigateToTab(page, 'goals');
-    report('Leg 2 — Goals tab navigable', reached);
-    if (reached) {
-      await assertGoalsTabPanels(page, 'Leg 2');
-      await page.screenshot({ path: join(SCREENSHOTS_DIR, 'goals-v3-closure-dark.png'), fullPage: true });
+    try {
+      await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
+      const page = await ctx.newPage();
+      const capture = captureConsoleAndNetwork(page);
+      await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
+      await page.evaluate(() => {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('agencytrack-dark', 'true');
+      });
+      await page.waitForTimeout(300);
+      report('Leg 2 — dark mode applied', await page.evaluate(() => document.documentElement.classList.contains('dark')));
+      const reached = await navigateToTab(page, 'goals');
+      report('Leg 2 — Goals tab navigable', reached);
+      if (reached) {
+        await assertGoalsTabPanels(page, 'Leg 2');
+        await page.screenshot({ path: join(SCREENSHOTS_DIR, 'goals-v3-closure-dark.png'), fullPage: true });
+      }
+      formatCaptureReport(capture);
+    } catch (e) {
+      report('Leg 2 — crashed', false, String(e).slice(0, 200));
+    } finally {
+      await ctx.close();
     }
-    formatCaptureReport(capture);
-    await ctx.close();
   }
 
   // ── Leg 3: Agent Dashboard (home) — HeroCard MDRT marker ────────────────
   console.log('\n── Leg 3: Agent Dashboard home — HeroCard MDRT marker ──────');
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
-    const page = await ctx.newPage();
-    await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
-    await page.waitForTimeout(1500);
-    const heroText = await page.evaluate(() => {
-      const el = document.querySelector('.glass.hero.teal');
-      return el ? el.innerText : null;
-    });
-    if (heroText === null) {
-      report('Leg 3 — HeroCard present', false, 'hero element not found on dashboard tab');
-    } else {
-      report('Leg 3 — HeroCard present', true);
-      const mdrtVisible = /MDRT/.test(heroText);
-      if (mdrtVisible) {
-        const has688800 = /688,800/.test(heroText);
-        const has500000 = /500,000/.test(heroText);
-        report('Leg 3 — MDRT marker on-scale shows 688,800', has688800);
-        report('Leg 3 — MDRT marker does NOT show retired 500,000', !has500000, has500000 ? 'FOUND 500,000 — regression' : '');
+    try {
+      await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
+      const page = await ctx.newPage();
+      await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
+      await page.waitForTimeout(1500);
+      const heroText = await page.evaluate(() => {
+        const el = document.querySelector('.glass.hero.teal');
+        return el ? el.innerText : null;
+      });
+      if (heroText === null) {
+        report('Leg 3 — HeroCard present', false, 'hero element not found on dashboard tab');
       } else {
-        report('Leg 3 — MDRT marker off-scale (skipped: goal below 688,800 threshold)', true, 'marker correctly hidden');
+        report('Leg 3 — HeroCard present', true);
+        const mdrtVisible = /MDRT/.test(heroText);
+        if (mdrtVisible) {
+          const has688800 = /688,800/.test(heroText);
+          const has500000 = /500,000/.test(heroText);
+          report('Leg 3 — MDRT marker on-scale shows 688,800', has688800);
+          report('Leg 3 — MDRT marker does NOT show retired 500,000', !has500000, has500000 ? 'FOUND 500,000 — regression' : '');
+        } else {
+          report('Leg 3 — MDRT marker off-scale (skipped: goal below 688,800 threshold)', true, 'marker correctly hidden');
+        }
+        await page.screenshot({ path: join(SCREENSHOTS_DIR, 'goals-v3-closure-herocard.png'), fullPage: true });
       }
-      await page.screenshot({ path: join(SCREENSHOTS_DIR, 'goals-v3-closure-herocard.png'), fullPage: true });
+    } catch (e) {
+      report('Leg 3 — crashed', false, String(e).slice(0, 200));
+    } finally {
+      await ctx.close();
     }
-    await ctx.close();
   }
 
   // ── Leg 4: Agent Awards tab — AwardsReachPanel + PDF export ─────────────
   console.log('\n── Leg 4: Agent Awards tab — AwardsReachPanel + PDF export ─');
   {
     const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 } });
-    await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
-    const page = await ctx.newPage();
-    const capture = captureConsoleAndNetwork(page);
-    await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
-    const reached = await navigateToTab(page, 'awards');
-    report('Leg 4 — Awards tab navigable', reached);
+    try {
+      await setupBypassSession(ctx, PREVIEW_URL, BYPASS_TOKEN);
+      const page = await ctx.newPage();
+      const capture = captureConsoleAndNetwork(page);
+      await loginAs(page, PREVIEW_URL, AGENT_EMAIL, AGENT_PASS);
+      const reached = await navigateToTab(page, 'awards');
+      report('Leg 4 — Awards tab navigable', reached);
 
-    if (reached) {
-      // AgentAwardsPanel (not AwardsReachPanel — that's on the Goals tab,
-      // already asserted in Legs 1/2) is the other awardsRuleset consumer
-      // sharing AgentDashboard's fetched `awardsRuleset` state — confirms
-      // the new AwardsReachPanel ruleset prop wiring didn't disturb it.
-      await page.waitForFunction(
-        () => document.querySelector('button, [role="tablist"], [class*="award"]') !== null,
-        { timeout: 10_000 },
-      ).catch(() => {});
-      await page.waitForTimeout(500);
-      const hasAgentAwardsPanel = await page.evaluate(() =>
-        document.body.textContent.includes('Advisor of the Month') ||
-        document.body.textContent.includes('Awards')
-      );
-      report('Leg 4 — AgentAwardsPanel renders (no ruleset-prop regression on the sibling consumer)', hasAgentAwardsPanel);
-
-      const downloadBtn = page.getByRole('button', { name: /Download My Performance Report/i });
-      const btnVisible = await downloadBtn.isVisible().catch(() => false);
-      report('Leg 4 — Download report button visible', btnVisible);
-
-      if (btnVisible) {
-        await downloadBtn.click();
+      if (reached) {
+        // AgentAwardsPanel (not AwardsReachPanel — that's on the Goals tab,
+        // already asserted in Legs 1/2) is the other awardsRuleset consumer
+        // sharing AgentDashboard's fetched `awardsRuleset` state — confirms
+        // the new AwardsReachPanel ruleset prop wiring didn't disturb it.
+        await page.waitForFunction(
+          () => document.querySelector('button, [role="tablist"], [class*="award"]') !== null,
+          { timeout: 10_000 },
+        ).catch(() => {});
         await page.waitForTimeout(500);
-        const generateBtn = page.getByRole('button', { name: /Generate.*Download/i });
-        const modalOpen = await generateBtn.isVisible().catch(() => false);
-        report('Leg 4 — report range modal opens', modalOpen);
+        const hasAgentAwardsPanel = await page.evaluate(() =>
+          document.body.textContent.includes('Advisor of the Month') ||
+          document.body.textContent.includes('Awards')
+        );
+        report('Leg 4 — AgentAwardsPanel renders (no ruleset-prop regression on the sibling consumer)', hasAgentAwardsPanel);
 
-        if (modalOpen) {
-          const [download] = await Promise.all([
-            page.waitForEvent('download', { timeout: 20_000 }).catch(() => null),
-            generateBtn.click(),
-          ]);
-          report('Leg 4 — PDF generation completes (download event fired)', download !== null);
-          if (download) {
-            const suggested = download.suggestedFilename();
-            report('Leg 4 — PDF filename produced', !!suggested, suggested || '');
+        const downloadBtn = page.getByRole('button', { name: /Download My Performance Report/i });
+        const btnVisible = await downloadBtn.isVisible().catch(() => false);
+        report('Leg 4 — Download report button visible', btnVisible);
+
+        if (btnVisible) {
+          await downloadBtn.click();
+          await page.waitForTimeout(500);
+          const generateBtn = page.getByRole('button', { name: /Generate.*Download/i });
+          const modalOpen = await generateBtn.isVisible().catch(() => false);
+          report('Leg 4 — report range modal opens', modalOpen);
+
+          if (modalOpen) {
+            const [download] = await Promise.all([
+              page.waitForEvent('download', { timeout: 20_000 }).catch(() => null),
+              generateBtn.click(),
+            ]);
+            report('Leg 4 — PDF generation completes (download event fired)', download !== null);
+            if (download) {
+              const suggested = download.suggestedFilename();
+              report('Leg 4 — PDF filename produced', !!suggested, suggested || '');
+            }
           }
         }
       }
+      formatCaptureReport(capture);
+    } catch (e) {
+      report('Leg 4 — crashed', false, String(e).slice(0, 200));
+    } finally {
+      await ctx.close();
     }
-    formatCaptureReport(capture);
-    await ctx.close();
   }
 
 } finally {

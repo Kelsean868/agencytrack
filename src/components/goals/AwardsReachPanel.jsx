@@ -119,7 +119,10 @@ export default function AwardsReachPanel({
   );
 
   const awards = useMemo(
-    () => computeAgentAwards(confirmedSettlements ?? [], submissions ?? [], agentProfile ?? {}, now, ruleset),
+    // ?? undefined (not the raw prop): computeAgentAwards's ruleset default
+    // param triggers only on undefined, not null — this keeps a null ruleset
+    // safely falling through to DEFAULT_RULESET_2026 instead of throwing.
+    () => computeAgentAwards(confirmedSettlements ?? [], submissions ?? [], agentProfile ?? {}, now, ruleset ?? undefined),
     [confirmedSettlements, submissions, agentProfile, now, ruleset],
   );
 
