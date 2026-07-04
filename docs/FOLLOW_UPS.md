@@ -96,6 +96,8 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 Also re-ran the PRE-MERGE `smoke-plan-suggestions-b3.mjs` against production for regression: **8/8 PASS** (Send card both themes, focus-trap pickup, hub quiet-empty leg — note the quiet-empty leg's inline comment ("agent-own read denies pre-deploy") is now stale phrasing post-deploy; it still passes because zero suggestions existed for the agent at that point in the run, not because of a rules denial — cosmetic label drift only, not a defect, banked below as a LOW housekeeping item).
 
+**Tooling landed as standing smoke via PR #{TBD}.** `scripts/verification/live-b3-post-deploy.mjs` (the script that ran the 9/9 above) shipped as standing OPERATOR-RUN-ONLY tooling, registered in `SMOKES.md`.
+
 **Deviations (honest):** (1) the live-cycle script is new tooling (`scripts/verification/live-b3-post-deploy.mjs`), written during this closure since no pre-existing script exercised the POST-DEPLOY L1–L4 protocol end-to-end — it has not itself been through a PR/review cycle; a follow-up should land it properly (see LOW item below). (2) The out-of-unit foil agent was discovered via Admin SDK enumeration (`unitId != UM uid`, same convention as `smoke-team-plans-gpm1.mjs`'s 5.4 leg), not a dedicated second UM account — matches the established pattern for this tenant's fixture set. (3) `firstYearCommissionsRequired` on the real agent doc is 0, so the check-3 hand-pin (above) is a low-signal "matches" assertion, not a red/green contrast proof — noted in the PR-B2 FU addendum.
 
 **Original banked context (superseded, retained for the drift trail):** PR-B3 (planSuggestions suggest-back loop) shipped a NEW subcollection + rules block (`match /users/{uid}/planSuggestions/{suggestionId}`) + the manager Send card + the agent hub card. Pre-merge verification covered the emulator matrix (37/37), B1-sibling regression (yearPlan 41/41 + monthlyPlan 30/30 unchanged), lint/suite (4198/4198)/build, unit tests, and the PRE-MERGE preview smoke. The live write-read-ack cycle was deferred (Rule 13 waiver) until the rules deployed — now closed above.
@@ -109,6 +111,31 @@ Also re-ran the PRE-MERGE `smoke-plan-suggestions-b3.mjs` against production for
 **Scope:** reword the M3 assertion label/comment in `scripts/verification/smoke-plan-suggestions-b3.mjs` to describe the post-deploy "empty state" contract rather than the pre-deploy "denied" contract, so a future reader isn't misled about why the leg is green.
 
 **Falsification:** moot if the script is retired in favor of a unified pre+post-deploy smoke (see the tooling follow-up above).
+
+---
+
+## PR #791 — `live-b3-post-deploy.mjs` hardening (banked 2026-07-04, LOW — Rule 21 out-of-scope carry)
+
+**Origin:** PR #791 (landing `scripts/verification/live-b3-post-deploy.mjs` as standing tooling) locked "no logic changes" — the script's 9/9 evidence predates the PR and a logic fix would contradict that closure evidence. CodeRabbit (6 inline comments) and Gemini both surfaced real hardening gaps; all dispositioned OUT-OF-SCOPE for #791 and banked here as one follow-up.
+
+**Scope:**
+1. `restPatch` doesn't check HTTP status on the visibility-flip write or the cleanup-restore write — a failed patch is silently treated as success (2 sites: seed flip, final restore).
+2. `firebase-admin` require + `admin.initializeApp` aren't wrapped in try/catch — a missing `functions/node_modules/firebase-admin` or `service-account-key.json` throws a cryptic error instead of an operator-actionable message.
+3. No tenant guard on the UM token before it's used in a production mutation (only the agent token is guarded).
+4. Fixture reads (`firestoreGet` for moneyNeeds/yearPlan) and the visibility-flip patch don't check `.ok` before use — a 403/404 silently becomes zero-valued Rule 22 inputs.
+5. If a denial-test POST (L3a/L3b) unexpectedly succeeds (rules regression), the created doc isn't tracked for cleanup — only `createdSuggestionName` (the legitimate L1 doc) gets deleted.
+
+**Falsification:** moot if the script is retired in favor of a unified/hardened smoke, or if a future rules change makes the denial legs structurally incapable of an unexpected-success outcome.
+
+---
+
+## `FinancingRiskPanel.test.jsx` CI timeout flake — 2nd occurrence (banked 2026-07-04, LOW)
+
+**Origin:** `src/components/manager/__tests__/FinancingRiskPanel.test.jsx` ("fires the notify CF and shows the cooldown after a successful notify") timed out at 5000ms in PR #791's `lint-and-build` CI run — the second occurrence (also timed out at 5022ms during PR #790's full-suite CI run). Both times it passed clean in isolation (16/16, 565ms locally for #791) — a CI-environment resource-contention flake, not a product or test-logic defect. Neither PR touched this file or its dependencies.
+
+**Scope:** raise the per-test timeout for this test (or the file) above the vitest default 5000ms, or split the slow test into a smaller unit if the underlying async chain is genuinely long-running under CI load. Investigate what makes this specific test resource-sensitive (async CF mock + cooldown timer interaction is the likely candidate) before picking a fix.
+
+**Falsification:** moot if a 3rd occurrence shows a different failure mode (e.g., a real assertion failure, not a timeout) — that would mean it's not pure flake and needs root-cause investigation instead of a timeout bump.
 
 ---
 
