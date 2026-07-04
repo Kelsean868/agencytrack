@@ -15,7 +15,7 @@ import {
 import { extractFields, extractTotalProductionCredit } from '../../utils/extractFields';
 import { computeAgentAwards } from '../../utils/awardsEngine';
 import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
-import { MDRT_THRESHOLD } from '../../constants/mdrt';
+import { MDRT_THRESHOLDS_2026 } from '../../config/mdrtThresholds/2026';
 import { BRAND_NAME, CONTACT_EMAIL } from '../../constants/brand';
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -550,13 +550,13 @@ export function AgentReportDocument({
   const displayBullets = focusBullets.slice(0, 3);
 
   // ── API progress bar geometry ─────────────────────────────────────────────
-  const barMax      = Math.max(ytdAPIGoal || MDRT_THRESHOLD, MDRT_THRESHOLD, effectiveYTD_API * 1.05, 300000);
+  const barMax      = Math.max(ytdAPIGoal || MDRT_THRESHOLDS_2026.mdrt, MDRT_THRESHOLDS_2026.mdrt, effectiveYTD_API * 1.05, 300000);
   const barWidth    = CONTENT_W;
   const barHeight   = 22;
   const settledFillWidth = Math.max(0, Math.min(barWidth, (settledYTD_API / barMax) * barWidth));
   const pendingFillWidth = Math.max(0, Math.min(barWidth - settledFillWidth, (pendingYTD_API / barMax) * barWidth));
   const floorX      = (COMPANY_FLOOR  / barMax) * barWidth;
-  const mdrtX       = (MDRT_THRESHOLD / barMax) * barWidth;
+  const mdrtX       = (MDRT_THRESHOLDS_2026.mdrt / barMax) * barWidth;
   const goalX       = ytdAPIGoal > 0 ? (ytdAPIGoal / barMax) * barWidth : null;
   const achievedPct = Math.round(Math.min(100, (effectiveYTD_API / barMax) * 100));
 
@@ -867,7 +867,7 @@ export function AgentReportDocument({
               </Text>
             )}
             <Text style={{ fontSize: 7, color: COLORS.warning }}>
-              MDRT: {formatCurrency(MDRT_THRESHOLD)}
+              MDRT: {formatCurrency(MDRT_THRESHOLDS_2026.mdrt)}
             </Text>
           </View>
 

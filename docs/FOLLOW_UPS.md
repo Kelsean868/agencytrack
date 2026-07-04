@@ -5,6 +5,20 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## Goals v3 closure sweep — two items resolved, two banked (2026-07-04, PR #TBD goals-v3-closure-sweep)
+
+**RESOLVED — two unreconciled MDRT constants.** `src/constants/mdrt.js` (`MDRT_THRESHOLD = 500000`, legacy flat) and `src/config/mdrtThresholds/2026.js` (`MDRT_THRESHOLDS_2026`, three-tier premium method, landed via #643) coexisted with no shared source. All consumers (`AgentReportDocument.jsx`, `HeroCard.jsx`, `HeroCard.test.jsx`) migrated to `MDRT_THRESHOLDS_2026.mdrt` (688,800); `src/constants/mdrt.js` deleted; zero repo-wide references remain.
+
+**RESOLVED — AwardsReachPanel silently used the engine's DEFAULT_RULESET_2026 fallback instead of the tenant's merged ruleset.** `AwardsReachPanel.jsx` never imported a ruleset at all — it called `computeAgentAwards(...)` without a 5th arg, which fell through to `awardsEngine.js`'s own `ruleset = DEFAULT_RULESET_2026` default parameter. Fixed by threading a `ruleset` prop through (mirroring `AgentAwardsPanel`'s existing prop-based pattern — no new fetch, no new loading/error state): `AgentDashboard.jsx` now passes its already-fetched `ruleset={awardsRuleset}` ([AgentDashboard.jsx:207](../src/components/dashboard/AgentDashboard.jsx) `getMergedAwardsRuleset` fetch) to the mount that was missing it.
+
+**OPEN — GoalsPanel.jsx (manager self-view) AwardsReachPanel mount still has the same latent gap, left unfixed by design.** `GoalsPanel.jsx`'s own `AwardsReachPanel` mount (~line 618) also omits a `ruleset` prop — but unlike `AgentDashboard.jsx`, **`GoalsPanel.jsx` never fetches a merged ruleset at all** (zero "Ruleset" references in the file). Per dispatcher direction, no new fetch was added to avoid introducing a second independent ruleset-fetch pattern outside this PR's scope. Any future tenant that sets an `awardsRuleset_{year}` override will see it reflected in the agent Goals tab but NOT in the manager self-view's Awards Reach panel until this is addressed — resolve by giving `GoalsPanel.jsx` its own `getMergedAwardsRuleset` fetch (mirroring `AgentDashboard.jsx`'s pattern) and threading it to both `AwardsReachPanel` and `MdrtTracker`/`DerivedIncomePanel` consumers as applicable.
+
+**OPEN — DerivedIncomePanel blended-rate math decision, gated on this PR's Phase 5 recon rider.** `DerivedIncomePanel.jsx` computes income as flat `committedAPI × (commissionRate / 100)` rather than reusing Commission Playground's `modeMix`-weighted `commissionMath.js` functions, as `docs/goals-v3-spec.md` originally intended. Recon verdict: **PARTIAL** — real per-policy `proposedFrequency` data exists (`policiesService.js` `VALID_FREQUENCIES = {'A','S','Q','M'}`) but only for agents on the Policy Ledger (`usesPolicyLedger` flag, Track H MVP — not universal); weekly submissions (`extractFields.js`) carry no mode/frequency field at all; and Commission Playground's `modeMix` is not persisted anywhere — its one production call site (`CommissionAnchorStrip.jsx:103`) always falls back to `DEFAULT_MODE_MIX` (100% annual) in `commissionAnchor.js`. A real blended-math migration would need to branch on `usesPolicyLedger` (real modeMix from policies) vs. the non-ledger majority (no better source than today's flat rate, or a new modeMix capture surface). Decision NOT made in this PR — CD + Kyron call per the original spec's "NOT to be guessed autonomously" gate.
+
+**Adjacent discovery, not fixed here (out of scope) — a THIRD independent MDRT threshold source.** `functions/lib/gamificationConfig.js` / `src/lib/gamificationConfig.js` hardcode their own literal MDRT-adjacent thresholds for badge stubs (`mdrt_qualified`: `ytdApi >= 500000`; `mdrt_pace`: `ytdApi >= 250000 && weekNum <= 26`) — independent of both `MDRT_THRESHOLDS_2026` and the now-deleted `MDRT_THRESHOLD`. Not touched by this PR (gamificationConfig doesn't import either constant; a badge-threshold change is a distinct scope/risk profile — gamification config touches the shared CJS/ESM mirror pair and scoring). Worth a future reconciliation pass once/if MDRT badge thresholds are meant to track the same 2026 figures.
+
+---
+
 ## Game Plan manager surface — Fork B: whole-plan suggest-back (banked 2026-07-03, PR #785 post-merge fill, MEDIUM — follow-on track)
 
 **Origin:** PR-GPM1 (#785, `95529a75`) shipped Fork A only — the UM/BM read-only Team Plans reader on the G5 consent-share arms. The brief explicitly deferred Fork B as the follow-on track.
@@ -1995,13 +2009,13 @@ the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeek
 
 ## Over-goal MDRT marker treatment on the HeroCard (LOW, banked 2026-06-03 from HeroCard marker-label fix PR #436)
 
-**Context.** The HeroCard marker-label fix (`src/components/dashboard/HomeV2/HeroCard.jsx`) now **hides** the MDRT marker when it's off-scale (`MDRT_THRESHOLD > goal` — e.g. the default 200,000 goal vs the 500,000 MDRT threshold). This is correct for legibility (it was the clamp-onto-the-goal-label collision source), but it means an agent whose personal goal is below the MDRT threshold sees no MDRT reference on the hero bar at all.
+**Context.** The HeroCard marker-label fix (`src/components/dashboard/HomeV2/HeroCard.jsx`) now **hides** the MDRT marker when it's off-scale (`MDRT_THRESHOLDS_2026.mdrt > goal` — e.g. the default 200,000 goal vs the 688,800 MDRT threshold). This is correct for legibility (it was the clamp-onto-the-goal-label collision source), but it means an agent whose personal goal is below the MDRT threshold sees no MDRT reference on the hero bar at all.
 
-**Possible treatment (if wanted).** Surface over-goal MDRT progress with its own affordance rather than omitting it — e.g. an "MDRT: TTD {ytd} / 500,000" caption below the bar, a secondary mini-bar scaled to MDRT, or a link to the Career/MDRT tracker where MDRT progress already lives. Purely additive; no change to the on-scale bar behavior shipped here.
+**Possible treatment (if wanted).** Surface over-goal MDRT progress with its own affordance rather than omitting it — e.g. an "MDRT: TTD {ytd} / 688,800" caption below the bar, a secondary mini-bar scaled to MDRT, or a link to the Career/MDRT tracker where MDRT progress already lives. Purely additive; no change to the on-scale bar behavior shipped here.
 
 **Why LOW.** The shipped fix is correct and complete for the bug (legible, non-overlapping labels). MDRT progress is already tracked in the Career/MDRT surface, so nothing is lost — this is an optional enhancement, not a gap. Decide alongside any broader hero/MDRT design pass.
 
-**Cross-reference:** `src/components/dashboard/HomeV2/HeroCard.jsx` (`mdrtOnScale` gate); `src/constants/mdrt.js` (`MDRT_THRESHOLD = 500000`).
+**Cross-reference (updated PR #TBD goals-v3-closure-sweep, 2026-07-04):** `src/components/dashboard/HomeV2/HeroCard.jsx` (`mdrtOnScale` gate); `src/config/mdrtThresholds/2026.js` (`MDRT_THRESHOLDS_2026.mdrt = 688800`) — supersedes the retired `src/constants/mdrt.js` (`MDRT_THRESHOLD = 500000`, deleted).
 
 ---
 

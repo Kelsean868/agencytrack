@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
 import { formatCurrency } from '../../../utils/formatters';
-import { MDRT_THRESHOLD } from '../../../constants/mdrt';
+import { MDRT_THRESHOLDS_2026 } from '../../../config/mdrtThresholds/2026';
 
 /**
  * HeroCard (v2 Agent Dashboard home).
@@ -14,14 +14,14 @@ import { MDRT_THRESHOLD } from '../../../constants/mdrt';
  * in docs/FOLLOW_UPS.md.
  */
 export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
-  const goal = personalAnnualAPI > 0 ? personalAnnualAPI : MDRT_THRESHOLD;
+  const goal = personalAnnualAPI > 0 ? personalAnnualAPI : MDRT_THRESHOLDS_2026.mdrt;
   const pct = goal > 0 ? Math.min(100, Math.max(0, Math.round((ytdApi / goal) * 100))) : 0;
   // MDRT marker renders only when on-scale (MDRT ≤ goal). When MDRT exceeds the
   // goal it's off-scale for this bar — hide it rather than clamping it onto the
   // goal label (the clamp was the marker/label collision). Over-goal MDRT
   // progress is surfaced separately (Career/MDRT tracker).
-  const mdrtOnScale = goal > 0 && MDRT_THRESHOLD <= goal;
-  const mdrtPct = mdrtOnScale ? Math.round((MDRT_THRESHOLD / goal) * 100) : 0;
+  const mdrtOnScale = goal > 0 && MDRT_THRESHOLDS_2026.mdrt <= goal;
+  const mdrtPct = mdrtOnScale ? Math.round((MDRT_THRESHOLDS_2026.mdrt / goal) * 100) : 0;
 
   // Weeks left in current calendar year (approximate, for the secondary copy)
   const now = new Date();
@@ -75,7 +75,7 @@ export default function HeroCard({ ytdApi, personalAnnualAPI, onSubmit }) {
                 className="absolute top-0 whitespace-nowrap"
                 style={{ left: `${mdrtPct}%`, transform: 'translateX(-50%)', color: 'var(--hero-dot-warning)' }}
               >
-                MDRT · {formatCurrency(MDRT_THRESHOLD)}
+                MDRT · {formatCurrency(MDRT_THRESHOLDS_2026.mdrt)}
               </span>
             </div>
           )}

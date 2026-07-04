@@ -6,7 +6,7 @@
 // gating (the marker/label collision fix: the marker must be HIDDEN when MDRT
 // exceeds the goal rather than clamped onto the "Goal" label) plus the goal
 // fallback and the pct clamp. Fixtures are expressed relative to the shared
-// MDRT_THRESHOLD constant (not a hardcoded number) so they track the source.
+// MDRT_THRESHOLDS_2026.mdrt constant (not a hardcoded number) so they track the source.
 // Zero src changes.
 
 import React from 'react';
@@ -14,8 +14,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
 import HeroCard from '../HeroCard';
-import { MDRT_THRESHOLD } from '../../../../constants/mdrt';
+import { MDRT_THRESHOLDS_2026 } from '../../../../config/mdrtThresholds/2026';
 import { formatCurrency } from '../../../../utils/formatters';
+
+const MDRT_THRESHOLD = MDRT_THRESHOLDS_2026.mdrt;
 
 describe('HeroCard — progress + MDRT marker logic', () => {
   it('renders the YTD figure and a progressbar with the computed pct', () => {

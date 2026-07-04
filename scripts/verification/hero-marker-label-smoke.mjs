@@ -1,8 +1,8 @@
 /**
  * HeroCard marker-label collision smoke (v2 agent dashboard home).
  *
- * Repro: the test agent's goal is 200,000 and MDRT_THRESHOLD is 500,000, so
- * MDRT is OFF-SCALE for this bar. The old code clamped the MDRT marker to the
+ * Repro: the test agent's goal is 200,000 and MDRT_THRESHOLDS_2026.mdrt is
+ * 688,800, so MDRT is OFF-SCALE for this bar. The old code clamped the MDRT marker to the
  * right edge, stacking its label onto the "Goal · TTD 200,000" end label →
  * unreadable interleaved text. The fix hides the off-scale MDRT marker and
  * de-dupes the goal amount (bare "Goal" tick).

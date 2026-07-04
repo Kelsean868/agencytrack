@@ -109,6 +109,7 @@ export default function AwardsReachPanel({
   confirmedSettlements,
   agentProfile,
   currentDate,
+  ruleset,
 }) {
   const [pins, setPins] = useState(readPins);
 
@@ -118,8 +119,8 @@ export default function AwardsReachPanel({
   );
 
   const awards = useMemo(
-    () => computeAgentAwards(confirmedSettlements ?? [], submissions ?? [], agentProfile ?? {}, now),
-    [confirmedSettlements, submissions, agentProfile, now],
+    () => computeAgentAwards(confirmedSettlements ?? [], submissions ?? [], agentProfile ?? {}, now, ruleset),
+    [confirmedSettlements, submissions, agentProfile, now, ruleset],
   );
 
   // Remove stale pin IDs whose award no longer exists in the current ruleset / year
