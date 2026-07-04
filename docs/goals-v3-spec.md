@@ -1,9 +1,27 @@
 # Spec / Future Plan — Goals v3 (agent goal portfolio: "your committed goal → what it unlocks")
 
-Status: PLANNED — **prep only**. This is a design-heavy agent-facing feature; the build runs
-through CD (design) + Kyron, NOT autonomously. Gate: build only after the agent hero (DONE) and
-the manager recommend-vs-lock build land (Slices 1+2 landing; Slice 3 = the additive Playground
-embed). Every phase is **build-and-hold**.
+Status: **SHIPPED.** All three phases below have landed and are live in the agent Goals tab
+(and, via the manager goal-portfolio catch-up, in the manager-facing self-view for producing
+managers): v3.1 derived income (PR #638, `DerivedIncomePanel`), v3.2 award reach (PR #641,
+`AwardsReachPanel`), v3.3 MDRT/COT/TOT (PR #643, `MdrtTracker`), manager catch-up mount (PR #645).
+This doc is retained as a historical record of the original design intent; see CONTEXT.md /
+CONTEXT-history.md for the shipped-state ledger. Two items called out below as still OPEN.
+
+**OPEN — DerivedIncomePanel math deviates from the "reuse Playground blended-rate math" intent
+(decision pending).** The shipped `DerivedIncomePanel.jsx` computes income as a flat
+`committedAPI × (commissionRate / 100)` using the agent's stored single-number
+`userProfile.commissionRate` — it does NOT call any of `CommissionPlayground/utils/commissionMath.js`'s
+`modeMix`-weighted functions (`commissionThisMonth`, `reverseCalc`, `modeBreakdown`,
+`cashFlowForecast`). Whether to move to real blended-mode math is gated on a recon rider
+(see PR #TBD goals-v3-closure-sweep, Phase 5): does per-policy/per-submission data carry
+payment-mode/frequency sufficient to derive an agent's REAL mode mix? Verdict banked as an FU —
+see docs/FOLLOW_UPS.md.
+
+**RESOLVED — MDRT tiered config landed via #643; the legacy flat `MDRT_THRESHOLD` (500,000)
+constant retired by PR #TBD (goals-v3-closure-sweep).** All consumers (`AgentReportDocument`,
+`HeroCard`) now read `MDRT_THRESHOLDS_2026.mdrt` (688,800) from
+`src/config/mdrtThresholds/2026.js` — the same three-tier premium-method config `MdrtTracker.jsx`
+already used. `src/constants/mdrt.js` is deleted.
 
 ## The idea
 Broaden the agent Goals tab from the bare production cascade (API / Apps / Persistency) into a

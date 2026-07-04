@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, beforeEach } from 'vitest';
 import AwardsReachPanel from '../AwardsReachPanel';
+import { DEFAULT_RULESET_2026 } from '../../../config/awardsRuleset/2026';
 
 // Fixed date: 2026-06-15 (current project date). Year=2026, Month=6 (June), Quarter=2.
 const FIXED_DATE = new Date('2026-06-15');
@@ -321,5 +322,58 @@ describe('AwardsReachPanel — role-agnostic', () => {
       ?.getAttribute('data-award-id');
 
     expect(agentNearest).toBe(mgrNearest);
+  });
+});
+
+// ── ruleset prop (Goals v3 closure — PR #TBD) ─────────────────────────────────
+
+describe('AwardsReachPanel — ruleset prop', () => {
+  it('default parity — explicit DEFAULT_RULESET_2026 prop renders identically to no-prop (engine default)', () => {
+    const withProp = render(
+      <AwardsReachPanel
+        submissions={[]}
+        confirmedSettlements={[SETTLEMENT_JUNE]}
+        agentProfile={AGENT_PROFILE}
+        currentDate={FIXED_DATE}
+        ruleset={DEFAULT_RULESET_2026}
+      />,
+    );
+    const withPropHtml = withProp.container.querySelector('[data-testid="awards-reach-panel"]').innerHTML;
+    withProp.unmount();
+
+    const noProp = render(
+      <AwardsReachPanel
+        submissions={[]}
+        confirmedSettlements={[SETTLEMENT_JUNE]}
+        agentProfile={AGENT_PROFILE}
+        currentDate={FIXED_DATE}
+      />,
+    );
+    const noPropHtml = noProp.container.querySelector('[data-testid="awards-reach-panel"]').innerHTML;
+
+    expect(withPropHtml).toBe(noPropHtml);
+  });
+
+  it('override wins — a mutated ruleset prop changes the rendered gap vs the default threshold', () => {
+    const overrideRuleset = {
+      ...DEFAULT_RULESET_2026,
+      advisorMonth: {
+        ...DEFAULT_RULESET_2026.advisorMonth,
+        api: { ...DEFAULT_RULESET_2026.advisorMonth.api, threshold: 46000 },
+      },
+    };
+    render(
+      <AwardsReachPanel
+        submissions={[]}
+        confirmedSettlements={[SETTLEMENT_JUNE]}
+        agentProfile={AGENT_PROFILE}
+        currentDate={FIXED_DATE}
+        ruleset={overrideRuleset}
+      />,
+    );
+    const gapEl = screen.getByTestId('gap-text-advisor_month_api');
+    // Override threshold 46,000 − 45,000 settled = 1,000 gap (default threshold 50,000 would give 5,000).
+    expect(gapEl.textContent).toMatch(/1[,.]?000/);
+    expect(gapEl.textContent).not.toMatch(/5[,.]?000/);
   });
 });

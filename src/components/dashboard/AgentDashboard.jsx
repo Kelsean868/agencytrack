@@ -752,6 +752,7 @@ export default function AgentDashboard() {
               submissions={allSubmissions}
               confirmedSettlements={settlements}
               agentProfile={userProfile}
+              ruleset={awardsRuleset}
             />
           </div>
           <div className="mt-4 border-t border-border pt-4">
