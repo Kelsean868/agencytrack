@@ -42,7 +42,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## ~~Vercel branch-alias preview URLs silently exceed the 63-char DNS label limit~~ — RESOLVED (feat/verification-hygiene, PR #TBD, 2026-07-03)
+## ~~Vercel branch-alias preview URLs silently exceed the 63-char DNS label limit~~ — RESOLVED (feat/verification-hygiene, PR #788 `f84315cf`, 2026-07-03)
 
 **RESOLVED note (2026-07-03):** Action 1 (CLAUDE.md § Workflow preview-URL bullet — 63-char failure mode + deployment-URL fallback) landed in the verification-hygiene batch PR. Action 2 (optional `walk-helpers.mjs` auto-fallback) deliberately NOT built per the batch brief — the doc note names the exact `gh api` fallback path, which is sufficient for smokes to self-serve; re-bank only if a future smoke trips over it despite the doc. Original body retained below for the drift trail.
 
@@ -68,7 +68,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## ~~`smoke-financing-escalation-k10c-postdeploy.mjs` — query-cost + explicit-return hardening~~ — RESOLVED (feat/verification-hygiene, PR #TBD, 2026-07-03)
+## ~~`smoke-financing-escalation-k10c-postdeploy.mjs` — query-cost + explicit-return hardening~~ — RESOLVED (feat/verification-hygiene, PR #788 `f84315cf`, 2026-07-03)
 
 **RESOLVED note (2026-07-03):** Finding 2 (explicit `return` after leg 2's bell-notification-missing failure) implemented — the code now matches its own "STOP" message; cleanup still runs in `finally`. Finding 1 (`where('email','in',[...])` query) **DISAGREE per the pre-approved rationale, plus a correctness hazard:** the existing full-fetch builds a case-insensitive email map (`String(x.email).toLowerCase()`), while a Firestore `where('email','in')` is case-SENSITIVE — the "optimization" could silently fail to resolve subjects whose stored email casing differs from `.env.local`, trading a ~15–20-doc read against a new false-negative mode in a safety-critical subject-resolution step. Not semantics-preserving → not trivial → declined. The K10b smoke's identical pattern is declined on the same grounds. Smoke re-run post-fix: 10/10, 0 orphans. Original body retained below for the drift trail.
 
@@ -152,7 +152,7 @@ node scripts/verification/seed-unit-financing-k10a.mjs --cleanup
 
 **Falsification:** moot if the workflows are migrated to a different CI provider, or if GitHub extends the v4 support window such that no bump is needed before other CI work lands.
 
-## ~~K10b write-read-ack smoke — hardening findings from the #780 Gemini review~~ — RESOLVED (feat/verification-hygiene, PR #TBD, 2026-07-03)
+## ~~K10b write-read-ack smoke — hardening findings from the #780 Gemini review~~ — RESOLVED (feat/verification-hygiene, PR #788 `f84315cf`, 2026-07-03)
 
 **RESOLVED note (2026-07-03):** All 4 items implemented in the verification-hygiene batch PR: (1) cleanup `.catch` swallows removed — a failed delete/verify query now propagates to the outer handler and registers a FAIL (falsified per Rule 23: leftover-doc simulation reported `FAIL 6-cleanup` + exit 1); (2) field-presence preconditions (UM.uid / BM.uid+branchId / agent.uid+unitId+branchId) fail early with clear messages; (3) firebase-admin + service-account-key requires wrapped with actionable SETUP messages; (4) env parser skips blank/`#`-commented lines. Items 1–4 also applied to `smoke-financing-escalation-k10c-postdeploy.mjs` as an in-family Rule 9 parity extension (its cleanup had the identical false-positive pattern). Both smokes re-run end-to-end against production post-fix — K10b 7/7, K10c 10/10, 0 orphans. Original body retained below for the drift trail.
 
