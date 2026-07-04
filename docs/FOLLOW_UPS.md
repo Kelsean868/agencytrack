@@ -10,7 +10,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 **Origin:** PR-GPM1 (#785, `95529a75`) shipped Fork A only — the UM/BM read-only Team Plans reader on the G5 consent-share arms. The brief explicitly deferred Fork B as the follow-on track.
 
 **Scope (from the GPM1 brief's NOT-in-this-PR list):**
-1. **`yearPlan`/`monthlyPlan` manager read rules** — today those collections have NO manager read arm; the mockup's plan-health view needs consent-gated UM/BM reads (same shape as the G5 moneyNeeds arms: `visibility=='shared'` + unit/branch scoping). Rules change → HUMAN-MERGE + operator deploy.
+1. **`yearPlan`/`monthlyPlan` manager read rules** — ~~consent-gated UM/BM reads (same shape as the G5 moneyNeeds arms)~~ **SUPERSEDED by dispatcher ruling (2026-07-03, Fork B recon @ `1e8e0d3e`): reads are UNCONDITIONAL-upline (UM same-unit / BM same-branch / SM / TA / PA), mirroring weeklyPlans — NO visibility gate; only moneyNeeds keeps the opt-in. RESOLVED by PR #787 (`f315babd`, 2026-07-03 — rules arms + honesty copy + emulator matrix 41/41 + 30/30); live-leg verification deferred post-deploy (see the PR-B1 deferred-verification FU below).**
 2. **Suggest-back card** — manager proposes an adjustment back to the agent (suggestion store, agent accepts/dismisses; NO lock/approve — design-forbidden).
 3. **Plan-health checklist cards** — derived plan-completeness/coherence signals on the roster/drawer.
 4. **SM surface stays dormant** (`shareWithSm` has no live write path — see the corrected `shareWithSm` FU below).
@@ -37,7 +37,32 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Vercel branch-alias preview URLs silently exceed the 63-char DNS label limit (banked 2026-07-03, PR #785 post-merge fill, LOW — tooling/docs)
+## ~~PR-B1 deferred verification — live upline-read legs post-rules-deploy~~ — RESOLVED (2026-07-04, live legs 7/7 vs production post-redeploy)
+
+**RESOLVED note (2026-07-04):** Operator redeployed the rules from a synced worktree; CC re-ran the full leg set as real subjects in `tatillife_smoke` — **7/7 PASS**: (A) agent own-read regression (yearPlan `lines` + monthlyPlan `targets` present) · (B) **UM in-unit value-level ALLOW on BOTH docs** — yearPlan `lines.life.targetAPI=84000`, `status=draft`; monthlyPlan `targets[12]`, `anchorAPI=1200000` → **B1 arms DEPLOYED and live** · (C) out-of-unit UM foil DENIED on both collections · (D) existence-oracle live: manager GET on an absent year → `permission-denied` (no existence oracle, matching the emulator case) · cleanup: nothing seeded (both plan docs pre-existed), 0 orphans. **Propagation caveat for future post-deploy legs:** the first re-run (minutes after the deploy) went 6/7 — yearPlan ALLOW but monthlyPlan still DENIED — a rules-rollout propagation window, not a rules defect (both arms shipped in one commit; a hybrid deploy state is impossible). A re-run minutes later was 7/7. Wait ~2–5 min after `firebase deploy --only firestore:rules` before treating a partial-deny as a real failure. The earlier 2026-07-03 attempt (agent PASS / UM DENIED → arms not live; original stale-deploy detection) is preserved below for the drift trail.
+
+**Superseded status (2026-07-03, first post-merge attempt):** agent own-read PASS · UM in-unit read DENIED (`permission-denied`) → the B1 arms were NOT live — the squash was on main but the deploy had shipped from a stale worktree. Foil + existence-oracle legs did not run (correct in-script STOP once the deploy-state leg failed); nothing was seeded, 0 orphans.
+
+**Origin:** PR-B1 (plan upline read arms) ships two additive `get` arms on `users/{uid}/yearPlan/{year}` + `users/{uid}/monthlyPlan/{year}`. Pre-merge verification covered the emulator matrix (41/41 + 30/30), lint/suite/build, and copy-render unit tests. The LIVE legs cannot run until the operator deploys the rules (`firebase deploy --only firestore:rules`) — production rules are the authoritative gate, and the arms do not exist in prod until then.
+
+**Unverified acceptance criteria (verbatim from the brief's Phase 5 POST-DEPLOY):**
+> live legs as real subjects in tatillife_smoke — UM reads an in-unit agent's yearPlan/{year} + monthlyPlan doc (value-level), out-of-unit UM foil DENIED, agent still reads own.
+
+**Re-run steps (exact):**
+1. Operator deploys: `firebase deploy --only firestore:rules` (from a worktree at `origin/main` HEAD, per CLAUDE.md pre-flight).
+2. From the main worktree (`.env.local` present), run the live legs against production with the smoke tenant `tatillife_smoke`:
+   - Sign in as the smoke UM (`A11Y_UNIT_MANAGER_*` credentials) → SDK `getDoc` of an in-unit smoke agent's `tenants/{tid}/users/{agentUid}/yearPlan/2026` and `.../monthlyPlan/2026` → assert ALLOW + value-level fields (`lines`, `targets`).
+   - Sign in as an out-of-unit UM foil → same gets → assert `permission-denied`.
+   - Sign in as the smoke agent → own-doc gets → assert ALLOW (regression).
+3. Close this FU with the results pasted into the PR-B1 thread (or the post-merge fill).
+
+**Operator option (noted in the PR body):** the additive-rules pre-merge deploy carve-out applies — if the arms are deployed from the feature worktree pre-merge, run these legs pre-merge and close the waiver early.
+
+---
+
+## ~~Vercel branch-alias preview URLs silently exceed the 63-char DNS label limit~~ — RESOLVED (feat/verification-hygiene, PR #788 `f84315cf`, 2026-07-03)
+
+**RESOLVED note (2026-07-03):** Action 1 (CLAUDE.md § Workflow preview-URL bullet — 63-char failure mode + deployment-URL fallback) landed in the verification-hygiene batch PR. Action 2 (optional `walk-helpers.mjs` auto-fallback) deliberately NOT built per the batch brief — the doc note names the exact `gh api` fallback path, which is sufficient for smokes to self-serve; re-bank only if a future smoke trips over it despite the doc. Original body retained below for the drift trail.
 
 **Origin:** PR #785's Phase 5 smoke could not use the documented preview URL pattern — `agencytrack-git-feat-gpm1-team-plans-reader-kyron-marchan-s-projects.vercel.app` is a 68-char DNS label, over the RFC-1035 63-char limit, so the hostname does not resolve at all. The smoke fell back to the immutable per-deployment URL (`agencytrack-<hash>-kyron-marchan-s-projects.vercel.app`) read from the GitHub deployment status (`gh api repos/{owner}/{repo}/deployments` → statuses → `environment_url`, state `success`).
 
@@ -61,7 +86,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## `smoke-financing-escalation-k10c-postdeploy.mjs` — query-cost + explicit-return hardening (banked 2026-07-03, Rule 21 post-merge backstop, LOW — verification-script quality)
+## ~~`smoke-financing-escalation-k10c-postdeploy.mjs` — query-cost + explicit-return hardening~~ — RESOLVED (feat/verification-hygiene, PR #788 `f84315cf`, 2026-07-03)
+
+**RESOLVED note (2026-07-03):** Finding 2 (explicit `return` after leg 2's bell-notification-missing failure) implemented — the code now matches its own "STOP" message; cleanup still runs in `finally`. Finding 1 (`where('email','in',[...])` query) **DISAGREE per the pre-approved rationale, plus a correctness hazard:** the existing full-fetch builds a case-insensitive email map (`String(x.email).toLowerCase()`), while a Firestore `where('email','in')` is case-SENSITIVE — the "optimization" could silently fail to resolve subjects whose stored email casing differs from `.env.local`, trading a ~15–20-doc read against a new false-negative mode in a safety-critical subject-resolution step. Not semantics-preserving → not trivial → declined. The K10b smoke's identical pattern is declined on the same grounds. Smoke re-run post-fix: 10/10, 0 orphans. Original body retained below for the drift trail.
 
 **Origin:** Gemini's review of PR #784 (`86e0ad16`) landed at 12:21Z, before the 12:57Z merge, but was never dispositioned in-PR. Caught by the `/post-merge` Rule 21 backstop poll. Both findings are on a one-off admin/smoke script already proven 10/10 against production — banked as quality hardening, not a defect requiring a hotfix.
 
@@ -143,7 +170,9 @@ node scripts/verification/seed-unit-financing-k10a.mjs --cleanup
 
 **Falsification:** moot if the workflows are migrated to a different CI provider, or if GitHub extends the v4 support window such that no bump is needed before other CI work lands.
 
-## K10b write-read-ack smoke — hardening findings from the #780 Gemini review (banked 2026-07-03, LOW — verification-script robustness)
+## ~~K10b write-read-ack smoke — hardening findings from the #780 Gemini review~~ — RESOLVED (feat/verification-hygiene, PR #788 `f84315cf`, 2026-07-03)
+
+**RESOLVED note (2026-07-03):** All 4 items implemented in the verification-hygiene batch PR: (1) cleanup `.catch` swallows removed — a failed delete/verify query now propagates to the outer handler and registers a FAIL (falsified per Rule 23: leftover-doc simulation reported `FAIL 6-cleanup` + exit 1); (2) field-presence preconditions (UM.uid / BM.uid+branchId / agent.uid+unitId+branchId) fail early with clear messages; (3) firebase-admin + service-account-key requires wrapped with actionable SETUP messages; (4) env parser skips blank/`#`-commented lines. Items 1–4 also applied to `smoke-financing-escalation-k10c-postdeploy.mjs` as an in-family Rule 9 parity extension (its cleanup had the identical false-positive pattern). Both smokes re-run end-to-end against production post-fix — K10b 7/7, K10c 10/10, 0 orphans. Original body retained below for the drift trail.
 
 **Origin:** Gemini flagged 4 MEDIUM items on `scripts/verification/smoke-financing-escalation-writeread-k10b.mjs` at #780; the script was already proven 7/7 in production so they were dispositioned OUT-OF-SCOPE-for-immediate-merge and banked here (avoiding a new CI cycle on a test-only PR mid-window).
 

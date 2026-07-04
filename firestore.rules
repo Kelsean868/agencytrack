@@ -1483,8 +1483,23 @@ service cloud.firestore {
       }
 
       // Year Plan — agent-own annual production plan (Game Plan Step 2).
-      // Owner-only; manager-read arm added with the Manager-review slice later.
+      // Owner writes; get is owner OR upline (Fork B1 manager-review slice).
       match /users/{uid}/yearPlan/{year} {
+        // Fork B1 — unconditional upline read, ruled 2026-07-03; mirrors weeklyPlans,
+        // deliberately NO visibility gate (moneyNeeds keeps the opt-in). Owner uid is
+        // the PATH variable — no planId.split (user subcollection, unlike the flat
+        // weeklyPlans collection). TA/PA route through canManage's role elevation
+        // (PA tokens carry tenantId: null, so an outer token-tenant gate would
+        // wrongly deny them); UM/BM/SM stay tenant-bound inside canManage.
+        function uplineCanReadUserPlan() {
+          return canManage(tenantId) && (
+            getRole() in ['sales_manager','tenant_admin','platform_admin']
+            || (getRole() == 'unit_manager'
+                && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(uid)).data.unitId == callerUnitId(tenantId))
+            || (getRole() == 'branch_manager'
+                && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(uid)).data.branchId == callerBranchId(tenantId))
+          );
+        }
         // PR-U2: coarse additive field constraints (Option 2). Keys stay
         // permissive — the {life,ah,general} taxonomy is enforced in the data
         // layer (LINE_KEYS in yearPlanService), not duplicated here. Rules can't
@@ -1508,7 +1523,16 @@ service cloud.firestore {
             && (!('general' in data.lines) || validYearPlanLine(data.lines.general))
           );
         }
-        allow get, list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
+        // Single-doc get: owner OR upline. Existence-oracle guard mirrors weeklyPlans:
+        // the upline arm requires an EXISTING doc (resource != null) — managers get
+        // deny, not not-found, on absent docs. The owner arm is path-uid-based, so
+        // it needs no existence branch (unlike weeklyPlans' ID-prefix split).
+        allow get: if isSignedIn()
+          && ((getTenantId() == tenantId && request.auth.uid == uid)
+              || (resource != null && uplineCanReadUserPlan()));
+        // LIST stays owner-only — manager reads are deterministic-ID get-fan-out
+        // (no manager list arm, no composite index, no collectionGroup wildcard).
+        allow list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
         allow create: if (isAgent() || isProducingManager()) && getTenantId() == tenantId && request.auth.uid == uid
           && request.resource.data.status == 'draft'
           && validYearPlanLines(request.resource.data);
@@ -1518,10 +1542,30 @@ service cloud.firestore {
       }
 
       // Monthly Plan — agent-own monthly breakdown of the year plan (Game Plan Step 3).
-      // Owner-only, mirroring the yearPlan arm. Manager-read arm added with the
-      // manager-review slice. No UI writes this path until the gated Slice-2 panel.
+      // Owner writes, mirroring the yearPlan arm; get is owner OR upline (Fork B1).
+      // No UI writes this path until the gated Slice-2 panel.
       match /users/{uid}/monthlyPlan/{year} {
-        allow get, list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
+        // Fork B1 — unconditional upline read, ruled 2026-07-03; mirrors weeklyPlans,
+        // deliberately NO visibility gate (moneyNeeds keeps the opt-in). Same shape
+        // as the yearPlan sibling above — owner uid is the PATH variable.
+        function uplineCanReadUserPlan() {
+          return canManage(tenantId) && (
+            getRole() in ['sales_manager','tenant_admin','platform_admin']
+            || (getRole() == 'unit_manager'
+                && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(uid)).data.unitId == callerUnitId(tenantId))
+            || (getRole() == 'branch_manager'
+                && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(uid)).data.branchId == callerBranchId(tenantId))
+          );
+        }
+        // Single-doc get: owner OR upline, with the weeklyPlans existence-oracle
+        // guard — the upline arm requires an EXISTING doc (resource != null);
+        // the owner arm is path-uid-based and needs no existence branch.
+        allow get: if isSignedIn()
+          && ((getTenantId() == tenantId && request.auth.uid == uid)
+              || (resource != null && uplineCanReadUserPlan()));
+        // LIST stays owner-only — manager reads are deterministic-ID get-fan-out
+        // (no manager list arm, no composite index, no collectionGroup wildcard).
+        allow list: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;
         allow create: if (isAgent() || isProducingManager()) && getTenantId() == tenantId && request.auth.uid == uid
           && request.resource.data.status == 'draft';
         allow update: if isSignedIn() && getTenantId() == tenantId && request.auth.uid == uid;

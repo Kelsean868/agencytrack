@@ -1158,6 +1158,10 @@ export default function MoneyNeedsPanel({ onOpenTab }) {
                 Share with my Unit Manager &amp; Branch Manager
               </span>
             </label>
+            <p className="mt-1 text-xs text-ink-muted">
+              This controls your budget worksheet only. Your production plan (targets by
+              line) is visible to your managers, like your weekly plan.
+            </p>
           </div>
 
           {EXPENSE_GROUPS.map(({ key, label, dot }) => (
