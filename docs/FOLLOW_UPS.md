@@ -21,7 +21,23 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## PR-B2 deferred verification — value-level plan-review legs post-B1-deploy (banked 2026-07-03, PR-B2, Rule 13 waiver — MEDIUM)
+## ~~PR-B2 deferred verification — value-level plan-review legs post-B1-deploy~~ — RESOLVED (2026-07-04, seeded-fixture protocol 9/9 vs production)
+
+**RESOLVED note (2026-07-04):** B1 arms deployed (see the sibling PR-B1 FU); ran the seeded-fixture protocol against **production `agencytrack.vercel.app`** (main HEAD `acf2f1c1`, includes #789) as the natural A11Y UM through the LIVE deployed rules + the real drawer. Agent tenure floor resolved to **250,000** (contractStartDate `2024-01-01` → 30-month band). **9/9 PASS:**
+
+| Leg | Fixture | Result |
+|---|---|---|
+| A1 year values | ABOVE: life=250,000 / ah=50,000 / general=50,000 (Σ 350,000) | per-line targetAPI render **exactly** in the Year tab |
+| A2 floor green | Σ 350,000 ≥ floor 250,000 | `tpd-health-floor` `data-ok=true` |
+| A3 mix green | 3 active lines | `tpd-health-mix` `data-ok=true` |
+| A4 monthly values | 12-split of anchor 350,000 | `tpd-monthly-anchor`=350,000, 12 cells, m0=29,167 exact |
+| B1 floor RED | BELOW re-seed: Σ 125,000 < floor 250,000 | `tpd-health-floor` `data-ok=false` — **Rule 23 proven: the checklist shows a real red floor check** |
+| B2 mix isolated | BELOW still 3 active lines | `tpd-health-mix` stays green — the floor flip is isolated |
+| C1 foil year | out-of-unit foil agent (admin-seeded, unit≠UM) | UM `getDoc` on foil's yearPlan → **403** (drawer input that renders `tpd-year-unavailable`) |
+| C2 foil monthly | same foil | UM `getDoc` → **403** → `tpd-monthly-unavailable` neutral |
+| cleanup | — | agent yearPlan restored to original (`life=84000`) + monthly restored + visibility restored + foil deleted → **0 orphans** |
+
+**Deviations (honest):** (1) fixtures seeded via the Admin SDK rather than the agent client token the pre-deploy FU text named — so the agent's REAL plan docs restore to exact captured bytes; the owner WRITE path is already emulator-proven 41/41+30/30 and is not this FU's subject (the manager READ verdicts are, and those ran through the live rules + real drawer). (2) The foil leg asserts the drawer's exact data-path input (out-of-unit UM `getDoc` → permission-denied → `{unavailable}`) rather than a UI click — an out-of-unit UM cannot reach this agent's drawer via the roster (own-unit only), so the neutral-render leg is a composition of the live 403 (proven here) × the `{unavailable}→tpd-*-unavailable` UI mapping (locked by `AgentPlanDrawer.tabs.test.jsx` + the b2 preview smoke 12/12). Original superseded FU body retained below for the drift trail.
 
 **Origin:** PR-B2 (plan-review drawer tabs + plan health) ships manager-side reads that exercise PR-B1's yearPlan/monthlyPlan upline arms at runtime. At B2's Phase 5, B1 (#787) was open (not merged, not deployed) — every plan read denies in production, so the preview smoke could only prove the **denied→neutral** contract (which IS the correct pre-deploy behavior). The value-level legs cannot run until the operator merges B1 and deploys the rules.
 
