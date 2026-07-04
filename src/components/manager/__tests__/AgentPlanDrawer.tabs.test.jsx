@@ -9,12 +9,22 @@ const hoisted = vi.hoisted(() => ({
   getAgentYearPlan: vi.fn(),
   getAgentMonthlyPlan: vi.fn(),
   getAgentAnnualFloor: vi.fn(),
+  createPlanSuggestion: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock('../../../services/planReviewService', () => ({
   getAgentYearPlan: (...a) => hoisted.getAgentYearPlan(...a),
   getAgentMonthlyPlan: (...a) => hoisted.getAgentMonthlyPlan(...a),
   getAgentAnnualFloor: (...a) => hoisted.getAgentAnnualFloor(...a),
+}));
+
+// B3 — the drawer now sources the raiser identity from auth and writes a
+// suggestion via planSuggestionsService (the send card in the Year Plan tab).
+vi.mock('../../../context/AuthContext', () => ({
+  useAuth: () => ({ user: { uid: 'um-1' }, userProfile: { name: 'Uma UM' }, role: 'unit_manager' }),
+}));
+vi.mock('../../../services/planSuggestionsService', () => ({
+  createPlanSuggestion: (...a) => hoisted.createPlanSuggestion(...a),
 }));
 
 import AgentPlanDrawer from '../AgentPlanDrawer';
@@ -228,5 +238,73 @@ describe('AgentPlanDrawer — dynamic focus trap', () => {
     expect(ids).toContain('tpd-tab-year');
     expect(ids).toContain('tpd-tab-monthly');
     expect(els.length).toBeGreaterThanOrEqual(5); // close + 3 tabs + coach
+  });
+
+  it('B3: the Year-tab send controls are picked up by the dynamic trap automatically', async () => {
+    renderDrawer();
+    await flush();
+    fireEvent.click(screen.getByTestId('tpd-tab-year'));
+    // Type a note so the send button is enabled (a disabled button is correctly
+    // excluded from the focusable set).
+    fireEvent.change(screen.getByTestId('tpd-suggest-note'), { target: { value: 'nudge' } });
+    // The trap enumerates at keydown time — the new textarea + send button are
+    // inside the panel, so they are in the cycle without any trap change (B2).
+    const panel = screen.getByTestId('team-plans-drawer');
+    const ids = enumerateFocusables(panel).map((el) => el.getAttribute('data-testid'));
+    expect(ids).toContain('tpd-suggest-note');
+    expect(ids).toContain('tpd-suggest-send');
+  });
+});
+
+describe('AgentPlanDrawer — B3 suggest-back card', () => {
+  it('renders the send card on the Year tab; send disabled until a note is typed', async () => {
+    renderDrawer();
+    await flush();
+    fireEvent.click(screen.getByTestId('tpd-tab-year'));
+    expect(screen.getByTestId('tpd-suggest-card')).toBeInTheDocument();
+    const send = screen.getByTestId('tpd-suggest-send');
+    expect(send).toBeDisabled(); // empty note
+    fireEvent.change(screen.getByTestId('tpd-suggest-note'), { target: { value: '  Lift Life to 65%  ' } });
+    expect(send).toBeEnabled();
+  });
+
+  it('sending calls createPlanSuggestion with the pinned raiser identity + trimmed note, then confirms', async () => {
+    renderDrawer();
+    await flush();
+    fireEvent.click(screen.getByTestId('tpd-tab-year'));
+    fireEvent.change(screen.getByTestId('tpd-suggest-note'), { target: { value: '  Lift Life to 65%  ' } });
+    await act(async () => { fireEvent.click(screen.getByTestId('tpd-suggest-send')); });
+    expect(hoisted.createPlanSuggestion).toHaveBeenCalledTimes(1);
+    expect(hoisted.createPlanSuggestion).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      agentId: 'agent-a',
+      year: 2026,
+      note: 'Lift Life to 65%',
+      raisedByUid: 'um-1',
+      raisedByName: 'Uma UM',
+      raisedByRole: 'unit_manager',
+    });
+    expect(screen.getByTestId('tpd-suggest-status').textContent).toContain('Suggestion sent');
+    expect(screen.getByTestId('tpd-suggest-note')).toHaveValue(''); // cleared
+  });
+
+  it('disables send with a reason when the plan is unavailable to the manager', async () => {
+    hoisted.getAgentYearPlan.mockResolvedValue({ unavailable: true });
+    renderDrawer();
+    await flush();
+    fireEvent.click(screen.getByTestId('tpd-tab-year'));
+    expect(screen.getByTestId('tpd-suggest-send')).toBeDisabled();
+    expect(screen.getByTestId('tpd-suggest-status').textContent).toMatch(/isn.t available/i);
+    expect(hoisted.createPlanSuggestion).not.toHaveBeenCalled();
+  });
+
+  it('surfaces a retryable error state when the send fails', async () => {
+    hoisted.createPlanSuggestion.mockRejectedValueOnce(new Error('denied'));
+    renderDrawer();
+    await flush();
+    fireEvent.click(screen.getByTestId('tpd-tab-year'));
+    fireEvent.change(screen.getByTestId('tpd-suggest-note'), { target: { value: 'try' } });
+    await act(async () => { fireEvent.click(screen.getByTestId('tpd-suggest-send')); });
+    expect(screen.getByTestId('tpd-suggest-status').textContent).toMatch(/couldn.t send/i);
   });
 });

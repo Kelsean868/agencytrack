@@ -1572,6 +1572,89 @@ service cloud.firestore {
         allow delete: if false;
       }
 
+      // Plan Suggestions — manager→agent suggest-back loop (Fork B3). An upline
+      // reader of an agent's plan (yearPlan/monthlyPlan, Fork B1 arms) may raise a
+      // plan-level suggestion; the AGENT acknowledges it (open→seen). Suggestions
+      // are advice — the agent still commits their own plan. Sibling of yearPlan/
+      // monthlyPlan/prospectInfo under the users/{uid} tree.
+      //
+      // Non-deterministic doc IDs (addDoc auto-id) → reads are LIST, not get-fan-out
+      // (unlike yearPlan). LIST is therefore agent-own OR upline — path-scoped,
+      // orderBy(createdAt desc) single-field (NO composite index, NO collectionGroup).
+      match /users/{uid}/planSuggestions/{suggestionId} {
+        // Fork B1 helper reused VERBATIM (mirrors the yearPlan/monthlyPlan copies —
+        // block-scoped, owner uid is the PATH variable). canManage(tenantId) carries
+        // tenant scoping (PA elevates through it); UM/BM stay unit/branch-bound.
+        function uplineCanReadUserPlan() {
+          return canManage(tenantId) && (
+            getRole() in ['sales_manager','tenant_admin','platform_admin']
+            || (getRole() == 'unit_manager'
+                && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(uid)).data.unitId == callerUnitId(tenantId))
+            || (getRole() == 'branch_manager'
+                && get(/databases/$(database)/documents/tenants/$(tenantId)/users/$(uid)).data.branchId == callerBranchId(tenantId))
+          );
+        }
+
+        // get: owner (path uid), OR an upline reader. The upline arm requires an
+        // EXISTING doc (resource != null) — mirrors the yearPlan existence-oracle
+        // guard so managers get a clean not-found, not a permission leak, on absent.
+        allow get: if isSignedIn() && (
+          (getTenantId() == tenantId && request.auth.uid == uid)
+          || (resource != null && uplineCanReadUserPlan())
+        );
+        // list: owner (path uid), OR an upline reader (both the agent's hub card and
+        // the manager drawer read this list). Each result doc exists, so no
+        // existence-oracle branch is needed. Path-scoped + single-field orderBy →
+        // index-free; NO composite index, NO collectionGroup wildcard.
+        allow list: if isSignedIn() && (
+          (getTenantId() == tenantId && request.auth.uid == uid)
+          || uplineCanReadUserPlan()
+        );
+
+        // create: an upline reader raises a suggestion on the agent (symmetric with
+        // the read arm — any upline reader, not only UM). raisedByUid PINNED to the
+        // caller (financingEscalations precedent); agentId/tenantId path-bound;
+        // status 'open'; seenAt null; NOT the agent (no self-suggestions — belt-and-
+        // suspenders over canManage). Exact key set (hasAll + hasOnly) = the locked
+        // ten fields, nothing else. Type guards mirror financingEscalations' string/
+        // timestamp guards (a non-string note/name would break display + ordering).
+        allow create: if uplineCanReadUserPlan()
+          && request.auth.uid != uid
+          && request.resource.data.raisedByUid == request.auth.uid
+          && request.resource.data.agentId == uid
+          && request.resource.data.tenantId == tenantId
+          && request.resource.data.status == 'open'
+          && request.resource.data.seenAt == null
+          && request.resource.data.agentId is string
+          && request.resource.data.year is int
+          && request.resource.data.note is string
+          && request.resource.data.raisedByName is string
+          && request.resource.data.raisedByRole is string
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.keys().hasAll([
+               'tenantId', 'agentId', 'year', 'note', 'raisedByUid',
+               'raisedByName', 'raisedByRole', 'status', 'createdAt', 'seenAt'
+             ])
+          && request.resource.data.keys().hasOnly([
+               'tenantId', 'agentId', 'year', 'note', 'raisedByUid',
+               'raisedByName', 'raisedByRole', 'status', 'createdAt', 'seenAt'
+             ]);
+
+        // update: the AGENT-ONLY ack (open→seen). Field-restricted to the ack pair
+        // (SEC-10 hasOnly precedent); strict open→seen (no re-ack — resource must be
+        // open); managers never update (auth.uid == uid is the agent). seenAt pinned
+        // to a real timestamp.
+        allow update: if isSignedIn()
+          && getTenantId() == tenantId
+          && request.auth.uid == uid
+          && resource.data.status == 'open'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'seenAt'])
+          && request.resource.data.status == 'seen'
+          && request.resource.data.seenAt is timestamp;
+
+        allow delete: if false;
+      }
+
       // User app preferences (Nav redesign PR-2) — owner-only, no manager arm.
       // Single doc `prefs/app` = { pinnedNav: string[], updatedAt }. Written with
       // { merge: true }; PR-4 adds `menuLayout` to the SAME doc, so this owner

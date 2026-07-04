@@ -76,6 +76,38 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## PR-B3 deferred verification — POST-DEPLOY live suggest-back cycle (banked 2026-07-04, Rule 13 waiver — MEDIUM, deploy-gated)
+
+**Origin:** PR-B3 (planSuggestions suggest-back loop) ships a NEW subcollection + rules block (`match /users/{uid}/planSuggestions/{suggestionId}`) + the manager Send card + the agent hub card. Pre-merge verification covered the emulator matrix (**37/37**, every DENY genuinely denies), B1-sibling regression (yearPlan 41/41 + monthlyPlan 30/30 unchanged), lint/suite (4198/4198)/build, unit tests (service arg-shape, card render + unread emphasis + mark-seen, mask-guard entry + Rule 23 red demo), and the PRE-MERGE preview smoke (`smoke-plan-suggestions-b3.mjs`: manager Send card renders both themes + trap pickup; agent hub quiet-empty — the agent-own read DENIES pre-deploy → renders nothing, which IS the correct pre-deploy contract). The LIVE write-read-ack cycle cannot run until the planSuggestions rules are deployed — they do not exist in prod until `firebase deploy --only firestore:rules`.
+
+**Waiver:** merge authorized with verification of the live legs waived because the planSuggestions rules block is not yet deployed to production (HUMAN-MERGE channel; operator deploys post-merge). Deploy is a dispatcher/operator action (CC never deploys — Rule 19).
+
+**Unverified acceptance criteria (verbatim from the B3 brief's Phase 5 POST-DEPLOY):**
+> live cycle as real subjects — UM sends on an in-unit agent (value-level doc assert incl. pinned raisedByUid); agent sees it unread, opens, marks seen (status flip + seenAt live); out-of-unit UM create DENIED; agent self-create DENIED; manager ack DENIED; cleanup 0 orphans.
+
+**Re-run steps (exact):**
+1. Operator deploys: `firebase deploy --only firestore:rules` (from a worktree at `origin/main` HEAD, per CLAUDE.md pre-flight; wait ~2–5 min for rollout propagation — see the PR-B1 FU propagation caveat before treating a partial-deny as a real failure).
+2. From the main worktree (`.env.local` present), against `tatillife_smoke`:
+   - **L1 create:** sign in as the smoke UM (`A11Y_UNIT_MANAGER_*`) → create a planSuggestion on an in-unit smoke agent (`tenants/{tid}/users/{agentUid}/planSuggestions/{auto}`, the locked ten fields, `status:'open'`, `seenAt:null`) via the UM's own client token → assert ALLOW + the landed doc has `raisedByUid == UM uid` (pinned).
+   - **L2 read + ack:** sign in as the smoke agent → `listPlanSuggestions` sees it `status:'open'` (unread) → `markSuggestionSeen` → assert `status:'seen'` + `seenAt` is a live timestamp.
+   - **L3 denials:** out-of-unit UM foil create → `permission-denied`; agent self-create on own path → `permission-denied`; UM ack (update) → `permission-denied`.
+   - **L4 cleanup:** `delete:false` blocks all token deletes — remove the test suggestion via the Admin SDK (`require('../functions/node_modules/firebase-admin')`, ambient creds), confirm **0 orphans**.
+3. Close this FU with the results pasted into the PR-B3 thread (or the post-merge fill).
+
+**Operator option (noted in the PR body):** the additive-rules pre-merge deploy carve-out applies — the planSuggestions block is a purely additive new `match` block, so it may be deployed from the feature worktree pre-merge; if so, run L1–L4 pre-merge and close the waiver early.
+
+---
+
+## PR-B3 fast-follow — notify-on-send ping for plan suggestions (banked 2026-07-04, LOW — K10b precedent)
+
+**Origin:** PR-B3 deliberately shipped NO notification ping when a manager sends a plan suggestion (locked design, K10b precedent — the collection is the record; the agent sees unread emphasis on their next hub visit). A push/in-app notification on send would shorten the feedback loop.
+
+**Scope:** on `createPlanSuggestion`, enqueue a notification to the agent (`notifications/{id}` or the existing notification service) — "Your manager suggested a change to your plan." Mirror the existing notification write paths; no new collection. Agent taps → Game Plan hub (the PlanSuggestionsCard already marks seen on view).
+
+**Falsification:** moot if the product decision keeps suggestions strictly pull-only (agent checks their hub), or if a broader plan-activity digest supersedes per-suggestion pings.
+
+---
+
 ## ~~Vercel branch-alias preview URLs silently exceed the 63-char DNS label limit~~ — RESOLVED (feat/verification-hygiene, PR #788 `f84315cf`, 2026-07-03)
 
 **RESOLVED note (2026-07-03):** Action 1 (CLAUDE.md § Workflow preview-URL bullet — 63-char failure mode + deployment-URL fallback) landed in the verification-hygiene batch PR. Action 2 (optional `walk-helpers.mjs` auto-fallback) deliberately NOT built per the batch brief — the doc note names the exact `gh api` fallback path, which is sufficient for smokes to self-serve; re-bank only if a future smoke trips over it despite the doc. Original body retained below for the drift trail.

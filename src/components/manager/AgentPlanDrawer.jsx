@@ -22,9 +22,11 @@
 // Clarity (#786): ALL tab content renders inside the existing masked panel div
 // (data-clarity-mask="True") — masked by inheritance, no guard/doc edits.
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Lock, MessageSquare, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { X, Lock, MessageSquare, CheckCircle2, AlertTriangle, RefreshCw, Send } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import { formatCurrency, initials } from '../../utils/formatters';
 import { getAgentYearPlan, getAgentMonthlyPlan, getAgentAnnualFloor } from '../../services/planReviewService';
+import { createPlanSuggestion } from '../../services/planSuggestionsService';
 import { checkAboveFloor, checkLineMix, checkNotOverCommitted } from '../../utils/planHealth';
 import { enumerateFocusables } from '../../utils/focusables';
 import { getTodayTT } from '../../utils/dateInputs';
@@ -87,10 +89,14 @@ function HealthRow({ ok, label, note, testId }) {
 }
 
 export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
+  const { user, userProfile, role } = useAuth();
   const closeRef = useRef(null);
   const panelRef = useRef(null);
   const [tab, setTab] = useState('overview');
   const [planState, setPlanState] = useState({ status: 'loading' });
+  // B3 suggest-back: free-text note + send lifecycle (idle | sending | sent | error).
+  const [suggestNote, setSuggestNote] = useState('');
+  const [suggestState, setSuggestState] = useState({ status: 'idle' });
   // Guards against a stale fetch completing after an agent switch (or unmount-
   // adjacent close) and overwriting fresh state — K10a loadSeq pattern, same
   // as TeamPlansRoster (Gemini isMounted + CodeRabbit stale-race, PR #789).
@@ -158,6 +164,38 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
 
   const yearRes = planState.status === 'ready' ? planState.year : null;
   const monthlyRes = planState.status === 'ready' ? planState.monthly : null;
+
+  // B3 — suggest only when the plan is actually readable to this manager. When
+  // it isn't (denied / not built yet), the Send controls disable with a reason.
+  const canSuggest = yearRes?.plan != null;
+  const suggestDisabledReason = yearRes?.unavailable
+    ? "This plan isn't available to you."
+    : yearRes?.empty
+      ? 'No year plan to suggest on yet.'
+      : '';
+  const firstName = row.agentName?.split(' ')[0] ?? 'this agent';
+
+  const handleSendSuggestion = async () => {
+    const note = suggestNote.trim();
+    if (!note || !canSuggest || suggestState.status === 'sending') return;
+    setSuggestState({ status: 'sending' });
+    try {
+      await createPlanSuggestion({
+        tenantId,
+        agentId: row.agentId,
+        year: planYear,
+        note,
+        raisedByUid: user.uid,
+        raisedByName: userProfile?.name ?? userProfile?.email ?? 'Manager',
+        raisedByRole: role,
+      });
+      setSuggestNote('');
+      setSuggestState({ status: 'sent' });
+    } catch (e) {
+      console.error('[AgentPlanDrawer] send suggestion failed', e);
+      setSuggestState({ status: 'error' });
+    }
+  };
 
   return (
     <>
@@ -349,6 +387,57 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
                       firstYearCommissionsRequired={plan.firstYearCommissionsRequired}
                     />
                   </>
+                )}
+
+                {/* ── B3 suggest-back card ── the only write affordance in the
+                    drawer. Sits inside the masked panel (data-clarity-mask by
+                    inheritance) and inside the dynamic focus trap (enumerated at
+                    keydown, so these controls are picked up automatically). */}
+                {planState.status === 'ready' && (
+                  <div className="rounded-xl border border-gold/40 bg-card-raised p-4" data-testid="tpd-suggest-card">
+                    <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-gold mb-1.5">Suggest a change</p>
+                    <p className="text-sm font-semibold text-ink mb-2">
+                      Nudge {firstName}&rsquo;s plan before they commit
+                    </p>
+                    <label htmlFor="tpd-suggest-note" className="sr-only">Suggestion for {row.agentName}</label>
+                    <textarea
+                      id="tpd-suggest-note"
+                      data-testid="tpd-suggest-note"
+                      value={suggestNote}
+                      onChange={(e) => {
+                        setSuggestNote(e.target.value);
+                        if (suggestState.status === 'sent' || suggestState.status === 'error') {
+                          setSuggestState({ status: 'idle' });
+                        }
+                      }}
+                      disabled={!canSuggest || suggestState.status === 'sending'}
+                      maxLength={2000}
+                      rows={3}
+                      placeholder="e.g. Your Life split looks light vs your renewal book — consider lifting Life and trimming Motor."
+                      className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:opacity-60 resize-none"
+                    />
+                    <div className="mt-2 flex items-center justify-between gap-3 flex-wrap">
+                      <span className="text-[11px] text-ink-muted" data-testid="tpd-suggest-status" aria-live="polite">
+                        {suggestState.status === 'sent' && 'Suggestion sent'}
+                        {suggestState.status === 'error' && (
+                          <span className="text-danger-ink">Couldn&rsquo;t send — try again.</span>
+                        )}
+                        {suggestState.status !== 'sent' && suggestState.status !== 'error' && !canSuggest && suggestDisabledReason}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleSendSuggestion}
+                        disabled={!canSuggest || !suggestNote.trim() || suggestState.status === 'sending'}
+                        data-testid="tpd-suggest-send"
+                        className="min-h-[44px] inline-flex items-center gap-2 px-4 rounded-lg bg-primary dark:bg-primary-dark text-white text-sm font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Send size={14} aria-hidden="true" /> {suggestState.status === 'sending' ? 'Sending…' : 'Send suggestion'}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[11px] text-ink-muted">
+                      Suggestions are advice — {firstName} still commits their own plan.
+                    </p>
+                  </div>
                 )}
               </div>
             )}

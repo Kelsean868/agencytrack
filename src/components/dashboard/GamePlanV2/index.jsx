@@ -11,6 +11,7 @@ import { getRecentSundays } from '../../../utils/validators';
 import PlanAnchorStrip from './PlanAnchorStrip';
 import StepRail from './StepRail';
 import PlanCascade from './PlanCascade';
+import PlanSuggestionsCard from './PlanSuggestionsCard';
 import SuggestedWeekCard from './SuggestedWeekCard';
 import MonthlyPlanModal from '../../agent/MonthlyPlanModal';
 import ReviewCommitModal from './ReviewCommitModal';
@@ -320,6 +321,10 @@ export default function GamePlanScreen({
             committed={committed}
             committedAt={committedAt}
           />
+
+          {/* B3 — manager→agent plan suggestions (agent's own data; renders
+              nothing when there are none). Reads through the agent-own arm. */}
+          <PlanSuggestionsCard tenantId={tenantId} agentId={uid} />
 
           <SuggestedWeekCard
             committedAnnualAPI={committedAnnualAPI}
