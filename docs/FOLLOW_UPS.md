@@ -42,7 +42,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## Vercel branch-alias preview URLs silently exceed the 63-char DNS label limit (banked 2026-07-03, PR #785 post-merge fill, LOW — tooling/docs)
+## ~~Vercel branch-alias preview URLs silently exceed the 63-char DNS label limit~~ — RESOLVED (feat/verification-hygiene, PR #TBD, 2026-07-03)
+
+**RESOLVED note (2026-07-03):** Action 1 (CLAUDE.md § Workflow preview-URL bullet — 63-char failure mode + deployment-URL fallback) landed in the verification-hygiene batch PR. Action 2 (optional `walk-helpers.mjs` auto-fallback) deliberately NOT built per the batch brief — the doc note names the exact `gh api` fallback path, which is sufficient for smokes to self-serve; re-bank only if a future smoke trips over it despite the doc. Original body retained below for the drift trail.
 
 **Origin:** PR #785's Phase 5 smoke could not use the documented preview URL pattern — `agencytrack-git-feat-gpm1-team-plans-reader-kyron-marchan-s-projects.vercel.app` is a 68-char DNS label, over the RFC-1035 63-char limit, so the hostname does not resolve at all. The smoke fell back to the immutable per-deployment URL (`agencytrack-<hash>-kyron-marchan-s-projects.vercel.app`) read from the GitHub deployment status (`gh api repos/{owner}/{repo}/deployments` → statuses → `environment_url`, state `success`).
 
@@ -66,7 +68,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## `smoke-financing-escalation-k10c-postdeploy.mjs` — query-cost + explicit-return hardening (banked 2026-07-03, Rule 21 post-merge backstop, LOW — verification-script quality)
+## ~~`smoke-financing-escalation-k10c-postdeploy.mjs` — query-cost + explicit-return hardening~~ — RESOLVED (feat/verification-hygiene, PR #TBD, 2026-07-03)
+
+**RESOLVED note (2026-07-03):** Finding 2 (explicit `return` after leg 2's bell-notification-missing failure) implemented — the code now matches its own "STOP" message; cleanup still runs in `finally`. Finding 1 (`where('email','in',[...])` query) **DISAGREE per the pre-approved rationale, plus a correctness hazard:** the existing full-fetch builds a case-insensitive email map (`String(x.email).toLowerCase()`), while a Firestore `where('email','in')` is case-SENSITIVE — the "optimization" could silently fail to resolve subjects whose stored email casing differs from `.env.local`, trading a ~15–20-doc read against a new false-negative mode in a safety-critical subject-resolution step. Not semantics-preserving → not trivial → declined. The K10b smoke's identical pattern is declined on the same grounds. Smoke re-run post-fix: 10/10, 0 orphans. Original body retained below for the drift trail.
 
 **Origin:** Gemini's review of PR #784 (`86e0ad16`) landed at 12:21Z, before the 12:57Z merge, but was never dispositioned in-PR. Caught by the `/post-merge` Rule 21 backstop poll. Both findings are on a one-off admin/smoke script already proven 10/10 against production — banked as quality hardening, not a defect requiring a hotfix.
 
@@ -148,7 +152,9 @@ node scripts/verification/seed-unit-financing-k10a.mjs --cleanup
 
 **Falsification:** moot if the workflows are migrated to a different CI provider, or if GitHub extends the v4 support window such that no bump is needed before other CI work lands.
 
-## K10b write-read-ack smoke — hardening findings from the #780 Gemini review (banked 2026-07-03, LOW — verification-script robustness)
+## ~~K10b write-read-ack smoke — hardening findings from the #780 Gemini review~~ — RESOLVED (feat/verification-hygiene, PR #TBD, 2026-07-03)
+
+**RESOLVED note (2026-07-03):** All 4 items implemented in the verification-hygiene batch PR: (1) cleanup `.catch` swallows removed — a failed delete/verify query now propagates to the outer handler and registers a FAIL (falsified per Rule 23: leftover-doc simulation reported `FAIL 6-cleanup` + exit 1); (2) field-presence preconditions (UM.uid / BM.uid+branchId / agent.uid+unitId+branchId) fail early with clear messages; (3) firebase-admin + service-account-key requires wrapped with actionable SETUP messages; (4) env parser skips blank/`#`-commented lines. Items 1–4 also applied to `smoke-financing-escalation-k10c-postdeploy.mjs` as an in-family Rule 9 parity extension (its cleanup had the identical false-positive pattern). Both smokes re-run end-to-end against production post-fix — K10b 7/7, K10c 10/10, 0 orphans. Original body retained below for the drift trail.
 
 **Origin:** Gemini flagged 4 MEDIUM items on `scripts/verification/smoke-financing-escalation-writeread-k10b.mjs` at #780; the script was already proven 7/7 in production so they were dispositioned OUT-OF-SCOPE-for-immediate-merge and banked here (avoiding a new CI cycle on a test-only PR mid-window).
 
