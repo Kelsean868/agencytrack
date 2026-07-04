@@ -114,6 +114,31 @@ Also re-ran the PRE-MERGE `smoke-plan-suggestions-b3.mjs` against production for
 
 ---
 
+## PR #791 — `live-b3-post-deploy.mjs` hardening (banked 2026-07-04, LOW — Rule 21 out-of-scope carry)
+
+**Origin:** PR #791 (landing `scripts/verification/live-b3-post-deploy.mjs` as standing tooling) locked "no logic changes" — the script's 9/9 evidence predates the PR and a logic fix would contradict that closure evidence. CodeRabbit (6 inline comments) and Gemini both surfaced real hardening gaps; all dispositioned OUT-OF-SCOPE for #791 and banked here as one follow-up.
+
+**Scope:**
+1. `restPatch` doesn't check HTTP status on the visibility-flip write or the cleanup-restore write — a failed patch is silently treated as success (2 sites: seed flip, final restore).
+2. `firebase-admin` require + `admin.initializeApp` aren't wrapped in try/catch — a missing `functions/node_modules/firebase-admin` or `service-account-key.json` throws a cryptic error instead of an operator-actionable message.
+3. No tenant guard on the UM token before it's used in a production mutation (only the agent token is guarded).
+4. Fixture reads (`firestoreGet` for moneyNeeds/yearPlan) and the visibility-flip patch don't check `.ok` before use — a 403/404 silently becomes zero-valued Rule 22 inputs.
+5. If a denial-test POST (L3a/L3b) unexpectedly succeeds (rules regression), the created doc isn't tracked for cleanup — only `createdSuggestionName` (the legitimate L1 doc) gets deleted.
+
+**Falsification:** moot if the script is retired in favor of a unified/hardened smoke, or if a future rules change makes the denial legs structurally incapable of an unexpected-success outcome.
+
+---
+
+## `FinancingRiskPanel.test.jsx` CI timeout flake — 2nd occurrence (banked 2026-07-04, LOW)
+
+**Origin:** `src/components/manager/__tests__/FinancingRiskPanel.test.jsx` ("fires the notify CF and shows the cooldown after a successful notify") timed out at 5000ms in PR #791's `lint-and-build` CI run — the second occurrence (also timed out at 5022ms during PR #790's full-suite CI run). Both times it passed clean in isolation (16/16, 565ms locally for #791) — a CI-environment resource-contention flake, not a product or test-logic defect. Neither PR touched this file or its dependencies.
+
+**Scope:** raise the per-test timeout for this test (or the file) above the vitest default 5000ms, or split the slow test into a smaller unit if the underlying async chain is genuinely long-running under CI load. Investigate what makes this specific test resource-sensitive (async CF mock + cooldown timer interaction is the likely candidate) before picking a fix.
+
+**Falsification:** moot if a 3rd occurrence shows a different failure mode (e.g., a real assertion failure, not a timeout) — that would mean it's not pure flake and needs root-cause investigation instead of a timeout bump.
+
+---
+
 ## PR-B3 fast-follow — notify-on-send ping for plan suggestions (banked 2026-07-04, LOW — K10b precedent)
 
 **Origin:** PR-B3 deliberately shipped NO notification ping when a manager sends a plan suggestion (locked design, K10b precedent — the collection is the record; the agent sees unread emphasis on their next hub visit). A push/in-app notification on send would shorten the feedback loop.
