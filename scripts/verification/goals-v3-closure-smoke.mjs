@@ -75,9 +75,19 @@ async function navigateToTab(page, tabId) {
 }
 
 async function assertGoalsTabPanels(page, legLabel) {
+  // Wait past BOTH panels' loading skeletons (not just their first paint —
+  // "gap-analysis-loading"/"derived-income-loading" match a testid-presence
+  // check too, which resolves before the async hierarchy/ytdTotals fetch
+  // actually completes and produces a false-negative race).
   await page.waitForFunction(
-    () => document.querySelector('[data-testid^="gap-analysis-"], [data-testid^="derived-income-"]') !== null,
-    { timeout: 10_000 },
+    () => {
+      const gap = document.querySelector('[data-testid^="gap-analysis-"]');
+      const income = document.querySelector('[data-testid^="derived-income-"]');
+      const gapReady = gap && gap.getAttribute('data-testid') !== 'gap-analysis-loading';
+      const incomeReady = income && income.getAttribute('data-testid') !== 'derived-income-loading';
+      return gapReady && incomeReady;
+    },
+    { timeout: 15_000 },
   ).catch(() => {});
   await page.waitForTimeout(500);
   const body = await page.evaluate(() => document.body.innerHTML);
@@ -233,14 +243,16 @@ try {
         // already asserted in Legs 1/2) is the other awardsRuleset consumer
         // sharing AgentDashboard's fetched `awardsRuleset` state — confirms
         // the new AwardsReachPanel ruleset prop wiring didn't disturb it.
+        // "Advisor of the Month" is a DEFAULT_RULESET_2026 award name, not
+        // generic chrome — a bare "Awards" match would false-positive on the
+        // nav tab label itself even if the panel failed to render.
         await page.waitForFunction(
-          () => document.querySelector('button, [role="tablist"], [class*="award"]') !== null,
+          () => document.body.textContent.includes('Advisor of the Month'),
           { timeout: 10_000 },
         ).catch(() => {});
         await page.waitForTimeout(500);
         const hasAgentAwardsPanel = await page.evaluate(() =>
-          document.body.textContent.includes('Advisor of the Month') ||
-          document.body.textContent.includes('Awards')
+          document.body.textContent.includes('Advisor of the Month')
         );
         report('Leg 4 — AgentAwardsPanel renders (no ruleset-prop regression on the sibling consumer)', hasAgentAwardsPanel);
 
