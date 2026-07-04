@@ -218,6 +218,7 @@ export default function GamePlanScreen({
       <header>
         <h1 className="font-display text-2xl font-extrabold tracking-tight text-ink">Game Plan</h1>
         <p className="mt-0.5 text-sm text-ink-muted">Build your {year} — what you need to earn, step by step.</p>
+        <p className="mt-0.5 text-xs text-ink-muted">Your year and monthly plans are visible to your managers.</p>
       </header>
 
       {loading && (

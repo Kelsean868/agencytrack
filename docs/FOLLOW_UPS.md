@@ -10,7 +10,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 **Origin:** PR-GPM1 (#785, `95529a75`) shipped Fork A only — the UM/BM read-only Team Plans reader on the G5 consent-share arms. The brief explicitly deferred Fork B as the follow-on track.
 
 **Scope (from the GPM1 brief's NOT-in-this-PR list):**
-1. **`yearPlan`/`monthlyPlan` manager read rules** — today those collections have NO manager read arm; the mockup's plan-health view needs consent-gated UM/BM reads (same shape as the G5 moneyNeeds arms: `visibility=='shared'` + unit/branch scoping). Rules change → HUMAN-MERGE + operator deploy.
+1. **`yearPlan`/`monthlyPlan` manager read rules** — ~~consent-gated UM/BM reads (same shape as the G5 moneyNeeds arms)~~ **SUPERSEDED by dispatcher ruling (2026-07-03, Fork B recon @ `1e8e0d3e`): reads are UNCONDITIONAL-upline (UM same-unit / BM same-branch / SM / TA / PA), mirroring weeklyPlans — NO visibility gate; only moneyNeeds keeps the opt-in. RESOLVED by PR #787 (`f315babd`, 2026-07-03 — rules arms + honesty copy + emulator matrix 41/41 + 30/30); live-leg verification deferred post-deploy (see the PR-B1 deferred-verification FU below).**
 2. **Suggest-back card** — manager proposes an adjustment back to the agent (suggestion store, agent accepts/dismisses; NO lock/approve — design-forbidden).
 3. **Plan-health checklist cards** — derived plan-completeness/coherence signals on the roster/drawer.
 4. **SM surface stays dormant** (`shareWithSm` has no live write path — see the corrected `shareWithSm` FU below).
@@ -18,6 +18,27 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 **Reuse anchors:** `TeamPlansRoster`/`AgentPlanDrawer` (#785), `getSharedMoneyNeeds` denied→notShared mapping, the locked SHOWN/PRIVATE projection-contract test shape (`TeamPlansRoster.projection.test.jsx`).
 
 **Falsification:** moot if the Game Plan loop store is redesigned before Fork B lands, or if the product decision changes to keep managers out of yearPlan/monthlyPlan entirely (reader-only forever).
+
+---
+
+## PR-B1 deferred verification — live upline-read legs post-rules-deploy (banked 2026-07-03, PR #787 `f315babd`, Rule 13 waiver — MEDIUM) — **OPEN: first attempt blocked on deploy**
+
+**Status (2026-07-03, post-merge live-leg attempt):** run from the main worktree against `tatillife_smoke` after the #787 merge — **agent own-read PASS** (regression leg: yearPlan + monthlyPlan read with `lines`/`targets` present) · **UM in-unit read DENIED (`permission-denied`) → the B1 arms are NOT live** — the squash is on main but `firebase deploy --only firestore:rules` has not taken effect (merged ≠ deployed). Foil + existence-oracle legs did not run (correct in-script STOP once the deploy-state leg failed); nothing was seeded (both plan docs pre-existed), 0 orphans. **Next: operator deploys from a worktree at `f315babd` (CLAUDE.md pre-flight), then CC re-runs steps 2–3 and closes this FU.**
+
+**Origin:** PR-B1 (plan upline read arms) ships two additive `get` arms on `users/{uid}/yearPlan/{year}` + `users/{uid}/monthlyPlan/{year}`. Pre-merge verification covered the emulator matrix (41/41 + 30/30), lint/suite/build, and copy-render unit tests. The LIVE legs cannot run until the operator deploys the rules (`firebase deploy --only firestore:rules`) — production rules are the authoritative gate, and the arms do not exist in prod until then.
+
+**Unverified acceptance criteria (verbatim from the brief's Phase 5 POST-DEPLOY):**
+> live legs as real subjects in tatillife_smoke — UM reads an in-unit agent's yearPlan/{year} + monthlyPlan doc (value-level), out-of-unit UM foil DENIED, agent still reads own.
+
+**Re-run steps (exact):**
+1. Operator deploys: `firebase deploy --only firestore:rules` (from a worktree at `origin/main` HEAD, per CLAUDE.md pre-flight).
+2. From the main worktree (`.env.local` present), run the live legs against production with the smoke tenant `tatillife_smoke`:
+   - Sign in as the smoke UM (`A11Y_UNIT_MANAGER_*` credentials) → SDK `getDoc` of an in-unit smoke agent's `tenants/{tid}/users/{agentUid}/yearPlan/2026` and `.../monthlyPlan/2026` → assert ALLOW + value-level fields (`lines`, `targets`).
+   - Sign in as an out-of-unit UM foil → same gets → assert `permission-denied`.
+   - Sign in as the smoke agent → own-doc gets → assert ALLOW (regression).
+3. Close this FU with the results pasted into the PR-B1 thread (or the post-merge fill).
+
+**Operator option (noted in the PR body):** the additive-rules pre-merge deploy carve-out applies — if the arms are deployed from the feature worktree pre-merge, run these legs pre-merge and close the waiver early.
 
 ---
 

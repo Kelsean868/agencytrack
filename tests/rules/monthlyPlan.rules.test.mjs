@@ -58,19 +58,32 @@ async function main() {
     },
   });
 
-  // Seed existing monthlyPlan docs
+  // Seed existing monthlyPlan docs + user docs (Fork B1: the upline arm's
+  // cross-doc gets need agent unitId/branchId and caller-scope user docs —
+  // this harness previously seeded NO user docs)
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await db.doc(mpDocPath('agent-a', '2026')).set({ ...VALID_PAYLOAD });
     await db.doc(mpDocPath('agent-b', '2026')).set({ ...VALID_PAYLOAD, uid: 'agent-b' });
+    // user docs — Fork B1 upline-arm scoping
+    await db.doc(`tenants/${TENANT_ID}/users/agent-a`).set({ role: 'agent', tenantId: TENANT_ID, uid: 'agent-a', unitId: 'unit-1', branchId: 'branch-1' });
+    await db.doc(`tenants/${TENANT_ID}/users/agent-b`).set({ role: 'agent', tenantId: TENANT_ID, uid: 'agent-b', unitId: 'unit-1', branchId: 'branch-1' });
+    await db.doc(`tenants/${TENANT_ID}/users/um-1`).set({ role: 'unit_manager',   tenantId: TENANT_ID, unitId: 'unit-1' });
+    await db.doc(`tenants/${TENANT_ID}/users/um-2`).set({ role: 'unit_manager',   tenantId: TENANT_ID, unitId: 'unit-2' });
+    await db.doc(`tenants/${TENANT_ID}/users/bm-1`).set({ role: 'branch_manager', tenantId: TENANT_ID, branchId: 'branch-1' });
+    await db.doc(`tenants/${TENANT_ID}/users/bm-2`).set({ role: 'branch_manager', tenantId: TENANT_ID, branchId: 'branch-2' });
   });
 
   const agentADb = testEnv.authenticatedContext('agent-a', authToken('agent')).firestore();
   const agentBDb = testEnv.authenticatedContext('agent-b', authToken('agent')).firestore();
   const umDb     = testEnv.authenticatedContext('um-1',    authToken('unit_manager')).firestore();
+  const um2Db    = testEnv.authenticatedContext('um-2',    authToken('unit_manager')).firestore();
   const bmDb     = testEnv.authenticatedContext('bm-1',    authToken('branch_manager')).firestore();
+  const bm2Db    = testEnv.authenticatedContext('bm-2',    authToken('branch_manager')).firestore();
   const smDb     = testEnv.authenticatedContext('sm-1',    authToken('sales_manager')).firestore();
   const taDb     = testEnv.authenticatedContext('ta-1',    authToken('tenant_admin')).firestore();
+  // platform_admin lives outside any tenant: tenantId claim is null (see CLAUDE.md roles)
+  const paDb     = testEnv.authenticatedContext('pa-1',    { role: 'platform_admin', tenantId: null }).firestore();
   const anonDb   = testEnv.unauthenticatedContext().firestore();
   const crossDb  = testEnv.authenticatedContext('agent-a', { role: 'agent', tenantId: 'other-tenant' }).firestore();
 
@@ -84,20 +97,46 @@ async function main() {
     getDoc(doc(agentBDb, mpDocPath('agent-a', '2026')))
   );
 
-  await run('unit_manager GET agent-a monthlyPlan → DENY (no manager-read arm yet)', false, () =>
+  // Fork B1 (ruled 2026-07-03): monthlyPlan is unconditionally upline-readable
+  // (UM same-unit / BM same-branch / SM / TA / PA), mirroring weeklyPlans —
+  // deliberately NO visibility gate (moneyNeeds keeps the opt-in). The four
+  // manager DENY cases below INVERTED to ALLOW with this ruling.
+
+  await run('unit_manager same-unit GET agent-a monthlyPlan → ALLOW (Fork B1 ruling)', true, () =>
     getDoc(doc(umDb, mpDocPath('agent-a', '2026')))
   );
 
-  await run('branch_manager GET agent-a monthlyPlan → DENY (no manager-read arm yet)', false, () =>
+  await run('unit_manager OTHER-unit GET agent-a monthlyPlan → DENY (out of scope)', false, () =>
+    getDoc(doc(um2Db, mpDocPath('agent-a', '2026')))
+  );
+
+  await run('branch_manager same-branch GET agent-a monthlyPlan → ALLOW (Fork B1 ruling)', true, () =>
     getDoc(doc(bmDb, mpDocPath('agent-a', '2026')))
   );
 
-  await run('sales_manager GET agent-a monthlyPlan → DENY (no manager-read arm yet)', false, () =>
+  await run('branch_manager OTHER-branch GET agent-a monthlyPlan → DENY (out of scope)', false, () =>
+    getDoc(doc(bm2Db, mpDocPath('agent-a', '2026')))
+  );
+
+  await run('sales_manager GET agent-a monthlyPlan → ALLOW (Fork B1 ruling, tenant-wide)', true, () =>
     getDoc(doc(smDb, mpDocPath('agent-a', '2026')))
   );
 
-  await run('tenant_admin GET agent-a monthlyPlan → DENY', false, () =>
+  await run('tenant_admin GET agent-a monthlyPlan → ALLOW (Fork B1 ruling)', true, () =>
     getDoc(doc(taDb, mpDocPath('agent-a', '2026')))
+  );
+
+  await run('platform_admin GET agent-a monthlyPlan → ALLOW (Fork B1 ruling)', true, () =>
+    getDoc(doc(paDb, mpDocPath('agent-a', '2026')))
+  );
+
+  // Existence-oracle guard (mirrors weeklyPlans): absent doc → owner arm only.
+  await run('agent-a GET own NON-EXISTENT monthlyPlan (2010) → ALLOW (pre-write owner get)', true, () =>
+    getDoc(doc(agentADb, mpDocPath('agent-a', '2010')))
+  );
+
+  await run('unit_manager same-unit GET NON-EXISTENT monthlyPlan (2011) → DENY (no existence oracle)', false, () =>
+    getDoc(doc(umDb, mpDocPath('agent-a', '2011')))
   );
 
   await run('unauthenticated GET → DENY', false, () =>
@@ -108,7 +147,7 @@ async function main() {
     getDoc(doc(crossDb, mpDocPath('agent-a', '2026')))
   );
 
-  // ── LIST ──────────────────────────────────────────────────────────────────────
+  // ── LIST (owner-only — no manager list arm, get-fan-out shape) ────────────────
 
   await run('agent-a LIST own monthlyPlan subcollection → ALLOW', true, () =>
     agentADb.collection(`tenants/${TENANT_ID}/users/agent-a/monthlyPlan`).get()
@@ -116,6 +155,10 @@ async function main() {
 
   await run('agent-b LIST agent-a monthlyPlan → DENY', false, () =>
     agentBDb.collection(`tenants/${TENANT_ID}/users/agent-a/monthlyPlan`).get()
+  );
+
+  await run('unit_manager same-unit LIST agent-a monthlyPlan → DENY (no manager list arm)', false, () =>
+    umDb.collection(`tenants/${TENANT_ID}/users/agent-a/monthlyPlan`).get()
   );
 
   // ── CREATE ────────────────────────────────────────────────────────────────────
@@ -136,7 +179,10 @@ async function main() {
     setDoc(doc(agentBDb, mpDocPath('agent-a', '2025')), { ...VALID_PAYLOAD, uid: 'agent-b' })
   );
 
-  await run('unit_manager CREATE at own path → DENY (isAgent() guard)', false, () =>
+  // PM-1 (#717) extended create to producing managers — stale DENY expectation
+  // fixed in Fork B1 (this case was latently failing on main; mirrors the
+  // yearPlan harness's 'producing manager files own plan' ALLOW case).
+  await run('unit_manager CREATE at own path → ALLOW (producing manager files own plan, PM-1)', true, () =>
     setDoc(doc(umDb, mpDocPath('um-1', '2026')), { ...VALID_PAYLOAD, uid: 'um-1' })
   );
 

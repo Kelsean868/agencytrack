@@ -194,6 +194,7 @@ export default function MonthlyPlanModal({ onClose, onAfterSave, yearPlanAPI = 0
             <h2 className="font-display text-lg font-extrabold tracking-tight text-ink">
               Monthly Plan {year}
             </h2>
+            <p className="mt-0.5 text-xs text-ink-muted">Visible to your managers.</p>
           </div>
           <button
             type="button"
