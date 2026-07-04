@@ -127,6 +127,14 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
 
   useEffect(() => { loadPlans(); }, [loadPlans]);
 
+  // Reset the suggest-back note + status when the drawer switches agents — the
+  // drawer instance is reused across roster rows (loadSeq stale-fetch guard),
+  // so without this the note typed for one agent would leak to the next.
+  useEffect(() => {
+    setSuggestNote('');
+    setSuggestState({ status: 'idle' });
+  }, [row?.agentId]);
+
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', onKey);
@@ -173,7 +181,7 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
     : yearRes?.empty
       ? 'No year plan to suggest on yet.'
       : '';
-  const firstName = row.agentName?.split(' ')[0] ?? 'this agent';
+  const firstName = (row.agentName?.trim().split(' ')[0]) || 'this agent';
 
   const handleSendSuggestion = async () => {
     const note = suggestNote.trim();

@@ -1618,8 +1618,10 @@ service cloud.firestore {
         // suspenders over canManage). Exact key set (hasAll + hasOnly) = the locked
         // ten fields, nothing else. Type guards mirror financingEscalations' string/
         // timestamp guards (a non-string note/name would break display + ordering).
-        allow create: if uplineCanReadUserPlan()
-          && request.auth.uid != uid
+        // Cheap literal checks first; uplineCanReadUserPlan() (a document get())
+        // is evaluated LAST so a self-create / malformed write short-circuits to
+        // DENY without paying for the read (&& is left-to-right short-circuit).
+        allow create: if request.auth.uid != uid
           && request.resource.data.raisedByUid == request.auth.uid
           && request.resource.data.agentId == uid
           && request.resource.data.tenantId == tenantId
@@ -1638,7 +1640,8 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly([
                'tenantId', 'agentId', 'year', 'note', 'raisedByUid',
                'raisedByName', 'raisedByRole', 'status', 'createdAt', 'seenAt'
-             ]);
+             ])
+          && uplineCanReadUserPlan();
 
         // update: the AGENT-ONLY ack (open→seen). Field-restricted to the ack pair
         // (SEC-10 hasOnly precedent); strict open→seen (no re-ack — resource must be

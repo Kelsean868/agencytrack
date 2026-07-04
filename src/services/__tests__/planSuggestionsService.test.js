@@ -81,6 +81,12 @@ describe('createPlanSuggestion', () => {
     const [, data] = hoisted.mockAddDoc.mock.calls[0];
     expect(data.note.length).toBe(2000);
   });
+
+  it('throws (no write) when year is not a valid integer — would fail rules `year is int`', async () => {
+    await expect(createPlanSuggestion({ ...base, year: 'not-a-year' }))
+      .rejects.toThrow(/valid integer/i);
+    expect(hoisted.mockAddDoc).not.toHaveBeenCalled();
+  });
 });
 
 describe('listPlanSuggestions', () => {

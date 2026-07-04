@@ -39,10 +39,16 @@ export async function createPlanSuggestion({
   raisedByRole,
 }) {
   const trimmedNote = (note ?? '').trim().slice(0, NOTE_CAP);
+  const parsedYear = parseInt(year, 10);
+  // Guard before the write — a NaN year would fail the rules `year is int` gate
+  // with an opaque permission-denied; surface a clear error at the call site.
+  if (!Number.isInteger(parsedYear)) {
+    throw new Error(`createPlanSuggestion: year must be a valid integer (got ${JSON.stringify(year)})`);
+  }
   await addDoc(suggestionsRef(tenantId, agentId), {
     tenantId,
     agentId,
-    year: parseInt(year, 10),
+    year: parsedYear,
     note: trimmedNote,
     raisedByUid,
     raisedByName,

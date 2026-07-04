@@ -298,6 +298,21 @@ describe('AgentPlanDrawer — B3 suggest-back card', () => {
     expect(hoisted.createPlanSuggestion).not.toHaveBeenCalled();
   });
 
+  it('resets the typed note + status when the drawer switches agents (no leak)', async () => {
+    const { rerender } = renderDrawer();
+    await flush();
+    fireEvent.click(screen.getByTestId('tpd-tab-year'));
+    fireEvent.change(screen.getByTestId('tpd-suggest-note'), { target: { value: 'note for agent-a' } });
+    expect(screen.getByTestId('tpd-suggest-note')).toHaveValue('note for agent-a');
+    // Switch to agent-b on the SAME drawer instance.
+    rerender(
+      <AgentPlanDrawer row={{ ...ROW, agentId: 'agent-b', agentName: 'Bala Singh' }} tenantId="tenant-1" onClose={vi.fn()} onCoach={vi.fn()} />,
+    );
+    await flush();
+    fireEvent.click(screen.getByTestId('tpd-tab-year'));
+    expect(screen.getByTestId('tpd-suggest-note')).toHaveValue(''); // note did NOT leak
+  });
+
   it('surfaces a retryable error state when the send fails', async () => {
     hoisted.createPlanSuggestion.mockRejectedValueOnce(new Error('denied'));
     renderDrawer();

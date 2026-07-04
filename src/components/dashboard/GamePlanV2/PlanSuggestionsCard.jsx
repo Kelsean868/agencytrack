@@ -40,7 +40,9 @@ function formatDDMMYYYY(ts) {
 
 export default function PlanSuggestionsCard({ tenantId, agentId }) {
   const [items, setItems] = useState(null); // null = loading; [] = loaded-empty
-  const ackedOnce = useRef(false);
+  // Track WHICH agent we've already acked for (not a bare boolean) — if the
+  // tenant/agent changes, the new agent's unread suggestions must still ack.
+  const ackedFor = useRef(null);
 
   useEffect(() => {
     if (!tenantId || !agentId) { setItems([]); return; }
@@ -53,8 +55,9 @@ export default function PlanSuggestionsCard({ tenantId, agentId }) {
         // Viewing acks the unread ones (best-effort, fire-and-forget). Fire once —
         // the local list keeps its loaded 'open' status so the emphasis stays
         // visible THIS render; the ack lands so the next hub load shows them seen.
-        if (!ackedOnce.current) {
-          ackedOnce.current = true;
+        const ackKey = `${tenantId}/${agentId}`;
+        if (ackedFor.current !== ackKey) {
+          ackedFor.current = ackKey;
           loaded
             .filter((s) => s.status === 'open')
             .forEach((s) => {
