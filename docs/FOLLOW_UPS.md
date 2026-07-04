@@ -21,6 +21,22 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## PR-B2 deferred verification — value-level plan-review legs post-B1-deploy (banked 2026-07-03, PR-B2, Rule 13 waiver — MEDIUM)
+
+**Origin:** PR-B2 (plan-review drawer tabs + plan health) ships manager-side reads that exercise PR-B1's yearPlan/monthlyPlan upline arms at runtime. At B2's Phase 5, B1 (#787) was open (not merged, not deployed) — every plan read denies in production, so the preview smoke could only prove the **denied→neutral** contract (which IS the correct pre-deploy behavior). The value-level legs cannot run until the operator merges B1 and deploys the rules.
+
+**Unverified acceptance criteria (verbatim from the B2 brief's Phase 5):**
+> IF B1 arms are LIVE (merged + deployed at smoke time): value-level plan legs - seeded yearPlan targets render exactly; plan-health verdicts match hand-computed fixture (one above-floor, one below-floor agent); monthly tab shows the 12-split; foil out-of-unit drawer denied->neutral.
+
+**Re-run steps (exact):**
+1. B1 (#787) merged + operator `firebase deploy --only firestore:rules`.
+2. From the main worktree (`.env.local` present), against `tatillife_smoke`: seed via the A11Y agent's client token a `yearPlan/2026` (known `lines.{life,ah,general}.targetAPI/derivedCommission`; run the fixture once ABOVE the agent's tenure floor and once BELOW via a re-seed) + a `monthlyPlan/2026` (12-split of a known anchor).
+3. UM leg: open the shared agent's drawer → Year Plan tab shows the seeded per-line figures exactly; `tpd-health-floor` `data-ok` matches the hand-computed verdict for each fixture; Monthly tab `tpd-month-0..11` match the seeded split.
+4. Foil leg: out-of-unit UM fetches the same agent's plans → `tpd-year-unavailable` / `tpd-monthly-unavailable` neutral (post-deploy denial = out-of-scope).
+5. Cleanup: delete the seeded plan docs, re-confirm 0 orphans. Paste results in the PR-B2 thread or the post-merge fill; close this FU.
+
+---
+
 ## ~~PR-B1 deferred verification — live upline-read legs post-rules-deploy~~ — RESOLVED (2026-07-04, live legs 7/7 vs production post-redeploy)
 
 **RESOLVED note (2026-07-04):** Operator redeployed the rules from a synced worktree; CC re-ran the full leg set as real subjects in `tatillife_smoke` — **7/7 PASS**: (A) agent own-read regression (yearPlan `lines` + monthlyPlan `targets` present) · (B) **UM in-unit value-level ALLOW on BOTH docs** — yearPlan `lines.life.targetAPI=84000`, `status=draft`; monthlyPlan `targets[12]`, `anchorAPI=1200000` → **B1 arms DEPLOYED and live** · (C) out-of-unit UM foil DENIED on both collections · (D) existence-oracle live: manager GET on an absent year → `permission-denied` (no existence oracle, matching the emulator case) · cleanup: nothing seeded (both plan docs pre-existed), 0 orphans. **Propagation caveat for future post-deploy legs:** the first re-run (minutes after the deploy) went 6/7 — yearPlan ALLOW but monthlyPlan still DENIED — a rules-rollout propagation window, not a rules defect (both arms shipped in one commit; a hybrid deploy state is impossible). A re-run minutes later was 7/7. Wait ~2–5 min after `firebase deploy --only firestore:rules` before treating a partial-deny as a real failure. The earlier 2026-07-03 attempt (agent PASS / UM DENIED → arms not live; original stale-deploy detection) is preserved below for the drift trail.

@@ -274,10 +274,22 @@ async function assertRosterAndDrawer(page, agentUid, themeTag) {
     await umPage.fill('textarea[aria-label="Coaching note body"]', `Team Plans smoke note ${NOTE_MARKER}`);
     await umPage.getByRole('button', { name: /add note/i }).click();
     noteCreated = true;
+    // ACK-TIGHT assert (PR #789 flake root cause): the old whole-body marker
+    // check was satisfied by the FILLED TEXTAREA ITSELF (React syncs a controlled
+    // textarea's value into the element text, so body.textContent contains the
+    // marker the moment fill() runs) — it verified NOTHING about the write. On
+    // slow-ack runs the reload then killed the still-pending addDoc: no error,
+    // no doc, the "vanishing note". The textarea clears ONLY after the write
+    // promise resolves (server ack), so gate on that + the marker rendered
+    // inside the NOTES LIST specifically before reloading.
     await umPage.waitForFunction(
-      (marker) => document.body.textContent.includes(marker),
+      (marker) => {
+        const ta = document.querySelector('textarea[aria-label="Coaching note body"]');
+        const list = document.querySelector('#coaching-notes-panel');
+        return !!ta && ta.value === '' && !!list && list.textContent.includes(marker);
+      },
       NOTE_MARKER,
-      { timeout: 15_000 },
+      { timeout: 30_000 },
     );
     // Reload → reopen → persisted (write-read).
     await umPage.reload({ waitUntil: 'domcontentloaded' });
