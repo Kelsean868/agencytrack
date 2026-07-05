@@ -78,6 +78,7 @@ vi.mock('../../../utils/formatters', () => ({
 }));
 vi.mock('../../../utils/dateHelpers', () => ({
   getMostRecentSunday: () => '2026-05-25',
+  weekNumber: () => 22,
 }));
 vi.mock('../../../utils/extractFields', () => ({
   extractFields:                () => ({ applicationsSold: 0 }),

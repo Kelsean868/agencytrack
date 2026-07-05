@@ -6,7 +6,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { signOut } from '../../services/authService';
 import { getRoleLabel, formatDateDisplay } from '../../utils/formatters';
-import { getMostRecentSunday } from '../../utils/dateHelpers';
+import { getMostRecentSunday, weekNumber } from '../../utils/dateHelpers';
 import { getDraft, getAgentSubmissions } from '../../services/submissionService';
 import { getGoals, getCompanyMinimums, getGoalHierarchy, getSalesManagerUid } from '../../services/goalsService';
 import { getMergedAwardsRuleset } from '../../services/awardsRulesetService';
@@ -520,8 +520,7 @@ export default function AgentDashboard() {
         const d = new Date();
         const weekday = d.toLocaleDateString('en-TT', { weekday: 'long' });
         const date    = d.toLocaleDateString('en-TT', { day: 'numeric', month: 'long' });
-        const start   = new Date(d.getFullYear(), 0, 1);
-        const weekNum = Math.ceil(((d - start) / 86400000 + start.getDay() + 1) / 7);
+        const weekNum = weekNumber(d);
         return `${displayName} · ${weekday} ${date} · Week ${weekNum}`;
       })()}
       onSignOut={handleSignOut}
