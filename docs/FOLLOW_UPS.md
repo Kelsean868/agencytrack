@@ -5,6 +5,14 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## A11y sweep L1-5a — RESOLVED (2026-07-05, PR `fix/a11y-h1-topbar-skiplink`) + one banked wayfinding item
+
+**RESOLVED — A11Y-001 (no `<h1>`), UX-101 (static "Dashboard" topbar title), A11Y-103 (no skip link).** The topbar title element is now a semantic `<h1>` (`Topbar.jsx`), giving every screen exactly one heading app-wide (a central fix — no 33-screen sweep). The agent title is dynamic via `tabTitleFromItems(navItems, activeTab)` (`navConfig.js` + `AgentDashboard.jsx`), so it names the active surface ("Awards", "Game Plan", …) instead of a static "Dashboard". A visually-hidden "Skip to main content" link is the first focusable in `Shell.jsx`, targeting `#main-content`. Source: audit `docs/audits/webapp-ux/agencytrack-webapp-ux-followup-2026-07-04.md` (UX-101, A11Y-103) + `docs/audits/ux/agencytrack-ux-audit-2026-07-04.md` (A11Y-001).
+
+**OPEN (banked, LOW) — Manager/Admin dynamic per-screen topbar title.** `ManagerDashboard.jsx` and `TenantAdminDashboard.jsx` still pass a static `topbarTitle={`Welcome back, ${displayName}`}` (now rendered as their `<h1>` — so A11Y-001 is satisfied, but the heading is identical on all 16 manager / 5 admin screens, poor wayfinding). Making it dynamic (active nav label, mirroring the agent fix) is a small change, but it removes/relocates the "Welcome back" greeting — a product decision (keep the greeting on the landing/overview tab only? move it to the crumb?). Deferred out of the auto-merge sweep for that reason. Resolve by threading the active-tab label through `tabTitleFromItems` for both dashboards once the greeting-placement call is made.
+
+---
+
 ## ~~BUG-102 — Week number disagrees between dashboard topbar and Daily Capture~~ — RESOLVED (2026-07-05, PR `fix/bug102-week-number-unify`) + one banked functions item
 
 **RESOLVED (display unification).** A shared floored, Sunday-anchored `weekNumber(dateOrStr)` helper now lives in `src/utils/dateHelpers.js`; the three display formulas unified onto it: `AgentDashboard.jsx` topbar crumb (was UNFLOORED — drifted intraday, the "Week 28" defect), `GamePlanV2/index.jsx` suggested-week label (same unfloored shape), and `DailyCaptureV2.jsx` (local `isoWeekNumber` deleted; behavior preserved — it was already floored/correct). Live-`Date` inputs normalize to the LOCAL calendar day first, so an evening Trinidad (UTC−4) time cannot roll to the next UTC day and diverge from Daily Capture's date-string path. Unit tests (`src/utils/__tests__/dateHelpers.test.js`) pin 2026-07-04→27, 2026-07-05→28, year boundaries, the TT-evening case, and Date-vs-string parity. `periodUtils.js`'s `isoWeekNum` (manager roster) was already floored/correct and is left untouched (minimal diff). Finding source: `docs/audits/webapp-ux/agencytrack-webapp-ux-followup-2026-07-04.md` § BUG-102.

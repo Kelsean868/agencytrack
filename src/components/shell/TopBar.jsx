@@ -26,7 +26,10 @@ export default function TopBar({ title, crumb, actions }) {
   return (
     <header className="topbar">
       <div className="topbar-titles">
-        <div className="topbar-title">{title}</div>
+        {/* One semantic <h1> per screen (A11Y-001). `.topbar-title` sets explicit
+            font/size/color, so the heading renders identically to the prior div
+            under Tailwind preflight (which resets h1 margin/size). */}
+        <h1 className="topbar-title">{title}</h1>
         {crumb && <div className="topbar-crumb">{crumb}</div>}
       </div>
 

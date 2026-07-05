@@ -67,6 +67,10 @@ export default function Shell({
 
   return (
     <div className="shell">
+      {/* First focusable element on every screen — lets keyboard users bypass
+          the ~20-item sidebar and jump straight to content (A11Y-103,
+          WCAG 2.4.1). Visually hidden until focused (see .skip-link in index.css). */}
+      <a href="#main-content" className="skip-link">Skip to main content</a>
       <Sidebar
         navItems={navItems}
         activeTab={activeTab}
@@ -92,7 +96,7 @@ export default function Shell({
           crumb={topbarCrumb}
           actions={topbarActions}
         />
-        <main ref={mainRef} className="shell-content">
+        <main ref={mainRef} id="main-content" tabIndex={-1} className="shell-content">
           {(ptrState === 'pulling' || ptrState === 'refreshing') && (
             <div className="flex justify-center pt-3 pb-1" aria-live="polite" aria-label="Refreshing content">
               <div

@@ -210,6 +210,27 @@ export function getNavConfig(configKey, opts = {}) {
   return applyComingSoon(items);
 }
 
+/**
+ * Resolve the human page title for the active tab from a flat nav-item list
+ * (as returned by getNavConfig). Used to drive the topbar `<h1>` per screen so
+ * it names the active surface instead of a static "Dashboard" (UX-101), and so
+ * every screen has exactly one semantic heading (A11Y-001).
+ *
+ * Falls back when the active tab has no matching descriptor — e.g. a surface
+ * reached via the avatar/profile route or one whose activeTab value differs
+ * from any nav tabId.
+ *
+ * @param {Array<{tabId?: string, label?: string}>} items
+ * @param {string} activeTab
+ * @param {string} [fallback='Dashboard']
+ * @returns {string}
+ */
+export function tabTitleFromItems(items, activeTab, fallback = 'Dashboard') {
+  if (!Array.isArray(items)) return fallback;
+  const match = items.find((it) => it.tabId === activeTab);
+  return match?.label || fallback;
+}
+
 // ── ★ Pinned-zone seeds (Nav redesign PR-2) ──────────────────────────────────
 // Per-role default pins, by navConfig item id. Validated at resolve time against
 // the role's full nav id set — any id that no longer resolves is DROPPED (not
