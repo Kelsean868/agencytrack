@@ -245,6 +245,47 @@ async function slowNetworkLeg(browser, theme, role) {
   } finally { await ctx.close(); }
 }
 
+// ── LEG 4: CHUNK FAILURE — a rejected dashboard import() shows the themed error
+// boundary fallback + Reload control, NOT a white screen (both themes) ─────────
+async function chunkFailureLeg(browser, theme) {
+  const tag = `[${theme}]`;
+  const ctx = await newCtx(browser, theme);
+  const page = await ctx.newPage();
+  try {
+    // Abort the AgentDashboard chunk BEFORE it is ever requested (fresh context,
+    // never cached) so the lazy import() rejects and the ChunkLoadErrorBoundary
+    // catches it. LoginScreen is in the entry chunk (not aborted), so auth still
+    // works; only the dashboard chunk's request fails — the real redeploy/dead-hash
+    // failure mode.
+    await page.route(/\/assets\/AgentDashboard-[^/?]+\.js/, (route) => route.abort());
+    await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('input[type="email"]', { timeout: 20_000 });
+    await page.fill('input[type="email"]', AGENT.email);
+    await page.fill('input[type="password"]', AGENT.password);
+    await page.click('button[type="submit"]');
+    await waitForTheme(page, theme).catch(() => {});
+
+    const fallback = await page.waitForSelector('[data-testid="state-chunk-error"]', { timeout: 25_000 })
+      .then(() => true).catch(() => false);
+    rec(`chunk-fail-fallback${tag}`, fallback,
+      fallback ? 'themed chunk-error boundary fallback shown (no white screen)' : 'FAIL: no error fallback within 25s — a chunk-load failure may white-screen');
+    if (fallback) {
+      const reloadBtn = await page.$('[data-testid="chunk-error-reload"]');
+      const btnBox = reloadBtn ? await reloadBtn.boundingBox() : null;
+      const touch = btnBox && btnBox.height >= 44;
+      rec(`chunk-fail-reload-control${tag}`, !!reloadBtn && touch,
+        !reloadBtn ? 'FAIL: no Reload control in fallback' : (touch ? `Reload control present (${Math.round(btnBox.height)}px ≥ 44px touch target)` : `Reload control present but ${Math.round(btnBox?.height)}px < 44px touch target`));
+      await page.screenshot({ path: join(SS_DIR, `chunk-error-fallback-${theme}.png`), fullPage: false });
+    } else {
+      rec(`chunk-fail-reload-control${tag}`, false, 'skipped — no fallback to inspect');
+    }
+    const hasContent = await page.evaluate(() => document.body.textContent.replace(/\s+/g, '').length > 40);
+    rec(`chunk-fail-not-blank${tag}`, hasContent, hasContent ? 'page has visible content (not a blank white screen)' : 'FAIL: page is blank');
+  } catch (e) {
+    rec(`chunk-fail-leg${tag}`, false, `threw: ${e.message}`);
+  } finally { await ctx.close(); }
+}
+
 (async () => {
   console.log(`\nEFF-002 code-splitting adversarial smoke → ${BASE_URL} ${IS_LOCAL ? '(local preview)' : '(remote preview, bypass)'}\n`);
   if (!AGENT.email || !BM.email) { console.error('Missing A11Y_AGENT_* / A11Y_BRANCH_MANAGER_* creds in env.'); process.exit(2); }
@@ -258,6 +299,9 @@ async function slowNetworkLeg(browser, theme, role) {
     await slowNetworkLeg(browser, 'dark', { label: 'agent', email: AGENT.email, password: AGENT.password });
     await slowNetworkLeg(browser, 'light', { label: 'manager', email: BM.email, password: BM.password });
     await slowNetworkLeg(browser, 'dark', { label: 'manager', email: BM.email, password: BM.password });
+    // Chunk-failure boundary legs (both themes) — the EFF-002-safety FU.
+    await chunkFailureLeg(browser, 'light');
+    await chunkFailureLeg(browser, 'dark');
   } finally { await browser.close(); }
   finishSmoke(results, { clearTimeout });
 })();

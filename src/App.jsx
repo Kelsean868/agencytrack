@@ -9,6 +9,7 @@ import ResetPasswordHandler from './components/auth/ResetPasswordHandler';
 import EmailVerificationHandler from './components/auth/EmailVerificationHandler';
 import ToastProvider from './components/ui/ToastProvider';
 import ReloadPrompt from './components/ui/ReloadPrompt';
+import ChunkLoadErrorBoundary from './components/ui/ChunkLoadErrorBoundary';
 
 // EFF-002 code-splitting — the three role dashboards are the heaviest single-mount
 // surfaces in the app and were all eager-imported into the entry chunk, so every
@@ -133,7 +134,15 @@ function AppRoot() {
     return <ProvisioningScreen />;
   }
 
-  return <Suspense fallback={<LoadingScreen />}>{dashboard}</Suspense>;
+  // ChunkLoadErrorBoundary (OUTSIDE Suspense) catches a rejected lazy import()
+  // — e.g. a stale cached index.html requesting a chunk hash a redeploy deleted —
+  // and shows a themed reload fallback instead of white-screening. Suspense
+  // catches loading; the boundary catches load failure.
+  return (
+    <ChunkLoadErrorBoundary>
+      <Suspense fallback={<LoadingScreen />}>{dashboard}</Suspense>
+    </ChunkLoadErrorBoundary>
+  );
 }
 
 export default function App() {

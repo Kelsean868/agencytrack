@@ -16,6 +16,10 @@ white screen).
 | `suspense-fallback-agent-dark-slow3g.png` | App-level `<Suspense>` fallback during the **AgentDashboard** chunk fetch (Slow-3G) | Dark |
 | `suspense-fallback-manager-light-slow3g.png` | App-level `<Suspense>` fallback during the **ManagerDashboard** chunk fetch (Slow-3G) | Light |
 | `suspense-fallback-manager-dark-slow3g.png` | App-level `<Suspense>` fallback during the **ManagerDashboard** chunk fetch (Slow-3G) | Dark |
+| `chunk-error-fallback-light.png` | **ChunkLoadErrorBoundary** fallback when a dashboard chunk request is **aborted** (rejected `import()`) — themed card + "Reload" button, NOT a white screen | Light |
+| `chunk-error-fallback-dark.png` | **ChunkLoadErrorBoundary** fallback when a dashboard chunk request is **aborted** (rejected `import()`) — themed card + "Reload" button, NOT a white screen | Dark |
+
+**Chunk-error fallback (EFF-002 safety FU):** captured by the smoke's `chunk-fail-*` legs, which route-abort the `AgentDashboard` chunk so the lazy `import()` rejects. The `ChunkLoadErrorBoundary` (outside `<Suspense>`) catches it and renders a themed card — teal `AlertTriangle`, "Something didn't load", and a full-width **Reload** button (44px touch target) that does a full `window.location.reload()` to re-fetch a valid `index.html`. This is the load-path safety net the split ships with.
 
 **What to eyeball (for the human merge review):** the fallback is a centered card
 with a teal spinner + "Loading AgencyTrack…", on the warm page background — light
