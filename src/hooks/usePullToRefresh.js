@@ -39,11 +39,20 @@ export function usePullToRefresh(scrollRef, onRefresh) {
       pullDelta.current = 0;
     }
 
+    // Disarm mid-gesture: also reset pullDelta + phase so a cancelled pull can
+    // never fire on the subsequent touchend (Gemini review, PR #795 — a
+    // retained pullDelta >= threshold was itself a spurious-refresh vector).
+    function disarm() {
+      startY.current = null;
+      pullDelta.current = 0;
+      if (stateRef.current === 'pulling') setPhase('idle');
+    }
+
     function onTouchMove(e) {
       if (startY.current === null) return;
-      if (el.scrollTop > 0) { startY.current = null; return; }
+      if (el.scrollTop > 0) { disarm(); return; }
       const delta = e.touches[0].clientY - startY.current;
-      if (delta <= 0) { startY.current = null; return; }
+      if (delta <= 0) { disarm(); return; }
       pullDelta.current = delta;
       setPhase(delta >= PULL_THRESHOLD ? 'pulling' : 'idle');
       e.preventDefault();

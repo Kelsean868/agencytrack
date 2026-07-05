@@ -93,17 +93,37 @@ describe('usePullToRefresh — arming guards', () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
-  it('disarms when the container leaves the top mid-gesture', () => {
+  it('disarms when the container leaves the top mid-gesture — even past threshold', () => {
     const onRefresh = vi.fn(() => Promise.resolve());
     render(<Harness onRefresh={onRefresh} />);
     const el = screen.getByTestId('scroller');
 
-    fireEvent.touchStart(el, touches(100)); // armed at top
+    fireEvent.touchStart(el, touches(100));
+    fireEvent.touchMove(el, touches(215)); // delta 115 ≥ 110 — armed and pulling
+    expect(screen.getByTestId('ptr-state').textContent).toBe('pulling');
+
     el.scrollTop = 30; // container scrolled away mid-move
-    fireEvent.touchMove(el, touches(300)); // delta 200 but no longer at top
+    fireEvent.touchMove(el, touches(300)); // disarm — retained pullDelta must not fire
     fireEvent.touchEnd(el);
 
     expect(onRefresh).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ptr-state').textContent).toBe('idle');
+  });
+
+  it('does not fire when the user pulls past threshold then pushes back up to cancel', () => {
+    const onRefresh = vi.fn(() => Promise.resolve());
+    render(<Harness onRefresh={onRefresh} />);
+    const el = screen.getByTestId('scroller');
+
+    fireEvent.touchStart(el, touches(100));
+    fireEvent.touchMove(el, touches(215)); // delta 115 ≥ 110 — pulling
+    expect(screen.getByTestId('ptr-state').textContent).toBe('pulling');
+
+    fireEvent.touchMove(el, touches(90)); // delta -10 ≤ 0 — cancelled
+    fireEvent.touchEnd(el);
+
+    expect(onRefresh).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ptr-state').textContent).toBe('idle');
   });
 
   it('does not fire for an upward swipe (normal scroll-down gesture)', () => {

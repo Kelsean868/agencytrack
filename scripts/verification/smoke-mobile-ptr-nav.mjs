@@ -115,7 +115,16 @@ async function activeTestId(page) {
 async function runTheme(browser, theme) {
   console.log(`\n=== ${theme.toUpperCase()} MODE (380×844, hasTouch) ===`);
   const context = await browser.newContext({ viewport: { width: 380, height: 844 }, hasTouch: true });
-  await setupBypassSession(context, BASE_URL, BYPASS_TOKEN);
+  // Guard like loginAndWait below — an unguarded throw would abort the whole
+  // run (other theme + final summary) on one transient bypass failure
+  // (CodeRabbit, PR #795). setupBypassSession sanitizes its own errors.
+  try {
+    await setupBypassSession(context, BASE_URL, BYPASS_TOKEN);
+  } catch (e) {
+    fail(`${theme}-bypass`, e.message);
+    await context.close();
+    return;
+  }
   const page = await context.newPage();
   const capture = captureConsoleAndNetwork(page);
 
@@ -183,7 +192,19 @@ async function runTheme(browser, theme) {
     : fail(`${theme}-overscroll-contain`, `computed overscroll-behavior-y = ${overscroll}, expected contain`);
 
   // ── Legs 5–7: More drawer dismissal (Bug-2 falsification evidence) ──
+  // Leg isolation (CodeRabbit, PR #795): force-close any lingering overlay
+  // before each open so a failed dismissal in one leg can't corrupt the next
+  // leg's result — failures stay attributable to the right interaction.
+  const ensureOverlaysClosed = async () => {
+    for (let i = 0; i < 3; i++) {
+      const open = await page.locator('[role="dialog"]').first().isVisible().catch(() => false);
+      if (!open) return;
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
+    }
+  };
   const openMore = async () => {
+    await ensureOverlaysClosed();
     await page.locator('[data-testid="bottomnav-more"]').click();
     await page.waitForSelector('[role="dialog"]', { state: 'visible', timeout: 5000 });
     await page.waitForTimeout(350); // drawer slide-up animation
@@ -233,6 +254,7 @@ async function runTheme(browser, theme) {
   // 8 — open + backdrop tap (backdrop has no testid; dispatch on the element —
   // see the pass-through note on the More backdrop leg above)
   try {
+    await ensureOverlaysClosed();
     await page.locator('[data-testid="bottomnav-create"]').click();
     await page.waitForSelector(quickAdd, { state: 'visible', timeout: 5000 });
     await page.locator('div.fixed.inset-0.z-40').first().dispatchEvent('click');
@@ -244,6 +266,7 @@ async function runTheme(browser, theme) {
 
   // 9 — Escape
   try {
+    await ensureOverlaysClosed();
     await page.locator('[data-testid="bottomnav-create"]').click();
     await page.waitForSelector(quickAdd, { state: 'visible', timeout: 5000 });
     await page.keyboard.press('Escape');
@@ -255,6 +278,7 @@ async function runTheme(browser, theme) {
 
   // ── Leg 10: bottom-nav tab navigation regression ──
   try {
+    await ensureOverlaysClosed();
     await page.locator('[data-testid="bottomnav-history"]').click();
     await page.waitForTimeout(1200);
     const histActive = await page.evaluate(() =>
