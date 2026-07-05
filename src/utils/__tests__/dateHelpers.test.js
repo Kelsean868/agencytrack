@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { weekNumber } from '../dateHelpers';
 
 describe('weekNumber — floored, Sunday-anchored week-of-year (BUG-102)', () => {
@@ -29,9 +29,16 @@ describe('weekNumber — floored, Sunday-anchored week-of-year (BUG-102)', () =>
   });
 
   it('defaults to now when called with no argument', () => {
-    // Should equal the string-path result for today's local calendar day.
-    const now = new Date();
-    const localDayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    expect(weekNumber()).toBe(weekNumber(localDayStr));
+    // Freeze the clock so the no-arg default is deterministic — a live
+    // new Date() here + another inside weekNumber() could straddle a midnight
+    // tick and flake (Gemini). Sat 2026-07-04 15:00 local → week 27.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 6, 4, 15, 0));
+    try {
+      expect(weekNumber()).toBe(27);
+      expect(weekNumber()).toBe(weekNumber('2026-07-04'));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

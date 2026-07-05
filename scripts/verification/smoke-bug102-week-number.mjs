@@ -56,6 +56,20 @@ const skip = (id, msg) => { results.push({ id, ok: true, msg: `SKIP: ${msg}` });
 async function readMatch(page, selector, re, timeout = 8000) {
   const el = page.locator(selector).first();
   await el.waitFor({ state: 'attached', timeout });
+  // Poll until the element's text actually matches — a one-shot textContent()
+  // can capture a loading/placeholder state before the value stabilizes
+  // (CodeRabbit). Fall through to a final read if the poll times out so the
+  // caller still gets null (recorded as a fail) rather than a thrown abort.
+  await page
+    .waitForFunction(
+      ([sel, src]) => {
+        const node = document.querySelector(sel);
+        return !!node && new RegExp(src).test(node.textContent || '');
+      },
+      [selector, re.source],
+      { timeout },
+    )
+    .catch(() => {});
   const text = (await el.textContent()) || '';
   const m = text.match(re);
   return m ? Number(m[1]) : null;
@@ -64,8 +78,10 @@ async function readMatch(page, selector, re, timeout = 8000) {
 async function openDailyCapture(page, { mobile }) {
   if (mobile) {
     await page.locator('[data-testid="bottomnav-create"]').first().click({ timeout: 6000 });
-    await page.waitForTimeout(400);
-    await page.locator('[data-testid="quickadd-log-today"]').first().click({ timeout: 6000 });
+    // Wait for the Quick-Add sheet's Log-today item rather than a fixed sleep.
+    const logToday = page.locator('[data-testid="quickadd-log-today"]').first();
+    await logToday.waitFor({ state: 'visible', timeout: 6000 });
+    await logToday.click({ timeout: 6000 });
   } else {
     await page.locator('[data-testid="agent-tab-daily-log"]').first().click({ timeout: 6000 });
   }
@@ -78,9 +94,11 @@ async function run() {
     // ── Desktop leg ──────────────────────────────────────────────────────
     {
       const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, ignoreHTTPSErrors: true });
+      let capture;
+      try {
       await setupBypassSession(context, BASE, TOKEN);
       const page = await context.newPage();
-      const capture = captureConsoleAndNetwork(page);
+      capture = captureConsoleAndNetwork(page);
       await loginAs(page, BASE, EMAIL, PASS);
 
       // 1. Topbar crumb week
@@ -105,15 +123,19 @@ async function run() {
       // 3. Game Plan suggested-week label (soft leg: card may not render for
       //    every account state; skip-note rather than fail if absent)
       await page.locator('[data-testid="agent-tab-game-plan"]').first().click({ timeout: 6000 });
-      await page.waitForTimeout(2500);
+      // Wait for the Game Plan hub container instead of a fixed sleep.
+      await page.locator('[data-testid="game-plan-hub"]').first()
+        .waitFor({ state: 'visible', timeout: 10000 }).catch(() => {});
       // Anchor on the SuggestedWeekCard eyebrow span ("Suggested weekly plan ·
       // Wk N" / "Your weekly plan · Wk N") and read ITS OWN textContent — a bare
       // /Wk (\d+)/ on body.textContent swallows digits from adjacent text nodes
-      // (concatenated without separators, e.g. "Wk 28" + "60").
+      // (concatenated without separators, e.g. "Wk 28" + "60"). Wait for the span
+      // itself (populated after the hub's async plan fetch, later than the hub
+      // container mounts) before reading; a genuine absence still skips.
       const gpSpan = page.locator('span', { hasText: /weekly plan · Wk \d+/i }).first();
-      const gpText = (await gpSpan.isVisible({ timeout: 2000 }).catch(() => false))
-        ? (await gpSpan.textContent()) || ''
-        : '';
+      const gpPresent = await gpSpan.waitFor({ state: 'visible', timeout: 8000 })
+        .then(() => true).catch(() => false);
+      const gpText = gpPresent ? (await gpSpan.textContent()) || '' : '';
       const gpMatch = gpText.match(/weekly plan · Wk (\d+)/i);
       if (!gpMatch) skip('desktop-game-plan', 'suggested-week "Wk N" label not present for this account state');
       else if (Number(gpMatch[1]) === EXPECTED) pass('desktop-game-plan', `Game Plan "Wk ${gpMatch[1]}" === expected ${EXPECTED}`);
@@ -122,16 +144,22 @@ async function run() {
       const errs = capture.consoleMessages.filter((m) => m.type === 'error');
       if (errs.length === 0) pass('desktop-console', '0 console errors');
       else fail('desktop-console', `${errs.length} console errors: ${errs.map((e) => e.text).slice(0, 3).join(' | ')}`);
-      console.log(formatCaptureReport(capture));
-      await context.close();
+      } catch (e) {
+        fail('desktop-leg', `unexpected error before all desktop checks ran: ${e.message}`);
+      } finally {
+        if (capture) console.log(formatCaptureReport(capture));
+        await context.close();
+      }
     }
 
     // ── Mobile leg (380px) ───────────────────────────────────────────────
     {
       const context = await browser.newContext({ viewport: { width: 380, height: 820 }, ignoreHTTPSErrors: true });
+      let capture;
+      try {
       await setupBypassSession(context, BASE, TOKEN);
       const page = await context.newPage();
-      const capture = captureConsoleAndNetwork(page);
+      capture = captureConsoleAndNetwork(page);
       await loginAs(page, BASE, EMAIL, PASS);
 
       await openDailyCapture(page, { mobile: true });
@@ -143,8 +171,12 @@ async function run() {
       const errs = capture.consoleMessages.filter((m) => m.type === 'error');
       if (errs.length === 0) pass('mobile-console', '0 console errors');
       else fail('mobile-console', `${errs.length} console errors: ${errs.map((e) => e.text).slice(0, 3).join(' | ')}`);
-      console.log(formatCaptureReport(capture));
-      await context.close();
+      } catch (e) {
+        fail('mobile-leg', `unexpected error before all mobile checks ran: ${e.message}`);
+      } finally {
+        if (capture) console.log(formatCaptureReport(capture));
+        await context.close();
+      }
     }
   } finally {
     await browser.close();
