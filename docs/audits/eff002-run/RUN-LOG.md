@@ -1,5 +1,7 @@
 # EFF-002 Code-Splitting (HOLD) + FinancingRiskPanel flake fix — Orchestrator RUN-LOG
 
+> **FINAL STATUS (post-merge, 2026-07-05): both lanes MERGED.** Lane 2 → PR #803 (`62d37e92`), no revert. Lane 1 (EFF-002 split + the dispatcher-authorized chunk-load error boundary safety FU) → PR #804 (`2b13bdd4`), human-merged after HOLD. `/post-merge 804` filled CONTEXT.md/FOLLOW_UPS.md. The narrative below is the run-in-progress log, kept as historical record.
+>
 > Living wake-up report. Orchestrator: **Opus** (executes both lanes; Fable exhausted).
 > Brief: `docs/briefs/orchestrator-eff002-codesplit.md`. Started 2026-07-05.
 >
