@@ -2,6 +2,7 @@ const admin = require('firebase-admin');
 const functions = require('firebase-functions');
 const { isValidEmail } = require('./utils/validators');
 const { buildMailDoc } = require('./utils/email');
+const { extractTotalProductionCredit } = require('./utils/fieldHelpers');
 const { computePoints } = require('./lib/computePoints');
 const { resolveLevel } = require('./lib/gamificationConfig');
 const { APP_URL, CONTACT_EMAIL } = require('./lib/config');
@@ -1490,9 +1491,16 @@ exports.onSubmissionWrite = functions.firestore
         .where('status', '==', 'submitted')
         .get();
       const thisYear = new Date().getFullYear();
+      // EFF-004 correctness fix: sum YTD API via the canonical total-production
+      // reader (NB.api + PPP.apiIncrease + LMPS.apiCredit; v1 apiSold/api/annualPremium
+      // fallback) — the same reader used by the leaderboard ranking
+      // (leaderboard/rankingLogic.js) and the agent HeroCard (src/hooks/useMyProduction.js),
+      // so the MDRT badge stays consistent with the leaderboard doc it is written onto.
+      // The old `d.data().apiSold` read dropped every v2 (`newBusiness.api`) submission
+      // to 0, undercounting tenured v2 agents' MDRT YTD badge math.
       const ytdAPI = ytdSnap.docs
         .filter((d) => d.data().weekStarting?.startsWith(String(thisYear)))
-        .reduce((sum, d) => sum + (parseFloat(d.data().apiSold) || 0), 0);
+        .reduce((sum, d) => sum + extractTotalProductionCredit(d.data()), 0);
 
       if (ytdAPI >= 500000) {
         addIfNew('mdrt_qualified');
