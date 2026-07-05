@@ -5,9 +5,9 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## SEC-012 kiosk branch-scoping — two follow-ups banked (2026-07-05, PR `fix/sec012-kiosk-branch-scope`)
+## SEC-012 kiosk branch-scoping — two follow-ups banked (2026-07-05, PR #801 `3d7c391e`)
 
-Banked from the SEC-012 fix (kiosk reads branch-scoped in `firestore.rules` + `getKioskYTDSubmissions` client filter). The fix itself is HELD pending human merge + `firebase deploy --only firestore:rules`.
+Banked from the SEC-012 fix (kiosk reads branch-scoped in `firestore.rules` + `getKioskYTDSubmissions` client filter). **SHIPPED + rules DEPLOYED 2026-07-05** (post-deploy prod kiosk ALLOW verified live; emulator 17/17 DENY). These two follow-ups remain OPEN.
 
 1. **🚨 BLOCKS SECOND-BRANCH ONBOARDING — AgentOfMonth is a shared per-month doc, not per-branch.** `functions/agentOfMonth/setAgentOfMonth.js:100` writes `tenants/{tid}/agentOfMonth/{monthKey}` (one doc per month per tenant, `{merge:true}`), stamped with a single `branchId` = the last writer's branch. The SEC-012 fix branch-scopes the kiosk AOM read by `resource.data.branchId == request.auth.token.branchId`, which is correct for the single-branch Tatil pilot but breaks once a tenant has 2+ branches: a Branch-A kiosk is denied the current month's AOM whenever Branch-B wrote it last (and vice-versa), and two branches' category winners collide in one doc. Clean fix = data-model change to per-branch AOM docs (e.g. `agentOfMonth/{monthKey}_{branchId}` or a `{branchId}` subcollection), touching the write CF (`setAgentOfMonth`), both read paths (`agentOfMonthService.getAgentOfMonth`, `kioskServices.getKioskAgentOfMonth`), `AgentOfMonthTab`, and the AOM rule. **Must ship before any second branch is onboarded.**
 
