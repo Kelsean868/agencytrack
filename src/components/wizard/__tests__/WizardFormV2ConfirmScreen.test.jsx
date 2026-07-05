@@ -211,3 +211,44 @@ describe('Wizard v3 — Confirm points-earned-vs-floor readout', () => {
     expect(screen.queryByTestId('wizard-v2-confirm-floor-met')).toBeNull();
   });
 });
+
+// BUG-101 — the STEP screen must be gated on draftLoaded exactly like the
+// Confirm screen: no editable step body until the getDraft read resolves, so a
+// value typed pre-resolve can't be clobbered by the late draft merge.
+describe('Wizard — step-screen draft gate (BUG-101)', () => {
+  it('shows the loading state and gates the step body until the draft read resolves', async () => {
+    // Hold getDraft open so the pre-resolve step render is observable.
+    let resolveDraft;
+    getDraft.mockReturnValueOnce(new Promise((res) => { resolveDraft = res; }));
+    render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" />);
+
+    // Pre-resolve: loading spinner shown, step body NOT rendered (no editable
+    // inputs to type into and lose).
+    expect(await screen.findByTestId('wizard-v2-step-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('wizard-v2-step-1')).toBeNull();
+
+    // Resolve with no draft (fresh week) → step 1 mounts, loader gone.
+    resolveDraft(null);
+    await waitFor(() => expect(screen.getByTestId('wizard-v2-step-1')).toBeInTheDocument());
+    expect(screen.queryByTestId('wizard-v2-step-loading')).toBeNull();
+  });
+
+  it('a submitted week never renders the step body (loading → interstitial)', async () => {
+    let resolveDraft;
+    getDraft.mockReturnValueOnce(new Promise((res) => { resolveDraft = res; }));
+    render(<WizardForm onClose={vi.fn()} initialWeek="2026-05-31" />);
+
+    expect(await screen.findByTestId('wizard-v2-step-loading')).toBeInTheDocument();
+    expect(screen.queryByTestId('wizard-v2-step-1')).toBeNull();
+
+    // Resolve as a submitted week → interstitial mounts, step body never rendered.
+    resolveDraft({ status: 'submitted', agentId: 'agent-1', weekStarting: '2026-05-31' });
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { level: 2, name: 'Already submitted' })).toBeInTheDocument();
+    });
+    expect(screen.queryByTestId('wizard-v2-step-1')).toBeNull();
+    expect(screen.queryByTestId('wizard-v2-step-loading')).toBeNull();
+    // Footer is gone on the submitted screen (screen !== 'step').
+    expect(screen.queryByTestId('wizard-v2-footer')).toBeNull();
+  });
+});
