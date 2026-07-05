@@ -223,6 +223,38 @@ Also re-ran the PRE-MERGE `smoke-plan-suggestions-b3.mjs` against production for
 
 ---
 
+## EFF-002 Phase 2 — per-manager-tab code-splitting + Rollup `manualChunks` vendor/icon grouping (banked 2026-07-05, MEDIUM)
+
+**Origin:** EFF-002 **Phase 1** (lazy the 3 role dashboards behind `<Suspense>`) SHIPPED via PR `perf/eff002-code-splitting` — entry chunk **644.85 → 221.55 kB gzip (−65.6%)**, agent never fetches the manager/tenant-admin chunks (adversarial smoke 60/60). **Phase 2** (lazy-splitting the heavy `ManagerDashboard` tab panels) was implemented + verified, then **reverted before ship** and banked here.
+
+**Finding (Rule 23 — verified empirically at two granularities):** lazy-ing the manager tab panels slims the `ManagerDashboard` base chunk substantially — **96.59 → 14.68 kB gzip** at full 29-panel granularity, **→ 35.55 kB gzip** at a 16-heavy-panel granularity — deferring each heavy panel to its own tab chunk. BUT it fans shared leaf modules (lucide-react icons + small utils shared with the now-lazy `AgentDashboard` chunk) out into **dozens of tiny chunks** (~50 at 29 panels, ~36 at 16 panels; the Phase-1 baseline is **0** tiny chunks). That is the "dozens of tiny chunks" the code-split brief explicitly cautioned against. All tabs render correctly (smoke walked all 14, 0 chunk failures, no waterfall — the tiny chunks are parallel leaf loads), so it is a topology/best-practice concern, not a functional break. The benefit is **manager-only** (managers are few, on desktop) and marginal vs Phase 1's agent-path win.
+
+**Root cause:** without a Rollup `build.rollupOptions.output.manualChunks` strategy grouping vendor libs into a few stable chunks, per-component `lazy()` extraction sprawls. The clean fix **pairs** the tab-splitting WITH a `manualChunks` vendor/icon grouping — a build-config architectural decision (Methodology Rule 1: surface before adding a new build-config pattern), which is why it was **not** done unilaterally in the autonomous run.
+
+**Scope to resolve (do these together):**
+1. **`vite.config.js` `manualChunks`** grouping `lucide-react` (or a curated icon set), `recharts`, and the firebase SDK into named vendor chunks — dispatcher-approved (build-config).
+2. **Re-apply the ManagerDashboard tab lazy-splitting** (heavy panels: `UserManagementPanel`, `CommissionPlayground`, `FinancingTab`, `GamePlanV2`, `PolicyLedgerPanel`, `GoalsPanel`, `MoneyNeedsPanel`, `UnitFinancingRoster`, `TeamPlansRoster`, `CompliancePanel`, `ProductionLeaderboardSurface`, `TeamPerfRosterPage`, `ProductionReportTab`, `ProfileScreen`, `PersistencyTab`, `PolicyReconciliationPanel`) behind one content-area `<Suspense>` inside `<Shell>`; keep Overview (default), `Shell`, the `mp-goals` composite panels, and the full-screen early-return flows (`WizardForm`/`MeetingMode`/`DailyCaptureV2`) eager. The reverted diff shape is documented in `docs/audits/eff002-run/RUN-LOG.md`.
+3. **Re-run the committed adversarial smoke** `scripts/verification/smoke-eff002-code-splitting.mjs` (already walks every manager tab + slow-network Suspense fallbacks in both themes).
+4. Consider **EFF-013** (inline-SVG KPICard sparkline) in the same pass to remove Recharts from the agent path entirely — Phase 1 moved Recharts out of the *entry* chunk, but the agent still pulls it via the default-view KPICard sparkline.
+
+**Falsification:** overturned if a `manualChunks` config + tab-splitting yields a clean topology (few chunks, no tiny-chunk sprawl) with the manager-base reduction preserved — then the pairing is validated and should ship. Also overturned if a measurement shows the tiny-chunk count is a non-issue on Vercel's HTTP/2 edge (caching benefit > request overhead), in which case Phase 2 ships as-is.
+
+---
+
+## ~~EFF-002 — chunk-load error boundary around the lazy `<Suspense>`~~ — RESOLVED (perf/eff002-code-splitting → PR #804, 2026-07-05)
+
+**RESOLVED note (2026-07-05):** Dispatcher authorized the fix onto the existing #804 branch (FU brief `docs/briefs/fu-eff002-safety-error-boundary.md`). Added `src/components/ui/ChunkLoadErrorBoundary.jsx` (class component; `getDerivedStateFromError` + `componentDidCatch` console-log-only) wrapping the `<Suspense>` in `App.jsx` (boundary OUTSIDE Suspense). On a rejected dashboard `import()` it renders a themed Nexus fallback (teal `AlertTriangle`, "Something didn't load", 44px **Reload** button doing a full `window.location.reload()` — NOT a state reset, so a fresh `index.html` + valid chunk hashes are fetched). Scope held to boundary + reload only (no retry loop, no chunk-preload, no `manualChunks`). Verified: 3 unit tests (child-throws → fallback not crash · Reload calls `window.location.reload`), lint 0, suite **4228/4228**, build clean (entry chunk 221.55 → 221.80 kB gzip, +0.25 — tiny), smoke **66/66** both themes with a new chunk-FAILURE leg (route-abort the dashboard chunk → assert fallback + working Reload, not a white screen). Original body retained below for the drift trail.
+
+**Origin:** PR #804 (EFF-002 Phase 1, HELD). **Both** bot reviewers (Gemini + CodeRabbit) independently flagged the same gap: `App.jsx`'s `<Suspense>` around the three `React.lazy()` dashboards has **no error boundary**. If a lazy `import()` rejects — the classic case is a returning user whose cached `index.html` requests a chunk hash that no longer exists after a redeploy, or a mid-load network drop (`ChunkLoadError` / "Failed to fetch dynamically imported module") — the rejection propagates uncaught and **crashes the React tree to a blank page**. Suspense handles the *loading* state; it does NOT catch a *failed* import. This is a NEW failure mode introduced by the code-split (before it, there were no route chunks to fail).
+
+**Why banked, not fixed in #804:** GOVERNING RULE 6 of the orchestrator brief scoped Lane 1 to **"code-splitting only (lazy + Suspense)"** and directed CC to **bank scope-expanding bot suggestions**; an error boundary is a new component/pattern beyond lazy+Suspense (Methodology Rule 1 — surface before new patterns, not possible in the autonomous run). Because #804 is HELD for human merge, this is a natural pre-merge (or fast-follow) addition at the dispatcher's call.
+
+**Scope to resolve (small):** add a minimal `ChunkErrorBoundary` (class component with `componentDidCatch` / `getDerivedStateFromError`, or `react-error-boundary`) wrapping the Suspense-wrapped dashboard subtree in `AppRoot`. Fallback = a themed card (reuse the `LoadingScreen`/`ProvisioningScreen` treatment) with a **"Reload"** button (`window.location.reload()`) — a hard reload re-fetches the current `index.html` + valid chunk hashes, which resolves the stale-hash case. Keep the existing provisioning + loading behavior intact. Extend `scripts/verification/smoke-eff002-code-splitting.mjs` with a leg that aborts a dashboard chunk request (route interception) and asserts the boundary's retry fallback renders instead of a blank page.
+
+**Falsification:** overturned only if a chunk-load failure is shown to already degrade gracefully — it does not (no boundary exists today; a rejected `import()` in `AppRoot` is uncaught). Once an error boundary + a chunk-abort smoke leg are in place and green, this closes.
+
+---
+
 ## PR-B3 fast-follow — notify-on-send ping for plan suggestions (banked 2026-07-04, LOW — K10b precedent)
 
 **Origin:** PR-B3 deliberately shipped NO notification ping when a manager sends a plan suggestion (locked design, K10b precedent — the collection is the record; the agent sees unread emphasis on their next hub visit). A push/in-app notification on send would shorten the feedback loop.
