@@ -16,6 +16,12 @@ module.exports = {
   // tenure floor marker (TENURE_FLOOR_API) instead.
   MDRT_QUALIFIED_API: 688_800,
 
+  // MDRT half-year pace target: the T&T MDRT commission-method requirement, which
+  // is exactly half of the premium-method MDRT (688,800 / 2). Gates `mdrt_pace`
+  // (YTD API >= this by week 26). Owner decision 2026-07-05: replaces the legacy
+  // 250,000 (which was half of the OLD mislabelled-500k MDRT).
+  MDRT_PACE_API: 344_400,
+
   // Tatil tenured-agent production floor. Once an agent is >= TENURE_FLOOR_YEARS
   // from their contract date (as of today), they are held to this YTD-API floor;
   // reaching it earns the tenure floor marker. This is the legitimate 500k that

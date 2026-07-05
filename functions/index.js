@@ -3,7 +3,7 @@ const functions = require('firebase-functions');
 const { isValidEmail } = require('./utils/validators');
 const { buildMailDoc } = require('./utils/email');
 const { extractTotalProductionCredit } = require('./utils/fieldHelpers');
-const { MDRT_QUALIFIED_API, TENURE_FLOOR_API, TENURE_FLOOR_YEARS } = require('./lib/badgeThresholds');
+const { MDRT_QUALIFIED_API, MDRT_PACE_API, TENURE_FLOOR_API, TENURE_FLOOR_YEARS } = require('./lib/badgeThresholds');
 const { wholeYearsSince } = require('./utils/tenure');
 const { computePoints } = require('./lib/computePoints');
 const { resolveLevel } = require('./lib/gamificationConfig');
@@ -1512,7 +1512,7 @@ exports.onSubmissionWrite = functions.firestore
         const weekOfYear = Math.ceil(
           (Date.now() - new Date(thisYear, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000)
         );
-        if (weekOfYear <= 26 && ytdAPI >= 250000) addIfNew('mdrt_pace');
+        if (weekOfYear <= 26 && ytdAPI >= MDRT_PACE_API) addIfNew('mdrt_pace');
       }
 
       // 5-year tenure floor marker (independent of MDRT). Tenured agents — ≥ 5

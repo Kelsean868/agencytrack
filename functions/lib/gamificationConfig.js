@@ -53,7 +53,7 @@ const BADGE_DEFINITIONS = [
   { key: 'big_week',         label: 'Big Week',       description: 'TTD 20,000+ API in a single week',                trigger: 'TTD 20,000+ API in one week'         },
   { key: 'century_dials',    label: 'Century',        description: '100+ dials in a single week',                     trigger: '100+ dials in one week'              },
   { key: 'mdrt_qualified',   label: 'MDRT Qualified', description: 'YTD API reached TTD 688,800',                     trigger: 'YTD API ≥ TTD 688,800'              },
-  { key: 'mdrt_pace',        label: 'MDRT Pace',      description: 'On track for MDRT (TTD 250,000 YTD by mid-year)', trigger: 'YTD API ≥ TTD 250,000 by week 26'  },
+  { key: 'mdrt_pace',        label: 'MDRT Pace',      description: 'On track for MDRT (TTD 344,400 YTD by mid-year)', trigger: 'YTD API ≥ TTD 344,400 by week 26'  },
   { key: 'tenure_floor_met', label: 'Floor Cleared',  description: 'Tenured agent (5+ yrs) reached the TTD 500,000 floor', trigger: 'YTD API ≥ TTD 500,000 with 5+ years since contract' },
 ];
 

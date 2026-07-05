@@ -469,3 +469,91 @@ describe('onSubmissionWrite — 5-year tenure floor marker (L1-1 Commit 2)', () 
     expect(badges).toContain('tenure_floor_met');
   });
 });
+
+describe('onSubmissionWrite — mdrt_pace threshold corrected to 344,400 (owner decision 2026-07-05)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  function makeYtdAdminMock({ userDoc = { role: 'agent' }, ytdDocs = [] } = {}) {
+    const setFn = jest.fn().mockResolvedValue({});
+    const streakGet = jest.fn().mockResolvedValue({ empty: true, docs: [] });
+    const ytdGet    = jest.fn().mockResolvedValue({ docs: ytdDocs });
+    const docFn = jest.fn().mockImplementation((path) => {
+      if (path.includes('/users/')) {
+        return { get: jest.fn().mockResolvedValue({ exists: true, data: () => userDoc }) };
+      }
+      if (path.includes('/leaderboard/')) {
+        return {
+          get: jest.fn().mockResolvedValue({ exists: false, data: () => ({}) }),
+          set: setFn,
+          delete: jest.fn().mockResolvedValue({}),
+        };
+      }
+      return { set: jest.fn().mockResolvedValue({}) };
+    });
+    const limit1 = jest.fn(() => ({ get: streakGet }));
+    const q3 = jest.fn(() => ({ limit: limit1, get: streakGet }));
+    const q2 = jest.fn(() => ({ where: q3, get: ytdGet }));
+    const q1 = jest.fn(() => ({ where: q2 }));
+    const collectionFn = jest.fn().mockImplementation((path) => {
+      if (path.includes('notifications')) return { add: jest.fn().mockResolvedValue({}) };
+      return { where: q1 };
+    });
+    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn });
+    admin.firestore.FieldValue = { serverTimestamp: jest.fn(() => null) };
+    return { setFn };
+  }
+
+  const mkDoc = (data) => ({ data: () => data });
+  const badgesFrom = (setFn) => setFn.mock.calls[0][0].badges;
+  const { MDRT_PACE_API } = require('../lib/badgeThresholds');
+  // The pace time-gate reads Date.now()/new Date() directly (not injectable via the
+  // mock), so pin the clock: H1 = week <= 26 (gate OPEN), H2 = week > 26 (gate SHUT).
+  // The mocked year fixes the YTD-attribution year too, so ytdDocs use the same year.
+  const MOCK_YEAR = 2026;
+  const setH1 = () => { jest.useFakeTimers(); jest.setSystemTime(new Date(`${MOCK_YEAR}-03-01T12:00:00Z`)); };
+  const setH2 = () => { jest.useFakeTimers(); jest.setSystemTime(new Date(`${MOCK_YEAR}-09-01T12:00:00Z`)); };
+  const paceSub = { ...BASE_SUBMISSION, weekStarting: `${MOCK_YEAR}-02-01` };
+
+  test('legacy 250k–344,399 range NO LONGER earns mdrt_pace (threshold moved to 344,400)', async () => {
+    setH1();
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [mkDoc({ weekStarting: `${MOCK_YEAR}-02-01`, version: 2, newBusiness: { api: 300000 } })],
+    });
+    await onSubmissionWrite.run(makeChange(paceSub), context);
+    expect(badgesFrom(setFn)).not.toContain('mdrt_pace');
+  });
+
+  test('exactly 344,400 (below MDRT, within the H1 time gate) earns mdrt_pace, not mdrt_qualified', async () => {
+    setH1();
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [mkDoc({ weekStarting: `${MOCK_YEAR}-02-01`, version: 2, newBusiness: { api: MDRT_PACE_API } })],
+    });
+    await onSubmissionWrite.run(makeChange(paceSub), context);
+    const badges = badgesFrom(setFn);
+    expect(badges).toContain('mdrt_pace');
+    expect(badges).not.toContain('mdrt_qualified'); // 344,400 < 688,800
+  });
+
+  test('one TTD below 344,400 does NOT earn mdrt_pace', async () => {
+    setH1();
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [mkDoc({ weekStarting: `${MOCK_YEAR}-02-01`, version: 2, newBusiness: { api: MDRT_PACE_API - 1 } })],
+    });
+    await onSubmissionWrite.run(makeChange(paceSub), context);
+    expect(badgesFrom(setFn)).not.toContain('mdrt_pace');
+  });
+
+  test('time gate preserved: after week 26, YTD >= 344,400 still does NOT earn mdrt_pace', async () => {
+    setH2();
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [mkDoc({ weekStarting: `${MOCK_YEAR}-02-01`, version: 2, newBusiness: { api: 400000 } })],
+    });
+    await onSubmissionWrite.run(makeChange(paceSub), context);
+    expect(badgesFrom(setFn)).not.toContain('mdrt_pace');
+  });
+});
