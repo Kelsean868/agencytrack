@@ -5,7 +5,7 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
-## ~~BUG-101 — Wizard step screen typable before the draft check resolves~~ — RESOLVED (2026-07-04, PR #TBD `fix/bug101-wizard-draft-gate`)
+## ~~BUG-101 — Wizard step screen typable before the draft check resolves~~ — RESOLVED (2026-07-04, PR #794 `3bff7dae`)
 
 **RESOLVED.** The `screen === 'step'` body in `WizardForm.jsx` is now gated on `draftLoaded`, mirroring the Confirm screen's existing gate: while `getDraft()` is in flight the step body renders the "Loading your week…" spinner (`data-testid="wizard-v2-step-loading"`, `role="status"`) instead of editable inputs. This closes both symptoms the audit's BUG-101 documented — (1) a value typed pre-resolve was overwritten by the late `setFormData((prev) => ({ ...prev, ...fields }))` merge (~`WizardForm.jsx:297`); (2) an already-submitted week accepted input for ~1s before the `setScreen('submitted')` interstitial flipped and discarded it. Because the same `getDraft` resolution that flips `draftLoaded=true` also sets `screen='submitted'` in one React batch, a submitted week transitions loading→interstitial with no editable-input window. **Fix location:** the `screen === 'step' && (draftLoaded ? … : <Loader2/>)` block in [`src/components/wizard/WizardForm.jsx`](../src/components/wizard/WizardForm.jsx). Two step-gate unit tests added to `WizardFormV2ConfirmScreen.test.jsx` (loading→step render; submitted-week → interstitial, step body never rendered); one test scoped (`WizardFormSaveStatus.test.jsx` ARIA query now targets the autosave region's `aria-atomic` container, since the new loading spinner adds a second `role="status"` during the load window — coverage unchanged). Regression smoke: `scripts/verification/smoke-bug101-wizard-draft-gate.mjs`. Finding source: `docs/audits/webapp-ux/agencytrack-webapp-ux-followup-2026-07-04.md` § BUG-101.
 
@@ -21,7 +21,7 @@ Both surfaced on the BUG-101 fix PR and dispositioned **OUT-OF-SCOPE** (valid, b
 
 ---
 
-## Goals v3 closure sweep — two items resolved, two banked (2026-07-04, PR #TBD goals-v3-closure-sweep)
+## Goals v3 closure sweep — two items resolved, two banked (2026-07-04, PR #792 `41935ef8` goals-v3-closure-sweep)
 
 **RESOLVED — two unreconciled MDRT constants.** `src/constants/mdrt.js` (`MDRT_THRESHOLD = 500000`, legacy flat) and `src/config/mdrtThresholds/2026.js` (`MDRT_THRESHOLDS_2026`, three-tier premium method, landed via #643) coexisted with no shared source. All consumers (`AgentReportDocument.jsx`, `HeroCard.jsx`, `HeroCard.test.jsx`) migrated to `MDRT_THRESHOLDS_2026.mdrt` (688,800); `src/constants/mdrt.js` deleted; zero repo-wide references remain.
 
@@ -2031,7 +2031,7 @@ the covered week). Reads are the existing two-fetch pair × 8 weeks (N×`getWeek
 
 **Why LOW.** The shipped fix is correct and complete for the bug (legible, non-overlapping labels). MDRT progress is already tracked in the Career/MDRT surface, so nothing is lost — this is an optional enhancement, not a gap. Decide alongside any broader hero/MDRT design pass.
 
-**Cross-reference (updated PR #TBD goals-v3-closure-sweep, 2026-07-04):** `src/components/dashboard/HomeV2/HeroCard.jsx` (`mdrtOnScale` gate); `src/config/mdrtThresholds/2026.js` (`MDRT_THRESHOLDS_2026.mdrt = 688800`) — supersedes the retired `src/constants/mdrt.js` (`MDRT_THRESHOLD = 500000`, deleted).
+**Cross-reference (updated PR #792 goals-v3-closure-sweep, 2026-07-04):** `src/components/dashboard/HomeV2/HeroCard.jsx` (`mdrtOnScale` gate); `src/config/mdrtThresholds/2026.js` (`MDRT_THRESHOLDS_2026.mdrt = 688800`) — supersedes the retired `src/constants/mdrt.js` (`MDRT_THRESHOLD = 500000`, deleted).
 
 ---
 
