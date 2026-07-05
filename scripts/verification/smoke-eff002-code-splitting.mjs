@@ -219,14 +219,22 @@ async function slowNetworkLeg(browser, theme, role) {
     await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 400, downloadThroughput: (50 * 1024) / 8, uploadThroughput: (20 * 1024) / 8 }); // ~Slow-3G
 
     const nav = page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
-    const sawFallback = await page.waitForSelector('[data-testid="state-loading"], [data-testid="tab-loading"]', { timeout: 15_000 }).then(() => true).catch(() => false);
+    const sawFallback = await page.waitForSelector('[data-testid="state-loading"], [data-testid="tab-loading"]', { timeout: 25_000 }).then(() => true).catch(() => false);
     if (sawFallback) await page.screenshot({ path: join(SS_DIR, `suspense-fallback-${role.label}-${theme}-slow3g.png`), fullPage: false });
     await nav;
+    // "Resolved" = the lazy dashboard's Suspense boundary resolved and the shell
+    // MOUNTED (primary nav appears), NOT that all data finished loading. A cold
+    // data-heavy manager dashboard does many Firestore round-trips that, under a
+    // Slow-3G throttle, can take far longer than the chunk fetch — waiting on full
+    // body content would measure Firebase latency, not the code-split. Nav-mount is
+    // the true "Suspense resolved / no white screen" signal.
     const resolved = await page.waitForFunction(() => {
       const loading = document.querySelector('[data-testid="state-loading"], [data-testid="tab-loading"]');
       const stillLoading = loading && loading.offsetParent !== null;
-      return !stillLoading && document.body.textContent.replace(/\s+/g, '').length > 300;
-    }, { timeout: 40_000 }).then(() => true).catch(() => false);
+      const mounted = document.querySelector('nav[aria-label="Primary navigation"]') !== null
+        || document.body.textContent.replace(/\s+/g, '').length > 300;
+      return !stillLoading && mounted;
+    }, { timeout: 60_000 }).then(() => true).catch(() => false);
 
     await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 0, downloadThroughput: -1, uploadThroughput: -1 });
     rec(`slow-fallback-seen${tag}`, sawFallback, sawFallback ? 'themed Suspense fallback shown during throttled chunk fetch (screenshot saved)' : 'fallback not observed (chunk loaded from cache faster than expected)');
