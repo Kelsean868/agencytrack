@@ -80,6 +80,7 @@ vi.mock('../../../utils/formatters', () => ({
 
 vi.mock('../../../utils/dateHelpers', () => ({
   getMostRecentSunday: () => '2026-06-01',
+  weekNumber: () => 23,
 }));
 
 vi.mock('../../../utils/extractFields', () => ({

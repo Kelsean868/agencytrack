@@ -8,6 +8,7 @@ import { bucketActualsByMonth, ytdDelta as computeYtdDelta } from '../../../lib/
 import { getWeeklyPlan, commitWeeklyPlan, deleteWeeklyPlan } from '../../../services/weeklyPlanService';
 import { getDailyEntriesForWeek } from '../../../services/dailyActivityService';
 import { getRecentSundays } from '../../../utils/validators';
+import { weekNumber } from '../../../utils/dateHelpers';
 import PlanAnchorStrip from './PlanAnchorStrip';
 import StepRail from './StepRail';
 import PlanCascade from './PlanCascade';
@@ -63,9 +64,8 @@ export default function GamePlanScreen({
   const uid = user?.uid;
   const now = new Date();
   const year = now.getFullYear();
-  // Week-of-year label (mirrors AgentDashboard's topbar crumb math).
-  const yearStart = new Date(year, 0, 1);
-  const weekNum = Math.ceil(((now - yearStart) / 86400000 + yearStart.getDay() + 1) / 7);
+  // Week-of-year label — shared floored, Sunday-anchored helper (BUG-102).
+  const weekNum = weekNumber(now);
   const currentMonthIndex = now.getMonth();
   // This week's Sunday (YYYY-MM-DD) — the weeklyPlans doc-ID date segment.
   const weekStart = getRecentSundays(1)[0];

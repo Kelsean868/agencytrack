@@ -10,6 +10,7 @@ import { createEmptyDailyEntry, getSundayOf } from '../../lib/schema/dailyActivi
 import { getDraft } from '../../services/submissionService';
 import { aggregateCurrentWeekDaily } from '../../services/loggingModeService';
 import { getTodayTT } from '../../utils/dateInputs';
+import { weekNumber } from '../../utils/dateHelpers';
 import {
   computeLumpsumCredit,
   computeLumpsumCommission,
@@ -36,13 +37,6 @@ import { getCompanyMinimums } from '../../services/goalsService';
 function weekdayLong(dateStr) {
   const d = new Date(dateStr + 'T12:00:00Z');
   return d.toLocaleDateString('en-TT', { weekday: 'long' }).toUpperCase();
-}
-
-function isoWeekNumber(dateStr) {
-  const d = new Date(dateStr + 'T12:00:00Z');
-  const start = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  const diffDays = Math.floor((d - start) / 86400000);
-  return Math.ceil((diffDays + start.getUTCDay() + 1) / 7);
 }
 
 function formatDateShort(dateStr) {
@@ -720,7 +714,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
               )}
             </div>
             <p className="text-[11px] font-mono uppercase tracking-widest text-ink-muted mt-0.5">
-              {weekdayLong(today)} · WK {isoWeekNumber(today)}
+              {weekdayLong(today)} · WK {weekNumber(today)}
             </p>
           </div>
           <button
@@ -1112,7 +1106,7 @@ export default function DailyCaptureV2({ onClose, onReviewSubmit }) {
               <>
                 Save today
                 <span className="text-[10px] font-mono uppercase tracking-widest opacity-80">
-                  · Rolls into WK {isoWeekNumber(today)}
+                  · Rolls into WK {weekNumber(today)}
                 </span>
               </>
             )}
