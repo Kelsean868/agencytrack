@@ -50,6 +50,7 @@ Behind it sit three clusters:
 ---
 
 **EFF-011 — `@react-pdf/renderer` is statically imported into the entry chunk**
+- **Status:** ✅ **ADDRESSED — PR #TBD** (Phase-1 render/read-hygiene). Dynamic-imported `@react-pdf/renderer` + `AgentReportDocument` inside `generateAgentPDF`. **Measured:** entry chunk **1,133.38 → 644.85 kB gzip (−488.5 kB / −43%)**; react-pdf is now a lazy 481 kB-gzip chunk loaded only on first export.
 - **Severity:** High (subset of EFF-002, called out because it is the single heaviest dependency) · **Confidence:** Confirmed.
 - **Location:** `src/services/exportService.js:2` (`import { pdf } from '@react-pdf/renderer'`) and `src/components/profile/AgentReportDocument.jsx`; `exportService` is imported by the dashboards, so the PDF engine is eager.
 - **Impact (bytes):** `@react-pdf/renderer` is one of the largest React libraries in the ecosystem (hundreds of KB). It is used only when a manager clicks "Download report" — a rare, interactive, non-first-paint action. Shipping it eagerly to every agent on every load is pure waste.
@@ -93,6 +94,7 @@ Behind it sit three clusters:
 ---
 
 **EFF-005 — `getPersistencyMapForYear` is N+1: one query per agent** *(confirms prior PERF-005)*
+- **Status:** ✅ **ADDRESSED — PR #TBD** (Phase-1 render/read-hygiene). Batched to `where('agentId','in', chunk≤30) + where('year','==', y)`, mirroring `getSettlementsForUnit`; equality-class filters so no composite index needed. Return shape + `isE3Doc` filter preserved; per-batch skip-on-denial.
 - **Severity:** Medium · **Confidence:** Confirmed.
 - **Location:** `src/services/persistencyService.js:176-189` (`await Promise.all(agents.map(... one getDocs per agent ...))`).
 - **Impact (reads):** One `persistency` query per agent (roster size = query count) on every branch CSV export / year rollup. For a 50-agent branch that's 50 queries where 2 batched `in` queries would suffice.
@@ -102,6 +104,7 @@ Behind it sit three clusters:
 ---
 
 **EFF-007 — `useTeamRoster` fetches goals with one `getDoc` per member** *(confirms prior PERF-005 roster arm)*
+- **Status:** ✅ **ADDRESSED — PR #TBD** (Phase-1 render/read-hygiene). New `getGoalsForAgents` in `goalsService` (batched `where(documentId(),'in', chunk≤30)`) replaces the per-member fan-out in `useTeamRoster`; reader kept in the service layer per convention. `goalsByAgent` Map shape unchanged.
 - **Severity:** Medium · **Confidence:** Confirmed.
 - **Location:** `src/hooks/useTeamRoster.js:84` (`await Promise.all(agentIds.map((id) => getGoals(tenantId, id)...))`); `getGoals` is a single-doc get (`goalsService.js:11`).
 - **Impact (reads):** N per-member doc-gets on every team-roster load (and on every period change, since the effect re-runs on `grain`/`value`). TA/PA see the whole tenant.
@@ -143,6 +146,7 @@ Behind it sit three clusters:
 ---
 
 **EFF-001 — AuthContext `value` object is unmemoized → every consumer re-renders on any auth-state change**
+- **Status:** ✅ **ADDRESSED — PR #TBD** (Phase-1 render/read-hygiene). `value` wrapped in `useMemo`; `refreshProfile` moved to `useCallback` with deps `[user, tenantId]` (stable but never stale). Context-split option deliberately NOT taken (out of scope).
 - **Severity:** High · **Confidence:** Confirmed (Needs-verification for exact render-count via Profiler).
 - **Location:** `src/context/AuthContext.jsx:152` — `const value = { user, userProfile, role, tenantId, branchId, loading, isAuthenticated: !!user, refreshProfile };` built inline, no `useMemo`; provided at `:155`.
 - **Impact (renders):** `AuthProvider` wraps the entire app and nearly every component calls `useAuth()`. Because `value` is a fresh object literal on every `AuthProvider` render, any state change in the provider (`setUserProfile` via `refreshProfile`, `setLoading`, the auth listener firing) propagates a new context reference and **re-renders every consumer in the tree** — including both full dashboards and all their children — even when the fields a given consumer reads are unchanged. `refreshProfile` is also a new function identity each render, so consumers that depend on it in effects/callbacks churn.
@@ -152,6 +156,7 @@ Behind it sit three clusters:
 ---
 
 **EFF-009 — `new Date()` created inline as a prop/arg on every dashboard render** *(confirms prior PERF-004, extended)*
+- **Status:** ✅ **ADDRESSED — PR #TBD** (Phase-1 render/read-hygiene). Stable `const now = useMemo(() => new Date(), [])` in `ManagerDashboard`, `AgentDashboard`, and `useBranchOverview`. (Actual Agent prop site was `AgentDashboard.jsx:692`, not `:693`.)
 - **Severity:** Medium · **Confidence:** Confirmed.
 - **Location:** `src/components/dashboard/ManagerDashboard.jsx:469` and `src/components/dashboard/AgentDashboard.jsx:693` (inline `new Date()` props); also `AgentDashboard.jsx:308` and `useBranchOverview.js:171` pass `new Date()` into `buildActivityEvents`/`buildManagerActivityEvents` memo inputs.
 - **Impact (renders):** A fresh `Date` reference each render defeats `React.memo` / `useMemo` on the receiving child or hook — award panels and activity-event builders recompute every parent render even when nothing changed.
@@ -210,6 +215,7 @@ Behind it sit three clusters:
 ---
 
 **EFF-018 — `CashFlowChart` recomputes its dataset unmemoized** *(confirms prior PERF-008)*
+- **Status:** ✅ **ADDRESSED — PR #TBD** (Phase-1 render/read-hygiene). `buildStackedData` wrapped in `useMemo(..., [totalApi, modeMix, commissionRate])`.
 - **Severity:** Low · **Confidence:** Confirmed.
 - **Location:** `src/components/goals/CommissionPlayground/components/CashFlowChart.jsx:50` (`buildStackedData(...)` called in render body).
 - **Impact:** Recompute each render inside the interactive playground; small dataset and `isAnimationActive={false}` bound the cost.
@@ -243,7 +249,7 @@ Behind it sit three clusters:
 
 ## 5. Phased remediation plan
 
-**Phase 1 — Zero-risk render/read hygiene (S, this week):** EFF-001, EFF-009, EFF-005, EFF-007, EFF-018, EFF-011. All small, high-confidence, no architectural change. EFF-011 is a bundle win that needs no split infrastructure.
+**Phase 1 — Zero-risk render/read hygiene (S, this week):** ✅ **SHIPPED — PR #TBD (2026-07-05).** EFF-001, EFF-009, EFF-005, EFF-007, EFF-018, EFF-011 — all six landed in one frontend-only PR (EFF-001 isolated as the first commit for independent revert). All small, high-confidence, no architectural change. EFF-011 removed 481 kB gzip (@react-pdf) from the entry chunk (measured: 1,133.38 → 644.85 kB gzip entry).
 
 **Phase 2 — Bundle split (M):** EFF-002 (lazy dashboards + lazy manager tabs), then EFF-013 (Recharts off the agent critical path). Do EFF-011 first so the PDF chunk is already isolated. Measure the new chunk report; target agent-path gzip well under ~400 KB.
 
