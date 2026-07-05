@@ -239,6 +239,11 @@ async function main() {
     const db = testEnv.authenticatedContext('ta-caller', { role: 'tenant_admin', tenantId: TENANT_ID }).firestore();
     await assertSucceeds(getDoc(userRef(db, TA_NOBRANCH)));
   });
+  await t('17. Branch-A kiosk get NON-EXISTENT submission → DENY (resource!=null guard)', async () => {
+    // A missing-doc get must deny cleanly (resource != null short-circuits) rather
+    // than throw an eval error on resource.data.branchId.
+    await assertFails(getDoc(subRef(kioskA(), 'agent-a_2099-01-04')));
+  });
 
   console.log(`\n${passed} passed, ${failed} failed.`);
   await testEnv.cleanup();

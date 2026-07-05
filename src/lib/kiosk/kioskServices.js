@@ -10,6 +10,10 @@ import {
 // list rule denies any query that isn't constrained to the kiosk's own branch.
 // Served by the existing (branchId, status, weekStarting) composite index.
 export async function getKioskYTDSubmissions(tenantId, branchId) {
+  // Defensive: a falsy branchId in where('branchId','==',…) throws a FirebaseError
+  // that would reject the whole KioskShell load. branchId is always present from
+  // the validated kiosk token, but degrade to [] rather than crash if it isn't.
+  if (!tenantId || !branchId) return [];
   const year = new Date().getFullYear();
   const q = query(
     collection(kioskDb, `tenants/${tenantId}/submissions`),
