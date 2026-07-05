@@ -223,6 +223,18 @@ Also re-ran the PRE-MERGE `smoke-plan-suggestions-b3.mjs` against production for
 
 ---
 
+## EFF-004 follow-ups — MDRT badge backfill · threshold reconcile · YTD year-attribution (banked 2026-07-05)
+
+**Origin:** EFF-004 (PR #805, `9dcae1a3`) fixed `onSubmissionWrite`'s YTD reducer to count v2 `newBusiness.api` via the canonical `extractTotalProductionCredit`. **Deploy state:** merged; `firebase deploy --only functions` pending as of banking (a live `tatillife_smoke` smoke confirmed the fix is not yet live). Three adjacent items banked (out of #805's scope per Rule 7):
+
+1. **MDRT badge backfill (LOW — self-healing).** v2 agents who should already hold `mdrt_qualified`/`mdrt_pace` are missing them (the buggy reducer computed YTD=0). Badges are add-only and the YTD scan re-runs on every submission, so the fix **self-heals on each agent's next submission post-deploy**. Decision: accept self-heal (fine for pilot) vs a one-shot backfill (re-trigger `onSubmissionWrite`-equivalent for active v2 agents). No autonomous backfill was run. **Falsification:** overturned if an agent who won't submit again this year needs the badge before year-end.
+
+2. **Server MDRT badge threshold vs client (MEDIUM — money/eligibility).** The server badge thresholds are the legacy flat **500,000 / 250,000** (`functions/index.js` `onSubmissionWrite`), while the client MDRT surfaces use `MDRT_THRESHOLDS_2026.mdrt = 688,800` (PR #792). After EFF-004, `mdrt_qualified` fires at 500k while HeroCard shows the MDRT marker at 688,800 — a threshold inconsistency. Reconciling is a money/eligibility decision. functions/ change → human-merge + deploy.
+
+3. **YTD year-attribution (MEDIUM — money-math; from Gemini HIGH on #805).** The YTD filter uses `thisYear = new Date().getFullYear()` (server UTC) + `weekStarting.startsWith(thisYear)`. CFs run UTC; Trinidad is UTC−4, so a ~4h year-rollover window mis-attributes the YTD year, and a late-January submission for a December `weekStarting` is attributed to the wrong year. Fix: derive the YTD year from the submission's `weekStarting` (or a TT-aware clock), not the server clock — a Dec-`weekStarting` submission entered in January should count toward the *prior* year's MDRT. Pre-existing line; banked per Rule 9 (not unilaterally extended onto the scope-locked #805). If taken, update the `onSubmissionWrite.test.js` trigger-date fixture to match. functions/ change → human-merge + deploy.
+
+---
+
 ## EFF-002 Phase 2 — per-manager-tab code-splitting + Rollup `manualChunks` vendor/icon grouping (banked 2026-07-05, MEDIUM)
 
 **Origin:** EFF-002 **Phase 1** (lazy the 3 role dashboards behind `<Suspense>`) SHIPPED via PR #804 (`2b13bdd4`, 2026-07-05) — entry chunk **644.85 → 221.80 kB gzip (−65.6%)**, agent never fetches the manager/tenant-admin chunks (adversarial smoke 66/66, incl. the chunk-load error boundary safety FU). **Phase 2** (lazy-splitting the heavy `ManagerDashboard` tab panels) was implemented + verified, then **reverted before ship** and banked here.
