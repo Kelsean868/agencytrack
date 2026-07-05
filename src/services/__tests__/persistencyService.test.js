@@ -384,39 +384,48 @@ describe('getPersistencyMapForYear', () => {
       { id: 'm1', role: 'unit_manager',   branchId: 'b1' }, // not an agent
       { id: 'a3', role: 'agent',          branchId: 'b1' },
     ]);
-    mockGetDocs
-      .mockResolvedValueOnce({
-        docs: [
-          { data: () => ({ ...E3_INPUTS, agentId: 'a1', year: 2026, monthKey: '2026-01' }) },
-          { data: () => ({ ...E3_INPUTS, agentId: 'a1', year: 2026, monthKey: '2026-02' }) },
-          { data: () => ({                  agentId: 'a1', year: 2026 }) }, // pre-E3 — filtered
-        ],
-      })
-      .mockResolvedValueOnce({ docs: [] });
+    // EFF-005: a1 + a3 (both branch b1 agents) are fetched in a single
+    // `agentId in [...]` batch, so getDocs is called once and returns all
+    // matching docs across the batch. a3 has none.
+    mockGetDocs.mockResolvedValueOnce({
+      docs: [
+        { data: () => ({ ...E3_INPUTS, agentId: 'a1', year: 2026, monthKey: '2026-01' }) },
+        { data: () => ({ ...E3_INPUTS, agentId: 'a1', year: 2026, monthKey: '2026-02' }) },
+        { data: () => ({                  agentId: 'a1', year: 2026 }) }, // pre-E3 — filtered
+      ],
+    });
 
     const map = await getPersistencyMapForYear('tenant1', 2026, { branchId: 'b1' });
 
-    // Two agents queried (a1, a3), only a1 had records.
-    expect(mockGetDocs).toHaveBeenCalledTimes(2);
+    // a1 + a3 fetched in one ≤30 batch; only a1 had records.
+    expect(mockGetDocs).toHaveBeenCalledTimes(1);
     expect(Object.keys(map)).toEqual(['a1']);
     expect(map.a1).toHaveLength(2);
   });
 
-  it('silently skips agents whose query is rejected by rules', async () => {
+  it('silently skips a batch whose query is rejected by rules', async () => {
+    // EFF-005: 31 branch-b1 agents span two ≤30 chunks. The first batch's query
+    // is rejected (rules); the second resolves. Each batch is caught
+    // independently, so the rejected batch is skipped silently while the other
+    // still returns — the batch-granularity analog of the prior per-agent skip.
+    const batch1Agents = Array.from({ length: 30 }, (_, i) => ({
+      id: `x${i}`, role: 'agent', branchId: 'b1',
+    }));
     getTenantUsers.mockResolvedValueOnce([
-      { id: 'a1', role: 'agent', branchId: 'b1' },
+      ...batch1Agents,
       { id: 'a2', role: 'agent', branchId: 'b1' },
     ]);
     mockGetDocs
-      .mockRejectedValueOnce(new Error('PERMISSION_DENIED'))
-      .mockResolvedValueOnce({
+      .mockRejectedValueOnce(new Error('PERMISSION_DENIED')) // batch 1 (x0..x29)
+      .mockResolvedValueOnce({                                // batch 2 (a2)
         docs: [
           { data: () => ({ ...E3_INPUTS, agentId: 'a2', year: 2026, monthKey: '2026-01' }) },
         ],
       });
 
     const map = await getPersistencyMapForYear('tenant1', 2026, { branchId: 'b1' });
-    expect(map.a1).toBeUndefined();
+    expect(map.x0).toBeUndefined();
+    expect(Object.keys(map)).toEqual(['a2']);
     expect(map.a2).toHaveLength(1);
   });
 });
