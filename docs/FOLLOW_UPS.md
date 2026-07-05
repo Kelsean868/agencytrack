@@ -241,6 +241,18 @@ Also re-ran the PRE-MERGE `smoke-plan-suggestions-b3.mjs` against production for
 
 ---
 
+## EFF-002 — chunk-load error boundary around the lazy `<Suspense>` (banked 2026-07-05, MEDIUM — both bots on PR #804)
+
+**Origin:** PR #804 (EFF-002 Phase 1, HELD). **Both** bot reviewers (Gemini + CodeRabbit) independently flagged the same gap: `App.jsx`'s `<Suspense>` around the three `React.lazy()` dashboards has **no error boundary**. If a lazy `import()` rejects — the classic case is a returning user whose cached `index.html` requests a chunk hash that no longer exists after a redeploy, or a mid-load network drop (`ChunkLoadError` / "Failed to fetch dynamically imported module") — the rejection propagates uncaught and **crashes the React tree to a blank page**. Suspense handles the *loading* state; it does NOT catch a *failed* import. This is a NEW failure mode introduced by the code-split (before it, there were no route chunks to fail).
+
+**Why banked, not fixed in #804:** GOVERNING RULE 6 of the orchestrator brief scoped Lane 1 to **"code-splitting only (lazy + Suspense)"** and directed CC to **bank scope-expanding bot suggestions**; an error boundary is a new component/pattern beyond lazy+Suspense (Methodology Rule 1 — surface before new patterns, not possible in the autonomous run). Because #804 is HELD for human merge, this is a natural pre-merge (or fast-follow) addition at the dispatcher's call.
+
+**Scope to resolve (small):** add a minimal `ChunkErrorBoundary` (class component with `componentDidCatch` / `getDerivedStateFromError`, or `react-error-boundary`) wrapping the Suspense-wrapped dashboard subtree in `AppRoot`. Fallback = a themed card (reuse the `LoadingScreen`/`ProvisioningScreen` treatment) with a **"Reload"** button (`window.location.reload()`) — a hard reload re-fetches the current `index.html` + valid chunk hashes, which resolves the stale-hash case. Keep the existing provisioning + loading behavior intact. Extend `scripts/verification/smoke-eff002-code-splitting.mjs` with a leg that aborts a dashboard chunk request (route interception) and asserts the boundary's retry fallback renders instead of a blank page.
+
+**Falsification:** overturned only if a chunk-load failure is shown to already degrade gracefully — it does not (no boundary exists today; a rejected `import()` in `AppRoot` is uncaught). Once an error boundary + a chunk-abort smoke leg are in place and green, this closes.
+
+---
+
 ## PR-B3 fast-follow — notify-on-send ping for plan suggestions (banked 2026-07-04, LOW — K10b precedent)
 
 **Origin:** PR-B3 deliberately shipped NO notification ping when a manager sends a plan suggestion (locked design, K10b precedent — the collection is the record; the agent sees unread emphasis on their next hub visit). A push/in-app notification on send would shorten the feedback loop.
