@@ -266,6 +266,13 @@ describe('DailyCaptureV2', () => {
     // Should contain 7 day buttons (Sun=01 through Sat=07)
     const dayButtons = strip.querySelectorAll('button');
     expect(dayButtons).toHaveLength(7);
+    // BUG-103: the grid must hold all 7 on one row. jsdom has no layout engine
+    // (can't measure wrap), so guard the grid template directly — grid-cols-7,
+    // never grid-cols-6 (which wrapped the 7th pill). This is day-independent
+    // (the pixel-level single-row smoke can only run on a non-Sunday, when the
+    // strip renders at all).
+    expect(strip.className).toContain('grid-cols-7');
+    expect(strip.className).not.toContain('grid-cols-6');
     vi.useRealTimers();
   });
 
