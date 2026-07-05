@@ -1406,6 +1406,11 @@ h1, h2, h3, h4 {
 .shell-content {
   flex: 1;
   overflow-y: auto;
+  /* Block scroll chaining to the viewport so the browser/PWA's native
+   * pull-to-refresh never fires from inner-container overscroll — the app's
+   * own usePullToRefresh hook is the single refresh gesture (mobile-nav
+   * PTR over-trigger fix). */
+  overscroll-behavior-y: contain;
   padding: 24px 28px;
 }
 

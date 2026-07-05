@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 
-const PULL_THRESHOLD = 72; // px downward drag from scroll-top to trigger refresh
+// px downward drag from scroll-top to trigger refresh. Raised 72 → 110 (mobile-nav
+// PTR over-trigger fix): 72px fired during ordinary top-of-list touch interactions;
+// ~110px (≈1.5×) requires a deliberate sustained pull while staying reachable in a
+// single thumb stroke on a 380px-wide viewport.
+const PULL_THRESHOLD = 110;
 
 /**
  * Attaches touch-based pull-to-refresh to an element ref.
