@@ -202,10 +202,14 @@ async function runTheme(browser, theme) {
       : fail(`${theme}-more-close-x`, `gone=${gone} focus=${focusId}`);
   } catch (e) { fail(`${theme}-more-close-x`, e.message); }
 
-  // 6 — backdrop tap
+  // 6 — backdrop tap. dispatchEvent('click') targets the backdrop element
+  // directly — a coordinate mouse click passes through to whatever occupies
+  // the point after the drawer unmounts mid-gesture (caught live: (190,80)
+  // landed on the TopBar's Sunday "Review week" CTA and opened DailyCaptureV2,
+  // which early-returns before the Shell and removes the bottom nav).
   try {
     await openMore();
-    await page.locator('[data-testid="nav-drawer-backdrop"]').click({ position: { x: 190, y: 80 }, force: true });
+    await page.locator('[data-testid="nav-drawer-backdrop"]').dispatchEvent('click');
     await page.waitForTimeout(400);
     (await drawerGone())
       ? pass(`${theme}-more-close-backdrop`, 'backdrop tap dismisses')
@@ -226,11 +230,12 @@ async function runTheme(browser, theme) {
 
   // ── Legs 8–9: plus/FAB (Create → Quick-Add sheet) reachable + dismissable ──
   const quickAdd = '[role="dialog"][aria-label="Quick add"]';
-  // 8 — open + backdrop tap (backdrop has no testid; tap top of screen above the sheet)
+  // 8 — open + backdrop tap (backdrop has no testid; dispatch on the element —
+  // see the pass-through note on the More backdrop leg above)
   try {
     await page.locator('[data-testid="bottomnav-create"]').click();
     await page.waitForSelector(quickAdd, { state: 'visible', timeout: 5000 });
-    await page.mouse.click(190, 60);
+    await page.locator('div.fixed.inset-0.z-40').first().dispatchEvent('click');
     await page.waitForTimeout(400);
     (await page.locator(quickAdd).isHidden().catch(() => true))
       ? pass(`${theme}-fab-close-backdrop`, 'Quick-Add opens from ＋ and backdrop tap dismisses')
