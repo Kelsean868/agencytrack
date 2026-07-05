@@ -156,7 +156,7 @@ Refreshed backlog: `docs/audits/mixed-run-2-2026-07-05/NEXT-WINDOW-BACKLOG.md`. 
 - **EFF-006 Option A (cadence) not shipped** — I parked the whole item rather than ship the safe cadence cut, because even the cadence value is a (mild) freshness decision the brief tied to the dirty-flag shape; a dispatcher could reasonably say "just ship Option A."
 
 ### 6. Recommended merge + deploy order + owner decisions
-1. **Merge #807 (L1-1) first** → **then #808 (L1-2)** (stacked; GitHub auto-retargets #808 to main on #807 merge). Both are correctness-first.
+1. **Merge #807 (L1-1) first** → **then #808 (L1-2)** (stacked; GitHub auto-retargets #808 to main on #807 merge). Both are correctness-first. **⚠ #808 stacked-CI caveat:** `.github/workflows/ci.yml` triggers `on: pull_request: branches: [main]`, so while #808's base is `fix/mdrt-tenure-floor` its `functions-tests` + `lint-and-build` checks **do not run** (only Gemini + Vercel did). After #807 merges and #808 auto-retargets to `main`, those checks fire — **poll them green on #808 before merging it** (its functions changes were locally verified: functions jest 373/373).
 2. **One `firebase deploy --only functions`** after both merge (covers L1-1 + L1-2). Then re-run the `tatillife_smoke` MDRT smoke to confirm `mdrt_qualified` @ 688,800 + `tenure_floor_met` appear.
 3. **Owner decisions:**
    - **Confirm the floor-marker KEY `tenure_floor_met`** (or rename before merge — permanent data).
