@@ -6,10 +6,18 @@ import {
   getCurrentMonthKey, getPrevMonthKey, isWithinEditWindow,
 } from '../../services/agentOfMonthService';
 
-export async function getKioskYTDSubmissions(tenantId) {
+// FU SEC-012: branchId filter is required — the branch-scoped kiosk submissions
+// list rule denies any query that isn't constrained to the kiosk's own branch.
+// Served by the existing (branchId, status, weekStarting) composite index.
+export async function getKioskYTDSubmissions(tenantId, branchId) {
+  // Defensive: a falsy branchId in where('branchId','==',…) throws a FirebaseError
+  // that would reject the whole KioskShell load. branchId is always present from
+  // the validated kiosk token, but degrade to [] rather than crash if it isn't.
+  if (!tenantId || !branchId) return [];
   const year = new Date().getFullYear();
   const q = query(
     collection(kioskDb, `tenants/${tenantId}/submissions`),
+    where('branchId', '==', branchId),
     where('weekStarting', '>=', `${year}-01-01`),
     where('weekStarting', '<=', `${year}-12-31`),
     where('status', '==', 'submitted'),

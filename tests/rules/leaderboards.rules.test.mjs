@@ -154,8 +154,11 @@ async function main() {
     await assertSucceeds(getDoc(lbRef(db, BRANCH_SOUTH)));
   });
 
-  await t('6. Kiosk reads → ALLOW', async () => {
-    const db = testEnv.authenticatedContext(KIOSK_ID, authToken('kiosk')).firestore();
+  await t('6. Kiosk reads OWN branch → ALLOW', async () => {
+    // SEC-012: kiosk reads are branch-scoped — token must carry a matching branchId.
+    const db = testEnv.authenticatedContext(
+      KIOSK_ID, { role: 'kiosk', tenantId: TENANT_ID, branchId: BRANCH_SOUTH }
+    ).firestore();
     await assertSucceeds(getDoc(lbRef(db, BRANCH_SOUTH)));
   });
 

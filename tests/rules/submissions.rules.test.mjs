@@ -212,8 +212,10 @@ async function main() {
     await assertFails(getDoc(subRef(db, SUB_AGENT2_ID)));
   });
 
-  await t('6. Kiosk reads submission → ALLOW', async () => {
-    const db = testEnv.authenticatedContext(KIOSK_ID, authToken('kiosk')).firestore();
+  await t('6. Kiosk reads OWN-branch submission → ALLOW', async () => {
+    // SEC-012: kiosk reads are branch-scoped — token branchId must match the doc
+    // (SUB_DRAFT_ID is branchId 'branch-a').
+    const db = testEnv.authenticatedContext(KIOSK_ID, authToken('kiosk', TENANT_ID, { branchId: 'branch-a' })).firestore();
     await assertSucceeds(getDoc(subRef(db, SUB_DRAFT_ID)));
   });
 

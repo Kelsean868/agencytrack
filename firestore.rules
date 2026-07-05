@@ -51,6 +51,13 @@ service cloud.firestore {
       return getRole() == 'kiosk';
     }
 
+    // FU SEC-012: kiosk reads are branch-scoped at each call site by pairing
+    // kioskCanRead(tenantId) with an INLINE branch check
+    // (branch == request.auth.token.branchId), mirroring the BM branch arms.
+    // Inlined (not a helper taking resource.data.branchId) so the leading
+    // kioskCanRead() short-circuits `&&` to false for non-kiosk callers before
+    // any resource.data.branchId deref — no eager-eval error on branchless docs.
+    // The kiosk token's branchId claim is minted by validateKioskToken.
     function kioskCanRead(tenantId) {
       return isSignedIn() && isKiosk() && getTenantId() == tenantId;
     }
@@ -140,7 +147,7 @@ service cloud.firestore {
         //
         // get: agents/kiosk read own doc; managers read any doc except unit_manager
         //      who can only read own doc or docs in their unit.
-        allow get: if kioskCanRead(tenantId)
+        allow get: if (kioskCanRead(tenantId) && resource != null && resource.data.branchId == request.auth.token.branchId)
           || (isSignedIn() && request.auth.uid == userId)
           || (canManage(tenantId) && (
                getRole() != 'unit_manager'
@@ -282,7 +289,7 @@ service cloud.firestore {
         // oracle; `getTenantId() == tenantId` preserves tenant isolation (mirrors
         // canAccessOwn) so a cross-tenant agent can't probe this tenant's paths.
         // `||` short-circuits before the deref when this arm is true.
-        allow get: if kioskCanRead(tenantId)
+        allow get: if (kioskCanRead(tenantId) && resource != null && resource.data.branchId == request.auth.token.branchId)
           || (resource == null && isSignedIn() && getTenantId() == tenantId && submissionId.split('_')[0] == request.auth.uid)
           || canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
@@ -296,7 +303,7 @@ service cloud.firestore {
         //       where('agentId','==',uid) — is allowed; any broader/unconstrained agent
         //       query is denied because the other clauses are false for an agent caller.
         //       UM unit-scope clause and BM branch-scope clause mirror the get rule.
-        allow list: if kioskCanRead(tenantId)
+        allow list: if (kioskCanRead(tenantId) && resource.data.branchId == request.auth.token.branchId)
           || canAccessOwn(tenantId, resource.data.agentId)
           || (canManage(tenantId) && (
                (getRole() != 'unit_manager' && getRole() != 'branch_manager')
@@ -851,7 +858,8 @@ service cloud.firestore {
       // E6: Agent of the Month — manager UI + kiosk display read.
       // Cloud Function writes via Admin SDK (bypasses rules).
       match /agentOfMonth/{monthKey} {
-        allow read: if canManage(tenantId) || kioskCanRead(tenantId);
+        allow read: if canManage(tenantId)
+          || (kioskCanRead(tenantId) && resource != null && resource.data.branchId == request.auth.token.branchId);
         allow write: if false;
       }
 
@@ -861,13 +869,13 @@ service cloud.firestore {
       // since branchId is not reliably on every existing token claim).
       // Managers-in-scope and kiosk also read; writes are CF-only.
       match /leaderboards/{branchId} {
-        allow get: if kioskCanRead(tenantId)
+        allow get: if (kioskCanRead(tenantId) && branchId == request.auth.token.branchId)
           || (isSignedIn() && getTenantId() == tenantId && (
                isAgent()
                  ? callerBranchId(tenantId) == branchId
                  : canManage(tenantId)
              ));
-        allow list: if kioskCanRead(tenantId)
+        allow list: if (kioskCanRead(tenantId) && branchId == request.auth.token.branchId)
           || (isSignedIn() && getTenantId() == tenantId && (
                isAgent()
                  ? callerBranchId(tenantId) == branchId

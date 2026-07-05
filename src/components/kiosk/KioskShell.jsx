@@ -47,8 +47,14 @@ export default function KioskShell({ tenantId, branchId }) {
   const fetchData = useCallback(async () => {
     try {
       const [subs, users, aom] = await Promise.all([
-        getKioskYTDSubmissions(tenantId),
-        getKioskTenantUsers(tenantId),
+        getKioskYTDSubmissions(tenantId, branchId),
+        // getKioskTenantUsers lists users, which the kiosk rules do not grant
+        // (kiosk has `get`, not `list` — the users read-split in SHAKEDOWN-002
+        // dropped the kiosk list arm). Degrade to [] so a denied users-list does
+        // not reject the whole Promise.all and blank submissions/AOM too; panels
+        // fall back to a generic "Agent" label. FU: restore a branch-scoped
+        // kiosk users-list for real names.
+        getKioskTenantUsers(tenantId).catch(() => []),
         getKioskAgentOfMonth(tenantId).catch(() => null),
       ]);
       setAllSubmissions(subs);
@@ -59,7 +65,7 @@ export default function KioskShell({ tenantId, branchId }) {
     } finally {
       setLoading(false);
     }
-  }, [tenantId]);
+  }, [tenantId, branchId]);
 
   // Initial data load + 5-minute polling.
   useEffect(() => {
