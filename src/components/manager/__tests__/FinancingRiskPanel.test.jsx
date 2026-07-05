@@ -38,6 +38,17 @@ async function selectAgent() {
   fireEvent.change(screen.getByTestId('financing-risk-agent-select'), { target: { value: 'agent-1' } });
 }
 
+// CI resource-contention flake fix (banked FOLLOW_UPS.md; 3rd timeout occurrence
+// at PR #802). Several tests here chain multiple sequential `waitFor`/`findBy`
+// drains (mount → agent-select → ledger load → notify CF → cooldown read).
+// `test-setup.js` sets RTL `asyncUtilTimeout: 5000`, which equals vitest's default
+// 5000ms per-test budget — so on a starved CI runner a single slow poll can eat
+// the whole test's time window even though every service mock resolves instantly,
+// producing a test-level timeout (observed 5022ms) rather than an assertion
+// failure. Raising the file's per-test timeout gives the async chain headroom;
+// a genuine hang still fails (at 15s). Test-only — no product or behavior change.
+vi.setConfig({ testTimeout: 15000 });
+
 describe('FinancingRiskPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks();
