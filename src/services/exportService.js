@@ -1,8 +1,9 @@
 import { createElement } from 'react';
-import { pdf } from '@react-pdf/renderer';
 import { extractFields, extractTotalProductionCredit } from '../utils/extractFields';
 import { aggregatePersistency } from '../lib/persistency/calculations';
-import { AgentReportDocument } from '../components/profile/AgentReportDocument';
+// NOTE: @react-pdf/renderer and AgentReportDocument are dynamically imported
+// inside generateAgentPDF (EFF-011) so the ~heavy PDF engine stays out of the
+// entry chunk and loads only on first report export.
 
 // ── generateAgentPDF ──────────────────────────────────────────────────────────
 // Options:
@@ -23,6 +24,14 @@ export async function generateAgentPDF({
   persistency,
   ruleset,
 }) {
+  // Load the PDF engine + document on demand (EFF-011). The handler is already
+  // async, so the only user-visible effect is a one-time chunk fetch on the
+  // first export of a session.
+  const [{ pdf }, { AgentReportDocument }] = await Promise.all([
+    import('@react-pdf/renderer'),
+    import('../components/profile/AgentReportDocument'),
+  ]);
+
   const doc = createElement(AgentReportDocument, {
     agentInfo,
     submissions,
