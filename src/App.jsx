@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { lazy, Suspense } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useAuth } from './context/AuthContext';
@@ -7,11 +7,19 @@ import { signOut } from 'firebase/auth';
 import LoginScreen from './components/auth/LoginScreen';
 import ResetPasswordHandler from './components/auth/ResetPasswordHandler';
 import EmailVerificationHandler from './components/auth/EmailVerificationHandler';
-import AgentDashboard from './components/dashboard/AgentDashboard';
-import ManagerDashboard from './components/dashboard/ManagerDashboard';
-import TenantAdminDashboard from './components/dashboard/TenantAdminDashboard';
 import ToastProvider from './components/ui/ToastProvider';
 import ReloadPrompt from './components/ui/ReloadPrompt';
+
+// EFF-002 code-splitting — the three role dashboards are the heaviest single-mount
+// surfaces in the app and were all eager-imported into the entry chunk, so every
+// agent downloaded the entire manager + tenant-admin tree before first paint.
+// lazy() splits each into its own chunk, loaded only for the matching role behind
+// the single <Suspense> in AppRoot (themed LoadingScreen fallback). An agent
+// session never fetches the ManagerDashboard / TenantAdminDashboard chunks — the
+// core goal of EFF-002. The PDF engine was already split in EFF-011 (#802).
+const AgentDashboard = lazy(() => import('./components/dashboard/AgentDashboard'));
+const ManagerDashboard = lazy(() => import('./components/dashboard/ManagerDashboard'));
+const TenantAdminDashboard = lazy(() => import('./components/dashboard/TenantAdminDashboard'));
 
 // Tenant Admin gets a dedicated dashboard surface from B5 forward — the
 // company config write path lives there. The remaining manager-tier roles
@@ -105,15 +113,27 @@ function AppRoot() {
   if (loading) return <LoadingScreen />;
   if (!isAuthenticated) return <LoginScreen />;
   if (role === 'platform_admin') return <PlatformAdminStubScreen />;
-  if (role === 'tenant_admin') return <TenantAdminDashboard />;
-  if (MANAGER_ROLES.has(role)) return <ManagerDashboard />;
-  if (role === 'agent') {
+
+  // Resolve the role's lazy dashboard, then render it behind a single <Suspense>
+  // so the chunk fetch shows the themed LoadingScreen fallback (the same treatment
+  // as the auth-loading state above). The eager pre-dashboard screens return
+  // earlier and never enter Suspense. Routing logic is unchanged from the eager
+  // version — only the render target is wrapped.
+  let dashboard;
+  if (role === 'tenant_admin') {
+    dashboard = <TenantAdminDashboard />;
+  } else if (MANAGER_ROLES.has(role)) {
+    dashboard = <ManagerDashboard />;
+  } else if (role === 'agent') {
     // Guard: userProfile null after loading means provisioning delay — show spinner
     if (!userProfile) return <ProvisioningScreen />;
-    return <AgentDashboard />;
+    dashboard = <AgentDashboard />;
+  } else {
+    // Authenticated but role not resolved — claims propagation delay on first login.
+    return <ProvisioningScreen />;
   }
-  // Authenticated but role not resolved — claims propagation delay on first login.
-  return <ProvisioningScreen />;
+
+  return <Suspense fallback={<LoadingScreen />}>{dashboard}</Suspense>;
 }
 
 export default function App() {
