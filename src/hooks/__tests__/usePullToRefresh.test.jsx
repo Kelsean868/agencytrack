@@ -66,6 +66,16 @@ describe('usePullToRefresh — threshold (72 → 110 regression pins)', () => {
     );
   });
 
+  it('fires at exactly the 110px boundary (>= semantics)', () => {
+    const onRefresh = vi.fn(() => Promise.resolve());
+    render(<Harness onRefresh={onRefresh} />);
+    const el = screen.getByTestId('scroller');
+
+    pull(el, 100, 210); // delta exactly 110 — the hook uses >=
+
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
   it('shows the pulling phase only once the 110px threshold is crossed', () => {
     const onRefresh = vi.fn(() => Promise.resolve());
     render(<Harness onRefresh={onRefresh} />);
