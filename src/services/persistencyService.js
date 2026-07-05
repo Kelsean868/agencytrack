@@ -172,19 +172,35 @@ export async function getPersistencyMapForYear(tenantId, year, opts = {}) {
   if (opts.branchId) agents = agents.filter((u) => u.branchId === opts.branchId);
   if (opts.unitId)   agents = agents.filter((u) => u.unitId   === opts.unitId);
 
+  const agentIds = agents.map((u) => u.id);
+  if (agentIds.length === 0) return {};
+
+  // EFF-005: batch the per-agent N+1 into ≤30-id `in` chunks, mirroring
+  // settlementService.getSettlementsForUnit. `agentId in [...] + year == y` is
+  // equality-class on both fields, so no composite index is required (same as
+  // the prior `agentId == x + year == y` query). Each batch is wrapped so a
+  // rules-denied read is skipped silently, preserving the prior per-agent
+  // "read denied → skip" contract at batch granularity.
   const map = {};
-  await Promise.all(agents.map(async (u) => {
+  const batches = [];
+  for (let i = 0; i < agentIds.length; i += 30) {
+    batches.push(agentIds.slice(i, i + 30));
+  }
+  await Promise.all(batches.map(async (batch) => {
     try {
       const q = query(
         collection(db, `tenants/${tenantId}/persistency`),
-        where('agentId', '==', u.id),
+        where('agentId', 'in', batch),
         where('year', '==', year),
       );
       const snap = await getDocs(q);
-      const recs = snap.docs.map((d) => d.data()).filter(isE3Doc);
-      if (recs.length > 0) map[u.id] = recs;
+      snap.docs.forEach((d) => {
+        const rec = d.data();
+        if (!isE3Doc(rec)) return;
+        (map[rec.agentId] = map[rec.agentId] ?? []).push(rec);
+      });
     } catch {
-      // Read denied by rules — skip this agent silently.
+      // Read denied by rules — skip this batch silently.
     }
   }));
   return map;
