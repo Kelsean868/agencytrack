@@ -40,6 +40,15 @@ if (!BASE || !TOKEN || !EMAIL || !PASS) {
 const results = [];
 const pass = (id, msg) => { results.push({ id, ok: true, msg }); console.log(`[${stamp()}] PASS ${id} — ${msg}`); };
 const fail = (id, msg) => { results.push({ id, ok: false, msg }); console.log(`[${stamp()}] FAIL ${id} — ${msg}`); };
+const skip = (id, msg) => { results.push({ id, ok: true, msg: `SKIP: ${msg}` }); console.log(`[${stamp()}] SKIP ${id} — ${msg}`); };
+
+// TT (UTC−4) day-of-week for the current run; the WeekStrip is intentionally
+// NOT rendered on Sundays (Daily Capture shows the Sunday review view), so the
+// pixel-level single-row check can only run on a non-Sunday. On a Sunday the
+// legs skip-not-fail (grid template is still guarded day-independently by the
+// grid-cols-7 unit test in DailyCaptureV2.test.jsx).
+const TT_NOW = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Port_of_Spain' }));
+const IS_SUNDAY = TT_NOW.getDay() === 0;
 
 async function openDailyCapture(page, { mobile }) {
   if (mobile) {
@@ -51,7 +60,6 @@ async function openDailyCapture(page, { mobile }) {
     await page.locator('[data-testid="agent-tab-daily-log"]').first().click({ timeout: 6000 });
   }
   await page.waitForSelector('[data-testid="daily-capture-v2"]', { timeout: 10000 });
-  await page.locator('[data-testid="dcv2-week-strip"]').first().waitFor({ state: 'visible', timeout: 8000 });
 }
 
 async function leg(browser, { theme, viewport, mobile }) {
@@ -67,6 +75,14 @@ async function leg(browser, { theme, viewport, mobile }) {
       await page.reload({ waitUntil: 'domcontentloaded' });
     }
     await openDailyCapture(page, { mobile });
+
+    if (IS_SUNDAY) {
+      skip(`${theme}-single-row`, 'today is Sunday (TT) — WeekStrip not rendered by design; grid-cols-7 covered by unit test');
+      const errs = capture.consoleMessages.filter((m) => m.type === 'error');
+      if (errs.length === 0) pass(`${theme}-console`, '0 console errors');
+      else fail(`${theme}-console`, `${errs.length} console errors: ${errs.map((e) => e.text).slice(0, 3).join(' | ')}`);
+      return;
+    }
 
     const boxes = await page.locator('[data-testid^="dcv2-strip-day-"]').evaluateAll((els) =>
       els.map((el) => {
