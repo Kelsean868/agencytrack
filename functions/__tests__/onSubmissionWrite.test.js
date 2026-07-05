@@ -470,7 +470,7 @@ describe('onSubmissionWrite — 5-year tenure floor marker (L1-1 Commit 2)', () 
   });
 });
 
-describe('onSubmissionWrite — mdrt_pace threshold corrected to 344,400 (owner decision 2026-07-05)', () => {
+describe('onSubmissionWrite — mdrt_pace 344,400 threshold + YTD weekStarting-year attribution (L1-1/L1-2)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -555,5 +555,52 @@ describe('onSubmissionWrite — mdrt_pace threshold corrected to 344,400 (owner 
     });
     await onSubmissionWrite.run(makeChange(paceSub), context);
     expect(badgesFrom(setFn)).not.toContain('mdrt_pace');
+  });
+
+  const YEAR = new Date().getFullYear();
+  const withWeek = (weekStarting) => ({ ...BASE_SUBMISSION, weekStarting });
+
+  test('a December week entered in January attributes to the December year (not the entry year)', async () => {
+    // Trigger submission is a prior-Dec week; the agent has 700k of prior-year YTD.
+    // OLD code used new Date().getFullYear() (the entry year, ~this YEAR) and would
+    // sum the wrong year → no badge. The fix attributes to the weekStarting year.
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR - 1}-12-28`, version: 2, newBusiness: { api: 700000 } })],
+    });
+    await onSubmissionWrite.run(makeChange(withWeek(`${YEAR - 1}-12-28`)), context);
+    expect(badgesFrom(setFn)).toContain('mdrt_qualified');
+  });
+
+  test('a year-straddle week (weekStarting Dec 29) attributes ENTIRELY to the weekStarting year', async () => {
+    // 400k (straddle week) + 300k (mid prior-year) = 700k, all in YEAR-1.
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [
+        mkDoc({ weekStarting: `${YEAR - 1}-12-29`, version: 2, newBusiness: { api: 400000 } }),
+        mkDoc({ weekStarting: `${YEAR - 1}-06-01`, version: 2, newBusiness: { api: 300000 } }),
+      ],
+    });
+    await onSubmissionWrite.run(makeChange(withWeek(`${YEAR - 1}-12-29`)), context);
+    expect(badgesFrom(setFn)).toContain('mdrt_qualified');
+  });
+
+  test('submissions from a DIFFERENT year do not leak into the attribution-year sum', async () => {
+    // Processing a prior-year week: only prior-year docs count. The current-year
+    // 400k doc must NOT be summed → 400k < 688,800 → no MDRT.
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [
+        mkDoc({ weekStarting: `${YEAR - 1}-11-30`, version: 2, newBusiness: { api: 400000 } }),
+        mkDoc({ weekStarting: `${YEAR}-01-04`,     version: 2, newBusiness: { api: 400000 } }),
+      ],
+    });
+    await onSubmissionWrite.run(makeChange(withWeek(`${YEAR - 1}-11-30`)), context);
+    expect(badgesFrom(setFn)).not.toContain('mdrt_qualified');
+  });
+
+  test('normal current-year case is unchanged (weekStarting year == entry year)', async () => {
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: 700000 } })],
+    });
+    await onSubmissionWrite.run(makeChange(withWeek(`${YEAR}-06-08`)), context);
+    expect(badgesFrom(setFn)).toContain('mdrt_qualified');
   });
 });
