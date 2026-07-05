@@ -344,13 +344,28 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
 
             {!loading && rows.length === 0 && (
               <tr>
-                <td
-                  colSpan={COLS.length}
-                  className="px-3 py-8 text-center text-sm text-ink-muted"
-                >
-                  {search
-                    ? 'No agents match your search.'
-                    : 'No submissions for this week yet.'}
+                <td colSpan={COLS.length} className="px-3 py-12">
+                  {/* Designed empty state (UX-001) — icon + headline + guidance,
+                      replacing the bare centered caption. Distinct copy for the
+                      search-filtered vs genuinely-empty week. */}
+                  <div
+                    className="flex flex-col items-center text-center gap-2"
+                    data-testid="mastersheet-empty"
+                  >
+                    <div className="flex items-center justify-center w-12 h-12 rounded-full bg-surface text-ink-muted">
+                      {search
+                        ? <Search size={22} aria-hidden="true" />
+                        : <CalendarCheck size={22} aria-hidden="true" />}
+                    </div>
+                    <p className="text-sm font-semibold text-ink">
+                      {search ? 'No agents match your search' : 'No submissions yet this week'}
+                    </p>
+                    <p className="text-xs text-ink-muted max-w-xs">
+                      {search
+                        ? 'Try a different name, or clear the search to see the full roster.'
+                        : 'Reports will appear here as your team submits them. Check back later or send a nudge from Compliance.'}
+                    </p>
+                  </div>
                 </td>
               </tr>
             )}
