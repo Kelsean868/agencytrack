@@ -36,6 +36,13 @@ describe('wholeYearsSince', () => {
     expect(wholeYearsSince('not-a-date', utc(2026, 7, 5))).toBe(0);
   });
 
+  test('shape-valid but non-real calendar dates → 0', () => {
+    expect(wholeYearsSince('2020-02-31', utc(2026, 7, 5))).toBe(0); // Feb 31 doesn't exist
+    expect(wholeYearsSince('2020-99-99', utc(2026, 7, 5))).toBe(0); // month/day out of range
+    expect(wholeYearsSince('2021-02-29', utc(2026, 7, 5))).toBe(0); // 2021 is not a leap year
+    expect(wholeYearsSince('2020-02-29', utc(2026, 7, 5))).toBe(6); // 2020 IS a leap year — valid
+  });
+
   test('future contract date → 0 (clamped, never negative)', () => {
     expect(wholeYearsSince('2030-01-01', utc(2026, 7, 5))).toBe(0);
   });

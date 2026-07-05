@@ -24,6 +24,18 @@ function wholeYearsSince(dateStr, nowMs) {
   const cy = Number(m[1]);
   const cm = Number(m[2]);
   const cd = Number(m[3]);
+  // Reject shape-valid but non-real calendar dates ('2020-02-31', '2020-99-99'):
+  // the regex only checks digit counts, so round-trip through a UTC Date and
+  // confirm the parts survive (honours the JSDoc "0 for malformed" contract).
+  const probe = new Date(Date.UTC(cy, cm - 1, cd));
+  if (
+    Number.isNaN(probe.getTime()) ||
+    probe.getUTCFullYear() !== cy ||
+    probe.getUTCMonth() + 1 !== cm ||
+    probe.getUTCDate() !== cd
+  ) {
+    return 0;
+  }
   // "Today" in T&T = UTC shifted -4h, then read the UTC calendar parts.
   const tt = new Date(nowMs - 4 * 60 * 60 * 1000);
   const ty = tt.getUTCFullYear();
