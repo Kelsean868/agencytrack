@@ -515,7 +515,7 @@ export default function AgentDashboard() {
       onAction={handleAction}
       userProfile={userProfile}
       roleLabel={roleLabel}
-      topbarTitle={tabTitleFromItems(navItems, activeTab)}
+      topbarTitle={tabTitleFromItems(navItems, activeTab, activeTab === 'profile' ? 'Profile' : 'Dashboard')}
       topbarCrumb={(() => {
         const d = new Date();
         const weekday = d.toLocaleDateString('en-TT', { weekday: 'long' });
