@@ -5,6 +5,16 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## A11y sweep L1-5b — UX-001 designed empty state shipped; A11Y-002 + A11Y-003 verified NOT-actionable (2026-07-05)
+
+**RESOLVED — UX-001 (bare MasterSheet empty state → designed).** `MasterSheet.jsx`'s zero-row state is now a designed block (`mastersheet-empty`: icon in a soft circle + headline + guidance), with distinct copy for the search-filtered vs genuinely-empty-week cases, replacing the bare centered caption. Note: an explicit in-table message ("No submissions for this week yet.") had actually existed since `bf1f0c52` (2026-04-29) — the audit's "empty white box, no message" claim was stale; this PR delivers the *designed* upgrade the finding's recommendation aspired to. Smoke: `scripts/verification/smoke-mastersheet-empty-state.mjs` (search-empty path, both themes).
+
+**NOT-A-BUG — A11Y-002 (login ignores dark preference).** Empirically falsified on production (2026-07-05): with `localStorage['agencytrack-dark']='1'` set before load, the login page renders dark (`documentElement.classList.contains('dark')===true`, body bg `rgb(26,22,18)`). It only stays light when the key is set to `'true'` (the wrong value) — exactly the Rule-10 trap the run brief warns about (`agencytrack-dark = '1'`, not `'true'`). `main.jsx:19-21` applies the class pre-mount for all non-kiosk paths, and `LoginScreen` has `dark:` variants. No code change; finding retired.
+
+**ALREADY-COMPLIANT — A11Y-003 (Money Needs share toggle 16×16).** The interactive target is the `<label>` wrapping the checkbox, measured **606×44** on production (`min-h-[44px]`, full-width, click-through) — satisfying WCAG 2.5.8 (≥24px) and the Nexus 44px rule. The audit measured the 16×16 `<input>` node, not the actual click target. The `min-h-[44px]` label wrapper is precisely the audit's own recommended fix ("an enlarged label/tap wrapper"), landed via the money-needs UX rounds (#716/#738) before the audit. No code change.
+
+**OPEN (banked, LOW) — screen-internal `<h1>` → `<h2>` demotion.** After L1-5a the topbar is the page `<h1>`; the ~3 screens that already had their own content `<h1>` (e.g. Game Plan) now render two h1s (valid HTML5, net-better than the prior zero-h1 state, but not ideal one-per-page). Demote those screen-internal h1s to h2 in a follow-up.
+
 ## A11y sweep L1-5a — RESOLVED (2026-07-05, PR `fix/a11y-h1-topbar-skiplink`) + one banked wayfinding item
 
 **RESOLVED — A11Y-001 (no `<h1>`), UX-101 (static "Dashboard" topbar title), A11Y-103 (no skip link).** The topbar title element is now a semantic `<h1>` (`Topbar.jsx`), giving every screen exactly one heading app-wide (a central fix — no 33-screen sweep). The agent title is dynamic via `tabTitleFromItems(navItems, activeTab)` (`navConfig.js` + `AgentDashboard.jsx`), so it names the active surface ("Awards", "Game Plan", …) instead of a static "Dashboard". A visually-hidden "Skip to main content" link is the first focusable in `Shell.jsx`, targeting `#main-content`. Source: audit `docs/audits/webapp-ux/agencytrack-webapp-ux-followup-2026-07-04.md` (UX-101, A11Y-103) + `docs/audits/ux/agencytrack-ux-audit-2026-07-04.md` (A11Y-001).
