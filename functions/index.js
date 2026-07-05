@@ -3,6 +3,7 @@ const functions = require('firebase-functions');
 const { isValidEmail } = require('./utils/validators');
 const { buildMailDoc } = require('./utils/email');
 const { extractTotalProductionCredit } = require('./utils/fieldHelpers');
+const { MDRT_QUALIFIED_API } = require('./lib/badgeThresholds');
 const { computePoints } = require('./lib/computePoints');
 const { resolveLevel } = require('./lib/gamificationConfig');
 const { APP_URL, CONTACT_EMAIL } = require('./lib/config');
@@ -1502,7 +1503,7 @@ exports.onSubmissionWrite = functions.firestore
         .filter((d) => d.data().weekStarting?.startsWith(String(thisYear)))
         .reduce((sum, d) => sum + extractTotalProductionCredit(d.data()), 0);
 
-      if (ytdAPI >= 500000) {
+      if (ytdAPI >= MDRT_QUALIFIED_API) {
         addIfNew('mdrt_qualified');
       } else {
         const weekOfYear = Math.ceil(

@@ -225,11 +225,13 @@ describe('onSubmissionWrite — YTD MDRT badge reads BOTH v2 and legacy API shap
   // Derive the current year so these YTD-year-matching assertions don't rot on Jan-1 rollover
   // (the reducer filters on `new Date().getFullYear()`).
   const YEAR = new Date().getFullYear();
+  // Qualifying values sit above the L1-1 corrected MDRT threshold (688,800), not the
+  // old 500k floor — see the dedicated threshold describe block below.
 
   test('v2 submission (newBusiness.api) is counted toward YTD → earns mdrt_qualified', async () => {
     // Before the fix, `d.data().apiSold` was undefined on v2 docs → contributed 0 → no badge.
     const { setFn } = makeYtdAdminMock({
-      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: 600000 } })],
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: 700000 } })],
     });
     await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
 
@@ -238,15 +240,15 @@ describe('onSubmissionWrite — YTD MDRT badge reads BOTH v2 and legacy API shap
   });
 
   test('v2 total production credit includes PPP increases + lumpsums (matches leaderboard ranking)', async () => {
-    // 300k NB + 150k PPP + 60k lumpsum = 510k ≥ 500k. NB alone (300k) would NOT qualify —
+    // 400k NB + 200k PPP + 100k lumpsum = 700k ≥ 688,800. NB alone (400k) would NOT qualify —
     // proves the reducer uses the canonical total-production reader, not newBusiness.api only.
     const { setFn } = makeYtdAdminMock({
       ytdDocs: [mkDoc({
         weekStarting: `${YEAR}-02-02`,
         version: 2,
-        newBusiness: { api: 300000 },
-        pppIncreases: { apiIncrease: 150000 },
-        lumpsums: { apiCredit: 60000 },
+        newBusiness: { api: 400000 },
+        pppIncreases: { apiIncrease: 200000 },
+        lumpsums: { apiCredit: 100000 },
       })],
     });
     await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
@@ -256,7 +258,7 @@ describe('onSubmissionWrite — YTD MDRT badge reads BOTH v2 and legacy API shap
 
   test('legacy v1 submission (flat apiSold) still counts toward YTD → earns mdrt_qualified', async () => {
     const { setFn } = makeYtdAdminMock({
-      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, apiSold: 600000 })],
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, apiSold: 700000 })],
     });
     await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
 
@@ -264,11 +266,11 @@ describe('onSubmissionWrite — YTD MDRT badge reads BOTH v2 and legacy API shap
   });
 
   test('mixed v2 + legacy submissions sum together across the YTD window', async () => {
-    // 300k (v2 newBusiness.api) + 300k (v1 apiSold) = 600k ≥ 500k. Neither alone qualifies.
+    // 350k (v2 newBusiness.api) + 350k (v1 apiSold) = 700k ≥ 688,800. Neither alone qualifies.
     const { setFn } = makeYtdAdminMock({
       ytdDocs: [
-        mkDoc({ weekStarting: `${YEAR}-03-01`, version: 2, newBusiness: { api: 300000 } }),
-        mkDoc({ weekStarting: `${YEAR}-04-05`, apiSold: 300000 }),
+        mkDoc({ weekStarting: `${YEAR}-03-01`, version: 2, newBusiness: { api: 350000 } }),
+        mkDoc({ weekStarting: `${YEAR}-04-05`, apiSold: 350000 }),
       ],
     });
     await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
@@ -286,12 +288,81 @@ describe('onSubmissionWrite — YTD MDRT badge reads BOTH v2 and legacy API shap
   });
 
   test('prior-year submissions are excluded from the YTD sum', async () => {
-    // A 600k submission dated in a prior year must not count toward this year's MDRT.
+    // A 700k submission (≥ MDRT threshold) dated in a prior year must not count toward this
+    // year's MDRT — proves exclusion is the reason, not the amount.
     const { setFn } = makeYtdAdminMock({
-      ytdDocs: [mkDoc({ weekStarting: `${YEAR - 6}-06-08`, version: 2, newBusiness: { api: 600000 } })],
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR - 6}-06-08`, version: 2, newBusiness: { api: 700000 } })],
     });
     await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
 
+    expect(badgesFrom(setFn)).not.toContain('mdrt_qualified');
+  });
+});
+
+describe('onSubmissionWrite — MDRT threshold corrected to 688,800 (L1-1)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // Reuse the same YTD-aware mock shape as the EFF-004 block above.
+  function makeYtdAdminMock({ userDoc = { role: 'agent' }, ytdDocs = [] } = {}) {
+    const setFn = jest.fn().mockResolvedValue({});
+    const streakGet = jest.fn().mockResolvedValue({ empty: true, docs: [] });
+    const ytdGet    = jest.fn().mockResolvedValue({ docs: ytdDocs });
+    const docFn = jest.fn().mockImplementation((path) => {
+      if (path.includes('/users/')) {
+        return { get: jest.fn().mockResolvedValue({ exists: true, data: () => userDoc }) };
+      }
+      if (path.includes('/leaderboard/')) {
+        return {
+          get: jest.fn().mockResolvedValue({ exists: false, data: () => ({}) }),
+          set: setFn,
+          delete: jest.fn().mockResolvedValue({}),
+        };
+      }
+      return { set: jest.fn().mockResolvedValue({}) };
+    });
+    const limit1 = jest.fn(() => ({ get: streakGet }));
+    const q3 = jest.fn(() => ({ limit: limit1, get: streakGet }));
+    const q2 = jest.fn(() => ({ where: q3, get: ytdGet }));
+    const q1 = jest.fn(() => ({ where: q2 }));
+    const collectionFn = jest.fn().mockImplementation((path) => {
+      if (path.includes('notifications')) return { add: jest.fn().mockResolvedValue({}) };
+      return { where: q1 };
+    });
+    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn });
+    admin.firestore.FieldValue = { serverTimestamp: jest.fn(() => null) };
+    return { setFn };
+  }
+
+  const mkDoc = (data) => ({ data: () => data });
+  const badgesFrom = (setFn) => setFn.mock.calls[0][0].badges;
+  const YEAR = new Date().getFullYear();
+  // Bind the assertion to the source constant so it tracks the annual MDRT bump.
+  const { MDRT_QUALIFIED_API } = require('../lib/badgeThresholds');
+
+  test('540,554 YTD (real smoke-agent value, ≥ old 500k) does NOT earn mdrt_qualified', async () => {
+    // The pre-fix 500k threshold wrongly qualified this agent 148,246 short of MDRT.
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: 540554 } })],
+    });
+    await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
+    expect(badgesFrom(setFn)).not.toContain('mdrt_qualified');
+  });
+
+  test('exactly 688,800 YTD earns mdrt_qualified (threshold is inclusive)', async () => {
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: MDRT_QUALIFIED_API } })],
+    });
+    await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
+    expect(badgesFrom(setFn)).toContain('mdrt_qualified');
+  });
+
+  test('one TTD below the threshold does NOT earn mdrt_qualified', async () => {
+    const { setFn } = makeYtdAdminMock({
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: MDRT_QUALIFIED_API - 1 } })],
+    });
+    await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
     expect(badgesFrom(setFn)).not.toContain('mdrt_qualified');
   });
 });
