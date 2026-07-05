@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -137,7 +137,12 @@ export function AuthProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  async function refreshProfile() {
+  // Stabilized so it is a valid, non-churning dep of the memoized `value` below.
+  // Deps are [user, tenantId] — the exact state it closes over — so the callback
+  // is stable across renders BUT never stale: a fresh closure is created whenever
+  // user or tenantId changes, so refreshProfile always reads the current uid/tid
+  // (EFF-001 stale-closure guard).
+  const refreshProfile = useCallback(async () => {
     if (!user) return;
     const tid = tenantId;
     if (!tid) return;
@@ -147,9 +152,15 @@ export function AuthProvider({ children }) {
     } catch (err) {
       console.error('[AgencyTrack] refreshProfile failed:', err);
     }
-  }
+  }, [user, tenantId]);
 
-  const value = { user, userProfile, role, tenantId, branchId, loading, isAuthenticated: !!user, refreshProfile };
+  // Memoized so consumers of useAuth() only re-render when a value field actually
+  // changes, not on every AuthProvider render. refreshProfile is a stable
+  // useCallback, so including it in the deps does not cause churn (EFF-001).
+  const value = useMemo(
+    () => ({ user, userProfile, role, tenantId, branchId, loading, isAuthenticated: !!user, refreshProfile }),
+    [user, userProfile, role, tenantId, branchId, loading, refreshProfile],
+  );
 
   return (
     <AuthContext.Provider value={value}>
