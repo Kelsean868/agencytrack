@@ -211,7 +211,9 @@ Also re-ran the PRE-MERGE `smoke-plan-suggestions-b3.mjs` against production for
 
 ---
 
-## `FinancingRiskPanel.test.jsx` CI timeout flake — 2nd occurrence (banked 2026-07-04, LOW)
+## ~~`FinancingRiskPanel.test.jsx` CI timeout flake — 2nd occurrence (banked 2026-07-04, LOW)~~ — RESOLVED (fix/financingrisk-test-flake, PR #803 `62d37e92`, 2026-07-05)
+
+**RESOLVED note (2026-07-05):** A 3rd occurrence landed at PR #802's CI run (still a **timeout**, cleared on re-run — so the falsification below held: not a different failure mode, still pure flake). Root-caused as a CI resource-contention **test-level** timeout: `src/test-setup.js:12` sets RTL `asyncUtilTimeout: 5000`, which equals vitest's default 5000ms per-test budget, so a test that chains several sequential `waitFor`/`findBy` drains (this file's notify-cooldown test + the async-switch-race siblings) can blow the whole-test window under a starved CI runner even though every service mock resolves instantly. Fixed **test-only** via a file-level `vi.setConfig({ testTimeout: 15000 })` — no `FinancingRiskPanel.jsx` source change (no real component perf bug found). Verified: file run 5× stable green (16/16), full suite 4225/4225, lint 0, build clean; both bot reviewers (Gemini + CodeRabbit) clean on the exact HEAD. Auto-merged under the EFF-002 orchestrator brief Lane 2 (green-channel, test-only); post-merge main builds clean + CI green. Original body retained below for the drift trail.
 
 **Origin:** `src/components/manager/__tests__/FinancingRiskPanel.test.jsx` ("fires the notify CF and shows the cooldown after a successful notify") timed out at 5000ms in PR #791's `lint-and-build` CI run — the second occurrence (also timed out at 5022ms during PR #790's full-suite CI run). Both times it passed clean in isolation (16/16, 565ms locally for #791) — a CI-environment resource-contention flake, not a product or test-logic defect. Neither PR touched this file or its dependencies.
 
