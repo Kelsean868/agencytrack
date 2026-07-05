@@ -366,3 +366,106 @@ describe('onSubmissionWrite — MDRT threshold corrected to 688,800 (L1-1)', () 
     expect(badgesFrom(setFn)).not.toContain('mdrt_qualified');
   });
 });
+
+describe('onSubmissionWrite — 5-year tenure floor marker (L1-1 Commit 2)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // Same YTD-aware mock; userDoc carries contractStartDate so the floor marker can
+  // read the agent's tenure from the (already-loaded) user doc.
+  function makeYtdAdminMock({ userDoc = { role: 'agent' }, ytdDocs = [] } = {}) {
+    const setFn = jest.fn().mockResolvedValue({});
+    const streakGet = jest.fn().mockResolvedValue({ empty: true, docs: [] });
+    const ytdGet    = jest.fn().mockResolvedValue({ docs: ytdDocs });
+    const docFn = jest.fn().mockImplementation((path) => {
+      if (path.includes('/users/')) {
+        return { get: jest.fn().mockResolvedValue({ exists: true, data: () => userDoc }) };
+      }
+      if (path.includes('/leaderboard/')) {
+        return {
+          get: jest.fn().mockResolvedValue({ exists: false, data: () => ({}) }),
+          set: setFn,
+          delete: jest.fn().mockResolvedValue({}),
+        };
+      }
+      return { set: jest.fn().mockResolvedValue({}) };
+    });
+    const limit1 = jest.fn(() => ({ get: streakGet }));
+    const q3 = jest.fn(() => ({ limit: limit1, get: streakGet }));
+    const q2 = jest.fn(() => ({ where: q3, get: ytdGet }));
+    const q1 = jest.fn(() => ({ where: q2 }));
+    const collectionFn = jest.fn().mockImplementation((path) => {
+      if (path.includes('notifications')) return { add: jest.fn().mockResolvedValue({}) };
+      return { where: q1 };
+    });
+    admin.firestore.mockReturnValue({ doc: docFn, collection: collectionFn });
+    admin.firestore.FieldValue = { serverTimestamp: jest.fn(() => null) };
+    return { setFn };
+  }
+
+  const mkDoc = (data) => ({ data: () => data });
+  const badgesFrom = (setFn) => setFn.mock.calls[0][0].badges;
+  const YEAR = new Date().getFullYear();
+  const { TENURE_FLOOR_API, TENURE_FLOOR_YEARS } = require('../lib/badgeThresholds');
+  // Derive contract dates dynamically so they never rot across a year boundary.
+  const TENURED    = `${YEAR - (TENURE_FLOOR_YEARS + 1)}-01-01`; // safely > 5 yrs
+  const BOUNDARY   = `${YEAR - TENURE_FLOOR_YEARS}-01-01`;        // exactly 5 yrs (inclusive)
+  const NOT_TENURED = `${YEAR - (TENURE_FLOOR_YEARS - 3)}-01-01`; // ~2 yrs, well under 5
+
+  test('tenured agent (5+ yrs) at the TTD 500k floor earns tenure_floor_met', async () => {
+    const { setFn } = makeYtdAdminMock({
+      userDoc: { role: 'agent', contractStartDate: TENURED },
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: TENURE_FLOOR_API } })],
+    });
+    await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
+    expect(badgesFrom(setFn)).toContain('tenure_floor_met');
+  });
+
+  test('exactly 5 years since contract counts (inclusive boundary)', async () => {
+    const { setFn } = makeYtdAdminMock({
+      userDoc: { role: 'agent', contractStartDate: BOUNDARY },
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: TENURE_FLOOR_API } })],
+    });
+    await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
+    expect(badgesFrom(setFn)).toContain('tenure_floor_met');
+  });
+
+  test('agent under 5 years at the SAME API does NOT earn tenure_floor_met', async () => {
+    const { setFn } = makeYtdAdminMock({
+      userDoc: { role: 'agent', contractStartDate: NOT_TENURED },
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: TENURE_FLOOR_API } })],
+    });
+    await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
+    expect(badgesFrom(setFn)).not.toContain('tenure_floor_met');
+  });
+
+  test('tenured agent below the 500k floor does NOT earn tenure_floor_met', async () => {
+    const { setFn } = makeYtdAdminMock({
+      userDoc: { role: 'agent', contractStartDate: TENURED },
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: TENURE_FLOOR_API - 1 } })],
+    });
+    await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
+    expect(badgesFrom(setFn)).not.toContain('tenure_floor_met');
+  });
+
+  test('agent with no contractStartDate does NOT earn tenure_floor_met (safe default)', async () => {
+    const { setFn } = makeYtdAdminMock({
+      userDoc: { role: 'agent' }, // contractStartDate absent
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: TENURE_FLOOR_API } })],
+    });
+    await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
+    expect(badgesFrom(setFn)).not.toContain('tenure_floor_met');
+  });
+
+  test('tenured agent at MDRT level earns BOTH mdrt_qualified and tenure_floor_met (distinct goals)', async () => {
+    const { setFn } = makeYtdAdminMock({
+      userDoc: { role: 'agent', contractStartDate: TENURED },
+      ytdDocs: [mkDoc({ weekStarting: `${YEAR}-06-08`, version: 2, newBusiness: { api: 700000 } })],
+    });
+    await onSubmissionWrite.run(makeChange(BASE_SUBMISSION), context);
+    const badges = badgesFrom(setFn);
+    expect(badges).toContain('mdrt_qualified');
+    expect(badges).toContain('tenure_floor_met');
+  });
+});

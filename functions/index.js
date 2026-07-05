@@ -3,7 +3,8 @@ const functions = require('firebase-functions');
 const { isValidEmail } = require('./utils/validators');
 const { buildMailDoc } = require('./utils/email');
 const { extractTotalProductionCredit } = require('./utils/fieldHelpers');
-const { MDRT_QUALIFIED_API } = require('./lib/badgeThresholds');
+const { MDRT_QUALIFIED_API, TENURE_FLOOR_API, TENURE_FLOOR_YEARS } = require('./lib/badgeThresholds');
+const { wholeYearsSince } = require('./utils/tenure');
 const { computePoints } = require('./lib/computePoints');
 const { resolveLevel } = require('./lib/gamificationConfig');
 const { APP_URL, CONTACT_EMAIL } = require('./lib/config');
@@ -1380,6 +1381,7 @@ exports.onSubmissionWrite = functions.firestore
       let userRole            = 'agent';
       let appearOnLeaderboard = false;
       let isProvisioning      = false;
+      let contractStartDate   = '';   // for the tenure floor marker (below)
       try {
         const userSnap = await admin.firestore()
           .doc(`tenants/${tenantId}/users/${agentId}`).get();
@@ -1389,6 +1391,7 @@ exports.onSubmissionWrite = functions.firestore
           userRole            = ud.role                ?? 'agent';
           appearOnLeaderboard = ud.appearOnLeaderboard === true;
           isProvisioning      = ud.provisioning        === true;
+          contractStartDate   = ud.contractStartDate   ?? '';
         } else {
           userRole = 'unknown'; // no doc → not a participant; self-healing delete below
         }
@@ -1510,6 +1513,18 @@ exports.onSubmissionWrite = functions.firestore
           (Date.now() - new Date(thisYear, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000)
         );
         if (weekOfYear <= 26 && ytdAPI >= 250000) addIfNew('mdrt_pace');
+      }
+
+      // 5-year tenure floor marker (independent of MDRT). Tenured agents — ≥ 5
+      // years from their contract date, measured as of today (owner-confirmed
+      // current-date convention, NOT per-weekStarting) — who reach the TTD 500k
+      // floor. All qualifying YTD production counts (not a per-week test). A
+      // tenured agent at ≥ 688,800 earns BOTH this and mdrt_qualified (distinct
+      // owner-confirmed goals). contractStartDate reuses the user-doc read in the
+      // guard block above — no extra Firestore read.
+      const yearsOfService = wholeYearsSince(contractStartDate, Date.now());
+      if (ytdAPI >= TENURE_FLOOR_API && yearsOfService >= TENURE_FLOOR_YEARS) {
+        addIfNew('tenure_floor_met');
       }
 
       // ── Write leaderboard doc ─────────────────────────────────────────────
