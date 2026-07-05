@@ -1522,8 +1522,11 @@ exports.onSubmissionWrite = functions.firestore
       } else {
         // Pace is measured within the same attribution year, so a prior-year week
         // entered late (year already over) yields a week-of-year past 26 → no pace.
+        // Date.UTC (not `new Date(y,0,1)`, which is midnight in the FUNCTION's local
+        // zone) so the Jan-1 base is UTC-consistent with Date.now() — same UTC-safety
+        // discipline as the attribution-year slice above (Gemini review on #808).
         const weekOfYear = Math.ceil(
-          (Date.now() - new Date(Number(attributionYear), 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000)
+          (Date.now() - Date.UTC(Number(attributionYear), 0, 1)) / (7 * 24 * 60 * 60 * 1000)
         );
         if (weekOfYear <= 26 && ytdAPI >= MDRT_PACE_API) addIfNew('mdrt_pace');
       }
