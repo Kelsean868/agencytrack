@@ -6,10 +6,14 @@ import {
   getCurrentMonthKey, getPrevMonthKey, isWithinEditWindow,
 } from '../../services/agentOfMonthService';
 
-export async function getKioskYTDSubmissions(tenantId) {
+// FU SEC-012: branchId filter is required — the branch-scoped kiosk submissions
+// list rule denies any query that isn't constrained to the kiosk's own branch.
+// Served by the existing (branchId, status, weekStarting) composite index.
+export async function getKioskYTDSubmissions(tenantId, branchId) {
   const year = new Date().getFullYear();
   const q = query(
     collection(kioskDb, `tenants/${tenantId}/submissions`),
+    where('branchId', '==', branchId),
     where('weekStarting', '>=', `${year}-01-01`),
     where('weekStarting', '<=', `${year}-12-31`),
     where('status', '==', 'submitted'),

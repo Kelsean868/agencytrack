@@ -166,6 +166,7 @@ These are settled across all future sessions. If a session audit surfaces a reas
 | Ticket | Title | Blocking? | Next action |
 |---|---|---|---|
 | Orphan cleanup | UID `C94hjdd6GXfdim9EfgPYAAIbDOJ2` — Firestore doc with no Auth user | No | Tracked [#25](https://github.com/Kelsean868/agencytrack/issues/25). **Also the sole null-unitId agent in `tatillife_south`** (#785 Phase 0.4 probe) — silently absent from every UM roster surface; resolve jointly per FOLLOW_UPS § null-unitId data fix (operator investigation first). |
+| SEC-012 | Kiosk reads branch-scoped (firestore.rules + kiosk client) | **HELD** | PR `fix/sec012-kiosk-branch-scope` open — **HUMAN-MERGE + `firebase deploy --only firestore:rules`** (rules don't auto-deploy via Vercel). Proof: `tests/rules/kioskBranchScope.rules.test.mjs` 16/16 (cross-branch DENY / same-branch ALLOW). Multi-branch AOM + kiosk users-list restoration banked in FOLLOW_UPS (AOM one BLOCKS second-branch onboarding). Post-deploy: mint a fresh kiosk, confirm own-branch data loads. |
 
 ---
 

@@ -5,6 +5,16 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## SEC-012 kiosk branch-scoping — two follow-ups banked (2026-07-05, PR `fix/sec012-kiosk-branch-scope`)
+
+Banked from the SEC-012 fix (kiosk reads branch-scoped in `firestore.rules` + `getKioskYTDSubmissions` client filter). The fix itself is HELD pending human merge + `firebase deploy --only firestore:rules`.
+
+1. **🚨 BLOCKS SECOND-BRANCH ONBOARDING — AgentOfMonth is a shared per-month doc, not per-branch.** `functions/agentOfMonth/setAgentOfMonth.js:100` writes `tenants/{tid}/agentOfMonth/{monthKey}` (one doc per month per tenant, `{merge:true}`), stamped with a single `branchId` = the last writer's branch. The SEC-012 fix branch-scopes the kiosk AOM read by `resource.data.branchId == request.auth.token.branchId`, which is correct for the single-branch Tatil pilot but breaks once a tenant has 2+ branches: a Branch-A kiosk is denied the current month's AOM whenever Branch-B wrote it last (and vice-versa), and two branches' category winners collide in one doc. Clean fix = data-model change to per-branch AOM docs (e.g. `agentOfMonth/{monthKey}_{branchId}` or a `{branchId}` subcollection), touching the write CF (`setAgentOfMonth`), both read paths (`agentOfMonthService.getAgentOfMonth`, `kioskServices.getKioskAgentOfMonth`), `AgentOfMonthTab`, and the AOM rule. **Must ship before any second branch is onboarded.**
+
+2. **Restore a branch-scoped kiosk users-list (real agent names/photos on the kiosk).** `getKioskTenantUsers` (`src/lib/kiosk/kioskServices.js:21`) does an unfiltered `users` collection list, which the kiosk rules have denied since the SHAKEDOWN-002 read→get/list split dropped the kiosk list arm (kiosk has `get`, not `list`). The SEC-012 PR made that denial non-fatal (`.catch(() => [])` in `KioskShell`) so the kiosk still loads submissions/leaderboards/AOM and panels fall back to a generic "Agent" label — but agent names/photos are absent on the kiosk leaderboards. To restore: add a branch-scoped kiosk `list` arm to the `users` rule (`kioskCanRead(tenantId) && resource.data.branchId == request.auth.token.branchId`) and thread `branchId` into `getKioskTenantUsers` with a `where('branchId','==',branchId)` filter. Deferred from the SEC-012 PR to avoid opening a new kiosk authorization surface (users-list) on a security fix — the kiosk is functional without it (degraded labels only). Adds a rules surface → human-merge + `firebase deploy --only firestore:rules`.
+
+---
+
 ## A11y sweep L1-5b — UX-001 designed empty state shipped; A11Y-002 + A11Y-003 verified NOT-actionable (2026-07-05)
 
 **RESOLVED — UX-001 (bare MasterSheet empty state → designed).** `MasterSheet.jsx`'s zero-row state is now a designed block (`mastersheet-empty`: icon in a soft circle + headline + guidance), with distinct copy for the search-filtered vs genuinely-empty-week cases, replacing the bare centered caption. Note: an explicit in-table message ("No submissions for this week yet.") had actually existed since `bf1f0c52` (2026-04-29) — the audit's "empty white box, no message" claim was stale; this PR delivers the *designed* upgrade the finding's recommendation aspired to. Smoke: `scripts/verification/smoke-mastersheet-empty-state.mjs` (search-empty path, both themes).
