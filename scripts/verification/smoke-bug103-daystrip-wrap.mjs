@@ -84,6 +84,10 @@ async function leg(browser, { theme, viewport, mobile }) {
       return;
     }
 
+    // evaluateAll does not auto-wait — ensure the pills are attached first so we
+    // never measure an empty list mid-render (Gemini).
+    await page.locator('[data-testid^="dcv2-strip-day-"]').first()
+      .waitFor({ state: 'attached', timeout: 8000 });
     const boxes = await page.locator('[data-testid^="dcv2-strip-day-"]').evaluateAll((els) =>
       els.map((el) => {
         const r = el.getBoundingClientRect();
