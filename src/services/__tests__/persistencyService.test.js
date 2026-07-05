@@ -401,6 +401,9 @@ describe('getPersistencyMapForYear', () => {
     expect(mockGetDocs).toHaveBeenCalledTimes(1);
     expect(Object.keys(map)).toEqual(['a1']);
     expect(map.a1).toHaveLength(2);
+    // Assert the actual records survived (not just the count) — the two E3 docs
+    // in month order, with the pre-E3 doc filtered out.
+    expect(map.a1.map((r) => r.monthKey)).toEqual(['2026-01', '2026-02']);
   });
 
   it('silently skips a batch whose query is rejected by rules', async () => {
@@ -427,6 +430,8 @@ describe('getPersistencyMapForYear', () => {
     expect(map.x0).toBeUndefined();
     expect(Object.keys(map)).toEqual(['a2']);
     expect(map.a2).toHaveLength(1);
+    // Verify the surviving batch's actual record, not just key presence.
+    expect(map.a2[0].monthKey).toBe('2026-01');
   });
 });
 

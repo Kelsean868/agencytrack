@@ -561,6 +561,19 @@ describe('getGoalsForAgents', () => {
     expect(map.agent0).toEqual({ personalAnnualAPI: 1 });
     expect(map.agent30).toEqual({ personalAnnualAPI: 2 });
   });
+
+  it('skips a batch whose query is rejected, keeping the surviving batch (per-batch isolation)', async () => {
+    const ids = Array.from({ length: 31 }, (_, i) => `agent${i}`);
+    mockGetDocs
+      .mockRejectedValueOnce(new Error('PERMISSION_DENIED'))                                       // batch 1 (agent0..agent29)
+      .mockResolvedValueOnce({ docs: [{ id: 'agent30', data: () => ({ personalAnnualAPI: 9 }) }] }); // batch 2 (agent30)
+
+    const map = await getGoalsForAgents('t1', ids);
+
+    expect(mockGetDocs).toHaveBeenCalledTimes(2);
+    expect(map.agent0).toBeUndefined();                    // rejected batch skipped, no throw
+    expect(map.agent30).toEqual({ personalAnnualAPI: 9 });  // surviving batch still present
+  });
 });
 
 // ── getUnitGoals ──────────────────────────────────────────────────────────────

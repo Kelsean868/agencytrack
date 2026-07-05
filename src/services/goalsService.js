@@ -30,13 +30,17 @@ export async function getGoalsForAgents(tenantId, agentIds) {
   for (let i = 0; i < agentIds.length; i += 30) {
     batches.push(agentIds.slice(i, i + 30));
   }
-  const snaps = await Promise.all(
-    batches.map((batch) => getDocs(query(col, where(documentId(), 'in', batch)))),
-  );
   const map = {};
-  snaps.forEach((snap) => {
-    snap.docs.forEach((d) => { map[d.id] = d.data(); });
-  });
+  await Promise.all(batches.map(async (batch) => {
+    try {
+      const snap = await getDocs(query(col, where(documentId(), 'in', batch)));
+      snap.docs.forEach((d) => { map[d.id] = d.data(); });
+    } catch {
+      // Read denied/failed for this batch — skip silently and keep the other
+      // batches (mirrors getPersistencyMapForYear's per-batch resilience so one
+      // bad ≤30 chunk can't wipe out every agent's goals).
+    }
+  }));
   return map;
 }
 
