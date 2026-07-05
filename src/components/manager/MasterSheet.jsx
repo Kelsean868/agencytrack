@@ -353,15 +353,15 @@ export default function MasterSheet({ selectedWeek, setSelectedWeek }) {
                     data-testid="mastersheet-empty"
                   >
                     <div className="flex items-center justify-center w-12 h-12 rounded-full bg-surface text-ink-muted">
-                      {search
+                      {search.trim()
                         ? <Search size={22} aria-hidden="true" />
                         : <CalendarCheck size={22} aria-hidden="true" />}
                     </div>
                     <p className="text-sm font-semibold text-ink">
-                      {search ? 'No agents match your search' : 'No submissions yet this week'}
+                      {search.trim() ? 'No agents match your search' : 'No submissions yet this week'}
                     </p>
                     <p className="text-xs text-ink-muted max-w-xs">
-                      {search
+                      {search.trim()
                         ? 'Try a different name, or clear the search to see the full roster.'
                         : 'Reports will appear here as your team submits them. Check back later or send a nudge from Compliance.'}
                     </p>
