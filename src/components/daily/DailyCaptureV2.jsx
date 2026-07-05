@@ -255,12 +255,13 @@ function CountStrip({ chips, loading }) {
   );
 }
 
-/** Horizontal Mon–Sat day selector for back-fill navigation. */
+/** Horizontal Sun–Sat day selector for back-fill navigation (7 chips; Sunday
+ *  renders as an off-chip). */
 function WeekStrip({ days, selectedDate, onSelect }) {
   return (
     <div
       data-testid="dcv2-week-strip"
-      className="grid grid-cols-6 gap-1 mt-3"
+      className="grid grid-cols-7 gap-1 mt-3"
       role="group"
       aria-label="Select day"
     >

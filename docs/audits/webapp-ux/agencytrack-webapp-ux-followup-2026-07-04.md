@@ -33,6 +33,7 @@
 - **Evidence:** geometry probe at 1440px: six pills at y=69, the seventh (`07-04`, today) at y=126, x=16 — alone on a second row, left-aligned. Identical wrap at 390px. Visible in `agent-daily-capture-entry-desktop-light.png` / `-mobile-light.png`.
 - **Root cause:** `WeekStrip` in [DailyCaptureV2.jsx:264–271](../../../src/components/daily/DailyCaptureV2.jsx) is `grid grid-cols-6` (its comment says "Mon–Sat day selector") but the `days` array it receives spans Sunday-to-Saturday — 7 entries. The 7th chip wraps.
 - **Fix:** `grid-cols-7` (or drop Sunday from `days` if Mon–Sat was the intent — the Sunday pill currently renders as an "off" chip, suggesting `grid-cols-7` is the honest fix).
+- **RESOLVED (2026-07-05, PR `fix/bug103-daystrip-grid`):** `WeekStrip` grid `grid-cols-6` → `grid-cols-7` in [`DailyCaptureV2.jsx`](../../../src/components/daily/DailyCaptureV2.jsx) (+ stale "Mon–Sat" comment corrected to "Sun–Sat, 7 chips, Sunday off-chip" — `deriveWeekStripDays` always returns 7 entries). Smoke `scripts/verification/smoke-bug103-daystrip-wrap.mjs` measures all 7 pill bounding boxes: one row (top-spread ≤ 4px), no page-level h-scroll, at desktop 1440 + 380px mobile.
 
 ### UX-101 — Topbar page title never changes: every agent tab says "Dashboard"
 - **Severity:** Low (Medium for wayfinding when combined with prior A11Y-001) · **Category:** UX / wayfinding · **Confidence:** Confirmed.
