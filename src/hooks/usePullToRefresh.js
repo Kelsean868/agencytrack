@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 
-const PULL_THRESHOLD = 72; // px downward drag from scroll-top to trigger refresh
+// px downward drag from scroll-top to trigger refresh. Raised 72 → 110 (mobile-nav
+// PTR over-trigger fix): 72px fired during ordinary top-of-list touch interactions;
+// ~110px (≈1.5×) requires a deliberate sustained pull while staying reachable in a
+// single thumb stroke on a 380px-wide viewport.
+const PULL_THRESHOLD = 110;
 
 /**
  * Attaches touch-based pull-to-refresh to an element ref.
@@ -35,11 +39,20 @@ export function usePullToRefresh(scrollRef, onRefresh) {
       pullDelta.current = 0;
     }
 
+    // Disarm mid-gesture: also reset pullDelta + phase so a cancelled pull can
+    // never fire on the subsequent touchend (Gemini review, PR #795 — a
+    // retained pullDelta >= threshold was itself a spurious-refresh vector).
+    function disarm() {
+      startY.current = null;
+      pullDelta.current = 0;
+      if (stateRef.current === 'pulling') setPhase('idle');
+    }
+
     function onTouchMove(e) {
       if (startY.current === null) return;
-      if (el.scrollTop > 0) { startY.current = null; return; }
+      if (el.scrollTop > 0) { disarm(); return; }
       const delta = e.touches[0].clientY - startY.current;
-      if (delta <= 0) { startY.current = null; return; }
+      if (delta <= 0) { disarm(); return; }
       pullDelta.current = delta;
       setPhase(delta >= PULL_THRESHOLD ? 'pulling' : 'idle');
       e.preventDefault();
