@@ -219,6 +219,11 @@ export default function ManagerDashboard() {
     setPtrRevision((r) => r + 1);
   }, []);
 
+  // Stable "now" so the ManagerAwardsPanel currentDate prop keeps a constant
+  // identity across renders (EFF-009) — its internal useMemo(currentDate) was
+  // being defeated by a fresh Date() passed on every render.
+  const now = useMemo(() => new Date(), []);
+
   const filteredNavItems = useMemo(
     () => NAV_ITEMS.filter((item) => !item.roles || item.roles.includes(role)),
     [role]
@@ -466,7 +471,7 @@ export default function ManagerDashboard() {
           <ManagerAwardsPanel
             agentIds={agentIds}
             agentProfiles={agentProfiles}
-            currentDate={new Date()}
+            currentDate={now}
             role={role}
             tenantId={tenantId}
             newAdvisors={newAdvisors}

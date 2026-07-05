@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip,
   CartesianGrid, ResponsiveContainer,
@@ -47,7 +47,10 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function CashFlowChart({ totalApi, modeMix, commissionRate }) {
-  const data = buildStackedData(totalApi, modeMix, commissionRate);
+  const data = useMemo(
+    () => buildStackedData(totalApi, modeMix, commissionRate),
+    [totalApi, modeMix, commissionRate],
+  );
   const activeModes = ['annual', 'semiAnnual', 'quarterly', 'monthly'].filter(
     (m) => (modeMix[m] ?? 0) > 0
   );
