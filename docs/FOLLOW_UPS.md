@@ -5,6 +5,22 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## ~~BUG-101 — Wizard step screen typable before the draft check resolves~~ — RESOLVED (2026-07-04, PR #TBD `fix/bug101-wizard-draft-gate`)
+
+**RESOLVED.** The `screen === 'step'` body in `WizardForm.jsx` is now gated on `draftLoaded`, mirroring the Confirm screen's existing gate: while `getDraft()` is in flight the step body renders the "Loading your week…" spinner (`data-testid="wizard-v2-step-loading"`, `role="status"`) instead of editable inputs. This closes both symptoms the audit's BUG-101 documented — (1) a value typed pre-resolve was overwritten by the late `setFormData((prev) => ({ ...prev, ...fields }))` merge (~`WizardForm.jsx:297`); (2) an already-submitted week accepted input for ~1s before the `setScreen('submitted')` interstitial flipped and discarded it. Because the same `getDraft` resolution that flips `draftLoaded=true` also sets `screen='submitted'` in one React batch, a submitted week transitions loading→interstitial with no editable-input window. **Fix location:** the `screen === 'step' && (draftLoaded ? … : <Loader2/>)` block in [`src/components/wizard/WizardForm.jsx`](../src/components/wizard/WizardForm.jsx). Two step-gate unit tests added to `WizardFormV2ConfirmScreen.test.jsx` (loading→step render; submitted-week → interstitial, step body never rendered); one test scoped (`WizardFormSaveStatus.test.jsx` ARIA query now targets the autosave region's `aria-atomic` container, since the new loading spinner adds a second `role="status"` during the load window — coverage unchanged). Regression smoke: `scripts/verification/smoke-bug101-wizard-draft-gate.mjs`. Finding source: `docs/audits/webapp-ux/agencytrack-webapp-ux-followup-2026-07-04.md` § BUG-101.
+
+---
+
+## Wizard draft-gate — two CodeRabbit nitpicks banked from PR #794 (LOW, deferred as out-of-scope)
+
+Both surfaced on the BUG-101 fix PR and dispositioned **OUT-OF-SCOPE** (valid, but expand the scope-locked bugfix). Neither is a data-integrity defect.
+
+1. **Extract a shared `DraftLoadingSpinner` component.** The step-loading block and the pre-existing Confirm-loading block in `WizardForm.jsx` are near-identical (wrapper classes, `role="status"`/`aria-live`, `Loader2`, "Loading your week…" copy). Extracting a shared component would de-duplicate and prevent a11y/copy drift — but it rewrites the untouched Confirm block and adds an abstraction the BUG-101 brief explicitly said to avoid ("do not invent a new mechanism"). Deferred.
+
+2. **Disable the footer Next while `!draftLoaded` on the step screen.** The step-body gate introduced a "footer visible, body still loading" window. Clicking Next during that window advances the (loading) step; in the extreme — a very slow mobile connection + ~11 rapid taps to reach step 12 — `handleSubmit` could fire before `draftStatus` resolves and submit an empty report. Remote, but real. The one-line fix is `disabled={submitting || !draftLoaded}` on `wizard-v2-next` (keep Back enabled as an escape hatch). Deferred here because it cascades into the `openWizard`/`next()` test helpers across `WizardFormV2RetirementR1/R2`, `WizardFormV2PayloadIdentity` (which click Next immediately after mount, before `getDraft` resolves) — each must first wait for the step body (`wizard-v2-step-1`) to render. A tidy standalone slice: add the disable + update those helpers to await the step body.
+
+---
+
 ## Goals v3 closure sweep — two items resolved, two banked (2026-07-04, PR #TBD goals-v3-closure-sweep)
 
 **RESOLVED — two unreconciled MDRT constants.** `src/constants/mdrt.js` (`MDRT_THRESHOLD = 500000`, legacy flat) and `src/config/mdrtThresholds/2026.js` (`MDRT_THRESHOLDS_2026`, three-tier premium method, landed via #643) coexisted with no shared source. All consumers (`AgentReportDocument.jsx`, `HeroCard.jsx`, `HeroCard.test.jsx`) migrated to `MDRT_THRESHOLDS_2026.mdrt` (688,800); `src/constants/mdrt.js` deleted; zero repo-wide references remain.

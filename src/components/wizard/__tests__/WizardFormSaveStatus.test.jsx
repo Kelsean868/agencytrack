@@ -275,7 +275,15 @@ describe('ARIA attributes', () => {
   it('save status container has role="status" and aria-live="polite"', () => {
     renderWizard();
 
-    const statusEl = screen.getByRole('status');
+    // The autosave status region is the sr-only container that carries
+    // aria-atomic="true". During the pre-draft-load window a second
+    // role="status" also exists (the step-loading spinner, BUG-101 — mirrors
+    // the Confirm-screen spinner and has no aria-atomic), so scope to the
+    // autosave container specifically rather than assuming a single status node.
+    const statusEl = screen
+      .getAllByRole('status')
+      .find((el) => el.getAttribute('aria-atomic') === 'true');
+    expect(statusEl).toBeDefined();
     expect(statusEl).toHaveAttribute('aria-live', 'polite');
     expect(statusEl).toHaveAttribute('aria-atomic', 'true');
   });

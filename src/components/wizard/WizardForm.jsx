@@ -692,26 +692,50 @@ export default function WizardForm({ onClose, initialWeek, initialStep, initialS
           )
         )}
 
-        {/* Active v2 step */}
-        {screen === 'step' && step === FINAL_STEP && (
-          <div className="px-4 pb-6 max-w-2xl mx-auto" data-testid={`wizard-v2-step-${step}`}>
-            <ReviewSubmit
-              data={formData}
-              lastWeekData={lastWeekData}
-              commissionRate={userProfile?.commissionRate ?? 0}
-              onEditStep={handleEditStep}
-            />
-          </div>
-        )}
-        {screen === 'step' && step !== FINAL_STEP && ActiveStepComponent && (
-          <div className="px-4 pb-6 max-w-lg mx-auto" data-testid={`wizard-v2-step-${step}`}>
-            <ActiveStepComponent
-              data={formData}
-              onChange={handleChange}
-              {...(activeStepEntry.needsLastWeekData  ? { lastWeekData } : {})}
-              {...(activeStepEntry.needsGoalSeeding   ? { goal, floors } : {})}
-            />
-          </div>
+        {/* Active v2 step — gated on draftLoaded (BUG-101). The editable step
+            body must NOT render until the getDraft check resolves: otherwise a
+            value typed pre-resolve is silently overwritten by the late draft
+            merge (setFormData spread, ~L297), and an already-submitted week
+            accepts input for a beat before flipping to the interstitial. This
+            mirrors the Confirm screen's draftLoaded gate exactly. Since the
+            getDraft resolution that flips draftLoaded=true also sets
+            screen='submitted' in the same batch, a submitted week transitions
+            loading→interstitial with no editable-input window. */}
+        {screen === 'step' && (
+          draftLoaded ? (
+            <>
+              {step === FINAL_STEP && (
+                <div className="px-4 pb-6 max-w-2xl mx-auto" data-testid={`wizard-v2-step-${step}`}>
+                  <ReviewSubmit
+                    data={formData}
+                    lastWeekData={lastWeekData}
+                    commissionRate={userProfile?.commissionRate ?? 0}
+                    onEditStep={handleEditStep}
+                  />
+                </div>
+              )}
+              {step !== FINAL_STEP && ActiveStepComponent && (
+                <div className="px-4 pb-6 max-w-lg mx-auto" data-testid={`wizard-v2-step-${step}`}>
+                  <ActiveStepComponent
+                    data={formData}
+                    onChange={handleChange}
+                    {...(activeStepEntry.needsLastWeekData  ? { lastWeekData } : {})}
+                    {...(activeStepEntry.needsGoalSeeding   ? { goal, floors } : {})}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <div
+              className="flex flex-col items-center justify-center py-16"
+              data-testid="wizard-v2-step-loading"
+              role="status"
+              aria-live="polite"
+            >
+              <Loader2 size={28} className="animate-spin text-primary motion-reduce:animate-none" aria-hidden="true" />
+              <p className="text-sm text-ink-muted mt-3">Loading your week…</p>
+            </div>
+          )
         )}
 
         {/* Already submitted — interstitial */}
