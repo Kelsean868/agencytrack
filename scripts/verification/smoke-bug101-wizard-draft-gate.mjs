@@ -148,10 +148,15 @@ async function assertWeek(page, i, { label, doBehavioral }) {
         } else {
           fail(`${label}:value-survives`, `typed "${testVal}" but field read back "${after}" — value reverted`);
         }
-        // Restore so the smoke tenant draft is net-zero.
+        // Restore so the smoke tenant draft is net-zero. Wait for the restore's
+        // autosave to actually cycle (saving → saved) rather than a fixed sleep:
+        // the 1500ms debounce + throttled round-trip can exceed any fixed wait, and
+        // closing early would leave the draft at the test value. (CodeRabbit #794.)
         await input.click();
         await input.fill(original);
-        await page.waitForTimeout(2000);
+        const chip = '[data-testid="wizard-v2-autosave-chip"]';
+        await page.locator(`${chip}[data-state="saving"]`).waitFor({ timeout: 6000 }).catch(() => {});
+        await page.locator(`${chip}[data-state="saved"], ${chip}[data-state="saved-offline"]`).waitFor({ timeout: 10000 }).catch(() => {});
       } else {
         fail(`${label}:value-survives`, 'no editable input found in the rendered step body');
       }
