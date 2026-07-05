@@ -42,6 +42,8 @@ describe('ChunkLoadErrorBoundary', () => {
     // The fallback rendered instead of the error propagating (white screen).
     expect(screen.getByTestId('state-chunk-error')).toBeInTheDocument();
     expect(screen.getByText(/failed to load/i)).toBeInTheDocument();
+    // a11y: the error state is announced to assistive tech (role="alert").
+    expect(screen.getByRole('alert')).toBeInTheDocument();
     // Reload affordance present.
     expect(screen.getByTestId('chunk-error-reload')).toBeInTheDocument();
     // componentDidCatch logged the error (our message + React's own logging).

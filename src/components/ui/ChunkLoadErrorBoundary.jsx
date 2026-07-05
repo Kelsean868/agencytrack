@@ -48,6 +48,7 @@ class ChunkLoadErrorBoundary extends React.Component {
         <div
           className="min-h-screen flex items-center justify-center bg-surface px-6"
           data-testid="state-chunk-error"
+          role="alert"
         >
           <div className="card max-w-sm w-full text-center flex flex-col items-center gap-6 py-10">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
