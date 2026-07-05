@@ -106,8 +106,15 @@ async function run() {
       //    every account state; skip-note rather than fail if absent)
       await page.locator('[data-testid="agent-tab-game-plan"]').first().click({ timeout: 6000 });
       await page.waitForTimeout(2500);
-      const bodyText = (await page.locator('body').textContent()) || '';
-      const gpMatch = bodyText.match(/Wk (\d+)/);
+      // Anchor on the SuggestedWeekCard eyebrow span ("Suggested weekly plan ·
+      // Wk N" / "Your weekly plan · Wk N") and read ITS OWN textContent — a bare
+      // /Wk (\d+)/ on body.textContent swallows digits from adjacent text nodes
+      // (concatenated without separators, e.g. "Wk 28" + "60").
+      const gpSpan = page.locator('span', { hasText: /weekly plan · Wk \d+/i }).first();
+      const gpText = (await gpSpan.isVisible({ timeout: 2000 }).catch(() => false))
+        ? (await gpSpan.textContent()) || ''
+        : '';
+      const gpMatch = gpText.match(/weekly plan · Wk (\d+)/i);
       if (!gpMatch) skip('desktop-game-plan', 'suggested-week "Wk N" label not present for this account state');
       else if (Number(gpMatch[1]) === EXPECTED) pass('desktop-game-plan', `Game Plan "Wk ${gpMatch[1]}" === expected ${EXPECTED}`);
       else fail('desktop-game-plan', `Game Plan week ${gpMatch[1]} !== expected ${EXPECTED}`);
