@@ -1,4 +1,7 @@
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import {
+  doc, getDoc, getDocs, setDoc, serverTimestamp,
+  collection, query, where, documentId,
+} from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, functions } from '../firebase';
 import { DEFAULT_WEEKLY_ACTIVITY_FLOORS } from '../utils/weeklyActivityFloors';
@@ -12,6 +15,33 @@ export async function getGoals(tenantId, agentId) {
   const ref = doc(db, `tenants/${tenantId}/goals/${agentId}`);
   const snap = await getDoc(ref);
   return snap.exists() ? snap.data() : null;
+}
+
+// EFF-007: batched analog of getGoals for roster views. Fetches many agents'
+// goal docs in ≤30-id chunks via `documentId() in` (goal doc IDs are the agent
+// UIDs — deterministic), replacing the one-get-per-agent N+1 in useTeamRoster.
+// Returns `{ [agentId]: goalData }` for agents that HAVE a goal doc; a missing
+// key means "no goal set" (callers default to null, matching getGoals). A
+// documentId() `in` query needs no composite index.
+export async function getGoalsForAgents(tenantId, agentIds) {
+  if (!agentIds || agentIds.length === 0) return {};
+  const col = collection(db, `tenants/${tenantId}/goals`);
+  const batches = [];
+  for (let i = 0; i < agentIds.length; i += 30) {
+    batches.push(agentIds.slice(i, i + 30));
+  }
+  const map = {};
+  await Promise.all(batches.map(async (batch) => {
+    try {
+      const snap = await getDocs(query(col, where(documentId(), 'in', batch)));
+      snap.docs.forEach((d) => { map[d.id] = d.data(); });
+    } catch {
+      // Read denied/failed for this batch — skip silently and keep the other
+      // batches (mirrors getPersistencyMapForYear's per-batch resilience so one
+      // bad ≤30 chunk can't wipe out every agent's goals).
+    }
+  }));
+  return map;
 }
 
 // Returns the tenant's `config/companyMinimums` doc with built-in defaults

@@ -7,7 +7,7 @@ import {
   getPersistencyForBranch,
   getPersistencyForTenant,
 } from '../services/persistencyService';
-import { getGoals } from '../services/goalsService';
+import { getGoalsForAgents } from '../services/goalsService';
 import { assembleRoster, DEFAULT_PERIOD, containingMonth } from '../lib/teamRoster';
 
 export { DEFAULT_PERIOD };
@@ -80,9 +80,11 @@ export function useTeamRoster(tenantId, period = DEFAULT_PERIOD) {
           (persistencyList ?? []).filter(Boolean).map((r) => [r.agentId, r])
         );
 
-        // Goals — one doc-get per member, failures produce null (no goal set)
-        const goalsList    = await Promise.all(agentIds.map((id) => getGoals(tenantId, id).catch(() => null)));
-        const goalsByAgent = new Map(agentIds.map((id, i) => [id, goalsList[i]]));
+        // Goals — batched read (EFF-007). A goals-read failure degrades to
+        // "no goals set" (roster still renders) rather than erroring the whole
+        // hook, matching the prior per-agent .catch(() => null) intent.
+        const goalsMap     = await getGoalsForAgents(tenantId, agentIds).catch(() => ({}));
+        const goalsByAgent = new Map(agentIds.map((id) => [id, goalsMap[id] ?? null]));
 
         if (!cancelled) {
           setRows(assembleRoster({

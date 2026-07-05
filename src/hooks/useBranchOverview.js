@@ -28,6 +28,10 @@ export function useBranchOverview(role, userProfile, tenantId) {
   const year   = new Date().getFullYear();
   const unitId = userProfile?.unitId ?? null;
 
+  // Stable "now" for the activityEvents memo so its identity doesn't churn each
+  // render (EFF-009). `year` above stays a plain number — primitives don't churn.
+  const now = useMemo(() => new Date(), []);
+
   useEffect(() => {
     if (!tenantId) return;
     setLoading(true);
@@ -168,8 +172,8 @@ export function useBranchOverview(role, userProfile, tenantId) {
 
   // Activity feed events (last 14 days)
   const activityEvents = useMemo(
-    () => buildManagerActivityEvents(productionScopedSubs, userMap, new Date()),
-    [productionScopedSubs, userMap]
+    () => buildManagerActivityEvents(productionScopedSubs, userMap, now),
+    [productionScopedSubs, userMap, now]
   );
 
   // Team badge counts: { key, count } sorted by count desc, top 8

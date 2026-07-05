@@ -5,6 +5,16 @@ so each can ship as a standalone PR. Remove an item when its PR merges.
 
 ---
 
+## EFF Phase-1 — two follow-ups banked from PR #802 bot review (2026-07-05, LOW)
+
+Both surfaced by Gemini + CodeRabbit on the EFF Phase-1 render/read-hygiene PR and dispositioned as bank-not-implement (the frozen-`now` one is a DISAGREE the dispatcher may re-rule at merge; the chunk-util one is OUT-OF-SCOPE per the brief).
+
+1. **`now` memoized with `[]` freezes for the component's mounted lifetime (EFF-009 tradeoff).** `const now = useMemo(() => new Date(), [])` in `AgentDashboard.jsx`, `ManagerDashboard.jsx`, and `useBranchOverview.js` is created once at mount and never updates, so a dashboard left open across a day/week boundary (overnight) shows a stale "today" for the activity-feed cutoff (`buildActivityEvents`/`buildManagerActivityEvents`) and the awards-panel current period (`currentDate` prop). **Why banked, not fixed:** the brief LOCKED `useMemo(()=>new Date(),[])` as the EFF-009 fix, and the whole dashboard is already a mount-time snapshot (submissions/goals fetch once, no live refresh) — a frozen `now` is consistent with that, and any navigation/reload re-mounts and refreshes it. If day-boundary accuracy on a long-open dashboard ever matters, the fix is a day-stable key that updates when the calendar day changes (e.g. `getTodayTT()` recomputed via a low-frequency effect, or a `useState` refreshed on a `setInterval`/visibilitychange) — a design change beyond the brief's locked decision (Rule 1). Sites: `AgentDashboard.jsx` (~:300), `ManagerDashboard.jsx` (~:222), `useBranchOverview.js` (~:30).
+
+2. **Extract a shared `chunk(array, size)` util for the ≤30-id batching loop.** The identical chunking loop now lives in `goalsService.getGoalsForAgents`, `persistencyService.getPersistencyMapForYear`, and `settlementService.getSettlementsForUnit` (three copies). CodeRabbit suggested a single `chunk()` helper so the batch-size constant + slice logic live in one place. **Why banked, not fixed:** consolidating touches `settlementService` (out of scope for the EFF PR) — a mechanical refactor best done as its own small PR with the three call sites updated together + their tests re-run.
+
+---
+
 ## SEC-012 kiosk branch-scoping — two follow-ups banked (2026-07-05, PR #801 `3d7c391e`)
 
 Banked from the SEC-012 fix (kiosk reads branch-scoped in `firestore.rules` + `getKioskYTDSubmissions` client filter). **SHIPPED + rules DEPLOYED 2026-07-05** (post-deploy prod kiosk ALLOW verified live; emulator 17/17 DENY). These two follow-ups remain OPEN.

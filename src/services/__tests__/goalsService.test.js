@@ -16,6 +16,7 @@ vi.mock('firebase/firestore', () => ({
   collection: (_db, path) => ({ __collection: path }),
   query: (ref, ...constraints) => ({ __collection: ref.__collection, __constraints: constraints }),
   where: (field, op, val) => ({ __where: { field, op, val } }),
+  documentId: () => ({ __documentId: true }),
   getDocs: (...args) => hoisted.mockGetDocs(...args),
 }));
 
@@ -28,6 +29,7 @@ import {
   getSalesManagerGoals, setSalesManagerGoals, getSalesManagerUid,
   setGoals,
   getGoals,
+  getGoalsForAgents,
   getUnitGoals, setUnitGoals,
   getBranchGoals, setBranchGoals,
 } from '../goalsService';
@@ -518,6 +520,59 @@ describe('getGoals', () => {
     mockGetDoc.mockResolvedValueOnce({ exists: () => false });
     const result = await getGoals('t1', 'agent1');
     expect(result).toBeNull();
+  });
+});
+
+// ── getGoalsForAgents (EFF-007) ─────────────────────────────────────────────────
+
+describe('getGoalsForAgents', () => {
+  it('returns {} for an empty agent list without querying', async () => {
+    const map = await getGoalsForAgents('t1', []);
+    expect(map).toEqual({});
+    expect(mockGetDocs).not.toHaveBeenCalled();
+  });
+
+  it('fetches ≤30 agents in a single documentId() in query, keyed by doc id', async () => {
+    mockGetDocs.mockResolvedValueOnce({
+      docs: [
+        { id: 'a1', data: () => ({ personalAnnualAPI: 240000 }) },
+        { id: 'a3', data: () => ({ personalAnnualAPI: 300000 }) },
+        // a2 has no goal doc → simply absent from the results
+      ],
+    });
+
+    const map = await getGoalsForAgents('t1', ['a1', 'a2', 'a3']);
+
+    expect(mockGetDocs).toHaveBeenCalledTimes(1);
+    expect(Object.keys(map).sort()).toEqual(['a1', 'a3']);
+    expect(map.a1).toEqual({ personalAnnualAPI: 240000 });
+    expect(map.a2).toBeUndefined(); // missing key — caller defaults to null (matches getGoals)
+  });
+
+  it('splits >30 agents into multiple documentId() in batches', async () => {
+    const ids = Array.from({ length: 31 }, (_, i) => `agent${i}`);
+    mockGetDocs
+      .mockResolvedValueOnce({ docs: [{ id: 'agent0',  data: () => ({ personalAnnualAPI: 1 }) }] })
+      .mockResolvedValueOnce({ docs: [{ id: 'agent30', data: () => ({ personalAnnualAPI: 2 }) }] });
+
+    const map = await getGoalsForAgents('t1', ids);
+
+    expect(mockGetDocs).toHaveBeenCalledTimes(2); // 31 ids → two batches (30 + 1)
+    expect(map.agent0).toEqual({ personalAnnualAPI: 1 });
+    expect(map.agent30).toEqual({ personalAnnualAPI: 2 });
+  });
+
+  it('skips a batch whose query is rejected, keeping the surviving batch (per-batch isolation)', async () => {
+    const ids = Array.from({ length: 31 }, (_, i) => `agent${i}`);
+    mockGetDocs
+      .mockRejectedValueOnce(new Error('PERMISSION_DENIED'))                                       // batch 1 (agent0..agent29)
+      .mockResolvedValueOnce({ docs: [{ id: 'agent30', data: () => ({ personalAnnualAPI: 9 }) }] }); // batch 2 (agent30)
+
+    const map = await getGoalsForAgents('t1', ids);
+
+    expect(mockGetDocs).toHaveBeenCalledTimes(2);
+    expect(map.agent0).toBeUndefined();                    // rejected batch skipped, no throw
+    expect(map.agent30).toEqual({ personalAnnualAPI: 9 });  // surviving batch still present
   });
 });
 

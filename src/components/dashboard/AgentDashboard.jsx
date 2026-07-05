@@ -297,6 +297,10 @@ export default function AgentDashboard() {
     };
   }, [companyMinimums, userProfile?.contractStartDate]);
 
+  // Stable "now" so the AgentAwardsPanel currentDate prop + the activityEvents
+  // memo keep a constant identity across renders (EFF-009).
+  const now = useMemo(() => new Date(), []);
+
   // Activity feed events (B3). Submission events + 3 weekly-criteria
   // badge events, derived client-side from already-loaded data. Capped
   // at 25 items in the last 7 days inside the util.
@@ -305,8 +309,8 @@ export default function AgentDashboard() {
     [allSubmissions]
   );
   const activityEvents = useMemo(
-    () => buildActivityEvents(allSubmissions, earnedBadges, new Date()),
-    [allSubmissions, earnedBadges]
+    () => buildActivityEvents(allSubmissions, earnedBadges, now),
+    [allSubmissions, earnedBadges, now]
   );
 
   const ytdTotals = useMemo(() => {
@@ -689,7 +693,7 @@ export default function AgentDashboard() {
               submissions={allSubmissions}
               confirmedSettlements={settlements}
               agentProfile={userProfile}
-              currentDate={new Date()}
+              currentDate={now}
               ruleset={awardsRuleset}
             />
           </div>
