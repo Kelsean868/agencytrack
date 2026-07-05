@@ -41,9 +41,12 @@ function loadEnv() {
 }
 loadEnv();
 
+// indexOf-based parse so a value containing '=' (e.g. a query string) is kept
+// intact — mirrors loadEnv above.
 const args = Object.fromEntries(process.argv.slice(2).map((a) => {
-  const [k, v] = a.replace(/^--/, '').split('=');
-  return [k, v];
+  const stripped = a.replace(/^--/, '');
+  const eq = stripped.indexOf('=');
+  return eq < 0 ? [stripped, true] : [stripped.slice(0, eq), stripped.slice(eq + 1)];
 }));
 const URL          = args.url ?? 'http://127.0.0.1:4173';
 const IS_PROD      = URL.startsWith('https://');
@@ -76,102 +79,113 @@ async function newCtx() {
   return { browser, context };
 }
 
-// ── Step 1: BM logs in + generates a kiosk URL ───────────────────────────────
-const { browser: mgrBrowser, context: mgrCtx } = await newCtx();
-const mgrPage = await mgrCtx.newPage();
-const mgrErrors = [];
-mgrPage.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('fontshare.com')) mgrErrors.push(m.text()); });
+let mgrBrowser;
+let kBrowser;
+let pass = false;
 
-await mgrPage.goto(URL, { waitUntil: 'domcontentloaded' });
-await login(mgrPage, BM_EMAIL, BM_PASS);
-await mgrPage.waitForTimeout(800);
+try {
+  // ── Step 1: BM logs in + generates a kiosk URL ─────────────────────────────
+  const mgr = await newCtx();
+  mgrBrowser = mgr.browser;
+  const mgrPage = await mgr.context.newPage();
+  const mgrErrors = [];
+  mgrPage.on('console', (m) => { if (m.type() === 'error' && !m.text().includes('fontshare.com')) mgrErrors.push(m.text()); });
 
-const kioskNav = mgrPage.locator('[data-testid="nav-kiosk"]');
-if (await kioskNav.count() === 0) { console.error('Kiosk nav not visible to BM'); await mgrBrowser.close(); process.exit(1); }
-await kioskNav.click();
-await mgrPage.waitForFunction(() => !!document.querySelector('a[href*="/kiosk/"]'), { timeout: 30_000 }).catch(async () => {
-  const gen = mgrPage.getByRole('button', { name: /generate/i });
-  if (await gen.count() > 0) { await gen.first().click(); await mgrPage.waitForFunction(() => !!document.querySelector('a[href*="/kiosk/"]'), { timeout: 30_000 }); }
-});
+  await mgrPage.goto(URL, { waitUntil: 'domcontentloaded' });
+  await login(mgrPage, BM_EMAIL, BM_PASS);
+  await mgrPage.waitForTimeout(800);
 
-const kioskHref = await mgrPage.locator('a[href*="/kiosk/"]').first().getAttribute('href');
-if (!kioskHref) { console.error('No kiosk URL generated'); await mgrBrowser.close(); process.exit(1); }
-let kioskUrl = kioskHref.startsWith('http') ? kioskHref : `${URL}${kioskHref}`;
-if (IS_PROD) kioskUrl = `${URL}${kioskUrl.replace(/^https?:\/\/[^/]+/, '')}`;
-console.log(`[kiosk URL acquired] (length=${kioskUrl.length}; rewritten=${IS_PROD})`);
-
-// ── Step 2: open the kiosk ───────────────────────────────────────────────────
-const { browser: kBrowser, context: kCtx } = await newCtx();
-const kPage = await kCtx.newPage();
-const kErrors = [];
-kPage.on('console', (m) => {
-  if (m.type() !== 'error') return;
-  const text = m.text();
-  if (text.includes('fontshare.com')) return;
-  if (text.includes('Failed to load resource') && text.includes('net::ERR_FAILED')) return;
-  kErrors.push(text);
-});
-
-await kPage.goto(kioskUrl, { waitUntil: 'domcontentloaded' });
-await kPage.waitForFunction(() => {
-  const spinner = document.querySelector('.animate-spin');
-  const hasContent = document.querySelectorAll('h1').length > 0
-    || /Good (Morning|Afternoon|Evening)/.test(document.body.textContent || '');
-  return !spinner && hasContent;
-}, { timeout: 60_000 });
-console.log('[kiosk shell loaded]');
-
-// ── Step 3: wait for the submissions-driven Branch Overview panel ────────────
-// branchOverview sits ~60-90s into the rotation (welcome 15s → agentOfMonth 45s
-// → branchOverview 30s). Poll up to 180s, logging the visible panel so a stall
-// is diagnosable.
-let branchSeen = false;
-const startWait = Date.now();
-while (Date.now() - startWait < 180_000) {
-  const state = await kPage.evaluate(() => {
-    const h1 = document.querySelector('h1')?.textContent?.trim() ?? null;
-    const greet = (document.body.textContent || '').match(/Good (Morning|Afternoon|Evening)/)?.[0] ?? null;
-    return { h1, greet };
+  const kioskNav = mgrPage.locator('[data-testid="nav-kiosk"]');
+  if (await kioskNav.count() === 0) throw new Error('Kiosk nav not visible to BM');
+  await kioskNav.click();
+  await mgrPage.waitForFunction(() => !!document.querySelector('a[href*="/kiosk/"]'), { timeout: 30_000 }).catch(async () => {
+    const gen = mgrPage.getByRole('button', { name: /generate/i });
+    if (await gen.count() > 0) { await gen.first().click(); await mgrPage.waitForFunction(() => !!document.querySelector('a[href*="/kiosk/"]'), { timeout: 30_000 }); }
   });
-  const elapsed = Math.round((Date.now() - startWait) / 1000);
-  console.log(`[t+${elapsed}s] panel h1="${state.h1}" greet="${state.greet}"`);
-  if (state.h1 === 'Branch Overview') { branchSeen = true; break; }
-  await kPage.waitForTimeout(6000);
-}
 
-let kpis = null;
-if (branchSeen) {
-  await kPage.waitForTimeout(2000); // let the count-up animation settle
-  kpis = await kPage.evaluate(() => {
-    const h1 = [...document.querySelectorAll('h1')].find((h) => h.textContent.trim() === 'Branch Overview');
-    if (!h1) return null;
-    const panel = h1.closest('div.w-full') || h1.parentElement?.parentElement;
-    const cards = [...(panel?.querySelectorAll('.bg-card') || [])];
-    return cards.map((c) => {
-      const spans = c.querySelectorAll('span');
-      return { label: spans[0]?.textContent?.trim() ?? '', value: spans[1]?.textContent?.trim() ?? '' };
+  const kioskHref = await mgrPage.locator('a[href*="/kiosk/"]').first().getAttribute('href');
+  if (!kioskHref) throw new Error('No kiosk URL generated');
+  let kioskUrl = kioskHref.startsWith('http') ? kioskHref : `${URL}${kioskHref}`;
+  if (IS_PROD) kioskUrl = `${URL}${kioskUrl.replace(/^https?:\/\/[^/]+/, '')}`;
+  console.log(`[kiosk URL acquired] (length=${kioskUrl.length}; rewritten=${IS_PROD})`);
+
+  // ── Step 2: open the kiosk ─────────────────────────────────────────────────
+  const k = await newCtx();
+  kBrowser = k.browser;
+  const kPage = await k.context.newPage();
+  const kErrors = [];
+  kPage.on('console', (m) => {
+    if (m.type() !== 'error') return;
+    const text = m.text();
+    if (text.includes('fontshare.com')) return;
+    if (text.includes('Failed to load resource') && text.includes('net::ERR_FAILED')) return;
+    kErrors.push(text);
+  });
+
+  await kPage.goto(kioskUrl, { waitUntil: 'domcontentloaded' });
+  await kPage.waitForFunction(() => {
+    const spinner = document.querySelector('.animate-spin');
+    const hasContent = document.querySelectorAll('h1').length > 0
+      || /Good (Morning|Afternoon|Evening)/.test(document.body.textContent || '');
+    return !spinner && hasContent;
+  }, { timeout: 60_000 });
+  console.log('[kiosk shell loaded]');
+
+  // ── Step 3: wait for the submissions-driven Branch Overview panel ──────────
+  // branchOverview sits ~60-90s into the rotation (welcome 15s → agentOfMonth
+  // 45s → branchOverview 30s). Poll up to 180s, logging the visible panel so a
+  // stall is diagnosable.
+  let branchSeen = false;
+  const startWait = Date.now();
+  while (Date.now() - startWait < 180_000) {
+    const state = await kPage.evaluate(() => {
+      const h1 = document.querySelector('h1')?.textContent?.trim() ?? null;
+      const greet = (document.body.textContent || '').match(/Good (Morning|Afternoon|Evening)/)?.[0] ?? null;
+      return { h1, greet };
     });
-  });
+    const elapsed = Math.round((Date.now() - startWait) / 1000);
+    console.log(`[t+${elapsed}s] panel h1="${state.h1}" greet="${state.greet}"`);
+    if (state.h1 === 'Branch Overview') { branchSeen = true; break; }
+    await kPage.waitForTimeout(6000);
+  }
+
+  let kpis = null;
+  if (branchSeen) {
+    await kPage.waitForTimeout(2000); // let the count-up animation settle
+    kpis = await kPage.evaluate(() => {
+      const h1 = [...document.querySelectorAll('h1')].find((h) => h.textContent.trim() === 'Branch Overview');
+      if (!h1) return null;
+      const panel = h1.closest('div.w-full') || h1.parentElement?.parentElement;
+      const cards = [...(panel?.querySelectorAll('.bg-card') || [])];
+      return cards.map((c) => {
+        const spans = c.querySelectorAll('span');
+        return { label: spans[0]?.textContent?.trim() ?? '', value: spans[1]?.textContent?.trim() ?? '' };
+      });
+    });
+  }
+
+  const ytdApi = kpis?.find((kpi) => kpi.label === 'YTD API')?.value ?? '';
+  const apiHasData = /TTD/.test(ytdApi) && ytdApi.replace(/[^0-9]/g, '').replace(/0+/g, '') !== '';
+
+  pass = kErrors.length === 0 && mgrErrors.length === 0 && branchSeen && apiHasData;
+
+  console.log('\n=== SEC-012 kiosk branch-scope smoke summary ===');
+  console.log(JSON.stringify({
+    kioskUrlLen: kioskUrl.length,
+    branchOverviewSeen: branchSeen,
+    kpis,
+    ytdApi,
+    apiHasData,
+    kErrors: kErrors.length,
+    mgrErrors: mgrErrors.length,
+    kErrorSample: kErrors.slice(0, 3),
+    pass,
+  }, null, 2));
+} catch (err) {
+  console.error('SMOKE ERROR:', err?.message ?? err);
+} finally {
+  await kBrowser?.close().catch(() => {});
+  await mgrBrowser?.close().catch(() => {});
 }
 
-const ytdApi = kpis?.find((k) => k.label === 'YTD API')?.value ?? '';
-const apiHasData = /TTD/.test(ytdApi) && ytdApi.replace(/[^0-9]/g, '').replace(/0+/g, '') !== '';
-
-const pass = kErrors.length === 0 && mgrErrors.length === 0 && branchSeen && apiHasData;
-
-console.log('\n=== SEC-012 kiosk branch-scope smoke summary ===');
-console.log(JSON.stringify({
-  kioskUrlLen: kioskUrl.length,
-  branchOverviewSeen: branchSeen,
-  kpis,
-  ytdApi,
-  apiHasData,
-  kErrors: kErrors.length,
-  mgrErrors: mgrErrors.length,
-  kErrorSample: kErrors.slice(0, 3),
-  pass,
-}, null, 2));
-
-await kBrowser.close();
-await mgrBrowser.close();
 process.exit(pass ? 0 : 1);
