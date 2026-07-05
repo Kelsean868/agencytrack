@@ -1315,6 +1315,34 @@ h1, h2, h3, h4 {
   top: 0;
   z-index: 10;
 }
+/* Skip-to-content link (A11Y-103 / WCAG 2.4.1). Off-screen until focused, then
+   pins to the top-left over the shell. Uses theme tokens so it reads in both
+   modes; 44px min height per the Nexus touch-target rule. */
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -60px;
+  z-index: 100;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  /* Inverted neutral so it stays high-contrast in BOTH themes — avoids the
+     dark-mode white-on-lifted-teal AA trap (--color-primary is the text teal in
+     dark, not a button bg; see CLAUDE.md D6). */
+  background: var(--color-text);
+  color: var(--color-bg);
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+.skip-link:focus {
+  top: 8px;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .topbar-titles { min-width: 0; }
 .topbar-title {
   font-size: 16px;

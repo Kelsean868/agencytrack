@@ -41,6 +41,7 @@
 - **Root cause:** [AgentDashboard.jsx:518](../../../src/components/dashboard/AgentDashboard.jsx) hardcodes `topbarTitle="Dashboard"` for every `activeTab`; ManagerDashboard passes a static `Welcome back, {name}` ([ManagerDashboard.jsx:438](../../../src/components/dashboard/ManagerDashboard.jsx)).
 - **User impact:** the one persistent text landmark on screen misidentifies 14 of 15 agent screens. Since screens also lack `<h1>`s (prior A11Y-001), some screens have *no* correct visible title anywhere except the sidebar highlight.
 - **Fix:** derive `topbarTitle` from the active nav item's label (`navConfig` already holds them); pairs naturally with the A11Y-001 heading fix.
+- **RESOLVED for agents (2026-07-05, PR `fix/a11y-h1-topbar-skiplink`):** agent `topbarTitle` now derives from the active nav item's label via `tabTitleFromItems(navItems, activeTab)` (`navConfig.js`); the topbar title element is now an `<h1>` (`Topbar.jsx`), so this also closes A11Y-001 app-wide (every screen gets one semantic heading — a central fix, not a 33-screen sweep). **Manager/Admin dashboards** keep the static "Welcome back, {name}" title (now rendered as their `<h1>`) — making those dynamic per-screen is banked as a follow-up (it entails a greeting/wayfinding product decision) in `docs/FOLLOW_UPS.md`.
 
 ### UX-102 — Daily Capture save has no legible success moment (spinner → silent auto-close)
 - **Severity:** Low · **Category:** UX / feedback · **Confidence:** Confirmed.
@@ -76,6 +77,7 @@
 ### A11Y-103 — Skip link confirmed absent (upgrades prior A11Y-004 from needs-verification to Confirmed)
 - **Severity:** Low · **WCAG:** 2.4.1 Bypass Blocks (A) · **Confidence:** Confirmed.
 - **Evidence:** from page top on the agent dashboard, the first Tab stop is the "Collapse sidebar" button, then the pinned nav items — no skip-to-content link exists. A keyboard user tabs through the full ~20-item sidebar on every screen. (Landmark navigation remains a partial mitigation for AT users.)
+- **RESOLVED (2026-07-05, PR `fix/a11y-h1-topbar-skiplink`):** a visually-hidden "Skip to main content" link is now the first focusable element in `Shell.jsx` (before the sidebar), targeting `#main-content` (the `<main>` landmark, `tabIndex={-1}`). Visible on focus with a theme-token inverted chip (high-contrast in both modes; 44px min height). Covers all dashboards (agent/manager/admin) since the link lives in the shared Shell.
 
 ### Keyboard pass — verified PASS
 - **Primary form (Commission Playground):** logical Tab order through all inputs; every stop shows a visible 2px focus outline; labels associated (prior audit) — no findings. `agent-commission-focus-visible-desktop-light.png`.

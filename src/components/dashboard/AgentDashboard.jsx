@@ -46,7 +46,7 @@ import { getQuickAddActions } from '../shell/quickAddConfig';
 import AgentDashboardHomeV2 from './HomeV2';
 import NewAgentEmptyState from './NewAgentEmptyState';
 import ComingSoonPanel from '../ui/ComingSoonPanel';
-import { getNavConfig } from '../shell/navConfig';
+import { getNavConfig, tabTitleFromItems } from '../shell/navConfig';
 import usePinnedNav from '../../hooks/usePinnedNav';
 import useMenuLayout from '../../hooks/useMenuLayout';
 import MoneyNeedsPanel from '../agent/MoneyNeedsPanel';
@@ -515,7 +515,7 @@ export default function AgentDashboard() {
       onAction={handleAction}
       userProfile={userProfile}
       roleLabel={roleLabel}
-      topbarTitle="Dashboard"
+      topbarTitle={tabTitleFromItems(navItems, activeTab)}
       topbarCrumb={(() => {
         const d = new Date();
         const weekday = d.toLocaleDateString('en-TT', { weekday: 'long' });

@@ -4,7 +4,7 @@
 // mapping for producing managers and the agent group/SOON/Daily-Log behavior.
 
 import { describe, it, expect } from 'vitest';
-import { getNavConfig, getPinnedSeed } from '../navConfig';
+import { getNavConfig, getPinnedSeed, tabTitleFromItems } from '../navConfig';
 
 const ids = (items) => items.map((i) => i.id);
 
@@ -145,5 +145,30 @@ describe('getPinnedSeed — ★ Pinned-zone seeds (PR-2)', () => {
   it('manager and unknown configs seed empty', () => {
     expect(getPinnedSeed('manager')).toEqual([]);
     expect(getPinnedSeed('nope')).toEqual([]);
+  });
+});
+
+describe('tabTitleFromItems — dynamic topbar heading (UX-101 / A11Y-001)', () => {
+  const agent = getNavConfig('agent', { showDailyCapture: true });
+
+  it('resolves the active tab label from the nav list', () => {
+    expect(tabTitleFromItems(agent, 'awards')).toBe('Awards');
+    expect(tabTitleFromItems(agent, 'game-plan')).toBe('Game Plan');
+    expect(tabTitleFromItems(agent, 'money-needs')).toBe('Money Needs');
+    expect(tabTitleFromItems(agent, 'dashboard')).toBe('Dashboard');
+  });
+
+  it('maps the Leaderboard item by its tabId (production-leaderboard, not "leaderboard")', () => {
+    expect(tabTitleFromItems(agent, 'production-leaderboard')).toBe('Leaderboard');
+  });
+
+  it('falls back for an activeTab with no matching nav descriptor', () => {
+    expect(tabTitleFromItems(agent, 'profile')).toBe('Dashboard');
+    expect(tabTitleFromItems(agent, 'profile', 'Profile')).toBe('Profile');
+  });
+
+  it('is defensive against a non-array items argument', () => {
+    expect(tabTitleFromItems(undefined, 'awards')).toBe('Dashboard');
+    expect(tabTitleFromItems(null, 'awards', 'Home')).toBe('Home');
   });
 });
