@@ -223,6 +223,24 @@ Also re-ran the PRE-MERGE `smoke-plan-suggestions-b3.mjs` against production for
 
 ---
 
+## EFF-002 Phase 2 — per-manager-tab code-splitting + Rollup `manualChunks` vendor/icon grouping (banked 2026-07-05, MEDIUM)
+
+**Origin:** EFF-002 **Phase 1** (lazy the 3 role dashboards behind `<Suspense>`) SHIPPED via PR `perf/eff002-code-splitting` — entry chunk **644.85 → 221.55 kB gzip (−65.6%)**, agent never fetches the manager/tenant-admin chunks (adversarial smoke 60/60). **Phase 2** (lazy-splitting the heavy `ManagerDashboard` tab panels) was implemented + verified, then **reverted before ship** and banked here.
+
+**Finding (Rule 23 — verified empirically at two granularities):** lazy-ing the manager tab panels slims the `ManagerDashboard` base chunk substantially — **96.59 → 14.68 kB gzip** at full 29-panel granularity, **→ 35.55 kB gzip** at a 16-heavy-panel granularity — deferring each heavy panel to its own tab chunk. BUT it fans shared leaf modules (lucide-react icons + small utils shared with the now-lazy `AgentDashboard` chunk) out into **dozens of tiny chunks** (~50 at 29 panels, ~36 at 16 panels; the Phase-1 baseline is **0** tiny chunks). That is the "dozens of tiny chunks" the code-split brief explicitly cautioned against. All tabs render correctly (smoke walked all 14, 0 chunk failures, no waterfall — the tiny chunks are parallel leaf loads), so it is a topology/best-practice concern, not a functional break. The benefit is **manager-only** (managers are few, on desktop) and marginal vs Phase 1's agent-path win.
+
+**Root cause:** without a Rollup `build.rollupOptions.output.manualChunks` strategy grouping vendor libs into a few stable chunks, per-component `lazy()` extraction sprawls. The clean fix **pairs** the tab-splitting WITH a `manualChunks` vendor/icon grouping — a build-config architectural decision (Methodology Rule 1: surface before adding a new build-config pattern), which is why it was **not** done unilaterally in the autonomous run.
+
+**Scope to resolve (do these together):**
+1. **`vite.config.js` `manualChunks`** grouping `lucide-react` (or a curated icon set), `recharts`, and the firebase SDK into named vendor chunks — dispatcher-approved (build-config).
+2. **Re-apply the ManagerDashboard tab lazy-splitting** (heavy panels: `UserManagementPanel`, `CommissionPlayground`, `FinancingTab`, `GamePlanV2`, `PolicyLedgerPanel`, `GoalsPanel`, `MoneyNeedsPanel`, `UnitFinancingRoster`, `TeamPlansRoster`, `CompliancePanel`, `ProductionLeaderboardSurface`, `TeamPerfRosterPage`, `ProductionReportTab`, `ProfileScreen`, `PersistencyTab`, `PolicyReconciliationPanel`) behind one content-area `<Suspense>` inside `<Shell>`; keep Overview (default), `Shell`, the `mp-goals` composite panels, and the full-screen early-return flows (`WizardForm`/`MeetingMode`/`DailyCaptureV2`) eager. The reverted diff shape is documented in `docs/audits/eff002-run/RUN-LOG.md`.
+3. **Re-run the committed adversarial smoke** `scripts/verification/smoke-eff002-code-splitting.mjs` (already walks every manager tab + slow-network Suspense fallbacks in both themes).
+4. Consider **EFF-013** (inline-SVG KPICard sparkline) in the same pass to remove Recharts from the agent path entirely — Phase 1 moved Recharts out of the *entry* chunk, but the agent still pulls it via the default-view KPICard sparkline.
+
+**Falsification:** overturned if a `manualChunks` config + tab-splitting yields a clean topology (few chunks, no tiny-chunk sprawl) with the manager-base reduction preserved — then the pairing is validated and should ship. Also overturned if a measurement shows the tiny-chunk count is a non-issue on Vercel's HTTP/2 edge (caching benefit > request overhead), in which case Phase 2 ships as-is.
+
+---
+
 ## PR-B3 fast-follow — notify-on-send ping for plan suggestions (banked 2026-07-04, LOW — K10b precedent)
 
 **Origin:** PR-B3 deliberately shipped NO notification ping when a manager sends a plan suggestion (locked design, K10b precedent — the collection is the record; the agent sees unread emphasis on their next hub visit). A push/in-app notification on send would shorten the feedback loop.
