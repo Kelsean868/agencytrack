@@ -44,3 +44,83 @@ def classify_beacon(frame, box, dominance=BEACON_DOMINANCE):
     if r - max(g, b) > dominance:
         return 'red'
     return 'neutral'
+
+
+def detect_animation_window(classes):
+    start = next((i for i, c in enumerate(classes) if c == 'green'), None)
+    if start is None:
+        return None
+    end = next((i for i, c in enumerate(classes) if c == 'red' and i > start), None)
+    return (start, end)
+
+
+def content_delta_series(frames, box):
+    series = [0.0]
+    for i in range(1, len(frames)):
+        series.append(region_mean_delta(frames[i - 1], frames[i], box))
+    return series
+
+
+def detect_settle_idx(series, thr=SETTLE_DELTA):
+    last = 0
+    for i, d in enumerate(series):
+        if d > thr:
+            last = i
+    return last
+
+
+def verdict(m):
+    if m.get('popinGapMs', 0) > POPIN_GAP_MS and m.get('lateChangePct', 0) > POPIN_MAG_PCT:
+        return 'FAIL'
+    if m.get('droppedFrameRatio', 0) > DROPPED_FRAME_RATIO:
+        return 'WARN'
+    return 'PASS'
+
+
+def compute_metrics(meta, frames):
+    beacon_box, content_box = meta['beaconBox'], meta['contentBox']
+    tMs = [fr['tMs'] for fr in meta['frames']]
+    classes = [classify_beacon(f, beacon_box) for f in frames]
+    window = detect_animation_window(classes)
+    series = content_delta_series(frames, content_box)
+    settle_idx = detect_settle_idx(series)
+    out = {'role': meta['role'], 'case': meta['case'], 'condition': meta['condition'],
+           'reducedMotion': meta.get('reducedMotion', False),
+           'declaredDurationMs': meta.get('declaredDurationMs'), 'frameCount': len(frames),
+           'deltaSeries': [round(d, 2) for d in series], 'tMs': [round(t, 1) for t in tMs]}
+    if window is None or window[1] is None:
+        # No animation window seen. Expected under reduced-motion; a defect otherwise.
+        out['popinGapMs'] = 0.0
+        out['lateChangePct'] = 0.0
+        out['droppedFrameRatio'] = 0.0
+        out['animEndMs'] = None
+        if meta.get('reducedMotion'):
+            late = region_changed_fraction(frames[0], frames[-1], content_box) if len(frames) > 1 else 0.0
+            out['lateChangePct'] = round(late, 2)
+            out['verdict'] = 'PASS' if late < POPIN_MAG_PCT else 'FAIL'
+        else:
+            out['verdict'] = 'ERROR'
+            out['error'] = 'beacon window not detected (screen-enter never fired?)'
+        return out
+    if meta.get('reducedMotion'):
+        out['verdict'] = 'FAIL'
+        out['error'] = 'motion detected under reduced-motion'
+        out['animEndMs'] = round(tMs[window[0]], 1)
+        out['popinGapMs'] = 0.0
+        out['lateChangePct'] = 0.0
+        out['droppedFrameRatio'] = 0.0
+        return out
+    s_idx, e_idx = window
+    anim_start, anim_end, settle = tMs[s_idx], tMs[e_idx], tMs[settle_idx]
+    popin = max(0.0, settle - anim_end)
+    late_mag = region_changed_fraction(frames[e_idx], frames[-1], content_box)
+    win_ts = tMs[s_idx:e_idx + 1]
+    intervals = [win_ts[i] - win_ts[i - 1] for i in range(1, len(win_ts))]
+    med = sorted(intervals)[len(intervals) // 2] if intervals else 0.0
+    dropped = sum(1 for iv in intervals if med > 0 and iv > 1.8 * med)
+    out.update({'animStartMs': round(anim_start, 1), 'animEndMs': round(anim_end, 1),
+                'settleMs': round(settle, 1), 'measuredWindowMs': round(anim_end - anim_start, 1),
+                'popinGapMs': round(popin, 1), 'lateChangePct': round(late_mag, 2),
+                'droppedFrameRatio': round(dropped / len(intervals), 2) if intervals else 0.0})
+    out['verdict'] = verdict(out)
+    return out

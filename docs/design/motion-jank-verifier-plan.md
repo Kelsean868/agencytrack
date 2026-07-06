@@ -174,45 +174,39 @@ git commit -m "feat(verifier): motion analyzer primitives (frame diff + beacon c
 ```python
 # append to test_motion_analyze.py
 class TestMetrics(unittest.TestCase):
-    def _frames(self):
-        # 10 frames, 100x50. Beacon strip = rows 0..5 (full width).
-        # Content region = rows 6..49. Timeline @ ~16.7ms/frame.
-        # green at f2 (animstart), red at f5 (animend). Content ramps (fade)
-        # f2..f5, then a POP-IN at f8 (big content change after animend).
+    def _frames(self, popin=True):
+        # 16 frames, 100x50 @ ~16.7ms/frame. Beacon strip = rows 0..5.
+        # Content region = rows 6..49. green f2..f4 (animstart), red f5+ (animend
+        # ~83.5ms). Content fades f2..f5. If popin: a content block paints in at
+        # f14 (~234ms) -> ~150ms AFTER animend, past the 100ms FAIL threshold.
         box_beacon = {'x':0,'y':0,'width':100,'height':6}
         box_content = {'x':0,'y':6,'width':100,'height':44}
         frames, tMs = [], []
-        for i in range(10):
+        for i in range(16):
             f = np.zeros((50,100,3), dtype=np.int16)
-            # beacon
             if 2 <= i < 5: f[0:6,:,:] = (0,200,0)
             elif i >= 5:   f[0:6,:,:] = (200,0,0)
-            # content: fade grey 0->120 over f2..f5, static after, POP at f8
-            grey = 0
-            if i >= 2: grey = min(120, (i-2)*40)
+            grey = min(120, (i-2)*40) if i >= 2 else 0
             f[6:50,:,:] = grey
-            if i >= 8: f[20:44,:,:] = 220   # late content block paints in
+            if popin and i >= 14: f[20:44,:,:] = 220   # late content block paints in
             frames.append(f); tMs.append(round(i*16.7,1))
         meta = {'role':'agent','case':'history','condition':'cold',
                 'declaredDurationMs':320.0,'beaconBox':box_beacon,'contentBox':box_content,
-                'frames':[{'index':i+1,'file':f'frame_{i+1:05d}.jpg','tMs':tMs[i]} for i in range(10)]}
+                'frames':[{'index':i+1,'file':f'frame_{i+1:05d}.jpg','tMs':tMs[i]} for i in range(16)]}
         return meta, frames
 
     def test_window_and_popin_recovered(self):
-        meta, frames = self._frames()
+        meta, frames = self._frames(popin=True)
         m = M.compute_metrics(meta, frames)
         # animation window: green f2 (idx2, 33.4ms) -> red f5 (idx5, 83.5ms)
         self.assertAlmostEqual(m['animEndMs'], 83.5, places=1)
-        # content still changing at f8 (133.6ms) -> settle after animend -> positive gap
-        self.assertGreater(m['popinGapMs'], 40.0)
+        # content still changing at f14 (~234ms) -> settle after animend -> gap >100ms
+        self.assertGreater(m['popinGapMs'], 100.0)
         self.assertGreater(m['lateChangePct'], 5.0)
         self.assertEqual(m['verdict'], 'FAIL')
 
     def test_clean_transition_passes(self):
-        meta, frames = self._frames()
-        # remove the pop-in: no late block
-        for i in range(8, 10):
-            frames[i][20:44,:,:] = 120
+        meta, frames = self._frames(popin=False)
         m = M.compute_metrics(meta, frames)
         self.assertLessEqual(m['popinGapMs'], 40.0)
         self.assertEqual(m['verdict'], 'PASS')
