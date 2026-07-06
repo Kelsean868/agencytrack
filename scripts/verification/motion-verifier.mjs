@@ -3,6 +3,14 @@
 // instrument screen-enter, screencast a cold + warm tab switch, write frames +
 // meta.json, then invoke the Python analyzer. READ-ONLY: navigation + capture,
 // no Firestore writes. See docs/design/motion-jank-verifier.md.
+//
+// Env is loaded via Node's native `--env-file` (see usage) — no dotenv dependency.
+// Credentials are read by name only, never echoed.
+//
+// Usage:
+//   node --env-file=.env.local scripts/verification/motion-verifier.mjs --role all --url <previewUrl>
+//   node --env-file=.env.local scripts/verification/motion-verifier.mjs --role agent --reduced-motion --url <previewUrl>
+//   node scripts/verification/motion-verifier.mjs --analyze-only <runDir>   # re-analyze existing frames, no browser
 import { chromium } from 'playwright';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
