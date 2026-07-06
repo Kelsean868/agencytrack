@@ -11,9 +11,11 @@
 //   node --env-file=.env.local scripts/verification/motion-verifier.mjs --role all --url <previewUrl>
 //   node --env-file=.env.local scripts/verification/motion-verifier.mjs --role agent --reduced-motion --url <previewUrl>
 //   node --env-file=.env.local scripts/verification/motion-verifier.mjs --role agent --target agent-tab-game-plan --case game-plan --url <url>
+//   node --env-file=.env.local scripts/verification/motion-verifier.mjs --role all --sweep --url <url>   # EVERY tab, per role
 //   node scripts/verification/motion-verifier.mjs --analyze-only <runDir>   # re-analyze existing frames, no browser
-// Flags: --target/--default <data-testid> (override the nav for a single role), --case <label>,
-//        --settle-cap <ms> (default 2500), --reduced-motion, --url/--analyze-only.
+// Flags: --sweep (measure every nav tab for the role, cold-only), --target/--default <data-testid>
+//        (override the nav for a single role), --case <label>, --settle-cap <ms> (default 2500),
+//        --reduced-motion, --url/--analyze-only.
 import { chromium } from 'playwright';
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -44,9 +46,18 @@ const wantRole = arg('--role', 'all');
 const reducedMotion = process.argv.includes('--reduced-motion');
 
 async function clickNav(page, testid) {
-  // Sidebar renders each item as <button data-testid="agent-tab-<id>" | "nav-<id>">.
-  // .first() guards the pinned-zone duplicate (pinned items render twice).
-  await page.locator(`[data-testid="${testid}"]`).first().click({ timeout: 15_000 });
+  // Fire the nav button's handler directly (no scroll) so the viewport stays put —
+  // the screen-enter animation plays in the in-view content area, which is what the
+  // screencast captures. Scrolling a below-fold item into view (producing-manager's
+  // 34-item sidebar) pushes the content out of frame and the capture goes blank.
+  // el.click() triggers React's onClick -> setActiveTab exactly like a real click.
+  const ok = await page.evaluate((t) => {
+    const el = document.querySelector(`[data-testid="${t}"]`); // first match; pinned/section dupes route to the same tab
+    if (!el) return false;
+    el.click();
+    return true;
+  }, testid);
+  if (!ok) throw new Error(`nav testid not found: ${testid}`);
 }
 
 async function captureSwitch(page, client, targetTestId) {
@@ -117,8 +128,65 @@ async function runRole(browser, role, baseUrl, token, runDir) {
   await context.close();
 }
 
+// ── Sweep mode: measure EVERY tab for a role (cold-only) ─────────────────────
+const NAV_PREFIX = /^(agent-tab-|mp-tab-|nav-|pinned-)/;
+const ACTION_SUFFIXES = new Set(['daily-log', 'wizard', 'meetings', 'kiosk']); // open a modal/wizard/full-screen takeover, not an in-place tab switch — never click during a sweep
+
+function tabIdFromTestId(t) { return t.replace(NAV_PREFIX, ''); }
+
+async function enumerateTabs(page) {
+  const raw = await page.$$eval('.sidebar-link[data-testid]', (els) => els.map((e) => ({
+    testid: e.getAttribute('data-testid'),
+    label: (e.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 30),
+    disabled: e.className.includes('sidebar-link-disabled') || e.getAttribute('aria-disabled') === 'true' || e.disabled === true,
+  })));
+  const seen = new Set(), out = [];
+  for (const it of raw) {
+    if (!it.testid || !NAV_PREFIX.test(it.testid)) continue;
+    const id = tabIdFromTestId(it.testid);
+    if (it.disabled || ACTION_SUFFIXES.has(id) || seen.has(id)) continue; // dedupe pinned+section duplicates by tab id
+    seen.add(id);
+    out.push({ testid: it.testid, id, label: it.label });
+  }
+  return out;
+}
+
+// NOTE: sweep is a DISCOVERY tool — it reliably identifies which tabs mount content
+// late (late-DOM attribution is per-tab correct). Absolute pop-in *timing* is inflated
+// by fetch contention (many tabs' Firestore reads in flight); use a single-role run
+// (--role X --target …) for precise ms on a specific tab. Producing-manager's 34-item
+// sidebar re-renders per active tab, so some below-fold tabs become unreachable mid-sweep.
+async function sweepRole(browser, role, baseUrl, token, runDir) {
+  const base = CASES[role];
+  const email = process.env[`${base.envPrefix}_EMAIL`];
+  const password = process.env[`${base.envPrefix}_PASSWORD`];
+  if (!email || !password) { safeLog(`SKIP ${role}: ${base.envPrefix}_EMAIL/PASSWORD not set`); return; }
+  const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 1, reducedMotion: reducedMotion ? 'reduce' : 'no-preference' });
+  if (token) await setupBypassSession(context, baseUrl, token);
+  const page = await context.newPage();
+  await page.addInitScript(installMotionInstrument);
+  await loginAs(page, baseUrl, email, password);
+  await page.waitForTimeout(1500);
+  const tabs = await enumerateTabs(page);
+  safeLog(`${role}: sweeping ${tabs.length} tabs — ${tabs.map((t) => t.id).join(', ')}`);
+  const client = await context.newCDPSession(page);
+  for (const tab of tabs) {
+    // Each switch (prev tab -> this tab) is a cold first visit that replays screen-enter.
+    try {
+      await page.evaluate(resetMotionMarks);
+      const cap = await captureSwitch(page, client, tab.testid);
+      const n = writeCase(runDir, role, tab.id, { ...base, case: tab.id, targetLabel: tab.label }, cap, baseUrl, reducedMotion);
+      safeLog(`  ${role}/${tab.id}: ${n} frames`);
+    } catch (e) {
+      safeLog(`  ${role}/${tab.id}: SKIP (${String(e.message || e).slice(0, 50)})`);
+    }
+  }
+  await context.close();
+}
+
 async function main() {
-  const clearGlobal = installGlobalTimeout(180_000, () => safeLog('TIMEOUT — partial capture on disk'));
+  const sweep = process.argv.includes('--sweep');
+  const clearGlobal = installGlobalTimeout(sweep ? 900_000 : 180_000, () => safeLog('TIMEOUT — partial capture on disk'));
   const analyzeOnly = arg('--analyze-only', null);
   const runDir = analyzeOnly || path.join(HERE, 'out', 'motion', safeStamp());
   if (!analyzeOnly) {
@@ -129,9 +197,9 @@ async function main() {
       return true;
     });
     mkdirSync(runDir, { recursive: true });
-    safeLog(`motion-verifier: ${roles.join(', ')} @ ${baseUrl}${reducedMotion ? ' [reduced-motion]' : ''}`);
+    safeLog(`motion-verifier: ${roles.join(', ')} @ ${baseUrl}${reducedMotion ? ' [reduced-motion]' : ''}${sweep ? ' [sweep]' : ''}`);
     const browser = await chromium.launch();
-    try { for (const role of roles) await runRole(browser, role, baseUrl, token, runDir); }
+    try { for (const role of roles) await (sweep ? sweepRole : runRole)(browser, role, baseUrl, token, runDir); }
     finally { await browser.close(); }
   }
   safeLog(`analyzing ${runDir}`);
