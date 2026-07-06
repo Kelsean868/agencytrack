@@ -67,6 +67,31 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  // EFF-002 Phase 2 (foundation) — Rollup manualChunks vendor grouping.
+  // Pins the heavy shared dependencies into a few STABLE named vendor chunks so
+  // (a) app-code redeploys no longer bust their cache (lucide is imported by 146
+  // files; firebase + recharts by many), and (b) the follow-up per-manager-tab
+  // lazy-split lands WITHOUT fanning these shared leaves into dozens of tiny
+  // chunks (the sprawl that reverted the first Phase-2 attempt — see
+  // docs/audits/eff002-run/RUN-LOG.md). Function form is required so substrings
+  // match nested d3/@firebase submodules. @react-pdf keeps its OWN chunk here so
+  // EFF-011's dynamic-import split (#802) stays lazy — it must NOT fall through
+  // into the eager `vendor` catch-all.
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('lucide-react')) return 'vendor-icons';
+          if (id.includes('recharts') || id.includes('d3-') || id.includes('victory-vendor')) return 'vendor-charts';
+          if (id.includes('@react-pdf') || id.includes('yoga-layout') || id.includes('fontkit')) return 'vendor-pdf';
+          if (id.includes('/firebase/') || id.includes('@firebase/')) return 'vendor-firebase';
+          return 'vendor';
+        },
+      },
+    },
+    chunkSizeWarningLimit: 700,
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test-setup.js'],
