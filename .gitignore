@@ -137,3 +137,6 @@ graphify-out/????-??-??/
 .env
 .env.*
 !.env.example
+
+# Motion verifier capture output (frames, meta, mp4/gif artifacts) — never committed
+scripts/verification/out/
