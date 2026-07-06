@@ -1,6 +1,7 @@
 import React from 'react';
 import { Check, ChevronRight } from 'lucide-react';
 import { statusToken } from '../../../lib/policyStatusTokens';
+import { SkeletonText } from '../../ui/PanelSkeleton';
 
 /**
  * StepRail — Game Plan v2 three-step rail (NEW chrome).
@@ -22,7 +23,7 @@ const RAIL_TOKEN_ROLE = {
   coming: 'closed',
 };
 
-function StepCard({ variant, num, kicker, title, sub, onClick }) {
+function StepCard({ variant, num, kicker, title, sub, onClick, loading = false }) {
   const token = statusToken(RAIL_TOKEN_ROLE[variant]);
   const tinted = variant === 'current' || variant === 'next';
   const cardClass = tinted
@@ -44,10 +45,12 @@ function StepCard({ variant, num, kicker, title, sub, onClick }) {
       </span>
       <span className="min-w-0 text-left">
         <span className={`block font-mono text-[8px] font-bold uppercase tracking-[0.1em] ${token.text}`}>
-          {kicker}
+          <SkeletonText loading={loading} reserveCh={7}>{kicker}</SkeletonText>
         </span>
         <span className="mt-0.5 block truncate text-xs font-bold tracking-tight text-ink">{title}</span>
-        <span className="block text-[9px] text-ink-muted">{sub}</span>
+        <span className="block text-[9px] text-ink-muted">
+          <SkeletonText loading={loading} reserveCh={16}>{sub}</SkeletonText>
+        </span>
       </span>
     </>
   );
@@ -89,7 +92,11 @@ export default function StepRail({
   monthlyPlanFilled = false,
   onOpenReviewCommit,
   committed = false,
+  loading = false,
 }) {
+  // Text-identical tree: the 3 step cards render in loading AND ready; only the
+  // kicker/sub text swaps via SkeletonText (titles stay), so no card mounts after
+  // the fade. No error branch: Money Needs stays navigable regardless of fetch.
   // Direction 1.5 (PR-U1): Money Needs + Year Plan collapse into ONE step — the
   // merged Money Needs + Allocator surface writes the yearPlan. `yearPlanFilled`
   // (the merged write) is now Step 1's completion signal; `moneyNeedsFilled`
@@ -113,7 +120,7 @@ export default function StepRail({
   const step3Sub = committed ? 'Plan committed' : step3Active ? 'Review & commit your plan' : 'Coming soon';
 
   return (
-    <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center" data-testid="game-plan-rail">
+    <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center" data-testid="game-plan-rail" aria-busy={loading || undefined}>
       <StepCard
         variant={step1Variant}
         num="1"
@@ -121,6 +128,7 @@ export default function StepRail({
         title="Money Needs"
         sub={step1Sub}
         onClick={onOpenMoneyNeeds}
+        loading={loading}
       />
       <Chevron />
       <StepCard
@@ -130,6 +138,7 @@ export default function StepRail({
         title="Monthly Plan"
         sub={step2Sub}
         onClick={step2Active ? onOpenMonthlyPlan : undefined}
+        loading={loading}
       />
       <Chevron />
       <StepCard
@@ -139,6 +148,7 @@ export default function StepRail({
         title="Review & Commit"
         sub={step3Sub}
         onClick={step3Active ? onOpenReviewCommit : undefined}
+        loading={loading}
       />
     </div>
   );
