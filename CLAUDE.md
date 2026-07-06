@@ -106,7 +106,7 @@ The Nexus v2 design system is canonical for **app** surfaces:
 - `--color-text: #f0ebe0` · `--color-text-muted: #b8aea0` · `--color-text-faint: #968b7c` (v2 AA) · `--color-ink-dim: #4f473e` (non-text)
 - `--color-primary: #4ab5b8` (lifted teal for legibility) · Shadows: pure black drop
 
-**Deferred to follow-ups (NOT in the foundation swap):** vivid-gold adoption (v2 `--gold #B07D1A` + `--goldInk #8A6010`) — held because `#B07D1A` is only 3.28:1 on gold-tint and the app has ~15 `text-gold`-on-tint sites relying on the AA-darkened `#8a6011`; migrating them to a `text-gold-ink` utility is component work. Also deferred: local woff2 font wiring, glass-recipe reconciliation (`tokens/glass.css`), `AgentReportDocument.jsx` hex, `surfaceSoft` 5th tier. See INTEGRATION.md + the PR body.
+**Deferred to follow-ups (NOT in the foundation swap):** vivid-gold adoption (v2 `--gold #B07D1A` + `--color-gold-ink #8a6011`) — **Phase-0 audit complete; sweep HELD for owner decision** (see [`docs/design-system/gold-split-audit.md`](docs/design-system/gold-split-audit.md)). Held because `#B07D1A` is only 3.28:1 on gold-tint (passes AA-large, fails AA-normal) and the app has many `text-gold`-on-tint sites relying on the AA-darkened `#8a6011`; the split needs the vivid value for decoration + large text and a `text-gold-ink` utility for the rest. Dark gold stays `#E0AA3E` (already AA as text). ~6 borderline/entangled sites (esp. `awardPrimitives.jsx` shared `accentColor`) need owner greenlight before the migration. Also deferred: local woff2 font wiring, glass-recipe reconciliation (`tokens/glass.css`), `AgentReportDocument.jsx` hex, `surfaceSoft` 5th tier. See INTEGRATION.md + the PR body.
 
 ### Tailwind utilities
 - `bg-surface` → page background (`var(--color-bg)`)
