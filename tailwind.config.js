@@ -40,6 +40,11 @@ export default {
           DEFAULT: 'rgb(var(--text-channels) / <alpha-value>)',
           muted:   'rgb(var(--text-muted-channels) / <alpha-value>)',
           faint:   'rgb(var(--text-faint-channels) / <alpha-value>)',
+          // Nexus v2 --inkDim (non-text: dividers, disabled glyphs). The
+          // consumable half of the faint AA split — use border-ink-dim /
+          // bg-ink-dim, never text on it (redesign-addendum §4). JIT emits
+          // this only when a class references it, so it is a no-op until used.
+          dim:     'rgb(var(--ink-dim-channels) / <alpha-value>)',
         },
         border: 'rgb(var(--border-channels) / <alpha-value>)',
         gold: {

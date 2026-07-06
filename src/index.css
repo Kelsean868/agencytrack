@@ -35,8 +35,19 @@
   --color-text: rgb(var(--text-channels));
   --text-muted-channels: 107 101 96;
   --color-text-muted: rgb(var(--text-muted-channels));
-  --text-faint-channels: 168 163 156;
+  /* Nexus v2 AA fix — --color-text-faint is the SMALLEST AA-passing text ink
+   * (~4.7:1 on --color-surface). Was #A8A39C (168 163 156) ≈ 2.3:1, which
+   * FAILED WCAG 2.2 AA (1.4.3) wherever it carried text (eyebrows, meta, table
+   * foots). New value = docs/design-system/tokens/app.css --inkFaint; see
+   * redesign-addendum §0. The old faint value is preserved below as
+   * --color-ink-dim (non-text only). */
+  --text-faint-channels: 122 114 100;   /* #7A7264 */
   --color-text-faint: rgb(var(--text-faint-channels));
+  /* Nexus v2 NON-TEXT role (app.css --inkDim) — dividers, disabled glyphs,
+   * placeholder rules ONLY. Holds the old faint value; never put text on it
+   * (redesign-addendum §4). */
+  --ink-dim-channels: 168 163 156;       /* #A8A39C */
+  --color-ink-dim: rgb(var(--ink-dim-channels));
 
   /* Borders */
   --border-channels: 229 226 219;
@@ -99,6 +110,31 @@
   --shadow-sm: 0 1px 2px rgba(40, 37, 29, 0.06);
   --shadow-md: 0 2px 8px rgba(40, 37, 29, 0.08);
   --shadow-lg: 0 8px 24px rgba(40, 37, 29, 0.12);
+
+  /* ── Nexus v2 redesign role additions ─────────────────────────────────
+   * New token groups the 2026 redesign proved out (redesign-addendum §2–§4;
+   * docs/design-system/tokens/app.css). Motion + focus are theme-independent
+   * (defined here only, no .dark override needed except the focus ring color).
+   * Skeleton + hero-ink pair get .dark overrides below. */
+  /* Motion — fast, quiet. Consumers gate behind
+   * @media (prefers-reduced-motion: no-preference), which the app already
+   * does per-animation (so no global reduced-motion reset is added). */
+  --ease-out: cubic-bezier(.22, 1, .36, 1);        /* default reveal / hover */
+  --ease-spring: cubic-bezier(.34, 1.56, .64, 1);  /* sheets / overshoot only */
+  --dur-1: .14s;   /* hover, focus, small state */
+  --dur-2: .20s;   /* toggles, tab change */
+  --dur-3: .32s;   /* screen enter, sheet open */
+  /* Focus ring (WCAG 2.4.7) — token shorthand for a consistent keyboard ring. */
+  --focus: 2.5px solid var(--color-primary);
+  --focus-offset: 2px;
+  /* Skeleton loading fill (redesign-addendum §1 — skeletons, never spinners). */
+  --color-skeleton: linear-gradient(90deg, var(--color-surface-muted) 25%, var(--color-border) 37%, var(--color-surface-muted) 63%);
+  /* Flat teal-hero ink pair (app.css --heroInk / --heroFaint) — AA-verified
+   * text on a SOLID teal hero. Distinct from the Nexus Glass --hero-ink* set
+   * (glass subsystem, below); available for a future non-glass teal hero.
+   * Not yet consumed. */
+  --color-hero-ink: #EEFBF9;      /* ~12:1 on teal hero */
+  --color-hero-faint: #A9D9D6;    /* ~4.6:1 on teal hero — smallest AA */
 
   /* ── Nexus Glass — Light recipe (tokens) ──────────────────────────────
    * Hero-card tier only. Opacity floors are law: light base ≥ 0.62
@@ -245,8 +281,13 @@
   --color-text: rgb(var(--text-channels));
   --text-muted-channels: 184 174 160;
   --color-text-muted: rgb(var(--text-muted-channels));
-  --text-faint-channels: 138 128 116;
+  /* Nexus v2 AA fix — raised to ~4.6:1 on --color-surface (was #8A8074,
+   * 138 128 116). New value = app.css --inkFaint (dark). */
+  --text-faint-channels: 150 139 124;   /* #968B7C */
   --color-text-faint: rgb(var(--text-faint-channels));
+  /* Nexus v2 NON-TEXT role (dark, app.css --inkDim). */
+  --ink-dim-channels: 79 71 62;          /* #4F473E */
+  --color-ink-dim: rgb(var(--ink-dim-channels));
 
   /* Borders — warm dark with enough definition to delineate cards */
   --border-channels: 58 53 48;
@@ -297,6 +338,15 @@
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
 
+  /* ── Nexus v2 redesign role additions — dark overrides ─────────────────
+   * Motion tokens are theme-independent (:root only). The focus ring lifts to
+   * the light teal, and skeleton/hero-ink shift for the dark surface
+   * (app.css .nexus.dark). */
+  --focus: 2.5px solid var(--color-primary-light);
+  --color-skeleton: linear-gradient(90deg, var(--color-surface-muted) 25%, var(--color-border-strong) 37%, var(--color-surface-muted) 63%);
+  --color-hero-ink: #EAFAF8;
+  --color-hero-faint: #8FC6C3;
+
   /* ── Medal palette (dark mode) ────────────────────────────────────────
    * Medal palettes 1–8 reuse light-mode values: the radial gradient runs
    * from a light center (e.g. #fde68a) through a mid tone to a deep edge,
@@ -336,6 +386,27 @@ h1, h2, h3, h4 {
   font-family: 'Cabinet Grotesk', system-ui, sans-serif;
   font-weight: 700;
   line-height: 1.2;
+}
+
+/* ── Nexus v2 baseline resets (ship with the tokens; redesign-addendum §2/§4) ──
+ * 1. Buttons inherit color — a bare <button> on a dark card otherwise falls
+ *    back to the UA default and can go invisible in dark mode (documented v2
+ *    dark-mode bug fix). Styled buttons (.btn-*, Tailwind text-*) still win.
+ * 2. A single token-driven keyboard focus ring on every interactive element.
+ *    :where() has ZERO specificity, so the app's existing per-component
+ *    :focus-visible rules (sidebar, topbar, tabs, bottom-nav, goal-tab) still
+ *    win — this only adds a ring to interactive elements that currently have
+ *    none. The v2 rule's `border-radius:6px` is intentionally NOT ported: it
+ *    would round square elements on focus; a bare outline follows each
+ *    element's own radius, which is the correct behavior.
+ * Reduced-motion is intentionally NOT globally reset: the app already gates
+ * every animation behind @media (prefers-reduced-motion: no-preference),
+ * satisfying redesign-addendum §2 without a global killer. */
+button { font-family: inherit; color: inherit; cursor: pointer; }
+
+:where(a, button, input, select, textarea, [tabindex], [role="button"], [role="tab"]):focus-visible {
+  outline: var(--focus);
+  outline-offset: var(--focus-offset);
 }
 
 @layer components {

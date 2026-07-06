@@ -81,28 +81,32 @@ Firebase project: agencytrack-2a610 | App: portal.agencytrack.app | Marketing: a
 - jsPDF: kept only for branch CSV export
 - Hosted on Vercel
 
-## Theme System — Nexus (Warm Theme)
+## Theme System — Nexus v2 (Warm Theme)
 
-### Color tokens — CSS variables in src/index.css
-All Tailwind utilities resolve through CSS variables. Tailwind config maps token names to `var(--color-*)`.
+### Canonical sources & precedence (2026 redesign)
+The Nexus v2 design system is canonical for **app** surfaces:
+- **Values:** [`docs/design-system/tokens/app.css`](docs/design-system/tokens/app.css) (the v2 reconciliation; camelCase `.nexus`-scoped in the DS — see scope note).
+- **App rules:** [`docs/design-system/guidelines/redesign-addendum.md`](docs/design-system/guidelines/redesign-addendum.md) — wins over the DS `readme.md` for app surfaces (state design, motion, nav, a11y, dense tables).
+- **Integration record:** [`docs/design-system/INTEGRATION.md`](docs/design-system/INTEGRATION.md) — scope decision + name-mapping + channels rule for the shipped app.
+
+**Scope decision (foundation swap, `feat/nexus-v2-foundation`):** the app **retains its `:root` / `.dark` scoping and kebab `--color-*` names + `--X-channels` alpha substrate** — the DS's `.nexus` / `.nexus.dark` scope and camelCase names were NOT adopted (they'd require a wrapper class the runtime has never used + co-managing it at every `.dark` site). This is a **reskin: values change, plumbing stays.** The v2 values were poured into the existing `:root` / `.dark` blocks in `src/index.css`.
+
+**What v2 changed (the app palette was already ~99% v2 — v2 was reconciled *from* this app's rated prototype):**
+- **AA fix (the point):** `--color-text-faint` darkened to the AA-passing v2 `--inkFaint` (`#7A7264` light / `#968B7C` dark; was `#A8A39C` / `#8A8074`, which failed WCAG 2.2 AA as text). The old faint value moved to the new **non-text** role `--color-ink-dim` (dividers/disabled glyphs only — never text).
+- **New role groups added:** motion (`--ease-out` / `--ease-spring` / `--dur-1..3`), focus ring (`--focus` / `--focus-offset`), `--color-skeleton`, and the flat teal-hero ink pair (`--color-hero-ink` / `--color-hero-faint`). Baseline resets shipped with the tokens: `button { color: inherit }` + a token-driven `:where(...):focus-visible` ring (zero-specificity, so existing per-component focus styles still win).
+- **Surfaces / brand / semantic values are unchanged** — `#f7f6f2` bg, `#01696f` teal, `#28251d` text, dark `#1a1612` / `#4ab5b8` etc. all match v2 already.
 
 **Light mode (`:root`):**
-- `--color-bg: #f7f6f2` (warm beige page bg)
-- `--color-surface: #ffffff` (cards)
-- `--color-surface-raised: #fafaf8` (elevated)
-- `--color-text: #28251d`
-- `--color-text-muted: #6b6560`
-- `--color-primary: #01696f` (teal)
-- Shadows: warm beige drop
+- `--color-bg: #f7f6f2` (warm beige page bg) · `--color-surface: #ffffff` · `--color-surface-raised: #fafaf8`
+- `--color-text: #28251d` · `--color-text-muted: #6b6560` · `--color-text-faint: #7a7264` (v2 AA) · `--color-ink-dim: #a8a39c` (non-text)
+- `--color-primary: #01696f` (teal) · Shadows: warm beige drop
 
 **Dark mode (`.dark`):** Bear/Apple Notes aesthetic
-- `--color-bg: #1a1612` (warm near-black)
-- `--color-surface: #252019` (warm dark cards)
-- `--color-surface-raised: #302a23` (elevated)
-- `--color-text: #f0ebe0` (warm off-white)
-- `--color-text-muted: #b8aea0` (warm muted, softer contrast)
-- `--color-primary: #4ab5b8` (lifted teal for legibility)
-- Shadows: pure black drop
+- `--color-bg: #1a1612` · `--color-surface: #252019` · `--color-surface-raised: #302a23`
+- `--color-text: #f0ebe0` · `--color-text-muted: #b8aea0` · `--color-text-faint: #968b7c` (v2 AA) · `--color-ink-dim: #4f473e` (non-text)
+- `--color-primary: #4ab5b8` (lifted teal for legibility) · Shadows: pure black drop
+
+**Deferred to follow-ups (NOT in the foundation swap):** vivid-gold adoption (v2 `--gold #B07D1A` + `--goldInk #8A6010`) — held because `#B07D1A` is only 3.28:1 on gold-tint and the app has ~15 `text-gold`-on-tint sites relying on the AA-darkened `#8a6011`; migrating them to a `text-gold-ink` utility is component work. Also deferred: local woff2 font wiring, glass-recipe reconciliation (`tokens/glass.css`), `AgentReportDocument.jsx` hex, `surfaceSoft` 5th tier. See INTEGRATION.md + the PR body.
 
 ### Tailwind utilities
 - `bg-surface` → page background (`var(--color-bg)`)
@@ -123,7 +127,7 @@ Satoshi (body) + Cabinet Grotesk (display) from Fontshare CDN
 - NO gradient buttons. NO inline styles.
 - ALL styling via Tailwind classes + CSS variables.
 - Minimum 44px touch targets (mobile agents in field).
-- **No `text-ink-faint` on any new text element — use `text-ink-muted`.** (D5, banked from S3b: four consecutive slices had smoke catch faint-on-new-text AA failures; this bans it at authoring time.)
+- **No `text-ink-faint` on any new text element — use `text-ink-muted`.** (D5, banked from S3b: four consecutive slices had smoke catch faint-on-new-text AA failures; this bans it at authoring time.) *Nexus v2 note:* the inkFaint AA fix raised `--color-text-faint` to ~4.7:1 on flat surfaces, so faint now technically passes AA there — but it remains the smallest ink and **still fails on glass by design** (see the glass-faint guard in `contrast.test.js`), so D5's prefer-muted guidance stands. For non-text dividers/disabled glyphs use the new `--color-ink-dim` (`border-ink-dim`), never text.
 - **White-text primary buttons always pair `bg-primary` with `dark:bg-primary-dark`** (dark-mode `--color-primary` is the lifted text teal, not a button background). (D6, banked from compliance-v2-s2: dark-mode smoke axe caught white-on-lifted-teal AA failure on a `bg-primary text-white` button missing the `dark:` variant the rest of the app already uses.)
 - AgentReportDocument.jsx is EXEMPT — react-pdf doesn't support CSS vars, uses HEX only.
 **Phase 7-8 design docs:** [`docs/phase7-8-PRD.md`](docs/phase7-8-PRD.md) (full spec across 5 tracks D–H) + [`docs/phase7-8-implementation.md`](docs/phase7-8-implementation.md) (build sequence, recommended order D → E → G → F → H, ~36–46 PRs total). Tracks D–H detailed in the table below. Pilot remains postponed indefinitely.
