@@ -85,7 +85,7 @@ function RankRow({ entry, isViewer, viewerName }) {
             : isViewer
               ? 'text-primary'
               : entry.rank <= 3
-                ? 'text-gold'
+                ? 'text-gold-ink'
                 : 'text-ink-muted'
         }`}
       >

@@ -403,7 +403,7 @@ export default function AgentPlanDrawer({ row, tenantId, onClose, onCoach }) {
                     keydown, so these controls are picked up automatically). */}
                 {planState.status === 'ready' && (
                   <div className="rounded-xl border border-gold/40 bg-card-raised p-4" data-testid="tpd-suggest-card">
-                    <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-gold mb-1.5">Suggest a change</p>
+                    <p className="font-mono text-[9px] font-bold uppercase tracking-wider text-gold-ink mb-1.5">Suggest a change</p>
                     <p className="text-sm font-semibold text-ink mb-2">
                       Nudge {firstName}&rsquo;s plan before they commit
                     </p>

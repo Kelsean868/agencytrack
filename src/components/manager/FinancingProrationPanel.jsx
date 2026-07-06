@@ -338,8 +338,8 @@ export default function FinancingProrationPanel() {
                   // Live projection — display only, no determination stored (Decision 4 / lock c).
                   <div className="card border-gold/30" data-testid="proration-provisional-note">
                     <div className="flex items-center gap-2 mb-1">
-                      <AlertTriangle size={16} className="text-gold" aria-hidden="true" />
-                      <p className="text-sm font-semibold text-gold">Live projection — settlement pending</p>
+                      <AlertTriangle size={16} className="text-gold-ink" aria-hidden="true" />
+                      <p className="text-sm font-semibold text-gold-ink">Live projection — settlement pending</p>
                     </div>
                     <p className="text-xs text-ink-muted leading-relaxed">
                       This month is still in flight, so the figures above are a provisional projection off submitted

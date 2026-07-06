@@ -67,7 +67,7 @@ function AgentRiskCard({ name, statusList }) {
         {counts.achieved > 0 && (
           <span
             className="inline-flex items-center text-[10px] font-bold tracking-wide font-mono px-2 py-1 rounded-full"
-            style={{ color: 'var(--color-gold)', background: 'var(--color-gold-tint)' }}
+            style={{ color: 'var(--color-gold-ink)', background: 'var(--color-gold-tint)' }}
           >
             ✓ {counts.achieved} achieved
           </span>
@@ -233,7 +233,7 @@ export default function BmAtRiskPanel({
           {achievedCount > 0 && (
             <span
               className="inline-flex items-center text-xs font-bold tracking-wide font-mono px-2.5 py-1 rounded-full"
-              style={{ color: 'var(--color-gold)', background: 'var(--color-gold-tint)' }}
+              style={{ color: 'var(--color-gold-ink)', background: 'var(--color-gold-tint)' }}
             >
               ✓ {achievedCount} qualified
             </span>

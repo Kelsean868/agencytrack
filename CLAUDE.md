@@ -106,7 +106,13 @@ The Nexus v2 design system is canonical for **app** surfaces:
 - `--color-text: #f0ebe0` · `--color-text-muted: #b8aea0` · `--color-text-faint: #968b7c` (v2 AA) · `--color-ink-dim: #4f473e` (non-text)
 - `--color-primary: #4ab5b8` (lifted teal for legibility) · Shadows: pure black drop
 
-**Deferred to follow-ups (NOT in the foundation swap):** vivid-gold adoption (v2 `--gold #B07D1A` + `--color-gold-ink #8a6011`) — **Phase-0 audit complete; sweep HELD for owner decision** (see [`docs/design-system/gold-split-audit.md`](docs/design-system/gold-split-audit.md)). Held because `#B07D1A` is only 3.28:1 on gold-tint (passes AA-large, fails AA-normal) and the app has many `text-gold`-on-tint sites relying on the AA-darkened `#8a6011`; the split needs the vivid value for decoration + large text and a `text-gold-ink` utility for the rest. Dark gold stays `#E0AA3E` (already AA as text). ~6 borderline/entangled sites (esp. `awardPrimitives.jsx` shared `accentColor`) need owner greenlight before the migration. Also deferred: local woff2 font wiring, glass-recipe reconciliation (`tokens/glass.css`), `AgentReportDocument.jsx` hex, `surfaceSoft` 5th tier. See INTEGRATION.md + the PR body.
+**Gold rule — the split (shipped, feat/nexus-gold-sweep; see [`docs/design-system/gold-split-audit.md`](docs/design-system/gold-split-audit.md)):**
+- `--color-gold` = **vivid `#B07D1A`** (light) — **decoration ONLY** (fills, dots, borders, chart series, standalone icons) **+** gold **display text that certifies AA-large ≥3:1** at its actual composited bg (≥24px reg / ≥18.66px bold). It is 3.28:1 on gold-tint and 3.62:1 on white/card — **never small/normal gold text**.
+- `--color-gold-ink` = **`#8a6011`** (light) — **all other gold text**, via the `text-gold-ink` utility (or `var(--color-gold-ink)`): small/normal, or large text that fails AA-large. 5.06–5.58:1 in light.
+- **Dark (both roles) = `#E0AA3E`** — already AA-normal as text (7.69:1 on surface), so no split is needed and dark `text-gold`/`text-gold-ink` render identically; vivid `#B07D1A` is NOT used in dark (it would drop to 4.46:1).
+- Promoting gold text to vivid requires certifying AA-large at its **actual** bg — never on assumption (e.g. the leaderboard champion value stays gold-ink because a gold-hued medal glow drops the worst case to 2.74:1).
+
+**Deferred to follow-ups (NOT yet done):** local woff2 font wiring, glass-recipe reconciliation (`tokens/glass.css`), `AgentReportDocument.jsx` hex, `surfaceSoft` 5th tier. See INTEGRATION.md.
 
 ### Tailwind utilities
 - `bg-surface` → page background (`var(--color-bg)`)

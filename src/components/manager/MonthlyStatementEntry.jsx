@@ -336,15 +336,15 @@ export default function MonthlyStatementEntry() {
               <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                 <p className="text-sm font-semibold text-ink">Enter statement · {agentName(selectedAgent)}</p>
                 {formMonthKey && (
-                  <span className="text-[10px] font-bold uppercase tracking-wide text-gold bg-gold-tint rounded-full px-2 py-0.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-gold-ink bg-gold-tint rounded-full px-2 py-0.5">
                     {monthLabel(formMonthKey)} · Month {financingMonthIndex(effectiveDate, formMonthKey) ?? '—'}
                   </span>
                 )}
               </div>
 
               <div className="flex items-start gap-2.5 p-3 rounded-lg bg-gold-tint border border-gold/30 mb-4">
-                <span className="text-gold shrink-0" aria-hidden="true">🔒</span>
-                <p className="text-xs text-gold leading-relaxed">
+                <span className="text-gold-ink shrink-0" aria-hidden="true">🔒</span>
+                <p className="text-xs text-gold-ink leading-relaxed">
                   <span className="font-bold">The statement value wins.</span> Enter the figures exactly as the monthly statement shows. The running balance you type is stored as authoritative — it overrides any rolled-forward estimate and self-corrects past drift.
                 </p>
               </div>

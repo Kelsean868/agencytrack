@@ -19,7 +19,7 @@ const STATUS_STYLES = {
     dot: 'bg-white/80',
   },
   reconciling: {
-    cls: 'bg-gold-tint text-gold border border-gold/30',
+    cls: 'bg-gold-tint text-gold-ink border border-gold/30',
     dot: 'bg-gold',
   },
   post_financing_repayment: {

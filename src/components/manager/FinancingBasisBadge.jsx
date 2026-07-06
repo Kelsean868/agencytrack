@@ -16,7 +16,7 @@ const BASIS_STYLES = {
     dot: 'bg-primary',
   },
   'submitted-provisional': {
-    cls: 'bg-gold-tint text-gold border border-gold/30',
+    cls: 'bg-gold-tint text-gold-ink border border-gold/30',
     dot: 'bg-gold',
   },
   'settled-confirmed': {

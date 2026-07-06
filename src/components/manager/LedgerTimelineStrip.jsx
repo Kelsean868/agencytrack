@@ -19,7 +19,7 @@ function compactTTD(n) {
 
 const CELL_STYLES = {
   entered: 'bg-primary/10 border-primary/30 text-primary',
-  current: 'bg-gold-tint border-gold text-gold',
+  current: 'bg-gold-tint border-gold text-gold-ink',
   skipped: 'bg-danger/10 border-danger/40 text-danger-ink',
   future:  'bg-surface-muted border-border text-ink-faint opacity-60',
 };

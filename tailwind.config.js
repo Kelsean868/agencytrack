@@ -50,6 +50,10 @@ export default {
         gold: {
           DEFAULT: 'rgb(var(--gold-channels) / <alpha-value>)',
           tint:    'var(--color-gold-tint)',
+          // Gold split: --color-gold is now VIVID #B07D1A (decoration + AA-large
+          // display text only). gold.ink (#8a6011 light / #E0AA3E dark) is the
+          // AA-safe token for all other gold TEXT — use text-gold-ink.
+          ink:     'rgb(var(--gold-ink-channels) / <alpha-value>)',
         },
         success: {
           DEFAULT: 'rgb(var(--success-channels) / <alpha-value>)',

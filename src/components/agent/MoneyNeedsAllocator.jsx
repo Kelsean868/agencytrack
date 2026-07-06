@@ -232,7 +232,7 @@ function AllocationLineRow({ lineKey, line, required, onCommissionChange, onSlid
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-ink">{LABEL[lineKey]}</span>
           {eligible ? (
-            <span className="rounded-full bg-gold/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold">
+            <span className="rounded-full bg-gold/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-gold-ink">
               Counts for awards
             </span>
           ) : null}

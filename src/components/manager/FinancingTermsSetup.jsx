@@ -306,7 +306,7 @@ export default function FinancingTermsSetup() {
             <div className="card">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-sm font-semibold text-ink">Financing status</p>
-                <span className="text-[10px] font-bold uppercase tracking-wide text-gold bg-gold-tint rounded-full px-2 py-0.5">Manager-set</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-gold-ink bg-gold-tint rounded-full px-2 py-0.5">Manager-set</span>
               </div>
 
               {!terms ? (

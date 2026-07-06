@@ -55,7 +55,7 @@ function LadderStage({ label, sublabel, value, variant = 'plain' }) {
     act:   'border-primary/20 bg-primary/5',
   };
   const valueStyles = {
-    head:  'text-gold',
+    head:  'text-gold-ink',
     plain: 'text-ink',
     act:   'text-primary',
   };

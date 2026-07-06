@@ -88,7 +88,7 @@ export default function Celebration({
         data-testid="wizard-v2-celebration-api"
         className="mt-6 flex flex-col items-center"
       >
-        <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-gold">
+        <p className="text-[10px] font-bold font-mono uppercase tracking-widest text-gold-ink">
           You shipped
         </p>
         <p
@@ -108,7 +108,7 @@ export default function Celebration({
         <div className="mt-6 flex flex-col items-center" data-testid="wizard-celebration-points">
           <p
             className={`text-[10px] font-bold font-mono uppercase tracking-widest ${
-              isLevelUp ? 'text-gold' : 'text-primary'
+              isLevelUp ? 'text-gold-ink' : 'text-primary'
             }`}
           >
             {isLevelUp ? 'Level Up ✦' : 'This Week'}
