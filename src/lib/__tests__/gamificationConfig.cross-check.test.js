@@ -33,7 +33,7 @@ describe('ESM ≡ CJS — LEVEL_THRESHOLDS', () => {
 // ── BADGE_DEFINITIONS ─────────────────────────────────────────────────────────
 
 describe('ESM ≡ CJS — BADGE_DEFINITIONS', () => {
-  it('identical array (9 badges, same key/label/description/trigger order)', () => {
+  it('identical array (10 badges, same key/label/description/trigger order)', () => {
     expect(cjs.BADGE_DEFINITIONS).toEqual(esmBadges);
   });
 
