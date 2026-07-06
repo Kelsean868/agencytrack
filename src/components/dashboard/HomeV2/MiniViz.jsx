@@ -63,11 +63,13 @@ export function MiniBars({ color, values, width = 56, height = 22 }) {
 }
 
 export function MiniBadge({ color, count }) {
+  // The count glyph is intentionally fixed white on the accent `color` chip
+  // (both themes); carried by the `text-white` utility below, not a theme token.
   return (
     <div
       aria-hidden="true"
       style={{
-        width: 28, height: 28, borderRadius: '50%', background: color, color: '#ffffff',
+        width: 28, height: 28, borderRadius: '50%', background: color,
         fontWeight: 800, fontSize: 14, letterSpacing: '-0.02em',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         fontFamily: '"Cabinet Grotesk", system-ui, sans-serif',

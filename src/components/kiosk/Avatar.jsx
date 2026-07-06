@@ -32,6 +32,9 @@ export default function Avatar({ agent = {}, size = 'md' }) {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: avatarColor(uid),
+    // Fixed white initials on the saturated avatarColor() background —
+    // intentional in both themes (worst-case white-on-palette contrast 5.15:1,
+    // AA-safe). Not a theme token: the circle bg is always a dark accent hue.
     color: '#fff',
     fontSize: Math.round(px * 0.36),
     fontWeight: 700,

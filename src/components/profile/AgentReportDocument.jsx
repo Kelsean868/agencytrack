@@ -18,29 +18,71 @@ import { formatCurrency, formatDateDisplay } from '../../utils/formatters';
 import { MDRT_THRESHOLDS_2026 } from '../../config/mdrtThresholds/2026';
 import { BRAND_NAME, CONTACT_EMAIL } from '../../constants/brand';
 
-// ── Design tokens ─────────────────────────────────────────────────────────────
+// ── PDF PALETTE — mirrors Nexus v2 tokens as of 2026-07-06 ────────────────────
+// @react-pdf/renderer CANNOT resolve CSS custom properties (var(--x)) — using
+// them renders blank/errors. This palette MUST stay literal hex. It is a manual,
+// one-way MIRROR of the light-mode tokens in src/index.css (:root). The PDF is
+// always drawn on white paper, so only the LIGHT theme applies (no .dark form).
+// KEEP IN SYNC MANUALLY: when a token value changes in src/index.css, update the
+// matching literal below.
+//
+//   PDF key       literal    mirrors (src/index.css :root)      role
+//   ───────────── ────────── ────────────────────────────────── ─────────────────
+//   primary       #01696f    --color-primary / --teal           teal fills + text
+//   primaryDark   #014e52    --color-primary-dark / --tealDark   header rule (non-text)
+//   primaryLight  #e6f4f4    --color-primary-tint / --tealTint   pale teal wash (bg only)
+//   bg            #f7f6f2    --color-bg                          page canvas (currently unused)
+//   surface       #ffffff    --color-surface                    paper
+//   surfaceRaised #fafaf8    --color-surface-raised              zebra rows / cards
+//   text          #28251d    --color-text / --ink                body text
+//   textMuted     #6b6560    --color-text-muted / --inkMute       secondary text
+//   border        #e5e2db    --color-border / --rule              rules/tracks (non-text)
+//   success       #2d7a4f    --color-success                     chart line/marker (NON-TEXT)
+//   successBg     #e8f5ee    --color-success-tint                success chip bg
+//   successInk    #1f6c41    --color-success-ink                 AA-safe success TEXT on tint/surface
+//   warning       #b45309    --color-warning                    chart line/marker (NON-TEXT)
+//   warningBg     #fef3e2    --color-warning-tint               warning chip bg
+//   warningInk    #a24100    --color-warning-ink                AA-safe warning TEXT on tint/surface
+//   danger        #c0392b    --color-danger                     chart line/dot (NON-TEXT)
+//   dangerBg      #fde8e7    --color-danger-tint                danger chip bg
+//   dangerInk     #b22b1d    --color-danger-ink                 AA-safe danger TEXT on tint/surface
+//   white         #ffffff    (fixed white)                      text on teal — intentionally fixed
+//   focusBg       #e6f4f4    --color-primary-tint               "Focus This Week" callout bg
+//   inProgressBg  #e6f4f4    --color-primary-tint               In-Progress chip bg
+//   notStartedBg  #f0efe9    --color-surface-muted              Not-Started chip bg
+//   achievedBg    #e8f5ee    --color-success-tint               Achieved chip bg
+//   achievedFg    #1f6c41    --color-success-ink                Achieved chip/heading TEXT
+//
+// AA: every hex used as TEXT clears WCAG 2.2 AA (≥4.5 small / ≥3.0 large) on its
+// actual paper bg (verified numerically in the PR that added this block). Base
+// success/warning/danger are used ONLY for non-text marks (chart lines, markers,
+// legend dots); on-tint/on-surface TEXT uses the deeper *Ink tokens, because base
+// danger on danger-tint measured 4.28:1 — an AA FAIL the *Ink split resolves.
 const COLORS = {
   primary:       '#01696f',
   primaryDark:   '#014e52',
-  primaryLight:  '#d6ebec',
+  primaryLight:  '#e6f4f4',
   bg:            '#f7f6f2',
   surface:       '#ffffff',
+  surfaceRaised: '#fafaf8',
   text:          '#28251d',
   textMuted:     '#6b6560',
-  success:       '#2d7a4f',
-  successBg:     '#e3f1e9',
-  warning:       '#b45309',
-  warningBg:     '#fef3e7',
-  danger:        '#c0392b',
-  dangerBg:      '#fadedb',
   border:        '#e5e2db',
-  surfaceRaised: '#f9f8f5',
+  success:       '#2d7a4f',
+  successBg:     '#e8f5ee',
+  successInk:    '#1f6c41',
+  warning:       '#b45309',
+  warningBg:     '#fef3e2',
+  warningInk:    '#a24100',
+  danger:        '#c0392b',
+  dangerBg:      '#fde8e7',
+  dangerInk:     '#b22b1d',
   white:         '#ffffff',
-  focusBg:       '#f0fafa',
-  achievedBg:    '#d1fae5',
-  achievedFg:    '#065f46',
-  inProgressBg:  '#e0f5f5',
-  notStartedBg:  '#f1f0ee',
+  focusBg:       '#e6f4f4',
+  achievedBg:    '#e8f5ee',
+  achievedFg:    '#1f6c41',
+  inProgressBg:  '#e6f4f4',
+  notStartedBg:  '#f0efe9',
 };
 
 // ── Career levels ─────────────────────────────────────────────────────────────
@@ -645,7 +687,7 @@ export function AgentReportDocument({
                   <Pill
                     label="ESTIMATED"
                     bg={COLORS.warningBg}
-                    fg={COLORS.warning}
+                    fg={COLORS.warningInk}
                     minHeight={14}
                   />
                 )}
@@ -862,11 +904,11 @@ export function AgentReportDocument({
               Floor: {formatCurrency(COMPANY_FLOOR)}
             </Text>
             {ytdAPIGoal > 0 && (
-              <Text style={{ fontSize: 7, color: COLORS.success, marginRight: 12 }}>
+              <Text style={{ fontSize: 7, color: COLORS.successInk, marginRight: 12 }}>
                 Goal: {formatCurrency(ytdAPIGoal)}
               </Text>
             )}
-            <Text style={{ fontSize: 7, color: COLORS.warning }}>
+            <Text style={{ fontSize: 7, color: COLORS.warningInk }}>
               MDRT: {formatCurrency(MDRT_THRESHOLDS_2026.mdrt)}
             </Text>
           </View>
@@ -980,7 +1022,7 @@ export function AgentReportDocument({
                   <Pill
                     label={`${convRate}%`}
                     bg={onTrack ? COLORS.successBg : COLORS.dangerBg}
-                    fg={onTrack ? COLORS.success   : COLORS.danger}
+                    fg={onTrack ? COLORS.successInk : COLORS.dangerInk}
                     width={56}
                     minHeight={20}
                   />
@@ -1023,7 +1065,7 @@ export function AgentReportDocument({
                 <Text style={{ flex: 2, fontSize: 9, fontFamily: 'Helvetica-Bold' }}>{row.label}</Text>
                 <Text style={{
                   flex: 1, fontSize: 9, fontFamily: 'Helvetica-Bold',
-                  color: row.value === null ? COLORS.textMuted : (onTrack ? COLORS.success : COLORS.danger),
+                  color: row.value === null ? COLORS.textMuted : (onTrack ? COLORS.successInk : COLORS.dangerInk),
                 }}>
                   {displayVal}
                 </Text>
@@ -1033,7 +1075,7 @@ export function AgentReportDocument({
                     <Pill
                       label={onTrack ? 'On Track' : 'Below'}
                       bg={onTrack ? COLORS.successBg : COLORS.dangerBg}
-                      fg={onTrack ? COLORS.success   : COLORS.danger}
+                      fg={onTrack ? COLORS.successInk : COLORS.dangerInk}
                       width={88}
                       minHeight={20}
                     />
