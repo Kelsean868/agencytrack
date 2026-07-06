@@ -17,10 +17,15 @@ export function installMotionInstrument() {
     if (!el) {
       el = document.createElement('div');
       el.id = BEACON_ID;
-      // Appended to <html> so the screen-enter transform (on a <body> descendant) never fades or moves it.
       el.style.cssText = 'position:fixed;top:0;left:0;right:0;height:6px;z-index:2147483647;background:#000;pointer-events:none';
-      document.documentElement.appendChild(el);
     }
+    // Attach to <body> (a <div> child of <html> is not retained/rendered). The
+    // beacon is a sibling of #root — NOT a descendant of the screen-enter div —
+    // so the screen-enter transform/opacity never fades or moves it. beacon() is
+    // called at install (body may be null → documentElement) and re-called on each
+    // animationstart (body exists → re-parented there), so it lands in body.
+    const parent = document.body || document.documentElement;
+    if (el.parentNode !== parent) parent.appendChild(el);
     return el;
   }
   beacon();

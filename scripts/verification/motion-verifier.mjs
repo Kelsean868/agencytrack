@@ -22,10 +22,15 @@ import {
 import { installMotionInstrument, resetMotionMarks } from './lib/motion-instrument.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
+// Nav is driven by stable data-testids from the real Sidebar (navConfig.js), NOT
+// label text — the agent's landing item is labelled "Dashboard" (not "Home"), and
+// producing-manager labels differ from the dashboards' legacy inline arrays.
+// Agent items carry explicit `agent-tab-<id>` testids; manager/tenant-admin items
+// fall through to `nav-<id>`. targetLabel is retained for logging/meta only.
 const CASES = {
-  agent:          { envPrefix: 'A11Y_AGENT',          defaultLabel: 'Home',      targetLabel: 'History',   case: 'history' },
-  branch_manager: { envPrefix: 'A11Y_BRANCH_MANAGER', defaultLabel: 'Overview',  targetLabel: 'Team WARs', case: 'team-wars' },
-  tenant_admin:   { envPrefix: 'A11Y_TENANT_ADMIN',   defaultLabel: 'Dashboard', targetLabel: 'All Users', case: 'all-users' },
+  agent:          { envPrefix: 'A11Y_AGENT',          defaultTestId: 'agent-tab-dashboard', targetTestId: 'agent-tab-history', targetLabel: 'History',     case: 'history' },
+  branch_manager: { envPrefix: 'A11Y_BRANCH_MANAGER', defaultTestId: 'nav-overview',        targetTestId: 'nav-team-wars',     targetLabel: 'Weekly WARs', case: 'team-wars' },
+  tenant_admin:   { envPrefix: 'A11Y_TENANT_ADMIN',   defaultTestId: 'nav-dashboard',       targetTestId: 'nav-users',         targetLabel: 'All Users',   case: 'all-users' },
 };
 const VIEWPORT = { width: 1440, height: 900 };
 const SETTLE_CAP_MS = 2500;   // covers the 320ms animation + a cold Firestore fetch
@@ -35,15 +40,13 @@ function safeStamp() { return new Date().toISOString().slice(0, 19).replace(/[:T
 const wantRole = arg('--role', 'all');
 const reducedMotion = process.argv.includes('--reduced-motion');
 
-async function clickNavTab(page, label) {
-  // nav items render label text as a clickable control (sidebar-link / button / link).
-  const byRole = page.getByRole('button', { name: label, exact: true })
-    .or(page.getByRole('link', { name: label, exact: true }));
-  if (await byRole.count()) { await byRole.first().click(); return; }
-  await page.locator('.sidebar-link', { hasText: label }).first().click();
+async function clickNav(page, testid) {
+  // Sidebar renders each item as <button data-testid="agent-tab-<id>" | "nav-<id>">.
+  // .first() guards the pinned-zone duplicate (pinned items render twice).
+  await page.locator(`[data-testid="${testid}"]`).first().click({ timeout: 15_000 });
 }
 
-async function captureSwitch(page, client, targetLabel) {
+async function captureSwitch(page, client, targetTestId) {
   const frames = [];
   let first = null;
   const onFrame = async (params) => {
@@ -54,7 +57,7 @@ async function captureSwitch(page, client, targetLabel) {
   };
   client.on('Page.screencastFrame', onFrame);
   await client.send('Page.startScreencast', { format: 'jpeg', quality: 80, everyNthFrame: 1, maxWidth: VIEWPORT.width, maxHeight: VIEWPORT.height });
-  await clickNavTab(page, targetLabel);
+  await clickNav(page, targetTestId);
   await page.waitForTimeout(SETTLE_CAP_MS);
   await client.send('Page.stopScreencast');
   client.off('Page.screencastFrame', onFrame);
@@ -95,13 +98,13 @@ async function runRole(browser, role, baseUrl, token, runDir) {
   await page.waitForTimeout(1500); // let the default tab settle before instrumenting the switch
   const client = await context.newCDPSession(page);
   // COLD: default tab -> target (data likely unfetched)
-  const cold = await captureSwitch(page, client, cfg.targetLabel);
+  const cold = await captureSwitch(page, client, cfg.targetTestId);
   const nCold = writeCase(runDir, role, 'cold', cfg, cold, baseUrl, reducedMotion);
   // WARM: back to default, reset, target again (data cached)
-  await clickNavTab(page, cfg.defaultLabel);
+  await clickNav(page, cfg.defaultTestId);
   await page.waitForTimeout(800);
   await page.evaluate(resetMotionMarks);
-  const warm = await captureSwitch(page, client, cfg.targetLabel);
+  const warm = await captureSwitch(page, client, cfg.targetTestId);
   const nWarm = writeCase(runDir, role, 'warm', cfg, warm, baseUrl, reducedMotion);
   safeLog(`${role}: cold ${nCold} frames, warm ${nWarm} frames`);
   await context.close();
