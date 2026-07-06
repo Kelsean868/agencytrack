@@ -120,10 +120,13 @@ owner decision**, see [`gold-split-audit.md`](gold-split-audit.md) (dark gold st
 local woff2 font wiring (`tokens/fonts.css` + 17 assets; app still loads Satoshi/Cabinet
 Grotesk now self-hosted — see §7; JetBrains Mono still CDN, no committed woff2) ·
 glass-recipe reconciliation (`tokens/glass.css`
-vs the app's `--glass-*`) · `AgentReportDocument.jsx` hardcoded hex (react-pdf,
-exempt) · the two `#fff` literals (kiosk Avatar, MiniViz) · `surfaceSoft` 5th
+vs the app's `--glass-*`) · `surfaceSoft` 5th
 surface tier · per-screen Track-J polish · wiring motion/skeleton/hero-ink tokens
 into components (state-design + motion work per redesign-addendum §1–§2).
+
+**Resolved since (see §8):** `AgentReportDocument.jsx` PDF palette (react-pdf hex,
+now a documented mirror of the light `:root` tokens) · the two `#fff` literals
+(kiosk Avatar, MiniViz).
 
 ## 7. Self-hosted fonts (Satoshi + Cabinet Grotesk)
 
@@ -159,3 +162,41 @@ in the repo, so its Google Fonts `@import` is retained (`index.css:1`). This is 
 one remaining CDN font reference. **Rule 23 falsifier / follow-up:** commit a
 JetBrains Mono woff2 (400/500) to `src/assets/fonts/` and it can be self-hosted the
 same way, dropping the last CDN font dependency.
+
+## 8. Token-holdout reconciliation (PDF palette + stray literals)
+
+Closes the last two holdouts flagged in the recon
+([`docs/audits/reskin-recon-2026-07-05.md`](../audits/reskin-recon-2026-07-05.md),
+Task 4) and previously deferred in §6.
+
+### PDF palette — `src/components/profile/AgentReportDocument.jsx`
+
+`@react-pdf/renderer` cannot resolve CSS custom properties (`var(--x)` renders
+blank), so this file **must** use literal hex — that constraint is unchanged and
+correct. What changed: the literal `COLORS` object is now a documented, one-way
+**mirror of the light-mode `:root` tokens** in [`src/index.css`](../../src/index.css)
+(the PDF always prints on white paper, so only the light theme applies). A
+`PDF PALETTE` comment block at the top of the style section lists every literal and
+the `--color-*` token it mirrors, as the anti-drift trace — **keep in sync manually**
+whenever a token value changes in `src/index.css`.
+
+Because a printed report has no theme toggle, on-tint / on-surface **text** was
+routed to the deeper `*-ink` tokens (`--color-success-ink` / `--color-warning-ink`
+/ `--color-danger-ink`), while base `success` / `warning` / `danger` remain for
+non-text marks only (chart lines, marker rules, legend dots). This fixes a real
+AA failure: base danger on danger-tint measured **4.28:1** (below WCAG AA 4.5);
+every PDF text color now clears AA on its paper background (worst case 4.99:1). The
+generic-emerald "Achieved" badge (`#065f46` / `#d1fae5`) was folded into the Nexus
+success system (`--color-success-ink` / `--color-success-tint`) for single-source
+consistency.
+
+### Stray `#fff` literals
+
+- **`dashboard/HomeV2/MiniViz.jsx`** — the redundant inline `color: '#ffffff'`
+  was removed; the badge already carries `className="text-white"` (a fixed-white
+  Tailwind utility, retained via `extend.colors`), so rendering is identical and
+  the literal is gone.
+- **`kiosk/Avatar.jsx`** — the `#fff` initials color is **kept and commented** as
+  intentionally fixed: white-on-accent on the saturated `avatarColor()` circle,
+  identical in both themes (worst-case white-on-palette contrast 5.15:1, AA-safe).
+  Not a theme token — converting it would change intended rendering.
