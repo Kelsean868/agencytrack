@@ -6,7 +6,7 @@ import { useCountUp } from '../../../hooks/useCountUp';
 function PctDisplay({ value, colorClass }) {
   const display = useCountUp(value, { duration: 800 });
   return (
-    <p className={`text-9xl font-display font-bold animate-count-up ${colorClass}`}>
+    <p className={`text-9xl font-display font-bold motion-reduce:animate-none animate-count-up ${colorClass}`}>
       {Math.round(display)}%
     </p>
   );
@@ -78,7 +78,7 @@ export default function CompliancePanel({ allSubmissions, allUsers }) {
                 {pendingAgents.map((a) => (
                   <span
                     key={a.id}
-                    className="bg-warning-tint text-warning-ink px-4 py-2 rounded-full text-lg animate-stagger-in"
+                    className="bg-warning-tint text-warning-ink px-4 py-2 rounded-full text-lg motion-reduce:animate-none animate-stagger-in"
                     style={{ animationDelay: `${pendingAgents.indexOf(a) * 60}ms`, animationFillMode: 'both' }}
                   >
                     {a.name || a.displayName || 'Agent'}

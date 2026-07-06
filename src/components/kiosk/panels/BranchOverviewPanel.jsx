@@ -20,7 +20,7 @@ function KpiCard({ label, rawValue, accent, isCurrency }) {
     <div className="bg-card rounded-2xl flex flex-col items-center justify-center p-8">
       <span className="text-ink-muted text-2xl mb-4">{label}</span>
       <span
-        className={`text-6xl font-display font-bold animate-count-up ${accent ? 'text-primary' : 'text-ink'}`}
+        className={`text-6xl font-display font-bold motion-reduce:animate-none animate-count-up ${accent ? 'text-primary' : 'text-ink'}`}
       >
         {formatted}
       </span>

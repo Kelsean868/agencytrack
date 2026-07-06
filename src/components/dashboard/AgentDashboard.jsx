@@ -598,6 +598,12 @@ export default function AgentDashboard() {
         </button>
       )}
 
+      {/* ── Screen-enter (redesign-addendum §2): the tab-content region fades +
+          rises 8px on tab navigation. Keyed on activeTab so the CSS animation
+          replays each switch. Wraps ONLY the tab blocks — the fixed overlays
+          (DailyFAB, QuickAddMenu, modals) above stay outside so the transform
+          never reparents their containing block. Gated + degrades in index.css. */}
+      <div key={activeTab} className="screen-enter">
       {/* ── DASHBOARD TAB (v2 home — Hero + PulseStrip + Recent) ── */}
       {activeTab === 'dashboard' && (
         loading ? (
@@ -820,6 +826,7 @@ export default function AgentDashboard() {
           weeklyTarget={resolvedMinimums?.weeklyActivityFloors?.api ?? 4800}
         />
       )}
+      </div>
     </Shell>
   );
 }

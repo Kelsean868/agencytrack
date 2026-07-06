@@ -22,7 +22,7 @@ function ProgressBar({ pct }) {
   return (
     <div className="h-3 bg-surface-raised rounded-full overflow-hidden">
       <div
-        className="h-full bg-primary rounded-full animate-progress-fill"
+        className="h-full bg-primary rounded-full motion-reduce:animate-none animate-progress-fill"
         style={{ '--progress-target': `${pct}%` }}
       />
     </div>
@@ -31,7 +31,7 @@ function ProgressBar({ pct }) {
 
 function PctDisplay({ value }) {
   const display = useCountUp(value, { duration: 800 });
-  return <span className="animate-count-up">{Math.round(display)}%</span>;
+  return <span className="motion-reduce:animate-none animate-count-up">{Math.round(display)}%</span>;
 }
 
 export default function AwardsWatchPanel({ allSubmissions, allUsers }) {

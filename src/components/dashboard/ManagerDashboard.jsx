@@ -446,6 +446,32 @@ export default function ManagerDashboard() {
       onSignOut={handleSignOut}
       onPullRefresh={PTR_MANAGER_TABS.has(activeTab) ? onPullRefresh : undefined}
     >
+        {/* Quick-Add FAB (desktop pencil) — shown on any My Production tab
+            when in daily/hybrid mode. Hides on mobile (<768px) via DailyFAB.
+            Opens the Quick-Add popover; 'Log today' inside it opens the daily
+            capture overlay (Decision #6 verdict). Relocated above the tab-content
+            run so the screen-enter transform never reparents this fixed FAB. */}
+        {MP_TABS.has(activeTab) && showMpDailyCTA && (
+          <DailyFAB
+            onClick={() => setShowQuickAdd(true)}
+            todayLogged={true}
+          />
+        )}
+
+        {/* Quick-Add menu — popover (desktop) or sheet (mobile) */}
+        {showQuickAdd && (
+          <QuickAddMenu
+            actions={getQuickAddActions(isProducingManager ? 'producingManager' : 'manager')}
+            onSelect={handleMgrAction}
+            onClose={() => setShowQuickAdd(false)}
+            todayLogged={true}
+          />
+        )}
+
+        {/* ── Screen-enter (redesign-addendum §2): tab-content fades + rises 8px
+            on tab navigation. Keyed on activeTab; wraps only the tab blocks
+            (fixed FAB/QuickAdd relocated above). Gated + degrades in index.css. */}
+        <div key={activeTab} className="screen-enter">
         {/* ── Overview ── */}
         {activeTab === 'overview' && (
           <ManagerOverviewTab
@@ -605,30 +631,10 @@ export default function ManagerDashboard() {
             The unit-management half is K10 and is NOT mounted here. */}
         {activeTab === 'mp-financing' && <FinancingSelfView tenantId={tenantId} subjectUid={user?.uid} />}
 
-        {/* Quick-Add FAB (desktop pencil) — shown on any My Production tab
-            when in daily/hybrid mode. Hides on mobile (<768px) via DailyFAB.
-            Opens the Quick-Add popover; 'Log today' inside it opens the daily
-            capture overlay (Decision #6 verdict). */}
-        {MP_TABS.has(activeTab) && showMpDailyCTA && (
-          <DailyFAB
-            onClick={() => setShowQuickAdd(true)}
-            todayLogged={true}
-          />
-        )}
-
-        {/* Quick-Add menu — popover (desktop) or sheet (mobile) */}
-        {showQuickAdd && (
-          <QuickAddMenu
-            actions={getQuickAddActions(isProducingManager ? 'producingManager' : 'manager')}
-            onSelect={handleMgrAction}
-            onClose={() => setShowQuickAdd(false)}
-            todayLogged={true}
-          />
-        )}
-
         {activeTab === 'profile' && (
           <ProfileScreen menuLayout={menuLayout} onMenuLayoutChange={setMenuLayout} />
         )}
+        </div>
     </Shell>
   );
 }

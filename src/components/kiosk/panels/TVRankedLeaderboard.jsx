@@ -26,7 +26,7 @@ function RankIcon({ rank }) {
 function AnimatedValue({ value, isCurrency }) {
   const display = useCountUp(value, { duration: 800 });
   return (
-    <span className="animate-count-up">
+    <span className="motion-reduce:animate-none animate-count-up">
       {isCurrency ? fmtApi(display) : Math.round(display)}
     </span>
   );
@@ -35,7 +35,7 @@ function AnimatedValue({ value, isCurrency }) {
 function AgentRow({ agentId, agentName, photoURL, rank, value, isCurrency, rowIndex }) {
   return (
     <div
-      className="bg-card rounded-xl flex items-center gap-4 px-5 py-3 animate-stagger-in"
+      className="bg-card rounded-xl flex items-center gap-4 px-5 py-3 motion-reduce:animate-none animate-stagger-in"
       style={{ animationDelay: `${rowIndex * 100}ms`, animationFillMode: 'both' }}
     >
       <RankIcon rank={rank} />

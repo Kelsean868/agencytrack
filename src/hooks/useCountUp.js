@@ -22,6 +22,21 @@ export function useCountUp(target, { duration = 1000, decimals = 0 } = {}) {
       return;
     }
 
+    // Reduced-motion (redesign-addendum §2): honor the preference by snapping
+    // straight to the final value instead of running the rAF count. matchMedia
+    // is absent in jsdom → treated as no-preference (animate), so this is inert
+    // under test. Snapshot at effect-run; a mid-count toggle is an accepted edge
+    // case for a one-shot on-load count.
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      setDisplay(target);
+      fromRef.current = target;
+      return;
+    }
+
     const from = fromRef.current;
     startRef.current = null;
 

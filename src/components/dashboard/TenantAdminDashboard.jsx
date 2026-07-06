@@ -154,6 +154,10 @@ export default function TenantAdminDashboard() {
       topbarCrumb={`${roleLabel} · Tatil Life`}
       onSignOut={handleSignOut}
     >
+      {/* ── Screen-enter (redesign-addendum §2): tab-content fades + rises 8px
+          on tab navigation. Keyed on activeTab. No fixed overlays in this
+          dashboard's children. Gated + degrades in index.css. */}
+      <div key={activeTab} className="screen-enter">
       {activeTab === 'dashboard' && (
         <div className="flex flex-col gap-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -199,6 +203,7 @@ export default function TenantAdminDashboard() {
       {activeTab === 'campaigns' && <CampaignPanel />}
 
       {activeTab === 'profile' && <ProfileScreen />}
+      </div>
     </Shell>
   );
 }

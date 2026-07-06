@@ -110,9 +110,10 @@ prototype), so surfaces/brand/semantic values were already equal.
   adds a ring where none existed. The v2 rule's `border-radius:6px` was **not
   ported** (it would round square elements on focus; a bare outline follows each
   element's own radius).
-- Reduced-motion is **not** globally reset — the app already gates every animation
+- Reduced-motion is **not** globally reset — the app gates every animation
   behind `@media (prefers-reduced-motion: no-preference)`, satisfying
-  redesign-addendum §2 without a global killer.
+  redesign-addendum §2 without a global killer. (3 residual gaps — `useCountUp`,
+  kiosk entrances, one stale comment — were closed in §9; still no global reset.)
 
 ## 6. Deferred (follow-ups, out of the foundation swap)
 
@@ -120,8 +121,9 @@ Vivid-gold + `--color-gold-ink` split — **✅ SHIPPED** (feat/nexus-gold-sweep
 [`gold-split-audit.md`](gold-split-audit.md); dark gold stays `#E0AA3E`) · local
 woff2 font wiring — Satoshi/Cabinet Grotesk now **self-hosted** (see §7); JetBrains
 Mono still CDN, no committed woff2 · `surfaceSoft` 5th
-surface tier · per-screen Track-J polish · wiring motion/skeleton/hero-ink tokens
-into components (state-design + motion work per redesign-addendum §1–§2).
+surface tier · per-screen Track-J polish · wiring **skeleton** / **hero-ink**
+tokens + state-design (redesign-addendum §1) into components (**systemic motion
+§2 now wired — see §9**).
 
 **Resolved since (see §8):** `AgentReportDocument.jsx` PDF palette (react-pdf hex,
 now a documented mirror of the light `:root` tokens) · the two `#fff` literals
@@ -212,3 +214,58 @@ consistency.
   intentionally fixed: white-on-accent on the saturated `avatarColor()` circle,
   identical in both themes (worst-case white-on-palette contrast 5.15:1, AA-safe).
   Not a theme token — converting it would change intended rendering.
+
+## 9. Systemic motion wired (feat/nexus-motion, redesign-addendum §2)
+
+The #813 foundation shipped the motion tokens (`--dur-1/2/3`, `--ease-out`,
+`--ease-spring`) but left them **0-consumers** (the [motion recon](../audits/motion-recon-2026-07-06.md)
+confirmed it). This PR wires them and the §2 approved motions. **Owner decisions
+locked:** pure CSS/Tailwind + minimal JS (no motion library); strict §2 (retime
+> 320ms, replace non-token easings/durations, drawer → spring); systemic scope
+only; patch the 3 reduced-motion holes (no global reduce reset).
+
+**Tokens now consumed.** Every systemic transition in
+[`src/index.css`](../../src/index.css) (buttons, cards, sidebar, topbar, bottom-nav,
+badges, activity feed, goal carousel, role bars) uses `var(--dur-*)` /
+`var(--ease-out)` — 25 token references, mapped by §2 semantic role (hover/focus/small
+→ `--dur-1`; toggle/tab → `--dur-2`; screen/sheet/data-reveal → `--dur-3`). Strict-§2
+retimes: goal-slide `.35s` + custom bezier → `--dur-3` + `--ease-out`; goal-donut
+`.45s` and role-bar `.4s` (both > §2's ~320ms ceiling) → `--dur-3`; mobile drawer
+`.22s ease-out` → `--dur-3` `--ease-spring`.
+
+**Screen-enter (§2)** — content region fades + rises 8px on tab navigation. A keyed
+`<div className="screen-enter" key={activeTab}>` wraps the tab-content run in all
+three dashboards (Agent / Manager / TenantAdmin). **Placement note:** it lives at the
+**dashboard level, not the Shell `{children}` wrapper** — the Shell mount point
+commingles `position:fixed` overlays (DailyFAB, QuickAddMenu, modals) and *any*
+transform on their ancestor reparents their containing block for the animation's
+duration. Manager's interleaved FAB/QuickAdd were relocated above the tab run so the
+wrap stays overlay-free. No `forwards` fill → `transform:none` at rest, so fixed
+drawers opened later keep a viewport containing block.
+
+**Stagger helper (§2)** — `.stagger > *` gives direct children a **transform-only**
+(never opacity) rise with a ~40ms step, capped at 8 (later children share the max
+delay). Applied to the mobile nav drawer's item list; available for per-screen
+Track-J adoption elsewhere.
+
+**Sheet reconcile (§2)** — `.mobile-nav-drawer` now springs up (`--ease-spring`), the
+backdrop fades in (`.sheet-backdrop`), and items lightly stagger.
+
+**Reduced-motion — 3 holes patched (no global reset):**
+1. `useCountUp` snaps to the final value under `prefers-reduced-motion: reduce` (was
+   an unconditional rAF loop). matchMedia-absent (jsdom) = animate, so tests are
+   unaffected.
+2. Kiosk entrance animations (`animate-count-up` / `-stagger-in` / `-kiosk-fade` /
+   `-progress-fill`) gained per-usage `motion-reduce:animate-none` (15 sites).
+3. The stale `AOMCategoryColumn.jsx` comment claiming a nonexistent global
+   `prefers-reduced-motion` reset was corrected.
+Plus one in-family extra: the previously-ungated `.skip-link` slide is now gated
+(beyond the 3 named holes).
+
+Every new motion is gated behind `@media (prefers-reduced-motion: no-preference)` and
+reverts to a visible base at rest (print / PDF / reduced-motion show content, not a
+pre-animation frame — §2 hard rule).
+
+**Still requires manual smoke** (cannot be automated): both themes × reduced-motion
+ON/OFF — tab-switch screen-enter, a staggered surface, the drawer spring, count-up
+(must snap under RM), and a kiosk entrance (must be guarded).
