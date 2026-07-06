@@ -1,0 +1,22 @@
+<!-- @dsCard group="Foundations" viewport="700x225" name="Nexus Glass" subtitle="One glass card max per screen · light vs dark physics · AA-gated" -->
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><link rel="stylesheet" href="../styles.css">
+<style>
+body{margin:0;font-family:var(--sans);display:flex}
+.stage{flex:1;padding:20px;min-height:185px;display:flex;align-items:center;gap:12px}
+.stage.light{background:radial-gradient(circle at 18% 22%, #cfeceb 0%, transparent 42%),radial-gradient(circle at 82% 30%, #f6e6c4 0%, transparent 40%),#EEF1EC}
+.stage.darkbg{background:radial-gradient(circle at 18% 22%, #0c3a3c 0%, transparent 44%),radial-gradient(circle at 82% 28%, #3a2f12 0%, transparent 42%),#14110D}
+.g{flex:1;padding:14px 16px;box-sizing:border-box}
+.ey{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.n{font-family:var(--display);font-weight:800;font-size:22px;letter-spacing:-.022em;margin-top:6px}
+.s{font-size:10.5px;margin-top:3px}
+</style></head><body>
+<div class="stage light nexus">
+  <div class="g glass teal"><div class="ey" style="color:var(--teal)">YTD · Settled API</div><div class="n" style="color:var(--ink)">TTD 487K</div><div class="s" style="color:var(--inkMute)">base .62 · blur 18 · sat 135%</div></div>
+  <div class="g glass gold"><div class="ey" style="color:var(--goldInk)">★ Campaign</div><div class="n" style="color:var(--ink)">TTD 70K</div><div class="s" style="color:var(--inkMute)">gold tint · recognition only</div></div>
+</div>
+<div class="stage darkbg nexus dark">
+  <div class="g glass teal"><div class="ey" style="color:var(--teal)">YTD · Settled API</div><div class="n" style="color:var(--ink)">TTD 487K</div><div class="s" style="color:var(--inkMute)">base .55 · blur 20 · light hairline</div></div>
+  <div class="g glass gold"><div class="ey" style="color:var(--gold)">★ Campaign</div><div class="n" style="color:var(--ink)">TTD 70K</div><div class="s" style="color:var(--inkMute)">opaque fallback: #221C12</div></div>
+</div>
+</body></html>

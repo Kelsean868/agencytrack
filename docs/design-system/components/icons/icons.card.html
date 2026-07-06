@@ -1,0 +1,42 @@
+<!-- @dsCard group="Components" viewport="700x230" name="Icons & Logo" subtitle="24px viewBox, stroke 1.8, round caps — plus the brand mark" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;background:var(--cream);font-family:var(--sans);color:var(--ink)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const DS = window.AgencyTrackDesignSystem_ad1cd7;
+const names = ['IconHome','IconWizard','IconHistory','IconChart','IconTarget','IconWallet','IconMedal','IconShield','IconBolt','IconRepeat','IconBook','IconUsers','IconGrid','IconSettings','IconSearch','IconBell','IconSun','IconMoon','IconChevR','IconChevD','IconArrowR','IconCheck','IconAlert','IconTrophy','IconFilter','IconDownload','IconPlus','IconClock'];
+function Demo() {
+  return (
+    <div style={{ padding: 20, display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flexShrink: 0, paddingTop: 4 }}>
+        <DS.AgencyLogo size={56} />
+        <span style={{ fontFamily: 'var(--display)', fontWeight: 700, fontSize: 15, letterSpacing: '-.02em' }}>AgencyTrack</span>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(10, 1fr)', gap: 6, flex: 1 }}>
+        {names.map((n) => {
+          const C = DS[n];
+          return (
+            <div key={n} title={n} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '9px 2px', background: 'var(--paper)', border: '1px solid var(--rule)', borderRadius: 10 }}>
+              <C size={19} color="var(--teal)" />
+              <span style={{ fontFamily: 'var(--mono)', fontSize: 7.5, color: 'var(--ink-faint)' }}>{n.slice(4)}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo />);
+</script>
+</body>
+</html>

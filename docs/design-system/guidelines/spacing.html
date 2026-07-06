@@ -1,0 +1,27 @@
+<!-- @dsCard group="Foundations" viewport="700x180" name="Spacing & layout" subtitle="Marketing 1080px wrap, 96px sections · app 1280×800 frame" -->
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><link rel="stylesheet" href="../styles.css">
+<style>
+body{margin:0;background:var(--cream);font-family:var(--sans);color:var(--ink);padding:16px 24px;display:flex;gap:22px}
+.k{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--ink-faint)}
+.bar{background:var(--teal-tint);border:1px dashed rgba(1,105,111,.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:9px;color:var(--teal);font-weight:700}
+</style></head><body>
+<div style="flex:1.2">
+  <div class="k">MARKETING</div>
+  <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+    <div class="bar" style="height:26px">wrap 1080px · pad 28px</div>
+    <div class="bar" style="height:20px;width:67%">prose 720px</div>
+    <div style="display:flex;gap:6px"><div class="bar" style="height:34px;flex:1">section 96–110px</div><div class="bar" style="height:34px;width:78px">gap 18px</div><div class="bar" style="height:34px;width:110px">card pad 26–28</div></div>
+  </div>
+</div>
+<div style="flex:1">
+  <div class="k">APP · NEXUS</div>
+  <div style="display:flex;gap:6px;margin-top:8px;height:88px">
+    <div class="bar" style="width:46px">232</div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+      <div class="bar" style="height:18px">topbar 60px</div>
+      <div class="bar" style="flex:1">content pad 24×28 · frame 1280×800</div>
+    </div>
+  </div>
+</div>
+</body></html>

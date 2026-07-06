@@ -1,0 +1,54 @@
+<!-- @dsCard group="Components" viewport="700x460" name="Nexus State Design" subtitle="StateLayer · skeleton · empty · error · CountUp — light & dark" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<link rel="stylesheet" href="../../styles.css" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script>
+<style>body{margin:0;font-family:var(--sans)}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { StateLayer, SkeletonScreen, EmptyState, ErrorState, CountUp } = window.AgencyTrackDesignSystem_ad1cd7;
+
+function Half({ dark }) {
+  return (
+    <div className={dark ? 'nexus dark' : 'nexus'} style={{ flex: 1, padding: 16, background: 'var(--bg)', display: 'flex', flexDirection: 'column', gap: 12, minWidth: 0 }}>
+      <div style={{ fontFamily: 'var(--mono)', fontSize: 10, letterSpacing: '.14em', textTransform: 'uppercase', color: 'var(--inkFaint)' }}>{dark ? 'Dark · error + loading' : 'Light · empty + ready'}</div>
+      {dark ? (
+        <React.Fragment>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--rule)', borderRadius: 14 }}>
+            <ErrorState onRetry={() => {}} />
+          </div>
+          <SkeletonScreen kind="cards" />
+        </React.Fragment>
+      ) : (
+        <React.Fragment>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--rule)', borderRadius: 14, textAlign: 'center', padding: '18px 0' }}>
+            <div style={{ fontFamily: 'var(--display)', fontWeight: 900, fontSize: 30, color: 'var(--ink)', letterSpacing: '-.02em' }}>TTD <CountUp value={532777} /></div>
+            <div style={{ fontSize: 11.5, color: 'var(--inkMute)', marginTop: 4 }}>Ready — hero numeral counts up on load</div>
+            <div style={{ display: 'flex', gap: 7, justifyContent: 'center', marginTop: 12 }}>
+              <span className="nx-pill nx-pill--ok">Issued</span>
+              <span className="nx-pill nx-pill--warn">Pending</span>
+              <span className="nx-pill nx-pill--bad">Lapsed</span>
+              <span className="nx-pill nx-pill--mute">Draft</span>
+            </div>
+          </div>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--rule)', borderRadius: 14 }}>
+            <EmptyState icon="grid" title="No activity logged yet" body="Log your first call, appointment or sale — it rolls into this week's report." cta="Log your first activity" onCta={() => {}} />
+          </div>
+        </React.Fragment>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <div style={{ display: 'flex', minHeight: 440 }}><Half dark={false} /><Half dark={true} /></div>
+);
+</script>
+</body>
+</html>

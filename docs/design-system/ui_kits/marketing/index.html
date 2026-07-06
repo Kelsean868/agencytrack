@@ -1,0 +1,515 @@
+<!-- @dsCard group="Marketing Site" viewport="1280x800" name="Homepage" subtitle="Warm editorial landing — hero, loop, bento, dark rhythm break" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AgencyTrack — Marketing homepage (UI kit)</title>
+<link rel="icon" type="image/svg+xml" href="../../assets/favicon.svg" />
+<link rel="stylesheet" href="../../styles.css" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:var(--sans);background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  h1,h2,h3{font-family:var(--display);font-weight:800;letter-spacing:-.03em;line-height:1.02}
+  .eyebrow{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--teal)}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 28px}
+  section{position:relative}
+
+  nav{position:sticky;top:0;left:0;right:0;z-index:90;display:flex;align-items:center;gap:18px;padding:14px 28px;
+    background:rgba(244,242,236,.72);backdrop-filter:blur(16px) saturate(160%);-webkit-backdrop-filter:blur(16px) saturate(160%);border-bottom:1px solid var(--rule)}
+  nav .brand{display:flex;align-items:center;gap:11px;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.02em}
+  nav .brand img{border-radius:7px;display:block}
+  nav .links{display:flex;gap:26px;margin-left:auto;font-size:14px;font-weight:500;color:var(--ink-mute)}
+  nav .links a:hover{color:var(--ink)}
+  nav .navcta{display:flex;gap:10px;align-items:center}
+  .btn{display:inline-flex;align-items:center;gap:8px;white-space:nowrap;font-weight:700;font-size:14px;border-radius:11px;padding:11px 18px;cursor:pointer;border:0;transition:transform .15s,box-shadow .2s;font-family:var(--sans)}
+  .btn:hover{transform:translateY(-1px)}
+  .btn-primary{background:var(--teal);color:#fff;box-shadow:0 4px 16px rgba(1,105,111,.32)}
+  .btn-primary:hover{box-shadow:0 8px 24px rgba(1,105,111,.4)}
+  .btn-ghost{background:transparent;color:var(--ink);border:1px solid var(--rule)}
+  .btn-ghost:hover{border-color:var(--teal);color:var(--teal)}
+
+  /* hero */
+  .hero{padding:90px 0;position:relative;isolation:isolate}
+  .hero .wrap{position:relative;z-index:2;display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
+  .hero h1{font-size:clamp(40px,6.2vw,76px);margin:18px 0 0}
+  .hero h1 .hl{color:var(--teal);white-space:nowrap}
+  .hero p.sub{font-size:clamp(16px,1.7vw,20px);color:var(--ink-mute);line-height:1.55;margin:22px 0 30px;max-width:560px}
+  .hero .cta{display:flex;gap:13px;flex-wrap:wrap}
+  .trustline{margin-top:26px;font-size:13px;color:var(--ink-faint);display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+  .trustline b{color:var(--ink-mute);font-weight:700}
+
+  .stage{position:relative;height:480px}
+  .glassmk{background:rgba(255,255,255,.62);backdrop-filter:blur(20px) saturate(165%);-webkit-backdrop-filter:blur(20px) saturate(165%);border:1px solid rgba(255,255,255,.7);box-shadow:0 24px 60px rgba(38,35,28,.16),inset 0 1px 0 rgba(255,255,255,.85)}
+  .phone{position:absolute;top:0;right:30px;width:270px;height:470px;border-radius:34px;padding:14px;background:rgba(255,255,255,.7);backdrop-filter:blur(20px) saturate(165%);-webkit-backdrop-filter:blur(20px) saturate(165%);border:1px solid rgba(255,255,255,.8);box-shadow:0 30px 70px rgba(38,35,28,.22)}
+  .phone .scr{height:100%;border-radius:22px;background:linear-gradient(170deg,#fff,#F7F5EF);border:1px solid var(--rule-soft);padding:16px 15px;overflow:hidden}
+  .pf-ey{font-family:var(--mono);font-size:8.5px;letter-spacing:.16em;color:var(--teal);font-weight:700}
+  .pf-big{font-family:var(--display);font-weight:800;font-size:38px;letter-spacing:-.03em;margin-top:6px}
+  .pf-bar{height:7px;border-radius:99px;background:var(--rule);overflow:hidden;margin-top:12px}
+  .pf-bar i{display:block;height:100%;width:81%;border-radius:99px;background:linear-gradient(90deg,var(--teal-deep),var(--teal))}
+  .pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+  .pf-card{background:#fff;border:1px solid var(--rule-soft);border-radius:12px;padding:9px 10px}
+  .pf-card .l{font-family:var(--mono);font-size:7.5px;letter-spacing:.1em;color:var(--ink-faint);font-weight:700}
+  .pf-card .v{font-family:var(--display);font-weight:800;font-size:17px;margin-top:3px}
+  .float{position:absolute;border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:11px}
+  .float .ic{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .f-award{top:38px;left:0;animation:bobA 5s ease-in-out infinite}
+  .f-kiosk{bottom:22px;left:18px;width:226px;animation:bobB 6s ease-in-out infinite}
+  @keyframes bobA{50%{transform:translateY(-12px)}}
+  @keyframes bobB{50%{transform:translateY(10px)}}
+  @media(prefers-reduced-motion:reduce){.f-award,.f-kiosk{animation:none}}
+
+  /* marquee */
+  .marquee{border-block:1px solid var(--rule);background:var(--paper);overflow:hidden;padding:18px 0}
+  .mtrack{display:flex;gap:42px;white-space:nowrap;width:max-content;animation:mq 38s linear infinite}
+  .mtrack span{font-family:var(--display);font-weight:700;font-size:20px;color:var(--ink-faint);display:flex;align-items:center;gap:42px}
+  .mtrack span::after{content:"●";color:var(--teal-bright);font-size:9px}
+  @keyframes mq{to{transform:translateX(-50%)}}
+  @media(prefers-reduced-motion:reduce){.mtrack{animation:none}}
+
+  /* stats */
+  .stats{padding:70px 0}
+  .statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:18px}
+  .stat .n{font-family:var(--display);font-weight:800;font-size:clamp(34px,4.4vw,52px);letter-spacing:-.03em;color:var(--teal);line-height:1}
+  .stat .k{font-size:13.5px;color:var(--ink-mute);margin-top:8px;line-height:1.45}
+
+  .sechead{max-width:680px}
+  .sechead h2{font-size:clamp(28px,4vw,46px);margin:14px 0 0}
+  .sechead p{font-size:17px;color:var(--ink-mute);line-height:1.6;margin-top:16px}
+
+  /* loop */
+  .loop{padding:90px 0;background:var(--paper);border-block:1px solid var(--rule)}
+  .loopgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:46px}
+  .step{position:relative;padding:24px;border-radius:18px;background:var(--cream);border:1px solid var(--rule);display:flex;flex-direction:column}
+  .step .num{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--teal-bright)}
+  .step h3{font-size:21px;margin:14px 0 8px}
+  .step p{font-size:14px;color:var(--ink-mute);line-height:1.55;margin-bottom:18px}
+  .step .ic{width:46px;height:46px;border-radius:13px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;margin-top:auto}
+
+  /* bento */
+  .features{padding:96px 0}
+  .bento{display:grid;grid-template-columns:repeat(6,1fr);gap:16px;margin-top:50px}
+  .cell{border-radius:20px;padding:26px;border:1px solid var(--rule);background:var(--paper);position:relative;overflow:hidden;transition:transform .25s,box-shadow .25s,border-color .25s}
+  .cell:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(38,35,28,.1);border-color:rgba(1,105,111,.3)}
+  .cell.span3{grid-column:span 3}.cell.span2{grid-column:span 2}.cell.span6{grid-column:span 6}
+  .cell .tag{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);background:var(--teal-tint);padding:5px 11px;border-radius:99px}
+  .cell.gold .tag{color:var(--gold);background:var(--gold-tint)}
+  .cell h3{font-size:24px;margin:18px 0 10px}
+  .cell p{font-size:14.5px;color:var(--ink-mute);line-height:1.55}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+  .chip{font-size:12.5px;font-weight:600;color:var(--ink);background:var(--cream);border:1px solid var(--rule);border-radius:99px;padding:6px 12px}
+  .cell.gold .chip{background:var(--gold-tint);border-color:rgba(176,125,26,.2)}
+
+  /* spotlight */
+  .spot{padding:96px 0;background:linear-gradient(180deg,var(--cream),#EFEDE5)}
+  .spotgrid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center}
+  .spotgrid ul{list-style:none;margin-top:24px;display:flex;flex-direction:column;gap:16px}
+  .spotgrid li{display:flex;gap:13px;align-items:flex-start;font-size:15px;color:var(--ink-mute);line-height:1.5}
+  .spotgrid li b{color:var(--ink)}
+  .tick{width:24px;height:24px;border-radius:8px;background:var(--teal-tint);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .ledger{border-radius:22px;padding:24px;background:var(--paper);border:1px solid var(--rule);box-shadow:0 24px 60px rgba(38,35,28,.1)}
+  .lrow{display:flex;align-items:center;gap:13px;padding:13px 0;border-bottom:1px solid var(--rule-soft)}
+  .lrow:last-child{border-bottom:0}
+  .ldot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+  .lrow .nm{font-weight:700;font-size:14px}.lrow .meta{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-top:2px}
+  .lclock{margin-left:auto;text-align:right}
+  .lclock .d{font-family:var(--display);font-weight:800;font-size:20px;line-height:1}
+  .lclock .u{font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:.08em;color:var(--ink-faint);margin-top:2px}
+
+  /* audiences */
+  .aud{padding:96px 0}
+  .audgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
+  .role{border-radius:18px;padding:26px;border:1px solid var(--rule);background:var(--paper);transition:transform .25s,box-shadow .25s}
+  .role:hover{transform:translateY(-4px);box-shadow:0 18px 40px rgba(38,35,28,.1)}
+  .role .rt{display:flex;align-items:center;gap:12px}
+  .role .ravatar{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:15px;color:#fff;flex-shrink:0}
+  .role h3{font-size:19px}
+  .role .who{font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.06em;margin-top:2px}
+  .role p{font-size:14px;color:var(--ink-mute);line-height:1.55;margin-top:16px}
+
+  /* dark modes section */
+  .modes{padding:100px 0;background:var(--dark);color:#F4EFE3;position:relative;overflow:hidden}
+  .modes .eyebrow{color:var(--teal-bright)}
+  .modes h2{font-size:clamp(28px,4vw,46px);color:#F8F4EA}
+  .modes .sub{color:var(--dark-text);font-size:17px;line-height:1.6;margin-top:16px;max-width:620px}
+  .modegrid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:46px}
+  .modecard{border-radius:20px;padding:28px;background:rgba(255,248,232,.05);border:1px solid rgba(244,239,227,.12);position:relative;overflow:hidden}
+  .modecard h3{font-size:24px;color:#F8F4EA}
+  .modecard p{color:var(--dark-text);font-size:14.5px;line-height:1.55;margin-top:10px}
+  .modecard .badge{position:absolute;top:22px;right:22px;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--gold-bright)}
+  .modecard .live{margin-top:22px;border-radius:14px;background:rgba(6,4,2,.5);border:1px solid rgba(244,239,227,.12);padding:14px;min-height:150px}
+  .krow{display:flex;align-items:center;gap:10px;margin-top:9px}
+  .krow .rank{font-family:var(--display);font-weight:800;font-size:15px;width:13px;text-align:center;color:#7A7064;flex-shrink:0}
+  .krow.lead .rank{color:var(--gold-bright)}
+  .krow .face{width:30px;height:30px;border-radius:50%;background:var(--teal);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:800;font-size:11px;flex-shrink:0}
+  .krow.lead .face{box-shadow:0 0 0 2px rgba(232,183,62,.6)}
+  .krow .knm{font-size:13.5px;font-weight:700;color:#F4EFE3;flex:1}
+  .krow .kval{font-family:var(--mono);font-weight:700;font-size:12.5px;color:#CFC7B8}
+  .krow.lead .kval{color:var(--gold-bright)}
+  .livehd{display:flex;align-items:center;gap:8px}
+  .livehd .kperiod{font-family:var(--display);font-weight:800;font-size:15px;color:#F8F4EA;white-space:nowrap}
+  .livehd .live-live{margin-left:auto;display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.12em;color:var(--gold-bright)}
+  .livehd .pulse{width:6px;height:6px;border-radius:50%;background:var(--gold-bright);box-shadow:0 0 8px rgba(232,183,62,.8)}
+  .roslabel{font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--teal-bright);margin-top:2px}
+  .mbig{font-family:var(--display);font-weight:800;font-size:30px;color:#F8F4EA;letter-spacing:-.02em;margin-top:6px}
+  .mbar{height:7px;border-radius:99px;background:rgba(244,239,227,.14);overflow:hidden;margin-top:11px}
+  .mbar i{display:block;height:100%;width:78%;border-radius:99px;background:linear-gradient(90deg,var(--teal),var(--teal-bright))}
+
+  /* resources */
+  .res{padding:96px 0}
+  .resgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:18px;margin-top:44px}
+  .rescard{display:block;background:var(--paper);border:1px solid var(--rule);border-radius:18px;padding:30px 32px;transition:transform .18s,box-shadow .18s,border-color .18s}
+  .rescard:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(38,35,28,.09);border-color:var(--ink-faint)}
+  .rescard .rc-num{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--teal-bright);letter-spacing:.1em}
+  .rescard h3{font-size:21px;margin:14px 0 10px;line-height:1.15}
+  .rescard p{font-size:14.5px;color:var(--ink-mute);line-height:1.6}
+  .rescard .rc-go{display:inline-block;margin-top:16px;font-size:13.5px;font-weight:700;color:var(--teal)}
+
+  /* faq */
+  .faq{padding:96px 0;background:var(--paper);border-top:1px solid var(--rule)}
+  .faqlist{max-width:820px;margin:44px auto 0}
+  .faqlist details{border-bottom:1px solid var(--rule)}
+  .faqlist summary{cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:18px;padding:22px 2px;font-family:var(--display);font-weight:700;font-size:18px;letter-spacing:-.01em}
+  .faqlist summary::-webkit-details-marker{display:none}
+  .faqlist summary::after{content:"+";font-family:var(--mono);font-size:20px;color:var(--teal);flex-shrink:0;transition:transform .2s}
+  .faqlist details[open] summary::after{transform:rotate(45deg)}
+  .faqlist details p{font-size:15px;line-height:1.65;color:var(--ink-mute);padding:0 2px 24px;max-width:680px}
+
+  /* final cta */
+  .final{padding:110px 0;text-align:center;background:var(--paper);border-top:1px solid var(--rule)}
+  .final h2{font-size:clamp(34px,5.5vw,64px)}
+  .final p{font-size:18px;color:var(--ink-mute);margin:20px auto 34px;max-width:540px;line-height:1.6}
+
+  footer{background:var(--dark);color:var(--dark-text);padding:54px 0 40px}
+  footer .wrap{display:flex;gap:30px;justify-content:space-between;flex-wrap:wrap;align-items:flex-start}
+  footer .brand{display:flex;align-items:center;gap:11px;color:#F4EFE3;font-family:var(--display);font-weight:700;font-size:18px}
+  footer .brand img{border-radius:7px;display:block}
+  footer .cols{display:flex;gap:60px;flex-wrap:wrap}
+  footer h4{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#7A7064;margin-bottom:14px;font-weight:700}
+  footer a{display:block;font-size:14px;color:var(--dark-text);margin-bottom:9px}
+  footer a:hover{color:#F4EFE3}
+  .foot-base{border-top:1px solid rgba(244,239,227,.1);margin-top:40px;padding-top:22px;font-size:12.5px;color:#7A7064;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}
+
+  .wa-fab{position:fixed;right:22px;bottom:22px;z-index:95;display:inline-flex;align-items:center;gap:10px;background:var(--whatsapp);color:#fff;font-weight:700;font-size:14px;padding:13px 20px;border-radius:999px;box-shadow:0 10px 28px rgba(18,140,80,.4);transition:transform .15s,box-shadow .15s}
+  .wa-fab:hover{transform:translateY(-2px);box-shadow:0 14px 34px rgba(18,140,80,.5)}
+
+  @media(max-width:880px){
+    nav .links{display:none}
+    .hero .wrap{grid-template-columns:1fr}
+    .stage{height:430px;margin-top:20px}
+    .loopgrid,.statgrid{grid-template-columns:1fr 1fr}
+    .bento{grid-template-columns:repeat(2,1fr)}.cell.span3,.cell.span2,.cell.span6{grid-column:span 2}
+    .spotgrid,.modegrid,.resgrid{grid-template-columns:1fr}
+    .audgrid{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav data-screen-label="Nav">
+  <a class="brand" href="#top">
+    <img src="../../assets/logo-shield.svg" alt="" width="30" height="30">
+    AgencyTrack
+  </a>
+  <div class="links">
+    <a href="#loop">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#audiences">Who it's for</a>
+    <a href="#resources">Resources</a>
+  </div>
+  <div class="navcta">
+    <a class="btn btn-ghost" href="#">Sign in</a>
+    <a class="btn btn-primary" href="#cta">Book a demo</a>
+  </div>
+</nav>
+
+<span id="top"></span>
+
+<section class="hero" data-screen-label="Hero">
+  <div class="wrap">
+    <div>
+      <div class="eyebrow">For insurance agencies</div>
+      <h1>Turn weekly activity into <span class="hl">production.</span></h1>
+      <p class="sub">AgencyTrack is the performance platform that runs the whole agency loop — agents plan and log, managers coach against the company floor, the back office reconciles every settlement, and recognition runs itself.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#cta">Book a demo →</a>
+        <a class="btn btn-ghost" href="#features">Explore features</a>
+      </div>
+      <div class="trustline">
+        <b>Built in Trinidad &amp; Tobago</b> · Agent → Unit → Branch → Sales Manager · CRO &amp; Admin
+      </div>
+    </div>
+    <div class="stage">
+      <div class="phone">
+        <div class="scr">
+          <div class="pf-ey">YTD · SETTLED API</div>
+          <div class="pf-big">TTD 487K</div>
+          <div style="font-size:11px;color:var(--ink-mute);margin-top:6px">81% of TTD 600K · 5 weeks left</div>
+          <div class="pf-bar"><i></i></div>
+          <div class="pf-grid">
+            <div class="pf-card"><div class="l">PERSISTENCY</div><div class="v" style="color:#2D7A4F">88%</div></div>
+            <div class="pf-card"><div class="l">STREAK</div><div class="v">12 wks</div></div>
+            <div class="pf-card"><div class="l">THIS WEEK</div><div class="v">TTD 24K</div></div>
+            <div class="pf-card"><div class="l">AWARDS</div><div class="v" style="color:var(--gold)">MDRT</div></div>
+          </div>
+          <div style="margin-top:13px;background:var(--gold-tint);border:1px solid rgba(176,125,26,.2);border-radius:11px;padding:10px 12px;font-size:11.5px;color:var(--ink)">★ <b>2 policies to deliver</b> · 1 near the 30-day clock</div>
+        </div>
+      </div>
+      <div class="float glassmk f-award">
+        <div class="ic" style="background:var(--gold-tint)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B07D1A" stroke-width="2"><path d="M6 4h12v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V4z"></path><path d="M9 20h6M12 16v4"></path></svg>
+        </div>
+        <div><div style="font-size:9px;font-family:var(--mono);letter-spacing:.1em;color:var(--gold);font-weight:700">EAGLES CLUB</div><div style="font-weight:700;font-size:13px">Bermuda — unlocked</div></div>
+      </div>
+      <div class="float glassmk f-kiosk" style="flex-direction:column;align-items:stretch;gap:9px">
+        <div style="font-size:9px;font-family:var(--mono);letter-spacing:.12em;color:var(--teal);font-weight:700">★ THIS WEEK · LEADERBOARD</div>
+        <div style="display:flex;align-items:center;gap:9px"><span style="font-family:var(--display);font-weight:800;color:var(--gold)">1</span><span style="width:24px;height:24px;border-radius:50%;background:var(--teal-tint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px">MS</span><span style="font-size:12.5px;font-weight:700">Marsha Singh</span><span style="margin-left:auto;font-family:var(--mono);font-size:12px;font-weight:700">TTD 24K</span></div>
+        <div style="display:flex;align-items:center;gap:9px;opacity:.7"><span style="font-family:var(--display);font-weight:800;color:var(--ink-faint)">2</span><span style="width:24px;height:24px;border-radius:50%;background:var(--teal-tint);color:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:10px">AP</span><span style="font-size:12.5px;font-weight:700">Anand Persad</span><span style="margin-left:auto;font-family:var(--mono);font-size:12px;font-weight:700">TTD 19K</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="marquee" aria-hidden="true">
+  <div class="mtrack">
+    <span>Weekly Report Wizard</span><span>Policy Ledger</span><span>Persistency Gate</span><span>Campaigns</span><span>Kiosk Mode</span><span>CRO Delivery Register</span><span>Meeting Mode</span><span>Game Plan</span><span>Awards &amp; MDRT</span><span>Master Sheet</span>
+    <span>Weekly Report Wizard</span><span>Policy Ledger</span><span>Persistency Gate</span><span>Campaigns</span><span>Kiosk Mode</span><span>CRO Delivery Register</span><span>Meeting Mode</span><span>Game Plan</span><span>Awards &amp; MDRT</span><span>Master Sheet</span>
+  </div>
+</div>
+
+<section class="stats" data-screen-label="Stats">
+  <div class="wrap">
+    <div class="eyebrow" style="margin-bottom:26px">How it's built</div>
+    <div class="statgrid">
+      <div class="stat"><div class="n">6</div><div class="k">role-based experiences — Agent to Tenant Admin, plus the CRO</div></div>
+      <div class="stat"><div class="n">30</div><div class="k">day delivery clock — commission protected before clawback</div></div>
+      <div class="stat"><div class="n">8</div><div class="k">company-floor activity standards, tracked every week</div></div>
+      <div class="stat"><div class="n">100%</div><div class="k">of awards &amp; campaigns fed by one reconciled ledger</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="loop" id="loop" data-screen-label="The agency loop">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="eyebrow">The agency loop</div>
+      <h2>One rhythm, start to finish.</h2>
+      <p>AgencyTrack mirrors how a branch actually runs — a weekly cycle from planning the year to recognizing the win, with the back office keeping every number honest.</p>
+    </div>
+    <div class="loopgrid">
+      <div class="step">
+        <div class="num">01 · PLAN</div><h3>Set the year</h3>
+        <p>Agents build their Game Plan from income goals, and managers cascade targets — recommend or lock — down the hierarchy.</p>
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1.5"></circle></svg></div>
+      </div>
+      <div class="step">
+        <div class="num">02 · CAPTURE</div><h3>Log the week</h3>
+        <p>Daily capture or the 5-minute Weekly Report Wizard rolls granular activity up into the eight company-floor KPIs.</p>
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2"><path d="M9 21h6M12 17V11M5 8h14M5 8l2-4h10l2 4M5 8v3a7 7 0 0 0 14 0V8"></path></svg></div>
+      </div>
+      <div class="step">
+        <div class="num">03 · CONVERT</div><h3>Sell &amp; settle</h3>
+        <p>The Policy Ledger tracks every case to settlement; the CRO confirms it against head office and writes the truth back.</p>
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2"><path d="M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4V4z"></path><path d="M4 16a4 4 0 0 1 4-4h12"></path></svg></div>
+      </div>
+      <div class="step">
+        <div class="num">04 · RECOGNIZE</div><h3>Celebrate the win</h3>
+        <p>Awards, campaigns, leaderboards and the Monday meeting turn settled production into momentum the whole branch feels.</p>
+        <div class="ic"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2"><path d="M6 4h12v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V4z"></path><path d="M9 20h6M12 16v4"></path></svg></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="features" id="features" data-screen-label="Features bento">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="eyebrow">Everything in the platform</div>
+      <h2>Six surfaces. One source of truth.</h2>
+      <p>Each cluster is a full toolkit — not a checkbox. Together they cover planning, capture, conversion, recognition, leadership, and the back office.</p>
+    </div>
+    <div class="bento">
+      <div class="cell span3">
+        <span class="tag">Plan</span><h3>Plan the year, not just the week</h3>
+        <p>Translate an income goal into the activity it takes to get there — then keep everyone aimed at the same number.</p>
+        <div class="chips"><span class="chip">Game Plan (Looking Ahead)</span><span class="chip">Money Needs calculator</span><span class="chip">Goal cascade · recommend or lock</span></div>
+      </div>
+      <div class="cell span3"><span class="tag">Capture</span><h3>Logging that takes five minutes</h3>
+        <p>Daily or weekly — granular wizard inputs roll up into the canonical company-floor KPIs automatically. No double entry.</p>
+        <div class="chips"><span class="chip">Weekly Report Wizard</span><span class="chip">Daily Capture</span><span class="chip">KPI roll-up</span></div>
+      </div>
+      <div class="cell span2"><span class="tag">Convert</span><h3>Sell &amp; service</h3>
+        <p>Keep policies moving to settlement and protect persistency — without becoming a CRM.</p>
+        <div class="chips"><span class="chip">Policy Ledger</span><span class="chip">Commission Playground</span></div>
+      </div>
+      <div class="cell span2 gold">
+        <span class="tag">Recognize</span><h3>Recognition that runs itself</h3>
+        <p>Awards, career levels, and competitive campaigns with a persistency gate — quality earns the prize, not just volume.</p>
+        <div class="chips"><span class="chip">Awards &amp; MDRT</span><span class="chip">Campaigns + gate</span><span class="chip">Leaderboards</span></div>
+      </div>
+      <div class="cell span2"><span class="tag">Lead</span><h3>Coach against the floor</h3>
+        <p>Exception-first dashboards and the guided Monday stand-up put managers on the agents who need them.</p>
+        <div class="chips"><span class="chip">Manager Dashboard</span><span class="chip">Master Sheet</span><span class="chip">Meeting Mode</span></div>
+      </div>
+      <div class="cell span6">
+        <span class="tag">Operate · back office</span><h3>The CRO finally has a seat</h3>
+        <p style="max-width:640px">The Customer Relationship Officer is the human at the point of entry — receiving printed policies, chasing delivery against the 30-day clock, keying every submission, and compiling the Friday production report.</p>
+        <div class="chips"><span class="chip">Delivery Register · 30-day clawback clock</span><span class="chip">Branch settlements</span><span class="chip">Policy Reconciliation</span><span class="chip">Weekly Production Report</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="spot" data-screen-label="Trust gate">
+  <div class="wrap spotgrid">
+    <div>
+      <div class="eyebrow">The trust gate</div>
+      <h2 style="font-size:clamp(28px,4vw,44px);margin-top:14px">Every number traces to one reconciled ledger.</h2>
+      <ul>
+        <li><span class="tick"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg></span><div><b>Agents log it once.</b> Production, persistency, awards, and campaign payouts all read the same data — never re-keyed.</div></li>
+        <li><span class="tick"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg></span><div><b>The CRO confirms it.</b> Each settlement is matched to head office; mismatches, NTUs, duplicates, and partials surface as exceptions.</div></li>
+        <li><span class="tick"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#01696F" stroke-width="2.6"><polyline points="20 6 9 17 4 12"></polyline></svg></span><div><b>Delivery protects pay.</b> A 30-day clawback clock chases every policy to a signed receipt before commission is withheld.</div></li>
+      </ul>
+    </div>
+    <div class="ledger">
+      <div style="font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--ink-faint)">DELIVERY REGISTER · SOUTH BRANCH</div>
+      <div class="lrow"><span class="ldot" style="background:#2D7A4F"></span><div><div class="nm">Anil Boodram</div><div class="meta">Platinum Edge · TL-08661</div></div><div class="lclock"><div class="d" style="color:#2D7A4F">26</div><div class="u">DAYS LEFT</div></div></div>
+      <div class="lrow"><span class="ldot" style="background:#E8B53E"></span><div><div class="nm">Sara Khan</div><div class="meta">Term Life 20 · TL-08655</div></div><div class="lclock"><div class="d" style="color:#E8B53E">6</div><div class="u">DAYS LEFT</div></div></div>
+      <div class="lrow"><span class="ldot" style="background:#D9534F"></span><div><div class="nm">Marcus Lee</div><div class="meta">Status conflict · carrier shows NTU</div></div><div class="lclock"><div class="d" style="color:#D9534F">+3</div><div class="u">DAYS OVER</div></div></div>
+      <div class="lrow"><span class="ldot" style="background:#01696F"></span><div><div class="nm">Jamal Khan</div><div class="meta">Unmatched · in carrier file, no entry</div></div><div class="lclock"><div class="d" style="color:#01696F">?</div><div class="u">MATCH</div></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="aud" id="audiences" data-screen-label="Audiences">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="eyebrow">Who it's for</div>
+      <h2>One platform, every seat in the agency.</h2>
+      <p>Role-based experiences mean each person sees exactly what they need — and nothing they don't.</p>
+    </div>
+    <div class="audgrid">
+      <div class="role"><div class="rt"><div class="ravatar" style="background:#01696F">AG</div><div><h3>Agents</h3><div class="who">PLAN · LOG · GROW</div></div></div><p>A personal performance hub: plan the year, log in minutes, watch the goal bar climb, track awards and career level.</p></div>
+      <div class="role"><div class="rt"><div class="ravatar" style="background:#018A91">UM</div><div><h3>Unit Managers</h3><div class="who">PLAYER-COACH</div></div></div><p>Sell and lead from one screen — your own production alongside a unit roll-up, exception-first coaching.</p></div>
+      <div class="role"><div class="rt"><div class="ravatar" style="background:#014E52">BM</div><div><h3>Branch Managers</h3><div class="who">RUN THE BRANCH</div></div></div><p>Branch-wide visibility, the guided Monday meeting, campaigns you launch yourself, recruiting, compliance.</p></div>
+      <div class="role"><div class="rt"><div class="ravatar" style="background:#013B3F">SM</div><div><h3>Sales Managers</h3><div class="who">CROSS-BRANCH</div></div></div><p>The whole agency rolled up — four branches, ten units, every leaderboard and award programme in one view.</p></div>
+      <div class="role"><div class="rt"><div class="ravatar" style="background:#B07D1A">CR</div><div><h3>CRO / Back office</h3><div class="who">SOURCE OF TRUTH</div></div></div><p>The branch's operational hub: delivery register, data entry, settlements, reconciliation, the Friday report.</p></div>
+      <div class="role"><div class="rt"><div class="ravatar" style="background:#26231C">TA</div><div><h3>Tenant Admins</h3><div class="who">CONFIGURE</div></div></div><p>Company config, activity standards, the awards ruleset, branches and users — controls that fit your agency.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="modes" data-screen-label="Kiosk & Meeting (dark break)">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="eyebrow">On the wall &amp; in the room</div>
+      <h2>Performance, made visible.</h2>
+      <p class="sub">The same reconciled data drives two presentation surfaces — so the branch feels the momentum, not just reads it.</p>
+    </div>
+    <div class="modegrid">
+      <div class="modecard"><span class="badge">16:9 · TV</span><h3>Kiosk Mode</h3><p>A theatrical wall display that rotates leaderboards, agent of the month, running totals, awards watch and live campaign standings — stadium-scale type that makes agents want their name up.</p>
+        <div class="live">
+          <div class="livehd"><span class="kperiod">This Week</span><span class="live-live"><span class="pulse"></span>LIVE</span></div>
+          <div class="krow lead"><span class="rank">1</span><span class="face">MS</span><span class="knm">Marsha Singh</span><span class="kval">TTD 24K</span></div>
+          <div class="krow"><span class="rank">2</span><span class="face">AP</span><span class="knm">Anand Persad</span><span class="kval">TTD 19K</span></div>
+          <div class="krow"><span class="rank">3</span><span class="face">SM</span><span class="knm">Selina Mohammed</span><span class="kval">TTD 17K</span></div>
+        </div>
+      </div>
+      <div class="modecard"><span class="badge">PROJECTOR</span><h3>Meeting Mode</h3><p>A guided Monday stand-up: open on the branch's reality, drill exception-first through each agent against the floor, land recognition — then wrap on actions captured.</p>
+        <div class="live">
+          <div class="roslabel">BRANCH · THIS WEEK</div>
+          <div class="mbig">TTD 142K</div>
+          <div style="font-size:12px;color:var(--dark-text);margin-top:4px">78% of TTD 182K floor · 14 advisors active</div>
+          <div class="mbar"><i></i></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="res" id="resources" data-screen-label="Resources">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="eyebrow">Resources</div>
+      <h2>Read before you decide.</h2>
+      <p>Four short reads that answer the questions agencies actually ask — starting with the biggest one.</p>
+    </div>
+    <div class="resgrid">
+      <a class="rescard" href="#">
+        <div class="rc-num">01 · THE OBJECTION</div>
+        <h3>"Our agents don't like to report."</h3>
+        <p>Why agents resist reporting, and how AgencyTrack is designed so the agent — not management — is the first beneficiary of every entry.</p>
+        <span class="rc-go">Start here →</span>
+      </a>
+      <a class="rescard" href="#">
+        <div class="rc-num">02 · THE TRUST GATE</div>
+        <h3>One reconciled ledger.</h3>
+        <p>Settlement matching, exception flags, and the 30-day delivery clock — how every number on every screen stays honest.</p>
+        <span class="rc-go">Read →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="faq" data-screen-label="FAQ">
+  <div class="wrap">
+    <div class="sechead">
+      <div class="eyebrow">Common questions</div>
+      <h2>Frequently asked questions.</h2>
+    </div>
+    <div class="faqlist">
+      <details>
+        <summary>Is AgencyTrack a CRM?</summary>
+        <p>No — deliberately. AgencyTrack manages the agency's performance loop: planning, activity logging, coaching, settlement reconciliation, and recognition. Agents keep their client books wherever they already work.</p>
+      </details>
+      <details>
+        <summary>How does commission reconciliation work?</summary>
+        <p>Agents log business once. The back office reconciles each entry against the carrier's settlement file, flagging exceptions like status conflicts and unmatched entries. A 30-day delivery clock tracks policies at risk of clawback.</p>
+      </details>
+      <details>
+        <summary>Where does AgencyTrack operate?</summary>
+        <p>AgencyTrack is built in Trinidad &amp; Tobago and designed for life-insurance agencies across the Caribbean. The platform currently runs natively in TTD.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+<section class="final" id="cta" data-screen-label="Final CTA">
+  <div class="wrap">
+    <div class="eyebrow" style="display:flex;justify-content:center">Ready when you are</div>
+    <h2>Run your agency on one rhythm.</h2>
+    <p>See how AgencyTrack turns weekly activity into settled production, protected commission, and recognition that runs itself.</p>
+    <a class="btn btn-primary" href="#" style="font-size:16px;padding:14px 26px">Book a demo →</a>
+    <p style="font-size:14px;color:var(--ink-faint);margin-top:22px">Prefer email? <a href="mailto:hello@agencytrack.app" style="color:var(--teal);text-decoration:underline;text-underline-offset:3px">hello@agencytrack.app</a></p>
+  </div>
+</section>
+
+<footer data-screen-label="Footer">
+  <div class="wrap">
+    <div>
+      <div class="brand">
+        <img src="../../assets/logo-shield.svg" alt="" width="28" height="28">
+        AgencyTrack
+      </div>
+      <p style="font-size:13px;max-width:260px;margin-top:14px;line-height:1.6">The performance platform for insurance agencies. Built in Trinidad &amp; Tobago.</p>
+    </div>
+    <div class="cols">
+      <div><h4>Platform</h4><a href="#features">Features</a><a href="#loop">How it works</a><a href="#audiences">Roles</a></div>
+      <div><h4>Resources</h4><a href="#resources">Agent adoption</a><a href="#resources">Reconciliation</a><a href="#resources">vs Spreadsheets</a></div>
+      <div><h4>Company</h4><a href="#cta">Book a demo</a><a href="#">Sign in</a><a href="mailto:hello@agencytrack.app">Contact</a></div>
+    </div>
+    <div class="foot-base" style="width:100%">
+      <span>© 2026 AgencyTrack</span>
+      <span style="display:flex;gap:16px"><a href="#" style="display:inline;margin:0;text-decoration:underline;text-underline-offset:3px">Privacy</a><a href="#" style="display:inline;margin:0;text-decoration:underline;text-underline-offset:3px">Terms</a></span>
+    </div>
+  </div>
+</footer>
+
+<a class="wa-fab" href="#" aria-label="Chat with us on WhatsApp">
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3a9 9 0 0 0-7.74 13.6L3 21l4.55-1.2A9 9 0 1 0 12 3Z" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"></path><path d="M9.2 8.6c.2-.5.4-.5.7-.5h.5c.2 0 .4 0 .5.4.2.4.6 1.4.6 1.5.1.1.1.3 0 .4l-.4.6c-.1.2-.2.3-.1.5.1.2.6 1 1.3 1.6.9.8 1.6 1 1.8 1.1.2.1.4.1.5-.1l.6-.7c.2-.2.3-.2.5-.1l1.5.7c.2.1.4.2.4.3 0 .2 0 .7-.3 1.2-.2.5-1.2 1.1-1.7 1.1-.4 0-1 .2-3.3-.8-2.8-1.2-4.5-4-4.6-4.2-.1-.2-1-1.4-1-2.6 0-1.2.6-1.8.8-2.4Z" fill="#fff"></path></svg>
+  <span>Chat on WhatsApp</span>
+</a>
+</body>
+</html>
